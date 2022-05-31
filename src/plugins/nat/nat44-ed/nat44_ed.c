@@ -3750,19 +3750,21 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 	}
     }
 
-  if (skip_saddr_rewrite)
+  if (!(b->flags & VNET_BUFFER_F_OFFLOAD) ||
+      !(vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
     {
-      ip->checksum = ip4_header_checksum (ip);
+      if (skip_saddr_rewrite)
+	ip->checksum = ip4_header_checksum (ip);
+      else
+	{
+	  ip_csum_t ip_sum = ip->checksum;
+	  ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
+	  ip->checksum = ip_csum_fold (ip_sum);
+	}
+      if (0xffff == ip->checksum)
+	ip->checksum = 0;
+      ASSERT (ip4_header_checksum_is_valid (ip));
     }
-  else
-    {
-      ip_csum_t ip_sum = ip->checksum;
-      ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
-      ip->checksum = ip_csum_fold (ip_sum);
-    }
-  if (0xffff == ip->checksum)
-    ip->checksum = 0;
-  ASSERT (ip4_header_checksum_is_valid (ip));
 }
 
 static_always_inline int
