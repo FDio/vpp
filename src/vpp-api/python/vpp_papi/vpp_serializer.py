@@ -262,10 +262,10 @@ class FixedList(Packer):
                     len(list), self.num
                 )
             )
-        b = bytes()
+        b = bytearray()
         for e in list:
             b += self.packer.pack(e)
-        return b
+        return bytes(b)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
@@ -311,10 +311,10 @@ class VLAList(Packer):
                 return b"".join(lst)
             return bytes(lst)
 
-        b = bytes()
+        b = bytearray()
         for e in lst:
             b += self.packer.pack(e)
-        return b
+        return bytes(b)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
@@ -355,10 +355,10 @@ class VLAList_legacy(Packer):
         if self.packer.size == 1:
             return bytes(list)
 
-        b = bytes()
+        b = bytearray()
         for e in list:
             b += self.packer.pack(e)
-        return b
+        return bytes(b)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
         total = 0
@@ -627,7 +627,7 @@ class VPPType(Packer):
     def pack(self, data, kwargs=None):
         if not kwargs:
             kwargs = data
-        b = bytes()
+        b = bytearray()
 
         # Try one of the format functions
         if data and conversion_required(data, self.name):
@@ -651,7 +651,7 @@ class VPPType(Packer):
             else:
                 b += self.packers[i].pack(arg, kwargs)
 
-        return b
+        return bytes(b)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
