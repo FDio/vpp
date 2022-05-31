@@ -761,9 +761,9 @@ get_thread_idx_by_port (u16 e_port)
   u32 thread_idx = sm->num_workers;
   if (sm->num_workers > 1)
     {
-      thread_idx =
-	sm->first_worker_index +
-	sm->workers[(e_port - 1024) / sm->port_per_thread];
+      thread_idx = sm->first_worker_index +
+		   sm->workers[(e_port - 1024) / sm->port_per_thread %
+			       _vec_len (sm->workers)];
     }
   return thread_idx;
 }
@@ -3166,9 +3166,7 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
     }
 
   /* worker by outside port */
-  next_worker_index = sm->first_worker_index;
-  next_worker_index +=
-    sm->workers[(clib_net_to_host_u16 (port) - 1024) / sm->port_per_thread];
+  next_worker_index = get_thread_idx_by_port (clib_net_to_host_u16 (port));
 
 done:
   nat_elog_debug_handoff (sm, "HANDOFF OUT2IN", next_worker_index,
