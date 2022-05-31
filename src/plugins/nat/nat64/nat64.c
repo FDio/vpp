@@ -135,6 +135,20 @@ nat64_get_worker_in2out (ip6_address_t * addr)
   return next_worker_index;
 }
 
+static u32
+get_thread_idx_by_port (u16 e_port)
+{
+  nat64_main_t *nm = &nat64_main;
+  u32 thread_idx = nm->num_workers;
+  if (nm->num_workers > 1)
+    {
+      thread_idx = nm->first_worker_index +
+		   nm->workers[(e_port - 1024) / nm->port_per_thread %
+			       _vec_len (nm->workers)];
+    }
+  return thread_idx;
+}
+
 u32
 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
 {
@@ -202,7 +216,7 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
   /* worker by outside port  (TCP/UDP) */
   port = clib_net_to_host_u16 (port);
   if (port > 1024)
-    return nm->first_worker_index + ((port - 1024) / nm->port_per_thread);
+    return get_thread_idx_by_port (port);
 
   return vlib_get_thread_index ();
 }
@@ -916,7 +930,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
       /* outside port must be assigned to same thread as internall address */
       if ((out_port > 1024) && (nm->num_workers > 1))
 	{
-	  if (thread_index != ((out_port - 1024) / nm->port_per_thread))
+	  if (thread_index != get_thread_idx_by_port (out_port))
 	    return VNET_API_ERROR_INVALID_VALUE_2;
 	}
 
