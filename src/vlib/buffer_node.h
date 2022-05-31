@@ -356,6 +356,16 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
+vlib_buffer_enqueue_to_next_with_aux (vlib_main_t *vm,
+				      vlib_node_runtime_t *node, u32 *buffers,
+				      u32 *aux_data, u16 *nexts, uword count)
+{
+  vlib_buffer_enqueue_to_next_with_aux_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_next_with_aux_fn;
+  (fn) (vm, node, buffers, aux_data, nexts, count);
+}
+
+static_always_inline void
 vlib_buffer_enqueue_to_next_vec (vlib_main_t *vm, vlib_node_runtime_t *node,
 				 u32 **buffers, u16 **nexts, uword count)
 {
@@ -377,6 +387,17 @@ vlib_buffer_enqueue_to_single_next (vlib_main_t * vm,
   vlib_buffer_enqueue_to_single_next_fn_t *fn;
   fn = vlib_buffer_func_main.buffer_enqueue_to_single_next_fn;
   (fn) (vm, node, buffers, next_index, count);
+}
+
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_with_aux (vlib_main_t *vm,
+					     vlib_node_runtime_t *node,
+					     u32 *buffers, u32 *aux_data,
+					     u16 next_index, u32 count)
+{
+  vlib_buffer_enqueue_to_single_next_with_aux_fn_t *fn;
+  fn = vlib_buffer_func_main.buffer_enqueue_to_single_next_with_aux_fn;
+  (fn) (vm, node, buffers, aux_data, next_index, count);
 }
 
 static_always_inline u32

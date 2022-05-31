@@ -56,9 +56,16 @@ typedef void (vlib_buffer_enqueue_to_next_fn_t) (vlib_main_t *vm,
 						 vlib_node_runtime_t *node,
 						 u32 *buffers, u16 *nexts,
 						 uword count);
+typedef void (vlib_buffer_enqueue_to_next_with_aux_fn_t) (
+  vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u32 *aux_data,
+  u16 *nexts, uword count);
 typedef void (vlib_buffer_enqueue_to_single_next_fn_t) (
   vlib_main_t *vm, vlib_node_runtime_t *node, u32 *ers, u16 next_index,
   u32 count);
+
+typedef void (vlib_buffer_enqueue_to_single_next_with_aux_fn_t) (
+  vlib_main_t *vm, vlib_node_runtime_t *node, u32 *ers, u32 *aux_data,
+  u16 next_index, u32 count);
 
 typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
   vlib_main_t *vm, vlib_node_runtime_t *node, u32 frame_queue_index,
@@ -73,7 +80,11 @@ typedef u32 (vlib_buffer_enqueue_to_thread_with_aux_fn_t) (
 typedef struct
 {
   vlib_buffer_enqueue_to_next_fn_t *buffer_enqueue_to_next_fn;
+  vlib_buffer_enqueue_to_next_with_aux_fn_t
+    *buffer_enqueue_to_next_with_aux_fn;
   vlib_buffer_enqueue_to_single_next_fn_t *buffer_enqueue_to_single_next_fn;
+  vlib_buffer_enqueue_to_single_next_with_aux_fn_t
+    *buffer_enqueue_to_single_next_with_aux_fn;
   vlib_buffer_enqueue_to_thread_fn_t *buffer_enqueue_to_thread_fn;
   vlib_buffer_enqueue_to_thread_with_aux_fn_t
     *buffer_enqueue_to_thread_with_aux_fn;
