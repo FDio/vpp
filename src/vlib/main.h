@@ -306,6 +306,7 @@ typedef struct vlib_global_main_t
   _vlib_init_function_list_elt_t *main_loop_enter_function_registrations;
   _vlib_init_function_list_elt_t *main_loop_exit_function_registrations;
   _vlib_init_function_list_elt_t *worker_init_function_registrations;
+  _vlib_init_function_list_elt_t *num_workers_change_function_registrations;
   _vlib_init_function_list_elt_t *api_init_function_registrations;
   vlib_config_function_runtime_t *config_function_registrations;
 

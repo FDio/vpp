@@ -171,6 +171,8 @@ static __clib_unused void * __clib_unused_##tag##_##x = x
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
 #define VLIB_WORKER_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,worker_init)
+#define VLIB_NUM_WORKERS_CHANGE_FN(x)                                         \
+  VLIB_DECLARE_INIT_FUNCTION (x, num_workers_change)
 
 #define VLIB_MAIN_LOOP_ENTER_FUNCTION(x) \
   VLIB_DECLARE_INIT_FUNCTION(x,main_loop_enter)
