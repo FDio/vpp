@@ -89,7 +89,13 @@
   _ (REASS_NO_BUF, "out of buffers (drop)")                             \
   _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")      \
   _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")    \
-  _ (REASS_INVALID_FRAG_LEN, "invalid fragment length")    \
+  _ (REASS_INVALID_FRAG_LEN, "invalid fragment length")                 \
+  _ (REASS_TO_CUSTOM_APP, "send to custom drop app")                    \
+  _ (REASS_NO_FRAG_HDR, "no fragmentation header")                      \
+  _ (REASS_INVALID_FRAG_SIZE, "drop due to invalid fragment size")      \
+  _ (REASS_SUCCESS, "successful reassemblies")                          \
+  _ (REASS_FRAGMENTS_REASSEMBLED, "fragments reassembled")              \
+  _ (REASS_FRAGMENTS_RCVD, "fragments received")                        \
   _ (REASS_UNSUPP_IP_PROTO, "unsupported ip protocol")
 
 // clang-format on
