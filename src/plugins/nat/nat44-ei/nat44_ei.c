@@ -1684,6 +1684,20 @@ nat44_ei_get_in2out_worker_index (ip4_header_t *ip0, u32 rx_fib_index0,
 }
 
 u32
+nat44_ei_get_thread_idx_by_port (u16 e_port)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  u32 thread_idx = nm->num_workers;
+  if (nm->num_workers > 1)
+    {
+      thread_idx = nm->first_worker_index +
+		   nm->workers[(e_port - 1024) / nm->port_per_thread %
+			       _vec_len (nm->workers)];
+    }
+  return thread_idx;
+}
+
+u32
 nat44_ei_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip0,
 				  u32 rx_fib_index0, u8 is_output)
 {
@@ -1761,9 +1775,8 @@ nat44_ei_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip0,
     }
 
   /* worker by outside port */
-  next_worker_index = nm->first_worker_index;
-  next_worker_index +=
-    nm->workers[(clib_net_to_host_u16 (port) - 1024) / nm->port_per_thread];
+  next_worker_index =
+    nat44_ei_get_thread_idx_by_port (clib_net_to_host_u16 (port));
   return next_worker_index;
 }
 
@@ -2048,19 +2061,6 @@ nat44_ei_del_session (nat44_ei_main_t *nm, ip4_address_t *addr, u16 port,
     }
 
   return VNET_API_ERROR_NO_SUCH_ENTRY;
-}
-
-u32
-nat44_ei_get_thread_idx_by_port (u16 e_port)
-{
-  nat44_ei_main_t *nm = &nat44_ei_main;
-  u32 thread_idx = nm->num_workers;
-  if (nm->num_workers > 1)
-    {
-      thread_idx = nm->first_worker_index +
-		   nm->workers[(e_port - 1024) / nm->port_per_thread];
-    }
-  return thread_idx;
 }
 
 void
