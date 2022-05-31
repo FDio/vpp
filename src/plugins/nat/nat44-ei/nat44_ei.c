@@ -2058,7 +2058,8 @@ nat44_ei_get_thread_idx_by_port (u16 e_port)
   if (nm->num_workers > 1)
     {
       thread_idx = nm->first_worker_index +
-		   nm->workers[(e_port - 1024) / nm->port_per_thread];
+		   nm->workers[(e_port - 1024) / nm->port_per_thread %
+			       _vec_len (nm->workers)];
     }
   return thread_idx;
 }
