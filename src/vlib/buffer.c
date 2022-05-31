@@ -636,25 +636,19 @@ VLIB_CLI_COMMAND (show_buffers_command, static) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-vlib_buffer_worker_init (vlib_main_t * vm)
+vlib_buffer_num_workers_change (vlib_main_t *vm)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
 
-  /* *INDENT-OFF* */
   vec_foreach (bp, bm->buffer_pools)
-    {
-      clib_spinlock_lock (&bp->lock);
-      vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
-			    CLIB_CACHE_LINE_BYTES);
-      clib_spinlock_unlock (&bp->lock);
-    }
-  /* *INDENT-ON* */
+    vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
+			  CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
 
-VLIB_WORKER_INIT_FUNCTION (vlib_buffer_worker_init);
+VLIB_NUM_WORKERS_CHANGE_FN (vlib_buffer_num_workers_change);
 
 static clib_error_t *
 vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,

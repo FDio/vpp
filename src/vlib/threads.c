@@ -820,6 +820,14 @@ start_workers (vlib_main_t * vm)
 	}
     }
   vlib_worker_thread_barrier_sync (vm);
+  {
+    clib_error_t *err;
+    err = vlib_call_init_exit_functions (
+      vm, &vgm->num_workers_change_function_registrations, 1 /* call_once */,
+      1 /* is_global */);
+    if (err)
+      clib_error_report (err);
+  }
   vlib_worker_thread_barrier_release (vm);
   return 0;
 }
