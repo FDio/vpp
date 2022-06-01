@@ -856,6 +856,10 @@ segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
   if (!rx_fifo || !tx_fifo)
     return;
 
+  /* Thread that allocated the fifo must be the one to clean it up */
+  ASSERT (rx_fifo->master_thread_index == vlib_get_thread_index () ||
+	  rx_fifo->refcnt > 1);
+
   /* It's possible to have no segment manager if the session was removed
    * as result of a detach. */
   if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
