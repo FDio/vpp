@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c879a093_364e4a2f",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-06-01T15:28:03Z",
+      "side": 1,
+      "message": "It looks like we\u0027ll need better handling for this to avoid losing information. Move the if before wrk-\u003esession_attr_op is set to 1 and just return -1 if mq is not set. \n\nFor now, we can live with this workaround but, in that case, please add comment that it should be fixed. Something along the lines of \"attribute should be stored and sent once session is bound/connected to vpp\"",
+      "range": {
+        "startLine": 296,
+        "startChar": 0,
+        "endLine": 300,
+        "endChar": 5
+      },
+      "revId": "445b5f68ec300cc660cd41dc94f8bf81764aa12a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
