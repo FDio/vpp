@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "198a2d03_9d4ca098",
+        "filename": "src/vnet/ipfix-export/flow_report.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 2402
+      },
+      "writtenOn": "2022-06-01T12:47:30Z",
+      "side": 1,
+      "message": "My reading of this is that there could potentially be a leak of the frame here, but is hard to tell because there is no real documentation for the API, and specifically what the flow_data_callback should do with the frame.\n\nHowever, we should still pass the correct args into this func, so that users who provide a callback that deals with the frame still get the correct info. \n\nTo me it feels like the problem here is really in the callback, although hard to be sure as the description in the commit message doesn\u0027t really describe the problem you are trying to fix.",
+      "revId": "5084565be10f839e3825fa5398a170a08b08a1e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
