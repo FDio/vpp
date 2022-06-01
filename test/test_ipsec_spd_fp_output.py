@@ -104,9 +104,9 @@ class IPSec4SpdTestCaseAddPortRange(SpdFastPathOutbound):
         self.create_interfaces(2)
         pkt_count = 5
         s_port_s = 1000
-        s_port_e = 2000
+        s_port_e = 2023
         d_port_s = 5000
-        d_port_e = 6000
+        d_port_e = 6023
         self.spd_create_and_intf_add(1, [self.pg1])
         policy_0 = self.spd_add_rem_policy(  # outbound, priority 10
             1,
@@ -166,7 +166,7 @@ class IPSec4SpdTestCaseAddPortRange(SpdFastPathOutbound):
 
 class IPSec4SpdTestCaseAddIPRange(SpdFastPathOutbound):
     """ IPSec/IPv4 outbound: Policy mode test case with fast path \
-        (add all ips port range rule)"""
+        (add  ips  range with any port rule)"""
 
     def test_ipsec_spd_outbound_add(self):
         # In this test case, packets in IPv4 FWD path are configured
@@ -179,7 +179,7 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathOutbound):
         self.create_interfaces(2)
         pkt_count = 5
         s_ip_s = ipaddress.ip_address(self.pg0.remote_ip4)
-        s_ip_e = ipaddress.ip_address(int(s_ip_s) + 0)
+        s_ip_e = ipaddress.ip_address(int(s_ip_s) + 5)
         d_ip_s = ipaddress.ip_address(self.pg1.remote_ip4)
         d_ip_e = ipaddress.ip_address(int(d_ip_s) + 0)
         self.spd_create_and_intf_add(1, [self.pg1])
@@ -205,11 +205,102 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathOutbound):
             is_out=1,
             priority=5,
             policy_type="discard",
-            all_ips=True,
+            ip_range=True,
             local_ip_start=s_ip_s,
             local_ip_stop=s_ip_e,
             remote_ip_start=d_ip_s,
             remote_ip_stop=d_ip_e,
+        )
+
+        # create the packet stream
+        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # add the stream to the source interface + enable capture
+        self.pg0.add_stream(packets)
+        self.pg0.enable_capture()
+        self.pg1.enable_capture()
+        # start the packet generator
+        self.pg_start()
+        # get capture
+        capture = self.pg1.get_capture()
+        for packet in capture:
+            try:
+                self.logger.debug(ppp("SPD - Got packet:", packet))
+            except Exception:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+        self.logger.debug("SPD: Num packets: %s", len(capture.res))
+
+        # assert nothing captured on pg0
+        self.pg0.assert_nothing_captured()
+        # verify captured packets
+        self.verify_capture(self.pg0, self.pg1, capture)
+        # verify all policies matched the expected number of times
+        self.verify_policy_match(pkt_count, policy_0)
+        self.verify_policy_match(0, policy_1)
+
+
+class IPSec4SpdTestCaseAddIPAndPortRange(SpdFastPathOutbound):
+    """ IPSec/IPv4 outbound: Policy mode test case with fast path \
+        (add all ips  range rule)"""
+
+    def test_ipsec_spd_outbound_add(self):
+        # In this test case, packets in IPv4 FWD path are configured
+        # to go through IPSec outbound SPD policy lookup.
+        # 2 SPD rules (1 HIGH and 1 LOW) are added.
+        # High priority rule action is set to BYPASS.
+        # Low priority rule action is set to DISCARD.
+        # Traffic sent on pg0 interface should match high priority
+        # rule and should be sent out on pg1 interface.
+        # in this test we define ranges of ports and ip addresses.
+        self.create_interfaces(2)
+        pkt_count = 5
+        s_port_s = 1000
+        s_port_e = 1000 + 1023
+        d_port_s = 5000
+        d_port_e = 5000 + 1023
+
+        s_ip_s = ipaddress.ip_address(
+            int(ipaddress.ip_address(self.pg0.remote_ip4)) - 24
+        )
+        s_ip_e = ipaddress.ip_address(int(s_ip_s) + 255)
+        d_ip_s = ipaddress.ip_address(self.pg1.remote_ip4)
+        d_ip_e = ipaddress.ip_address(int(d_ip_s) + 255)
+        self.spd_create_and_intf_add(1, [self.pg1])
+        policy_0 = self.spd_add_rem_policy(  # outbound, priority 10
+            1,
+            self.pg0,
+            self.pg1,
+            socket.IPPROTO_UDP,
+            is_out=1,
+            priority=10,
+            policy_type="bypass",
+            ip_range=True,
+            local_ip_start=s_ip_s,
+            local_ip_stop=s_ip_e,
+            remote_ip_start=d_ip_s,
+            remote_ip_stop=d_ip_e,
+            local_port_start=s_port_s,
+            local_port_stop=s_port_e,
+            remote_port_start=d_port_s,
+            remote_port_stop=d_port_e,
+        )
+        policy_1 = self.spd_add_rem_policy(  # outbound, priority 5
+            1,
+            self.pg0,
+            self.pg1,
+            socket.IPPROTO_UDP,
+            is_out=1,
+            priority=5,
+            policy_type="discard",
+            ip_range=True,
+            local_ip_start=s_ip_s,
+            local_ip_stop=s_ip_e,
+            remote_ip_start=d_ip_s,
+            remote_ip_stop=d_ip_e,
+            local_port_start=s_port_s,
+            local_port_stop=s_port_e,
+            remote_port_start=d_port_s,
+            remote_port_stop=d_port_e,
         )
 
         # create the packet stream
