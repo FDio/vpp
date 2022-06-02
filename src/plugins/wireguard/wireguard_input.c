@@ -562,6 +562,8 @@ always_inline uword
 wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 vlib_frame_t *frame, u8 is_ip4, u16 async_next_node)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
   wg_main_t *wmp = &wg_main;
   wg_per_thread_data_t *ptd =
     vec_elt_at_index (wmp->per_thread_data, vm->thread_index);
@@ -802,6 +804,11 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  last_peer_time_idx = peer_idx;
 	}
 
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					 VNET_INTERFACE_COUNTER_RX,
+				       vm->thread_index, peer->wg_sw_if_index,
+				       1 /* packets */, b[0]->current_length);
+
     trace:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
@@ -861,6 +868,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 always_inline uword
 wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
   wg_main_t *wmp = &wg_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
@@ -920,6 +929,12 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 	  wg_timers_any_authenticated_packet_traversal (peer);
 	  last_peer_time_idx = peer_idx;
 	}
+
+      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					 VNET_INTERFACE_COUNTER_RX,
+				       vm->thread_index, peer->wg_sw_if_index,
+				       1 /* packets */, b[0]->current_length);
+
     trace:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
