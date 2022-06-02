@@ -49,6 +49,7 @@ int ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
 						    int is_enable);
 
 uword ip4_sv_reass_custom_register_next_node (uword node_index);
+uword ip4_sv_reass_custom_context_register_next_node (uword node_index);
 
 #endif /* __included_ip4_sv_reass_h__ */
 
