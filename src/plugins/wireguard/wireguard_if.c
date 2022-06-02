@@ -153,6 +153,14 @@ wg_if_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   index_t wgii;
 
+  /* Convert any neighbour adjacency that has a next-hop reachable through
+   * the wg interface into a midchain. This is to avoid sending ARP/ND to
+   * resolve the next-hop address via the wg interface. Then, if one of the
+   * peers has matching prefix among allowed prefixes, the midchain will be
+   * updated to the corresponding one.
+   */
+  adj_nbr_midchain_update_rewrite (ai, NULL, NULL, ADJ_FLAG_NONE, NULL);
+
   wgii = wg_if_find_by_sw_if_index (sw_if_index);
   wg_if_peer_walk (wg_if_get (wgii), wg_peer_if_adj_change, &ai);
 }
