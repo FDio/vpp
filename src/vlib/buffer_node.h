@@ -236,6 +236,53 @@ do {									\
     }									\
 } while (0)
 
+/** \brief Finish enqueueing one buffer forward in the graph, along with its
+ aux_data if possible. Standard single loop boilerplate element. This is a
+ MACRO, with MULTIPLE SIDE EFFECTS. In the ideal case, <code>next_index ==
+ next0</code>, which means that the speculative enqueue at the top of the
+ single loop has correctly dealt with the packet in hand. In that case, the
+ macro does nothing at all. This function MAY return to_next_aux = NULL if
+ next_index does not support aux data
+
+ @param vm vlib_main_t pointer, varies by thread
+ @param node current node vlib_node_runtime_t pointer
+ @param next_index speculated next index used for both packets
+ @param to_next speculated vector pointer used for both packets
+ @param to_next_aux speculated aux_data pointer used for both packets
+ @param n_left_to_next number of slots left in speculated vector
+ @param bi0 first buffer index
+ @param aux0 first aux_data
+ @param next0 actual next index to be used for the first packet
+
+ @return @c next_index -- speculative next index to be used for future packets
+ @return @c to_next -- speculative frame to be used for future packets
+ @return @c n_left_to_next -- number of slots left in speculative frame
+*/
+#define vlib_validate_buffer_enqueue_with_aux_x1(                             \
+  vm, node, next_index, to_next, to_next_aux, n_left_to_next, bi0, aux0,      \
+  next0)                                                                      \
+  do                                                                          \
+    {                                                                         \
+      ASSERT (bi0 != 0);                                                      \
+      if (PREDICT_FALSE (next0 != next_index))                                \
+	{                                                                     \
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next + 1);     \
+	  next_index = next0;                                                 \
+	  vlib_get_next_frame_with_aux_safe (vm, node, next_index, to_next,   \
+					     to_next_aux, n_left_to_next);    \
+                                                                              \
+	  to_next[0] = bi0;                                                   \
+	  to_next += 1;                                                       \
+	  if (to_next_aux)                                                    \
+	    {                                                                 \
+	      to_next_aux[0] = aux0;                                          \
+	      to_next_aux += 1;                                               \
+	    }                                                                 \
+	  n_left_to_next -= 1;                                                \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
 always_inline uword
 generic_buffer_node_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,

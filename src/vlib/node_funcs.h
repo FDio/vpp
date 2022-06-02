@@ -498,6 +498,16 @@ vlib_put_next_frame (vlib_main_t * vm,
   (v);									\
 })
 
+#define vlib_set_next_frame_with_aux_safe(vm, node, next_index, v, aux)       \
+  ({                                                                          \
+    uword _n_left;                                                            \
+    vlib_get_next_frame_with_aux_safe ((vm), (node), (next_index), (v),       \
+				       (aux), _n_left);                       \
+    ASSERT (_n_left > 0);                                                     \
+    vlib_put_next_frame ((vm), (node), (next_index), _n_left - 1);            \
+    (v);                                                                      \
+  })
+
 always_inline void
 vlib_set_next_frame_buffer (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
@@ -506,6 +516,20 @@ vlib_set_next_frame_buffer (vlib_main_t * vm,
   u32 *p;
   p = vlib_set_next_frame (vm, node, next_index, p);
   p[0] = buffer_index;
+}
+
+always_inline void
+vlib_set_next_frame_buffer_with_aux_safe (vlib_main_t *vm,
+					  vlib_node_runtime_t *node,
+					  u32 next_index, u32 buffer_index,
+					  u32 aux)
+{
+  u32 *p;
+  u32 *a;
+  p = vlib_set_next_frame_with_aux_safe (vm, node, next_index, p, a);
+  p[0] = buffer_index;
+  if (a)
+    a[0] = aux;
 }
 
 vlib_frame_t *vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index);
