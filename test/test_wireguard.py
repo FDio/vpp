@@ -392,10 +392,12 @@ class TestWg(VppTestCase):
     wg6_input_node_name = "/err/wg6-input/"
     kp4_error = wg4_output_node_name + "Keypair error"
     mac4_error = wg4_input_node_name + "Invalid MAC handshake"
-    peer4_error = wg4_input_node_name + "Peer error"
+    peer4_in_err = wg4_input_node_name + "Peer error"
+    peer4_out_err = wg4_output_node_name + "Peer error"
     kp6_error = wg6_output_node_name + "Keypair error"
     mac6_error = wg6_input_node_name + "Invalid MAC handshake"
-    peer6_error = wg6_input_node_name + "Peer error"
+    peer6_in_err = wg6_input_node_name + "Peer error"
+    peer6_out_err = wg6_output_node_name + "Peer error"
 
     @classmethod
     def setUpClass(cls):
@@ -421,10 +423,12 @@ class TestWg(VppTestCase):
         super(VppTestCase, self).setUp()
         self.base_kp4_err = self.statistics.get_err_counter(self.kp4_error)
         self.base_mac4_err = self.statistics.get_err_counter(self.mac4_error)
-        self.base_peer4_err = self.statistics.get_err_counter(self.peer4_error)
+        self.base_peer4_in_err = self.statistics.get_err_counter(self.peer4_in_err)
+        self.base_peer4_out_err = self.statistics.get_err_counter(self.peer4_out_err)
         self.base_kp6_err = self.statistics.get_err_counter(self.kp6_error)
         self.base_mac6_err = self.statistics.get_err_counter(self.mac6_error)
-        self.base_peer6_err = self.statistics.get_err_counter(self.peer6_error)
+        self.base_peer6_in_err = self.statistics.get_err_counter(self.peer6_in_err)
+        self.base_peer6_out_err = self.statistics.get_err_counter(self.peer6_out_err)
 
     def test_wg_interface(self):
         """Simple interface creation"""
@@ -577,6 +581,9 @@ class TestWg(VppTestCase):
         r1 = VppIpRoute(
             self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
         ).add_vpp_config()
+        r2 = VppIpRoute(
+            self, "20.22.3.0", 24, [VppRoutePath("20.22.3.1", wg0.sw_if_index)]
+        ).add_vpp_config()
 
         # route a packet into the wg interface
         #  use the allowed-ip prefix
@@ -590,6 +597,21 @@ class TestWg(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, [p])
         self.assertEqual(
             self.base_kp4_err + 1, self.statistics.get_err_counter(self.kp4_error)
+        )
+
+        # route a packet into the wg interface
+        #  use a not allowed-ip prefix
+        #  this is dropped because there is no matching peer
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="20.22.3.2")
+            / UDP(sport=555, dport=556)
+            / Raw()
+        )
+        self.send_and_assert_no_replies(self.pg0, [p])
+        self.assertEqual(
+            self.base_peer4_out_err + 1,
+            self.statistics.get_err_counter(self.peer4_out_err),
         )
 
         # send a handsake from the peer with an invalid MAC
@@ -606,7 +628,8 @@ class TestWg(VppTestCase):
         )
         self.send_and_assert_no_replies(self.pg1, [p])
         self.assertEqual(
-            self.base_peer4_err + 1, self.statistics.get_err_counter(self.peer4_error)
+            self.base_peer4_in_err + 1,
+            self.statistics.get_err_counter(self.peer4_in_err),
         )
 
         # send a valid handsake init for which we expect a response
@@ -694,6 +717,7 @@ class TestWg(VppTestCase):
             self.assertEqual(rx[IP].ttl, 19)
 
         r1.remove_vpp_config()
+        r2.remove_vpp_config()
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
 
@@ -715,6 +739,9 @@ class TestWg(VppTestCase):
         r1 = VppIpRoute(
             self, "1::3:0", 112, [VppRoutePath("1::3:1", wg0.sw_if_index)]
         ).add_vpp_config()
+        r2 = VppIpRoute(
+            self, "22::3:0", 112, [VppRoutePath("22::3:1", wg0.sw_if_index)]
+        ).add_vpp_config()
 
         # route a packet into the wg interface
         #  use the allowed-ip prefix
@@ -732,6 +759,21 @@ class TestWg(VppTestCase):
             self.base_kp6_err + 1, self.statistics.get_err_counter(self.kp6_error)
         )
 
+        # route a packet into the wg interface
+        #  use a not allowed-ip prefix
+        #  this is dropped because there is no matching peer
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst="22::3:2")
+            / UDP(sport=555, dport=556)
+            / Raw()
+        )
+        self.send_and_assert_no_replies(self.pg0, [p])
+        self.assertEqual(
+            self.base_peer6_out_err + 1,
+            self.statistics.get_err_counter(self.peer6_out_err),
+        )
+
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1, True)
         p[WireguardInitiation].mac1 = b"foobar"
@@ -747,7 +789,8 @@ class TestWg(VppTestCase):
         )
         self.send_and_assert_no_replies(self.pg1, [p])
         self.assertEqual(
-            self.base_peer6_err + 1, self.statistics.get_err_counter(self.peer6_error)
+            self.base_peer6_in_err + 1,
+            self.statistics.get_err_counter(self.peer6_in_err),
         )
 
         # send a valid handsake init for which we expect a response
@@ -835,6 +878,7 @@ class TestWg(VppTestCase):
             self.assertEqual(rx[IPv6].hlim, 19)
 
         r1.remove_vpp_config()
+        r2.remove_vpp_config()
         peer_1.remove_vpp_config()
         wg0.remove_vpp_config()
 
@@ -886,7 +930,8 @@ class TestWg(VppTestCase):
         )
         self.send_and_assert_no_replies(self.pg1, [p])
         self.assertEqual(
-            self.base_peer4_err + 1, self.statistics.get_err_counter(self.peer4_error)
+            self.base_peer4_in_err + 1,
+            self.statistics.get_err_counter(self.peer4_in_err),
         )
 
         # send a valid handsake init for which we expect a response
@@ -1024,7 +1069,8 @@ class TestWg(VppTestCase):
         )
         self.send_and_assert_no_replies(self.pg1, [p])
         self.assertEqual(
-            self.base_peer6_err + 1, self.statistics.get_err_counter(self.peer6_error)
+            self.base_peer6_in_err + 1,
+            self.statistics.get_err_counter(self.peer6_in_err),
         )
 
         # send a valid handsake init for which we expect a response
