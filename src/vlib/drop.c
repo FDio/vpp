@@ -74,7 +74,8 @@ counter_index (vlib_main_t * vm, vlib_error_t e)
   n = vlib_get_node (vm, ni);
 
   ci = vlib_error_get_code (&vm->node_main, e);
-  ASSERT (ci < n->n_errors);
+  if (ci < n->n_errors)
+    return CLIB_U32_MAX;
 
   ci += n->error_heap_index;
 
@@ -94,7 +95,8 @@ format_error_trace (u8 * s, va_list * va)
   error_node = vlib_get_node (vm, vlib_error_get_node (&vm->node_main, e[0]));
   i = counter_index (vm, vlib_error_get_code (&vm->node_main, e[0])) +
     error_node->error_heap_index;
-  s = format (s, "%v: %s", error_node->name, em->counters_heap[i].name);
+  if (i != CLIB_U32_MAX)
+    s = format (s, "%v: %s", error_node->name, em->counters_heap[i].name);
 
   return s;
 }
@@ -222,7 +224,8 @@ process_drop_punt (vlib_main_t * vm,
       n_left -= count;
 
       c_index = counter_index (vm, error[0]);
-      em->counters[c_index] += count;
+      if (c_index != CLIB_U32_MAX)
+	em->counters[c_index] += count;
 
       vlib_error_elog_count (vm, c_index, count);
     }
