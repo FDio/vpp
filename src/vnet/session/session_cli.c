@@ -841,7 +841,6 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   u8 is_en = 2;
-  clib_error_t *error;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -850,12 +849,8 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "disable"))
 	is_en = 0;
       else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
+	  return clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, input);
-	  unformat_free (input);
-	  return error;
-	}
     }
 
   if (is_en > 1)
