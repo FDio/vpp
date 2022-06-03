@@ -38,6 +38,7 @@ typedef struct
   volatile int ao_disconnected;
 
   u32 ps_index;
+  u32 po_thread_index;
 } proxy_session_t;
 
 typedef struct

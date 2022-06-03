@@ -105,6 +105,32 @@ proxy_session_free (proxy_session_t *ps)
   pool_put (pm->sessions, ps);
 }
 
+static int
+proxy_session_postponed_free_rpc (void *arg)
+{
+  uword ps_index = pointer_to_uword (arg);
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_t *ps = 0;
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (ps_index);
+  segment_manager_dealloc_fifos (ps->server_rx_fifo, ps->server_tx_fifo);
+  proxy_session_free (ps);
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  return 0;
+}
+
+static void
+proxy_session_postponed_free (proxy_session_t *ps)
+{
+  session_send_rpc_evt_to_thread (ps->po_thread_index,
+				  proxy_session_postponed_free_rpc,
+				  uword_to_pointer (ps->ps_index, void *));
+}
+
 static void
 proxy_try_close_session (session_t * s, int is_active_open)
 {
@@ -169,7 +195,22 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
       ps->vpp_active_open_handle = SESSION_INVALID_HANDLE;
 
       if (ps->vpp_server_handle == SESSION_INVALID_HANDLE)
-	proxy_session_free (ps);
+	{
+	  /* Revert master thread index change on connect notification */
+	  ASSERT (s->rx_fifo->refcnt == 1);
+	  ps->server_rx_fifo->master_thread_index = ps->po_thread_index;
+
+	  /* The two sides of the proxy on different threads */
+	  if (ps->po_thread_index != s->thread_index)
+	    {
+	      /* This is not the right thread to delete the fifos */
+	      s->rx_fifo = 0;
+	      s->tx_fifo = 0;
+	      proxy_session_postponed_free (ps);
+	    }
+	  else
+	    proxy_session_free (ps);
+	}
     }
   else
     {
@@ -239,6 +280,7 @@ proxy_accept_callback (session_t * s)
   ps = proxy_session_alloc ();
   ps->vpp_server_handle = session_handle (s);
   ps->vpp_active_open_handle = SESSION_INVALID_HANDLE;
+  ps->po_thread_index = s->thread_index;
 
   s->opaque = ps->ps_index;
 
