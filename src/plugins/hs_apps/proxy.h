@@ -36,14 +36,14 @@ typedef struct
   volatile int active_open_establishing;
   volatile int po_disconnected;
   volatile int ao_disconnected;
+
+  u32 ps_index;
 } proxy_session_t;
 
 typedef struct
 {
-  svm_queue_t *vl_input_queue;	/**< vpe input queue */
-  /** per-thread vectors */
-  svm_msg_q_t **server_event_queue;
-  svm_msg_q_t **active_open_event_queue;
+  proxy_session_t *sessions; /**< Session pool, shared */
+  clib_spinlock_t sessions_lock;
   u8 **rx_buf;				/**< intermediate rx buffers */
 
   u32 cli_node_index;			/**< cli process node index */
@@ -51,9 +51,6 @@ typedef struct
   u32 server_app_index;			/**< server app index */
   u32 active_open_client_index;		/**< active open API client handle */
   u32 active_open_app_index;		/**< active open index after attach */
-
-  uword *proxy_session_by_server_handle;
-  uword *proxy_session_by_active_open_handle;
 
   /*
    * Configuration params
@@ -71,13 +68,6 @@ typedef struct
   session_endpoint_cfg_t client_sep;
 
   u32 ckpair_index;
-  /*
-   * Test state variables
-   */
-  proxy_session_t *sessions;		/**< Session pool, shared */
-  clib_spinlock_t sessions_lock;
-  u32 **connection_index_by_thread;
-  pthread_t client_thread_handle;
 
   /*
    * Flags
