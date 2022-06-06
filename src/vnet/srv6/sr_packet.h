@@ -116,6 +116,9 @@
 
 #define ROUTING_HEADER_TYPE_SR    4
 
+#define IP6_SRH_PT_TLV_TYPE 128
+#define IP6_SRH_PT_TLV_LEN  14
+
 typedef struct
 {
   /* Protocol for next header. */
@@ -156,6 +159,21 @@ typedef struct
   u8 value[0];
 } __attribute__ ((packed)) ip6_sr_tlv_t;
 
+typedef struct
+{
+  u32 sec;
+  u32 nsec;
+} __attribute__ ((packed)) timestamp_64_t;
+
+typedef struct
+{
+  u8 type;
+  u8 length;
+  u16 id_ld;
+  timestamp_64_t t64;
+  u16 session_id;
+  u16 seq_num;
+} __attribute__ ((packed)) ip6_sr_pt_tlv_t;
 /*
 * fd.io coding-style-patch-verification: ON
 *

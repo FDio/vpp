@@ -90,6 +90,7 @@ typedef struct
 /* SR policy types */
 #define SR_POLICY_TYPE_DEFAULT 0
 #define SR_POLICY_TYPE_SPRAY 1
+#define SR_POLICY_TYPE_TEF     2
 /**
  * @brief SR Policy
  */
