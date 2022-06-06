@@ -302,6 +302,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74f7e9f1_13620616",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-06T15:15:30Z",
+      "side": 1,
+      "message": "I thought if no protocol is specified, any protocol should match? This is how it works in linear search right? The above script works with fast path off.\n\nIt seems to me with how it\u0027s currently setup we can\u0027t include protocol 0 aka IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS in a policy as we\u0027re using that to specify no protocol/wild card.\n\nThe linear search logic starts with:\nif (PREDICT_FALSE (p-\u003eprotocol \u0026\u0026 (p-\u003eprotocol !\u003d pr))) { ...\n\nso policy with protocol 0 is not valid currently.",
+      "parentUuid": "ef6a5387_86a517a8",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
