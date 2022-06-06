@@ -266,6 +266,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "206deb6c_5d5cec17",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-06T14:00:02Z",
+      "side": 1,
+      "message": "Problem is in these lines:\n406   if (PREDICT_TRUE ((policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_TCP) ||\n407         (policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_UDP) ||\n408         (policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_SCTP)))\n409     {\n410       tuple-\u003elport \u003d policy-\u003elport.start;\n411       tuple-\u003erport \u003d policy-\u003erport.start;\n412     }\n413   else\n414     {\n415       tuple-\u003elport \u003d 0;\n416       tuple-\u003erport \u003d 0;\n417     }\nwhen you add policy like you do policy-\u003eprotocol is 0. It is none of the protocols mentioned in the condition and so else part is executed. If you set protocol explicitely to UDP it will work. I\u0027ll have to think yet how to fix it.",
+      "parentUuid": "47703fa4_30cf938f",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
