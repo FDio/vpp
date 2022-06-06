@@ -22,6 +22,30 @@
       "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82ba894d_c5d88ee1",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 949,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-06-06T19:53:53Z",
+      "side": 1,
+      "message": "I see, the return value in vppcom was -1. Testing for failure is not going to help us much, I think, because the test can fail for multiple reasons, not only because mss was not properly configured. So let\u0027s just return 0 and keep the fixme note for now and then the test will pass.\n\nIf you\u0027re interested in implementing the missing logic that would push configuration down to vpp once session is created in vpp, do let me know.",
+      "parentUuid": "5015f03c_751e9a4c",
+      "range": {
+        "startLine": 949,
+        "startChar": 76,
+        "endLine": 949,
+        "endChar": 79
+      },
+      "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
