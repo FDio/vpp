@@ -356,6 +356,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "57d0ed27_11f0e807",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-06T17:12:55Z",
+      "side": 1,
+      "message": "Either way I think they need to align. We can\u0027t have it match/work in regular linear search but not in fast path.\n\nI agree it seems like original implementation is not quite correct.\n\nWe could change it to 0xFF/255 where no protocol is provided - this is a reserved/unused protocol number from what I can see. I *think* that should be fine, and no chance of any new protocol taking that value since it\u0027s reserved by IANA[1]. This would be nicer and easier to do than introducing another flag. Maybe someone else more knowledgeable on the networking side can explain why this might be a bad idea, but seems like it would work to me.\n\n1: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml",
+      "parentUuid": "f82bf36d_bc7971b8",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
