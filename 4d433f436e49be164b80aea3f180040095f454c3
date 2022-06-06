@@ -230,6 +230,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47b15eb4_3cdf15b8",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-06T08:59:22Z",
+      "side": 1,
+      "message": "I still have an issue with failing to match in fast path the port ranges in this script:\n\n----\n\ncreate packet-generator interface pg0 \n\nset int ip address pg0 10.10.10.10/24\n\nip route add 30.30.30.30/16 via 10.10.10.10 pg0 \nset ip neighbor pg0 30.30.30.30 00:11:22:33:44:55 static count 1\n\nipsec spd add 1\nset interface ipsec spd pg0 1\n\nipsec policy add spd 1 priority 1 inbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\nipsec policy add spd 1 priority 1 outbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255 local-port-range 1000-2000 remote-port-range 5000-6000\n\nset int state pg0 up\n\ntrace add pg-input 100 \n\npacket-generator new { \\ \n  name ipsec \\\n  limit 1 \\ \n  rate 1e4 \\\n  node ip4-input \\\n  interface pg0 \\\n  size 100-100 \\\n  data { \\ \n   UDP: 20.20.20.20 -\u003e 30.30.30.30 \\\n   UDP: 1234 -\u003e 5678 \\\n    length 72 \\\n    incrementing 100 \\\n  } \\ \n}\n\nshow ipsec spd \n\npacket-generator enable",
+      "parentUuid": "1eef1271_c59721b5",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
