@@ -10,8 +10,11 @@ For more detailed information on the build system please refer to :ref:`buildsys
 
 .. _makesureinstalled:
 
-Install WSL2 and Ubuntu
---------------------------
+VPP for Ubuntu: Environment Setup
+-------------------------------------------
+
+If you are not downloading VPP on Ubuntu with WSL (Windows Subsystem for Linux), please disregard this section
+and jump to 'Get the VPP Sources'.
 
 Before starting on VPP for Ubuntu, make sure WSL2 and Ubuntu are installed.
 
@@ -21,13 +24,7 @@ To install WSL2 and Ubuntu, run Windows PowerShell as an administrator and enter
 
     $ wsl --install
 
---------------------------
-
-.. _setupinstallationenvironment:
-
-Set Up Installation Environment
---------------------------------
-Go to the 'resolv.conf' file in Ubuntu's '/etc' folder.
+Next, go to the 'resolv.conf' file in Ubuntu's '/etc' folder.
 It should have been automatically generated when Ubuntu was installed; if it doesn't exist, create it.
 Please use 'sudo' to avoid "File resolv.conf is unwritable" errors.
 
