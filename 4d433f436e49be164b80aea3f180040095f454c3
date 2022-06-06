@@ -320,6 +320,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3bf63d87_dade15b0",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-06T15:44:34Z",
+      "side": 1,
+      "message": "To me it looks like a hack though in original implementation. 0 is a valid protocol value defined in enum ip_protocol, therefore it should not be used as a wild card. Therefore in my opinion it is rather original implementation that needs to be fixed. And I agree with you - cli command should work like you said - if no protocol is specified any protocol should match. However excluding policy with protocol set to 0 (which is valid value for protocol type) from matching I consider to be a bug in original implementation.",
+      "parentUuid": "74f7e9f1_13620616",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
