@@ -284,6 +284,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef6a5387_86a517a8",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-06T14:34:45Z",
+      "side": 1,
+      "message": "I\u0027ve examined the code. So in the cli command (see ipsec_policy_add_del_command_fn in ipsec_cli.c)if you don\u0027t specify protocol it will be set to 0 by memset, which is defined as IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS in enum ip_protocol. Question is if such setting is correct and expected? Did you want to specify this particular protocol or did you understand such definition of policy as you\u0027ve provied as applying to any protocol? If second behaviour is desired, it is not how cli command works.",
+      "parentUuid": "206deb6c_5d5cec17",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
