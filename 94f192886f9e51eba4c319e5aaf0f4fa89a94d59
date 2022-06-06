@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5015f03c_751e9a4c",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 949,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-06-06T16:45:58Z",
+      "side": 1,
+      "message": "Is the test still failing after the fix?",
+      "range": {
+        "startLine": 949,
+        "startChar": 76,
+        "endLine": 949,
+        "endChar": 79
+      },
+      "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
