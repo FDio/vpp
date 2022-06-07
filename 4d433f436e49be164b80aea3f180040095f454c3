@@ -374,6 +374,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed72af17_0b492901",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-07T08:28:55Z",
+      "side": 1,
+      "message": "Hi Zachary, I will change both implementations then and use 0xFF value as wild card for any protocol. However Fan suggests that original implementation should be fixed in a separate review.",
+      "parentUuid": "57d0ed27_11f0e807",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
