@@ -46,6 +46,30 @@
       "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4395d423_25b8e295",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 949,
+      "author": {
+        "id": 2763
+      },
+      "writtenOn": "2022-06-07T08:07:06Z",
+      "side": 1,
+      "message": "Thanks for the comment, Florin. If vppcom returns -1, the real iperf3 test w/ MSS option will fail and print some useful error log \"iperf3: error - unable to set TCP/SCTP MSS: Protocol not available\". If we let vppcom return 0, the real iperf3 test w/ MSS option can run well and user can\u0027t notice that the MSS is not actually set. So returning 0 may confuse the iperf3 user?\n\nRegarding the implementation of the missing logic, I will check with my team then update you. Thanks.",
+      "parentUuid": "82ba894d_c5d88ee1",
+      "range": {
+        "startLine": 949,
+        "startChar": 76,
+        "endLine": 949,
+        "endChar": 79
+      },
+      "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
