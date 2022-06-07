@@ -70,6 +70,30 @@
       "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82b93d9b_d77642d8",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 949,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-06-07T17:31:51Z",
+      "side": 1,
+      "message": "Fair comment, but in this case iperf should work as expected because the mtu negotiation still happens accordingly thanks to the client. Problem is that in generic case, server does not really constrain mss and that is indeed a bug. \n\nLet me know if you want to further look into this",
+      "parentUuid": "4395d423_25b8e295",
+      "range": {
+        "startLine": 949,
+        "startChar": 76,
+        "endLine": 949,
+        "endChar": 79
+      },
+      "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
