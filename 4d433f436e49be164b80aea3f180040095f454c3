@@ -392,6 +392,24 @@
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6fd64cf5_1cb49ab8",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-07T10:03:36Z",
+      "side": 1,
+      "message": "Sounds good. I agree it\u0027s a separate patch/fix.\n\nMatching logic would become:\nif (PREDICT_FALSE ((p-\u003eprotocol !\u003d 255) \u0026\u0026 (p-\u003eprotocol !\u003d pr))) { ... [match fail] ...",
+      "parentUuid": "ed72af17_0b492901",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
