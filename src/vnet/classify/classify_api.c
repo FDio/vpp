@@ -667,7 +667,7 @@ send_classify_session_details (vl_api_registration_t * reg,
 {
   vl_api_classify_session_details_t *rmp;
 
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + match_length);
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (REPLY_MSG_ID_BASE + VL_API_CLASSIFY_SESSION_DETAILS);
