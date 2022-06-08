@@ -130,7 +130,7 @@ ip_in_out_acl_inline_trace (
   u32 sw_if_index[4];
   u32 table_index[4];
   vnet_classify_table_t *t[4] = { 0, 0 };
-  u64 hash[4];
+  u32 hash[4];
 
   /* calculate hashes for b[0] & b[1] */
   if (n_left >= 2)
@@ -162,16 +162,16 @@ ip_in_out_acl_inline_trace (
       if (is_output)
 	{
 	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b[0])->l2_classify.pad.l2_len =
+	  vnet_buffer (b[0])->l2.l2_len =
 	    vnet_buffer (b[0])->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h[2] += vnet_buffer (b[0])->l2_classify.pad.l2_len;
+	  h[2] += vnet_buffer (b[0])->l2.l2_len;
 
 	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b[1])->l2_classify.pad.l2_len =
+	  vnet_buffer (b[1])->l2.l2_len =
 	    vnet_buffer (b[1])->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h[3] += vnet_buffer (b[1])->l2_classify.pad.l2_len;
+	  h[3] += vnet_buffer (b[1])->l2.l2_len;
 	}
 
       hash[2] = vnet_classify_hash_packet_inline (t[2], (u8 *) h[2]);
@@ -252,16 +252,16 @@ ip_in_out_acl_inline_trace (
 	  if (is_output)
 	    {
 	      /* Save the rewrite length, since we are using the l2_classify struct */
-	      vnet_buffer (b[2])->l2_classify.pad.l2_len =
+	      vnet_buffer (b[2])->l2.l2_len =
 		vnet_buffer (b[2])->ip.save_rewrite_length;
 	      /* advance the match pointer so the matching happens on IP header */
-	      h[2] += vnet_buffer (b[2])->l2_classify.pad.l2_len;
+	      h[2] += vnet_buffer (b[2])->l2.l2_len;
 
 	      /* Save the rewrite length, since we are using the l2_classify struct */
-	      vnet_buffer (b[3])->l2_classify.pad.l2_len =
+	      vnet_buffer (b[3])->l2.l2_len =
 		vnet_buffer (b[3])->ip.save_rewrite_length;
 	      /* advance the match pointer so the matching happens on IP header */
-	      h[3] += vnet_buffer (b[3])->l2_classify.pad.l2_len;
+	      h[3] += vnet_buffer (b[3])->l2.l2_len;
 	    }
 
 	  hash[2] = vnet_classify_hash_packet_inline (t[2], (u8 *) h[2]);
@@ -351,7 +351,7 @@ ip_in_out_acl_inline_trace (
 
 		  /* advance the match pointer so the matching happens on IP header */
 		  if (is_output)
-		    h[0] += vnet_buffer (b[0])->l2_classify.pad.l2_len;
+		    h[0] += vnet_buffer (b[0])->l2.l2_len;
 
 		  hash[0] =
 		    vnet_classify_hash_packet_inline (t[0], (u8 *) h[0]);
@@ -458,7 +458,7 @@ ip_in_out_acl_inline_trace (
 
 		  /* advance the match pointer so the matching happens on IP header */
 		  if (is_output)
-		    h[1] += vnet_buffer (b[1])->l2_classify.pad.l2_len;
+		    h[1] += vnet_buffer (b[1])->l2.l2_len;
 
 		  hash[1] =
 		    vnet_classify_hash_packet_inline (t[1], (u8 *) h[1]);
@@ -557,7 +557,7 @@ ip_in_out_acl_inline_trace (
       vnet_classify_table_t *t0 = 0;
       vnet_classify_entry_t *e0 = 0;
       u32 next0 = ACL_NEXT_INDEX_DENY;
-      u64 hash0;
+      u32 hash0;
 
       sw_if_index0 = ~0 == way ? 0 : vnet_buffer (b[0])->sw_if_index[way];
       table_index0 = table_index_by_sw_if_index[sw_if_index0];
@@ -573,10 +573,10 @@ ip_in_out_acl_inline_trace (
       if (is_output)
 	{
 	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b[0])->l2_classify.pad.l2_len =
+	  vnet_buffer (b[0])->l2.l2_len =
 	    vnet_buffer (b[0])->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h0 += vnet_buffer (b[0])->l2_classify.pad.l2_len;
+	  h0 += vnet_buffer (b[0])->l2.l2_len;
 	}
 
       vnet_buffer (b[0])->l2_classify.hash =
@@ -602,7 +602,7 @@ ip_in_out_acl_inline_trace (
 
 	  /* advance the match pointer so the matching happens on IP header */
 	  if (is_output)
-	    h0 += vnet_buffer (b[0])->l2_classify.pad.l2_len;
+	    h0 += vnet_buffer (b[0])->l2.l2_len;
 
 	  e0 = vnet_classify_find_entry_inline (t0, (u8 *) h0, hash0, now);
 	  if (e0)
@@ -660,7 +660,7 @@ ip_in_out_acl_inline_trace (
 
 		  /* advance the match pointer so the matching happens on IP header */
 		  if (is_output)
-		    h0 += vnet_buffer (b[0])->l2_classify.pad.l2_len;
+		    h0 += vnet_buffer (b[0])->l2.l2_len;
 
 		  hash0 = vnet_classify_hash_packet_inline (t0, (u8 *) h0);
 		  e0 = vnet_classify_find_entry_inline

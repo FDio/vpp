@@ -320,13 +320,13 @@ typedef struct
     /* L2 classify */
     struct
     {
-      struct opaque_l2 pad;
+      u32 pad[4]; /* do not overlay w/ ip.fib_index nor l2 */
       union
       {
 	u32 table_index;
 	u32 opaque_index;
       };
-      u64 hash;
+      u32 hash;
     } l2_classify;
 
     /* vnet policer */

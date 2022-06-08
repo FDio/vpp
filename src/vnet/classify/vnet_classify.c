@@ -424,7 +424,7 @@ vnet_classify_add_del (vnet_classify_table_t *t, vnet_classify_entry_t *add_v,
   u32 value_index;
   int rv = 0;
   int i;
-  u64 hash, new_hash;
+  u32 hash, new_hash;
   u32 limit;
   u32 old_log2_pages, new_log2_pages;
   u32 thread_index = vlib_get_thread_index ();
@@ -647,15 +647,15 @@ typedef CLIB_PACKED(struct {
 }) classify_data_or_mask_t;
 /* *INDENT-ON* */
 
-u64
-vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h)
+u32
+vnet_classify_hash_packet (const vnet_classify_table_t *t, u8 *h)
 {
   return vnet_classify_hash_packet_inline (t, h);
 }
 
 vnet_classify_entry_t *
-vnet_classify_find_entry (vnet_classify_table_t * t,
-			  u8 * h, u64 hash, f64 now)
+vnet_classify_find_entry (const vnet_classify_table_t *t, u8 *h, u32 hash,
+			  f64 now)
 {
   return vnet_classify_find_entry_inline (t, h, hash, now);
 }
@@ -3235,7 +3235,7 @@ test_classify_churn (test_classify_main_t * tm)
   for (i = 0; i < tm->sessions; i++)
     {
       u8 *key_minus_skip;
-      u64 hash;
+      u32 hash;
       vnet_classify_entry_t *e;
 
       ep = tm->entries + i;
