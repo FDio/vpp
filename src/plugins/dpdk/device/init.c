@@ -1095,6 +1095,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "blacklist %U", unformat_vlib_vmbus_addr,
 			 &vmbus_addr))
 	{
+	  tmp = format (0, "-b%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	  tmp = format (0, "%U%c", format_vlib_vmbus_addr, &vmbus_addr, 0);
+	  vec_add1 (conf->eal_init_args, tmp);
 	  vec_add1 (conf->blacklist_by_vmbus_addr, vmbus_addr);
 	}
       else
