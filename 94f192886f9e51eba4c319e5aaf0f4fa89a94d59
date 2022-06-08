@@ -94,6 +94,30 @@
       "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2c77dca_34c6ad2a",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 949,
+      "author": {
+        "id": 2763
+      },
+      "writtenOn": "2022-06-08T04:46:33Z",
+      "side": 1,
+      "message": "Make sense. Will update the patch to return 0 as current workaround.\n\nI can help implement the missing logic. But this has to be started in our next quarter (Jul-Sep). Is this okay?",
+      "parentUuid": "82b93d9b_d77642d8",
+      "range": {
+        "startLine": 949,
+        "startChar": 76,
+        "endLine": 949,
+        "endChar": 79
+      },
+      "revId": "94f192886f9e51eba4c319e5aaf0f4fa89a94d59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
