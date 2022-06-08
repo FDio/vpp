@@ -48,7 +48,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the follow
 
 .. code-block:: console
 
-   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu bionic main
+   echo "deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu $(source /etc/os-release && echo $VERSION_CODENAME) main" | sudo tee /etc/apt/sources.list.d/99fd.io.list
 
 Get the key:
 
