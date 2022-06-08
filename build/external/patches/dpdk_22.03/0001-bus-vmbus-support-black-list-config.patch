@@ -1,0 +1,29 @@
+From 9f0832b3f901f13ecfa442d61ffa93fb11be2466 Mon Sep 17 00:00:00 2001
+From: Xiaoming Jiang <jiangxiaoming@outlook.com>
+Date: Wed, 8 Jun 2022 15:22:45 +0000
+Subject: [PATCH 1/1] bus/vmbus: support black list config
+
+---
+ drivers/bus/vmbus/vmbus_common.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/bus/vmbus/vmbus_common.c b/drivers/bus/vmbus/vmbus_common.c
+index 3677273..144f3a6 100644
+--- a/drivers/bus/vmbus/vmbus_common.c
++++ b/drivers/bus/vmbus/vmbus_common.c
+@@ -102,7 +102,12 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
+	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
+		  guid, dev->device.numa_node);
+
+-	/* TODO add block/allow logic */
++	/* no initialization when marked as blocked, return without error */
++	if (dev->device.devargs != NULL &&
++		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
++		VMBUS_LOG(INFO, "  Device is blocked, not initializing\n");
++		return 1;
++	}
+
+	/* map resources for device */
+	ret = rte_vmbus_map_device(dev);
+--
+2.32.0
