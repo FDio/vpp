@@ -172,8 +172,7 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
       int type_index0, type_index1;
       vnet_classify_table_t *t0, *t1;
       u32 table_index0, table_index1;
-      u64 hash0, hash1;
-
+      u32 hash0, hash1;
 
       /* prefetch next iteration */
       {
@@ -257,7 +256,7 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
       u32 type_index0;
       vnet_classify_table_t *t0;
       u32 table_index0;
-      u64 hash0;
+      u32 hash0;
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
@@ -308,14 +307,14 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	  u32 next0 = ~0;
 	  ethernet_header_t *h0;
 	  u32 table_index0;
-	  u64 hash0;
+	  u32 hash0;
 	  vnet_classify_table_t *t0;
 	  vnet_classify_entry_t *e0;
 
 	  if (PREDICT_TRUE (n_left_from > 2))
 	    {
 	      vlib_buffer_t *p2 = vlib_get_buffer (vm, from[2]);
-	      u64 phash2;
+	      u32 phash2;
 	      u32 table_index2;
 	      vnet_classify_table_t *tp2;
 

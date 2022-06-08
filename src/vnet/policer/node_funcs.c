@@ -527,7 +527,7 @@ policer_classify_inline (vlib_main_t * vm,
 	  u32 table_index0;
 	  vnet_classify_table_t *t0;
 	  vnet_classify_entry_t *e0;
-	  u64 hash0;
+	  u32 hash0;
 	  u8 *h0;
 	  u8 act0;
 
@@ -537,7 +537,7 @@ policer_classify_inline (vlib_main_t * vm,
 	      vlib_buffer_t *p1 = vlib_get_buffer (vm, from[3]);
 	      vnet_classify_table_t *tp1;
 	      u32 table_index1;
-	      u64 phash1;
+	      u32 phash1;
 
 	      table_index1 = vnet_buffer (p1)->l2_classify.table_index;
 

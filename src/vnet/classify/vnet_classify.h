@@ -242,7 +242,7 @@ extern vnet_classify_main_t vnet_classify_main;
 u8 *format_classify_table (u8 * s, va_list * args);
 u8 *format_vnet_classify_table (u8 *s, va_list *args);
 
-u64 vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h);
+u32 vnet_classify_hash_packet (const vnet_classify_table_t *t, u8 *h);
 
 static_always_inline vnet_classify_table_t *
 vnet_classify_table_get (u32 table_index)
@@ -252,8 +252,8 @@ vnet_classify_table_get (u32 table_index)
   return (pool_elt_at_index (vcm->tables, table_index));
 }
 
-static inline u64
-vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
+static inline u32
+vnet_classify_hash_packet_inline (const vnet_classify_table_t *t, const u8 *h)
 {
   u64 xor_sum;
   ASSERT (t);
@@ -360,7 +360,7 @@ vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
 }
 
 static inline vnet_classify_entry_t *
-vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
+vnet_classify_get_entry (const vnet_classify_table_t *t, uword offset)
 {
   u8 *hp = clib_mem_get_heap_base (t->mheap);
   u8 *vp = hp + offset;
@@ -382,8 +382,8 @@ vnet_classify_get_offset (vnet_classify_table_t * t,
 }
 
 static inline vnet_classify_entry_t *
-vnet_classify_entry_at_index (vnet_classify_table_t * t,
-			      vnet_classify_entry_t * e, u32 index)
+vnet_classify_entry_at_index (const vnet_classify_table_t *t,
+			      vnet_classify_entry_t *e, u32 index)
 {
   u8 *eu8;
 
@@ -420,8 +420,9 @@ vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
   clib_prefetch_load (e);
 }
 
-vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,
-						 u8 * h, u64 hash, f64 now);
+vnet_classify_entry_t *
+vnet_classify_find_entry (const vnet_classify_table_t *t, u8 *h, u32 hash,
+			  f64 now);
 
 static_always_inline int
 vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
@@ -528,8 +529,8 @@ vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
 }
 
 static inline vnet_classify_entry_t *
-vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
-				 u64 hash, f64 now)
+vnet_classify_find_entry_inline (const vnet_classify_table_t *t, const u8 *h,
+				 u32 hash, f64 now)
 {
   vnet_classify_entry_t *v;
   vnet_classify_bucket_t *b;
