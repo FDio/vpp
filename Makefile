@@ -410,6 +410,7 @@ rebuild-release: wipe-release build-release
 export TEST_DIR ?= $(WS_ROOT)/test
 
 define test
+	$(if $(filter-out $(2),retest),make -C build-root PLATFORM=vpp TAG=$(1) libmemif-install,)
 	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=vpp TAG=$(1) vpp-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
