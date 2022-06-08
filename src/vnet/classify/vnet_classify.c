@@ -660,8 +660,8 @@ vnet_classify_find_entry (vnet_classify_table_t * t,
   return vnet_classify_find_entry_inline (t, h, hash, now);
 }
 
-static u8 *
-format_classify_entry (u8 * s, va_list * args)
+u8 *
+format_classify_entry (u8 *s, va_list *args)
 {
   vnet_classify_table_t *t = va_arg (*args, vnet_classify_table_t *);
   vnet_classify_entry_t *e = va_arg (*args, vnet_classify_entry_t *);
