@@ -1,0 +1,76 @@
+From 16449a64d38c7f4b880601ddf3d34087da5e8577 Mon Sep 17 00:00:00 2001
+From: Xiaoming Jiang <jiangxiaoming@outlook.com>
+Date: Thu, 9 Jun 2022 06:15:51 +0000
+Subject: [PATCH 1/1] bus/vmbus: add support allow/block scan mode
+
+---
+ drivers/bus/vmbus/vmbus_common.c | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/bus/vmbus/vmbus_common.c b/drivers/bus/vmbus/vmbus_common.c
+index 3677273..47edacb 100644
+--- a/drivers/bus/vmbus/vmbus_common.c
++++ b/drivers/bus/vmbus/vmbus_common.c
+@@ -102,7 +102,12 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
+ 	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
+ 		  guid, dev->device.numa_node);
+ 
+-	/* TODO add block/allow logic */
++	/* no initialization when marked as blocked, return without error */
++	if (dev->device.devargs != NULL &&
++		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
++		RTE_LOG(INFO, EAL, "  Device is blocked, not initializing\n");
++		return 1;
++	}
+ 
+ 	/* map resources for device */
+ 	ret = rte_vmbus_map_device(dev);
+@@ -134,7 +139,7 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
+ 
+ /*
+  * If device class GUID matches, call the probe function of
+- * register drivers for the vmbus device.
++ * registere drivers for the vmbus device.
+  * Return -1 if initialization failed,
+  * and 1 if no driver found for this device.
+  */
+@@ -163,6 +168,25 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
+ 	return 1;
+ }
+ 
++static bool
++rte_vmbus_ignore_device(struct rte_vmbus_device *dev)
++{
++	struct rte_devargs *devargs = vmbus_devargs_lookup(dev);
++
++	switch (rte_vmbus_bus.bus.conf.scan_mode) {
++	case RTE_BUS_SCAN_ALLOWLIST:
++		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
++			return false;
++		break;
++	case RTE_BUS_SCAN_UNDEFINED:
++	case RTE_BUS_SCAN_BLOCKLIST:
++		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
++			return false;
++		break;
++	}
++	return true;
++}
++
+ /*
+  * Scan the vmbus, and call the devinit() function for
+  * all registered drivers that have a matching entry in its id_table
+@@ -180,7 +204,9 @@ rte_vmbus_probe(void)
+ 
+ 		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
+ 
+-		/* TODO: add allowlist/blocklist */
++		if (rte_vmbus_ignore_device(dev)) {
++			continue;
++		}
+ 
+ 		if (vmbus_probe_all_drivers(dev) < 0) {
+ 			VMBUS_LOG(NOTICE,
+-- 
+2.32.0
+
