@@ -56,6 +56,9 @@ Get the key:
 
   curl -L https://packagecloud.io/fdio/master/gpgkey | sudo apt-key add -
 
+`bionic` is ubuntu `18.04 LTS`, if your ubuntu release name is different, you can replace it with your release name.
+If you don't know the release name, you can exec `lsb_release -a` to get the release name.
+
 
 Install the Mandatory Packages
 ===============================
