@@ -239,6 +239,7 @@ struct _vnet_classify_main
 
 extern vnet_classify_main_t vnet_classify_main;
 
+u8 *format_classify_entry (u8 *s, va_list *args);
 u8 *format_classify_table (u8 * s, va_list * args);
 u8 *format_vnet_classify_table (u8 *s, va_list *args);
 

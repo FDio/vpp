@@ -32,11 +32,25 @@ format_ip_in_out_acl_trace (u8 * s, u32 is_output, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip_in_out_acl_trace_t *t = va_arg (*args, ip_in_out_acl_trace_t *);
+  const u32 indent = format_get_indent (s);
+  vnet_classify_table_t *table;
+  vnet_classify_entry_t *e;
 
-  s = format (s, "%s: sw_if_index %d, next_index %d, table %d, offset %d",
-	      is_output ? "OUTACL" : "INACL",
-	      t->sw_if_index, t->next_index, t->table_index, t->offset);
-  return s;
+  s =
+    format (s, "%s: sw_if_index %d, next_index %d, table_index %d, offset %d",
+	    is_output ? "OUTACL" : "INACL", t->sw_if_index, t->next_index,
+	    t->table_index, t->offset);
+
+  if (~0 == t->table_index)
+    return format (s, "\n%Uno table", format_white_space, indent + 4);
+
+  if (~0 == t->offset)
+    return format (s, "\n%Uno match", format_white_space, indent + 4);
+
+  table = vnet_classify_table_get (t->table_index);
+  e = vnet_classify_get_entry (table, t->offset);
+  return format (s, "\n%U%U", format_white_space, indent + 4,
+		 format_classify_entry, table, e);
 }
 
 static u8 *
@@ -496,7 +510,7 @@ ip_in_out_acl_inline_trace (
 	  _t->sw_if_index =
 	    ~0 == way ? 0 : vnet_buffer (b[0])->sw_if_index[way];
 	  _t->next_index = _next[0];
-	  _t->table_index = t[0] ? t[0] - tables : ~0;
+	  _t->table_index = table_index[0];
 	  _t->offset = (e[0]
 			&& t[0]) ? vnet_classify_get_offset (t[0], e[0]) : ~0;
 	}
@@ -508,7 +522,7 @@ ip_in_out_acl_inline_trace (
 	  _t->sw_if_index =
 	    ~0 == way ? 0 : vnet_buffer (b[1])->sw_if_index[way];
 	  _t->next_index = _next[1];
-	  _t->table_index = t[1] ? t[1] - tables : ~0;
+	  _t->table_index = table_index[1];
 	  _t->offset = (e[1]
 			&& t[1]) ? vnet_classify_get_offset (t[1], e[1]) : ~0;
 	}
@@ -694,7 +708,7 @@ ip_in_out_acl_inline_trace (
 	  t->sw_if_index =
 	    ~0 == way ? 0 : vnet_buffer (b[0])->sw_if_index[way];
 	  t->next_index = next0;
-	  t->table_index = t0 - tables;
+	  t->table_index = table_index0;
 	  t->offset = (e0 && t0) ? vnet_classify_get_offset (t0, e0) : ~0;
 	}
 
