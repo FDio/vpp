@@ -8,53 +8,58 @@ Ubuntu - Setup the FD.io Repository
 Choose one of the following releases to install.
 
 Update the OS
------------------------
+-------------
 
 It is a good idea to first update and upgrade the OS before starting; run the
-following command to update the OS:
+following commands to upgrade the OS and install the curl package to download
+the setup script from packagecloud.io:
 
 .. code-block:: console
 
-    apt-get update
+    sudo apt-get update
+    sudo apt-get dist-upgrade -y
+    sudo apt-get install curl
 
+Configure Apt Using the Packagecloud Setup Script
+-------------------------------------------------
 
-Point to the Repository
------------------------------------
+FD.io Packagecloud Repositories provides pop-up menu that provides the
+ability to copy a one-line bash command to fetch the packagecloud setup script.
+In general, start at the FD.io packagecloud URL:
 
-Create a file **/etc/apt/sources.list.d/99fd.io.list** with contents that point to
-the version needed. The contents needed are shown below.
+https://packagecloud.io/fdio
+
+Then choose the desired repository link (e.g. 'release') and select the "Debian"
+package icon in the section named "Quick install instructions".  When the pop-up
+dialog appears, select the "Copy" button to copy the command to run the setup
+script and paste it into a terminal on your server.
+
 
 .. _install_vpp:
 
-VPP latest Release
+VPP Release Repo
 ^^^^^^^^^^^^^^^^^^^
 
-Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the following contents:
+The URL to install the latest VPP release is
 
-.. code-block:: console
+https://packagecloud.io/fdio/release
 
-   deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu bionic main
 
-Get the key:
+VPP master Branch Repo
+^^^^^^^^^^^^^^^^^^^^^^
+The URL to install the latest VPP release is
 
-.. code-block:: console
+https://packagecloud.io/fdio/release
 
-  curl -L https://packagecloud.io/fdio/release/gpgkey | sudo apt-key add -
 
-VPP master Branch
-^^^^^^^^^^^^^^^^^^^^
+VPP stable release Branch Repo
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the following contents:
+Stable release branches are named "stable/YYMM" (e.g. stable/2206) and the associated
+packagecloud repositories are named "YYMM" (e.g 2206).  For example, the URL to
+the VPP 22.06 stable release branch package repository is:
 
-.. code-block:: console
-
-   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu bionic main
-
-Get the key:
-
-.. code-block:: console
-
-  curl -L https://packagecloud.io/fdio/master/gpgkey | sudo apt-key add -
+https://packagecloud.io/fdio/2206
 
 
 Install the Mandatory Packages
@@ -86,3 +91,14 @@ Uninstall the  packages by running the following command:
 .. code-block:: console
 
   sudo apt-get remove --purge "vpp*"
+
+
+Remove FD.io Apt source lists
+=============================
+
+Remove FD.io Apt source list files created by the packagecloud apt setup script
+by running the following command:
+
+.. code-block:: console
+
+  sudo rm /etc/apt/sources.list.d/fdio*.list

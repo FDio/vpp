@@ -10,16 +10,16 @@ Downloading and Installing VPP
 If you want to use VPP it can be convenient to install the binaries from
 existing packages. This guide describes how to pull, install and run the VPP packages.
 
-This section provides directions on how to Install VPP binaries on
-Ubuntu, and Centos platforms.
+FD.io VPP packages are stored in Packagecloud.io package repositories. There is
+a package repository for the latest VPP release packages as well as a package
+repository associated with each branch in the VPP git repository.  The VPP merge
+jobs which run on Jenkins (https://jenkins.fd.io) for each actively supported
+git branch uploads packages to packagecloud that are built from the vpp code in
+the branch.
 
-FD.io VPP is installed using Package Cloud. For a complete set of
-instructions on how to install VPP with package cloud please refer
-to `Package Cloud <https://packagecloud.io/fdio/release>`_.
 
-
-Installing on Ubuntu
----------------------------------
+Installing on Ubuntu / Debian OS Distros
+----------------------------------------
 
 The following are instructions on how to install VPP on Ubuntu.
 
