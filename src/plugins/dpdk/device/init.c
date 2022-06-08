@@ -1095,7 +1095,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "blacklist %U", unformat_vlib_vmbus_addr,
 			 &vmbus_addr))
 	{
-	  vec_add1 (conf->blacklist_by_vmbus_addr, vmbus_addr);
+    vec_add1 (conf->blacklist_by_vmbus_addr, vmbus_addr);
 	}
       else
 	if (unformat
