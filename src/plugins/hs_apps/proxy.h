@@ -61,7 +61,7 @@ typedef struct
   u8 high_watermark;			/**< high watermark (%) */
   u8 low_watermark;			/**< low watermark (%) */
   u32 private_segment_count;		/**< Number of private fifo segs */
-  u32 private_segment_size;		/**< size of private fifo segs */
+  u64 segment_size;			/**< size of fifo segs */
   u8 prealloc_fifos;			/**< Request fifo preallocation */
   int rcv_buffer_size;
   session_endpoint_cfg_t server_sep;
