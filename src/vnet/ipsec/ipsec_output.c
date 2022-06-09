@@ -158,7 +158,8 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND])
   {
     p = pool_elt_at_index (im->policies, *i);
-    if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
+    if (PREDICT_FALSE ((p->protocol != IPSEC_POLICY_PROTOCOL_ANY) &&
+		       (p->protocol != pr)))
       continue;
 
     if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
@@ -232,7 +233,8 @@ ipsec6_output_policy_match (ipsec_spd_t * spd,
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND])
   {
     p = pool_elt_at_index (im->policies, *i);
-    if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
+    if (PREDICT_FALSE ((p->protocol != IPSEC_POLICY_PROTOCOL_ANY) &&
+		       (p->protocol != pr)))
       continue;
 
     if (!ip6_addr_match_range (ra, &p->raddr.start.ip6, &p->raddr.stop.ip6))

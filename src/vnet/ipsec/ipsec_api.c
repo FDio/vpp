@@ -233,7 +233,8 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
 
   p.is_ipv6 = (itype == IP46_TYPE_IP6);
 
-  p.protocol = mp->entry.protocol;
+  p.protocol =
+    mp->entry.protocol ? mp->entry.protocol : IPSEC_POLICY_PROTOCOL_ANY;
   p.rport.start = ntohs (mp->entry.remote_port_start);
   p.rport.stop = ntohs (mp->entry.remote_port_stop);
   p.lport.start = ntohs (mp->entry.local_port_start);
@@ -269,6 +270,65 @@ out:
     rmp->stat_index = ntohl(stat_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_ipsec_spd_entry_add_del_v2_t_handler (
+  vl_api_ipsec_spd_entry_add_del_v2_t *mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
+  ip46_type_t itype;
+  u32 stat_index;
+  int rv;
+
+  stat_index = ~0;
+
+  ipsec_policy_t p;
+
+  clib_memset (&p, 0, sizeof (p));
+
+  p.id = ntohl (mp->entry.spd_id);
+  p.priority = ntohl (mp->entry.priority);
+
+  itype = ip_address_decode (&mp->entry.remote_address_start, &p.raddr.start);
+  ip_address_decode (&mp->entry.remote_address_stop, &p.raddr.stop);
+  ip_address_decode (&mp->entry.local_address_start, &p.laddr.start);
+  ip_address_decode (&mp->entry.local_address_stop, &p.laddr.stop);
+
+  p.is_ipv6 = (itype == IP46_TYPE_IP6);
+
+  p.protocol = mp->entry.protocol;
+  p.rport.start = ntohs (mp->entry.remote_port_start);
+  p.rport.stop = ntohs (mp->entry.remote_port_stop);
+  p.lport.start = ntohs (mp->entry.local_port_start);
+  p.lport.stop = ntohs (mp->entry.local_port_stop);
+
+  rv = ipsec_spd_action_decode (mp->entry.policy, &p.policy);
+
+  if (rv)
+    goto out;
+
+  /* policy action resolve unsupported */
+  if (p.policy == IPSEC_POLICY_ACTION_RESOLVE)
+    {
+      clib_warning ("unsupported action: 'resolve'");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  p.sa_id = ntohl (mp->entry.sa_id);
+  rv =
+    ipsec_policy_mk_type (mp->entry.is_outbound, p.is_ipv6, p.policy, &p.type);
+  if (rv)
+    goto out;
+
+  rv = ipsec_add_del_policy (vm, &p, mp->is_add, &stat_index);
+  if (rv)
+    goto out;
+
+out:
+  REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY,
+		({ rmp->stat_index = ntohl (stat_index); }));
 }
 
 static void vl_api_ipsec_sad_entry_add_del_t_handler

@@ -17,6 +17,8 @@
 
 #include <vnet/ipsec/ipsec_spd.h>
 
+#define IPSEC_POLICY_PROTOCOL_ANY IP_PROTOCOL_RESERVED
+
 #define foreach_ipsec_policy_action \
   _ (0, BYPASS, "bypass")           \
   _ (1, DISCARD, "discard")         \

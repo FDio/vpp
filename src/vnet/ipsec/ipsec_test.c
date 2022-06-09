@@ -73,7 +73,103 @@ api_ipsec_spd_entry_add_del (vat_main_t *vam)
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_entry_add_del_t *mp;
   u8 is_add = 1, is_outbound = 0;
-  u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
+  u32 spd_id = 0, sa_id = 0, protocol = IPSEC_POLICY_PROTOCOL_ANY, policy = 0;
+  i32 priority = 0;
+  u32 rport_start = 0, rport_stop = (u32) ~0;
+  u32 lport_start = 0, lport_stop = (u32) ~0;
+  vl_api_address_t laddr_start = {}, laddr_stop = {}, raddr_start = {},
+		   raddr_stop = {};
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      if (unformat (i, "outbound"))
+	is_outbound = 1;
+      if (unformat (i, "inbound"))
+	is_outbound = 0;
+      else if (unformat (i, "spd_id %d", &spd_id))
+	;
+      else if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else if (unformat (i, "priority %d", &priority))
+	;
+      else if (unformat (i, "protocol %d", &protocol))
+	;
+      else if (unformat (i, "lport_start %d", &lport_start))
+	;
+      else if (unformat (i, "lport_stop %d", &lport_stop))
+	;
+      else if (unformat (i, "rport_start %d", &rport_start))
+	;
+      else if (unformat (i, "rport_stop %d", &rport_stop))
+	;
+      else if (unformat (i, "laddr_start %U", unformat_vl_api_address,
+			 &laddr_start))
+	;
+      else if (unformat (i, "laddr_stop %U", unformat_vl_api_address,
+			 &laddr_stop))
+	;
+      else if (unformat (i, "raddr_start %U", unformat_vl_api_address,
+			 &raddr_start))
+	;
+      else if (unformat (i, "raddr_stop %U", unformat_vl_api_address,
+			 &raddr_stop))
+	;
+      else if (unformat (i, "action %U", unformat_ipsec_policy_action,
+			 &policy))
+	{
+	  if (policy == IPSEC_POLICY_ACTION_RESOLVE)
+	    {
+	      clib_warning ("unsupported action: 'resolve'");
+	      return -99;
+	    }
+	}
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IPSEC_SPD_ENTRY_ADD_DEL, mp);
+
+  mp->is_add = is_add;
+
+  mp->entry.spd_id = ntohl (spd_id);
+  mp->entry.priority = ntohl (priority);
+  mp->entry.is_outbound = is_outbound;
+
+  clib_memcpy (&mp->entry.remote_address_start, &raddr_start,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.remote_address_stop, &raddr_stop,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.local_address_start, &laddr_start,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.local_address_stop, &laddr_stop,
+	       sizeof (vl_api_address_t));
+
+  mp->entry.protocol = protocol ? (u8) protocol : IPSEC_POLICY_PROTOCOL_ANY;
+  mp->entry.local_port_start = ntohs ((u16) lport_start);
+  mp->entry.local_port_stop = ntohs ((u16) lport_stop);
+  mp->entry.remote_port_start = ntohs ((u16) rport_start);
+  mp->entry.remote_port_stop = ntohs ((u16) rport_stop);
+  mp->entry.policy = (u8) policy;
+  mp->entry.sa_id = ntohl (sa_id);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ipsec_spd_entry_add_del_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_spd_entry_add_del_t *mp;
+  u8 is_add = 1, is_outbound = 0;
+  u32 spd_id = 0, sa_id = 0, protocol = IPSEC_POLICY_PROTOCOL_ANY, policy = 0;
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~0;
   u32 lport_start = 0, lport_stop = (u32) ~0;
@@ -254,6 +350,12 @@ api_ipsec_sad_entry_add (vat_main_t *vat)
 static void
 vl_api_ipsec_spd_entry_add_del_reply_t_handler (
   vl_api_ipsec_spd_entry_add_del_reply_t *mp)
+{
+}
+
+static void
+vl_api_ipsec_spd_entry_add_del_v2_reply_t_handler (
+  vl_api_ipsec_spd_entry_add_del_v2_reply_t *mp)
 {
 }
 
