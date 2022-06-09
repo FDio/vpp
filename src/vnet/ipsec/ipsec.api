@@ -57,61 +57,6 @@ autoreply define ipsec_interface_add_del_spd
   u32 spd_id;
 };
 
-
-enum ipsec_spd_action
-{
-  /* bypass - no IPsec processing */
-  IPSEC_API_SPD_ACTION_BYPASS = 0,
-  /* discard - discard packet with ICMP processing */
-  IPSEC_API_SPD_ACTION_DISCARD,
-  /* resolve - send request to control plane for SA resolving */
-  IPSEC_API_SPD_ACTION_RESOLVE,
-  /* protect - apply IPsec policy using following parameters */
-  IPSEC_API_SPD_ACTION_PROTECT,
-};
-
-/** \brief IPsec: Security Policy Database entry
-
-    See RFC 4301, 4.4.1.1 on how to match packet to selectors
-
-    @param spd_id - SPD instance id (control plane allocated)
-    @param priority - priority of SPD entry (non-unique value).  Used to order SPD matching - higher priorities match before lower
-    @param is_outbound - entry applies to outbound traffic if non-zero, otherwise applies to inbound traffic
-    @param remote_address_start - start of remote address range to match
-    @param remote_address_stop - end of remote address range to match
-    @param local_address_start - start of local address range to match
-    @param local_address_stop - end of local address range to match
-    @param protocol - protocol type to match [0 means any] otherwise IANA value
-    @param remote_port_start - start of remote port range to match ...
-    @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
-    @param local_port_start - start of local port range to match ...
-    @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
-    @param policy - action to perform on match
-    @param sa_id - SAD instance id (control plane allocated)
-*/
-typedef ipsec_spd_entry
-{
-  u32 spd_id;
-  i32 priority;
-  bool is_outbound;
-
-  u32 sa_id;
-  vl_api_ipsec_spd_action_t policy;
-  /* Which protocol?? */
-  u8 protocol;
-
-  // Selector
-  vl_api_address_t remote_address_start;
-  vl_api_address_t remote_address_stop;
-  vl_api_address_t local_address_start;
-  vl_api_address_t local_address_stop;
-
-  u16 remote_port_start;
-  u16 remote_port_stop;
-  u16 local_port_start;
-  u16 local_port_stop;
-};
-
 /** \brief IPsec: Add/delete Security Policy Database entry
 
     @param client_index - opaque cookie to identify the sender
@@ -121,10 +66,26 @@ typedef ipsec_spd_entry
 */
 define ipsec_spd_entry_add_del
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   bool is_add;
   vl_api_ipsec_spd_entry_t entry;
+};
+
+/** \brief IPsec: Add/delete Security Policy Database entry v2
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SPD if non-zero, else delete
+    @param entry - Description of the entry to add/dell
+*/
+define ipsec_spd_entry_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ipsec_spd_entry_v2_t entry;
 };
 
 /** \brief IPsec: Reply Add/delete Security Policy Database entry
@@ -134,6 +95,19 @@ define ipsec_spd_entry_add_del
     @param stat_index - An index for the policy in the stats segment @ /net/ipec/policy
 */
 define ipsec_spd_entry_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stat_index;
+};
+
+/** \brief IPsec: Reply Add/delete Security Policy Database entry v2
+
+    @param context - sender context, to match reply w/ request
+    @param retval - success/fail rutrun code
+    @param stat_index - An index for the policy in the stats segment @ /net/ipec/policy
+*/
+define ipsec_spd_entry_add_del_v2_reply
 {
   u32 context;
   i32 retval;
@@ -197,6 +171,7 @@ define ipsec_sad_entry_add_del
   bool is_add;
   vl_api_ipsec_sad_entry_t entry;
 };
+
 define ipsec_sad_entry_add_del_v2
 {
   u32 client_index;
@@ -204,6 +179,7 @@ define ipsec_sad_entry_add_del_v2
   bool is_add;
   vl_api_ipsec_sad_entry_v2_t entry;
 };
+
 define ipsec_sad_entry_add_del_v3
 {
   u32 client_index;
@@ -231,12 +207,14 @@ define ipsec_sad_entry_add_del_reply
   i32 retval;
   u32 stat_index;
 };
+
 define ipsec_sad_entry_add_del_v2_reply
 {
   u32 context;
   i32 retval;
   u32 stat_index;
 };
+
 define ipsec_sad_entry_add_del_v3_reply
 {
   u32 context;

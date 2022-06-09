@@ -980,7 +980,7 @@ class VppPapiProvider(object):
         local_port_stop=65535,
         remote_port_start=0,
         remote_port_stop=65535,
-        protocol=0,
+        protocol=socket.IPPROTO_RAW,
         policy=0,
         priority=100,
         is_outbound=1,
@@ -1010,7 +1010,7 @@ class VppPapiProvider(object):
         :param is_add: (Default value = 1)
         """
         return self.api(
-            self.papi.ipsec_spd_entry_add_del,
+            self.papi.ipsec_spd_entry_add_del_v2,
             {
                 "is_add": is_add,
                 "entry": {

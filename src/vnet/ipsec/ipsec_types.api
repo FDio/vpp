@@ -95,6 +95,102 @@ typedef key
   u8 data[128];
 };
 
+enum ipsec_spd_action
+{
+  /* bypass - no IPsec processing */
+  IPSEC_API_SPD_ACTION_BYPASS = 0,
+  /* discard - discard packet with ICMP processing */
+  IPSEC_API_SPD_ACTION_DISCARD,
+  /* resolve - send request to control plane for SA resolving */
+  IPSEC_API_SPD_ACTION_RESOLVE,
+  /* protect - apply IPsec policy using following parameters */
+  IPSEC_API_SPD_ACTION_PROTECT,
+};
+
+/** \brief IPsec: Security Policy Database entry
+
+    See RFC 4301, 4.4.1.1 on how to match packet to selectors
+
+    @param spd_id - SPD instance id (control plane allocated)
+    @param priority - priority of SPD entry (non-unique value).  Used to order SPD matching - higher priorities match before lower
+    @param is_outbound - entry applies to outbound traffic if non-zero, otherwise applies to inbound traffic
+    @param remote_address_start - start of remote address range to match
+    @param remote_address_stop - end of remote address range to match
+    @param local_address_start - start of local address range to match
+    @param local_address_stop - end of local address range to match
+    @param protocol - protocol type to match [0 means any] otherwise IANA value
+    @param remote_port_start - start of remote port range to match ...
+    @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param local_port_start - start of local port range to match ...
+    @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param policy - action to perform on match
+    @param sa_id - SAD instance id (control plane allocated)
+*/
+typedef ipsec_spd_entry
+{
+  u32 spd_id;
+  i32 priority;
+  bool is_outbound;
+
+  u32 sa_id;
+  vl_api_ipsec_spd_action_t policy;
+  /* Which protocol?? */
+  u8 protocol;
+
+  // Selector
+  vl_api_address_t remote_address_start;
+  vl_api_address_t remote_address_stop;
+  vl_api_address_t local_address_start;
+  vl_api_address_t local_address_stop;
+
+  u16 remote_port_start;
+  u16 remote_port_stop;
+  u16 local_port_start;
+  u16 local_port_stop;
+};
+
+/** \brief IPsec: Security Policy Database entry v2
+
+    See RFC 4301, 4.4.1.1 on how to match packet to selectors
+
+    @param spd_id - SPD instance id (control plane allocated)
+    @param priority - priority of SPD entry (non-unique value).  Used to order SPD matching - higher priorities match before lower
+    @param is_outbound - entry applies to outbound traffic if non-zero, otherwise applies to inbound traffic
+    @param remote_address_start - start of remote address range to match
+    @param remote_address_stop - end of remote address range to match
+    @param local_address_start - start of local address range to match
+    @param local_address_stop - end of local address range to match
+    @param protocol - protocol type to match [255 means any] otherwise IANA value
+    @param remote_port_start - start of remote port range to match ...
+    @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param local_port_start - start of local port range to match ...
+    @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param policy - action to perform on match
+    @param sa_id - SAD instance id (control plane allocated)
+*/
+typedef ipsec_spd_entry_v2
+{
+  u32 spd_id;
+  i32 priority;
+  bool is_outbound;
+
+  u32 sa_id;
+  vl_api_ipsec_spd_action_t policy;
+  u8 protocol;
+
+  // Selector
+  vl_api_address_t remote_address_start;
+  vl_api_address_t remote_address_stop;
+  vl_api_address_t local_address_start;
+  vl_api_address_t local_address_stop;
+
+  u16 remote_port_start;
+  u16 remote_port_stop;
+  u16 local_port_start;
+  u16 local_port_stop;
+};
+
+
 /** \brief IPsec: Security Association Database entry
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -117,6 +213,7 @@ typedef key
     @param tunnel_flags - Flags controlling the copying of encap/decap value
     @param dscp - Fixed DSCP vaule for tunnel encap
  */
+
 typedef ipsec_sad_entry
 {
   u32 sad_id;

@@ -275,7 +275,7 @@ class IPSecNATTestCase(TemplateIpsec):
             self.tun_if.remote_addr[addr_type],
             self.pg1.remote_addr[addr_type],
             self.pg1.remote_addr[addr_type],
-            0,
+            socket.IPPROTO_RAW,
             priority=10,
             policy=e.IPSEC_API_SPD_ACTION_PROTECT,
             is_outbound=0,
@@ -288,7 +288,7 @@ class IPSecNATTestCase(TemplateIpsec):
             self.pg1.remote_addr[addr_type],
             self.tun_if.remote_addr[addr_type],
             self.tun_if.remote_addr[addr_type],
-            0,
+            socket.IPPROTO_RAW,
             policy=e.IPSEC_API_SPD_ACTION_PROTECT,
             priority=10,
         ).add_vpp_config()
