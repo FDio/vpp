@@ -168,7 +168,7 @@ format_ipsec_policy (u8 * s, va_list * args)
 	      pi, p->priority,
 	      format_ipsec_policy_action, p->policy,
 	      format_ipsec_policy_type, p->type);
-  if (p->protocol)
+  if (p->protocol != IPSEC_POLICY_PROTOCOL_ANY)
     {
       s = format (s, "%U", format_ip_protocol, p->protocol);
     }

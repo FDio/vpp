@@ -279,6 +279,7 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
   clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
   remote_range_set = local_range_set = is_outbound = 0;
+  p.protocol = IPSEC_POLICY_PROTOCOL_ANY;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;

@@ -85,7 +85,7 @@ class VppIpsecSpdEntry(VppObject):
         local_stop,
         remote_start,
         remote_stop,
-        proto,
+        proto=socket.IPPROTO_RAW,
         priority=100,
         policy=None,
         is_outbound=1,

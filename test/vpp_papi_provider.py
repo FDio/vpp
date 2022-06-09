@@ -980,7 +980,7 @@ class VppPapiProvider(object):
         local_port_stop=65535,
         remote_port_start=0,
         remote_port_stop=65535,
-        protocol=0,
+        protocol=socket.IPPROTO_RAW,
         policy=0,
         priority=100,
         is_outbound=1,

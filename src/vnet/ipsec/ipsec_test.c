@@ -73,7 +73,7 @@ api_ipsec_spd_entry_add_del (vat_main_t *vam)
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_entry_add_del_t *mp;
   u8 is_add = 1, is_outbound = 0;
-  u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
+  u32 spd_id = 0, sa_id = 0, protocol = IPSEC_POLICY_PROTOCOL_ANY, policy = 0;
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~0;
   u32 lport_start = 0, lport_stop = (u32) ~0;

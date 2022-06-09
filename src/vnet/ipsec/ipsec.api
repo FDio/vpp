@@ -81,7 +81,7 @@ enum ipsec_spd_action
     @param remote_address_stop - end of remote address range to match
     @param local_address_start - start of local address range to match
     @param local_address_stop - end of local address range to match
-    @param protocol - protocol type to match [0 means any] otherwise IANA value
+    @param protocol - protocol type to match [255 means any] otherwise IANA value
     @param remote_port_start - start of remote port range to match ...
     @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
     @param local_port_start - start of local port range to match ...
