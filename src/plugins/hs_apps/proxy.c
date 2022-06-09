@@ -661,19 +661,16 @@ proxy_server_attach ()
   proxy_main_t *pm = &proxy_main;
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
-  u32 segment_size = 512 << 20;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
-  if (pm->private_segment_size)
-    segment_size = pm->private_segment_size;
   a->name = format (0, "proxy-server");
   a->api_client_index = pm->server_client_index;
   a->session_cb_vft = &proxy_session_cb_vft;
   a->options = options;
-  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
-  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = pm->private_segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = pm->private_segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = pm->fifo_size;
   a->options[APP_OPTIONS_MAX_FIFO_SIZE] = pm->max_fifo_size;
@@ -832,7 +829,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   pm->rcv_buffer_size = 1024;
   pm->prealloc_fifos = 0;
   pm->private_segment_count = 0;
-  pm->private_segment_size = 0;
+  pm->private_segment_size = 512 << 20;
 
   if (vlib_num_workers ())
     clib_spinlock_init (&pm->sessions_lock);
@@ -862,12 +859,6 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &tmp64))
 	{
-	  if (tmp64 >= 0x100000000ULL)
-	    {
-	      error = clib_error_return (
-		0, "private segment size %lld (%llu) too large", tmp64, tmp64);
-	      goto done;
-	    }
 	  pm->private_segment_size = tmp64;
 	}
       else if (unformat (line_input, "server-uri %s", &server_uri))
