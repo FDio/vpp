@@ -13,10 +13,10 @@
 
 RDMA_CORE_DEBUG?=n
 
-rdma-core_version             := 39.1
+rdma-core_version             := 41.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
-rdma-core_tarball_md5sum_38.0 := 44e14dd392ac139a0d452148eb0a0514
 rdma-core_tarball_md5sum_39.1 := 63ba4632fd01173a2331e5b990373330
+rdma-core_tarball_md5sum_41.0 := 2250389cb61a7130133e6411fdeef2f9
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
