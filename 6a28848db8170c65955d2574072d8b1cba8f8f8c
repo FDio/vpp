@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "aaeaa0cf_a8159a07",
         "filename": "src/vnet/ip/ip_in_out_acl.c",
@@ -14,8 +15,25 @@
       "side": 1,
       "message": "the entry and/or table may no longer exist when the trace is printed.",
       "revId": "6a28848db8170c65955d2574072d8b1cba8f8f8c",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "125c4766_043cf35c",
+        "filename": "src/vnet/ip/ip_in_out_acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-09T16:41:23Z",
+      "side": 1,
+      "message": "True. I changed to check that the table exists. This will avoid to crash /print garbage.\nUnfortunately it would not solve the case where we recycle the table or the entry between trace and show",
+      "parentUuid": "aaeaa0cf_a8159a07",
+      "revId": "6a28848db8170c65955d2574072d8b1cba8f8f8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
