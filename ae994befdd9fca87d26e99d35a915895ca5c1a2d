@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a77f1b3_47480842",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-06-10T01:12:23Z",
+      "side": 1,
+      "message": "i agree this is the right approach. once CSIT has adopted we can merge.",
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
