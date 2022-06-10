@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d22b310_f50cd424",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:47:10Z",
+      "side": 1,
+      "message": "looks good to me, I have a few minor comments but feel free to merge despite them",
+      "revId": "6db57dedc262064c994759679f48ff74e4907a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a8259da6_101a734a",
+        "filename": "src/vnet/gso/gso.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:47:10Z",
+      "side": 1,
+      "message": "I know this was already the case, but you\u0027re going to stall here: on line 273 (just above) you prefetch the buffer metadata cacheline, and here you immediately access it to prefetch the data, because vlib_buffer_get_current() needs b-\u003ecurrent_data.\nIOW, you cannot prefetch both the buffer metadata and the buffer data in the same iteration, you must pipeline them (1st prefetch metadata, and next iteration prefetch data).",
+      "revId": "6db57dedc262064c994759679f48ff74e4907a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52cabb89_d03ae75c",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:47:10Z",
+      "side": 1,
+      "message": "should probably be void instead as it always returns 0 (and hence the return value is meaningless?)",
+      "revId": "6db57dedc262064c994759679f48ff74e4907a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d17208f6_10d5667d",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:47:10Z",
+      "side": 1,
+      "message": "we do not need to do this addition as it always return 0 ?",
+      "revId": "6db57dedc262064c994759679f48ff74e4907a62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
