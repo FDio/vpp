@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "631508cb_1d4755cd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:55:51Z",
+      "side": 1,
+      "message": "So, I\u0027m not sure about that one.\nWhat happens if the midchain node does an encap that is not supported by the output node?\nAlso, what is the performance impact? ipv4 checksum is pretty cheap, and I suspect it is cheaper to do it incrementally locally vs waiting for the output node to recompute it in full.",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b847228_c2281361",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-06-10T13:55:51Z",
+      "side": 1,
+      "message": "it looks like it is not related to ip midchain, but is a generic bugfix in gso?",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
