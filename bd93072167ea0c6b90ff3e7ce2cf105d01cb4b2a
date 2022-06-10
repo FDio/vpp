@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "297677fc_d361c194",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-06-10T15:11:08Z",
+      "side": 1,
+      "message": "The main aim of this patch is adding functionality to fill the buffer metadata, so that NIC offload functionality can be leverage. It will be in separate patch.",
+      "parentUuid": "631508cb_1d4755cd",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7b847228_c2281361",
         "filename": "src/vnet/gso/node.c",
         "patchSetId": 20
