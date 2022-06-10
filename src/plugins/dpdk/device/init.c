@@ -402,7 +402,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       q = di.max_rx_pktlen - di.max_mtu;
 
       /* attempt to protect from bogus value provided by pmd */
-      if (q < (2 * xd->driver_frame_overhead) && q > 0)
+      if (q < (2 * xd->driver_frame_overhead) && q > 0 &&
+	  di.max_mtu != UINT16_MAX)
 	xd->driver_frame_overhead = q;
       dpdk_log_debug ("[%u] min_mtu: %u, max_mtu: %u, min_rx_bufsize: %u, "
 		      "max_rx_pktlen: %u, max_lro_pkt_size: %u",
