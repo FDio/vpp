@@ -80,8 +80,7 @@ format_bihash_kvp_8_16 (u8 * s, va_list * args)
   clib_bihash_kv_8_16_t *v = va_arg (*args, clib_bihash_kv_8_16_t *);
 
   s =
-    format (s, "key %llu value [%ll,%llx]u", v->key, v->value[0],
-	    v->value[1]);
+    format (s, "key %llx value [%llx,%llx]", v->key, v->value[0], v->value[1]);
   return s;
 }
 
