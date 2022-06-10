@@ -96,12 +96,94 @@ GSO_TEST_REGISTER_DATA (gso_ipv6_tcp, static) = {
   .is_ip6 = 1,
 };
 
+/*
+ * this does not support tunnel packets
+ */
+static void
+set_hdr_offsets (vlib_buffer_t *b0, u8 is_l2)
+{
+  u16 ethertype = 0, l2hdr_sz = 0;
+  vnet_buffer_oflags_t oflags = 0;
+  u8 l4_proto = 0;
+
+  if (!is_l2)
+    {
+      switch (b0->data[0] & 0xf0)
+	{
+	case 0x40:
+	  ethertype = ETHERNET_TYPE_IP4;
+	  break;
+	case 0x60:
+	  ethertype = ETHERNET_TYPE_IP6;
+	  break;
+	}
+    }
+  else
+    {
+      ethernet_header_t *eh = (ethernet_header_t *) b0->data;
+      ethertype = clib_net_to_host_u16 (eh->type);
+      l2hdr_sz = sizeof (ethernet_header_t);
+
+      if (ethernet_frame_is_tagged (ethertype))
+	{
+	  ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
+
+	  ethertype = clib_net_to_host_u16 (vlan->type);
+	  l2hdr_sz += sizeof (*vlan);
+	  if (ethertype == ETHERNET_TYPE_VLAN)
+	    {
+	      vlan++;
+	      ethertype = clib_net_to_host_u16 (vlan->type);
+	      l2hdr_sz += sizeof (*vlan);
+	    }
+	}
+    }
+
+  vnet_buffer (b0)->l2_hdr_offset = 0;
+  vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
+
+  if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) (b0->data + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+      l4_proto = ip4->protocol;
+      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
+      b0->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+  else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
+    {
+      ip6_header_t *ip6 = (ip6_header_t *) (b0->data + l2hdr_sz);
+      vnet_buffer (b0)->l4_hdr_offset = l2hdr_sz + sizeof (ip6_header_t);
+      /* FIXME IPv6 EH traversal */
+      l4_proto = ip6->protocol;
+      b0->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		    VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+    }
+  if (l4_proto == IP_PROTOCOL_TCP)
+    {
+      oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+    }
+  else if (l4_proto == IP_PROTOCOL_UDP)
+    {
+      oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+    }
+  if (oflags)
+    vnet_buffer_offload_flags_set (b0, oflags);
+}
+
 static u32
-fill_buffers (vlib_main_t *vm, u32 *buffer_indices, u8 *data, u32 data_size,
-	      u32 n_buffers, u32 buffer_size, u32 packet_size, u32 gso_size,
-	      u32 l4_hdr_len)
+fill_buffers (vlib_main_t *vm, u32 *buffer_indices,
+	      gso_test_data_t *gso_test_data, u32 n_buffers, u32 buffer_size,
+	      u32 packet_size, u32 gso_size)
 {
   u32 i;
+  u8 *data = gso_test_data->data;
+  u32 data_size = gso_test_data->data_size;
+  u32 l4_hdr_len = gso_test_data->l4_hdr_len;
+  u8 is_l2 = gso_test_data->is_l2;
 
   for (i = 0; i < n_buffers; i++)
     {
@@ -153,6 +235,8 @@ fill_buffers (vlib_main_t *vm, u32 *buffer_indices, u8 *data, u32 data_size,
 	      len += fill_data_size;
 	    }
 	  while (k < n_bufs);
+
+	  set_hdr_offsets (b, is_l2);
 	  b->flags |= VNET_BUFFER_F_GSO;
 	  vnet_buffer2 (b)->gso_size = gso_size;
 	  vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_len;
@@ -165,17 +249,14 @@ fill_buffers (vlib_main_t *vm, u32 *buffer_indices, u8 *data, u32 data_size,
 
 static_always_inline u32
 gso_segment_buffer_test (vlib_main_t *vm, u32 bi,
-			 vnet_interface_per_thread_data_t *ptd, u8 is_l2,
-			 u8 is_ip6)
+			 vnet_interface_per_thread_data_t *ptd, u8 is_l2)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  generic_header_offset_t gho = { 0 };
   u32 n_tx_bytes = 0;
 
   if (PREDICT_TRUE (b->flags & VNET_BUFFER_F_GSO))
     {
-      vnet_generic_header_offset_parser (b, &gho, is_l2, !is_ip6, is_ip6);
-      n_tx_bytes = gso_segment_buffer_inline (vm, ptd, b, &gho, is_l2, is_ip6);
+      n_tx_bytes = gso_segment_buffer_inline (vm, ptd, b, is_l2);
     }
 
   return n_tx_bytes;
@@ -237,19 +318,16 @@ test_gso_perf (vlib_main_t *vm, gso_test_main_t *gtm)
 	  vlib_buffer_free (vm, buffer_indices, n_alloc);
 	  goto done;
 	}
-      n_filled =
-	fill_buffers (vm, buffer_indices, gso_test_data->data,
-		      gso_test_data->data_size, n_buffers, buffer_size,
-		      packet_size, gso_size, gso_test_data->l4_hdr_len);
+      n_filled = fill_buffers (vm, buffer_indices, gso_test_data, n_buffers,
+			       buffer_size, packet_size, gso_size);
 
       u8 is_l2 = gso_test_data->is_l2;
-      u8 is_ip6 = gso_test_data->is_ip6;
 
       for (k = 0; k < warmup_rounds; k++)
 	{
 	  for (j = 0; j < n_filled; j++)
-	    gso_segment_buffer_test (vm, buffer_indices[j], &ptd[j], is_l2,
-				     is_ip6);
+	    gso_segment_buffer_test (vm, buffer_indices[j], &ptd[j], is_l2);
+
 	  for (j = 0; j < n_filled; j++)
 	    {
 	      vlib_buffer_free (vm, ptd[j].split_buffers,
@@ -264,8 +342,9 @@ test_gso_perf (vlib_main_t *vm, gso_test_main_t *gtm)
 	    {
 	      t0 = clib_cpu_time_now ();
 	      for (j = 0; j < n_filled; j++)
-		gso_segment_buffer_test (vm, buffer_indices[j], &ptd[j], is_l2,
-					 is_ip6);
+		gso_segment_buffer_test (vm, buffer_indices[j], &ptd[j],
+					 is_l2);
+
 	      t1 = clib_cpu_time_now ();
 	      t2[i] += (t1 - t0);
 	      for (j = 0; j < n_filled; j++)
