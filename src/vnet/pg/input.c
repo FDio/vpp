@@ -1578,7 +1578,7 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
 	    (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 	     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
-	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM || gso_enabled)
 	    oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 	}
       else if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP6))
@@ -1596,7 +1596,7 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
 
       if (l4_proto == IP_PROTOCOL_TCP)
 	{
-	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+	  if (buffer_oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM || gso_enabled)
 	    oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 
 	  /* only set GSO flag for chained buffers */
