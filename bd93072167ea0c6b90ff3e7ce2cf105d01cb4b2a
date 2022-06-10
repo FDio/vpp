@@ -33,6 +33,24 @@
       "message": "it looks like it is not related to ip midchain, but is a generic bugfix in gso?",
       "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7639c28_3825869e",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-06-10T15:02:58Z",
+      "side": 1,
+      "message": "It is required with the changes coming with this patch.",
+      "parentUuid": "7b847228_c2281361",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
