@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ffb1452f_1f66e322",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-10T21:39:34Z",
+      "side": 1,
+      "message": "All docs files in VPP are now required to be ReSTructured Text format (*.rst).\n",
+      "revId": "3270fe677c16256f8155b2a0558e5254f5e1ba79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
