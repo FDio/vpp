@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e8e0b18_cd5fc765",
+        "filename": "src/plugins/perfmon/intel/core.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-06-13T11:52:41Z",
+      "side": 1,
+      "message": "Should this really be inline function?",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
