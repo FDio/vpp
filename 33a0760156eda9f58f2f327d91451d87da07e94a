@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6bdc542f_dc658b62",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T14:13:10Z",
+      "side": 1,
+      "message": "At a very minimum you should using enumerations to help the reader. \n\nenum{\n    STALL_BACKEND \u003d 0,\n    STALL_FRONTEND\n};\n\nenum{\nBACKEND_PKT,\nBACKEND_CALL, \n...\n};\n\nThe function of -1 should also be defined.",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a744c2c7_d93d70f7",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T14:13:10Z",
+      "side": 1,
+      "message": "Is there any mechanism for an entire bundle to get disabled, if no event is supported?",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
