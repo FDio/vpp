@@ -16,6 +16,24 @@
       "message": "Should this really be inline function?",
       "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22a96712_2e329dba",
+        "filename": "src/plugins/perfmon/intel/core.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-13T13:10:09Z",
+      "side": 1,
+      "message": "In this header file - probably not. Same for is_bundle_supported. Declaration can be provided here in intel/core.h, definition in intel/core.c. Remove static_always_inline. What do you think?\n\nThis is how we\u0027ve done it for Arm\u0027s version of is_bundle_supported in arm/events.h.",
+      "parentUuid": "5e8e0b18_cd5fc765",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
