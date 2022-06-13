@@ -34,6 +34,24 @@
       "parentUuid": "5e8e0b18_cd5fc765",
       "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e1623ab_d38c2d90",
+        "filename": "src/plugins/perfmon/intel/core.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-06-13T13:15:33Z",
+      "side": 1,
+      "message": "yes, that sounds right....",
+      "parentUuid": "22a96712_2e329dba",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
