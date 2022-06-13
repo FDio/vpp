@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5af78f79_38397660",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T14:24:04Z",
+      "side": 1,
+      "message": "gcc/clang don\u0027t provide intrinsics for these?",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c677e025_73ed3d98",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 6
