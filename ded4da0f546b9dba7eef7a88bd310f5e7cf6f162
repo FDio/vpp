@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d401840d_72158332",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-06-13T09:23:11Z",
+      "side": 1,
+      "message": "\u003e Patch Set 8: Code-Review-1\n\u003e \n\u003e linking dataplane plugin against python is likely workng thing to do, suggesting creating standalone app which uses binary APIs to control VPP and storing it into extras/\n\nHi, Damjan, thanks for your advice.\nSo if against Python is not a good idea, what if we change the implementation from Python to C? What do you think about the idea of this \"packetforge\" and make it as a new plugin? Or just as you said, it would be much better to make it as an app? Thanks.",
+      "revId": "ded4da0f546b9dba7eef7a88bd310f5e7cf6f162",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
