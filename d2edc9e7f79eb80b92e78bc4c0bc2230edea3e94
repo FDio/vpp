@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2442476a_1ce3f6f3",
+        "filename": "src/plugins/perfmon/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T13:39:28Z",
+      "side": 1,
+      "message": "Doesn\u0027t this line, make the if statement at LINE 14 redundant?",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5e8e0b18_cd5fc765",
         "filename": "src/plugins/perfmon/intel/core.h",
         "patchSetId": 1
@@ -50,6 +67,41 @@
       "side": 1,
       "message": "yes, that sounds right....",
       "parentUuid": "22a96712_2e329dba",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "863aaf4d_c5974371",
+        "filename": "src/plugins/perfmon/intel/core.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T13:39:28Z",
+      "side": 1,
+      "message": "Should these also be callbacks on the source, I check a given source supports a given bundle and have enough counters to measure it?",
+      "parentUuid": "8e1623ab_d38c2d90",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03feb528_0ac14074",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T13:39:28Z",
+      "side": 1,
+      "message": "So this is pretty rough, an encapsulation break in a sense?\n\nRegistering a callback with PERFMON_REGISTER_SOURCE would be cleaner.",
       "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
