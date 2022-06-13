@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5487e1a7_f12538ff",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-13T14:39:26Z",
+      "side": 1,
+      "message": "Ack. I agree the readability could be improved here.",
+      "parentUuid": "6bdc542f_dc658b62",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a744c2c7_d93d70f7",
         "filename": "src/plugins/perfmon/arm/bundle/stall.c",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2022-06-13T14:13:10Z",
       "side": 1,
       "message": "Is there any mechanism for an entire bundle to get disabled, if no event is supported?",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbd76587_921d9700",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-13T14:39:26Z",
+      "side": 1,
+      "message": "Yep. As per commit message on \"perfmon: enable perfmon plugin for Arm\":\n\n\u003e arm/events.c:arm_init() gets information from the sysfs about what\n\u003e events are implemented on a particular CPU at runtime. Arm\u0027s\n\u003e implementation of is_bundle_supported uses this information to disable\n\u003e unsupported events in a bundle, or in the case no events are supported,\n\u003e disable the entire bundle.",
+      "parentUuid": "a744c2c7_d93d70f7",
       "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
