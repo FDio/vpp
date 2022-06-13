@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "dbab8389_590215ad",
         "filename": "docs/developer/build-run-debug/building.rst",
@@ -14,8 +15,25 @@
       "side": 1,
       "message": "Since this section is specific to running on Windows + WSL, it would be best to add a introduction line here stating that this section is specific to Windows + WSL.",
       "revId": "5ef4fd0cedce799c689ba04bd6fa6d9bd120a69b",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b80949e_8c2e959f",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 2767
+      },
+      "writtenOn": "2022-06-13T18:36:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dbab8389_590215ad",
+      "revId": "5ef4fd0cedce799c689ba04bd6fa6d9bd120a69b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
