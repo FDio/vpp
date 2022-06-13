@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7adbbd9f_03365cbd",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T13:53:59Z",
+      "side": 1,
+      "message": "do these need to be encapsulated in clib?\n\nsrc/vppinfra/clib.h CLIB_COMPILER_BARRIER etc.",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c677e025_73ed3d98",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-13T13:53:59Z",
+      "side": 1,
+      "message": "see note from the prior patch-set related to this, would be better as a callback.",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
