@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e126c143_e4710c53",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-14T13:58:10Z",
+      "side": 1,
+      "message": "The original API was unfortunate (users are unable to match only HOPOPT protocol), but it was doing what it was described to do: using 0 as a wildcard.\n\nTherefore is a good idea to add a new API (which uses 255 as a wildcard, thus allowing to match only HOPOPT), but to avoid downstream breakages it has to be a different API message.\nIn other words, it is the same situation as with the more obvious API breakages (e.g. when CRC changes).\n\n[4] implies adding ipsec_spd_entry_add_del_v2 message (and ipsec_spd_entry_v2 typedef, perhaps moving it to ipsec_types.api, and adding [deault\u003d255] there) and marking ipsec_spd_entry_add_del (and ipsec_spd_entry) with option deprecated.\nI see flowprobe.api using option replaced_by, which is nice and readable, but I am not sure that option is documented anywhere.\n\nFor implementation, ideally the *_v2 handler would do the real work, and the v1 handler code would be replaced with just a thin wrapper to change protocol if zero and call v2 handler; but as types are involved, maybe it is easier to do the copypaste\u0026edit method, as was done for the three handlers of ipsec_sad_entry_add_del* messages.",
+      "parentUuid": "fb729d51_56e71107",
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de74a16e_171a7ede",
