@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6425f57d_83cdebd8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-06-14T11:23:42Z",
+      "side": 1,
+      "message": "@Klement - any objections re. this patch ? My only concern is that incrementing the vlib counters within the loop might somewhat impact the performance - but since we are already in the reassembly land, the performance is already impacted... What do you think ?",
+      "revId": "83e272e29ac27613d45e3151ebc0f70be60fe326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
