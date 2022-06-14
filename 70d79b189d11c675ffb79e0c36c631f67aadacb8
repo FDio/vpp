@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32bcbba9_4575b43f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-06-14T12:29:35Z",
+      "side": 1,
+      "message": "plot thickens: making a change:\n\n#define VCL_TEST_CFG_MAX_TEST_SESS     ((uint32_t) 99999)\n\nmakes the tests in the above configuration pass on my machine...\nI run them in an lxd container - so it looks like this is probably a cgroups setting somewhere. The original place where I have found the failure is within AWS where the tests run within a docker container. So it looks like this is a resource issue: looks like the tests are effectively doing some kind of scale testing here, and when multiple of them are run at the same time then they hit the limit of cgroups as a result the client app never finishes ? (I tested with timeouts up to 1800s - which required also tweaks to framework.py and indirectly highlights that this is not a CPU-starvation issue like I thought in the beginning).",
+      "revId": "70d79b189d11c675ffb79e0c36c631f67aadacb8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
