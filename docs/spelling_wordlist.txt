@@ -710,6 +710,7 @@ myapp
 mygcc
 myhugosite
 myplugin
+nameserver
 namespace
 Namespace
 namespaces
@@ -930,6 +931,7 @@ requeue
 requeued
 requeueing
 reselects
+resolv
 resolvers
 responder
 Responder
@@ -1174,6 +1176,7 @@ untaint
 unthrottle
 UNUP
 unwires
+unwritable
 upf
 upgradability
 upgradable
@@ -1301,6 +1304,7 @@ woohoo
 workspaces
 Workstream
 wouldn
+wsl
 www
 xc
 xchain

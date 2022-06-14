@@ -686,7 +686,7 @@ checkstyle-python:
 	@make -C test checkstyle-python-all
 
 .PHONY: checkstyle-all
-checkstyle-all: checkstyle-commit checkstyle checkstyle-python
+checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell
 
 .PHONY: fixstyle
 fixstyle:
