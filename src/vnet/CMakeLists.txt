@@ -470,6 +470,8 @@ list(APPEND VNET_HEADERS
   ip/protocols.def
   ip/punt_error.def
   ip/punt.h
+  ip/reass/ip4_sv_reass.h
+  ip/reass/ip6_sv_reass.h
 )
 
 list(APPEND VNET_API_FILES
