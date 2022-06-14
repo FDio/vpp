@@ -34,6 +34,24 @@
       "parentUuid": "487e4264_e1e2fe0c",
       "revId": "052f60557759df2a1c59cacce03bab802acee109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ac9573d_f24c8a17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-14T18:15:20Z",
+      "side": 1,
+      "message": "The fix to master has been merged and I rebased this patch on it.\n\nSorry for the bog-up.",
+      "parentUuid": "3fad1d6d_eeeeb58b",
+      "revId": "052f60557759df2a1c59cacce03bab802acee109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
