@@ -16,6 +16,24 @@
       "message": "Please rebase this patch onto HEAD.  The docs verify failed because it is parented on a change older than https://gerrit.fd.io/r/c/vpp/+/36199 which fixes the spelling errors in the docs.",
       "revId": "052f60557759df2a1c59cacce03bab802acee109",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fad1d6d_eeeeb58b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-14T18:14:27Z",
+      "side": 1,
+      "message": "Never mind.  I merged a patch which broke master wrt. docs spellcheck.\nI\u0027m working on fixing that now.",
+      "parentUuid": "487e4264_e1e2fe0c",
+      "revId": "052f60557759df2a1c59cacce03bab802acee109",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
