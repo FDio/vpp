@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb729d51_56e71107",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-06-14T13:01:49Z",
+      "side": 1,
+      "message": "Hi Vratko,\n\nThanks for the detailed explanation.\nI agree what said here the change broke the core promise.\nHowever I believe you would agree that the original APIs are still either wrong or incomplete.\nPlease suggest a way to around this - maybe creating new API?\n\nRegards,\nFan",
+      "parentUuid": "a523f782_e535fd42",
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de74a16e_171a7ede",
