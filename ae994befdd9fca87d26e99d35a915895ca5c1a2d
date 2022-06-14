@@ -16,6 +16,69 @@
       "message": "i agree this is the right approach. once CSIT has adopted we can merge.",
       "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a523f782_e535fd42",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-14T11:57:50Z",
+      "side": 1,
+      "message": "API process document [4] does not explicitly define what an API change really is.\nThere is a sentence defining a more specific CRC affecting change:\n\n\u003e The \"Production\" APIs can *NOT* be changed in any way that modifies their representation on the wire and the signature (thus CRC).\n\nAnd there is The Core Promise, which seems more general, but still mentions \"API breakage\":\n\n\u003e \"If a user is running a VPP version N and does not use any deprecated APIs, they should be able to simply upgrade the VPP to version N+1 and there should be no API breakage\".\n\nDefault values are even more complicated, as a user of binary API needs to specify all values, so the default values affect only higher level wrappers such as PAPI (so you can have PAPI breakage without binary API breakage).\n\nAs various tests show, this Change is breaking The Core Promise.\nYou are even editing the @param description in the .api file, so this is a kind of API change already (even if it is not a CRC change).\n\nIn fact, you can specify the default value in a type definition, for an ipsec example see [5].\nNot sure if adding a default is changing CRC, and in this case it would not fix CSIT tests (CSIT code happens to add 0 explicitly, not relying on PAPI).\n\nI prefer this to be treated as an API change (e.g. introduce type_2 and message_2), even if CRC checker does not force it.\nYou do not want all the downstream configurations that use 0 as a wildcard to suddenly match only HOPOPT.\n\n[4] https://wiki.fd.io/view/VPP/ApiChangeProcess\n[5] https://gerrit.fd.io/r/c/vpp/+/26276/13/src/vnet/ipsec/ipsec_types.api",
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de74a16e_171a7ede",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-14T11:57:50Z",
+      "side": 1,
+      "message": "This edit suggests this is a breaking behavioral change...",
+      "range": {
+        "startLine": 84,
+        "startChar": 46,
+        "endLine": 84,
+        "endChar": 49
+      },
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ae58a41_1e4711ff",
+        "filename": "test/test_ipsec_ah.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-14T11:57:50Z",
+      "side": 1,
+      "message": "... confirmed by the fact you needed to edit previously valid tests to make them pass.",
+      "range": {
+        "startLine": 216,
+        "startChar": 12,
+        "endLine": 216,
+        "endChar": 30
+      },
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
