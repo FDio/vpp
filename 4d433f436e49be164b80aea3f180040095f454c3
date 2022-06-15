@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "7139d926_6c4d06d8",
         "filename": "src/vnet/ipsec/ipsec_output.h",
@@ -14,10 +15,10 @@
       "side": 1,
       "message": "Do we really need to duplicate the entire ipsec4_out_spd_add_flow_cache_entry just to pass in a ipsec4_spd_5tuple_t instead? Why not just pass in the struct members like:\n\nipsec4_out_spd_add_flow_cache_entry (im, ip4_5tuple-\u003eproto, ip4_5tuple-\u003eip4_addr[0].as_u32 ... etc);",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "59be2218_b81f810f",
         "filename": "src/vnet/ipsec/ipsec_output.h",
@@ -32,10 +33,10 @@
       "message": "Indeed we can do that, however idea is to get rid in the end of the function ipsec_output_policy_match and leave only ipsec_output_policy_match_n, and use features like loop unwinding to get better performance. Then also  ipsec4_out_spd_add_flow_cache_entry can be removed for the sake of  ipsec4_out_spd_add_flow_cache_entry_n. In the end  ipsec4_out_spd_add_flow_cache_entry_n should be also rewritten to add cache entries in bursts - then it is better to pass to it one array of arguments instead of five. Rewriting ipsec_flow_cache_entry to work in the burst mode is beyond the scope of this patch, but we can have now at least api we agree on for the future development.",
       "parentUuid": "7139d926_6c4d06d8",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "cbd67239_bfad0313",
         "filename": "src/vnet/ipsec/ipsec_output.h",
@@ -49,10 +50,10 @@
       "side": 1,
       "message": "As per comment on other patch, can the functions be moved in a separate commit before the fp changes here? That will make it easier to review and see what has changed.",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "cd333b6f_7a73639d",
         "filename": "src/vnet/ipsec/ipsec_output.h",
@@ -67,10 +68,10 @@
       "message": "Sure that\u0027s good idea.",
       "parentUuid": "cbd67239_bfad0313",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "e15beb29_9d386f95",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -84,10 +85,10 @@
       "side": 1,
       "message": "I haven\u0027t been able to match anything using the fast path with the attached script - let me know if I\u0027ve missed anything.\n\nI think there\u0027s two issues with running this script with fast path:\n1. We are adding input rules also to the fast path at `src/vnet/ipsec/ipsec_spd_policy.c:170` however there\u0027s currently no lookup implemented in inbound side. As such any inbound rules added to fast path are \"lost\" and can\u0027t be matched (I\u0027ve also highlighted this in the \"ipsec: add/delete ipsec fast path policy\" commit).\n2. If we change it so only outbound rules are added to fast path, it still doesn\u0027t seem to match the outbound rule here - I haven\u0027t debugged that or reviewed the matching logic yet to understand why.\n\nHere\u0027s the script:\n```\ncreate packet-generator interface pg0\n\nset int ip address pg0 10.10.10.10/24\n\nip route add 30.30.30.30/16 via 10.10.10.10 pg0\nset ip neighbor pg0 30.30.30.30 00:11:22:33:44:55 static count 1\n\nipsec spd add 1\nset interface ipsec spd pg0 1\n\nipsec policy add spd 1 priority 1 inbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\nipsec policy add spd 1 priority 1 outbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\n\nset int state pg0 up\n\ntrace add pg-input 100\n\npacket-generator new {\n  name ipsec\n  limit 1\n  rate 1e4\n  node ip4-input\n  interface pg0\n  size 100-100\n  data {\n   UDP: 20.20.20.20 -\u003e 30.30.30.30\n   UDP: 4321 -\u003e 1234\n    length 72\n    incrementing 100\n  }\n}\n```\n\ntrace output:\n```\n...\n01:52:04:093586: ipsec4-output-feature\n  spd 1 policy -1\n01:52:04:093605: error-drop\n  rx:pg0\n```\n\nAn integration test could catch this type of thing - shouldn\u0027t be too difficult to repurpose `test/test_ipsec_spd_flow_cache_output.py` for something like this.",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "5c10df85_6d6fdb5e",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -102,10 +103,10 @@
       "message": "Currently I am working on such set of tests.",
       "parentUuid": "e15beb29_9d386f95",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "8651062a_278526d6",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -120,10 +121,10 @@
       "message": "Did you resolve this comment? I think it\u0027s not yet resolved. The above script still does not work with the latest patch set for me. The packet is not matching in the fast path.\n\n```\nDBGvpp# show error\n   Count                  Node                              Reason               Severity \n         1             null-node                      blackholed packets           error  \n         1       ipsec4-output-feature             IPSec policy (no match)         error \n...\n\n```\n\n+\n\n```\nDBGvpp# show trace\n...\n00:00:07:828651: ipsec4-output-feature\n  spd 1 policy -1\n```",
       "parentUuid": "5c10df85_6d6fdb5e",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "32a1857e_eca7731d",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -138,10 +139,10 @@
       "message": "Please recheck with latest patchset (8) there have been added lines\n171 !(policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||\n172 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||\n173 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD ||\n174 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ||\n175 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS ||\n176 policy-\u003etype \u003d\u003d IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD)\nwhich should prevent inbound policies from beeing added to fast path spd. Meanwhile I will try to reproduce your results as well.",
       "parentUuid": "8651062a_278526d6",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "4af33411_4dcf38c6",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -156,10 +157,10 @@
       "message": "Yes - it\u0027s fixed 1) but it hasn\u0027t resolved 2). See my original comment.\n\nRun the attached script and then `packet-generator enable` in CLI to send traffic, see if you can reproduce.",
       "parentUuid": "32a1857e_eca7731d",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "65257104_e6124309",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -174,10 +175,10 @@
       "message": "This is the output for your script on the latest patch set. Also I\u0027ve addopted flow cache python test for fast path and outbound policies are still matched correctly.\n\nNo packets in trace buffer\n------------------- Start of thread 1 vpp_wk_0 -------------------\nPacket 1\n\n\n\n00:00:25:969553: pg-input\nstream ipsec, 100 bytes, sw_if_index 3\ncurrent data 0, length 100, buffer-pool 0, ref-count 1, trace handle 0x1000000\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:970990: ip4-input\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971017: ipsec4-input-feature\nUDP: sa_id 0 spd 1 policy 0 spi 66051 (0x00010203) seq 67438087\n00:00:25:971030: ip4-lookup\nfib 0 dpo-idx 2 flow hash: 0x00000000\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 64, length 100, checksum 0x1626 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971046: ip4-rewrite\ntx_sw_if_index 3 dpo-idx 2 : ipv4 via 30.30.30.30 pg0: mtu:9000 next:3 flags:[features ] 00112233445502fe117ecb860800 flow hash: 0x00000000\n00000000: 00112233445502fe117ecb86080045000064000000003f111726141414141e1e\n00000020: 1e1e10e104d20048a143000102030405060708090a0b0c0d0e0f1011\n00:00:25:971055: ipsec4-output-feature\nspd 1 policy 1\n00:00:25:971073: pg0-output\npg0\nIP4: 02:fe:11:7e:cb:86 -\u003e 00:11:22:33:44:55\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 63, length 100, checksum 0x1726 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143\n00:00:25:971100: pg0-tx\nbuffer 0xffffdb: current data -14, length 114, buffer-pool 0, ref-count 1, trace handle 0x1000000\nip4\nIP4: 02:fe:11:7e:cb:86 -\u003e 00:11:22:33:44:55\nUDP: 20.20.20.20 -\u003e 30.30.30.30\ntos 0x00, ttl 63, length 100, checksum 0x1726 dscp CS0 ecn NON_ECN\nfragment id 0x0000\nUDP: 4321 -\u003e 1234\nlength 72, checksum 0xa143",
       "parentUuid": "4af33411_4dcf38c6",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "c0a57451_75c5a608",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -192,10 +193,10 @@
       "message": "Just double checking, that trace is definitely with `ipv4-outbound-spd-fast-path on`?\n\nThis matches what I see and expect with fast path off, with fast path on I get no match in ipsec4-output-feature still.",
       "parentUuid": "65257104_e6124309",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "2f78442c_b85d789a",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -210,10 +211,10 @@
       "message": "Yes we haven\u0027t - the problem was addressed and are doing final polish to the patches. Will send out soon.",
       "parentUuid": "c0a57451_75c5a608",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "1eef1271_c59721b5",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -228,10 +229,10 @@
       "message": "Hi Zachary yes you are right. I will work on fix",
       "parentUuid": "c0a57451_75c5a608",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "47b15eb4_3cdf15b8",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -246,10 +247,10 @@
       "message": "I still have an issue with failing to match in fast path the port ranges in this script:\n\n----\n\ncreate packet-generator interface pg0 \n\nset int ip address pg0 10.10.10.10/24\n\nip route add 30.30.30.30/16 via 10.10.10.10 pg0 \nset ip neighbor pg0 30.30.30.30 00:11:22:33:44:55 static count 1\n\nipsec spd add 1\nset interface ipsec spd pg0 1\n\nipsec policy add spd 1 priority 1 inbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255\nipsec policy add spd 1 priority 1 outbound action bypass local-ip-range 0.0.0.0 - 255.255.255.255 remote-ip-range 0.0.0.0 - 255.255.255.255 local-port-range 1000-2000 remote-port-range 5000-6000\n\nset int state pg0 up\n\ntrace add pg-input 100 \n\npacket-generator new { \\ \n  name ipsec \\\n  limit 1 \\ \n  rate 1e4 \\\n  node ip4-input \\\n  interface pg0 \\\n  size 100-100 \\\n  data { \\ \n   UDP: 20.20.20.20 -\u003e 30.30.30.30 \\\n   UDP: 1234 -\u003e 5678 \\\n    length 72 \\\n    incrementing 100 \\\n  } \\ \n}\n\nshow ipsec spd \n\npacket-generator enable",
       "parentUuid": "1eef1271_c59721b5",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "47703fa4_30cf938f",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -264,10 +265,10 @@
       "message": "I\u0027ll dobule check",
       "parentUuid": "47b15eb4_3cdf15b8",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "206deb6c_5d5cec17",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -282,10 +283,10 @@
       "message": "Problem is in these lines:\n406   if (PREDICT_TRUE ((policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_TCP) ||\n407         (policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_UDP) ||\n408         (policy-\u003eprotocol \u003d\u003d IP_PROTOCOL_SCTP)))\n409     {\n410       tuple-\u003elport \u003d policy-\u003elport.start;\n411       tuple-\u003erport \u003d policy-\u003erport.start;\n412     }\n413   else\n414     {\n415       tuple-\u003elport \u003d 0;\n416       tuple-\u003erport \u003d 0;\n417     }\nwhen you add policy like you do policy-\u003eprotocol is 0. It is none of the protocols mentioned in the condition and so else part is executed. If you set protocol explicitely to UDP it will work. I\u0027ll have to think yet how to fix it.",
       "parentUuid": "47703fa4_30cf938f",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "ef6a5387_86a517a8",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -300,10 +301,10 @@
       "message": "I\u0027ve examined the code. So in the cli command (see ipsec_policy_add_del_command_fn in ipsec_cli.c)if you don\u0027t specify protocol it will be set to 0 by memset, which is defined as IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS in enum ip_protocol. Question is if such setting is correct and expected? Did you want to specify this particular protocol or did you understand such definition of policy as you\u0027ve provied as applying to any protocol? If second behaviour is desired, it is not how cli command works.",
       "parentUuid": "206deb6c_5d5cec17",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "74f7e9f1_13620616",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -318,10 +319,10 @@
       "message": "I thought if no protocol is specified, any protocol should match? This is how it works in linear search right? The above script works with fast path off.\n\nIt seems to me with how it\u0027s currently setup we can\u0027t include protocol 0 aka IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS in a policy as we\u0027re using that to specify no protocol/wild card.\n\nThe linear search logic starts with:\nif (PREDICT_FALSE (p-\u003eprotocol \u0026\u0026 (p-\u003eprotocol !\u003d pr))) { ...\n\nso policy with protocol 0 is not valid currently.",
       "parentUuid": "ef6a5387_86a517a8",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "3bf63d87_dade15b0",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -336,10 +337,10 @@
       "message": "To me it looks like a hack though in original implementation. 0 is a valid protocol value defined in enum ip_protocol, therefore it should not be used as a wild card. Therefore in my opinion it is rather original implementation that needs to be fixed. And I agree with you - cli command should work like you said - if no protocol is specified any protocol should match. However excluding policy with protocol set to 0 (which is valid value for protocol type) from matching I consider to be a bug in original implementation.",
       "parentUuid": "74f7e9f1_13620616",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "f82bf36d_bc7971b8",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -354,10 +355,10 @@
       "message": "Anyway if you prefer to align fp implementation to the original one I can do that.",
       "parentUuid": "3bf63d87_dade15b0",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "57d0ed27_11f0e807",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -372,10 +373,10 @@
       "message": "Either way I think they need to align. We can\u0027t have it match/work in regular linear search but not in fast path.\n\nI agree it seems like original implementation is not quite correct.\n\nWe could change it to 0xFF/255 where no protocol is provided - this is a reserved/unused protocol number from what I can see. I *think* that should be fine, and no chance of any new protocol taking that value since it\u0027s reserved by IANA[1]. This would be nicer and easier to do than introducing another flag. Maybe someone else more knowledgeable on the networking side can explain why this might be a bad idea, but seems like it would work to me.\n\n1: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml",
       "parentUuid": "f82bf36d_bc7971b8",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "ed72af17_0b492901",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -390,10 +391,10 @@
       "message": "Hi Zachary, I will change both implementations then and use 0xFF value as wild card for any protocol. However Fan suggests that original implementation should be fixed in a separate review.",
       "parentUuid": "57d0ed27_11f0e807",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "6fd64cf5_1cb49ab8",
         "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
@@ -408,8 +409,25 @@
       "message": "Sounds good. I agree it\u0027s a separate patch/fix.\n\nMatching logic would become:\nif (PREDICT_FALSE ((p-\u003eprotocol !\u003d 255) \u0026\u0026 (p-\u003eprotocol !\u003d pr))) { ... [match fail] ...",
       "parentUuid": "ed72af17_0b492901",
       "revId": "4d433f436e49be164b80aea3f180040095f454c3",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "69a10f8c_a92f193a",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:07:03Z",
+      "side": 1,
+      "message": "Resolved",
+      "parentUuid": "6fd64cf5_1cb49ab8",
+      "revId": "4d433f436e49be164b80aea3f180040095f454c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
