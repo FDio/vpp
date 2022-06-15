@@ -43,6 +43,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7cd57c4c_f7098c28",
+        "filename": "src/vlibapi/memory_shared.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-06-15T22:35:20Z",
+      "side": 1,
+      "message": "This does include files from vlib and vlib is linked into vlibmemory but not into vlibapi. Wonder if this is still a real dependency. \n\nJust to refresh my memory, do we need these files to move for the rest of the patches in the chain? I believe the current split was meant to have vlibapi as a generic api definition, vlibmemory as a vlib side api implementation and vlibmemoryclient as a client side implementation that should be completely oblivious to vlib. On top of that, vlibmemory and vlibmemoryclient implement shared memory and socket transports. \n\nmemory_shared should be just stuff that\u0027s shared between vlib and client api for shared memory transports. That is, transport specific implementation as opposed to api definition (what vlibapi should be).",
+      "range": {
+        "startLine": 34,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 27
+      },
+      "revId": "3561f171a18d854a360396c6f10da4f6cfbab0ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "268fac35_f3a87e23",
         "filename": "src/vlibmemory/CMakeLists.txt",
         "patchSetId": 9
