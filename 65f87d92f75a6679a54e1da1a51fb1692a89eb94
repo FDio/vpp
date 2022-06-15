@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bbc3c7f1_03abfcda",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:05:32Z",
+      "side": 1,
+      "message": "Flow cache doesn\u0027t work with fast path? Why?\n\nThis explanation should probably be added to the commit message.",
+      "revId": "65f87d92f75a6679a54e1da1a51fb1692a89eb94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
