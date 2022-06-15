@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "8861f36d_261d4a53",
         "filename": "src/vnet/ipsec/ipsec_output.h",
@@ -14,10 +15,10 @@
       "side": 1,
       "message": "Avoid whitespace changes",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "c15f32b8_83f9a06e",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
@@ -31,10 +32,28 @@
       "side": 1,
       "message": "We should fix all these problems in the original commits where they were introduced and not in this commit.",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe86c9e4_5c42a3f2",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:04:16Z",
+      "side": 1,
+      "message": "This is still outstanding - these changes do not belong in this patch. Instead of adding incorrect code and then reverting/fixing it in later commits, better just to get it correct in the original commit where this code was introduced.",
+      "parentUuid": "c15f32b8_83f9a06e",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "10e347c0_b9838ef5",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
@@ -48,10 +67,10 @@
       "side": 1,
       "message": "How did you calculate 4048?",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "43f2d8bd_59728491",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
@@ -66,10 +85,28 @@
       "message": "My mistake it should be 2048 according to your formula. That is pow of 2 bigger than sizeof(kv) * KVP * NO_OF_COLLISIONS. I\u0027ll add defines with descriptions, so there are no magic numbers.",
       "parentUuid": "10e347c0_b9838ef5",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d58e3f5_bd643d1b",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:04:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "43f2d8bd_59728491",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "7813ad15_fa2faac5",
         "filename": "test/test_ipsec_spd_fp_output.py",
@@ -83,10 +120,10 @@
       "side": 1,
       "message": "These tests only check for exact IPs, we are not testing any IP ranges e.g. 0.0.0.0 - 255.255.255.255 etc which is pretty important/vital for fast path in my opinion, and less important for flow cache.",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "ebadd3d9_0347b28c",
         "filename": "test/test_ipsec_spd_fp_output.py",
@@ -100,10 +137,28 @@
       "side": 1,
       "message": "This comment no longer applies as it refers to flow cache.",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "7278bcfa_8fd11807",
+        "filename": "test/test_ipsec_spd_fp_output.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:04:16Z",
+      "side": 1,
+      "message": "This comment still exists in other tests:\n```\n# check policy in SPD has been cached after traffic\n# matched BYPASS rule in SPD\n```",
+      "parentUuid": "ebadd3d9_0347b28c",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "997f77a8_03ca5a06",
         "filename": "test/test_ipsec_spd_fp_output.py",
@@ -117,10 +172,28 @@
       "side": 1,
       "message": "This is specific to the flow cache implementation of a hash table. The concept of a stale entry  doesn\u0027t apply to bihash fast path.",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bdca81be_a68283ff",
+        "filename": "test/test_ipsec_spd_fp_output.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:04:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "997f77a8_03ca5a06",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "3229600f_ee3354ed",
         "filename": "test/test_ipsec_spd_fp_output.py",
@@ -134,8 +207,25 @@
       "side": 1,
       "message": "This test case is specific to flow cache which uses a custom hash table. Collision handling was tested by restricting hash table size and hardcoding some collisions. It doesn\u0027t make any sense to include this test for bihash fast path.",
       "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c2ca33a_84b3d4f2",
+        "filename": "test/test_ipsec_spd_fp_output.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:04:16Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3229600f_ee3354ed",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
