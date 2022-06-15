@@ -244,8 +244,8 @@ main (int argc, char **argv)
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   int rv;
 
-  /* Allocating 32MB heap */
-  clib_mem_init (0, 32 << 20);
+  /* Allocating 256MB heap */
+  clib_mem_init (0, 256 << 20);
 
   unformat_init_command_line (a, argv);
 
