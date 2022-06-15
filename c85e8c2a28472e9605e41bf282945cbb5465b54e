@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d89685f_62d242ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-15T13:26:23Z",
+      "side": 1,
+      "message": "Now we have the \u003cfast path\u003e suffix available in \u0027show ipsec spd\u0027 output, would it be possible to check for this suffix after adding each policy that we expect to be added to fast path?\n\nI\u0027m still not 100% clear on what policies are able to be added to fast path, and what kinds of policies are not supported (as per my comment at https://gerrit.fd.io/r/c/vpp/+/36096/comments/cf01d91b_82de3d59).",
+      "revId": "c85e8c2a28472e9605e41bf282945cbb5465b54e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
