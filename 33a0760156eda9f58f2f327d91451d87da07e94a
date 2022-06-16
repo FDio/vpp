@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8faf472e_90d5ec37",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:33:08Z",
+      "side": 1,
+      "message": "Done. I think that improves it a lot. \n\nIf it was only one event per column it would be straight forward to have a simple array indexed by column to set up these dependencies (e.g. in a callback as you suggested elsewhere). \n\nThe problem is that columns can support more than one event (see cache bundles for example). If any one of these events is not implemented, the whole column needs to be disabled. Hence the solution here with variadic arguments and sentinel values.\n\nIt\u0027s not pretty, but I can\u0027t think of a better way to do it where you have a variable number of events per column. After the enums and some additional code comments I think it\u0027s much clearer now though.",
+      "parentUuid": "5487e1a7_f12538ff",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a744c2c7_d93d70f7",
         "filename": "src/plugins/perfmon/arm/bundle/stall.c",
         "patchSetId": 3
