@@ -7,7 +7,7 @@ process_imports = True
 #
 # Plugin entry point
 #
-def run(args, input_filename, s):
+def run(output_dir, input_filename, s):
     j = {}
     major = 0
     minor = 0
