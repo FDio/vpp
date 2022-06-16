@@ -617,7 +617,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.pg_send(self.pg1, [p])
         self.assertEqual(
             self.base_mac4_err + 1, self.statistics.get_err_counter(self.mac4_error)
         )
@@ -626,7 +626,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, False, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.pg_send(self.pg1, [p])
         self.assertEqual(
             self.base_peer4_in_err + 1,
             self.statistics.get_err_counter(self.peer4_in_err),
@@ -777,7 +777,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1, True)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.pg_send(self.pg1, [p])
 
         self.assertEqual(
             self.base_mac6_err + 1, self.statistics.get_err_counter(self.mac6_error)
@@ -787,7 +787,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, True, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.pg_send(self.pg1, [p])
         self.assertEqual(
             self.base_peer6_in_err + 1,
             self.statistics.get_err_counter(self.peer6_in_err),
