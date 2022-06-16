@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "491e1e23_3a99082e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-16T11:11:24Z",
+      "side": 1,
+      "message": "On second read, I am no longer sure. Maybe \"wait\" is really intended to mean \"stop packet processing for a while\"...",
+      "range": {
+        "startLine": 9,
+        "startChar": 9,
+        "endLine": 9,
+        "endChar": 16
+      },
+      "revId": "a2e81683954f36ba525eae9bcad48b0d21c6e7fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "40462a29_12686e28",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3981,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-16T11:11:24Z",
+      "side": 1,
+      "message": "... but this suggests traffic should be processed during wait indeed.",
+      "range": {
+        "startLine": 3981,
+        "startChar": 39,
+        "endLine": 3981,
+        "endChar": 62
+      },
+      "revId": "a2e81683954f36ba525eae9bcad48b0d21c6e7fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
