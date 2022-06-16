@@ -87,6 +87,24 @@
       "parentUuid": "a744c2c7_d93d70f7",
       "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "95e7d3b9_74681f18",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:36:33Z",
+      "side": 1,
+      "message": "See https://gerrit.fd.io/r/c/vpp/+/33630/7/src/plugins/perfmon/arm/events.c#202. Bundles will not be registered if none of the events are supported.",
+      "parentUuid": "cbd76587_921d9700",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
