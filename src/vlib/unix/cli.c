@@ -4013,6 +4013,7 @@ VLIB_CLI_COMMAND (cli_unix_wait_cmd, static) = {
   .path = "wait",
   .short_help = "wait <sec>",
   .function = unix_wait_cmd,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
