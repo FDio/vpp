@@ -2010,24 +2010,24 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 #
 # Plugin entry point
 #
-def run(args, apifilename, s):
+def run(output_dir, apifilename, s):
     """Main plugin entry point."""
     stream = StringIO()
 
-    if not args.outputdir:
+    if not output_dir:
         sys.stderr.write("Missing --outputdir argument")
         return None
 
     basename = os.path.basename(apifilename)
     filename, _ = os.path.splitext(basename)
     modulename = filename.replace(".", "_")
-    filename_enum = os.path.join(args.outputdir + "/" + basename + "_enum.h")
-    filename_types = os.path.join(args.outputdir + "/" + basename + "_types.h")
-    filename_c = os.path.join(args.outputdir + "/" + basename + ".c")
-    filename_c_test = os.path.join(args.outputdir + "/" + basename + "_test.c")
-    filename_c_test2 = os.path.join(args.outputdir + "/" + basename + "_test2.c")
-    filename_c_tojson = os.path.join(args.outputdir + "/" + basename + "_tojson.h")
-    filename_c_fromjson = os.path.join(args.outputdir + "/" + basename + "_fromjson.h")
+    filename_enum = os.path.join(output_dir + "/" + basename + "_enum.h")
+    filename_types = os.path.join(output_dir + "/" + basename + "_types.h")
+    filename_c = os.path.join(output_dir + "/" + basename + ".c")
+    filename_c_test = os.path.join(output_dir + "/" + basename + "_test.c")
+    filename_c_test2 = os.path.join(output_dir + "/" + basename + "_test2.c")
+    filename_c_tojson = os.path.join(output_dir + "/" + basename + "_tojson.h")
+    filename_c_fromjson = os.path.join(output_dir + "/" + basename + "_fromjson.h")
 
     # Generate separate types file
     st = StringIO()

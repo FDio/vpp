@@ -1152,6 +1152,130 @@ def foldup_crcs(s):
         f.crc = foldup_blocks(f.block, binascii.crc32(f.crc) & 0xFFFFFFFF)
 
 
+def run_vppapigen(
+    input_file=None,
+    output=sys.stdout,
+    includedir=None,
+    debug=False,
+    show_name=None,
+    output_module="C",
+    outputdir=None,
+    pluginpath="",
+    git_revision=None,
+):
+    # reset globals
+    dirlist.clear()
+    global_types.clear()
+    seen_imports.clear()
+
+    dirlist_add(includedir)
+    if not debug:
+        sys.excepthook = exception_handler
+
+    # Filename
+    if show_name:
+        filename = show_name[0]
+    elif input_file:
+        filename = input_file
+    else:
+        filename = ""
+
+    if debug:
+        logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
+    else:
+        logging.basicConfig()
+
+    #
+    # Generate representation
+    #
+    from importlib.machinery import SourceFileLoader
+
+    # Default path
+    pluginpath = ""
+    if not pluginpath:
+        cand = []
+        cand.append(os.path.dirname(os.path.realpath(__file__)))
+        cand.append(os.path.dirname(os.path.realpath(__file__)) + "/../share/vpp/")
+        for c in cand:
+            c += "/"
+            if os.path.isfile("{}vppapigen_{}.py".format(c, output_module.lower())):
+                pluginpath = c
+                break
+    else:
+        pluginpath = pluginpath + "/"
+    if pluginpath == "":
+        log.exception("Output plugin not found")
+        return 1
+    module_path = "{}vppapigen_{}.py".format(pluginpath, output_module.lower())
+
+    try:
+        plugin = SourceFileLoader(output_module, module_path).load_module()
+    except Exception as err:
+        log.exception("Error importing output plugin: %s, %s", module_path, err)
+        return 1
+
+    parser = VPPAPI(debug=debug, filename=filename, logger=log, revision=git_revision)
+
+    try:
+        if not input_file:
+            parsed_objects = parser.parse_fd(sys.stdin, log)
+        else:
+            parsed_objects = parser.parse_filename(input_file, log)
+    except ParseError as e:
+        print("Parse error: ", e, file=sys.stderr)
+        sys.exit(1)
+
+    # Build a list of objects. Hash of lists.
+    result = []
+
+    # if the variable is not set in the plugin, assume it to be false.
+    try:
+        plugin.process_imports
+    except AttributeError:
+        plugin.process_imports = False
+
+    if plugin.process_imports:
+        result = parser.process_imports(parsed_objects, False, result)
+        s = parser.process(result)
+    else:
+        s = parser.process(parsed_objects)
+        imports = parser.process_imports(parsed_objects, False, result)
+        s["imported"] = parser.process(imports)
+
+    # Add msg_id field
+    s["Define"] = add_msg_id(s["Define"])
+
+    # Fold up CRCs
+    foldup_crcs(s["Define"])
+
+    #
+    # Debug
+    if debug:
+        import pprint
+
+        pp = pprint.PrettyPrinter(indent=4, stream=sys.stderr)
+        for t in s["Define"]:
+            pp.pprint([t.name, t.flags, t.block])
+        for t in s["types"]:
+            pp.pprint([t.name, t.block])
+
+    result = plugin.run(outputdir, filename, s)
+    if result:
+        if isinstance(output, str):
+            with open(output, "w", encoding="UTF-8") as f:
+                print(result, file=f)
+        else:
+            print(result, file=output)
+    else:
+        log.exception("Running plugin failed: %s %s", filename, result)
+        return 1
+    return 0
+
+
+def run_kw_vppapigen(kwargs):
+    return run_vppapigen(**kwargs)
+
+
 #
 # Main
 #
@@ -1188,108 +1312,17 @@ def main():
     )
     args = cliparser.parse_args()
 
-    dirlist_add(args.includedir)
-    if not args.debug:
-        sys.excepthook = exception_handler
-
-    # Filename
-    if args.show_name:
-        filename = args.show_name[0]
-    elif args.input:
-        filename = args.input
-    else:
-        filename = ""
-
-    if args.debug:
-        logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
-    else:
-        logging.basicConfig()
-
-    #
-    # Generate representation
-    #
-    from importlib.machinery import SourceFileLoader
-
-    # Default path
-    pluginpath = ""
-    if not args.pluginpath:
-        cand = []
-        cand.append(os.path.dirname(os.path.realpath(__file__)))
-        cand.append(os.path.dirname(os.path.realpath(__file__)) + "/../share/vpp/")
-        for c in cand:
-            c += "/"
-            if os.path.isfile(
-                "{}vppapigen_{}.py".format(c, args.output_module.lower())
-            ):
-                pluginpath = c
-                break
-    else:
-        pluginpath = args.pluginpath + "/"
-    if pluginpath == "":
-        log.exception("Output plugin not found")
-        return 1
-    module_path = "{}vppapigen_{}.py".format(pluginpath, args.output_module.lower())
-
-    try:
-        plugin = SourceFileLoader(args.output_module, module_path).load_module()
-    except Exception as err:
-        log.exception("Error importing output plugin: %s, %s", module_path, err)
-        return 1
-
-    parser = VPPAPI(
-        debug=args.debug, filename=filename, logger=log, revision=args.git_revision
+    return run_vppapigen(
+        includedir=args.includedir,
+        debug=args.debug,
+        outputdir=args.outputdir,
+        show_name=args.show_name,
+        input_file=args.input,
+        output_module=args.output_module,
+        pluginpath=args.pluginpath,
+        git_revision=args.git_revision,
+        output=args.output,
     )
-
-    try:
-        if not args.input:
-            parsed_objects = parser.parse_fd(sys.stdin, log)
-        else:
-            parsed_objects = parser.parse_filename(args.input, log)
-    except ParseError as e:
-        print("Parse error: ", e, file=sys.stderr)
-        sys.exit(1)
-
-    # Build a list of objects. Hash of lists.
-    result = []
-
-    # if the variable is not set in the plugin, assume it to be false.
-    try:
-        plugin.process_imports
-    except AttributeError:
-        plugin.process_imports = False
-
-    if plugin.process_imports:
-        result = parser.process_imports(parsed_objects, False, result)
-        s = parser.process(result)
-    else:
-        s = parser.process(parsed_objects)
-        imports = parser.process_imports(parsed_objects, False, result)
-        s["imported"] = parser.process(imports)
-
-    # Add msg_id field
-    s["Define"] = add_msg_id(s["Define"])
-
-    # Fold up CRCs
-    foldup_crcs(s["Define"])
-
-    #
-    # Debug
-    if args.debug:
-        import pprint
-
-        pp = pprint.PrettyPrinter(indent=4, stream=sys.stderr)
-        for t in s["Define"]:
-            pp.pprint([t.name, t.flags, t.block])
-        for t in s["types"]:
-            pp.pprint([t.name, t.block])
-
-    result = plugin.run(args, filename, s)
-    if result:
-        print(result, file=args.output)
-    else:
-        log.exception("Running plugin failed: %s %s", filename, result)
-        return 1
-    return 0
 
 
 if __name__ == "__main__":
