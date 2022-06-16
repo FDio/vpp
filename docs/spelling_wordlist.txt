@@ -368,6 +368,7 @@ fooA
 fooB
 fooC
 foreach
+formatter
 Fortville
 fs
 fusermount
