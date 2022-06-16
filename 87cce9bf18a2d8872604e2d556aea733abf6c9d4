@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "30cf7054_0dcd9ffd",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:25:52Z",
+      "side": 1,
+      "message": "CLIB_MEMORY_BARRIER() aka __sync_synchronize() built-in does generate DMB ISH on Arm[1] so we could use that here.\n\nI\u0027m not sure what we gain from that though here? This is Arm specific code that will only run on Arm, it doesn\u0027t need to be an arch independent call. I can\u0027t see there\u0027s any benefit to using it. Seems a bit like 2 levels of unnecessary indirection (clib + compiler built-in) + an additional unnecessary file to include.\n\nISB (Instruction synchronization barrier) is only used once, so I\u0027ve just inserted the inline asm directly rather than using a #define here.\n\n1: https://godbolt.org/z/76n4PqoW9",
+      "parentUuid": "7adbbd9f_03365cbd",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5af78f79_38397660",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 6
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "202f136f_6fd6478d",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:25:52Z",
+      "side": 1,
+      "message": "Not currently. As far as I was able to find out, there doesn\u0027t seem to be any plan to add these either. Mostly as it\u0027s not that useful as an abstraction outside of hiding some inline asm here. The register read is only a small part of the whole read sequence overall.",
+      "parentUuid": "5af78f79_38397660",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c677e025_73ed3d98",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
         "patchSetId": 6
@@ -48,6 +84,24 @@
       "writtenOn": "2022-06-13T13:53:59Z",
       "side": 1,
       "message": "see note from the prior patch-set related to this, would be better as a callback.",
+      "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb903f31_4ddee5c2",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:25:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c677e025_73ed3d98",
       "revId": "87cce9bf18a2d8872604e2d556aea733abf6c9d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
