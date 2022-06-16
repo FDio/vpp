@@ -86,7 +86,7 @@ def walk_defs(s, is_message=False):
 #
 # Plugin entry point
 #
-def run(args, filename, s):
+def run(output_dir, filename, s):
     j = {}
 
     j["types"] = walk_defs([o for o in s["types"] if o.__class__.__name__ == "Typedef"])
