@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46c2b200_50b5dfcd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-16T10:35:02Z",
+      "side": 1,
+      "message": "perftest-2n-skx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
+      "revId": "3944c9a1a0543b14a1c836aecb338cec802fde3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
