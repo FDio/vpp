@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec71fdec_2e5aa0b5",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-16T18:24:26Z",
+      "side": 1,
+      "message": "is it just me, or is barrier not getting used?",
+      "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

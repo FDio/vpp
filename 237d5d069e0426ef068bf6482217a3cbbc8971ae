@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "fbf599ea_9283d0ff",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -20,10 +21,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "0514ec74_b4a26e22",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -44,10 +45,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "c0bde515_6f6224f2",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -68,10 +69,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "a52462b3_fd8dbafd",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -92,10 +93,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "4fba95f3_de4a7588",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -116,10 +117,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "f1ec1490_c0c6e614",
         "filename": "src/plugins/perfmon/arm/bundle/branch_pred.c",
@@ -140,10 +141,10 @@
         "endChar": 22
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "8232c0ce_1407e630",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -163,10 +164,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "25d8477a_8d666ebf",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -187,10 +188,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "25711cc1_55dd85fc",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -211,10 +212,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "9ba46b26_b381f019",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -235,10 +236,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "ec3d4a58_7bdeea2b",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -259,10 +260,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "9ad9321f_ea771efe",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -283,10 +284,10 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "2451f05f_cc979ede",
         "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
@@ -307,10 +308,34 @@
         "endChar": 25
       },
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a708757a_8faf2a83",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-16T18:24:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2451f05f_cc979ede",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 25
+      },
+      "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "4d2e8231_4a165eef",
         "filename": "src/plugins/perfmon/cli.c",
@@ -324,10 +349,10 @@
       "side": 1,
       "message": "please use /* */",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "ccceb3ae_2d238c27",
         "filename": "src/plugins/perfmon/cli.c",
@@ -342,10 +367,10 @@
       "message": "Ack",
       "parentUuid": "4d2e8231_4a165eef",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "f4808a70_a892b75f",
         "filename": "src/plugins/perfmon/perfmon.c",
@@ -359,10 +384,10 @@
       "side": 1,
       "message": "do we need a warning? better to just silently fail?",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "fc60c764_5ad7255e",
         "filename": "src/plugins/perfmon/perfmon.c",
@@ -377,10 +402,10 @@
       "message": "I think we could silently fail instead. I was originally thinking from a user perspective it might help explain why certain events in the output show up as \u0027-\u0027. Maybe that\u0027s implicit.",
       "parentUuid": "f4808a70_a892b75f",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "c6ff4466_76375048",
         "filename": "src/plugins/perfmon/perfmon.c",
@@ -395,10 +420,10 @@
       "message": "We now silently fail (at least only print to debug log) if a bundle is partially supported. Only if a bundle is entirely unsupported (i.e. no events in it are implemented) is a message displayed on VPP/perfmon startup.",
       "parentUuid": "fc60c764_5ad7255e",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "b6e4fae8_d9ca4d4c",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -412,10 +437,10 @@
       "side": 1,
       "message": "I suspect we are going to need a mechanism for making this cpu specific.",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "de4f9a41_e294aebc",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -430,10 +455,10 @@
       "message": "Probably. I think in theory it\u0027s possible some Arm CPUs may have less than this, but I need to do some digging. In practice 6 event + 1 cycle seems common.",
       "parentUuid": "b6e4fae8_d9ca4d4c",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "cedcde83_f32b7936",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -448,10 +473,10 @@
       "message": "Due to some quirks of how Arm opens events on Linux, it\u0027s not always exactly possible to determine how many counters are available. It\u0027s actually possible to open more events than physical counters, and the kernel will rotate them over the available counters over time (if I understood it correctly). Also since other user applications can open userspace counters alongside VPP they might not be available anyway. On Arm the only way is to attempt to open all events per core as a group, this will then fail to add each additional event to the group if there are not enough counters available.\n\nI don\u0027t personally think that\u0027s ideal but it\u0027s what we have to work with at the moment.\n\nSo I think what we currently have in perfmon is fine for Arm - if there are not enough counters available for a particular bundle, perf_event_open will fail since it does use groups per core/thread (and then `perfmon start` will fail to open that bundle).",
       "parentUuid": "de4f9a41_e294aebc",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "051209db_094a0717",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -465,10 +490,10 @@
       "side": 1,
       "message": "would this be more robust as bitmask?",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "b1348df1_710ea066",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -483,10 +508,10 @@
       "message": "Can you give an example how this would work?\n\nWe are checking if n_events \u003d\u003d n_events_implemented in cli.c to figure out if we need to fix formatting/alignment or not.\n\nI considered event_enabled[PERF_MAX_EVENTS] as a bitmap but that seems overkill.",
       "parentUuid": "051209db_094a0717",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "9c8a61da_40efe13d",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -501,10 +526,10 @@
       "message": "n_events_implemented seems to be a counter right, \nSo if n_events_implemented !\u003d n_events, you know that some events are disabled.\nI was just pointing out ... it would be more obvious to indicate which events are enabled and disabled with a bitmaps.\n\nSo that ....\n\nIf there where a total of 4 events and if event[1] was disable.\nThere would be a bit mask of 0xC (i.e. 1101) - easy to check, easy to understand. \n\nThe alternative would be to just remove disabled events from events[]",
       "parentUuid": "b1348df1_710ea066",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "bc38b683_24bf8d51",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -519,10 +544,10 @@
       "message": "That is how event_enabled[PERF_MAX_EVENTS] is operating, albeit with (slightly) more memory. You\u0027re right a bitmask to go on top of events[PERF_MAX_EVENTS] would probably nicer overall.\n\nShould be easy to do with clib_bitmap_alloc(), clib_bitmap_set/get(). I\u0027ll add it to the list of improvements.\n\nI think if we can remove the if !b-\u003eevent_enabled[x] checks in all bundles as per your previous comment, then that will overall clean things up nicely.\n\nI haven\u0027t fully checked, but I suspect removing disabled items from events[] would mess up the alignment since column headers are not dynamic. There would be a fair bit of extra work to dynamically display column headers since we\u0027d need to check which events are used under each header somehow.",
       "parentUuid": "9c8a61da_40efe13d",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "baf1c824_29a8060a",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -537,10 +562,10 @@
       "message": "Ack",
       "parentUuid": "bc38b683_24bf8d51",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "08c30231_5cca6bf2",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -555,10 +580,10 @@
       "message": "Fixed.",
       "parentUuid": "baf1c824_29a8060a",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "f2eeaf93_5ed4af91",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -572,10 +597,10 @@
       "side": 1,
       "message": "avoid formatting changes",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
       "key": {
         "uuid": "c6e49bfc_1b652bab",
         "filename": "src/plugins/perfmon/perfmon.h",
@@ -590,8 +615,7 @@
       "message": "Ack",
       "parentUuid": "f2eeaf93_5ed4af91",
       "revId": "237d5d069e0426ef068bf6482217a3cbbc8971ae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": false
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
