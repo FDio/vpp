@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6e84c6d1_dd044b77",
+        "filename": "src/plugins/perfmon/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:24:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d79cba0b_da018669",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5e8e0b18_cd5fc765",
         "filename": "src/plugins/perfmon/intel/core.h",
         "patchSetId": 1
@@ -109,6 +127,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "22cc1067_b18c7d51",
+        "filename": "src/plugins/perfmon/intel/core.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:24:36Z",
+      "side": 1,
+      "message": "Done. Moved definitions to intel/core.c and implemented as a callback.",
+      "parentUuid": "863aaf4d_c5974371",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "03feb528_0ac14074",
         "filename": "src/plugins/perfmon/perfmon.c",
         "patchSetId": 1
@@ -138,6 +174,24 @@
       "side": 1,
       "message": "Do you just mean the extern or the #if defined(__x86_64__) or both? We can easily get rid of the extern and put arch_config_dispatch_wrapper declaration in a dispatch_wrapper.h as below, I think that\u0027s something you suggested previously:\n\n```\n#if defined(__x86_64__)\n#include \u003cperfmon/intel/core.h\u003e\n#include \u003cperfmon/intel/dispatch_wrapper.h\u003e\n#endif\n```\n\nThe callbacks thing is interesting and should be possible. Probably cleaner. I think more complicated to implement though. I need some time to think it through and check how the callbacks work.",
       "parentUuid": "03feb528_0ac14074",
+      "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79fad719_1c1105de",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-16T14:24:36Z",
+      "side": 1,
+      "message": "Replaced with a callback. I like it. Avoids any #if \u003carch\u003e stuff and externs.",
+      "parentUuid": "ed605be9_61583f9d",
       "revId": "d2edc9e7f79eb80b92e78bc4c0bc2230edea3e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
