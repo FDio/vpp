@@ -876,6 +876,14 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
     {
       /* Streams live on the same thread so (f, stream_data) should stay consistent */
       rlen = svm_fifo_enqueue (f, len, (u8 *) src);
+      if (PREDICT_FALSE (rlen < 0))
+	{
+	  /*
+	   * drop, fifo full
+	   * drop, fifo grow
+	   */
+	  return;
+	}
       QUIC_DBG (3, "Session [idx %u, app_wrk %u, ti %u, rx-fifo 0x%llx]: "
 		"Enqueuing %u (rlen %u) at off %u in %u space, ",
 		stream_session->session_index,
@@ -898,6 +906,14 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
       rlen = svm_fifo_enqueue_with_offset (f,
 					   off - stream_data->app_rx_data_len,
 					   len, (u8 *) src);
+      if (PREDICT_FALSE (rlen < 0))
+	{
+	  /*
+	   * drop, fifo full
+	   * drop, fifo grow
+	   */
+	  return;
+	}
       QUIC_ASSERT (rlen == 0);
     }
   return;
