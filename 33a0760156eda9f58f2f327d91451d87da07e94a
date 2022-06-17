@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5f0b3b66_4c0c243c",
+        "filename": "src/plugins/perfmon/arm/bundle/stall.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-17T17:20:33Z",
+      "side": 1,
+      "message": "Implemented as .column_events as suggested by email.",
+      "parentUuid": "8faf472e_90d5ec37",
+      "revId": "33a0760156eda9f58f2f327d91451d87da07e94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a744c2c7_d93d70f7",
         "filename": "src/plugins/perfmon/arm/bundle/stall.c",
         "patchSetId": 3
