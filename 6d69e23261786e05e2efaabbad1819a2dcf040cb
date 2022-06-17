@@ -16,6 +16,24 @@
       "message": "is it just me, or is barrier not getting used?",
       "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2eb10ff_e5537f7b",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2465
+      },
+      "writtenOn": "2022-06-17T17:14:45Z",
+      "side": 1,
+      "message": "read_pmc_from_mmap(), lines 59 and 70?",
+      "parentUuid": "ec71fdec_2e5aa0b5",
+      "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
