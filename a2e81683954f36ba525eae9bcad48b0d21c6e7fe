@@ -26,6 +26,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "0598d902_598f8a9e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-17T12:01:03Z",
+      "side": 1,
+      "message": "#1 does not solve the issue.",
+      "revId": "a2e81683954f36ba525eae9bcad48b0d21c6e7fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "40462a29_12686e28",
         "filename": "src/vlib/unix/cli.c",
         "patchSetId": 2
