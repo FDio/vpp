@@ -133,7 +133,11 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
       vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, 0, verbose);
       for (i = 0; i < vec_len (hw_if_indices); i++)
 	{
-	  hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
+	  hi = vnet_get_hw_interface_or_null (vnm, hw_if_indices[i]);
+          if (!hi)
+            {
+              continue;
+            }
 	  if (show_bond == 0)	/* show all interfaces */
 	    vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm,
 			     hi, verbose);
@@ -148,7 +152,9 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
               /* *INDENT-OFF* */
 	      clib_bitmap_foreach (hw_idx, hi->bond_info)
                {
-                shi = vnet_get_hw_interface(vnm, hw_idx);
+                shi = vnet_get_hw_interface_or_null (vnm, hw_idx);
+                if (!shi)
+                  continue;
                 vlib_cli_output (vm, "%U\n",
                                  format_vnet_hw_interface, vnm, shi, verbose);
               }
@@ -162,7 +168,9 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 	{
 	  vnet_device_class_t *dc;
 
-	  hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
+	  hi = vnet_get_hw_interface_or_null (vnm, hw_if_indices[i]);
+          if (!hi)
+            continue;
 	  dc = vec_elt_at_index (im->device_classes, hi->dev_class_index);
 
 	  if (dc->clear_counters)
