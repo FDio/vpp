@@ -16,6 +16,24 @@
       "message": "Flow cache doesn\u0027t work with fast path? Why?\n\nThis explanation should probably be added to the commit message.",
       "revId": "65f87d92f75a6679a54e1da1a51fb1692a89eb94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a16c0bbc_1e360490",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-20T23:39:45Z",
+      "side": 1,
+      "message": "We\u0027ve decided to disable flow cache for fast path as we want to do performance improvements in next iterations like loop unwinding, burst processing etc. which won\u0027t be compatible with flow cache.",
+      "parentUuid": "bbc3c7f1_03abfcda",
+      "revId": "65f87d92f75a6679a54e1da1a51fb1692a89eb94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
