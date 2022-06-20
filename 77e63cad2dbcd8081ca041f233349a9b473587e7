@@ -16,6 +16,24 @@
       "message": "Do you think this + \"ipsec: add test case for ip range in fast path\" could be a single commit under \"ipsec: add fast path python tests\"?\n\nI\u0027m not sure it needs 3 separate commits like this.\n\n",
       "revId": "77e63cad2dbcd8081ca041f233349a9b473587e7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0358e011_b603b41e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-20T23:35:37Z",
+      "side": 1,
+      "message": "Yes you are right, we can squash python tests into one commit.",
+      "parentUuid": "440e607d_4dfa1d69",
+      "revId": "77e63cad2dbcd8081ca041f233349a9b473587e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
