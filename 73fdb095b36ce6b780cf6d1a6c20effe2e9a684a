@@ -16,6 +16,23 @@
       "message": "This patch helps fixing the slow rx burst problem introduced in vpp22.02 - I believe it is worth backporting it to stable/2202",
       "revId": "73fdb095b36ce6b780cf6d1a6c20effe2e9a684a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5a1595d_f7c26971",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 541
+      },
+      "writtenOn": "2022-06-20T22:17:45Z",
+      "side": 1,
+      "message": "remerge",
+      "revId": "73fdb095b36ce6b780cf6d1a6c20effe2e9a684a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
