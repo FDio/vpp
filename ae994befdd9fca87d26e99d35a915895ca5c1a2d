@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d0b7635_a32ec8f2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-20T14:13:10Z",
+      "side": 1,
+      "message": "Sounds good to me. I will follow your suggestions and provide new handler.",
+      "parentUuid": "e126c143_e4710c53",
+      "revId": "ae994befdd9fca87d26e99d35a915895ca5c1a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de74a16e_171a7ede",
