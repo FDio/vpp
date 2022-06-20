@@ -34,6 +34,24 @@
       "parentUuid": "2d89685f_62d242ac",
       "revId": "c85e8c2a28472e9605e41bf282945cbb5465b54e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d982072_20b04e6b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-06-20T14:12:56Z",
+      "side": 1,
+      "message": "Hi Zachary, Fan is correct. Now this suffix doesn\u0027t make much sense as when fast path is enabled every policy is added to fast path spd. First of all we\u0027ve found with Fan that it is not possible to have a split between fast path policies and slow path at same time without extra steps. We need either assumption that such policies do not overlap (and when I thought about it I don\u0027t think we have efficient way to do it - we would have to fragment policies into small ranges - tracking down how it was done, and removing such fragmented policies, when deleting a policy would be a nightmare) or we cannot have it in place. Imagine policy with specific ip addresses and ports that has been added to fast path with low priority and a policy that covers all ip addresses which has been added to slow path, but with higher priority. Because of overlap packet with ip addresses specified by fp policy will be matched to it and slow path policy would not be applied - which is not correct behavior. So when we\u0027ve realized this assumption doesn\u0027t hold we are using masking that always works: we mask out all bits of ip address starting from first that may change (see comment in function calculating 5touple mask). Price for this is that distribution of policies between keys is now even less homogenous than before, however scenarios with a lot of policies covering small ranges of ip addresses and ports are still robust - and that is the target for fast path matching.",
+      "parentUuid": "d4be813a_600c63a1",
+      "revId": "c85e8c2a28472e9605e41bf282945cbb5465b54e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
