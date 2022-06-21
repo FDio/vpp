@@ -26,7 +26,35 @@
 
 nat64_main_t nat64_main;
 
-/* *INDENT-OFF* */
+static_always_inline u8
+plugin_enabled ()
+{
+  nat64_main_t *nm = &nat64_main;
+  return nm->enabled;
+}
+
+#define fail_if_enabled()                                                     \
+  do                                                                          \
+    {                                                                         \
+      if (PREDICT_FALSE (plugin_enabled () != 0))                             \
+	{                                                                     \
+	  nat64_log_err ("plugin enabled");                                   \
+	  return 1;                                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
+#define fail_if_disabled()                                                    \
+  do                                                                          \
+    {                                                                         \
+      if (PREDICT_FALSE (plugin_enabled () == 0))                             \
+	{                                                                     \
+	  nat64_log_err ("plugin disabled");                                  \
+	  return 1;                                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
 /* Hook up input features */
 VNET_FEATURE_INIT (nat64_in2out, static) = {
   .arc_name = "ip6-unicast",
@@ -62,7 +90,6 @@ static u8 well_known_prefix[] = {
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
 };
-/* *INDENT-ON* */
 
 #define nat_elog_str(_str)                      \
 do                                              \
@@ -85,8 +112,11 @@ nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
   nat64_main_t *nm = &nat64_main;
   int i, j;
 
-  if (plugin_enabled () == 0)
-    return;
+  // skip if disabled
+  if (PREDICT_FALSE (plugin_enabled () == 0))
+    {
+      return;
+    }
 
   for (i = 0; i < vec_len (nm->auto_add_sw_if_indices); i++)
     {
@@ -157,14 +187,12 @@ nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip)
       clib_memset (&daddr, 0, sizeof (daddr));
       daddr.ip4.as_u32 = ip->dst_address.as_u32;
 
-      /* *INDENT-OFF* */
       vec_foreach (db, nm->db)
         {
           bibe = nat64_db_bib_entry_find (db, &daddr, 0, ip->protocol, 0, 0);
           if (bibe)
             return (u32) (db - nm->db);
         }
-      /* *INDENT-ON* */
       return vlib_get_thread_index ();
     }
 
@@ -282,12 +310,10 @@ nat64_init (vlib_main_t * vm)
       for (i = 0; i < nm->num_workers; i++)
 	bitmap = clib_bitmap_set (bitmap, i, 1);
 
-      /* *INDENT-OFF* */
       clib_bitmap_foreach (i, bitmap)
-         {
-          vec_add1(nm->workers, i);
-        }
-      /* *INDENT-ON* */
+	{
+	  vec_add1 (nm->workers, i);
+	}
 
       clib_bitmap_free (bitmap);
 
@@ -323,7 +349,6 @@ nat64_init_hash (nat64_config_t c)
 
   vec_validate (nm->db, tm->n_vlib_mains - 1);
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
       if (nat64_db_init (db, c, nat64_free_out_addr_and_port))
@@ -332,7 +357,6 @@ nat64_init_hash (nat64_config_t c)
           rv = 1;
         }
     }
-  /* *INDENT-ON* */
 
   return rv;
 }
@@ -344,7 +368,6 @@ nat64_free_hash ()
   nat64_db_t *db;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
       if (nat64_db_free (db))
@@ -353,7 +376,6 @@ nat64_free_hash ()
           rv = 1;
         }
     }
-  /* *INDENT-ON* */
 
   vec_free (nm->db);
 
@@ -364,12 +386,14 @@ int
 nat64_add_del_pool_addr (u32 thread_index,
 			 ip4_address_t * addr, u32 vrf_id, u8 is_add)
 {
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   nat64_main_t *nm = &nat64_main;
+  nat64_db_t *db;
   nat64_address_t *a = 0;
   nat64_interface_t *interface;
   int i;
-  nat64_db_t *db;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  fail_if_disabled ();
 
   /* Check if address already exists */
   for (i = 0; i < vec_len (nm->addr_pool); i++)
@@ -408,7 +432,6 @@ nat64_add_del_pool_addr (u32 thread_index,
       if (a->fib_index != ~0)
 	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6, nm->fib_src_hi);
       /* Delete sessions using address */
-      /* *INDENT-OFF* */
       vec_foreach (db, nm->db)
         {
           nat64_db_free_out_addr (thread_index, db, &a->addr);
@@ -417,21 +440,18 @@ nat64_add_del_pool_addr (u32 thread_index,
           vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
                                    db->st.st_entries_num);
         }
-      /* *INDENT-ON* */
       vec_del1 (nm->addr_pool, i);
     }
 
   /* Add/del external address to FIB */
-  /* *INDENT-OFF* */
   pool_foreach (interface, nm->interfaces)
-   {
-    if (nat64_interface_is_inside(interface))
-      continue;
+    {
+      if (nat64_interface_is_inside (interface))
+	continue;
 
-    nat64_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
-    break;
-  }
-  /* *INDENT-ON* */
+      nat64_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
+      break;
+    }
 
   return 0;
 }
@@ -442,22 +462,22 @@ nat64_pool_addr_walk (nat64_pool_addr_walk_fn_t fn, void *ctx)
   nat64_main_t *nm = &nat64_main;
   nat64_address_t *a = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (a, nm->addr_pool)
     {
       if (fn (a, ctx))
         break;
-    };
-  /* *INDENT-ON* */
+    }
 }
 
 int
-nat64_add_interface_address (u32 sw_if_index, int is_add)
+nat64_add_del_interface_address (u32 sw_if_index, int is_add)
 {
   nat64_main_t *nm = &nat64_main;
   ip4_main_t *ip4_main = nm->ip4_main;
   ip4_address_t *first_int_addr;
   int i;
+
+  fail_if_disabled ();
 
   first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
 
@@ -543,19 +563,16 @@ nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   nat64_address_t *ap;
   const char *feature_name, *arc_name;
 
-  // TODO: is enabled ? we can't signal if it is not
+  fail_if_disabled ();
 
-  /* Check if interface already exists */
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
-   {
-    if (i->sw_if_index == sw_if_index)
-      {
-        interface = i;
-        break;
-      }
-  }
-  /* *INDENT-ON* */
+    {
+      if (i->sw_if_index == sw_if_index)
+	{
+	  interface = i;
+	  break;
+	}
+    }
 
   if (is_add)
     {
@@ -596,10 +613,10 @@ nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
 
   if (!is_inside)
     {
-      /* *INDENT-OFF* */
       vec_foreach (ap, nm->addr_pool)
-        nat64_add_del_addr_to_fib (&ap->addr, 32, sw_if_index, is_add);
-      /* *INDENT-ON* */
+	{
+	  nat64_add_del_addr_to_fib (&ap->addr, 32, sw_if_index, is_add);
+	}
     }
 
   if (nm->num_workers > 1)
@@ -641,13 +658,11 @@ nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx)
   nat64_main_t *nm = &nat64_main;
   nat64_interface_t *i = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
-   {
-    if (fn (i, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (fn (i, ctx))
+	break;
+    }
 }
 
 // TODO: plugin independent
@@ -822,58 +837,51 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   nat64_db_bib_entry_t *bibe;
   ip46_address_t addr;
 
-  /* *INDENT-OFF* */
   pool_foreach (static_bib, nm->static_bibs)
-   {
-    if ((static_bib->thread_index != thread_index) || (static_bib->done))
-      continue;
+    {
+      if ((static_bib->thread_index != thread_index) || (static_bib->done))
+	continue;
 
-    if (static_bib->is_add)
-      {
-          (void) nat64_db_bib_entry_create (thread_index, db,
-                                            &static_bib->in_addr,
-                                            &static_bib->out_addr,
-                                            static_bib->in_port,
-                                            static_bib->out_port,
-                                            static_bib->fib_index,
-                                            static_bib->proto, 1);
-          vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
-                                   db->bib.bib_entries_num);
-      }
-    else
-      {
-        addr.as_u64[0] = static_bib->in_addr.as_u64[0];
-        addr.as_u64[1] = static_bib->in_addr.as_u64[1];
-        bibe = nat64_db_bib_entry_find (db, &addr, static_bib->in_port,
-                                        static_bib->proto,
-                                        static_bib->fib_index, 1);
-        if (bibe)
-          {
-            nat64_db_bib_entry_free (thread_index, db, bibe);
-            vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
-                                     db->bib.bib_entries_num);
-            vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
-                                     db->st.st_entries_num);
-          }
-      }
+      if (static_bib->is_add)
+	{
+	  (void) nat64_db_bib_entry_create (
+	    thread_index, db, &static_bib->in_addr, &static_bib->out_addr,
+	    static_bib->in_port, static_bib->out_port, static_bib->fib_index,
+	    static_bib->proto, 1);
+	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				   db->bib.bib_entries_num);
+	}
+      else
+	{
+	  addr.as_u64[0] = static_bib->in_addr.as_u64[0];
+	  addr.as_u64[1] = static_bib->in_addr.as_u64[1];
+	  bibe = nat64_db_bib_entry_find (db, &addr, static_bib->in_port,
+					  static_bib->proto,
+					  static_bib->fib_index, 1);
+	  if (bibe)
+	    {
+	      nat64_db_bib_entry_free (thread_index, db, bibe);
+	      vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				       db->bib.bib_entries_num);
+	      vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
+				       db->st.st_entries_num);
+	    }
+	}
 
       static_bib->done = 1;
-  }
-  /* *INDENT-ON* */
+    }
 
   return 0;
 }
 
 static vlib_node_registration_t nat64_static_bib_worker_node;
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_static_bib_worker_node, static) = {
     .function = nat64_static_bib_worker_fn,
     .type = VLIB_NODE_TYPE_INPUT,
     .state = VLIB_NODE_STATE_INTERRUPT,
     .name = "nat64-static-bib-worker",
 };
-/* *INDENT-ON* */
 
 int
 nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
@@ -882,17 +890,24 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
-  u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-						     nm->fib_src_hi);
-  nat_protocol_t p = ip_proto_to_nat_proto (proto);
-  ip46_address_t addr;
-  int i;
-  nat64_address_t *a;
-  u32 thread_index = 0;
-  nat64_db_t *db;
   nat64_static_bib_to_update_t *static_bib;
+  nat64_address_t *a;
+  nat64_db_t *db;
+  nat_protocol_t p;
+
   vlib_main_t *worker_vm;
+
   u32 *to_be_free = 0, *index;
+  u32 fib_index, thread_index = 0;
+  ip46_address_t addr;
+
+  int i;
+
+  fail_if_disabled ();
+
+  p = ip_proto_to_nat_proto (proto);
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
+						 nm->fib_src_hi);
 
   if (nm->num_workers > 1)
     {
@@ -977,15 +992,15 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 
   if (nm->num_workers)
     {
-      /* *INDENT-OFF* */
       pool_foreach (static_bib, nm->static_bibs)
-       {
-        if (static_bib->done)
-          vec_add1 (to_be_free, static_bib - nm->static_bibs);
-      }
+	{
+	  if (static_bib->done)
+	    vec_add1 (to_be_free, static_bib - nm->static_bibs);
+	}
       vec_foreach (index, to_be_free)
-        pool_put_index (nm->static_bibs, index[0]);
-      /* *INDENT-ON* */
+	{
+	  pool_put_index (nm->static_bibs, index[0]);
+	}
       vec_free (to_be_free);
       pool_get (nm->static_bibs, static_bib);
       static_bib->in_addr.as_u64[0] = in_addr->as_u64[0];
@@ -1209,6 +1224,8 @@ nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
   nat64_prefix_t *p = 0;
   int i;
 
+  fail_if_disabled ();
+
   /* Verify prefix length */
   if (plen != 32 && plen != 40 && plen != 48 && plen != 56 && plen != 64
       && plen != 96)
@@ -1258,13 +1275,11 @@ nat64_prefix_walk (nat64_prefix_walk_fn_t fn, void *ctx)
   nat64_main_t *nm = &nat64_main;
   nat64_prefix_t *p = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (p, nm->pref64)
     {
       if (fn (p, ctx))
         break;
-    };
-  /* *INDENT-ON* */
+    }
 }
 
 void
@@ -1273,7 +1288,6 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
   nat64_main_t *nm = &nat64_main;
   nat64_prefix_t *p, *gp = 0, *prefix = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (p, nm->pref64)
     {
       if (p->fib_index == fib_index)
@@ -1284,8 +1298,7 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
 
       if (p->fib_index == 0)
         gp = p;
-    };
-  /* *INDENT-ON* */
+    }
 
   if (!prefix)
     prefix = gp;
@@ -1344,7 +1357,6 @@ nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
   nat64_prefix_t *p, *gp = 0;
   u8 plen = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (p, nm->pref64)
     {
       if (p->fib_index == fib_index)
@@ -1355,8 +1367,7 @@ nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
 
       if (p->vrf_id == 0)
         gp = p;
-    };
-  /* *INDENT-ON* */
+    }
 
   if (!plen)
     {
@@ -1416,9 +1427,11 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   nat64_db_t *db;
   u32 now;
 
-  // TODO: barier sync on plugin enabled
-  if (plugin_enabled () == 0)
-    return 0;
+  // skip if disabled
+  if (PREDICT_FALSE (plugin_enabled () == 0))
+    {
+      return 0;
+    }
 
   db = &nm->db[thread_index];
   now = (u32) vlib_time_now (vm);
@@ -1431,14 +1444,12 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_expire_worker_walk_node, static) = {
     .function = nat64_expire_worker_walk_fn,
     .type = VLIB_NODE_TYPE_INPUT,
     .state = VLIB_NODE_STATE_INTERRUPT,
     .name = "nat64-expire-worker-walk",
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Centralized process to drive per worker expire walk.
@@ -1517,11 +1528,7 @@ nat64_plugin_enable (nat64_config_t c)
 {
   nat64_main_t *nm = &nat64_main;
 
-  if (plugin_enabled () == 1)
-    {
-      nat64_log_err ("plugin already enabled!");
-      return 1;
-    }
+  fail_if_enabled ();
 
   if (!c.bib_buckets)
     c.bib_buckets = 1024;
@@ -1559,30 +1566,23 @@ nat64_plugin_disable ()
   nat64_address_t *a;
   nat64_interface_t *i, *interfaces = 0;
 
-  if (plugin_enabled () == 0)
-    {
-      nat64_log_err ("plugin already disabled!");
-      return 1;
-    }
-  nm->enabled = 0;
+  fail_if_disabled ();
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
-   {
-    vec_add1 (interfaces, *i);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (interfaces, *i);
+    }
   vec_foreach (i, interfaces)
-  {
-    rv = nat64_interface_add_del (i->sw_if_index, i->flags, 0);
-    if (rv)
-      {
-	nat64_log_err ("%U %s interface del failed",
-		       format_vnet_sw_if_index_name, vnm, i->sw_if_index,
-		       i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE ?
-		       "inside" : "outside");
-      }
-  }
+    {
+      rv = nat64_interface_add_del (i->sw_if_index, i->flags, 0);
+      if (rv)
+	{
+	  nat64_log_err (
+	    "%U %s interface del failed", format_vnet_sw_if_index_name, vnm,
+	    i->sw_if_index,
+	    i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE ? "inside" : "outside");
+	}
+    }
   vec_free (interfaces);
   pool_free (nm->interfaces);
 
@@ -1606,6 +1606,8 @@ nat64_plugin_disable ()
       }
       vec_free (nm->addr_pool);
     }
+
+  nm->enabled = 0;
   return rv;
 }
 

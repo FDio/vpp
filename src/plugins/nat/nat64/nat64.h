@@ -93,14 +93,12 @@ typedef struct
 {
   ip4_address_t addr;
   u32 fib_index;
-/* *INDENT-OFF* */
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
   u32 busy_##n##_port_refcounts[65535];
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
 } nat64_address_t;
 
 typedef struct
@@ -253,7 +251,7 @@ void nat64_pool_addr_walk (nat64_pool_addr_walk_fn_t fn, void *ctx);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_interface_address (u32 sw_if_index, int is_add);
+int nat64_add_del_interface_address (u32 sw_if_index, int is_add);
 
 /**
  * @brief Enable/disable NAT64 feature on the interface.
@@ -487,13 +485,6 @@ u32 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip);
     @return 1 if outside interface
 */
 #define nat64_interface_is_outside(i) i->flags & NAT64_INTERFACE_FLAG_IS_OUTSIDE
-
-static_always_inline u8
-plugin_enabled ()
-{
-  nat64_main_t *nm = &nat64_main;
-  return nm->enabled;
-}
 
 void
 nat64_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,

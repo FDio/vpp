@@ -69,7 +69,6 @@ vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t * mp)
   vl_api_nat64_get_timeouts_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT64_GET_TIMEOUTS_REPLY,
   ({
     rmp->udp = htonl (nm->udp_timeout);
@@ -77,7 +76,6 @@ vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t * mp)
     rmp->tcp_transitory = htonl (nm->tcp_trans_timeout);
     rmp->icmp = htonl (nm->icmp_timeout);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -298,10 +296,10 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
     .context = mp->context,
   };
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
-    nat64_db_bib_walk (db, mp->proto, nat64_api_bib_walk, &ctx);
-  /* *INDENT-ON* */
+    {
+      nat64_db_bib_walk (db, mp->proto, nat64_api_bib_walk, &ctx);
+    }
 }
 
 static int
@@ -356,13 +354,11 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
     .context = mp->context,
   };
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
       ctx.db = db;
       nat64_db_st_walk (db, mp->proto, nat64_api_st_walk, &ctx);
     }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -429,7 +425,7 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = nat64_add_interface_address (sw_if_index, mp->is_add);
+  rv = nat64_add_del_interface_address (sw_if_index, mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
 
