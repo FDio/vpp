@@ -99,6 +99,7 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
 {
   vl_api_udp_encap_add_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
+  udp_encap_fixup_flags_t flags;
   u32 fib_index, table_id;
   fib_protocol_t fproto;
   ip46_type_t itype;
@@ -119,11 +120,13 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
       goto done;
     }
 
-  uei = udp_encap_add_and_lock (fproto, fib_index,
-				&src_ip, &dst_ip,
+  flags = UDP_ENCAP_FIXUP_NONE;
+  if (mp->udp_encap.src_port == 0)
+    flags |= UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY;
+
+  uei = udp_encap_add_and_lock (fproto, fib_index, &src_ip, &dst_ip,
 				ntohs (mp->udp_encap.src_port),
-				ntohs (mp->udp_encap.dst_port),
-				UDP_ENCAP_FIXUP_NONE);
+				ntohs (mp->udp_encap.dst_port), flags);
 
 done:
   /* *INDENT-OFF* */
@@ -189,10 +192,18 @@ vl_api_udp_decap_add_del_t_handler (vl_api_udp_decap_add_del_t *mp)
 static clib_error_t *
 udp_api_hookup (vlib_main_t * vm)
 {
+  api_main_t *am = vlibapi_get_main ();
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
+
+  /* Mark these APIs as mp safe */
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_UDP_ENCAP_ADD, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_UDP_ENCAP_DEL, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_UDP_ENCAP_DUMP,
+			      1);
 
   return 0;
 }

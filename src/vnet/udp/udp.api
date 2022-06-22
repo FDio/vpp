@@ -32,7 +32,7 @@ import "vnet/ip/ip_types.api";
  * @param dst_ip - Encap destination address
  * @param src_ip - Encap source address
  * @param dst_port - Encap destination port
- * @param src_port - Encap source port
+ * @param src_port - Encap source port, 0 for entopy per rfc7510
  * @param id - VPP assigned id; ignored in add message, set in dump
  */
 typedef udp_encap

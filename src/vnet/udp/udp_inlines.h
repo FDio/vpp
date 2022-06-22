@@ -21,6 +21,9 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/interface_output.h>
+#include <vnet/ip/ip4_inlines.h>
+#include <vnet/ip/ip6_inlines.h>
+#include <vnet/udp/udp_encap.h>
 
 always_inline void *
 vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
@@ -42,8 +45,39 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
   return uh;
 }
 
+/*
+ * Encode udp source port entropy value per
+ * https://datatracker.ietf.org/doc/html/rfc7510#section-3
+ */
+always_inline u16
+ip_udp_sport_entropy (vlib_buffer_t *b0)
+{
+  u16 port = clib_host_to_net_u16 (0x03 << 14);
+  port |= vnet_buffer (b0)->ip.flow_hash & 0xffff;
+  return port;
+}
+
+always_inline u32
+ip_udp_compute_flow_hash (vlib_buffer_t *b0, u8 is_ip4)
+{
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+
+  if (is_ip4)
+    {
+      ip4 = (ip4_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
+      return ip4_compute_flow_hash (ip4, IP_FLOW_HASH_DEFAULT);
+    }
+  else
+    {
+      ip6 = (ip6_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
+      return ip6_compute_flow_hash (ip6, IP_FLOW_HASH_DEFAULT);
+    }
+}
+
 always_inline void
-ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
+ip_udp_fixup_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 is_ip4,
+		  u8 sport_entropy)
 {
   u16 new_l0;
   udp_header_t *udp0;
@@ -71,6 +105,9 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 				     - sizeof (*ip0));
       udp0->length = new_l0;
+
+      if (sport_entropy)
+	udp0->src_port = ip_udp_sport_entropy (b0);
     }
   else
     {
@@ -87,6 +124,9 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
       udp0 = (udp_header_t *) (ip0 + 1);
       udp0->length = new_l0;
 
+      if (sport_entropy)
+	udp0->src_port = ip_udp_sport_entropy (b0);
+
       udp0->checksum =
 	ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus0);
       ASSERT (bogus0 == 0);
@@ -99,13 +139,20 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 always_inline void
 ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
 		  ip_address_family_t encap_family,
-		  ip_address_family_t payload_family)
+		  ip_address_family_t payload_family,
+		  udp_encap_fixup_flags_t flags)
 {
+  u8 sport_entropy = (flags & UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY) != 0;
 
   if (payload_family < N_AF)
     {
       vnet_calc_checksums_inline (vm, b0, payload_family == AF_IP4,
 				  payload_family == AF_IP6);
+
+      /* Сalculate flow hash to be used for entropy */
+      if (sport_entropy && 0 == vnet_buffer (b0)->ip.flow_hash)
+	vnet_buffer (b0)->ip.flow_hash =
+	  ip_udp_compute_flow_hash (b0, payload_family == AF_IP4);
     }
 
   vlib_buffer_advance (b0, -ec_len);
@@ -118,7 +165,7 @@ ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
 
       /* Apply the encap string. */
       clib_memcpy_fast (ip0, ec0, ec_len);
-      ip_udp_fixup_one (vm, b0, 1);
+      ip_udp_fixup_one (vm, b0, 1, sport_entropy);
     }
   else
     {
@@ -128,7 +175,7 @@ ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
 
       /* Apply the encap string. */
       clib_memcpy_fast (ip0, ec0, ec_len);
-      ip_udp_fixup_one (vm, b0, 0);
+      ip_udp_fixup_one (vm, b0, 0, sport_entropy);
     }
 }
 
@@ -136,16 +183,28 @@ always_inline void
 ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
 		  u8 *ec0, u8 *ec1, word ec_len,
 		  ip_address_family_t encap_family,
-		  ip_address_family_t payload_family)
+		  ip_address_family_t payload_family,
+		  udp_encap_fixup_flags_t flags0,
+		  udp_encap_fixup_flags_t flags1)
 {
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;
   int payload_ip4 = (payload_family == AF_IP4);
+  int sport_entropy0 = (flags0 & UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY) != 0;
+  int sport_entropy1 = (flags1 & UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY) != 0;
 
   if (payload_family < N_AF)
     {
       vnet_calc_checksums_inline (vm, b0, payload_ip4, !payload_ip4);
       vnet_calc_checksums_inline (vm, b1, payload_ip4, !payload_ip4);
+
+      /* Сalculate flow hash to be used for entropy */
+      if (sport_entropy0 && 0 == vnet_buffer (b0)->ip.flow_hash)
+	vnet_buffer (b0)->ip.flow_hash =
+	  ip_udp_compute_flow_hash (b0, payload_ip4);
+      if (sport_entropy1 && 0 == vnet_buffer (b1)->ip.flow_hash)
+	vnet_buffer (b1)->ip.flow_hash =
+	  ip_udp_compute_flow_hash (b1, payload_ip4);
     }
 
   vlib_buffer_advance (b0, -ec_len);
@@ -195,6 +254,11 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
 			      sizeof (*ip1));
       udp0->length = new_l0;
       udp1->length = new_l1;
+
+      if (sport_entropy0)
+	udp0->src_port = ip_udp_sport_entropy (b0);
+      if (sport_entropy1)
+	udp1->src_port = ip_udp_sport_entropy (b1);
     }
   else
     {
@@ -221,6 +285,11 @@ ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
 
       udp0->length = new_l0;
       udp1->length = new_l1;
+
+      if (sport_entropy0)
+	udp0->src_port = ip_udp_sport_entropy (b0);
+      if (sport_entropy1)
+	udp1->src_port = ip_udp_sport_entropy (b1);
 
       udp0->checksum =
 	ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus0);
