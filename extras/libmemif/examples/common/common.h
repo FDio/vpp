@@ -46,7 +46,7 @@
   while (0)
 
 /* maximum tx/rx memif buffers */
-#define MAX_MEMIF_BUFS 256
+#define MAX_MEMIF_BUFS 1024
 
 struct memif_connection;
 
