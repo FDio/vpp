@@ -285,7 +285,8 @@ lisp_gpe_fixup (vlib_main_t * vm,
 
   /* Fixup the checksum and len fields in the LISP tunnel encap
    * that was applied at the midchain node */
-  ip_udp_fixup_one (vm, b, is_v4_packet (vlib_buffer_get_current (b)));
+  ip_udp_fixup_one (vm, b, is_v4_packet (vlib_buffer_get_current (b)),
+		    UDP_ENCAP_FIXUP_NONE);
 }
 
 /**

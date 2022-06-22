@@ -96,7 +96,7 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
   ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, af,
-		    N_AF);
+		    N_AF, UDP_ENCAP_FIXUP_NONE);
   next0[0] = t0->encap_next_node;
 }
 
@@ -123,9 +123,9 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
 
   ip_udp_encap_one (ngm->vlib_main, b0, t0->rewrite, t0->rewrite_size, af,
-		    N_AF);
+		    N_AF, UDP_ENCAP_FIXUP_NONE);
   ip_udp_encap_one (ngm->vlib_main, b1, t1->rewrite, t1->rewrite_size, af,
-		    N_AF);
+		    N_AF, UDP_ENCAP_FIXUP_NONE);
   next0[0] = next1[0] = t0->encap_next_node;
 }
 

@@ -25,6 +25,8 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
 NUM_PKTS = 67
+ENTROPY_PORT_MIN = 0x3 << 14
+ENTROPY_PORT_MAX = 0xFFFF
 
 
 @tag_fixme_vpp_workers
@@ -78,16 +80,22 @@ class TestUdpEncap(VppTestCase):
             i.admin_down()
         super(TestUdpEncap, self).tearDown()
 
-    def validate_outer4(self, rx, encap_obj):
+    def validate_outer4(self, rx, encap_obj, sport_entropy=False):
         self.assertEqual(rx[IP].src, encap_obj.src_ip_s)
         self.assertEqual(rx[IP].dst, encap_obj.dst_ip_s)
-        self.assertEqual(rx[UDP].sport, encap_obj.src_port)
+        if sport_entropy:
+            self.assert_in_range(rx[UDP].sport, ENTROPY_PORT_MIN, ENTROPY_PORT_MAX)
+        else:
+            self.assertEqual(rx[UDP].sport, encap_obj.src_port)
         self.assertEqual(rx[UDP].dport, encap_obj.dst_port)
 
-    def validate_outer6(self, rx, encap_obj):
+    def validate_outer6(self, rx, encap_obj, sport_entropy=False):
         self.assertEqual(rx[IPv6].src, encap_obj.src_ip_s)
         self.assertEqual(rx[IPv6].dst, encap_obj.dst_ip_s)
-        self.assertEqual(rx[UDP].sport, encap_obj.src_port)
+        if sport_entropy:
+            self.assert_in_range(rx[UDP].sport, ENTROPY_PORT_MIN, ENTROPY_PORT_MAX)
+        else:
+            self.assertEqual(rx[UDP].sport, encap_obj.src_port)
         self.assertEqual(rx[UDP].dport, encap_obj.dst_port)
 
     def validate_inner4(self, rx, tx, ttl=None):
@@ -342,6 +350,193 @@ class TestUdpEncap(VppTestCase):
             p = MPLS(p["UDP"].payload.load)
             self.validate_inner4(p, p_4omo4, ttl=63)
         self.assertEqual(udp_encap_1.get_stats()["packets"], 2 * NUM_PKTS)
+
+    def test_udp_encap_entropy(self):
+        """UDP Encap src port entropy test"""
+
+        #
+        # construct a UDP encap object through each of the peers
+        # v4 through the first two peers, v6 through the second.
+        # use zero source port to enable entropy per rfc7510.
+        #
+        udp_encap_0 = VppUdpEncap(self, self.pg0.local_ip4, self.pg0.remote_ip4, 0, 440)
+        udp_encap_1 = VppUdpEncap(
+            self, self.pg1.local_ip4, self.pg1.remote_ip4, 0, 441, table_id=1
+        )
+        udp_encap_2 = VppUdpEncap(
+            self, self.pg2.local_ip6, self.pg2.remote_ip6, 0, 442, table_id=2
+        )
+        udp_encap_3 = VppUdpEncap(
+            self, self.pg3.local_ip6, self.pg3.remote_ip6, 0, 443, table_id=3
+        )
+        udp_encap_0.add_vpp_config()
+        udp_encap_1.add_vpp_config()
+        udp_encap_2.add_vpp_config()
+        udp_encap_3.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh udp encap"))
+
+        self.assertTrue(find_udp_encap(self, udp_encap_0))
+        self.assertTrue(find_udp_encap(self, udp_encap_1))
+        self.assertTrue(find_udp_encap(self, udp_encap_2))
+        self.assertTrue(find_udp_encap(self, udp_encap_3))
+
+        #
+        # Routes via each UDP encap object - all combinations of v4 and v6.
+        #
+        route_4o4 = VppIpRoute(
+            self,
+            "1.1.0.1",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_0.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+            table_id=1,
+        )
+        route_4o6 = VppIpRoute(
+            self,
+            "1.1.2.1",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_2.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+        )
+        route_6o4 = VppIpRoute(
+            self,
+            "2001::1",
+            128,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_1.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
+        route_6o6 = VppIpRoute(
+            self,
+            "2001::3",
+            128,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_3.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                )
+            ],
+        )
+        route_4o4.add_vpp_config()
+        route_4o6.add_vpp_config()
+        route_6o6.add_vpp_config()
+        route_6o4.add_vpp_config()
+
+        #
+        # 4o4 encap
+        #
+        p_4o4 = []
+        for i in range(NUM_PKTS):
+            p_4o4.append(
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IP(src="2.2.2.2", dst="1.1.0.1")
+                / UDP(sport=1234 + i, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+        rx = self.send_and_expect(self.pg1, p_4o4, self.pg0)
+        sports = set()
+        for i, p in enumerate(rx):
+            self.validate_outer4(p, udp_encap_0, True)
+            sports.add(p["UDP"].sport)
+            p = IP(p["UDP"].payload.load)
+            self.validate_inner4(p, p_4o4[i])
+        self.assertEqual(udp_encap_0.get_stats()["packets"], NUM_PKTS)
+        self.assertGreater(
+            len(sports), 1, "source port {} is not an entropy value".format(sports)
+        )
+
+        #
+        # 4o6 encap
+        #
+        p_4o6 = []
+        for i in range(NUM_PKTS):
+            p_4o6.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src="2.2.2.2", dst="1.1.2.1")
+                / UDP(sport=1234 + i, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+        rx = self.send_and_expect(self.pg0, p_4o6, self.pg2)
+        sports = set()
+        for p in rx:
+            self.validate_outer6(p, udp_encap_2, True)
+            sports.add(p["UDP"].sport)
+            p = IP(p["UDP"].payload.load)
+            self.validate_inner4(p, p_4o6[i])
+        self.assertEqual(udp_encap_2.get_stats()["packets"], NUM_PKTS)
+        self.assertGreater(
+            len(sports), 1, "source port {} is not an entropy value".format(sports)
+        )
+
+        #
+        # 6o4 encap
+        #
+        p_6o4 = []
+        for i in range(NUM_PKTS):
+            p_6o4.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src="2001::100", dst="2001::1")
+                / UDP(sport=1234 + i, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+        rx = self.send_and_expect(self.pg0, p_6o4, self.pg1)
+        sports = set()
+        for p in rx:
+            self.validate_outer4(p, udp_encap_1, True)
+            sports.add(p["UDP"].sport)
+            p = IPv6(p["UDP"].payload.load)
+            self.validate_inner6(p, p_6o4[i])
+        self.assertEqual(udp_encap_1.get_stats()["packets"], NUM_PKTS)
+        self.assertGreater(
+            len(sports), 1, "source port {} is not an entropy value".format(sports)
+        )
+
+        #
+        # 6o6 encap
+        #
+        p_6o6 = []
+        for i in range(NUM_PKTS):
+            p_6o6.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src="2001::100", dst="2001::3")
+                / UDP(sport=1234 + i, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+        rx = self.send_and_expect(self.pg0, p_6o6, self.pg3)
+        sports = set()
+        for p in rx:
+            self.validate_outer6(p, udp_encap_3, True)
+            sports.add(p["UDP"].sport)
+            p = IPv6(p["UDP"].payload.load)
+            self.validate_inner6(p, p_6o6[i])
+        self.assertEqual(udp_encap_3.get_stats()["packets"], NUM_PKTS)
+        self.assertGreater(
+            len(sports), 1, "source port {} is not an entropy value".format(sports)
+        )
 
     def test_udp_decap(self):
         """UDP Decap test"""
