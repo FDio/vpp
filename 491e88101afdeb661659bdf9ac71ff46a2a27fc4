@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "021f7585_9477f515",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-22T17:22:09Z",
+      "side": 1,
+      "message": "perftest-3n-dnv mrrANDnic_intel-x*ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
+      "revId": "491e88101afdeb661659bdf9ac71ff46a2a27fc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
