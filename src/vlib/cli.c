@@ -449,6 +449,10 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 				uword parent_command_index)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_runtime_t *node_runtime = &p->node_runtime;
+  vlib_node_t *node = vlib_get_node (vm, node_runtime->node_index);
+  u32 old_process_index;
   vlib_cli_command_t *parent, *c;
   clib_error_t *error = 0;
   unformat_input_t sub_input;
@@ -646,8 +650,14 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
 				     c - cm->commands, 0 /* before */ );
 
+	      /* Save away current process for possible suspend. */
+	      old_process_index = nm->current_process_index;
+	      nm->current_process_index = node->runtime_index;
+
 	      c->hit_counter++;
 	      c_error = c->function (vm, si, c);
+
+	      nm->current_process_index = old_process_index;
 
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,

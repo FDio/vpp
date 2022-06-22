@@ -341,6 +341,11 @@ vlib_apis_hookup (vlib_main_t *vm)
   msg_id_base = setup_message_id_table ();
 
   vl_api_set_msg_thread_safe (am, VL_API_GET_NODE_GRAPH, 1);
+  /* Some CLI commands are not thread safe, but
+   * vlib_cli_dispatch_sub_commands adds barriers for those.
+   */
+  vl_api_set_msg_thread_safe (am, VL_API_CLI_INBAND, 1);
+  vl_api_set_msg_thread_safe (am, VL_API_CLI, 1);
   return 0;
 }
 
