@@ -16,6 +16,23 @@
       "message": "perftest-3n-dnv mrrANDnic_intel-x*ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
       "revId": "4997bd4d6ed29abe528e03a47e8b66cb346edce9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71100d15_4d191880",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-22T16:54:04Z",
+      "side": 1,
+      "message": "In #5 the performance degradation is gone, but call count is still too low.",
+      "revId": "4997bd4d6ed29abe528e03a47e8b66cb346edce9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
