@@ -34,6 +34,41 @@
       "parentUuid": "ec71fdec_2e5aa0b5",
       "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a0a6afc_e46fca4a",
+        "filename": "src/plugins/perfmon/arm/dispatch_wrapper.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-23T14:04:18Z",
+      "side": 1,
+      "message": "\u003e read_pmc_from_mmap(), lines 59 and 70?\n\nignore me, clearly was asleep.\n\nI _still_ don\u0027t like the assembly, still think it belongs in clib. \nBut we can move it at later date.",
+      "parentUuid": "d2eb10ff_e5537f7b",
+      "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29ae3c6f_f282d57a",
+        "filename": "src/plugins/perfmon/arm/events.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-23T14:04:18Z",
+      "side": 1,
+      "message": "sorry I missed this earlier, please use C-style comments /* */",
+      "revId": "6d69e23261786e05e2efaabbad1819a2dcf040cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
