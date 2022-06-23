@@ -123,8 +123,7 @@ ip6_nd_proxy_unicast (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       icmp0 = ip6_next_header (ip6);
       type0 = icmp0->type;
-      if (type0 == ICMP6_neighbor_solicitation ||
-	  type0 == ICMP6_neighbor_advertisement)
+      if (type0 == ICMP6_neighbor_solicitation)
 	{
 	  icmp6_neighbor_solicitation_or_advertisement_header_t *icmp6_nsa;
 	  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
