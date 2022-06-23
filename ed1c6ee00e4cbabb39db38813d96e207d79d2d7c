@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "ed1c6ee00e4cbabb39db38813d96e207d79d2d7c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30a92dcc_da1be1e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-23T14:19:32Z",
+      "side": 1,
+      "message": "C-style comments \u0026 rework the __() style a small bit. ",
+      "revId": "ed1c6ee00e4cbabb39db38813d96e207d79d2d7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
