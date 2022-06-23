@@ -84,6 +84,23 @@
       "message": "C-style comments",
       "revId": "b414f1f077e2778fff893f0248149e7cc3c659ab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76425cd8_9025adbc",
+        "filename": "src/plugins/perfmon/perfmon.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2022-06-23T14:18:32Z",
+      "side": 1,
+      "message": "One more...\n\nThis should be a generic macro somewhere, perhaps TO_BIT() or SET_BIT in \u0027bitops.h\u0027, or if you like the minimalist _(x) style. You can define above each use and unset it afterwards.",
+      "revId": "b414f1f077e2778fff893f0248149e7cc3c659ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
