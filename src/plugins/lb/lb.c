@@ -176,9 +176,10 @@ u8 *format_lb_vip (u8 * s, va_list * args)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
       s = format (s, " type:%s port:%u target_port:%u",
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+		  (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ?
+			  "clusterip" :
+			  "nodeport",
+		  vip->port, ntohs (vip->encap_args.target_port));
     }
 
   return s;
@@ -217,18 +218,17 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
 
   if (vip->type == LB_VIP_TYPE_IP4_L3DSR)
     {
-      s = format(s, "%U  dscp:%u\n",
-                    format_white_space, indent,
-                    vip->encap_args.dscp);
+      s = format (s, "%U  dscp:%u\n", format_white_space, indent,
+		  vip->encap_args.dscp);
     }
   else if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
-      s = format (s, "%U  type:%s port:%u target_port:%u",
-         format_white_space, indent,
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+      s = format (
+	s, "%U  type:%s port:%u target_port:%u", format_white_space, indent,
+	(vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ? "clusterip" :
+								    "nodeport",
+	vip->port, ntohs (vip->encap_args.target_port));
     }
 
   //Print counters
@@ -688,62 +688,64 @@ next:
             clib_bihash_kv_8_8_t kv4;
             m_key4.addr = as->address.ip4;
             m_key4.port = vip->encap_args.target_port;
-            m_key4.protocol = 0;
-            m_key4.fib_index = 0;
+	    m_key4.protocol = lb_ip_proto_to_nat_proto (vip->protocol);
+	    m_key4.fib_index = 0;
 
-            if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
-              {
-                m->src_ip.ip4 = vip->prefix.ip4;
-              }
-            else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
-              {
-                m->src_ip.ip4 = lbm->ip4_src_address;
-              }
-            m->src_ip_is_ipv6 = 0;
-            m->as_ip.ip4 = as->address.ip4;
-            m->as_ip_is_ipv6 = 0;
-            m->src_port = vip->port;
-            m->target_port = vip->encap_args.target_port;
-            m->vrf_id = 0;
-            m->fib_index = 0;
+	    if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+	      {
+		m->src_ip.ip4 = vip->prefix.ip4;
+	      }
+	    else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
+	      {
+		m->src_ip.ip4 = lbm->ip4_src_address;
+	      }
+	    m->src_ip_is_ipv6 = 0;
+	    m->as_ip.ip4 = as->address.ip4;
+	    m->as_ip_is_ipv6 = 0;
+	    m->src_port = vip->port;
+	    m->target_port = vip->encap_args.target_port;
+	    m->vrf_id = 0;
+	    m->fib_index = 0;
 
-            kv4.key = m_key4.as_u64;
-            kv4.value = m - lbm->snat_mappings;
-            clib_bihash_add_del_8_8(&lbm->mapping_by_as4, &kv4, 1);
-        } else {
-            lb_snat6_key_t m_key6;
-            clib_bihash_kv_24_8_t kv6;
-            m_key6.addr.as_u64[0] = as->address.ip6.as_u64[0];
-            m_key6.addr.as_u64[1] = as->address.ip6.as_u64[1];
-            m_key6.port = vip->encap_args.target_port;
-            m_key6.protocol = 0;
-            m_key6.fib_index = 0;
+	    kv4.key = m_key4.as_u64;
+	    kv4.value = m - lbm->snat_mappings;
+	    clib_bihash_add_del_8_8 (&lbm->mapping_by_as4, &kv4, 1);
+	  }
+	else
+	  {
+	    lb_snat6_key_t m_key6;
+	    clib_bihash_kv_24_8_t kv6;
+	    m_key6.addr.as_u64[0] = as->address.ip6.as_u64[0];
+	    m_key6.addr.as_u64[1] = as->address.ip6.as_u64[1];
+	    m_key6.port = vip->encap_args.target_port;
+	    m_key6.protocol = lb_ip_proto_to_nat_proto (vip->protocol);
+	    m_key6.fib_index = 0;
 
-            if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
-              {
-                m->src_ip.ip6.as_u64[0] = vip->prefix.ip6.as_u64[0];
-                m->src_ip.ip6.as_u64[1] = vip->prefix.ip6.as_u64[1];
-              }
-            else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
-              {
-                m->src_ip.ip6.as_u64[0] = lbm->ip6_src_address.as_u64[0];
-                m->src_ip.ip6.as_u64[1] = lbm->ip6_src_address.as_u64[1];
-              }
-            m->src_ip_is_ipv6 = 1;
-            m->as_ip.ip6.as_u64[0] = as->address.ip6.as_u64[0];
-            m->as_ip.ip6.as_u64[1] = as->address.ip6.as_u64[1];
-            m->as_ip_is_ipv6 = 1;
-            m->src_port = vip->port;
-            m->target_port = vip->encap_args.target_port;
-            m->vrf_id = 0;
-            m->fib_index = 0;
+	    if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
+	      {
+		m->src_ip.ip6.as_u64[0] = vip->prefix.ip6.as_u64[0];
+		m->src_ip.ip6.as_u64[1] = vip->prefix.ip6.as_u64[1];
+	      }
+	    else if (vip->encap_args.srv_type == LB_SRV_TYPE_NODEPORT)
+	      {
+		m->src_ip.ip6.as_u64[0] = lbm->ip6_src_address.as_u64[0];
+		m->src_ip.ip6.as_u64[1] = lbm->ip6_src_address.as_u64[1];
+	      }
+	    m->src_ip_is_ipv6 = 1;
+	    m->as_ip.ip6.as_u64[0] = as->address.ip6.as_u64[0];
+	    m->as_ip.ip6.as_u64[1] = as->address.ip6.as_u64[1];
+	    m->as_ip_is_ipv6 = 1;
+	    m->src_port = vip->port;
+	    m->target_port = vip->encap_args.target_port;
+	    m->vrf_id = 0;
+	    m->fib_index = 0;
 
-            kv6.key[0] = m_key6.as_u64[0];
-            kv6.key[1] = m_key6.as_u64[1];
-            kv6.key[2] = m_key6.as_u64[2];
-            kv6.value = m - lbm->snat_mappings;
-            clib_bihash_add_del_24_8(&lbm->mapping_by_as6, &kv6, 1);
-        }
+	    kv6.key[0] = m_key6.as_u64[0];
+	    kv6.key[1] = m_key6.as_u64[1];
+	    kv6.key[2] = m_key6.as_u64[2];
+	    kv6.value = m - lbm->snat_mappings;
+	    clib_bihash_add_del_24_8 (&lbm->mapping_by_as6, &kv6, 1);
+	  }
       }
   }
   vec_free(to_be_added);
