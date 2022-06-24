@@ -498,14 +498,27 @@ lb_node_fn (vlib_main_t * vm,
 
                   if (ip40->protocol == IP_PROTOCOL_UDP)
                     {
-                      uh->dst_port = vip0->encap_args.target_port;
+		      u16 old_port = uh->dst_port;
+		      uh->dst_port = vip0->encap_args.target_port;
                       csum = uh->checksum;
-                      csum = ip_csum_sub_even (csum, old_dst);
-                      csum = ip_csum_add_even (
-                          csum, lbm->ass[asindex0].address.ip4.as_u32);
-                      uh->checksum = ip_csum_fold (csum);
+		      csum = ip_csum_update (
+			csum, old_dst, lbm->ass[asindex0].address.ip4.as_u32,
+			ip4_header_t, dst_address);
+		      csum = ip_csum_update (csum, old_port,
+					     vip0->encap_args.target_port,
+					     ip4_header_t, length);
+		      uh->checksum = ip_csum_fold (csum);
                     }
-                  else
+		  else if (ip40->protocol == IP_PROTOCOL_TCP)
+		    {
+		      tcp_header_t *tcp0;
+		      tcp0 = ip4_next_header (ip40);
+		      tcp0->dst_port = vip0->encap_args.target_port;
+		      tcp0->checksum = 0;
+		      tcp0->checksum =
+			ip4_tcp_udp_compute_checksum (vm, p0, ip40);
+		    }
+		  else
                     {
                       asindex0 = 0;
                     }
@@ -515,8 +528,9 @@ lb_node_fn (vlib_main_t * vm,
                   /* NAT66 */
                   ip6_header_t *ip60;
                   ip6_address_t old_dst;
+		  int bogus = 0;
 
-                  ip60 = vlib_buffer_get_current (p0);
+		  ip60 = vlib_buffer_get_current (p0);
                   uh = (udp_header_t *) (ip60 + 1);
 
                   old_dst.as_u64[0] = ip60->dst_address.as_u64[0];
@@ -526,9 +540,10 @@ lb_node_fn (vlib_main_t * vm,
                   ip60->dst_address.as_u64[1] =
                       lbm->ass[asindex0].address.ip6.as_u64[1];
 
-                  if (PREDICT_TRUE(ip60->protocol == IP_PROTOCOL_UDP))
-                    {
-                      uh->dst_port = vip0->encap_args.target_port;
+		  if (ip60->protocol == IP_PROTOCOL_UDP)
+		    {
+		      u16 old_port = uh->dst_port;
+		      uh->dst_port = vip0->encap_args.target_port;
                       csum = uh->checksum;
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
                       csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
@@ -536,9 +551,21 @@ lb_node_fn (vlib_main_t * vm,
                           csum, lbm->ass[asindex0].address.ip6.as_u64[0]);
                       csum = ip_csum_add_even (
                           csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
-                      uh->checksum = ip_csum_fold (csum);
+		      csum = ip_csum_sub_even (csum, old_port);
+		      csum =
+			ip_csum_add_even (csum, vip0->encap_args.target_port);
+		      uh->checksum = ip_csum_fold (csum);
                     }
-                  else
+		  else if (ip60->protocol == IP_PROTOCOL_TCP)
+		    {
+		      tcp_header_t *tcp0;
+		      tcp0 = ip6_next_header (ip60);
+		      tcp0->dst_port = vip0->encap_args.target_port;
+		      tcp0->checksum = 0;
+		      tcp0->checksum = ip6_tcp_udp_icmp_compute_checksum (
+			vm, p0, ip60, &bogus);
+		    }
+		  else
                     {
                       asindex0 = 0;
                     }
@@ -811,14 +838,13 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               if (lb_nat44_mapping_match (lbm, &key40, &index40))
                 {
-                  next0 = LB_NAT4_IN2OUT_NEXT_DROP;
                   goto trace0;
                 }
 
               sm40 = pool_elt_at_index(lbm->snat_mappings, index40);
               new_addr0 = sm40->src_ip.ip4.as_u32;
-              new_port0 = sm40->src_port;
-              vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm40->fib_index;
+	      new_port0 = clib_host_to_net_u16 (sm40->src_port);
+	      vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm40->fib_index;
               old_addr0 = ip40->src_address.as_u32;
               ip40->src_address.as_u32 = new_addr0;
 
