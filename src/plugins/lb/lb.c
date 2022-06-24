@@ -176,9 +176,10 @@ u8 *format_lb_vip (u8 * s, va_list * args)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
       s = format (s, " type:%s port:%u target_port:%u",
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+		  (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ?
+			  "clusterip" :
+			  "nodeport",
+		  vip->port, ntohs (vip->encap_args.target_port));
     }
 
   return s;
@@ -224,11 +225,11 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   else if ((vip->type == LB_VIP_TYPE_IP4_NAT4)
           || (vip->type == LB_VIP_TYPE_IP6_NAT6))
     {
-      s = format (s, "%U  type:%s port:%u target_port:%u",
-         format_white_space, indent,
-         (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
-             "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+      s = format (
+	s, "%U  type:%s port:%u target_port:%u", format_white_space, indent,
+	(vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP) ? "clusterip" :
+								    "nodeport",
+	vip->port, ntohs (vip->encap_args.target_port));
     }
 
   //Print counters
@@ -688,8 +689,8 @@ next:
             clib_bihash_kv_8_8_t kv4;
             m_key4.addr = as->address.ip4;
             m_key4.port = vip->encap_args.target_port;
-            m_key4.protocol = 0;
-            m_key4.fib_index = 0;
+	    m_key4.protocol = lb_ip_proto_to_nat_proto (vip->protocol);
+	    m_key4.fib_index = 0;
 
             if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
               {
@@ -716,8 +717,8 @@ next:
             m_key6.addr.as_u64[0] = as->address.ip6.as_u64[0];
             m_key6.addr.as_u64[1] = as->address.ip6.as_u64[1];
             m_key6.port = vip->encap_args.target_port;
-            m_key6.protocol = 0;
-            m_key6.fib_index = 0;
+	    m_key6.protocol = lb_ip_proto_to_nat_proto (vip->protocol);
+	    m_key6.fib_index = 0;
 
             if (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)
               {
