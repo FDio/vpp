@@ -50,6 +50,23 @@
       "message": "perftest-3n-skx hoststackANDxxv710ANDdrv_vfio_pciANDeth-ip4udpquicscale1cl10s-vppecho",
       "revId": "94e031e79cd8a80e922728c44d5cfec3c9bdcafe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "893103eb_b9b1fd01",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-27T17:48:03Z",
+      "side": 1,
+      "message": "csit-3n-skx-perftest hoststackANDxxv710ANDdrv_vfio_pciANDeth-ip4udpquicscale1cl10s-vppecho",
+      "revId": "94e031e79cd8a80e922728c44d5cfec3c9bdcafe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
