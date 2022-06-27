@@ -1332,7 +1332,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
   ctx->client_opaque = sep->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  if (ccfg->hostname[0])
+  if (ccfg && ccfg->hostname[0])
     ctx->srv_hostname = format (0, "%s", ccfg->hostname);
   else
     /*  needed by quic for crypto + determining client / server */
