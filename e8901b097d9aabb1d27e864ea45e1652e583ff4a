@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c680e0c3_e6bf8b3d",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-27T20:18:49Z",
+      "side": 1,
+      "message": "Instead of documenting how to find the codename, let\u0027s turn line 51 into a bash one-liner that automatically extracts it (works on debian-10/11 as well as ubuntu):\n\necho \"deb [trusted\u003dyes] https://packagecloud.io/fdio/master/ubuntu $(source /etc/os-release \u0026\u0026 echo $VERSION_CODENAME) main\" | sudo tee /etc/apt/sources.list.d/99fd.io.list",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 90
+      },
+      "revId": "e8901b097d9aabb1d27e864ea45e1652e583ff4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
