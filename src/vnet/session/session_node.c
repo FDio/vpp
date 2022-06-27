@@ -1446,6 +1446,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   ASSERT (ctx->left_to_snd == 0);
 
+  if (PREDICT_FALSE (ctx->transport_vft->transport_options.tx_type ==
+		       TRANSPORT_TX_DGRAM &&
+		     ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
+    return SESSION_TX_OK;
+
   /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
    * check if application enqueued more data and reschedule accordingly */
   if (ctx->max_len_to_snd < ctx->max_dequeue)
