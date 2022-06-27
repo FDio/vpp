@@ -28,6 +28,7 @@ VPP commands learned in this exercise
 #. `show ip neighbors <https://docs.fd.io/vpp/21.06/db/dba/clicmd_src_vnet_ip-neighbor.html#clicmd_show_ip_neighbors>`_
 #. `show ip fib <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_fib.html#clicmd_show_ip_fib>`_
 
+
 Topology
 ---------
 
