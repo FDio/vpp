@@ -698,11 +698,20 @@ static void
 vrrp_vr_addrs_add_del (vrrp_vr_t * vr, u8 is_add, ip46_address_t * vr_addrs)
 {
   ip46_address_t *vr_addr;
-
-  vec_foreach (vr_addr, vr_addrs)
-  {
-    vrrp_vr_addr_add_del (vr, is_add, vr_addr);
-  }
+  if (is_add)
+    {
+      vec_foreach (vr_addr, vr_addrs)
+        {
+          vrrp_vr_addr_add_del (vr, is_add, vr_addr);
+        }
+    }
+  else
+    {
+      vec_foreach_backwards (vr_addr, vr_addrs)
+        {
+          vrrp_vr_addr_add_del (vr, is_add, vr_addr);
+        }
+    }
 }
 
 int
