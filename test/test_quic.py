@@ -204,7 +204,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         "enable",
         "poll-main",
         "evt_qs_memfd_seg",
-        "evt_qs_seg_size",
+        "wrk-mqs-segment-size",
         "64M",
         "event-queue-length",
         f"{evt_q_len}",
