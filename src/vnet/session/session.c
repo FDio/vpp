@@ -1684,7 +1684,7 @@ session_vpp_wrk_mqs_alloc (session_main_t *smm)
    * if larger than minimum size.
    */
   mqs_seg_size = svm_msg_q_size_to_alloc (cfg) * vec_len (smm->wrk);
-  mqs_seg_size = mqs_seg_size + (32 << 10);
+  mqs_seg_size = mqs_seg_size + (1 << 20);
   mqs_seg_size = clib_max (mqs_seg_size, smm->wrk_mqs_segment_size);
 
   mqs_seg->ssvm.ssvm_size = mqs_seg_size;
@@ -2098,6 +2098,9 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  else
 	    clib_warning ("event queue length %d too small, ignored", nitems);
 	}
+      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
+			 &smm->wrk_mqs_segment_size))
+	;
       else if (unformat (input, "preallocated-sessions %d",
 			 &smm->preallocated_sessions))
 	;
@@ -2172,9 +2175,6 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "evt_qs_memfd_seg"))
 	;
       else if (unformat (input, "segment-baseva 0x%lx", &tmp))
-	;
-      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
-			 &tmp))
 	;
       else if (unformat (input, "event-queue-length %d", &nitems))
 	{
