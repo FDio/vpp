@@ -90,6 +90,30 @@
       },
       "revId": "94e031e79cd8a80e922728c44d5cfec3c9bdcafe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17bd2e18_111de6cd",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1335,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-28T01:38:35Z",
+      "side": 1,
+      "message": "Interestingly, I\u0027m seeing the same traceback in all of the core dump tracebacks, with the following line of code being the last one before the signal handler:\n\n\u0027#5  quic_connect_connection (sep\u003d0x7fff746c7b80) at /w/workspace/vpp-merge-2206-ubuntu2004-x86_64/src/plugins/quic/quic.c:1335\u0027\n\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-perf-report-iterative-2206-3n-skx/31/log.html.gz#s1-s1-s1-s1-s5\n\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-perf-report-iterative-2206-3n-skx/30/log.html.gz#s1-s1-s1-s1-s5\n\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-perf-report-iterative-2206-3n-skx/29/log.html.gz#s1-s1-s1-s1-s5",
+      "parentUuid": "39c961ec_8f3a0bc0",
+      "range": {
+        "startLine": 1335,
+        "startChar": 6,
+        "endLine": 1335,
+        "endChar": 10
+      },
+      "revId": "94e031e79cd8a80e922728c44d5cfec3c9bdcafe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
