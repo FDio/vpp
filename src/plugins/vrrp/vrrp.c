@@ -813,10 +813,13 @@ static void
 vrrp_vr_del_common (vrrp_vr_t *vr, vrrp_vr_key_t *key)
 {
   vrrp_main_t *vrm = &vrrp_main;
+  ip46_address_t *vr_addrs_del_copy;
 
   vrrp_vr_tracking_ifs_add_del (vr, vr->tracking.interfaces, 0);
-  vrrp_vr_addrs_add_del (vr, 0, vr->config.vr_addrs);
+  vr_addrs_del_copy = vec_dup (vr->config.vr_addrs);
+  vrrp_vr_addrs_add_del (vr, 0, vr_addrs_del_copy);
   mhash_unset (&vrm->vr_index_by_key, key, 0);
+  vec_free (vr_addrs_del_copy);
   vec_free (vr->config.peer_addrs);
   vec_free (vr->config.vr_addrs);
   vec_free (vr->tracking.interfaces);
