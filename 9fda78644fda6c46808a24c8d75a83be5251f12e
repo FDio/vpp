@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7a39bdb_bbcf520a",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-06-28T17:10:57Z",
+      "side": 1,
+      "message": "Ci-management jobs are already setting MAKE_PARALLEL_JOBS value depending on CPU capacity of the executor (depends on arch).\nMaybe the same value can be used when calling this from make (or maybe 1 if called from multiple \"make job\"s)?",
+      "range": {
+        "startLine": 62,
+        "startChar": 40,
+        "endLine": 62,
+        "endChar": 41
+      },
+      "revId": "9fda78644fda6c46808a24c8d75a83be5251f12e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
