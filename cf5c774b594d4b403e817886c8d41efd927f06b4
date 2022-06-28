@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab992564_ce35fde6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-06-28T22:41:38Z",
+      "side": 1,
+      "message": "Also passes previously failing CSIT test:\n\nhttps://jenkins.fd.io/view/vpp/job/vpp-csit-verify-perf-master-ubuntu2004-x86_64-3n-skx/110/",
+      "revId": "cf5c774b594d4b403e817886c8d41efd927f06b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
