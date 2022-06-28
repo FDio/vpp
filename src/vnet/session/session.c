@@ -1312,6 +1312,7 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
     }
 
   session_lookup_add_connection (tc, session_handle (s));
+  s->session_state = SESSION_STATE_ACCEPTING;
 
   app_wrk = app_worker_get (s->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, s)))
