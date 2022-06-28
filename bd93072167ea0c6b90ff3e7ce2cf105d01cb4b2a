@@ -69,6 +69,57 @@
       "parentUuid": "7b847228_c2281361",
       "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f75ab4e_baecde73",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-06-28T01:05:56Z",
+      "side": 1,
+      "message": "what\u0027s the performance difference between touching/missing cache-line 2 and doing an incremental checksum?",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d5a801cb_b1696e0c",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-06-28T01:05:56Z",
+      "side": 1,
+      "message": "chksums for v6 over v6?",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d14a309_7072d3c9",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-06-28T01:05:56Z",
+      "side": 1,
+      "message": "does the TNL_IPIP flag work when there\u0027s an MPLS label between the outer and inner IP headers?",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
