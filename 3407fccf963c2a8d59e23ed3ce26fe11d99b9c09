@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6217cc28_ea2217d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-06-28T16:25:02Z",
+      "side": 1,
+      "message": "examples are typically not packaged. Check how packaging is done for some common libs in ubuntu...",
+      "revId": "3407fccf963c2a8d59e23ed3ce26fe11d99b9c09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
