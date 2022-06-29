@@ -1098,6 +1098,9 @@ fifo_segment_msg_q_alloc (fifo_segment_t *fs, u32 mq_index,
 
   size = svm_msg_q_size_to_alloc (cfg);
   base = fsh_alloc_aligned (fsh, size, 8);
+  if (!base)
+    return 0;
+
   fsh->n_reserved_bytes += size;
 
   smq = svm_msg_q_init (base, cfg);
