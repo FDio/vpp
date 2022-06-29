@@ -817,11 +817,13 @@ list(APPEND VNET_SOURCES
   srv6/sr_policy_rewrite.c
   srv6/sr_steering.c
   srv6/sr_api.c
+  srv6/sr_pt.c
 )
 
 list(APPEND VNET_HEADERS
   srv6/sr_packet.h
   srv6/sr.h
+  srv6/sr_pt.h
 )
 
 list(APPEND VNET_API_FILES
