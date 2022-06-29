@@ -6,7 +6,7 @@
  * @file
  * @brief SR Path Tracing (PT)
  *
- * PT CLI
+ * SR PT CLI
  *
  */
 
@@ -36,7 +36,7 @@ sr_pt_find_iface (u32 iface)
   p = mhash_get (&sr_pt->sr_pt_iface_index_hash, &iface);
   if (p)
     {
-      /* Retrieve pt_iface */
+      /* Retrieve sr_pt_iface */
       return pool_elt_at_index (sr_pt->sr_pt_iface, p[0]);
     }
   return NULL;
@@ -69,16 +69,15 @@ sr_pt_add_iface (u32 iface, u16 id, u8 ingress_load, u8 egress_load,
   if (tts_template > SR_PT_TTS_TEMPLATE_MAX)
     return SR_PT_ERR_TTS_TEMPLATE_INVALID;
 
-  /* Create a new pt_iface */
-  pool_get (sr_pt->sr_pt_iface, ls);
-  clib_memset (ls, 0, sizeof (*ls));
+  /* Create a new sr_pt_iface */
+  pool_get_zero (sr_pt->sr_pt_iface, ls);
   ls->iface = iface;
   ls->id = id;
   ls->ingress_load = ingress_load;
   ls->egress_load = egress_load;
   ls->tts_template = tts_template;
 
-  /* Set hash key for searching pt_iface by iface */
+  /* Set hash key for searching sr_pt_iface by iface */
   mhash_set (&sr_pt->sr_pt_iface_index_hash, &iface, ls - sr_pt->sr_pt_iface,
 	     NULL);
   return 0;
@@ -210,7 +209,7 @@ sr_pt_del_iface_command_fn (vlib_main_t *vm, unformat_input_t *input,
 }
 
 /**
- * @brief CLI function to show all PT interfcaes
+ * @brief CLI function to show all SR PT interfcaes
  */
 static clib_error_t *
 sr_pt_show_iface_command_fn (vlib_main_t *vm, unformat_input_t *input,
