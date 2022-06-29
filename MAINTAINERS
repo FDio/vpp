@@ -817,6 +817,12 @@ I:	rpm-packaging
 M:	Laszlo Kiraly <laszlo.kiraly@est.tech>
 F:	src/extras/rpm/opensuse
 
+VPP StrongSwan Daemon
+I:	vpp-swan
+M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Gabriel Oginski <gabrielx.oginski@intel.com>
+F:	extras/strongswan/vpp_sswan
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
