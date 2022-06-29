@@ -184,6 +184,11 @@ F:	src/vnet/srv6/
 F:	src/vnet/srmpls/
 F:	src/examples/srv6-sample-localsid/
 
+VNET Path Tracing
+I:	pt
+M:	Ahmed Abdelsalam <ahabdels@cisco.com>
+F:	src/vnet/pt/
+
 VNET IPSec
 I:	ipsec
 M:	Neale Ranns <neale@graphiant.com>

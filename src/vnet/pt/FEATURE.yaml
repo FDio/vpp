@@ -1,0 +1,8 @@
+---
+name: Path Tracing
+maintainer: Ahmed Abdelsalam <ahabdels@cisco.com>
+features:
+        - Path Tracing Infrastructure
+description: "Path Tracing"
+state: experimental
+properties: [CLI]
