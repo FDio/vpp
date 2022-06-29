@@ -47,6 +47,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
+#include <vnet/srv6/sr_pt.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
@@ -1282,6 +1283,8 @@ srv6_tef_behavior (vlib_node_runtime_t *node, vlib_buffer_t *b0,
   ip6_sr_header_t *srh;
   ip6_sr_pt_tlv_t *srh_pt_tlv;
   timestamp_64_t ts;
+  sr_pt_iface_t *ls = 0;
+  u16 id_ld = 0;
   srh = (ip6_sr_header_t *) (ip0 + 1);
 
   srh_pt_tlv =
@@ -1292,6 +1295,13 @@ srv6_tef_behavior (vlib_node_runtime_t *node, vlib_buffer_t *b0,
   unix_time_now_nsec_fraction (&ts.sec, &ts.nsec);
   srh_pt_tlv->t64.sec = htobe32 (ts.sec);
   srh_pt_tlv->t64.nsec = htobe32 (ts.nsec);
+  ls = sr_pt_find_iface (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+  if (ls)
+    {
+      id_ld = ls->id << 4;
+      id_ld |= ls->ingress_load;
+      srh_pt_tlv->id_ld = htobe16 (id_ld);
+    }
 }
 
 /**
