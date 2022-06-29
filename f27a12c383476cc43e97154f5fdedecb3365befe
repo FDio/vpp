@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2b4b7ea_9bf57e55",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2022-06-29T15:23:59Z",
+      "side": 1,
+      "message": "Many thanks Ahmed. Code looks good to me!",
+      "revId": "f27a12c383476cc43e97154f5fdedecb3365befe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
