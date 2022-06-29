@@ -11,7 +11,7 @@
 #ifndef included_vnet_sr_pt_h
 #define included_vnet_sr_pt_h
 
-/*PT error codes*/
+/*SR PT error codes*/
 #define SR_PT_ERR_NOENT		       -1 /* No such entry*/
 #define SR_PT_ERR_EXIST		       -2 /* Entry exists */
 #define SR_PT_ERR_IFACE_INVALID	       -3 /* IFACE invalid */
@@ -19,19 +19,19 @@
 #define SR_PT_ERR_LOAD_INVALID	       -5 /* LOAD invalid*/
 #define SR_PT_ERR_TTS_TEMPLATE_INVALID -6 /* TTS Template invalid */
 
-/*PT paramters max values*/
+/*SR PT paramters max values*/
 #define SR_PT_ID_MAX	       4095
 #define SR_PT_LOAD_MAX	       15
 #define SR_PT_TTS_TEMPLATE_MAX 3
 
-/*PT TTS Templates*/
+/*SR PT TTS Templates*/
 #define SR_PT_TTS_TEMPLATE_0	   0
 #define SR_PT_TTS_TEMPLATE_1	   1
 #define SR_PT_TTS_TEMPLATE_2	   2
 #define SR_PT_TTS_TEMPLATE_3	   3
 #define SR_PT_TTS_TEMPLATE_DEFAULT 2
 
-/*PT TTS Template shift value*/
+/*SR PT TTS Template shift value*/
 #define SR_PT_TTS_SHIFT_TEMPLATE_0 8
 #define SR_PT_TTS_SHIFT_TEMPLATE_1 12
 #define SR_PT_TTS_SHIFT_TEMPLATE_2 16
@@ -47,14 +47,14 @@ typedef struct
 } sr_pt_iface_t;
 
 /**
- * @brief Path Tracing main datastructure
+ * @brief SR Path Tracing main datastructure
  */
 typedef struct
 {
-  /* Pool of pt_iface instances */
+  /* Pool of sr_pt_iface instances */
   sr_pt_iface_t *sr_pt_iface;
 
-  /* Hash table for pt iface parameters */
+  /* Hash table for sr_pt_iface parameters */
   mhash_t sr_pt_iface_index_hash;
 
 } sr_pt_main_t;
