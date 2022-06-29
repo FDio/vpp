@@ -797,7 +797,8 @@ vppcom_session_disconnect (u32 session_handle)
   if (session->listener_index != VCL_INVALID_SESSION_INDEX)
     {
       listen_session = vcl_session_get (wrk, session->listener_index);
-      listen_session->n_accepted_sessions--;
+      if (listen_session)
+	listen_session->n_accepted_sessions--;
     }
 
   return VPPCOM_OK;
