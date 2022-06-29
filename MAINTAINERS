@@ -180,6 +180,7 @@ F:	src/vnet/pg/
 VNET Segment Routing (IPv6 and MPLS)
 I:	sr
 M:	Pablo Camarillo <pcamaril@cisco.com>
+M:	Ahmed Abdelsalam <ahabdels@cisco.com>
 F:	src/vnet/srv6/
 F:	src/vnet/srmpls/
 F:	src/examples/srv6-sample-localsid/
