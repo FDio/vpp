@@ -16,6 +16,24 @@
       "message": "I think it would be better to avoid altering the vector that is being iterated. Could you instead make a copy of vr_addrs with vec_dup(), iterate the copy, and call vec_free() on the copy after the loop? Then both add and delete could use vec_foreach().",
       "revId": "68a38b0801bb67c54b6582e95a28fad31580466c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b55f9f4_a2bca392",
+        "filename": "src/plugins/vrrp/vrrp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 2785
+      },
+      "writtenOn": "2022-06-30T02:10:26Z",
+      "side": 1,
+      "message": "Thanks for your guidance. I have edited.",
+      "parentUuid": "bb0244d1_839f9c85",
+      "revId": "68a38b0801bb67c54b6582e95a28fad31580466c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
