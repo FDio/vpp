@@ -516,7 +516,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
+	    sm, tx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
 	    r_addr, tsm->snat_thread_index, s, &outside_addr, &outside_port))
 	{
 	  nat_elog_notice (sm, "addresses exhausted");
