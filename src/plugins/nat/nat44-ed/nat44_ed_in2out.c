@@ -139,12 +139,11 @@ nat_ed_alloc_addr_and_port_with_snat_address (
 }
 
 static int
-nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
-			    u32 tx_sw_if_index, u32 nat_proto,
-			    u32 thread_index, ip4_address_t s_addr,
-			    ip4_address_t d_addr, u32 snat_thread_index,
-			    snat_session_t *s, ip4_address_t *outside_addr,
-			    u16 *outside_port)
+nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 fib_index, u32 tx_sw_if_index,
+			    u32 nat_proto, u32 thread_index,
+			    ip4_address_t s_addr, ip4_address_t d_addr,
+			    u32 snat_thread_index, snat_session_t *s,
+			    ip4_address_t *outside_addr, u16 *outside_port)
 {
   if (vec_len (sm->addresses) > 0)
     {
@@ -158,7 +157,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 	  for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
 	    {
 	      a = sm->addresses + i;
-	      if (a->fib_index == rx_fib_index)
+	      if (a->fib_index == fib_index)
 		{
 		  if (a->sw_if_index == tx_sw_if_index)
 		    {
@@ -184,7 +183,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 	  for (i = 0; i < s_addr_offset; ++i)
 	    {
 	      a = sm->addresses + i;
-	      if (a->fib_index == rx_fib_index)
+	      if (a->fib_index == fib_index)
 		{
 		  if (a->sw_if_index == tx_sw_if_index)
 		    {
@@ -220,7 +219,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 	  for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
 	    {
 	      a = sm->addresses + i;
-	      if (a->fib_index == rx_fib_index)
+	      if (a->fib_index == fib_index)
 		{
 		  if ((a->addr_len != ~0) &&
 		      (a->net.as_u32 ==
@@ -240,7 +239,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 	  for (i = 0; i < s_addr_offset; ++i)
 	    {
 	      a = sm->addresses + i;
-	      if (a->fib_index == rx_fib_index)
+	      if (a->fib_index == fib_index)
 		{
 		  if ((a->addr_len != ~0) &&
 		      (a->net.as_u32 ==
@@ -516,7 +515,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
+	    sm, tx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
 	    r_addr, tsm->snat_thread_index, s, &outside_addr, &outside_port))
 	{
 	  nat_elog_notice (sm, "addresses exhausted");
