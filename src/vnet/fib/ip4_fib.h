@@ -131,6 +131,7 @@ u32 ip4_fib_index_from_table_id (u32 table_id)
 }
 
 extern u32 ip4_fib_table_get_index_for_sw_if_index(u32 sw_if_index);
+extern u32 ip4_fib_table_get_table_id_for_sw_if_index (u32 sw_if_index);
 
 #ifdef VPP_IP_FIB_MTRIE_16
 always_inline index_t

@@ -286,8 +286,7 @@ nat44_ed_resolve_nat_addr_len (snat_address_t *ap,
 	{
 	  ap->addr_len = ia->address_length;
 	  ap->sw_if_index = i->sw_if_index;
-	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-			   << (32 - ap->addr_len);
+	  ap->net.as_u32 = ap->addr.as_u32 & ip4_main.fib_masks[ap->addr_len];
 
 	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
 			 format_ip4_address, &ap->addr, ap->sw_if_index,
@@ -334,8 +333,7 @@ nat44_ed_bind_if_addr_to_nat_addr (u32 sw_if_index)
 	{
 	  ap->addr_len = ia->address_length;
 	  ap->sw_if_index = sw_if_index;
-	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-			   << (32 - ap->addr_len);
+	  ap->net.as_u32 = ap->addr.as_u32 & ip4_main.fib_masks[ap->addr_len];
 
 	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
 			 format_ip4_address, &ap->addr, ap->sw_if_index,
@@ -3436,8 +3434,8 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 		    {
 		      ap->addr_len = address_length;
 		      ap->sw_if_index = sw_if_index;
-		      ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-				       << (32 - ap->addr_len);
+		      ap->net.as_u32 =
+			ap->addr.as_u32 & ip4_main.fib_masks[ap->addr_len];
 
 		      nat_log_debug (
 			"pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
@@ -3464,7 +3462,8 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	  return;
 	}
 
-      rv = nat44_ed_add_address (address, ~0, arp->is_twice_nat);
+      u32 vrf_id = ip4_fib_table_get_table_id_for_sw_if_index (sw_if_index);
+      rv = nat44_ed_add_address (address, vrf_id, arp->is_twice_nat);
       if (0 == rv)
 	{
 	  arp->is_resolved = 1;
@@ -3513,7 +3512,8 @@ nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat)
   first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
   if (first_int_addr)
     {
-      rv = nat44_ed_add_address (first_int_addr, ~0, twice_nat);
+      u32 vrf_id = ip4_fib_table_get_table_id_for_sw_if_index (sw_if_index);
+      rv = nat44_ed_add_address (first_int_addr, vrf_id, twice_nat);
       if (0 != rv)
 	{
 	  nat44_ed_del_addr_resolve_record (sw_if_index, twice_nat);

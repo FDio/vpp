@@ -260,6 +260,20 @@ ip4_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
     return (ip4_main.fib_index_by_sw_if_index[sw_if_index]);
 }
 
+u32
+ip4_fib_table_get_table_id_for_sw_if_index (u32 sw_if_index)
+{
+    fib_table_t *fib_table;
+    u32 fib_index;
+
+    fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+    if (fib_index == ~0)
+        return ~0;
+    fib_table = fib_table_get (fib_index, FIB_PROTOCOL_IP4);
+    if (!fib_table)
+        return ~0;
+    return fib_table->ft_table_id;
+}
 
 /**
  * Walk show context

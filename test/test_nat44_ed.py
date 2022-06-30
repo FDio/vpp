@@ -4120,8 +4120,6 @@ class TestNAT44EDMW(TestNAT44ED):
         vrf_id_in = 33
         vrf_id_out = 34
 
-        self.nat_add_address(self.nat_addr, vrf_id=vrf_id_in)
-
         try:
             self.configure_ip4_interface(self.pg7, table_id=vrf_id_in)
             self.configure_ip4_interface(self.pg8, table_id=vrf_id_out)
@@ -4129,15 +4127,18 @@ class TestNAT44EDMW(TestNAT44ED):
             self.nat_add_inside_interface(self.pg7)
             self.nat_add_outside_interface(self.pg8)
 
+            self.nat_add_interface_address(self.pg8)
+            out_addr = self.pg8.local_ip4
+
             # just basic stuff nothing special
             pkts = self.create_stream_in(self.pg7, self.pg8)
             self.pg7.add_stream(pkts)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
             capture = self.pg8.get_capture(len(pkts))
-            self.verify_capture_out(capture, ignore_port=True)
+            self.verify_capture_out(capture, nat_ip=out_addr, ignore_port=True)
 
-            pkts = self.create_stream_out(self.pg8)
+            pkts = self.create_stream_out(self.pg8, dst_ip=out_addr)
             self.pg8.add_stream(pkts)
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
@@ -4219,6 +4220,101 @@ class TestNAT44EDMW(TestNAT44ED):
             self.pg8.unconfig()
 
             self.vapi.ip_table_add_del(is_add=0, table={"table_id": new_vrf_id})
+
+    def test_prefer_outside_addr_in_same_subnet_as_dest(self):
+        """Prefer outside address in the same subnet as destination"""
+
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_outside_interface(self.pg3)
+        self.nat_add_interface_address(self.pg1)
+        self.nat_add_interface_address(self.pg3)
+
+        expected_out_intf = self.pg3
+        expected_outside_addr = expected_out_intf.local_ip4
+        dest_addr = expected_out_intf.remote_hosts[0].ip4
+
+        pkts = self.create_stream_in(self.pg0, None, dst_ip=dest_addr)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = expected_out_intf.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=expected_outside_addr, ignore_port=True)
+
+    def test_prefer_outside_addr_in_same_fib_as_tx_fib(self):
+        """Prefer outside address in the same FIB as TX FIB"""
+
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_outside_interface(self.pg2)
+
+        self.nat_add_interface_address(self.pg1)
+        self.nat_add_interface_address(self.pg2)
+
+        # Temporarily remove the default route in table 0
+        # to make sure that VPP will pick table 1 as the TX FIB
+        cls = type(self)
+        route = VppIpRoute(
+            cls,
+            "0.0.0.0",
+            0,
+            [VppRoutePath(cls.pg1.local_ip4, cls.pg1.sw_if_index)],
+            register=False,
+            table_id=0,
+        )
+        route.remove_vpp_config()
+
+        expected_out_intf = self.pg2
+        expected_outside_addr = expected_out_intf.local_ip4
+        dest_addr = expected_out_intf.remote_hosts[0].ip4
+
+        pkts = self.create_stream_in(self.pg0, None, dst_ip=dest_addr)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = expected_out_intf.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=expected_outside_addr, ignore_port=True)
+
+        route.add_vpp_config()
+
+    def test_pick_outside_addr_in_default_fib_as_fallback(self):
+        """Fall back to outside address in default FIB"""
+
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        self.nat_add_outside_interface(self.pg2)
+
+        self.nat_add_interface_address(self.pg1)
+        # Add pg2's local IP as outside address but do not
+        # associate a table to it, so that the address is
+        # tied to table ~0
+        self.nat_add_address(self.pg2.local_ip4)
+
+        # Temporarily remove the default route in table 0
+        # to make sure that VPP will pick table 1 as the TX FIB
+        cls = type(self)
+        route = VppIpRoute(
+            cls,
+            "0.0.0.0",
+            0,
+            [VppRoutePath(cls.pg1.local_ip4, cls.pg1.sw_if_index)],
+            register=False,
+            table_id=0,
+        )
+        route.remove_vpp_config()
+
+        expected_out_intf = self.pg2
+        expected_outside_addr = expected_out_intf.local_ip4
+        dest_addr = expected_out_intf.remote_hosts[0].ip4
+
+        pkts = self.create_stream_in(self.pg0, None, dst_ip=dest_addr)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = expected_out_intf.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=expected_outside_addr, ignore_port=True)
+
+        route.add_vpp_config()
 
     def test_next_src_nat(self):
         """NAT44ED On way back forward packet to nat44-in2out node."""
