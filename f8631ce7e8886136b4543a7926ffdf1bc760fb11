@@ -16,6 +16,29 @@
       "message": "recheck",
       "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d64790b3_edddc8b0",
+        "filename": "src/vlib/buffer_funcs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-07-02T17:19:09Z",
+      "side": 1,
+      "message": "Hate to be that person but shouldn\u0027t we fix this in NAT? And maybe convert the get lower to vec_elt_at_index to force the crash in debug images",
+      "range": {
+        "startLine": 264,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 13
+      },
+      "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
