@@ -39,6 +39,30 @@
       },
       "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f33dfde_bd171666",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 2768
+      },
+      "writtenOn": "2022-07-04T18:01:01Z",
+      "side": 1,
+      "message": "\u003e I wonder why not just:\n\u003e (e_port - 1024) % _vec_len (sm-\u003eworkers)\n\nOnly taking a modulo will result in a different way of worker assignment. I\u0027m trying to keep the original way here.\n\n\n\u003e I wonder why the previous buggy logic does not lead to a packet loss in CSIT NDR tests.\n\nIt will only be triggered by eport ranging from (_vec_len(sm-\u003eworkers) * sm-\u003eport_per_thread + 1024) to 0xffff. I haven\u0027t checked out CSIT yet, so I\u0027m not sure if the tests have included the said ports.",
+      "parentUuid": "10779ee8_4cfb337e",
+      "range": {
+        "startLine": 765,
+        "startChar": 17,
+        "endLine": 766,
+        "endChar": 32
+      },
+      "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
