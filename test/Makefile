@@ -107,7 +107,7 @@ $(PIP_TOOLS_INSTALL_DONE):
 $(PYTHON_DEPENDS): requirements.txt
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
-		  python3 -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
+		  python3 -m piptools compile -q --allow-unsafe --generate-hashes requirements.txt --output-file $@"
 
 $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 	@bash -c "source $(VENV_PATH)/bin/activate && \
