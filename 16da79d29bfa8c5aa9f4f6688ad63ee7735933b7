@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddedb275_3732d7fe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2022-07-05T17:31:01Z",
+      "side": 1,
+      "message": "This replaces https://gerrit.fd.io/r/c/vpp/+/27097 which has merge conflicts\n",
+      "revId": "16da79d29bfa8c5aa9f4f6688ad63ee7735933b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
