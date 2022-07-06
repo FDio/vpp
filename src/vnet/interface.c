@@ -44,6 +44,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
+#include <vnet/interface/stats.h>
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
@@ -1574,6 +1575,9 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   /* rename tx/output nodes */
   vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
   vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
+
+  /* rename statseg directory */
+  statseg_interface_rename (vnm, hw->sw_if_index);
 
   /* free the old name vector */
   vec_free (old_name);

@@ -8,6 +8,7 @@
 #include <vnet/vnet.h>
 #include <vnet/devices/devices.h> /* vnet_get_aggregate_rx_packets */
 #include <vnet/interface.h>
+#include <vnet/interface/stats.h>
 
 vlib_stats_string_vector_t if_names = 0;
 static u32 **dir_entry_indices = 0;
@@ -21,6 +22,25 @@ static struct
   foreach_simple_interface_counter_name foreach_combined_interface_counter_name
 #undef _
 };
+
+static u8 *
+statseg_sw_interface_name (vnet_main_t *vnm, u32 sw_if_index)
+{
+  vnet_sw_interface_t *si, *si_sup;
+  vnet_hw_interface_t *hi_sup;
+  u8 *name;
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  si_sup = vnet_get_sup_sw_interface (vnm, si->sw_if_index);
+  ASSERT (si_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
+  hi_sup = vnet_get_hw_interface (vnm, si_sup->hw_if_index);
+
+  name = format (0, "%v", hi_sup->name);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    name = format (name, ".%d", si->sub.id);
+
+  return name;
+}
 
 static clib_error_t *
 statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
@@ -40,19 +60,7 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 
   if (is_add)
     {
-      vnet_sw_interface_t *si, *si_sup;
-      vnet_hw_interface_t *hi_sup;
-      u8 *name;
-
-      si = vnet_get_sw_interface (vnm, sw_if_index);
-      si_sup = vnet_get_sup_sw_interface (vnm, si->sw_if_index);
-      ASSERT (si_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
-      hi_sup = vnet_get_hw_interface (vnm, si_sup->hw_if_index);
-
-      name = format (0, "%v", hi_sup->name);
-      if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-	name = format (name, ".%d", si->sub.id);
-
+      u8 *name = statseg_sw_interface_name (vnm, sw_if_index);
       vlib_stats_set_string_vector (&if_names, sw_if_index, "%v", name);
 
       for (u32 index, i = 0; i < ARRAY_LEN (if_counters); i++)
@@ -79,3 +87,22 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (statseg_sw_interface_add_del);
+
+void
+statseg_interface_rename (vnet_main_t *vnm, u32 sw_if_index)
+{
+  u8 *name;
+
+  vlib_stats_segment_lock ();
+
+  name = statseg_sw_interface_name (vnm, sw_if_index);
+  vlib_stats_set_string_vector (&if_names, sw_if_index, "%v", name);
+
+  for (u32 i = 0; i < ARRAY_LEN (if_counters); i++)
+    vlib_stats_rename_symlink (dir_entry_indices[sw_if_index][i],
+			       "/interfaces/%U/%s", format_vlib_stats_symlink,
+			       name, if_counters[i].name);
+
+  vec_free (name);
+  vlib_stats_segment_unlock ();
+}
