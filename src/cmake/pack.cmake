@@ -65,7 +65,7 @@ macro(add_vpp_packaging)
   set(CPACK_${type}_PACKAGE_RELEASE 1)
 
   # Pure Debian does not set the "OS_ID_LIKE", it only sets "OS_ID"
-  if (OS_ID_LIKE MATCHES "")
+  if (OS_ID_LIKE MATCHES "^$")
     set(OS_ID_LIKE "${OS_ID}")
   endif()
 
