@@ -1202,7 +1202,7 @@ vl_api_nat44_ed_add_del_vrf_table_t_handler (
   vl_api_nat44_ed_add_del_vrf_table_reply_t *rmp;
   int rv = nat44_ed_add_del_vrf_table (clib_net_to_host_u32 (mp->table_vrf_id),
 				       mp->is_add);
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_TABLE);
+  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_TABLE_REPLY);
 }
 
 static void
@@ -1214,7 +1214,7 @@ vl_api_nat44_ed_add_del_vrf_route_t_handler (
   int rv =
     nat44_ed_add_del_vrf_route (clib_net_to_host_u32 (mp->table_vrf_id),
 				clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_ROUTE);
+  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_ROUTE_REPLY);
 }
 
 static void
