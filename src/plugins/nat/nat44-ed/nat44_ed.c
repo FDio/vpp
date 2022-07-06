@@ -686,6 +686,12 @@ nat44_ed_add_del_vrf_table (u32 table_vrf_id, bool is_add)
 	{
 	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
+
+      if (fib_table_find (FIB_PROTOCOL_IP4, table_vrf_id) == ~0)
+	{
+	  return VNET_API_ERROR_NO_SUCH_FIB;
+	}
+
       pool_get (sm->vrf_tables, t);
       clib_memset (t, 0, sizeof (*t));
       t->table_vrf_id = table_vrf_id;
