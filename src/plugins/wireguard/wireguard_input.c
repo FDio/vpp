@@ -25,12 +25,15 @@
 #define foreach_wg_input_error                                                \
   _ (NONE, "No error")                                                        \
   _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
+  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
   _ (PEER, "Peer error")                                                      \
   _ (INTERFACE, "Interface error")                                            \
   _ (DECRYPTION, "Failed during decryption")                                  \
   _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                        \
   _ (HANDSHAKE_SEND, "Failed while sending Handshake")                        \
   _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
+  _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                    \
+  _ (COOKIE_SEND, "Failed during sending Cookie")                             \
   _ (TOO_BIG, "Packet too big")                                               \
   _ (UNDEFINED, "Undefined error")                                            \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
@@ -172,7 +175,6 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
   u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);;
 
   message_header_t *header = current_b_data;
-  under_load = false;
 
   if (PREDICT_FALSE (header->type == MESSAGE_HANDSHAKE_COOKIE))
     {
@@ -185,7 +187,9 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
       else
 	return WG_INPUT_ERROR_PEER;
 
-      // TODO: Implement cookie_maker_consume_payload
+      if (!cookie_maker_consume_payload (
+	    vm, &peer->cookie_maker, packet->nonce, packet->encrypted_cookie))
+	return WG_INPUT_ERROR_COOKIE_DECRYPTION;
 
       return WG_INPUT_ERROR_NONE;
     }
@@ -208,11 +212,13 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
       if (NULL == wg_if)
 	continue;
 
+      under_load = wg_if_is_under_load (vm, wg_if);
       mac_state = cookie_checker_validate_macs (
 	vm, &wg_if->cookie_checker, macs, current_b_data, len, under_load,
 	&src_ip, udp_src_port);
       if (mac_state == INVALID_MAC)
 	{
+	  wg_if_dec_handshake_num (wg_if);
 	  wg_if = NULL;
 	  continue;
 	}
@@ -227,6 +233,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     packet_needs_cookie = false;
   else if (under_load && mac_state == VALID_MAC_BUT_NO_COOKIE)
     packet_needs_cookie = true;
+  else if (mac_state == VALID_MAC_WITH_COOKIE_BUT_RATELIMITED)
+    return WG_INPUT_ERROR_HANDSHAKE_RATELIMITED;
   else
     return WG_INPUT_ERROR_HANDSHAKE_MAC;
 
@@ -238,8 +246,16 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 
 	if (packet_needs_cookie)
 	  {
-	    // TODO: Add processing
+
+	    if (!wg_send_handshake_cookie (vm, message->sender_index,
+					   &wg_if->cookie_checker, macs,
+					   &ip_addr_46 (&wg_if->src_ip),
+					   wg_if->port, &src_ip, udp_src_port))
+	      return WG_INPUT_ERROR_COOKIE_SEND;
+
+	    return WG_INPUT_ERROR_NONE;
 	  }
+
 	noise_remote_t *rp;
 	if (noise_consume_initiation
 	    (vm, noise_local_get (wg_if->local_idx), &rp,
@@ -268,6 +284,18 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     case MESSAGE_HANDSHAKE_RESPONSE:
       {
 	message_handshake_response_t *resp = current_b_data;
+
+	if (packet_needs_cookie)
+	  {
+	    if (!wg_send_handshake_cookie (vm, resp->sender_index,
+					   &wg_if->cookie_checker, macs,
+					   &ip_addr_46 (&wg_if->src_ip),
+					   wg_if->port, &src_ip, udp_src_port))
+	      return WG_INPUT_ERROR_COOKIE_SEND;
+
+	    return WG_INPUT_ERROR_NONE;
+	  }
+
 	index_t peeri = INDEX_INVALID;
 	u32 *entry =
 	  wg_index_table_lookup (&wmp->index_table, resp->receiver_index);
@@ -288,10 +316,6 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	     resp->encrypted_nothing))
 	  {
 	    return WG_INPUT_ERROR_PEER;
-	  }
-	if (packet_needs_cookie)
-	  {
-	    // TODO: Add processing
 	  }
 
 	// set_peer_address (peer, ip4_src, udp_src_port);

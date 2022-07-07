@@ -33,8 +33,11 @@ add_vpp_plugin(wireguard
   wireguard_input.c
   wireguard_output_tun.c
   wireguard_handoff.c
+  wireguard_hchacha20.h
   wireguard_key.c
   wireguard_key.h
+  wireguard_chachapoly.c
+  wireguard_chachapoly.h
   wireguard_cli.c
   wireguard_messages.h
   wireguard_noise.c
