@@ -77,5 +77,4 @@ Main next steps for improving this implementation
 -------------------------------------------------
 
 1. Use all benefits of VPP-engine.
-2. Add IPv6 support (currently only supports IPv4)
-3. Add DoS protection as in original protocol (using cookie)
+2. Add peers roaming support

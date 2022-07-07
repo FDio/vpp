@@ -117,6 +117,8 @@ STATIC_ASSERT (sizeof (wg_post_data_t) <=
 void wg_feature_init (wg_main_t * wmp);
 void wg_set_async_mode (u32 is_enabled);
 
+void wg_secure_zero_memory (void *v, size_t n);
+
 #endif /* __included_wg_h__ */
 
 /*

@@ -58,6 +58,8 @@ static inline bool
 wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)
 {
   f64 now_seconds = vlib_time_now (vlib_get_main ());
+  if (birthday_seconds == 0.0)
+    return true;
   return (birthday_seconds + expiration_seconds) < now_seconds;
 }
 
