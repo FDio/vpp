@@ -248,6 +248,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "24b2e93c_b89efd3b",
+        "filename": "test/test_ipsec_spd_fp_output.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2022-07-07T09:32:16Z",
+      "side": 1,
+      "message": "You are right I didn\u0027t pay attention to line 68. Will remove that part, as I am working on ipv6 version of the tests anyway - the fix will reach Gerrit however with the next set of patches.",
+      "parentUuid": "51510602_9b70ddb9",
+      "revId": "789dba2f075feea3f9200b507e58732a49fe3677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "997f77a8_03ca5a06",
