@@ -46,22 +46,30 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
       foreach_ipsec_spd_policy_type
 #undef _
-	if (im->fp_spd_is_enabled)
+	if (im->ipv4_fp_spd_is_enabled)
       {
 	ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
 	clib_bihash_free_16_8 (&fp_spd->fp_ip4_lookup_hash);
       }
+
+      if (im->ipv6_fp_spd_is_enabled)
+	{
+	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+
+	  clib_bihash_free_40_8 (&fp_spd->fp_ip6_lookup_hash);
+	}
+
       pool_put (im->spds, spd);
     }
-  else				/* create new SPD */
+  else /* create new SPD */
     {
       pool_get (im->spds, spd);
       clib_memset (spd, 0, sizeof (*spd));
       spd_index = spd - im->spds;
       spd->id = spd_id;
       hash_set (im->spd_index_by_spd_id, spd_id, spd_index);
-      if (im->fp_spd_is_enabled)
+      if (im->ipv4_fp_spd_is_enabled)
 	{
 	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
@@ -69,6 +77,16 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 	    &fp_spd->fp_ip4_lookup_hash, "SPD_FP ip4 rules lookup bihash",
 	    im->fp_lookup_hash_buckets,
 	    im->fp_lookup_hash_buckets * IPSEC_FP_IP4_HASH_MEM_PER_BUCKET);
+	}
+      if (im->ipv6_fp_spd_is_enabled)
+	{
+	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+
+	  clib_bihash_init_40_8 (
+	    &fp_spd->fp_ip6_lookup_hash, "SPD_FP ip6 rules lookup bihash",
+	    im->fp_lookup_hash_buckets,
+	    im->fp_lookup_hash_buckets * IPSEC_FP_IP6_HASH_MEM_PER_BUCKET);
+	  fp_spd->fp_ip6_lookup_hash_initialized = 1;
 	}
     }
   return 0;

@@ -144,7 +144,9 @@ typedef struct
   /* pool of policies */
   ipsec_policy_t *policies;
 
-  u32 fp_spd_is_enabled;
+  u32 ipv4_fp_spd_is_enabled;
+  u32 ipv6_fp_spd_is_enabled;
+
   ipsec_fp_mask_type_entry_t *fp_mask_types;
   u32 fp_lookup_hash_buckets; /* number of buckets should be power of two */
 
