@@ -1193,7 +1193,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
-	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  next[0] = def_slow;
 	  goto trace0;
 	}
 
