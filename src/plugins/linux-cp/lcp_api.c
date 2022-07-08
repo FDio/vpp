@@ -78,9 +78,9 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
   lip_host_type_t lip_host_type;
   int rv;
 
-  VALIDATE_SW_IF_INDEX_END (mp);
+  VALIDATE_SW_IF_INDEX (mp);
 
-  phy_sw_if_index = mp->sw_if_index;
+  phy_sw_if_index = ntohl (mp->sw_if_index);
   lip_host_type = api_decode_host_type (mp->host_if_type);
   if (mp->is_add)
     {
@@ -106,9 +106,9 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
   lip_host_type_t lip_host_type;
   int rv;
 
-  VALIDATE_SW_IF_INDEX_END (mp);
+  VALIDATE_SW_IF_INDEX (mp);
 
-  phy_sw_if_index = mp->sw_if_index;
+  phy_sw_if_index = ntohl (mp->sw_if_index);
   lip_host_type = api_decode_host_type (mp->host_if_type);
   if (mp->is_add)
     {
