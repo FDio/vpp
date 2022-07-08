@@ -122,7 +122,7 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
 {
   noise_handshake_t *hs = &r->r_handshake;
   noise_local_t *l = noise_local_get (r->r_local_idx);
-  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN];
+  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
   uint32_t key_idx;
   uint8_t *key;
   int ret = false;
@@ -177,9 +177,9 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
 {
   noise_remote_t *r;
   noise_handshake_t hs;
-  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN];
-  uint8_t r_public[NOISE_PUBLIC_KEY_LEN];
-  uint8_t timestamp[NOISE_TIMESTAMP_LEN];
+  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
+  uint8_t r_public[NOISE_PUBLIC_KEY_LEN] = { 0 };
+  uint8_t timestamp[NOISE_TIMESTAMP_LEN] = { 0 };
   u32 key_idx;
   uint8_t *key;
   int ret = false;
@@ -256,8 +256,8 @@ noise_create_response (vlib_main_t * vm, noise_remote_t * r, uint32_t * s_idx,
 		       uint8_t en[0 + NOISE_AUTHTAG_LEN])
 {
   noise_handshake_t *hs = &r->r_handshake;
-  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN];
-  uint8_t e[NOISE_PUBLIC_KEY_LEN];
+  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
+  uint8_t e[NOISE_PUBLIC_KEY_LEN] = { 0 };
   uint32_t key_idx;
   uint8_t *key;
   int ret = false;
@@ -310,8 +310,8 @@ noise_consume_response (vlib_main_t * vm, noise_remote_t * r, uint32_t s_idx,
 {
   noise_local_t *l = noise_local_get (r->r_local_idx);
   noise_handshake_t hs;
-  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN];
-  uint8_t preshared_key[NOISE_PUBLIC_KEY_LEN];
+  uint8_t _key[NOISE_SYMMETRIC_KEY_LEN] = { 0 };
+  uint8_t preshared_key[NOISE_PUBLIC_KEY_LEN] = { 0 };
   uint32_t key_idx;
   uint8_t *key;
   int ret = false;
