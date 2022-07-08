@@ -69,7 +69,7 @@ enum lcp_itf_host_type : u8
     @param host_if_type - the type of host interface to create (tun, tap)
     @param namespace - optional tap namespace; namespace[0] == 0 iff none
 */
-autoreply autoendian define lcp_itf_pair_add_del
+autoreply define lcp_itf_pair_add_del
 {
   u32 client_index;
   u32 context;
@@ -79,7 +79,7 @@ autoreply autoendian define lcp_itf_pair_add_del
   vl_api_lcp_itf_host_type_t host_if_type;
   string namespace[32];			/* LCP_NS_LEN */
 };
-autoendian define lcp_itf_pair_add_del_v2
+define lcp_itf_pair_add_del_v2
 {
   u32 client_index;
   u32 context;
