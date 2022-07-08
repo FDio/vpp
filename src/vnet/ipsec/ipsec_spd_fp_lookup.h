@@ -128,7 +128,7 @@ ipsec_fp_ip6_out_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
   u64 *pkey, *pmatch, *pmask;
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_fp_t *pspd_fp = (ipsec_spd_fp_t *) spd_fp;
-  u32 *mask_type_ids = pspd_fp->fp_mask_types[IPSEC_SPD_POLICY_IP4_OUTBOUND];
+  u32 *mask_type_ids = pspd_fp->fp_mask_types[IPSEC_SPD_POLICY_IP6_OUTBOUND];
 
   /*clear the list of matched policies pointers */
   clib_memset (policies, 0, n * sizeof (*policies));
@@ -140,16 +140,15 @@ ipsec_fp_ip6_out_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 	{
 	  mte = im->fp_mask_types + *mti;
 
-	  pmatch = (u64 *) match;
-	  pmask = (u64 *) &mte->mask;
+	  pmatch = (u64 *) &match->ip6_laddr;
+	  pmask = (u64 *) &mte->mask.ip6_laddr;
 	  pkey = (u64 *) kv.key;
 
 	  *pkey++ = *pmatch++ & *pmask++;
 	  *pkey++ = *pmatch++ & *pmask++;
 	  *pkey++ = *pmatch++ & *pmask++;
 	  *pkey++ = *pmatch++ & *pmask++;
-	  *pkey++ = *pmatch++ & *pmask++;
-	  *pkey++ = *pmatch++ & *pmask++;
+	  *pkey = *pmatch & *pmask;
 
 	  int res = clib_bihash_search_inline_2_40_8 (
 	    &pspd_fp->fp_ip6_lookup_hash, &kv, &result);

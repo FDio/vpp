@@ -179,7 +179,7 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
 
   clib_memset (policies, 0, n * sizeof (ipsec_policy_t *));
 
-  if (im->fp_spd_is_enabled)
+  if (im->ipv4_fp_spd_is_enabled)
     {
       ipsec_fp_5tuple_from_ip4_range_n (tuples, ip4_5tuples, n);
       counter += ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples,
@@ -330,12 +330,11 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
   if (!spd)
     return 0;
 
-  ipsec_fp_5tuple_from_ip4_range (&tuples[0], la, ra, lp, rp, pr);
-
-  if (im->fp_spd_is_enabled &&
-      (1 == ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples, policies,
-					 fp_policy_ids, 1)))
+  if (im->ipv4_fp_spd_is_enabled)
     {
+      ipsec_fp_5tuple_from_ip4_range (&tuples[0], la, ra, lp, rp, pr);
+      ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples, policies,
+				   fp_policy_ids, 1);
       p = policies[0];
       i = fp_policy_ids;
       if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
@@ -397,6 +396,90 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
 
       return p;
     }
+  return 0;
+}
+
+always_inline uword
+ip6_addr_match_range (ip6_address_t *a, ip6_address_t *la, ip6_address_t *ua)
+{
+  if ((memcmp (a->as_u64, la->as_u64, 2 * sizeof (u64)) >= 0) &&
+      (memcmp (a->as_u64, ua->as_u64, 2 * sizeof (u64)) <= 0))
+    return 1;
+  return 0;
+}
+
+always_inline void
+ipsec_fp_5tuple_from_ip6_range (ipsec_fp_5tuple_t *tuple, ip6_address_t *la,
+				ip6_address_t *ra, u16 lp, u16 rp, u8 pr)
+
+{
+  clib_memcpy (&tuple->ip6_laddr, la, sizeof (ip6_address_t));
+  clib_memcpy (&tuple->ip6_raddr, ra, sizeof (ip6_address_t));
+
+  tuple->lport = lp;
+  tuple->rport = rp;
+  tuple->protocol = pr;
+  tuple->is_ipv6 = 1;
+}
+
+always_inline ipsec_policy_t *
+ipsec6_output_policy_match (ipsec_spd_t *spd, ip6_address_t *la,
+			    ip6_address_t *ra, u16 lp, u16 rp, u8 pr)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *p;
+  ipsec_policy_t *policies[1];
+  ipsec_fp_5tuple_t tuples[1];
+  u32 fp_policy_ids[1];
+
+  u32 *i;
+
+  if (!spd)
+    return 0;
+
+  if (im->ipv6_fp_spd_is_enabled)
+    {
+
+      ipsec_fp_5tuple_from_ip6_range (&tuples[0], la, ra, lp, rp, pr);
+      ipsec_fp_out_policy_match_n (&spd->fp_spd, 1, tuples, policies,
+				   fp_policy_ids, 1);
+      p = policies[0];
+      i = fp_policy_ids;
+      return p;
+    }
+
+  vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND])
+    {
+      p = pool_elt_at_index (im->policies, *i);
+      if (PREDICT_FALSE ((p->protocol != IPSEC_POLICY_PROTOCOL_ANY) &&
+			 (p->protocol != pr)))
+	continue;
+
+      if (!ip6_addr_match_range (ra, &p->raddr.start.ip6, &p->raddr.stop.ip6))
+	continue;
+
+      if (!ip6_addr_match_range (la, &p->laddr.start.ip6, &p->laddr.stop.ip6))
+	continue;
+
+      if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
+			 (pr != IP_PROTOCOL_SCTP)))
+	return p;
+
+      if (lp < p->lport.start)
+	continue;
+
+      if (lp > p->lport.stop)
+	continue;
+
+      if (rp < p->rport.start)
+	continue;
+
+      if (rp > p->rport.stop)
+	continue;
+
+      return p;
+    }
+
   return 0;
 }
 
