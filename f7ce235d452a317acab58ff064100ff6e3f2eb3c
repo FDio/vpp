@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7350f2e2_41212c44",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2174,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-11T07:47:15Z",
+      "side": 1,
+      "message": "Maybe \"0::0\"?",
+      "revId": "f7ce235d452a317acab58ff064100ff6e3f2eb3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d65c134_5368ae4f",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2176,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-11T07:47:15Z",
+      "side": 1,
+      "message": "Same as above",
+      "revId": "f7ce235d452a317acab58ff064100ff6e3f2eb3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
