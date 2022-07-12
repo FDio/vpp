@@ -830,12 +830,13 @@ quic_on_receive (quicly_stream_t * stream, size_t off, const void *src,
 		 size_t len)
 {
   QUIC_DBG (3, "received data: %lu bytes, offset %lu", len, off);
-  u32 max_enq, rlen, rv;
+  u32 max_enq, rv;
   quic_ctx_t *sctx;
   session_t *stream_session;
   app_worker_t *app_wrk;
   svm_fifo_t *f;
   quic_stream_data_t *stream_data;
+  int rlen;
 
   if (!len)
     return;
