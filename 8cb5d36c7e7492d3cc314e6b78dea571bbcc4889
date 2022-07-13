@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "720b397f_5925b89d",
+        "filename": "Makefile",
+        "patchSetId": 6
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-13T11:33:11Z",
+      "side": 1,
+      "message": "This downgrades to clang-10 for builds in CI, causing few minor regressions (mainly on Icelake).\nIs that intentional?\n\nhttp://csit.fd.io/trending/#eNq9UMFuwjAM_ZpyQZYS0ya7cBjwHyik7ohWIEpCKfv6paia6WFoExIXR_F79nt-MZ0CbSO1y6JaFXpVoHZ1LsXifZ6fznvAIzjbA1YfhF72faelANM14HwJqtyBtEBpn3_n2g_NnYkEzti2ErEFKT6b9nSJcAhhWIzrYXF9ThMVRvz-yshv2kw3gQzzszpDieKdyB8s8mgTzIGi-yKez5cybnNqDEk7FU1Xf4eOd-vNjfHfiBXoN45YDZ2b-dekqR6m-ePmYXDZ_7PBVZtZTCakJQpEEAvAci5Epo1lRsd6xBSgmmDfQsfIIQ",
+      "range": {
+        "startLine": 88,
+        "startChar": 16,
+        "endLine": 88,
+        "endChar": 21
+      },
+      "revId": "8cb5d36c7e7492d3cc314e6b78dea571bbcc4889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
