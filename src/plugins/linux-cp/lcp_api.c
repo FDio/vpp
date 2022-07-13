@@ -177,19 +177,13 @@ static void
 vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 {
   vl_api_lcp_default_ns_get_reply_t *rmp;
-  vl_api_registration_t *reg;
-  char *ns;
 
-  reg = vl_api_client_index_to_registration (mp->client_index);
-  if (!reg)
-    return;
-
-  REPLY_MACRO_DETAILS2_END (VL_API_LCP_DEFAULT_NS_GET_REPLY, ({
-			      ns = (char *) lcp_get_default_ns ();
-			      if (ns)
-				clib_strncpy ((char *) rmp->netns, ns,
-					      LCP_NS_LEN - 1);
-			    }));
+  REPLY_MACRO_DETAILS2 (VL_API_LCP_DEFAULT_NS_GET_REPLY, ({
+			  char *ns = (char *) lcp_get_default_ns ();
+			  if (ns)
+			    clib_strncpy ((char *) rmp->netns, ns,
+					  LCP_NS_LEN - 1);
+			}));
 }
 
 static void
