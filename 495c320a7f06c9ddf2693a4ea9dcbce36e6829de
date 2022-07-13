@@ -50,6 +50,23 @@
       "message": "perftest-2n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND78bANDethip6-ip6base",
       "revId": "495c320a7f06c9ddf2693a4ea9dcbce36e6829de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62fdf011_5f874f03",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-13T12:38:31Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2004-x86_64-2n-icx/3/ : FAILURE (skipped)\n\nSmall (below 2%) but consistent (small stdev) regression.\nNot sure if it is a real code quality issue (new logic) or is it just compiler rearranging code into a less effective layout for an otherwise benign change (as in  VPP-2017).\n\nLooking at telemetry (before: [0] and after: [1]), the biggest difference is in ip6-lookup graph node getting ~257 (per 256 packets I assume) of \"Loads blocked due to overlapping with a preceding store that cannot be forwarded.\".\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2004-x86_64-2n-icx/3/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k7-k10-k1-k1-k1-k12\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2004-x86_64-2n-icx/3/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k7-k10-k1-k1-k1-k12",
+      "revId": "495c320a7f06c9ddf2693a4ea9dcbce36e6829de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
