@@ -1633,19 +1633,19 @@ expire_per_vrf_sessions (u32 fib_index)
 
   vec_foreach (tsm, sm->per_thread_data)
     {
-      vec_foreach (per_vrf_sessions, tsm->per_vrf_sessions_vec)
-        {
-          if ((per_vrf_sessions->rx_fib_index == fib_index) ||
-              (per_vrf_sessions->tx_fib_index == fib_index))
-            {
-              per_vrf_sessions->expired = 1;
-            }
-        }
+      pool_foreach (per_vrf_sessions, tsm->per_vrf_sessions_pool)
+	{
+	  if ((per_vrf_sessions->rx_fib_index == fib_index) ||
+	      (per_vrf_sessions->tx_fib_index == fib_index))
+	    {
+	      per_vrf_sessions->expired = 1;
+	    }
+	}
     }
 }
 
 void
-update_per_vrf_sessions_vec (u32 fib_index, int is_del)
+update_per_vrf_sessions_pool (u32 fib_index, int is_del)
 {
   snat_main_t *sm = &snat_main;
   nat_fib_t *fib;
@@ -1788,7 +1788,7 @@ nat44_ed_add_interface (u32 sw_if_index, u8 is_inside)
   fib_index =
     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
 
-  update_per_vrf_sessions_vec (fib_index, 0 /*is_del*/);
+  update_per_vrf_sessions_pool (fib_index, 0 /*is_del*/);
 
   if (!is_inside)
     {
@@ -1903,7 +1903,7 @@ nat44_ed_del_interface (u32 sw_if_index, u8 is_inside)
   fib_index =
     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
 
-  update_per_vrf_sessions_vec (fib_index, 1 /*is_del*/);
+  update_per_vrf_sessions_pool (fib_index, 1 /*is_del*/);
 
   if (!is_inside)
     {
@@ -2002,7 +2002,7 @@ nat44_ed_add_output_interface (u32 sw_if_index)
 
   fib_index =
     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
-  update_per_vrf_sessions_vec (fib_index, 0 /*is_del*/);
+  update_per_vrf_sessions_pool (fib_index, 0 /*is_del*/);
 
   outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
   if (outside_fib)
@@ -2092,7 +2092,7 @@ nat44_ed_del_output_interface (u32 sw_if_index)
 
   fib_index =
     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
-  update_per_vrf_sessions_vec (fib_index, 1 /*is_del*/);
+  update_per_vrf_sessions_pool (fib_index, 1 /*is_del*/);
 
   outside_fib = nat44_ed_get_outside_fib (sm->outside_fibs, fib_index);
   if (outside_fib)
@@ -3287,7 +3287,7 @@ nat44_ed_worker_db_free (snat_main_per_thread_data_t *tsm)
 {
   pool_free (tsm->lru_pool);
   pool_free (tsm->sessions);
-  vec_free (tsm->per_vrf_sessions_vec);
+  pool_free (tsm->per_vrf_sessions_pool);
 }
 
 void

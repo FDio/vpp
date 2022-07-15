@@ -469,7 +469,7 @@ typedef struct
   /* real thread index */
   u32 thread_index;
 
-  per_vrf_sessions_t *per_vrf_sessions_vec;
+  per_vrf_sessions_t *per_vrf_sessions_pool;
 
 } snat_main_per_thread_data_t;
 
