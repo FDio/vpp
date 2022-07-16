@@ -15,6 +15,7 @@
  *------------------------------------------------------------------
  */
 
+#include <array>
 #include <memory>
 #include <stdio.h>
 #include <unistd.h>
