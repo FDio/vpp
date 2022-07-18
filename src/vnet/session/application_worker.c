@@ -683,7 +683,7 @@ mq_try_lock_and_alloc_msg (svm_msg_q_t *mq, session_mq_rings_e ring,
 {
   int rv, n_try = 0;
 
-  while (n_try < 5)
+  while (n_try < 75)
     {
       rv = svm_msg_q_lock_and_alloc_msg_w_ring (mq, ring, SVM_Q_NOWAIT, msg);
       if (!rv)
