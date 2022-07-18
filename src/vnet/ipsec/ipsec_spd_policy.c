@@ -252,9 +252,9 @@ fill_ip6_hash_policy_kv (ipsec_fp_5tuple_t *match, ipsec_fp_5tuple_t *mask,
 			 clib_bihash_kv_40_8_t *kv)
 {
   ipsec_fp_lookup_value_t *kv_val = (ipsec_fp_lookup_value_t *) &kv->value;
-  u64 *pmatch = (u64 *) &match->ip6_laddr;
-  u64 *pmask = (u64 *) &mask->ip6_laddr;
-  u64 *pkey = (u64 *) &kv->key;
+  u64 *pmatch = (u64 *) match->kv_40_8.key;
+  u64 *pmask = (u64 *) mask->kv_40_8.key;
+  u64 *pkey = (u64 *) kv->key;
 
   *pkey++ = *pmatch++ & *pmask++;
   *pkey++ = *pmatch++ & *pmask++;
@@ -270,12 +270,12 @@ fill_ip4_hash_policy_kv (ipsec_fp_5tuple_t *match, ipsec_fp_5tuple_t *mask,
 			 clib_bihash_kv_16_8_t *kv)
 {
   ipsec_fp_lookup_value_t *kv_val = (ipsec_fp_lookup_value_t *) &kv->value;
-  u64 *pmatch = (u64 *) &match->laddr;
-  u64 *pmask = (u64 *) &mask->laddr;
+  u64 *pmatch = (u64 *) match->kv_16_8.key;
+  u64 *pmask = (u64 *) mask->kv_16_8.key;
   u64 *pkey = (u64 *) kv->key;
 
   *pkey++ = *pmatch++ & *pmask++;
-  *pkey++ = *pmatch++ & *pmask++;
+  *pkey = *pmatch & *pmask;
 
   kv_val->as_u64 = 0;
 }
@@ -349,8 +349,9 @@ ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
   u32 *praddr_stop = (u32 *) &policy->raddr.stop.ip4;
   u32 *prmask = (u32 *) &mask->raddr;
 
-  memset (mask, 0, sizeof (mask->l3_zero_pad));
-  memset (plmask, 0xff, sizeof (*mask) - sizeof (mask->l3_zero_pad));
+  clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
+  clib_memset_u8 (&mask->l3_zero_pad, 0, sizeof (mask->l3_zero_pad));
+
   /* find bits where start != stop */
   *plmask = *pladdr_start ^ *pladdr_stop;
   *prmask = *praddr_start ^ *praddr_stop;
@@ -397,7 +398,7 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
   u64 *praddr_stop = (u64 *) &policy->raddr.stop;
   u64 *prmask = (u64 *) &mask->ip6_raddr;
 
-  memset (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
+  clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
 
   *plmask = (*pladdr_start++ ^ *pladdr_stop++);
 

@@ -140,8 +140,8 @@ ipsec_fp_ip6_out_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 	{
 	  mte = im->fp_mask_types + *mti;
 
-	  pmatch = (u64 *) &match->ip6_laddr;
-	  pmask = (u64 *) &mte->mask.ip6_laddr;
+	  pmatch = (u64 *) match->kv_40_8.key;
+	  pmask = (u64 *) mte->mask.kv_40_8.key;
 	  pkey = (u64 *) kv.key;
 
 	  *pkey++ = *pmatch++ & *pmask++;
@@ -241,12 +241,12 @@ ipsec_fp_ip4_out_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 	{
 	  mte = im->fp_mask_types + *mti;
 
-	  pmatch = (u64 *) &match->laddr;
-	  pmask = (u64 *) &mte->mask.laddr;
+	  pmatch = (u64 *) match->kv_16_8.key;
+	  pmask = (u64 *) mte->mask.kv_16_8.key;
 	  pkey = (u64 *) kv.key;
 
 	  *pkey++ = *pmatch++ & *pmask++;
-	  *pkey++ = *pmatch++ & *pmask++;
+	  *pkey = *pmatch & *pmask;
 
 	  int res = clib_bihash_search_inline_2_16_8 (
 	    &pspd_fp->fp_ip4_lookup_hash, &kv, &result);
