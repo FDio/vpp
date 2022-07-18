@@ -17,17 +17,18 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
 import "vnet/interface_types.api";
 
 /** \brief Set the default Linux Control Plane namespace
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param namespace - the new default namespace; namespace[0] == 0 iff none
+    @param namespace - the new default namespace; namespace[0] == 0 if none
 */
 autoreply define lcp_default_ns_set
 {
+  option in_progress;
   u32 client_index;
   u32 context;
   string namespace[32];		/* LCP_NS_LEN */
@@ -46,10 +47,11 @@ define lcp_default_ns_get
 /** \brief get the default Linux Control Plane namespace
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param namespace - the default namespace; namespace[0] == 0 iff none
+    @param namespace - the default namespace; namespace[0] == 0 if none
 */
 define lcp_default_ns_get_reply
 {
+  option in_progress;
   u32 context;
   string namespace[32];		/* LCP_NS_LEN */
 };
@@ -67,10 +69,11 @@ enum lcp_itf_host_type : u8
     @param sw_if_index - index of VPP PHY SW interface
     @param host_if_name - host tap interface name
     @param host_if_type - the type of host interface to create (tun, tap)
-    @param namespace - optional tap namespace; namespace[0] == 0 iff none
+    @param namespace - optional tap namespace; namespace[0] == 0 if none
 */
 autoreply autoendian define lcp_itf_pair_add_del
 {
+  option in_progress;
   u32 client_index;
   u32 context;
   bool is_add;
@@ -81,6 +84,7 @@ autoreply autoendian define lcp_itf_pair_add_del
 };
 autoendian define lcp_itf_pair_add_del_v2
 {
+  option in_progress;
   u32 client_index;
   u32 context;
   bool is_add;
@@ -125,6 +129,7 @@ define lcp_itf_pair_get_reply
 */
 autoendian define lcp_itf_pair_details
 {
+  option in_progress;
   u32 context;
   vl_api_interface_index_t phy_sw_if_index;
   vl_api_interface_index_t host_sw_if_index;
