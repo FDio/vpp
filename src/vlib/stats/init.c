@@ -8,18 +8,25 @@
 
 #define STAT_SEGMENT_SOCKET_FILENAME "stats.sock"
 
+static u32 vlib_loops_stats_counter_index;
+
 static void
 vector_rate_collector_fn (vlib_stats_collector_data_t *d)
 {
   vlib_main_t *this_vlib_main;
-  counter_t **counters;
-  counter_t *cb;
+  counter_t **counters, **loops_counters;
+  counter_t *cb, *loops_cb;
   f64 vector_rate = 0.0;
   u32 i, n_threads = vlib_get_n_threads ();
 
   vlib_stats_validate (d->entry_index, 0, n_threads - 1);
   counters = d->entry->data;
   cb = counters[0];
+
+  vlib_stats_validate (vlib_loops_stats_counter_index, 0, n_threads - 1);
+  loops_counters =
+    vlib_stats_get_entry_data_pointer (vlib_loops_stats_counter_index);
+  loops_cb = loops_counters[0];
 
   for (i = 0; i < n_threads; i++)
     {
@@ -28,9 +35,10 @@ vector_rate_collector_fn (vlib_stats_collector_data_t *d)
 
       this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
       vlib_clear_internal_node_vector_rate (this_vlib_main);
-
       cb[i] = this_vector_rate;
       vector_rate += this_vector_rate;
+
+      loops_cb[i] = this_vlib_main->loops_per_second;
     }
 
   /* And set the system average rate */
@@ -115,8 +123,12 @@ vlib_stats_init (vlib_main_t *vm)
   reg.private_data = vlib_stats_add_gauge ("/sys/vector_rate");
   reg.entry_index =
     vlib_stats_add_counter_vector ("/sys/vector_rate_per_worker");
+  vlib_loops_stats_counter_index =
+    vlib_stats_add_counter_vector ("/sys/loops_per_worker");
   vlib_stats_register_collector_fn (&reg);
   vlib_stats_validate (reg.entry_index, 0, vlib_get_n_threads ());
+  vlib_stats_validate (vlib_loops_stats_counter_index, 0,
+		       vlib_get_n_threads ());
 
   return 0;
 }
