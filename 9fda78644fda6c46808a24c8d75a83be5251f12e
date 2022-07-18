@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb3fa168_d1190705",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-07-18T09:17:48Z",
+      "side": 1,
+      "message": "Thanks Vratko for your review \u0026 suggestion, updated the patch",
+      "revId": "9fda78644fda6c46808a24c8d75a83be5251f12e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f7a39bdb_bbcf520a",
@@ -14,6 +31,30 @@
       "writtenOn": "2022-06-28T17:10:57Z",
       "side": 1,
       "message": "Ci-management jobs are already setting MAKE_PARALLEL_JOBS value depending on CPU capacity of the executor (depends on arch).\nMaybe the same value can be used when calling this from make (or maybe 1 if called from multiple \"make job\"s)?",
+      "range": {
+        "startLine": 62,
+        "startChar": 40,
+        "endLine": 62,
+        "endChar": 41
+      },
+      "revId": "9fda78644fda6c46808a24c8d75a83be5251f12e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e258873a_c12fcd4a",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-07-18T09:17:48Z",
+      "side": 1,
+      "message": "\u003e Ci-management jobs are already setting MAKE_PARALLEL_JOBS value depending on CPU capacity of the executor (depends on arch).\n\u003e Maybe the same value can be used when calling this from make (or maybe 1 if called from multiple \"make job\"s)?\n\nGreat idea, added it to the logic. So now we take (1) CLI input if given (2) MAKE_PARALLEL_JOBS envvar value if given (3) 1 worker by default",
+      "parentUuid": "f7a39bdb_bbcf520a",
       "range": {
         "startLine": 62,
         "startChar": 40,
