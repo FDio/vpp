@@ -31,6 +31,7 @@ autoreply define lcp_default_ns_set
   u32 client_index;
   u32 context;
   string namespace[32];		/* LCP_NS_LEN */
+  option in_progress;
 };
 
 /** \brief get the default Linux Control Plane namespace
@@ -52,6 +53,7 @@ define lcp_default_ns_get_reply
 {
   u32 context;
   string namespace[32];		/* LCP_NS_LEN */
+  option in_progress;
 };
 
 enum lcp_itf_host_type : u8
@@ -78,6 +80,7 @@ autoreply autoendian define lcp_itf_pair_add_del
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
   string namespace[32];			/* LCP_NS_LEN */
+  option in_progress;
 };
 autoendian define lcp_itf_pair_add_del_v2
 {
@@ -88,6 +91,7 @@ autoendian define lcp_itf_pair_add_del_v2
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
   string namespace[32];			/* LCP_NS_LEN */
+  option in_progress;
 };
 define lcp_itf_pair_add_del_v2_reply
 {
@@ -132,6 +136,7 @@ autoendian define lcp_itf_pair_details
   string host_if_name[16];	/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
   string namespace[32];		/* LCP_NS_LEN */
+  option in_progress;
 };
 
 service {
