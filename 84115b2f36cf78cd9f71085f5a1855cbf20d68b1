@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "341665e5_77416ceb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-18T12:52:10Z",
+      "side": 1,
+      "message": "looks good but I have a few questions",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f6624f8_47cbaa6f",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-18T12:52:10Z",
+      "side": 1,
+      "message": "I think this comment should be removed",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43eb4c3d_3762c7d0",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-18T12:52:10Z",
+      "side": 1,
+      "message": "is it guaranteed that the array size of c-\u003etx_bufs is always the same as c-\u003erx_bufs?",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

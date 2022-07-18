@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63080c24_c80e2ce4",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-18T12:52:10Z",
+      "side": 0,
+      "message": "looks like resolve_packet() is no longer used, should it be removed?\nsame for resolve_packet_zero_copy_add_encap()",
+      "revId": "55050c31c250679eb2aadf9b0d06fd08812b0a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
