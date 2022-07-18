@@ -172,6 +172,8 @@ typedef struct vcl_session_
   transport_endpt_ext_cfg_t *ext_config;
   u8 dscp;
 
+  i32 vpp_error;
+
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif

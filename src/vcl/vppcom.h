@@ -102,6 +102,7 @@ typedef enum
   VPPCOM_ENOPROTOOPT = -ENOPROTOOPT,
   VPPCOM_EPIPE = -EPIPE,
   VPPCOM_ENOENT = -ENOENT,
+  VPPCOM_EADDRINUSE = -EADDRINUSE
 } vppcom_error_t;
 
 typedef enum
@@ -263,6 +264,13 @@ extern void vppcom_worker_index_set (int);
  * notifications.
  */
 extern int vppcom_worker_mqs_epfd (void);
+
+/**
+ * Returns Session error
+ *
+ * Application can use this API to find the detailed session error
+ */
+extern int vppcom_session_get_error (uint32_t session_handle);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
