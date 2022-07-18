@@ -17,6 +17,7 @@
 #define SRC_VCL_VCL_PRIVATE_H_
 
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session_types.h>
 #include <vcl/vppcom.h>
 #include <vcl/vcl_debug.h>
 
@@ -171,6 +172,8 @@ typedef struct vcl_session_
 
   transport_endpt_ext_cfg_t *ext_config;
   u8 dscp;
+
+  i32 vpp_error;
 
 #if VCL_ELOG
   elog_track_t elog_track;
