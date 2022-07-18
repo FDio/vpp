@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9658e2ce_13eb48e8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-07-18T15:15:08Z",
+      "side": 1,
+      "message": "For all patches you\u0027ll need to first follow the commit/subject line formatting patterns we follow. First \"component : description of issues\" and within the description add a Type: \u003ctype\u003e (you\u0027ll find those in the .git_commit_template",
+      "revId": "e6121b6961ab0e7c7379c5ea8fcd42a66d3c2094",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
