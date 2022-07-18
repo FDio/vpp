@@ -198,54 +198,6 @@ resolve_icmp (struct icmphdr *icmp, void *icmp_resp)
   return sizeof (struct icmphdr);
 }
 
-int
-resolve_packet (void *in_pck, ssize_t in_size, void *out_pck,
-		uint32_t *out_size, uint8_t ip_addr[4], uint8_t hw_addr[6])
-{
-  struct ether_header *eh;
-  struct ether_arp *eah;
-  struct iphdr *ip, *ip_out;
-  struct icmphdr *icmp;
-  *out_size = 0;
-
-  if ((in_pck == NULL) || (out_pck == NULL))
-    return -1;
-
-  eh = (struct ether_header *) in_pck;
-  *out_size = resolve_eth (eh, out_pck, hw_addr);
-
-  if (eh->ether_type == 0x0608)
-    {
-      eah = (struct ether_arp *) (in_pck + *out_size);
-      *out_size += resolve_eth_arp (eah, out_pck + *out_size, ip_addr);
-    }
-  else if (eh->ether_type == 0x0008)
-    {
-#ifdef ICMP_DBG
-      print_packet (in_pck + *out_size);
-#endif
-      ip = (struct iphdr *) (in_pck + *out_size);
-      ip_out = (struct iphdr *) (out_pck + *out_size);
-      *out_size += resolve_ip (ip, out_pck + *out_size, ip_addr);
-      if (ip->protocol == 1)
-	{
-	  icmp = (struct icmphdr *) (in_pck + *out_size);
-	  *out_size += resolve_icmp (icmp, out_pck + *out_size);
-	  ((struct icmphdr *) (out_pck + *out_size - sizeof (struct icmphdr)))
-	    ->checksum = cksum (out_pck + *out_size - sizeof (struct icmphdr),
-				sizeof (struct icmphdr));
-	  /* payload */
-	  memcpy (out_pck + *out_size, in_pck + *out_size,
-		  in_size - *out_size);
-	  *out_size = in_size;
-	  ip_out->tot_len =
-	    __bswap_16 (*out_size - sizeof (struct ether_header));
-	  ip_out->check = cksum (ip_out, sizeof (struct iphdr));
-	}
-    }
-  return 0;
-}
-
 static ssize_t
 generate_eth (struct ether_header *eh, uint8_t hw_daddr[6])
 {
@@ -373,8 +325,8 @@ generate_packet2 (void *pck, uint32_t *size, uint8_t saddr[4],
   while (0)
 
 int
-resolve_packet_zero_copy (void *pck, uint32_t *size, uint8_t ip_addr[4],
-			  uint8_t hw_addr[6])
+resolve_packet (void *pck, uint32_t *size, uint8_t ip_addr[4],
+		uint8_t hw_addr[6])
 {
   struct ether_header *eh;
   struct ether_arp *eah;
@@ -384,6 +336,10 @@ resolve_packet_zero_copy (void *pck, uint32_t *size, uint8_t ip_addr[4],
 
   if (pck == NULL)
     return 0;
+
+#ifdef ICMP_DBG
+  print_packet (pck);
+#endif
 
   GET_HEADER (eh, struct ether_header, pck, offset);
 
@@ -450,8 +406,7 @@ resolve_packet_zero_copy (void *pck, uint32_t *size, uint8_t ip_addr[4],
 }
 
 int
-resolve_packet_zero_copy_add_encap (void **pck_, uint32_t *size,
-				    uint8_t ip_addr[4])
+resolve_packet_with_encap (void **pck_, uint32_t *size, uint8_t ip_addr[4])
 {
   struct ether_header *eh;
   struct iphdr *ip;

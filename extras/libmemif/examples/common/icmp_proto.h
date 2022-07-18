@@ -24,17 +24,12 @@ typedef enum
   ICMPR_FLOW_MODE_IP,
 } icmpr_flow_mode_t;
 
-int resolve_packet (void *in_pck, ssize_t in_size, void *out_pck,
-		    uint32_t *out_size, uint8_t ip_addr[4],
+/* resolve packet in place */
+int resolve_packet (void *pck, uint32_t *size, uint8_t ip_addr[4],
 		    uint8_t hw_addr[6]);
 
-/* resolve packet in place */
-int resolve_packet_zero_copy (void *pck, uint32_t *size, uint8_t ip_addr[4],
-			      uint8_t hw_addr[6]);
-
 /* resolve packet in place and add eth encap */
-int resolve_packet_zero_copy_add_encap (void **pck, uint32_t *size,
-					uint8_t ip_addr[4]);
+int resolve_packet_with_encap (void **pck, uint32_t *size, uint8_t ip_addr[4]);
 
 int generate_packet (void *pck, uint32_t *size, uint8_t saddr[4],
 		     uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq);

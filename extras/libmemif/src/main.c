@@ -1751,6 +1751,8 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	}
       d = &ring->desc[b0->desc_index & mask];
       d->length = b0->len;
+      d->flags =
+	((b0->flags & MEMIF_BUFFER_FLAG_NEXT) == 1) ? MEMIF_DESC_FLAG_NEXT : 0;
       if (!c->args.is_master)
 	{
 	  // reset headroom
