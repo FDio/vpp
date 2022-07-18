@@ -63,6 +63,30 @@
       },
       "revId": "9fda78644fda6c46808a24c8d75a83be5251f12e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e22e58d_542f1b05",
+        "filename": "src/tools/vppapigen/generate_json.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-07-18T09:18:24Z",
+      "side": 1,
+      "message": ".",
+      "parentUuid": "e258873a_c12fcd4a",
+      "range": {
+        "startLine": 62,
+        "startChar": 40,
+        "endLine": 62,
+        "endChar": 41
+      },
+      "revId": "9fda78644fda6c46808a24c8d75a83be5251f12e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
