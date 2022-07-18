@@ -47,17 +47,37 @@ icmp_packet_handler (memif_connection_t *c)
     {
       for (i = 0; i < c->tx_buf_num; i++)
 	{
-	  resolve_packet (c->rx_bufs[i].data, c->rx_bufs[i].len,
-			  c->tx_bufs[i].data, &c->tx_bufs[i].len, c->ip_addr,
-			  c->hw_addr);
+	  uint32_t len;
+	  void *packet = c->rx_bufs[i].data;
+
+	  memcpy (c->tx_bufs[i].data, c->rx_bufs[i].data, c->rx_bufs[i].len);
+	  c->tx_bufs[i].flags = c->rx_bufs[i].flags;
+	  len = c->tx_bufs[i].len = c->rx_bufs[i].len;
+
+	  while (c->rx_bufs[i].flags & MEMIF_BUFFER_FLAG_NEXT)
+	    {
+	      i++;
+	      memcpy (c->tx_bufs[i].data, c->rx_bufs[i].data,
+		      c->rx_bufs[i].len);
+	      c->tx_bufs[i].flags = c->rx_bufs[i].flags;
+	      len += c->tx_bufs[i].len = c->rx_bufs[i].len;
+	    }
+
+	  resolve_packet (packet, &len, c->ip_addr, c->hw_addr);
 	}
     }
   else
     {
       for (i = 0; i < c->rx_buf_num; i++)
 	{
-	  resolve_packet_zero_copy (c->rx_bufs[i].data, &c->rx_bufs[i].len,
-				    c->ip_addr, c->hw_addr);
+	  uint32_t len = c->rx_bufs[i].len;
+	  void *packet = c->rx_bufs[i].data;
+	  while (c->rx_bufs[i].flags & MEMIF_BUFFER_FLAG_NEXT)
+	    {
+	      i++;
+	      len += c->rx_bufs[i].len;
+	    }
+	  resolve_packet (packet, &len, c->ip_addr, c->hw_addr);
 	}
     }
 
