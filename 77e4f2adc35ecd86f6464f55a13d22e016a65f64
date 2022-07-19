@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9125b8a6_13027c74",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-07-19T08:59:08Z",
+      "side": 1,
+      "message": "Ack - updated commit message to make more sense.",
+      "parentUuid": "03bde446_a1e037af",
+      "revId": "77e4f2adc35ecd86f6464f55a13d22e016a65f64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "39a5d468_7c530c83",
@@ -31,6 +49,24 @@
       "writtenOn": "2022-07-19T08:52:34Z",
       "side": 1,
       "message": "You should cast it to u64 instead of u32 (same for all occurrence).\nAs I understand it, the whole issue stems from the fact that fomat_base10 is going to read 64-bits when we pass only 32-bits - IOW format_base10 is going to read uninitialized data.",
+      "revId": "77e4f2adc35ecd86f6464f55a13d22e016a65f64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7c28b95_30c1a641",
+        "filename": "src/vnet/interface/monitor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-07-19T08:59:08Z",
+      "side": 1,
+      "message": "Updated to u64 consistently.",
+      "parentUuid": "39a5d468_7c530c83",
       "revId": "77e4f2adc35ecd86f6464f55a13d22e016a65f64",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
