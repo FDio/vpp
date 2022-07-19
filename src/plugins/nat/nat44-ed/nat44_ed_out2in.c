@@ -1180,7 +1180,9 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		  goto trace0;
 		}
 
-	      if (!sm->forwarding_enabled)
+	      if (!sm->forwarding_enabled &&
+		  !is_interface_addr (sm, node, sw_if_index0,
+				      ip0->dst_address.as_u32))
 		{
 		  b0->error =
 		    node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
