@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16924677_64df7119",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1025
+      },
+      "writtenOn": "2022-07-19T05:10:42Z",
+      "side": 1,
+      "message": "Thanks Florin. Updated the description",
+      "revId": "ef992d9db4f795b26ea3567442714805a158052b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
