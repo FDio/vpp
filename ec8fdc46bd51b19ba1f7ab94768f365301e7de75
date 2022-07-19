@@ -16,6 +16,24 @@
       "message": "LGTM, I\u0027ll continue to monitor changes to the API and adapt my tooling that relies on it (vppcfg et al). Would be useful if we can discuss changes on vpp-dev though, to avoid surprises (even if the API is in progress and the plugins are experimental).",
       "revId": "ec8fdc46bd51b19ba1f7ab94768f365301e7de75",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d671cc90_84ed8a63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-07-19T18:22:07Z",
+      "side": 1,
+      "message": "Thanks. There was a discussion on vpp-dev about this - https://lists.fd.io/g/vpp-dev/topic/92396431#21673.",
+      "parentUuid": "1b9d2e98_65fb6dc2",
+      "revId": "ec8fdc46bd51b19ba1f7ab94768f365301e7de75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
