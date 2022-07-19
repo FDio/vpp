@@ -1497,7 +1497,7 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
   ip_address_family_t af;
   ip_neighbor_t *ipn;
   u32 ipndb_age;
-  u32 ttl;
+  f64 ttl;
 
   ipn = ip_neighbor_get (ipni);
   af = ip_neighbor_get_af (ipn);
@@ -1505,7 +1505,7 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
   ttl = now - ipn->ipn_time_last_updated;
   *wait = ipndb_age;
 
-  if (ttl > ipndb_age)
+  if (ttl >= ipndb_age)
     {
       IP_NEIGHBOR_DBG ("aged: %U @%f - %f > %d",
 		       format_ip_neighbor, ipni, now,
@@ -1528,8 +1528,10 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
     }
   else
     {
-      /* here we are sure that ttl <= ipndb_age */
-      *wait = ipndb_age - ttl + 1;
+      /* here we are sure that ttl < ipndb_age,
+       * so wait for the remaining time
+       */
+      *wait = ((ipndb_age - ttl) <= 0 ? 1 : (ipndb_age - ttl));
       return (IP_NEIGHBOR_AGE_ALIVE);
     }
 
