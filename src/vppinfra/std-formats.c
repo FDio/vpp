@@ -254,7 +254,7 @@ format_time_interval (u8 * s, va_list * args)
 __clib_export u8 *
 format_base10 (u8 *s, va_list *va)
 {
-  uword size = va_arg (*va, uword);
+  u64 size = va_arg (*va, u64);
 
   if (size < 1000)
     s = format (s, "%d", size);
