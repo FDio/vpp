@@ -82,7 +82,7 @@ memif_disconnect_free_zc_queue_buffer (memif_queue_t * mq, u8 is_rx)
 
   ring_size = 1 << mq->log2_ring_size;
   mask = ring_size - 1;
-  n_slots = mq->ring->head - mq->last_tail;
+  n_slots = (mq->ring->head - mq->last_tail) & mask;
   start = mq->last_tail & mask;
   if (is_rx)
     vlib_buffer_free_from_ring (vm, mq->buffers, start, ring_size, n_slots);

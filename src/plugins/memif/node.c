@@ -499,12 +499,12 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (is_slave)
     {
       cur_slot = mq->last_tail;
-      n_slots = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE) - cur_slot;
+      n_slots = (__atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE) - cur_slot) & mask;
     }
   else
     {
       cur_slot = mq->last_head;
-      n_slots = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE) - cur_slot;
+      n_slots = (__atomic_load_n (&ring->head, __ATOMIC_ACQUIRE) - cur_slot) & mask;
     }
 
   if (n_slots == 0)
@@ -702,7 +702,7 @@ refill:
   if (type == MEMIF_RING_M2S)
     {
       u16 head = ring->head;
-      n_slots = ring_size - head + mq->last_tail;
+      n_slots = (ring_size - head + mq->last_tail) & mask;
 
       while (n_slots--)
 	{
@@ -760,7 +760,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   last_slot = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
   if (cur_slot == last_slot)
     goto refill;
-  n_slots = last_slot - cur_slot;
+  n_slots = (last_slot - cur_slot) & mask;
 
   /* process ring slots */
   vec_validate_aligned (ptd->buffers, MEMIF_RX_VECTOR_SZ,
@@ -959,7 +959,7 @@ refill:
   vec_reset_length (ptd->buffers);
 
   head = ring->head;
-  n_slots = ring_size - head + mq->last_tail;
+  n_slots = (ring_size - head + mq->last_tail) & mask;
   slot = head & mask;
 
   n_slots &= ~7;

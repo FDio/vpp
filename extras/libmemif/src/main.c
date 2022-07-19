@@ -1680,7 +1680,7 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
 
   uint16_t head = ring->head;
   slot = head;
-  uint16_t ns = (1 << mq->log2_ring_size) - head + mq->last_tail;
+  uint16_t ns = ((1 << mq->log2_ring_size) - head + mq->last_tail) & mask;
   count = (count < ns) ? count : ns;
 
   memif_desc_t *d;
@@ -1843,7 +1843,7 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
       return MEMIF_ERR_SUCCESS;
     }
 
-  ns = last_slot - cur_slot;
+  ns = (last_slot - cur_slot) & mask;
 
   while (ns && count)
     {
