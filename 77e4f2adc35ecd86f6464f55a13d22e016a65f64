@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03bde446_a1e037af",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-19T08:52:34Z",
+      "side": 1,
+      "message": "uword is defined as 64-bits on all arch we run on so I do not think this is correct. I agree that changing it to u64 makes it more clear though.",
+      "revId": "77e4f2adc35ecd86f6464f55a13d22e016a65f64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39a5d468_7c530c83",
+        "filename": "src/vnet/interface/monitor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-19T08:52:34Z",
+      "side": 1,
+      "message": "You should cast it to u64 instead of u32 (same for all occurrence).\nAs I understand it, the whole issue stems from the fact that fomat_base10 is going to read 64-bits when we pass only 32-bits - IOW format_base10 is going to read uninitialized data.",
+      "revId": "77e4f2adc35ecd86f6464f55a13d22e016a65f64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
