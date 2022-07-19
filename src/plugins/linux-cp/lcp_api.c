@@ -94,7 +94,7 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_LCP_ITF_PAIR_ADD_DEL_REPLY);
+  REPLY_MACRO_END (VL_API_LCP_ITF_PAIR_ADD_DEL_REPLY);
 }
 
 static void
@@ -122,8 +122,8 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
     }
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO2 (VL_API_LCP_ITF_PAIR_ADD_DEL_V2_REPLY,
-		{ rmp->host_sw_if_index = ntohl (host_sw_if_index); });
+  REPLY_MACRO2_END (VL_API_LCP_ITF_PAIR_ADD_DEL_V2_REPLY,
+		    { rmp->host_sw_if_index = ntohl (host_sw_if_index); });
 }
 
 static void
@@ -184,12 +184,12 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
   if (!reg)
     return;
 
-  REPLY_MACRO_DETAILS2 (VL_API_LCP_DEFAULT_NS_GET_REPLY, ({
-			  ns = (char *) lcp_get_default_ns ();
-			  if (ns)
-			    clib_strncpy ((char *) rmp->netns, ns,
-					  LCP_NS_LEN - 1);
-			}));
+  REPLY_MACRO_DETAILS2_END (VL_API_LCP_DEFAULT_NS_GET_REPLY, ({
+			      ns = (char *) lcp_get_default_ns ();
+			      if (ns)
+				clib_strncpy ((char *) rmp->netns, ns,
+					      LCP_NS_LEN - 1);
+			    }));
 }
 
 static void
