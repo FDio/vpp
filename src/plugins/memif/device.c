@@ -123,14 +123,14 @@ retry:
       slot = head = ring->head;
       tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
       mq->last_tail += tail - mq->last_tail;
-      free_slots = ring_size - head + mq->last_tail;
+      free_slots = (mq->last_tail - head) & mask;
     }
   else
     {
       slot = tail = ring->tail;
       head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
       mq->last_tail += tail - mq->last_tail;
-      free_slots = head - tail;
+      free_slots = (head - tail) & mask;
     }
 
   while (n_left && free_slots)
@@ -305,7 +305,7 @@ retry:
       mq->last_tail += n_free;
     }
 
-  free_slots = ring_size - head + mq->last_tail;
+  free_slots = (mq->last_tail - head) & mask;
 
   while (n_left && free_slots)
     {
