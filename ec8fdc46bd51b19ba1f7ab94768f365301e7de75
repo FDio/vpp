@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b9d2e98_65fb6dc2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-07-19T08:54:12Z",
+      "side": 1,
+      "message": "LGTM, I\u0027ll continue to monitor changes to the API and adapt my tooling that relies on it (vppcfg et al). Would be useful if we can discuss changes on vpp-dev though, to avoid surprises (even if the API is in progress and the plugins are experimental).",
+      "revId": "ec8fdc46bd51b19ba1f7ab94768f365301e7de75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
