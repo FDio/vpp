@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20088224_43beab2d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-07-19T20:19:03Z",
+      "side": 1,
+      "message": "Looks good. Just a nit",
+      "revId": "84868809941d903c7b060ffe61150c7d3db14c34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a2f695d_2579198d",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-07-19T20:19:03Z",
+      "side": 1,
+      "message": "We\u0027re inheriting this through the above. So I don\u0027t think it\u0027s needed",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 39
+      },
+      "revId": "84868809941d903c7b060ffe61150c7d3db14c34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
