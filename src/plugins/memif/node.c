@@ -683,6 +683,10 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {
+      if (ptd->n_packets > n_left_to_next)
+        {
+          vlib_panic_with_msg(vm, "packets more than left");
+        }
       n_left_to_next -= ptd->n_packets;
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
