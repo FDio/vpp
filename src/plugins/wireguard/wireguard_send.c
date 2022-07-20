@@ -41,7 +41,7 @@ ip46_enqueue_packet (vlib_main_t *vm, u32 bi0, int is_ip4)
 }
 
 static void
-wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
+wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const u8 *rewrite, u8 is_ip4)
 {
   if (is_ip4)
     {
@@ -52,7 +52,7 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
       hdr4 = vlib_buffer_get_current (b0);
 
       /* copy only ip4 and udp header; wireguard header not needed */
-      clib_memcpy (hdr4, peer->rewrite, sizeof (ip4_udp_header_t));
+      clib_memcpy (hdr4, rewrite, sizeof (ip4_udp_header_t));
 
       hdr4->udp.length =
 	clib_host_to_net_u16 (b0->current_length - sizeof (ip4_header_t));
@@ -68,7 +68,7 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
       hdr6 = vlib_buffer_get_current (b0);
 
       /* copy only ip6 and udp header; wireguard header not needed */
-      clib_memcpy (hdr6, peer->rewrite, sizeof (ip6_udp_header_t));
+      clib_memcpy (hdr6, rewrite, sizeof (ip6_udp_header_t));
 
       hdr6->udp.length =
 	clib_host_to_net_u16 (b0->current_length - sizeof (ip6_header_t));
@@ -78,7 +78,7 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer, u8 is_ip4)
 }
 
 static bool
-wg_create_buffer (vlib_main_t *vm, const wg_peer_t *peer, const u8 *packet,
+wg_create_buffer (vlib_main_t *vm, const u8 *rewrite, const u8 *packet,
 		  u32 packet_len, u32 *bi, u8 is_ip4)
 {
   u32 n_buf0 = 0;
@@ -95,9 +95,55 @@ wg_create_buffer (vlib_main_t *vm, const wg_peer_t *peer, const u8 *packet,
 
   b0->current_length = packet_len;
 
-  wg_buffer_prepend_rewrite (b0, peer, is_ip4);
+  wg_buffer_prepend_rewrite (b0, rewrite, is_ip4);
 
   return true;
+}
+
+u8 *
+wg_build_rewrite (ip46_address_t *src_addr, u16 src_port,
+		  ip46_address_t *dst_addr, u16 dst_port, u8 is_ip4)
+{
+  u8 *rewrite = NULL;
+  if (is_ip4)
+    {
+      ip4_udp_header_t *hdr;
+
+      /* reserve space for ip4, udp and wireguard headers */
+      vec_validate (rewrite, sizeof (ip4_udp_wg_header_t) - 1);
+      hdr = (ip4_udp_header_t *) rewrite;
+
+      hdr->ip4.ip_version_and_header_length = 0x45;
+      hdr->ip4.ttl = 64;
+      hdr->ip4.src_address = src_addr->ip4;
+      hdr->ip4.dst_address = dst_addr->ip4;
+      hdr->ip4.protocol = IP_PROTOCOL_UDP;
+      hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
+
+      hdr->udp.src_port = clib_host_to_net_u16 (src_port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (dst_port);
+      hdr->udp.checksum = 0;
+    }
+  else
+    {
+      ip6_udp_header_t *hdr;
+
+      /* reserve space for ip6, udp and wireguard headers */
+      vec_validate (rewrite, sizeof (ip6_udp_wg_header_t) - 1);
+      hdr = (ip6_udp_header_t *) rewrite;
+
+      hdr->ip6.ip_version_traffic_class_and_flow_label = 0x60;
+      ip6_address_copy (&hdr->ip6.src_address, &src_addr->ip6);
+      ip6_address_copy (&hdr->ip6.dst_address, &dst_addr->ip6);
+      hdr->ip6.protocol = IP_PROTOCOL_UDP;
+      hdr->ip6.hop_limit = 64;
+
+      hdr->udp.src_port = clib_host_to_net_u16 (src_port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (dst_port);
+      hdr->udp.checksum = 0;
+    }
+
+  return (rewrite);
 }
 
 bool
@@ -135,8 +181,8 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   u32 bi0 = 0;
-  if (!wg_create_buffer (vm, peer, (u8 *) &packet, sizeof (packet), &bi0,
-			 is_ip4))
+  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet, sizeof (packet),
+			 &bi0, is_ip4))
     return false;
 
   ip46_enqueue_packet (vm, bi0, is_ip4);
@@ -211,8 +257,8 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
   packet->header.type = MESSAGE_DATA;
 
-  if (!wg_create_buffer (vm, peer, (u8 *) packet, size_of_packet, &bi0,
-			 is_ip4))
+  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) packet, size_of_packet,
+			 &bi0, is_ip4))
     {
       ret = false;
       goto out;
@@ -252,8 +298,8 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 
 	  u32 bi0 = 0;
 	  u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
-	  if (!wg_create_buffer (vm, peer, (u8 *) &packet, sizeof (packet),
-				 &bi0, is_ip4))
+	  if (!wg_create_buffer (vm, peer->rewrite, (u8 *) &packet,
+				 sizeof (packet), &bi0, is_ip4))
 	    return false;
 
 	  ip46_enqueue_packet (vm, bi0, is_ip4);
@@ -262,6 +308,36 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
       return false;
     }
   return false;
+}
+
+bool
+wg_send_handshake_cookie (vlib_main_t *vm, u32 sender_index,
+			  cookie_checker_t *cookie_checker,
+			  message_macs_t *macs, ip46_address_t *wg_if_addr,
+			  u16 wg_if_port, ip46_address_t *remote_addr,
+			  u16 remote_port)
+{
+  message_handshake_cookie_t packet;
+  u8 *rewrite;
+
+  packet.header.type = MESSAGE_HANDSHAKE_COOKIE;
+  packet.receiver_index = sender_index;
+
+  cookie_checker_create_payload (vm, cookie_checker, macs, packet.nonce,
+				 packet.encrypted_cookie, remote_addr,
+				 remote_port);
+
+  u32 bi0 = 0;
+  u8 is_ip4 = ip46_address_is_ip4 (remote_addr);
+  rewrite = wg_build_rewrite (wg_if_addr, wg_if_port, remote_addr, remote_port,
+			      is_ip4);
+  if (!wg_create_buffer (vm, rewrite, (u8 *) &packet, sizeof (packet), &bi0,
+			 is_ip4))
+    return false;
+
+  ip46_enqueue_packet (vm, bi0, is_ip4);
+
+  return true;
 }
 
 /*

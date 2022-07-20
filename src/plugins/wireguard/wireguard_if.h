@@ -36,6 +36,10 @@ typedef struct wg_if_t_
 
   /* hash table of peers on this link */
   uword *peers;
+
+  /* Under load params */
+  f64 handshake_counting_end;
+  u32 handshake_num;
 } wg_if_t;
 
 
@@ -81,6 +85,44 @@ wg_if_indexes_get_by_port (u16 port)
   return (wg_if_indexes_by_port[port]);
 }
 
+#define HANDSHAKE_COUNTING_INTERVAL		0.5
+#define UNDER_LOAD_INTERVAL			1.0
+#define HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD 40
+
+static_always_inline bool
+wg_if_is_under_load (vlib_main_t *vm, wg_if_t *wgi)
+{
+  static f64 wg_under_load_end;
+  f64 now = vlib_time_now (vm);
+  u32 num_until_under_load =
+    hash_elts (wgi->peers) * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD;
+
+  if (wgi->handshake_counting_end < now)
+    {
+      wgi->handshake_counting_end = now + HANDSHAKE_COUNTING_INTERVAL;
+      wgi->handshake_num = 0;
+    }
+  wgi->handshake_num++;
+
+  if (wgi->handshake_num >= num_until_under_load)
+    {
+      wg_under_load_end = now + UNDER_LOAD_INTERVAL;
+      return true;
+    }
+
+  if (wg_under_load_end > now)
+    {
+      return true;
+    }
+
+  return false;
+}
+
+static_always_inline void
+wg_if_dec_handshake_num (wg_if_t *wgi)
+{
+  wgi->handshake_num--;
+}
 
 #endif
 
