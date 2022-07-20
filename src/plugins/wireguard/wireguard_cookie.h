@@ -82,6 +82,11 @@ typedef struct cookie_checker
 
 void cookie_maker_init (cookie_maker_t *, const uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_checker_update (cookie_checker_t *, uint8_t[COOKIE_INPUT_SIZE]);
+void cookie_checker_create_payload (vlib_main_t *vm, cookie_checker_t *cc,
+				    message_macs_t *cm,
+				    uint8_t nonce[COOKIE_NONCE_SIZE],
+				    uint8_t ecookie[COOKIE_ENCRYPTED_SIZE],
+				    ip46_address_t *ip, u16 udp_port);
 bool cookie_maker_consume_payload (vlib_main_t *vm, cookie_maker_t *cp,
 				   uint8_t nonce[COOKIE_NONCE_SIZE],
 				   uint8_t ecookie[COOKIE_ENCRYPTED_SIZE]);

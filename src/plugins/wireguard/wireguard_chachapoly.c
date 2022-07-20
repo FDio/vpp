@@ -61,6 +61,36 @@ wg_chacha20poly1305_calc (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
   return (op->status == VNET_CRYPTO_OP_STATUS_COMPLETED);
 }
 
+void
+wg_xchacha20poly1305_encrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
+			      u8 *aad, u32 aad_len,
+			      u8 nonce[XCHACHA20POLY1305_NONCE_SIZE],
+			      u8 key[CHACHA20POLY1305_KEY_SIZE])
+{
+  int i;
+  u32 derived_key[CHACHA20POLY1305_KEY_SIZE / sizeof (u32)];
+  u64 h_nonce;
+
+  clib_memcpy (&h_nonce, nonce + 16, sizeof (h_nonce));
+  h_nonce = le64toh (h_nonce);
+  hchacha20 (derived_key, nonce, key);
+
+  for (i = 0; i < (sizeof (derived_key) / sizeof (derived_key[0])); i++)
+    (derived_key[i]) = htole32 ((derived_key[i]));
+
+  uint32_t key_idx;
+
+  key_idx =
+    vnet_crypto_key_add (vm, VNET_CRYPTO_ALG_CHACHA20_POLY1305,
+			 (uint8_t *) derived_key, CHACHA20POLY1305_KEY_SIZE);
+
+  wg_chacha20poly1305_calc (vm, src, src_len, dst, aad, aad_len, h_nonce,
+			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key_idx);
+
+  vnet_crypto_key_del (vm, key_idx);
+  wg_secure_zero_memory (derived_key, CHACHA20POLY1305_KEY_SIZE);
+}
+
 bool
 wg_xchacha20poly1305_decrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
 			      u8 *aad, u32 aad_len,

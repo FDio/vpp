@@ -58,6 +58,25 @@ cookie_checker_update (cookie_checker_t * cc, uint8_t key[COOKIE_INPUT_SIZE])
     }
 }
 
+void
+cookie_checker_create_payload (vlib_main_t *vm, cookie_checker_t *cc,
+			       message_macs_t *cm,
+			       uint8_t nonce[COOKIE_NONCE_SIZE],
+			       uint8_t ecookie[COOKIE_ENCRYPTED_SIZE],
+			       ip46_address_t *ip, u16 udp_port)
+{
+  uint8_t cookie[COOKIE_COOKIE_SIZE];
+
+  cookie_checker_make_cookie (vm, cc, cookie, ip, udp_port);
+  RAND_bytes (nonce, COOKIE_NONCE_SIZE);
+
+  wg_xchacha20poly1305_encrypt (vm, cookie, COOKIE_COOKIE_SIZE, ecookie,
+				cm->mac1, COOKIE_MAC_SIZE, nonce,
+				cc->cc_cookie_key);
+
+  wg_secure_zero_memory (cookie, sizeof (cookie));
+}
+
 bool
 cookie_maker_consume_payload (vlib_main_t *vm, cookie_maker_t *cp,
 			      uint8_t nonce[COOKIE_NONCE_SIZE],

@@ -287,7 +287,7 @@ wg_if_create (u32 user_instance,
       return VNET_API_ERROR_INVALID_REGISTRATION;
     }
 
-  pool_get (wg_if_pool, wg_if);
+  pool_get_zero (wg_if_pool, wg_if);
 
   /* tunnel index (or instance) */
   u32 t_idx = wg_if - wg_if_pool;
@@ -353,6 +353,8 @@ wg_if_delete (u32 sw_if_index)
 
   // Remove peers before interface deletion
   wg_if_peer_walk (wg_if, wg_peer_if_delete, NULL);
+
+  hash_free (wg_if->peers);
 
   index_t *ii;
   index_t *ifs = wg_if_indexes_get_by_port (wg_if->port);
