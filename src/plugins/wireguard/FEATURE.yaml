@@ -8,5 +8,4 @@ description: "Wireguard protocol implementation"
 state: development
 properties: [API, CLI]
 missing:
-  - IPv6 support
-  - DoS protection as in the original protocol
+  - Peers roaming between different external IPs
