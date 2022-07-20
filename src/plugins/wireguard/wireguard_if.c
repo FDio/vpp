@@ -34,6 +34,9 @@ static index_t *wg_if_index_by_sw_if_index;
 /* vector of interfaces key'd on their UDP port (in network order) */
 index_t **wg_if_indexes_by_port;
 
+/* pool of ratelimit entries */
+static ratelimit_entry_t *wg_ratelimit_pool;
+
 static u8 *
 format_wg_if_name (u8 * s, va_list * args)
 {
@@ -309,6 +312,7 @@ wg_if_create (u32 user_instance,
 
   wg_if->port = port;
   wg_if->local_idx = local - noise_local_pool;
+  cookie_checker_init (&wg_if->cookie_checker, wg_ratelimit_pool);
   cookie_checker_update (&wg_if->cookie_checker, local->l_public);
 
   hw_if_index = vnet_register_interface (vnm,
@@ -371,6 +375,8 @@ wg_if_delete (u32 sw_if_index)
       udp_unregister_dst_port (vlib_get_main (), wg_if->port, 1);
       udp_unregister_dst_port (vlib_get_main (), wg_if->port, 0);
     }
+
+  cookie_checker_deinit (&wg_if->cookie_checker);
 
   vnet_reset_interface_l3_output_node (vnm->vlib_main, sw_if_index);
   vnet_delete_hw_interface (vnm, hw->hw_if_index);

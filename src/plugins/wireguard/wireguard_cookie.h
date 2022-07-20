@@ -25,7 +25,8 @@ enum cookie_mac_state
 {
   INVALID_MAC,
   VALID_MAC_BUT_NO_COOKIE,
-  VALID_MAC_WITH_COOKIE
+  VALID_MAC_WITH_COOKIE,
+  VALID_MAC_WITH_COOKIE_BUT_RATELIMITED,
 };
 
 #define COOKIE_MAC_SIZE		16
@@ -50,14 +51,25 @@ enum cookie_mac_state
 #define INITIATION_COST		(NSEC_PER_SEC / INITIATIONS_PER_SECOND)
 #define TOKEN_MAX		(INITIATION_COST * INITIATIONS_BURSTABLE)
 #define ELEMENT_TIMEOUT		1
-#define IPV4_MASK_SIZE		4	/* Use all 4 bytes of IPv4 address */
-#define IPV6_MASK_SIZE		8	/* Use top 8 bytes (/64) of IPv6 address */
 
 typedef struct cookie_macs
 {
   uint8_t mac1[COOKIE_MAC_SIZE];
   uint8_t mac2[COOKIE_MAC_SIZE];
 } message_macs_t;
+
+typedef struct ratelimit_entry
+{
+  f64 r_last_time;
+  u64 r_tokens;
+} ratelimit_entry_t;
+
+typedef struct ratelimit
+{
+  ratelimit_entry_t *rl_pool;
+  uword *rl_table;
+  f64 rl_last_gc;
+} ratelimit_t;
 
 typedef struct cookie_maker
 {
@@ -72,6 +84,9 @@ typedef struct cookie_maker
 
 typedef struct cookie_checker
 {
+  ratelimit_t cc_ratelimit_v4;
+  ratelimit_t cc_ratelimit_v6;
+
   uint8_t cc_mac1_key[COOKIE_KEY_SIZE];
   uint8_t cc_cookie_key[COOKIE_KEY_SIZE];
 
@@ -81,7 +96,9 @@ typedef struct cookie_checker
 
 
 void cookie_maker_init (cookie_maker_t *, const uint8_t[COOKIE_INPUT_SIZE]);
+void cookie_checker_init (cookie_checker_t *, ratelimit_entry_t *);
 void cookie_checker_update (cookie_checker_t *, uint8_t[COOKIE_INPUT_SIZE]);
+void cookie_checker_deinit (cookie_checker_t *);
 void cookie_checker_create_payload (vlib_main_t *vm, cookie_checker_t *cc,
 				    message_macs_t *cm,
 				    uint8_t nonce[COOKIE_NONCE_SIZE],
