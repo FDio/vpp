@@ -152,6 +152,7 @@ NOISE_IDENTIFIER_NAME = b"WireGuard v1 zx2c4 Jason@zx2c4.com"
 HANDSHAKE_COUNTING_INTERVAL = 0.5
 UNDER_LOAD_INTERVAL = 1.0
 HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD = 40
+HANDSHAKE_NUM_BEFORE_RATELIMITING = 5
 
 
 class VppWgPeer(VppObject):
@@ -514,6 +515,8 @@ class TestWg(VppTestCase):
     peer6_out_err = wg6_output_node_name + "Peer error"
     cookie_dec4_err = wg4_input_node_name + "Failed during Cookie decryption"
     cookie_dec6_err = wg6_input_node_name + "Failed during Cookie decryption"
+    ratelimited4_err = wg4_input_node_name + "Handshake ratelimited"
+    ratelimited6_err = wg6_input_node_name + "Handshake ratelimited"
 
     @classmethod
     def setUpClass(cls):
@@ -550,6 +553,12 @@ class TestWg(VppTestCase):
         )
         self.base_cookie_dec6_err = self.statistics.get_err_counter(
             self.cookie_dec6_err
+        )
+        self.base_ratelimited4_err = self.statistics.get_err_counter(
+            self.ratelimited4_err
+        )
+        self.base_ratelimited6_err = self.statistics.get_err_counter(
+            self.ratelimited6_err
         )
 
     def test_wg_interface(self):
@@ -827,6 +836,165 @@ class TestWg(VppTestCase):
 
         # remove configs
         peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def _test_wg_handshake_ratelimiting_tmpl(self, is_ip6):
+        port = 12323
+
+        # create wg interface
+        if is_ip6:
+            wg0 = VppWgInterface(self, self.pg1.local_ip6, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip6()
+        else:
+            wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create a peer
+        if is_ip6:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_ip6, port + 1, ["1::3:0/112"]
+            ).add_vpp_config()
+        else:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+            ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # prepare and send a bunch of handshake initiations
+        # expect to switch to under load state
+        init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+        txs = [init] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # expect the peer to send a cookie reply
+        peer_1.consume_cookie(rxs[-1], is_ip6=is_ip6)
+
+        # prepare and send a bunch of handshake initiations with correct mac2
+        # expect a handshake response and then ratelimiting
+        NUM_TO_REJECT = 10
+        init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+        txs = [init] * (HANDSHAKE_NUM_BEFORE_RATELIMITING + NUM_TO_REJECT)
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        if is_ip6:
+            self.assertEqual(
+                self.base_ratelimited6_err + NUM_TO_REJECT,
+                self.statistics.get_err_counter(self.ratelimited6_err),
+            )
+        else:
+            self.assertEqual(
+                self.base_ratelimited4_err + NUM_TO_REJECT,
+                self.statistics.get_err_counter(self.ratelimited4_err),
+            )
+
+        # verify the response
+        peer_1.consume_response(rxs[0], is_ip6=is_ip6)
+
+        # clear up under load state
+        self.sleep(UNDER_LOAD_INTERVAL)
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_handshake_ratelimiting_v4(self):
+        """Handshake ratelimiting (v4)"""
+        self._test_wg_handshake_ratelimiting_tmpl(is_ip6=False)
+
+    def test_wg_handshake_ratelimiting_v6(self):
+        """Handshake ratelimiting (v6)"""
+        self._test_wg_handshake_ratelimiting_tmpl(is_ip6=True)
+
+    def test_wg_handshake_ratelimiting_multi_peer(self):
+        """Handshake ratelimiting (multiple peer)"""
+        port = 12323
+
+        # create wg interface
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create two peers
+        NUM_PEERS = 2
+        self.pg1.generate_remote_hosts(NUM_PEERS)
+        self.pg1.configure_ipv4_neighbors()
+
+        peer_1 = VppWgPeer(
+            self, wg0, self.pg1.remote_hosts[0].ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        peer_2 = VppWgPeer(
+            self, wg0, self.pg1.remote_hosts[1].ip4, port + 1, ["10.11.4.0/24"]
+        ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 2)
+
+        # (peer_1) prepare and send a bunch of handshake initiations
+        # expect not to switch to under load state
+        init_1 = peer_1.mk_handshake(self.pg1)
+        txs = [init_1] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # (peer_1) expect the peer to send a handshake response
+        peer_1.consume_response(rxs[0])
+        peer_1.noise_reset()
+
+        # (peer_1) send another bunch of handshake initiations
+        # expect to switch to under load state
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # (peer_1) expect the peer to send a cookie reply
+        peer_1.consume_cookie(rxs[-1])
+
+        # (peer_2) prepare and send a handshake initiation
+        # expect a cookie reply
+        init_2 = peer_2.mk_handshake(self.pg1)
+        rxs = self.send_and_expect(self.pg1, [init_2], self.pg1)
+        peer_2.consume_cookie(rxs[0])
+
+        # (peer_1) prepare and send a bunch of handshake initiations with correct mac2
+        # expect no ratelimiting and a handshake response
+        init_1 = peer_1.mk_handshake(self.pg1)
+        txs = [init_1] * HANDSHAKE_NUM_BEFORE_RATELIMITING
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+        self.assertEqual(
+            self.base_ratelimited4_err,
+            self.statistics.get_err_counter(self.ratelimited4_err),
+        )
+
+        # (peer_1) verify the response
+        peer_1.consume_response(rxs[0])
+        peer_1.noise_reset()
+
+        # (peer_1) send another two handshake initiations with correct mac2
+        # expect ratelimiting
+        # (peer_2) prepare and send a handshake initiation with correct mac2
+        # expect no ratelimiting and a handshake response
+        init_2 = peer_2.mk_handshake(self.pg1)
+        txs = [init_1, init_2, init_1]
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # (peer_1) verify ratelimiting
+        self.assertEqual(
+            self.base_ratelimited4_err + 2,
+            self.statistics.get_err_counter(self.ratelimited4_err),
+        )
+
+        # (peer_2) verify the response
+        peer_2.consume_response(rxs[0])
+
+        # clear up under load state
+        self.sleep(UNDER_LOAD_INTERVAL)
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        peer_2.remove_vpp_config()
         wg0.remove_vpp_config()
 
     def test_wg_peer_resp(self):
