@@ -78,6 +78,9 @@ class VppWgInterface(VppInterface):
         self.private_key = X25519PrivateKey.generate()
         self.public_key = self.private_key.public_key()
 
+        # cookie related params
+        self.cookie_key = blake2s(b"cookie--" + self.public_key_bytes()).digest()
+
     def public_key_bytes(self):
         return public_key_bytes(self.public_key)
 
@@ -146,6 +149,10 @@ def find_route(test, prefix, is_ip6, table_id=0):
 NOISE_HANDSHAKE_NAME = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s"
 NOISE_IDENTIFIER_NAME = b"WireGuard v1 zx2c4 Jason@zx2c4.com"
 
+HANDSHAKE_COUNTING_INTERVAL = 0.5
+UNDER_LOAD_INTERVAL = 1.0
+HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD = 40
+
 
 class VppWgPeer(VppObject):
     def __init__(self, test, itf, endpoint, port, allowed_ips, persistent_keepalive=15):
@@ -163,6 +170,8 @@ class VppWgPeer(VppObject):
         # cookie related params
         self.cookie_key = blake2s(b"cookie--" + self.public_key_bytes()).digest()
         self.last_sent_cookie = None
+        self.last_mac1 = None
+        self.last_received_cookie = None
 
         self.noise = NoiseConnection.from_name(NOISE_HANDSHAKE_NAME)
 
@@ -225,6 +234,9 @@ class VppWgPeer(VppObject):
                 / IPv6(src=self.endpoint, dst=self.itf.src)
                 / UDP(sport=self.port, dport=self.itf.port)
             )
+
+    def noise_reset(self):
+        self.noise = NoiseConnection.from_name(NOISE_HANDSHAKE_NAME)
 
     def noise_init(self, public_key=None):
         self.noise.set_prologue(NOISE_IDENTIFIER_NAME)
@@ -293,6 +305,27 @@ class VppWgPeer(VppObject):
 
         return cookie_reply
 
+    def consume_cookie(self, p, is_ip6=False):
+        self.verify_header(p, is_ip6)
+
+        cookie_reply = Wireguard(p[Raw])
+
+        self._test.assertEqual(cookie_reply[Wireguard].message_type, 3)
+        self._test.assertEqual(cookie_reply[Wireguard].reserved_zero, 0)
+        self._test.assertEqual(
+            cookie_reply[WireguardCookieReply].receiver_index, self.receiver_index
+        )
+
+        # collect info from cookie reply
+        nonce = cookie_reply[WireguardCookieReply].nonce
+        encrypted_cookie = cookie_reply[WireguardCookieReply].encrypted_cookie
+        ciphertext, tag = encrypted_cookie[:16], encrypted_cookie[16:]
+
+        # decrypt cookie data
+        cipher = ChaCha20_Poly1305.new(key=self.itf.cookie_key, nonce=nonce)
+        cipher.update(self.last_mac1)
+        self.last_received_cookie = cipher.decrypt_and_verify(ciphertext, tag)
+
     def mk_handshake(self, tx_itf, is_ip6=False, public_key=None):
         self.noise.set_as_initiator()
         self.noise_init(public_key)
@@ -320,10 +353,19 @@ class VppWgPeer(VppObject):
 
         # generate the mac1 hash
         mac_key = blake2s(b"mac1----" + self.itf.public_key_bytes()).digest()
-        p[WireguardInitiation].mac1 = blake2s(
-            bytes(p)[0:116], digest_size=16, key=mac_key
-        ).digest()
-        p[WireguardInitiation].mac2 = bytearray(16)
+        mac1 = blake2s(bytes(p)[0:116], digest_size=16, key=mac_key).digest()
+        p[WireguardInitiation].mac1 = mac1
+        self.last_mac1 = mac1
+
+        # generate the mac2 hash
+        if self.last_received_cookie:
+            mac2 = blake2s(
+                bytes(p)[0:132], digest_size=16, key=self.last_received_cookie
+            ).digest()
+            p[WireguardInitiation].mac2 = mac2
+            self.last_received_cookie = None
+        else:
+            p[WireguardInitiation].mac2 = bytearray(16)
 
         p = self.mk_tunnel_header(tx_itf, is_ip6) / p
 
@@ -384,6 +426,7 @@ class VppWgPeer(VppObject):
         )
         mac1 = blake2s(bytes(resp)[:-32], digest_size=16, key=mac_key).digest()
         resp[WireguardResponse].mac1 = mac1
+        self.last_mac1 = mac1
 
         resp = self.mk_tunnel_header(tx_itf, is_ip6) / resp
         self._test.assertTrue(self.noise.handshake_finished)
@@ -645,6 +688,146 @@ class TestWg(VppTestCase):
     def test_wg_send_cookie_on_resp_v6(self):
         """Send cookie on handshake response (v6)"""
         self._test_wg_send_cookie_tmpl(is_resp=True, is_ip6=True)
+
+    def _test_wg_receive_cookie_tmpl(self, is_resp, is_ip6):
+        port = 12323
+
+        # create wg interface
+        if is_ip6:
+            wg0 = VppWgInterface(self, self.pg1.local_ip6, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip6()
+        else:
+            wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create a peer
+        if is_ip6:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_ip6, port + 1, ["1::3:0/112"]
+            ).add_vpp_config()
+        else:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+            ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        if is_resp:
+            # wait for the peer to send a handshake initiation
+            rxs = self.pg1.get_capture(1, timeout=2)
+            # prepare and send a bunch of handshake responses
+            # expect to switch to under load state
+            resp = peer_1.consume_init(rxs[0], self.pg1, is_ip6=is_ip6)
+            txs = [resp] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
+            rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+            # reset noise to be able to turn into initiator later
+            peer_1.noise_reset()
+        else:
+            # prepare and send a bunch of handshake initiations
+            # expect to switch to under load state
+            init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+            txs = [init] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
+            rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # expect the peer to send a cookie reply
+        peer_1.consume_cookie(rxs[-1], is_ip6=is_ip6)
+
+        # prepare and send a handshake initiation with wrong mac2
+        # expect a cookie reply
+        init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+        init.mac2 = b"1234567890"
+        rxs = self.send_and_expect(self.pg1, [init], self.pg1)
+        peer_1.consume_cookie(rxs[0], is_ip6=is_ip6)
+
+        # prepare and send a handshake initiation with correct mac2
+        # expect a handshake response
+        init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+        rxs = self.send_and_expect(self.pg1, [init], self.pg1)
+
+        # verify the response
+        peer_1.consume_response(rxs[0], is_ip6=is_ip6)
+
+        # clear up under load state
+        self.sleep(UNDER_LOAD_INTERVAL)
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_receive_cookie_on_init_v4(self):
+        """Receive cookie on handshake initiation (v4)"""
+        self._test_wg_receive_cookie_tmpl(is_resp=False, is_ip6=False)
+
+    def test_wg_receive_cookie_on_init_v6(self):
+        """Receive cookie on handshake initiation (v6)"""
+        self._test_wg_receive_cookie_tmpl(is_resp=False, is_ip6=True)
+
+    def test_wg_receive_cookie_on_resp_v4(self):
+        """Receive cookie on handshake response (v4)"""
+        self._test_wg_receive_cookie_tmpl(is_resp=True, is_ip6=False)
+
+    def test_wg_receive_cookie_on_resp_v6(self):
+        """Receive cookie on handshake response (v6)"""
+        self._test_wg_receive_cookie_tmpl(is_resp=True, is_ip6=True)
+
+    def test_wg_under_load_interval(self):
+        """Under load interval"""
+        port = 12323
+
+        # create wg interface
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create a peer
+        peer_1 = VppWgPeer(
+            self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # prepare and send a bunch of handshake initiations
+        # expect to switch to under load state
+        init = peer_1.mk_handshake(self.pg1)
+        txs = [init] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
+        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
+        # expect the peer to send a cookie reply
+        peer_1.consume_cookie(rxs[-1])
+
+        # sleep till the next counting interval
+        # expect under load state is still active
+        self.sleep(HANDSHAKE_COUNTING_INTERVAL)
+
+        # prepare and send a handshake initiation with wrong mac2
+        # expect a cookie reply
+        init = peer_1.mk_handshake(self.pg1)
+        init.mac2 = b"1234567890"
+        rxs = self.send_and_expect(self.pg1, [init], self.pg1)
+        peer_1.consume_cookie(rxs[0])
+
+        # sleep till the end of being under load
+        # expect under load state is over
+        self.sleep(UNDER_LOAD_INTERVAL - HANDSHAKE_COUNTING_INTERVAL)
+
+        # prepare and send a handshake initiation with wrong mac2
+        # expect a handshake response
+        init = peer_1.mk_handshake(self.pg1)
+        init.mac2 = b"1234567890"
+        rxs = self.send_and_expect(self.pg1, [init], self.pg1)
+
+        # verify the response
+        peer_1.consume_response(rxs[0])
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
 
     def test_wg_peer_resp(self):
         """Send handshake response"""

@@ -95,51 +95,6 @@ wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
   wg_peer_clear (vm, peer);
 }
 
-static u8 *
-wg_peer_build_rewrite (const wg_peer_t *peer, u8 is_ip4)
-{
-  u8 *rewrite = NULL;
-  if (is_ip4)
-    {
-      ip4_udp_header_t *hdr;
-
-      /* reserve space for ip4, udp and wireguard headers */
-      vec_validate (rewrite, sizeof (ip4_udp_wg_header_t) - 1);
-      hdr = (ip4_udp_header_t *) rewrite;
-
-      hdr->ip4.ip_version_and_header_length = 0x45;
-      hdr->ip4.ttl = 64;
-      hdr->ip4.src_address = peer->src.addr.ip4;
-      hdr->ip4.dst_address = peer->dst.addr.ip4;
-      hdr->ip4.protocol = IP_PROTOCOL_UDP;
-      hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
-
-      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
-      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
-      hdr->udp.checksum = 0;
-    }
-  else
-    {
-      ip6_udp_header_t *hdr;
-
-      /* reserve space for ip6, udp and wireguard headers */
-      vec_validate (rewrite, sizeof (ip6_udp_wg_header_t) - 1);
-      hdr = (ip6_udp_header_t *) rewrite;
-
-      hdr->ip6.ip_version_traffic_class_and_flow_label = 0x60;
-      ip6_address_copy (&hdr->ip6.src_address, &peer->src.addr.ip6);
-      ip6_address_copy (&hdr->ip6.dst_address, &peer->dst.addr.ip6);
-      hdr->ip6.protocol = IP_PROTOCOL_UDP;
-      hdr->ip6.hop_limit = 64;
-
-      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
-      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
-      hdr->udp.checksum = 0;
-    }
-
-  return (rewrite);
-}
-
 static void
 wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
 {
@@ -327,7 +282,8 @@ wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
   peer->src.port = wgi->port;
 
   u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
-  peer->rewrite = wg_peer_build_rewrite (peer, is_ip4);
+  peer->rewrite = wg_build_rewrite (&peer->src.addr, peer->src.port,
+				    &peer->dst.addr, peer->dst.port, is_ip4);
 
   u32 ii;
   vec_validate (peer->allowed_ips, vec_len (allowed_ips) - 1);
