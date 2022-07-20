@@ -33,6 +33,24 @@
       "message": "Hi, can you split the patch into multiple? Easier to read this way. Thanks.",
       "revId": "47dad09bf2c2058fa821f8389aeec32dc0047bde",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cbdf6ab_59b8f4b5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-20T09:52:20Z",
+      "side": 1,
+      "message": "Hi, I think it can be splitted into three patches. I will start working on that.",
+      "parentUuid": "c6d6741c_06baa783",
+      "revId": "47dad09bf2c2058fa821f8389aeec32dc0047bde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
