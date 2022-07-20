@@ -82,6 +82,9 @@ typedef struct cookie_checker
 
 void cookie_maker_init (cookie_maker_t *, const uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_checker_update (cookie_checker_t *, uint8_t[COOKIE_INPUT_SIZE]);
+bool cookie_maker_consume_payload (vlib_main_t *vm, cookie_maker_t *cp,
+				   uint8_t nonce[COOKIE_NONCE_SIZE],
+				   uint8_t ecookie[COOKIE_ENCRYPTED_SIZE]);
 void cookie_maker_mac (cookie_maker_t *, message_macs_t *, void *, size_t);
 enum cookie_mac_state
 cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *,

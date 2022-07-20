@@ -59,6 +59,13 @@ wireguard_register_post_node (vlib_main_t *vm)
     vnet_crypto_register_post_node (vm, "wg6-input-post-node");
 }
 
+void
+wg_secure_zero_memory (void *v, size_t n)
+{
+  static void *(*const volatile memset_v) (void *, int, size_t) = &memset;
+  memset_v (v, 0, n);
+}
+
 static clib_error_t *
 wg_init (vlib_main_t * vm)
 {

@@ -17,6 +17,7 @@
 
 #include <openssl/hmac.h>
 #include <wireguard/wireguard.h>
+#include <wireguard/wireguard_chachapoly.h>
 
 /* This implements Noise_IKpsk2:
  *
@@ -67,8 +68,6 @@ static void noise_msg_ephemeral (uint8_t[NOISE_HASH_LEN],
 
 static void noise_tai64n_now (uint8_t[NOISE_TIMESTAMP_LEN]);
 
-static void secure_zero_memory (void *v, size_t n);
-
 /* Set/Get noise parameters */
 void
 noise_local_init (noise_local_t * l, struct noise_upcall *upcall)
@@ -110,7 +109,7 @@ noise_remote_precompute (noise_remote_t * r)
     clib_memset (r->r_ss, 0, NOISE_PUBLIC_KEY_LEN);
 
   noise_remote_handshake_index_drop (r);
-  secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
+  wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
 }
 
 /* Handshake functions */
@@ -161,7 +160,7 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   *s_idx = hs->hs_local_index;
   ret = true;
 error:
-  secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  wg_secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
   vnet_crypto_key_del (vm, key_idx);
   return ret;
 }
@@ -244,9 +243,9 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
   ret = true;
 
 error:
-  secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  wg_secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
   vnet_crypto_key_del (vm, key_idx);
-  secure_zero_memory (&hs, sizeof (hs));
+  wg_secure_zero_memory (&hs, sizeof (hs));
   return ret;
 }
 
@@ -297,9 +296,9 @@ noise_create_response (vlib_main_t * vm, noise_remote_t * r, uint32_t * s_idx,
   *s_idx = hs->hs_local_index;
   ret = true;
 error:
-  secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  wg_secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
   vnet_crypto_key_del (vm, key_idx);
-  secure_zero_memory (e, NOISE_PUBLIC_KEY_LEN);
+  wg_secure_zero_memory (e, NOISE_PUBLIC_KEY_LEN);
   return ret;
 }
 
@@ -358,8 +357,8 @@ noise_consume_response (vlib_main_t * vm, noise_remote_t * r, uint32_t s_idx,
       ret = true;
     }
 error:
-  secure_zero_memory (&hs, sizeof (hs));
-  secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
+  wg_secure_zero_memory (&hs, sizeof (hs));
+  wg_secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);
   vnet_crypto_key_del (vm, key_idx);
   return ret;
 }
@@ -443,9 +442,9 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
   vlib_worker_thread_barrier_release (vm);
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
 
-  secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
+  wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
 
-  secure_zero_memory (&kp, sizeof (kp));
+  wg_secure_zero_memory (&kp, sizeof (kp));
   return true;
 }
 
@@ -453,7 +452,7 @@ void
 noise_remote_clear (vlib_main_t * vm, noise_remote_t * r)
 {
   noise_remote_handshake_index_drop (r);
-  secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
+  wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
 
   clib_rwlock_writer_lock (&r->r_keypair_lock);
   noise_remote_keypair_free (vm, r, &r->r_next);
@@ -495,55 +494,6 @@ noise_remote_ready (noise_remote_t * r)
   return ret;
 }
 
-static bool
-chacha20poly1305_calc (vlib_main_t * vm,
-		       u8 * src,
-		       u32 src_len,
-		       u8 * dst,
-		       u8 * aad,
-		       u32 aad_len,
-		       u64 nonce,
-		       vnet_crypto_op_id_t op_id,
-		       vnet_crypto_key_index_t key_index)
-{
-  vnet_crypto_op_t _op, *op = &_op;
-  u8 iv[12];
-  u8 tag_[NOISE_AUTHTAG_LEN] = { };
-  u8 src_[] = { };
-
-  clib_memset (iv, 0, 12);
-  clib_memcpy (iv + 4, &nonce, sizeof (nonce));
-
-  vnet_crypto_op_init (op, op_id);
-
-  op->tag_len = NOISE_AUTHTAG_LEN;
-  if (op_id == VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC)
-    {
-      op->tag = src + src_len - NOISE_AUTHTAG_LEN;
-      src_len -= NOISE_AUTHTAG_LEN;
-      op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
-    }
-  else
-    op->tag = tag_;
-
-  op->src = !src ? src_ : src;
-  op->len = src_len;
-
-  op->dst = dst;
-  op->key_index = key_index;
-  op->aad = aad;
-  op->aad_len = aad_len;
-  op->iv = iv;
-
-  vnet_crypto_process_ops (vm, op, 1);
-  if (op_id == VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC)
-    {
-      clib_memcpy (dst + src_len, op->tag, NOISE_AUTHTAG_LEN);
-    }
-
-  return (op->status == VNET_CRYPTO_OP_STATUS_COMPLETED);
-}
-
 enum noise_state_crypt
 noise_remote_encrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t * r_idx,
 		      uint64_t * nonce, uint8_t * src, size_t srclen,
@@ -572,9 +522,9 @@ noise_remote_encrypt (vlib_main_t * vm, noise_remote_t * r, uint32_t * r_idx,
    * are passed back out to the caller through the provided data pointer. */
   *r_idx = kp->kp_remote_index;
 
-  chacha20poly1305_calc (vm, src, srclen, dst, NULL, 0, *nonce,
-			 VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
-			 kp->kp_send_index);
+  wg_chacha20poly1305_calc (vm, src, srclen, dst, NULL, 0, *nonce,
+			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC,
+			    kp->kp_send_index);
 
   /* If our values are still within tolerances, but we are approaching
    * the tolerances, we notify the caller with ESTALE that they should
@@ -666,8 +616,8 @@ noise_kdf (uint8_t * a, uint8_t * b, uint8_t * c, const uint8_t * x,
 
 out:
   /* Clear sensitive data from stack */
-  secure_zero_memory (sec, BLAKE2S_HASH_SIZE);
-  secure_zero_memory (out, BLAKE2S_HASH_SIZE + 1);
+  wg_secure_zero_memory (sec, BLAKE2S_HASH_SIZE);
+  wg_secure_zero_memory (out, BLAKE2S_HASH_SIZE + 1);
 }
 
 static bool
@@ -682,7 +632,7 @@ noise_mix_dh (uint8_t ck[NOISE_HASH_LEN],
   noise_kdf (ck, key, NULL, dh,
 	     NOISE_HASH_LEN, NOISE_SYMMETRIC_KEY_LEN, 0, NOISE_PUBLIC_KEY_LEN,
 	     ck);
-  secure_zero_memory (dh, NOISE_PUBLIC_KEY_LEN);
+  wg_secure_zero_memory (dh, NOISE_PUBLIC_KEY_LEN);
   return true;
 }
 
@@ -723,7 +673,7 @@ noise_mix_psk (uint8_t ck[NOISE_HASH_LEN], uint8_t hash[NOISE_HASH_LEN],
 	     NOISE_HASH_LEN, NOISE_HASH_LEN, NOISE_SYMMETRIC_KEY_LEN,
 	     NOISE_SYMMETRIC_KEY_LEN, ck);
   noise_mix_hash (hash, tmp, NOISE_HASH_LEN);
-  secure_zero_memory (tmp, NOISE_HASH_LEN);
+  wg_secure_zero_memory (tmp, NOISE_HASH_LEN);
 }
 
 static void
@@ -750,8 +700,8 @@ noise_msg_encrypt (vlib_main_t * vm, uint8_t * dst, uint8_t * src,
 		   uint8_t hash[NOISE_HASH_LEN])
 {
   /* Nonce always zero for Noise_IK */
-  chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
-			 VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key_idx);
+  wg_chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
+			    VNET_CRYPTO_OP_CHACHA20_POLY1305_ENC, key_idx);
   noise_mix_hash (hash, dst, src_len + NOISE_AUTHTAG_LEN);
 }
 
@@ -761,8 +711,9 @@ noise_msg_decrypt (vlib_main_t * vm, uint8_t * dst, uint8_t * src,
 		   uint8_t hash[NOISE_HASH_LEN])
 {
   /* Nonce always zero for Noise_IK */
-  if (!chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN, 0,
-			      VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC, key_idx))
+  if (!wg_chacha20poly1305_calc (vm, src, src_len, dst, hash, NOISE_HASH_LEN,
+				 0, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC,
+				 key_idx))
     return false;
   noise_mix_hash (hash, src, src_len);
   return true;
@@ -798,13 +749,6 @@ noise_tai64n_now (uint8_t output[NOISE_TIMESTAMP_LEN])
   /* memcpy to output buffer, assuming output could be unaligned. */
   clib_memcpy (output, &sec, sizeof (sec));
   clib_memcpy (output + sizeof (sec), &nsec, sizeof (nsec));
-}
-
-static void
-secure_zero_memory (void *v, size_t n)
-{
-  static void *(*const volatile memset_v) (void *, int, size_t) = &memset;
-  memset_v (v, 0, n);
 }
 
 /*
