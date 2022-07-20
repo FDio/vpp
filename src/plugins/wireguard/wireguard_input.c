@@ -31,6 +31,7 @@
   _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                        \
   _ (HANDSHAKE_SEND, "Failed while sending Handshake")                        \
   _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
+  _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                    \
   _ (TOO_BIG, "Packet too big")                                               \
   _ (UNDEFINED, "Undefined error")                                            \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
@@ -185,7 +186,9 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
       else
 	return WG_INPUT_ERROR_PEER;
 
-      // TODO: Implement cookie_maker_consume_payload
+      if (!cookie_maker_consume_payload (
+	    vm, &peer->cookie_maker, packet->nonce, packet->encrypted_cookie))
+	return WG_INPUT_ERROR_COOKIE_DECRYPTION;
 
       return WG_INPUT_ERROR_NONE;
     }
