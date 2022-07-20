@@ -129,8 +129,8 @@ retry:
     {
       slot = tail = ring->tail;
       head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
-      mq->last_tail += tail - mq->last_tail;
-      free_slots = head - tail;
+      mq->last_head += head - mq->last_head;
+      free_slots = mq->last_head - tail;
     }
 
   while (n_left && free_slots)
