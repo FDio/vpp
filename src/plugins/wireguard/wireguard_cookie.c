@@ -20,6 +20,7 @@
 #include <vlib/vlib.h>
 
 #include <wireguard/wireguard_cookie.h>
+#include <wireguard/wireguard_chachapoly.h>
 #include <wireguard/wireguard.h>
 
 static void cookie_precompute_key (uint8_t *,
@@ -55,6 +56,32 @@ cookie_checker_update (cookie_checker_t * cc, uint8_t key[COOKIE_INPUT_SIZE])
       clib_memset (cc->cc_mac1_key, 0, sizeof (cc->cc_mac1_key));
       clib_memset (cc->cc_cookie_key, 0, sizeof (cc->cc_cookie_key));
     }
+}
+
+bool
+cookie_maker_consume_payload (vlib_main_t *vm, cookie_maker_t *cp,
+			      uint8_t nonce[COOKIE_NONCE_SIZE],
+			      uint8_t ecookie[COOKIE_ENCRYPTED_SIZE])
+{
+  uint8_t cookie[COOKIE_COOKIE_SIZE];
+
+  if (cp->cp_mac1_valid == 0)
+    {
+      return false;
+    }
+
+  if (!wg_xchacha20poly1305_decrypt (vm, ecookie, COOKIE_ENCRYPTED_SIZE,
+				     cookie, cp->cp_mac1_last, COOKIE_MAC_SIZE,
+				     nonce, cp->cp_cookie_key))
+    {
+      return false;
+    }
+
+  clib_memcpy (cp->cp_cookie, cookie, COOKIE_COOKIE_SIZE);
+  cp->cp_birthdate = vlib_time_now (vm);
+  cp->cp_mac1_valid = 0;
+
+  return true;
 }
 
 void
