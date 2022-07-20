@@ -25,6 +25,7 @@
 #define foreach_wg_input_error                                                \
   _ (NONE, "No error")                                                        \
   _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
+  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
   _ (PEER, "Peer error")                                                      \
   _ (INTERFACE, "Interface error")                                            \
   _ (DECRYPTION, "Failed during decryption")                                  \
@@ -232,6 +233,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     packet_needs_cookie = false;
   else if (under_load && mac_state == VALID_MAC_BUT_NO_COOKIE)
     packet_needs_cookie = true;
+  else if (mac_state == VALID_MAC_WITH_COOKIE_BUT_RATELIMITED)
+    return WG_INPUT_ERROR_HANDSHAKE_RATELIMITED;
   else
     return WG_INPUT_ERROR_HANDSHAKE_MAC;
 
