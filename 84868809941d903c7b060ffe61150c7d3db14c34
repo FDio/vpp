@@ -39,6 +39,30 @@
       },
       "revId": "84868809941d903c7b060ffe61150c7d3db14c34",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e446e7d_bd42c1f7",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1025
+      },
+      "writtenOn": "2022-07-20T03:03:45Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "2a2f695d_2579198d",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 39
+      },
+      "revId": "84868809941d903c7b060ffe61150c7d3db14c34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
