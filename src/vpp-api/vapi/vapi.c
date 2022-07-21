@@ -63,7 +63,8 @@ typedef struct
   u32 context;
   vapi_cb_t callback;
   void *callback_ctx;
-  bool is_dump;
+  vapi_msg_id_t response_id;
+  enum vapi_request_type type;
 } vapi_req_t;
 
 static const u32 context_counter_mask = (1 << 31);
@@ -137,15 +138,17 @@ vapi_requests_end (vapi_ctx_t ctx)
 }
 
 void
-vapi_store_request (vapi_ctx_t ctx, u32 context, bool is_dump,
-		    vapi_cb_t callback, void *callback_ctx)
+vapi_store_request (vapi_ctx_t ctx, u32 context, vapi_msg_id_t response_id,
+		    enum vapi_request_type request_type, vapi_cb_t callback,
+		    void *callback_ctx)
 {
   assert (!vapi_requests_full (ctx));
   /* if the mutex is not held, bad things will happen */
   assert (0 != pthread_mutex_trylock (&ctx->requests_mutex));
   const int requests_end = vapi_requests_end (ctx);
   vapi_req_t *slot = &ctx->requests[requests_end];
-  slot->is_dump = is_dump;
+  slot->type = request_type;
+  slot->response_id = response_id;
   slot->context = context;
   slot->callback = callback;
   slot->callback_ctx = callback_ctx;
@@ -1116,8 +1119,34 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
       int payload_offset = vapi_get_payload_offset (id);
       void *payload = ((u8 *) msg) + payload_offset;
       bool is_last = true;
-      if (ctx->requests[tmp].is_dump)
+      switch (ctx->requests[tmp].type)
 	{
+	case VAPI_REQUEST_STREAM:
+	  if (ctx->requests[tmp].response_id == id)
+	    {
+	      is_last = false;
+	    }
+	  else
+	    {
+	      VAPI_DBG ("Stream response ID doesn't match current ID, move to "
+			"next ID");
+	      clib_memset (&ctx->requests[tmp], 0,
+			   sizeof (ctx->requests[tmp]));
+	      ++ctx->requests_start;
+	      --ctx->requests_count;
+	      if (ctx->requests_start == ctx->requests_size)
+		{
+		  ctx->requests_start = 0;
+		}
+	      tmp = ctx->requests_start;
+	      if (ctx->requests[tmp].context != context)
+		{
+		  VAPI_ERR ("Unexpected context %u, expected context %u!",
+			    ctx->requests[tmp].context, context);
+		}
+	    }
+	  break;
+	case VAPI_REQUEST_DUMP:
 	  if (vapi_msg_id_control_ping_reply == id)
 	    {
 	      payload = NULL;
@@ -1126,6 +1155,9 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 	    {
 	      is_last = false;
 	    }
+	  break;
+	case VAPI_REQUEST_REG:
+	  break;
 	}
       if (payload_offset != -1)
 	{
