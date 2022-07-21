@@ -63,6 +63,30 @@
       },
       "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4505ce4_c67f6dba",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-21T12:38:57Z",
+      "side": 1,
+      "message": "\u003e I\u0027m trying to keep the original way here.\n\nOk.\n\n\u003e I\u0027m not sure if the tests have included the said ports.\n\nI believe CSIT utilizes the full 1024-65535 outer port range. But sm-\u003eworkers is a vector (usually the allocated capacity is more than the current length), so it is possible the first out-of-bound value happens to be a valid worker index (e.g. zero).\nThat would also explain why it is sometimes ~0 as detected in f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "parentUuid": "8f33dfde_bd171666",
+      "range": {
+        "startLine": 765,
+        "startChar": 17,
+        "endLine": 766,
+        "endChar": 32
+      },
+      "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
