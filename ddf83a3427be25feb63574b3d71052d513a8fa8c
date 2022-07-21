@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "52d474aa_c9afa759",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-07-21T14:49:38Z",
+      "side": 1,
+      "message": "Can you change the copyright designations on the new files you added to say \"Rubicon Communications, LLC\" instead of \"Cisco and/or its affiliates\"?",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "35e94b41_27687c05",
         "filename": "src/plugins/wireguard/wireguard.c",
         "patchSetId": 1
