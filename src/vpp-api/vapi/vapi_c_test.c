@@ -28,6 +28,7 @@
 #include <vapi/vlib.api.vapi.h>
 #include <vapi/vpe.api.vapi.h>
 #include <vapi/interface.api.vapi.h>
+#include <vapi/mss_clamp.api.vapi.h>
 #include <vapi/l2.api.vapi.h>
 #include <fake.api.vapi.h>
 
@@ -36,6 +37,7 @@
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
+DEFINE_VAPI_MSG_IDS_MSS_CLAMP_API_JSON;
 DEFINE_VAPI_MSG_IDS_L2_API_JSON;
 DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
@@ -481,6 +483,48 @@ sw_interface_dump_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
   return VAPI_OK;
 }
 
+vapi_error_e
+vapi_mss_clamp_enable_disable_reply_cb (
+  struct vapi_ctx_s *ctx, void *callback_ctx, vapi_error_e rv, bool is_last,
+  vapi_payload_mss_clamp_enable_disable_reply *reply)
+{
+  bool *x = callback_ctx;
+  *x = true;
+  return VAPI_OK;
+}
+
+vapi_error_e
+vapi_mss_clamp_get_reply_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
+			     vapi_error_e rv, bool is_last,
+			     vapi_payload_mss_clamp_get_reply *reply)
+{
+  int *counter = callback_ctx;
+  ck_assert_int_gt (*counter, 0); // make sure details were called first
+  ++*counter;
+  ck_assert_int_eq (is_last, true);
+  printf ("Got mss clamp reply error %d\n", rv);
+  ck_assert_int_eq (rv, VAPI_OK);
+  printf("counter is %d", *counter);
+  return VAPI_OK;
+}
+
+vapi_error_e
+vapi_mss_clamp_get_details_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
+			       vapi_error_e rv, bool is_last,
+			       vapi_payload_mss_clamp_details *details)
+{
+  int *counter = callback_ctx;
+  ++*counter;
+  if (!is_last)
+    {
+      printf ("Got ipv4 mss clamp to %u for sw_if_index %u\n",
+	      details->ipv4_mss, details->sw_if_index);
+      ck_assert_int_eq (details->ipv4_mss, 1000 + details->sw_if_index);
+    }
+  printf("counter is %d", *counter);
+  return VAPI_OK;
+}
+
 START_TEST (test_loopbacks_1)
 {
   printf ("--- Create/delete loopbacks using blocking API ---\n");
@@ -521,6 +565,37 @@ START_TEST (test_loopbacks_1)
 	      mac_addresses[i][3], mac_addresses[i][4], mac_addresses[i][5],
 	      sw_if_indexes[i]);
     }
+
+  { // new context
+    for (int i = 0; i < num_ifs; ++i)
+      {
+	vapi_msg_mss_clamp_enable_disable *mc =
+	  vapi_alloc_mss_clamp_enable_disable (ctx);
+	mc->payload.sw_if_index = sw_if_indexes[i];
+	mc->payload.ipv4_mss = 1000 + sw_if_indexes[i];
+	mc->payload.ipv4_direction = MSS_CLAMP_DIR_RX;
+	bool reply_ctx = false;
+	printf ("Set ipv4 mss clamp to %u for sw_if_index %u\n",
+		mc->payload.ipv4_mss, mc->payload.sw_if_index);
+	vapi_error_e rv = vapi_mss_clamp_enable_disable (
+	  ctx, mc, vapi_mss_clamp_enable_disable_reply_cb, &reply_ctx);
+	ck_assert_int_eq (VAPI_OK, rv);
+	ck_assert_int_eq (reply_ctx, true);
+      }
+  }
+
+  { // new context
+    int counter = 0;
+    vapi_msg_mss_clamp_get *msg = vapi_alloc_mss_clamp_get (ctx);
+    msg->payload.sw_if_index = ~0;
+    vapi_error_e rv =
+      vapi_mss_clamp_get (ctx, msg, vapi_mss_clamp_get_reply_cb, &counter,
+			  vapi_mss_clamp_get_details_cb, &counter);
+    printf("counter is %d", counter);
+    ck_assert_int_eq (VAPI_OK, rv);
+    ck_assert_int_eq (counter, num_ifs + 1);
+  }
+
   bool seen[num_ifs];
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
   vapi_msg_sw_interface_dump *dump;
