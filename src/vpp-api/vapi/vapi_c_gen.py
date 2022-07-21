@@ -821,14 +821,14 @@ def emit_definition(parser, json_file, emitted, o):
             print("%s%s" % (function_attrs, o.get_calc_msg_size_func_def()))
             print("")
             print("%s%s" % (function_attrs, o.get_verify_msg_size_func_def()))
-            if not o.is_reply and not o.is_event:
+            if not o.is_reply and not o.is_event and not o.is_stream:
                 print("")
                 print("%s%s" % (function_attrs, o.get_alloc_func_def()))
                 print("")
                 print("%s%s" % (function_attrs, o.get_op_func_def()))
             print("")
             print("%s" % o.get_c_constructor())
-            if o.is_reply or o.is_event:
+            if (o.is_reply or o.is_event) and not o.is_stream:
                 print("")
                 print("%s%s;" % (function_attrs, o.get_event_cb_func_def()))
         elif hasattr(o, "get_swap_to_be_func_def"):
