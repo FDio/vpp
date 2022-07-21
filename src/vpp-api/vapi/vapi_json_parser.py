@@ -158,6 +158,7 @@ class Message(object):
         self.header = None
         self.is_reply = json_parser.is_reply(self.name)
         self.is_event = json_parser.is_event(self.name)
+        self.is_stream = json_parser.is_stream(self.name)
         fields = []
         for header in get_msg_header_defs(
             struct_type_class, field_class, json_parser, logger
@@ -346,6 +347,7 @@ class JsonParser(object):
         self.types["string"] = simple_type_class("vl_api_string_t")
         self.replies = set()
         self.events = set()
+        self.streams = set()
         self.simple_type_class = simple_type_class
         self.enum_class = enum_class
         self.union_class = union_class
@@ -384,6 +386,8 @@ class JsonParser(object):
                 if "events" in self.services[k]:
                     for x in self.services[k]["events"]:
                         self.events.add(x)
+                if "stream_msg" in self.services[k]:
+                    self.streams.add(self.services[k]["stream_msg"])
             for e in j["enums"]:
                 name = e[0]
                 value_pairs = e[1:-1]
@@ -521,6 +525,20 @@ class JsonParser(object):
     def is_event(self, message):
         return message in self.events
 
+    def is_stream(self, message):
+        return message in self.streams
+
+    def has_stream_msg(self, message):
+        return (
+            message.name in self.services
+            and "stream_msg" in self.services[message.name]
+        )
+
+    def get_stream_msg(self, message):
+        if not self.has_stream_msg(message):
+            return None
+        return self.messages[self.services[message.name]["stream_msg"]]
+
     def get_reply(self, message):
         return self.messages[self.services[message]["reply"]]
 
@@ -532,13 +550,15 @@ class JsonParser(object):
             remove = []
             for n, m in j.items():
                 try:
-                    if not m.is_reply and not m.is_event:
+                    if not m.is_reply and not m.is_event and not m.is_stream:
                         try:
                             m.reply = self.get_reply(n)
+                            m.reply_is_stream = False
+                            m.has_stream_msg = self.has_stream_msg(m)
                             if "stream" in self.services[m.name]:
                                 m.reply_is_stream = self.services[m.name]["stream"]
-                            else:
-                                m.reply_is_stream = False
+                            if m.has_stream_msg:
+                                m.stream_msg = self.get_stream_msg(m)
                             m.reply.request = m
                         except:
                             raise ParseError("Cannot find reply to message `%s'" % n)
