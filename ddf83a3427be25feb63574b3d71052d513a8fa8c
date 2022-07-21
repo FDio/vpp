@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "87bd48b8_ed49a14c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T15:54:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "52d474aa_c9afa759",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "35e94b41_27687c05",
@@ -189,6 +207,24 @@
       "side": 1,
       "message": "That is not actually for optimization but to fix the problem of erroneously calculating and setting mac2 in handshake messages in the first ~120 seconds after VPP startup. Since cp-\u003ecp_birthdate is zero when no cookie messages were received and COOKIE_SECRET_MAX_AGE is 120.\n\nAs for moving vlib_time_now() after, I will do that.",
       "parentUuid": "024e9da0_d4fa6ffa",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9bdabe37_7eef18a2",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T15:54:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6dd1fc6e_a389609c",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
