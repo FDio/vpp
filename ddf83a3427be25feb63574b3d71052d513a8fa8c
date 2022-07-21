@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1babcbd2_c9dd0c79",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-21T12:11:16Z",
+      "side": 1,
+      "message": "Should use VPP native rotate_left() instead",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87006d43_b85ecb42",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-21T12:11:16Z",
+      "side": 1,
+      "message": "Please use clib_byte_swap_u32 instead.",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3338f438_d214fec1",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-21T12:11:16Z",
+      "side": 1,
+      "message": "Don\u0027t get why we need this macro",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
