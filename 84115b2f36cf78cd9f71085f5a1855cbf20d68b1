@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "134232b0_d8736433",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-07-21T15:13:49Z",
+      "side": 1,
+      "message": "It is non-zero copy, I moved the memcpy out as need to handle chain buffers.",
+      "parentUuid": "4f6624f8_47cbaa6f",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "43eb4c3d_3762c7d0",
         "filename": "extras/libmemif/examples/common/packet_handler.c",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2022-07-18T12:52:10Z",
       "side": 1,
       "message": "is it guaranteed that the array size of c-\u003etx_bufs is always the same as c-\u003erx_bufs?",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "97c9ff4d_68856800",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-07-21T15:13:49Z",
+      "side": 1,
+      "message": "tx_bufs is only used in the example where it is allocated to same size as of rx_bufs.",
+      "parentUuid": "43eb4c3d_3762c7d0",
       "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
