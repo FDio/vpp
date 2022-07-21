@@ -1250,6 +1250,11 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
 
         output += signature.format(name=t.name)
 
+        # make Array type appear before the others:
+        # some arrays have dynamic length, and we want to iterate over
+        # them before changing endiann for the length field
+        t.block.sort(key=lambda x: x.type)
+
         for o in t.block:
             output += endianfun_obj(o)
         output += "}\n\n"
@@ -1573,6 +1578,31 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
                 )
             )
             write("   vl_msg_api_config (&c);\n")
+        except KeyError:
+            pass
+
+        try:
+            if s.stream:
+                d = define_hash[s.stream_message]
+                write(
+                    "   c = (vl_msg_api_msg_config_t) "
+                    "{{.id = VL_API_{ID} + msg_id_base,\n"
+                    '  .name = "{n}",\n'
+                    "  .handler = 0,\n"
+                    "  .endian = vl_api_{n}_t_endian,\n"
+                    "  .format_fn = vl_api_{n}_t_format,\n"
+                    "  .traced = 1,\n"
+                    "  .replay = 1,\n"
+                    "  .tojson = vl_api_{n}_t_tojson,\n"
+                    "  .fromjson = vl_api_{n}_t_fromjson,\n"
+                    "  .calc_size = vl_api_{n}_t_calc_size,\n"
+                    "  .is_autoendian = {auto}}};\n".format(
+                        n=s.stream_message,
+                        ID=s.stream_message.upper(),
+                        auto=d.autoendian,
+                    )
+                )
+                write("   vl_msg_api_config (&c);\n")
         except KeyError:
             pass
 

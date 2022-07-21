@@ -105,13 +105,13 @@ define lcp_itf_pair_add_del_v2_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface to use as filter (~0 == "all")
 */
-define lcp_itf_pair_get
+autoendian define lcp_itf_pair_get
 {
   u32 client_index;
   u32 context;
   u32 cursor;
 };
-define lcp_itf_pair_get_reply
+autoendian define lcp_itf_pair_get_reply
 {
   u32 context;
   i32 retval;
