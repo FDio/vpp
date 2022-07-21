@@ -87,6 +87,30 @@
       },
       "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbbf1605_a53b9a0c",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-21T12:48:29Z",
+      "side": 1,
+      "message": "\u003e (e_port - 1024) % _vec_len (sm-\u003eworkers)\n\nAlso, that would make it harder to generate random ports in in2out direction, see nat_ed_alloc_addr_and_port_with_snat_address.\n(The logic there is another possible explanation for CSIT working, VPP perhaps never generate high enough port even if CSIT leaves space there).",
+      "parentUuid": "d4505ce4_c67f6dba",
+      "range": {
+        "startLine": 765,
+        "startChar": 17,
+        "endLine": 766,
+        "endChar": 32
+      },
+      "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
