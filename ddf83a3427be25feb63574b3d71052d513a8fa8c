@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "35e94b41_27687c05",
+        "filename": "src/plugins/wireguard/wireguard.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-21T12:33:55Z",
+      "side": 1,
+      "message": "Suggest to change \"wg_secure_zero_memory\" to \n#define WG_CLEAR_MEM(v, n) memset(v, 0, n) in wireguard.h.",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1babcbd2_c9dd0c79",
         "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
         "patchSetId": 1
@@ -48,6 +65,23 @@
       "writtenOn": "2022-07-21T12:11:16Z",
       "side": 1,
       "message": "Don\u0027t get why we need this macro",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "024e9da0_d4fa6ffa",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-21T12:33:55Z",
+      "side": 1,
+      "message": "Good optimization, but this branch shall be before line 60 to save unnecessary vlib_time_now() call.",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
