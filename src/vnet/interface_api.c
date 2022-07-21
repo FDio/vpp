@@ -1228,24 +1228,20 @@ send_interface_tx_placement_details (vnet_hw_if_tx_queue_t **all_queues,
   n_bits = clib_bitmap_count_set_bits (bitmap);
   u32 n = n_bits * sizeof (u32);
 
-  /*
-   * FIXME: Use the REPLY_MACRO_DETAILS5_END once endian handler is registered
-   * and available.
-   */
-  REPLY_MACRO_DETAILS5 (
-    VL_API_SW_INTERFACE_TX_PLACEMENT_DETAILS, n, rp, context, ({
-      rmp->sw_if_index = clib_host_to_net_u32 (hw_if->sw_if_index);
-      rmp->queue_id = clib_host_to_net_u32 (q[0]->queue_id);
-      rmp->shared = q[0]->shared_queue;
-      rmp->array_size = clib_host_to_net_u32 (n_bits);
+  REPLY_MACRO_DETAILS5_END (VL_API_SW_INTERFACE_TX_PLACEMENT_DETAILS, n, rp,
+			    context, ({
+			      rmp->sw_if_index = hw_if->sw_if_index;
+			      rmp->queue_id = q[0]->queue_id;
+			      rmp->shared = q[0]->shared_queue;
+			      rmp->array_size = n_bits;
 
-      v = clib_bitmap_first_set (bitmap);
-      for (u32 i = 0; i < n_bits; i++)
-	{
-	  rmp->threads[i] = clib_host_to_net_u32 (v);
-	  v = clib_bitmap_next_set (bitmap, v + 1);
-	}
-    }));
+			      v = clib_bitmap_first_set (bitmap);
+			      for (u32 i = 0; i < n_bits; i++)
+				{
+				  rmp->threads[i] = v;
+				  v = clib_bitmap_next_set (bitmap, v + 1);
+				}
+			    }));
 }
 
 static void
