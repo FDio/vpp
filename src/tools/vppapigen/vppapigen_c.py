@@ -1594,6 +1594,33 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
         except KeyError:
             pass
 
+        try:
+            if s.stream:
+                d = define_hash[s.stream_message]
+                write(
+                    "   c = (vl_msg_api_msg_config_t) "
+                    "{{.id = VL_API_{ID} + msg_id_base,\n"
+                    '  .name = "{n}",\n'
+                    "  .handler = 0,\n"
+                    "  .cleanup = vl_noop_handler,\n"
+                    "  .endian = vl_api_{n}_t_endian,\n"
+                    "  .print = vl_api_{n}_t_print,\n"
+                    "  .traced = 1,\n"
+                    "  .replay = 1,\n"
+                    "  .print_json = vl_api_{n}_t_print_json,\n"
+                    "  .tojson = vl_api_{n}_t_tojson,\n"
+                    "  .fromjson = vl_api_{n}_t_fromjson,\n"
+                    "  .calc_size = vl_api_{n}_t_calc_size,\n"
+                    "  .is_autoendian = {auto}}};\n".format(
+                        n=s.stream_message,
+                        ID=s.stream_message.upper(),
+                        auto=d.autoendian,
+                    )
+                )
+                write("   vl_msg_api_config (&c);\n")
+        except KeyError:
+            pass
+
     write("   return msg_id_base;\n")
     write("}\n")
 
