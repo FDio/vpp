@@ -96,6 +96,13 @@ class CppMessage(CMessage):
         return "%s%s" % (self.name[0].upper(), self.name[1:])
 
     def get_req_template_name(self):
+        if self.has_stream_msg:
+            return "Stream<%s, %s, %s>" % (
+                self.get_c_name(),
+                self.reply.get_c_name(),
+                self.stream_msg.get_c_name(),
+            )
+
         if self.reply_is_stream:
             template = "Dump"
         else:
@@ -196,7 +203,7 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
             print("/* m.get_cpp_constructor() */")
         print("%s" % m.get_cpp_constructor())
         print("")
-        if not m.is_reply and not m.is_event:
+        if not m.is_reply and not m.is_event and not m.is_stream:
             if add_debug_comments:
                 print("/* m.get_alloc_template_instantiation() */")
             print("%s" % m.get_alloc_template_instantiation())
@@ -209,6 +216,8 @@ def gen_json_header(parser, logger, j, io, gen_h_prefix, add_debug_comments):
             if add_debug_comments:
                 print("/* m.get_reply_type_alias() */")
             print("%s" % m.get_reply_type_alias())
+            continue
+        if m.is_stream:
             continue
         if add_debug_comments:
             print("/* m.get_req_template_instantiation() */")
