@@ -111,6 +111,30 @@
       },
       "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4a8e89c_e7fe1ad5",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 2686
+      },
+      "writtenOn": "2022-07-21T14:43:17Z",
+      "side": 1,
+      "message": "\u003e That would also explain why it is sometimes ~0 as detected in f8631ce7e8886136b4543a7926ffdf1bc760fb11\n\nI wonder if the ~0 is produced by another execution path, because the module bug is more like an off-by-one thing.\n\nI re-mark it as in-progress. I find more places with the same issue that need to be fixed, not only in nat44-ed and -ei but also in nat64.\n\nIdeally some minor refactor might need to be done to put this in the shared nat lib rather than repeating the same logic (determining port_per_thread and thread_index) in each nat module.",
+      "parentUuid": "dbbf1605_a53b9a0c",
+      "range": {
+        "startLine": 765,
+        "startChar": 17,
+        "endLine": 766,
+        "endChar": 32
+      },
+      "revId": "63bbb8d3aa6af15a9d0d68a2b8b690b54f1c6257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
