@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "661dcf39_4cf52036",
+        "filename": "src/plugins/wireguard/wireguard.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T13:56:52Z",
+      "side": 1,
+      "message": "I think the suggested way might be optimized out and the main idea behind wg_secure_zero_memory() is to avoid that.",
+      "parentUuid": "35e94b41_27687c05",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1babcbd2_c9dd0c79",
         "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2022-07-21T12:11:16Z",
       "side": 1,
       "message": "Should use VPP native rotate_left() instead",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f99dcd3_a739daff",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T13:56:52Z",
+      "side": 1,
+      "message": "The code for hchacha20() is borrowed from https://git.zx2c4.com/wireguard-openbsd/tree/sys/crypto/chacha_private.h. Can we keep it authentic?",
+      "parentUuid": "1babcbd2_c9dd0c79",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -54,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "db95612c_76681f96",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T13:56:52Z",
+      "side": 1,
+      "message": "I would like to keep it authentic.",
+      "parentUuid": "87006d43_b85ecb42",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3338f438_d214fec1",
         "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
         "patchSetId": 1
@@ -71,6 +125,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "35cef085_1b96a255",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T13:56:52Z",
+      "side": 1,
+      "message": "I\u0027m not sure either. I think that is because it is not garanteed that unsigned int is 32 bit. On some platforms it can be bigger and that is why extra bits are pedantically cleared out in U32V().",
+      "parentUuid": "3338f438_d214fec1",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "024e9da0_d4fa6ffa",
         "filename": "src/plugins/wireguard/wireguard_timer.h",
         "patchSetId": 1
@@ -82,6 +154,24 @@
       "writtenOn": "2022-07-21T12:33:55Z",
       "side": 1,
       "message": "Good optimization, but this branch shall be before line 60 to save unnecessary vlib_time_now() call.",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dd1fc6e_a389609c",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2022-07-21T13:56:52Z",
+      "side": 1,
+      "message": "That is not actually for optimization but to fix the problem of erroneously calculating and setting mac2 in handshake messages in the first ~120 seconds after VPP startup. Since cp-\u003ecp_birthdate is zero when no cookie messages were received and COOKIE_SECRET_MAX_AGE is 120.\n\nAs for moving vlib_time_now() after, I will do that.",
+      "parentUuid": "024e9da0_d4fa6ffa",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
