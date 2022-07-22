@@ -51,20 +51,23 @@ VLIB_PLUGIN_REGISTER () = {
 
 u32
 snat_det_close_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
-			  u16 in_port, snat_det_out_key_t out_key)
+			  u16 in_port, snat_det_out_key_t out_key,
+			  u8 check_proto, ip_protocol_t proto)
 {
-  u32 user_offset, count = 0;
+  u32 user_offset, s, e, count = 0;
   snat_det_session_t *ses;
-  u16 i;
 
   user_offset =
     snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
-  for (i = 0; i < dm->ses_per_user; i++)
+  det44_proto_ses_range (dm, proto, &s, &e);
+
+  for (; s < e; s++)
     {
-      ses = &dm->sessions[i + user_offset];
+      ses = &dm->sessions[s + user_offset];
       if (ses->in_port == in_port &&
 	  ses->out.ext_host_addr.as_u32 == out_key.ext_host_addr.as_u32 &&
-	  ses->out.ext_host_port == out_key.ext_host_port)
+	  ses->out.ext_host_port == out_key.ext_host_port &&
+	  !(check_proto != (ses->proto == proto)))
 	{
 	  snat_det_ses_close (dm, ses);
 	  count++;
@@ -75,18 +78,20 @@ snat_det_close_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
 
 u32
 snat_det_close_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
-			   u64 out_key)
+			   u64 out_key, u8 check_proto, ip_protocol_t proto)
 {
-  u32 user_offset, count = 0;
+  u32 user_offset, s, e, count = 0;
   snat_det_session_t *ses;
-  u16 i;
 
   user_offset =
     snat_det_user_ses_offset (dm->ses_per_user, in_addr, dm->in_plen);
-  for (i = 0; i < dm->ses_per_user; i++)
+  det44_proto_ses_range (dm, proto, &s, &e);
+
+  for (; s < e; s++)
     {
-      ses = &dm->sessions[i + user_offset];
-      if (ses->out.as_u64 == out_key)
+      ses = &dm->sessions[s + user_offset];
+      if (ses->out.as_u64 == out_key &&
+	  !(check_proto != (ses->proto == proto)))
 	{
 	  snat_det_ses_close (dm, ses);
 	  count++;
@@ -139,6 +144,10 @@ det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
  * @param in_plen  Inside network prefix length.
  * @param out_addr Outside network address.
  * @param out_plen Outside network prefix length.
+ * @param ses_per_user  Number of sessions per user.
+ * @param tcp_per_user Number of TCP sessions per user.
+ * @param udp_per_user Number of UDP sessions per user.
+ * @param other_per_user Number of other sessions per user.
  * @param is_add   If 0 delete, otherwise add.
  */
 int

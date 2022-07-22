@@ -100,6 +100,34 @@ autoreply define det44_add_del_map {
   u8 out_plen;
 };
 
+/** \brief Add/delete DET44 mapping - specify max sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param in_addr - inside IPv4 address
+    @param in_plen - inside IPv4 address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+
+    @param ses_per_user - number of sessions per user
+    @param tcp_per_user - number of TCP sessions per user
+    @param udp_per_user - number of UDP sessions per user
+    @param other_per_user - number of other sessions per user
+*/
+autoreply define det44_add_del_map_sessions {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ip4_address_t in_addr;
+  u8 in_plen;
+  vl_api_ip4_address_t out_addr;
+  u8 out_plen;
+  u32 ses_per_user;
+  u32 tcp_per_user;
+  u32 udp_per_user;
+  u32 other_per_user;
+};
+
 /** \brief Get outside address and port range from inside address
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -212,6 +240,44 @@ autoreply define det44_close_session_in {
   u16 in_port;
   vl_api_ip4_address_t ext_addr;
   u16 ext_port;
+};
+
+/** \brief Close DET44 session by outside address, port and protocol
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_addr - outside IPv4 address
+    @param out_port - outside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+    @param protocol - transport layer protocol
+*/
+autoreply define det44_close_session_out_proto {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t out_addr;
+  u16 out_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  vl_api_ip_proto_t protocol;
+};
+
+/** \brief Close DET44 session by inside address, port and protocol
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param in_addr - inside IP address
+    @param in_port - inside port
+    @param ext_addr - external host IP address
+    @param ext_port - external host port
+    @param protocol - transport layer protocol
+*/
+autoreply define det44_close_session_in_proto {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t in_addr;
+  u16 in_port;
+  vl_api_ip4_address_t ext_addr;
+  u16 ext_port;
+  vl_api_ip_proto_t protocol;
 };
 
 /** \brief Dump DET44 sessions
