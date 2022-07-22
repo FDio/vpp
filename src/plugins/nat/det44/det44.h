@@ -248,9 +248,11 @@ int det44_plugin_enable ();
 int det44_plugin_disable ();
 
 u32 snat_det_close_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
-			      u16 in_port, snat_det_out_key_t out_key);
+			      u16 in_port, snat_det_out_key_t out_key,
+			      u8 check_proto, ip_protocol_t proto);
 u32 snat_det_close_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
-			       u64 out_key);
+			       u64 out_key, u8 check_proto,
+			       ip_protocol_t proto);
 
 int det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
 
