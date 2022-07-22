@@ -12,6 +12,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, UDPerror
 from scapy.layers.l2 import Ether
 from util import ppp
+from vpp_papi import VppEnum
 
 
 class TestDET44(VppTestCase):
@@ -147,37 +148,35 @@ class TestDET44(VppTestCase):
         self.pg_start()
         out_if.get_capture(1)
 
-    def create_stream_in(self, in_if, out_if, ttl=64):
+    def create_stream_in(self, in_if, out_if, ttl=64, session_offset=0):
         """
         Create packet stream for inside network
 
         :param in_if: Inside interface
         :param out_if: Outside interface
         :param ttl: TTL of generated packets
+        :param session_offset: Differentiate sessions
+
         """
         pkts = []
         # TCP
-        p = (
-            Ether(dst=in_if.local_mac, src=in_if.remote_mac)
-            / IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl)
-            / TCP(sport=self.tcp_port_in, dport=self.tcp_external_port)
-        )
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             TCP(sport=self.tcp_port_in + session_offset,
+                 dport=self.tcp_external_port + session_offset))
         pkts.append(p)
 
         # UDP
-        p = (
-            Ether(dst=in_if.local_mac, src=in_if.remote_mac)
-            / IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl)
-            / UDP(sport=self.udp_port_in, dport=self.udp_external_port)
-        )
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             UDP(sport=self.udp_port_in + session_offset,
+                 dport=self.udp_external_port + session_offset))
         pkts.append(p)
 
         # ICMP
-        p = (
-            Ether(dst=in_if.local_mac, src=in_if.remote_mac)
-            / IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl)
-            / ICMP(id=self.icmp_id_in, type="echo-request")
-        )
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             ICMP(id=self.icmp_id_in + session_offset, type='echo-request'))
         pkts.append(p)
 
         return pkts
@@ -273,6 +272,240 @@ class TestDET44(VppTestCase):
         self.assertEqual(in_plen, dsm.in_plen)
         self.assertEqual(out_addr, str(dsm.out_addr))
         self.assertEqual(out_plen, dsm.out_plen)
+
+    def test_session_limits(self):
+        """ Deterministic NAT with session limits """
+        in_plen = 32
+        out_plen = 32
+
+        n_sessions_to_fail=10
+        ses_per_group=100
+        tcp_per_user=ses_per_group
+        udp_per_user=ses_per_group
+        other_per_user=ses_per_group
+        ses_per_user = other_per_user + udp_per_user + tcp_per_user
+
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, is_inside=1)
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1, is_inside=0)
+
+        self.vapi.det44_add_del_map_sessions(is_add=1, in_addr=self.pg0.remote_ip4,
+                                             in_plen=in_plen, out_addr=socket.inet_aton(self.nat_addr),
+                                             out_plen=out_plen, ses_per_user=ses_per_user,
+                                             tcp_per_user=tcp_per_user, udp_per_user=udp_per_user,
+                                             other_per_user=other_per_user)
+
+        tcp_pkts = []
+        udp_pkts = []
+        icmp_pkts = []
+        for i in range(0, ses_per_group + n_sessions_to_fail):
+            pkts = self.create_stream_in(self.pg0, self.pg1, session_offset=i)
+            tcp_pkts.append(pkts[0])
+            udp_pkts.append(pkts[1])
+            icmp_pkts.append(pkts[2])
+
+        # Send individual group(s) of packets
+        # If number of expected packets arrived to
+        # dest. interface is higher - fail
+        groups = [tcp_pkts, udp_pkts, icmp_pkts]
+        for pkts in groups:
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(ses_per_group)
+            self.logger.info("Number of sessions initiated / allowed: {0} / {1}"
+                             .format(len(pkts), ses_per_group))
+
+
+        # Delete det44 mapping with session limits
+        # and create a new one without limits, test again
+        # to confirm all sessions are allowed
+        self.vapi.det44_add_del_map_sessions(is_add=0, in_addr=self.pg0.remote_ip4,
+                                             in_plen=in_plen, out_addr=socket.inet_aton(self.nat_addr),
+                                             out_plen=out_plen, ses_per_user=ses_per_user,
+                                             tcp_per_user=tcp_per_user, udp_per_user=udp_per_user,
+                                             other_per_user=other_per_user)
+
+
+        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                    in_plen=in_plen, out_addr=socket.inet_aton(self.nat_addr),
+                                    out_plen=out_plen)
+
+        for pkts in groups:
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(ses_per_group + n_sessions_to_fail)
+            self.logger.info("Number of sessions initiated / allowed: {0} / {1}"
+                             .format(len(pkts), ses_per_group + n_sessions_to_fail))
+
+
+    def test_session_limits_single(self):
+        """ Deterministic NAT with session limits - single group """
+
+        # Test limits per group - one group at a time
+        in_plen = 32
+        out_plen = 32
+
+        n_sessions_to_fail=10
+        ses_per_group=100
+
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, is_inside=1)
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1, is_inside=0)
+
+        tcp_pkts = []
+        udp_pkts = []
+        icmp_pkts = []
+        for i in range(0, ses_per_group + n_sessions_to_fail):
+            pkts = self.create_stream_in(self.pg0, self.pg1, session_offset=i)
+            tcp_pkts.append(pkts[0])
+            udp_pkts.append(pkts[1])
+            icmp_pkts.append(pkts[2])
+
+        groups = [tcp_pkts, udp_pkts, icmp_pkts]
+        session_limits = [ses_per_group, 0, 0]
+        for pkts in groups:
+            # Allow single category
+            self.vapi.det44_add_del_map_sessions(is_add=1, in_addr=self.pg0.remote_ip4,
+                                                 in_plen=in_plen, out_addr=socket.inet_aton(self.nat_addr),
+                                                 out_plen=out_plen, ses_per_user=ses_per_group,
+                                                 tcp_per_user=session_limits[0], udp_per_user=session_limits[1],
+                                                 other_per_user=session_limits[2])
+
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(ses_per_group)
+            self.logger.info("Number of sessions initiated / allowed: {0} / {1}"
+                                .format(len(pkts), ses_per_group))
+
+            self.vapi.det44_add_del_map_sessions(is_add=0, in_addr=self.pg0.remote_ip4,
+                                                in_plen=in_plen, out_addr=socket.inet_aton(self.nat_addr),
+                                                out_plen=out_plen)
+
+            # Rotate limits per group
+            session_limits = [session_limits[-1]] + session_limits[:-1]
+
+    def test_close_sessions_in(self):
+        """ Deterministic NAT - close sessions in """
+
+        in_plen=32
+        out_plen=32
+
+        tcp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, is_inside=1)
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1, is_inside=0)
+
+        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                    in_plen=in_plen, out_addr=self.nat_addr,
+                                    out_plen=out_plen)
+
+        pkt = self.create_stream_in(self.pg0, self.pg1)
+        tcp_pkt = pkt[0]
+        udp_pkt = pkt[1]
+
+        groups = [tcp_pkt, udp_pkt]
+        protos = [tcp_proto, udp_proto]
+        ports_in = [self.tcp_port_in, self.udp_port_in]
+        ports_out = [self.tcp_external_port, self.udp_external_port]
+
+        for p, proto, port_in, port_out in zip(groups, protos, ports_in, ports_out):
+            self.pg0.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(1)
+
+            dms = self.vapi.det44_map_dump()
+            self.assertEqual(dms[0].ses_num, 1)
+
+            sessions = self.vapi.det44_session_dump(self.pg0.remote_ip4)
+            self.assertEqual(len(sessions), 1)
+
+            self.vapi.det44_close_session_in_proto(self.pg0.remote_ip4,
+                                                   port_in,
+                                                   self.pg1.remote_ip4,
+                                                   port_out,
+                                                   proto)
+
+            dms = self.vapi.det44_map_dump()
+            self.assertEqual(dms[0].ses_num, 0)
+
+            sessions = self.vapi.det44_session_dump(self.pg0.remote_ip4)
+            self.assertEqual(len(sessions), 0)
+
+
+    def test_close_sessions_out(self):
+        """ Deterministic NAT - close sessions out """
+
+        in_plen=32
+        out_plen=32
+
+        tcp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_TCP
+        udp_proto = VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP
+
+        self.tcp_port_out = self.tcp_external_port
+        self.udp_port_out = self.udp_external_port
+        self.icmp_external_id = self.icmp_id_in
+
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1, is_inside=1)
+        self.vapi.det44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1, is_inside=0)
+
+        self.vapi.det44_add_del_map(is_add=1, in_addr=self.pg0.remote_ip4,
+                                    in_plen=in_plen, out_addr=self.nat_addr,
+                                    out_plen=out_plen)
+
+        tcp_pkt = (Ether(src=self.pg0.remote_mac, dst=self.pg1.local_mac) /
+                   IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                   TCP(sport=self.tcp_external_port, dport=self.tcp_port_out))
+
+        udp_pkt = (Ether(src=self.pg0.remote_mac, dst=self.pg1.local_mac) /
+                   IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                   UDP(sport=self.udp_external_port, dport=self.udp_port_out))
+
+        groups = [tcp_pkt, udp_pkt]
+        protos = [tcp_proto, udp_proto]
+        ports_in = [self.tcp_external_port, self.udp_external_port]
+
+        for p, proto, port_in in zip(groups, protos, ports_in):
+            self.pg0.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(1)
+
+            dms = self.vapi.det44_map_dump()
+            self.assertEqual(dms[0].ses_num, 1)
+
+            sessions = self.vapi.det44_session_dump(self.pg0.remote_ip4)
+            self.assertEqual(len(sessions), 1)
+
+            self.vapi.det44_close_session_out_proto(self.nat_addr,
+                                                    sessions[0].out_port,
+                                                    self.pg1.remote_ip4,
+                                                    port_in,
+                                                    proto)
+
+            dms = self.vapi.det44_map_dump()
+            self.assertEqual(dms[0].ses_num, 0)
+
+            sessions = self.vapi.det44_session_dump(self.pg0.remote_ip4)
+            self.assertEqual(len(sessions), 0)
 
     def test_set_timeouts(self):
         """Set deterministic NAT timeouts"""
