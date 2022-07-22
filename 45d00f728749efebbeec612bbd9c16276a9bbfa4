@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "530824f3_2e222f6d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-07-22T20:26:41Z",
+      "side": 1,
+      "message": "I think a better fix was to use the endian reply macros. This was added in https://gerrit.fd.io/r/c/vpp/+/36710 so the problem should be solved now.",
+      "revId": "45d00f728749efebbeec612bbd9c16276a9bbfa4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
