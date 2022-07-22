@@ -238,6 +238,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u32 tx_queue_size;
   u32 buffering_size;
   u32 virtio_flags;
   clib_error_t *error;
