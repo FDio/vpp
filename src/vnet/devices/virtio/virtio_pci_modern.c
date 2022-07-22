@@ -164,9 +164,7 @@ virtio_pci_modern_set_queue_size (vlib_main_t * vm, virtio_if_t * vif,
       return;
     }
 
-  if (virtio_pci_modern_get_queue_size (vm, vif, queue_id) > queue_size)
-    virtio_pci_reg_write_u16 (vif, VIRTIO_QUEUE_SIZE_OFFSET (vif),
-			      queue_size);
+  virtio_pci_reg_write_u16 (vif, VIRTIO_QUEUE_SIZE_OFFSET (vif), queue_size);
 }
 
 static u16
