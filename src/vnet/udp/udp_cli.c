@@ -67,11 +67,12 @@ static u8 *
 format_udp_vars (u8 * s, va_list * args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
+
   s = format (s, " index %u flags: %U", uc->c_c_index,
 	      format_udp_connection_flags, uc);
-
   if (!(uc->flags & UDP_CONN_F_LISTEN))
-    s = format (s, "\n");
+    s = format (s, " \n sw_if_index: %d, mss: %u\n", uc->sw_if_index, uc->mss);
+
   return s;
 }
 

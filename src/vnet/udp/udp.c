@@ -185,7 +185,8 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->c_proto = TRANSPORT_PROTO_UDP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
-  listener->mss = udp_default_mtu (um, listener->c_is_ip4);
+  listener->mss =
+    lcl->mss ? lcl->mss : udp_default_mtu (um, listener->c_is_ip4);
   listener->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_LISTEN;
   lcl_ext = (transport_endpoint_cfg_t *) lcl;
   if (lcl_ext->transport_flags & TRANSPORT_CFG_F_CONNECTED)
@@ -232,7 +233,7 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
   else
     vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
 			  IP_PROTOCOL_UDP);
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = uc->sw_if_index;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
@@ -399,6 +400,8 @@ conn_alloc:
   uc->c_fib_index = rmt->fib_index;
   uc->c_dscp = rmt->dscp;
   uc->mss = rmt->mss ? rmt->mss : udp_default_mtu (um, uc->c_is_ip4);
+  if (rmt->peer.sw_if_index != ENDPOINT_INVALID_INDEX)
+    uc->sw_if_index = rmt->peer.sw_if_index;
   uc->flags |= UDP_CONN_F_OWNS_PORT;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
     {
