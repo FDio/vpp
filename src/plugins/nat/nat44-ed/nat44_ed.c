@@ -1353,9 +1353,10 @@ nat44_ed_add_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	FIB_PROTOCOL_IP4, locals[i].vrf_id, sm->fib_src_low);
       if (!is_sm_out2in_only (flags))
 	{
-	  if (nat44_ed_sm_o2i_add (sm, m, e_addr, e_port, 0, proto))
+	  if (nat44_ed_sm_i2o_add (sm, m, locals[i].addr, locals[i].port,
+				   locals[i].fib_index, proto))
 	    {
-	      nat_log_err ("sm o2i key add failed");
+	      nat_log_err ("sm i2o key add failed");
 	      rc = VNET_API_ERROR_UNSPECIFIED;
 	      // here we continue with add operation so that it can be safely
 	      // reversed in delete path - otherwise we'd have to track what

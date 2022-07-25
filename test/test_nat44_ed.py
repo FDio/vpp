@@ -1651,6 +1651,41 @@ class TestNAT44ED(VppTestCase):
         sessions = self.vapi.nat44_user_session_dump(server.ip4, 0)
         self.assertEqual(len(sessions), 0)
 
+    def test_static_lb_del(self):
+        """NAT44ED local service load balancing delete"""
+        external_addr_n = self.nat_addr
+        external_port = 80
+        local_port = 8080
+        server1 = self.pg0.remote_hosts[0]
+        server2 = self.pg0.remote_hosts[1]
+
+        locals = [
+            {"addr": server1.ip4, "port": local_port, "probability": 70, "vrf_id": 0},
+            {"addr": server2.ip4, "port": local_port, "probability": 30, "vrf_id": 0},
+        ]
+
+        self.nat_add_address(self.nat_addr)
+        self.vapi.nat44_add_del_lb_static_mapping(
+            is_add=1,
+            external_addr=external_addr_n,
+            external_port=external_port,
+            protocol=IP_PROTOS.tcp,
+            local_num=len(locals),
+            locals=locals,
+        )
+        mappings = self.vapi.nat44_lb_static_mapping_dump()
+        self.assertEqual(len(mappings), 1)
+        self.vapi.nat44_add_del_lb_static_mapping(
+            is_add=0,
+            external_addr=external_addr_n,
+            external_port=external_port,
+            protocol=IP_PROTOS.tcp,
+            local_num=len(locals),
+            locals=locals,
+        )
+        mappings = self.vapi.nat44_lb_static_mapping_dump()
+        self.assertEqual(len(mappings), 0)
+
     def test_static_lb_2(self):
         """NAT44ED local service load balancing (asymmetrical rule)"""
         external_addr = self.nat_addr
