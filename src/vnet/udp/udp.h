@@ -63,6 +63,7 @@ typedef struct
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 flags;				/**< connection flags */
   u16 mss;				/**< connection mss */
+  u32 sw_if_index;			/**< connection sw_if_index */
 } udp_connection_t;
 
 typedef struct
