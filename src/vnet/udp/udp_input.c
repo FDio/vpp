@@ -255,6 +255,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u8 queue_event = 1;
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
+	  uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
 	      if (s0->thread_index != thread_index)
@@ -289,6 +290,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       else if (s0->session_state == SESSION_STATE_LISTENING)
 	{
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
+	  uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
 	      uc0 = udp_connection_accept (uc0, &hdr0, thread_index);
