@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "09f450d8_a417ee33",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-25T14:03:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "134232b0_d8736433",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "43eb4c3d_3762c7d0",
@@ -84,6 +102,24 @@
       "side": 1,
       "message": "tx_bufs is only used in the example where it is allocated to same size as of rx_bufs.",
       "parentUuid": "43eb4c3d_3762c7d0",
+      "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2167e4f3_cb024414",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-07-25T14:03:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "97c9ff4d_68856800",
       "revId": "84115b2f36cf78cd9f71085f5a1855cbf20d68b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
