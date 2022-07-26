@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72139c50_4501f12d",
+        "filename": "extras/vagrant/Vagrantfile",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-07-26T16:53:11Z",
+      "side": 1,
+      "message": "Given that Ubuntu 18.04 is no longer supported and Ubuntu 22.04 will be added in the next VPP release (22.10), please change ubuntu1804 -\u003e ubuntu2004 and make ubuntu 22.04 the default.",
+      "range": {
+        "startLine": 15,
+        "startChar": 4,
+        "endLine": 15,
+        "endChar": 40
+      },
+      "revId": "8a8224286b99bf45f302fa43331a6257a604ca3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
