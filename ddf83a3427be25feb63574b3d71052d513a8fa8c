@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1b08c45_946ec5ae",
+        "filename": "src/plugins/wireguard/wireguard.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-26T08:10:51Z",
+      "side": 1,
+      "message": "Ok fair enough - almost forgot this memset optimized out story.",
+      "parentUuid": "661dcf39_4cf52036",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1babcbd2_c9dd0c79",
@@ -102,6 +120,24 @@
       "side": 1,
       "message": "The code for hchacha20() is borrowed from https://git.zx2c4.com/wireguard-openbsd/tree/sys/crypto/chacha_private.h. Can we keep it authentic?",
       "parentUuid": "1babcbd2_c9dd0c79",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e4b8e2b_55950051",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-26T08:10:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3f99dcd3_a739daff",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -141,6 +177,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ace0fba_9a1a135d",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-26T08:10:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "db95612c_76681f96",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3338f438_d214fec1",
@@ -172,6 +226,24 @@
       "side": 1,
       "message": "I\u0027m not sure either. I think that is because it is not garanteed that unsigned int is 32 bit. On some platforms it can be bigger and that is why extra bits are pedantically cleared out in U32V().",
       "parentUuid": "3338f438_d214fec1",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c1989317_455823cb",
+        "filename": "src/plugins/wireguard/wireguard_hchacha20.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-26T08:10:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "35cef085_1b96a255",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -225,6 +297,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "6dd1fc6e_a389609c",
+      "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4431998c_976a063e",
+        "filename": "src/plugins/wireguard/wireguard_timer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-07-26T08:10:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9bdabe37_7eef18a2",
       "revId": "ddf83a3427be25feb63574b3d71052d513a8fa8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
