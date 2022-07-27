@@ -33,3 +33,8 @@ go_repository(
     importpath = "github.com/pkg/profile",
     commit = "acd64d450fd45fb2afa41f833f3788c8a7797219"
 )
+go_repository(
+    name = "com_github_gopacket",
+    importpath = "github.com/google/gopacket",
+    commit = "3eaba08943250fd212520e5cff00ed808b8fc60a"
+)
