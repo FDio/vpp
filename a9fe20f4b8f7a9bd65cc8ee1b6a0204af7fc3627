@@ -50,6 +50,23 @@
       "message": "Not much difference in telemetry output, except dpdk-input being slower.\n(CSIT needs to migrate to Ubuntu 22.04 to get newer kernel so permon works on AMD. I will probably retest then.)\n\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2004-aarch64-2n-tx2/47/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k10-k7-k14-k1-k1-k1-k1\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2004-aarch64-2n-tx2/47/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k10-k7-k14-k1-k1-k1-k1",
       "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c21c09d_e8bf2e07",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-27T16:28:39Z",
+      "side": 1,
+      "message": "\u003e Not much difference in telemetry output\n\nTo be more specific, parent still suffers from less than 64 packets per call, but dpdk-input still reads less packets overall in current, partly because calls are slightly less frequent, and partly because more calls return zero packets (average packets per call is stable around 7 in current, while in parent it was spread between 7 and 10).",
+      "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
