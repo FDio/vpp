@@ -52,12 +52,14 @@ on_connect (memif_conn_handle_t conn, void *private_ctx)
   c->is_connected = 1;
   alloc_memif_buffers (c);
 
-  err = memif_refill_queue (conn, 0, -1, 0);
+  err = memif_refill_queue (conn, 0, -1, c->headroom_size);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_refill_queue: %s", memif_strerror (err));
       return err;
     }
+
+  print_memif_details (c);
 
   return 0;
 }
@@ -104,9 +106,11 @@ print_help ()
   printf ("\t-r\tInterface role <slave|master>. Default: slave\n");
   printf ("\t-s\tSocket path. Supports abstract socket using @ before the "
 	  "path. Default: /run/vpp/memif.sock\n");
+  printf ("\t-b\tBuffer Size. Default: 2048\n");
+  printf ("\t-h\tHeadroom Size. Default: 0\n");
   printf ("\t-i\tInterface id. Default: 0\n");
   printf ("\t-a\tIPv4 address. Default: 192.168.1.1\n");
-  printf ("\t-h\tMac address. Default: aa:aa:aa:aa:aa:aa\n");
+  printf ("\t-m\tMac address. Default: aa:aa:aa:aa:aa:aa\n");
   printf ("\t-?\tShow help and exit.\n");
   printf ("\t-v\tShow libmemif and memif version information and exit.\n");
 }
@@ -130,7 +134,7 @@ main (int argc, char *argv[])
   memcpy (intf.ip_addr, IP_ADDR, 4);
   memcpy (intf.hw_addr, HW_ADDR, 6);
 
-  while ((opt = getopt (argc, argv, "r:s:i:a:h:?v")) != -1)
+  while ((opt = getopt (argc, argv, "r:s:b:h:i:a:m:?v")) != -1)
     {
       switch (opt)
 	{
@@ -152,6 +156,12 @@ main (int argc, char *argv[])
 	case 's':
 	  sprintf (socket_path, "%s", optarg);
 	  break;
+	case 'b':
+	  intf.buffer_size = atoi (optarg);
+	  break;
+	case 'h':
+	  intf.headroom_size = atoi (optarg);
+	  break;
 	case 'i':
 	  id = atoi (optarg);
 	  break;
@@ -162,7 +172,7 @@ main (int argc, char *argv[])
 	      return -1;
 	    }
 	  break;
-	case 'h':
+	case 'm':
 	  if (parse_mac (optarg, intf.hw_addr) != 0)
 	    {
 	      INFO ("Invalid mac address: %s", optarg);
@@ -207,6 +217,8 @@ main (int argc, char *argv[])
    * Both interaces are assigned the same socket and same id to create a
    * loopback.
    */
+  if (intf.buffer_size)
+    memif_conn_args.buffer_size = intf.buffer_size;
 
   memif_conn_args.socket = memif_socket;
   memif_conn_args.interface_id = id;

@@ -19,7 +19,7 @@ responder (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
     {
       /* allocate tx buffers */
       err = memif_buffer_alloc (conn, qid, c->tx_bufs, c->rx_buf_num,
-				&c->tx_buf_num, 2048);
+				&c->tx_buf_num, c->buffer_size);
       /* suppress full ring error MEMIF_ERR_NOBUF_RING */
       if (err != MEMIF_ERR_SUCCESS && err != MEMIF_ERR_NOBUF_RING)
 	{
@@ -42,7 +42,7 @@ responder (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       /* Done processing packets */
 
       /* refill the queue */
-      err = memif_refill_queue (conn, qid, c->tx_buf_num, 0);
+      err = memif_refill_queue (conn, qid, c->tx_buf_num, c->headroom_size);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_refill_queue: %s", memif_strerror (err));
@@ -70,7 +70,7 @@ responder (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   return 0;
 
 error:
-  err = memif_refill_queue (conn, qid, c->rx_buf_num, 0);
+  err = memif_refill_queue (conn, qid, c->rx_buf_num, c->headroom_size);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_refill_queue: %s", memif_strerror (err));
@@ -130,7 +130,7 @@ responder_zero_copy (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	}
 
       /* refill the queue */
-      err = memif_refill_queue (conn, qid, tx, 0);
+      err = memif_refill_queue (conn, qid, tx, c->headroom_size);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_refill_queue: %s", memif_strerror (err));
@@ -160,7 +160,7 @@ responder_zero_copy (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   return 0;
 
 error:
-  err = memif_refill_queue (conn, qid, c->rx_buf_num, 0);
+  err = memif_refill_queue (conn, qid, c->rx_buf_num, c->headroom_size);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_refill_queue: %s", memif_strerror (err));
