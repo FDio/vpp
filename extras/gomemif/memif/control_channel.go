@@ -67,9 +67,20 @@ type Socket struct {
 	interfaceList *list.List
 	ccList        *list.List
 	epfd          int
+	interruptfd   int
 	wakeEvent     syscall.EpollEvent
 	stopPollChan  chan struct{}
 	wg            sync.WaitGroup
+}
+
+type interrupt struct {
+	socket *Socket
+	event  syscall.EpollEvent
+}
+
+type memifInterrupt struct {
+	connection *Socket
+	qid        uint16
 }
 
 // StopPolling stops polling events on the socket
@@ -220,6 +231,15 @@ func (socket *Socket) handleEvent(event *syscall.EpollEvent) error {
 	if socket.listener != nil && socket.listener.event.Fd == event.Fd {
 		return socket.listener.handleEvent(event)
 	}
+	intf := socket.interfaceList.Back().Value.(*Interface)
+	if intf.args.InterruptFunc != nil {
+		if int(event.Fd) == int(intf.args.InterruptFd) {
+			b := make([]byte, 8)
+			syscall.Read(int(event.Fd), b)
+			intf.onInterrupt(intf)
+			return nil
+		}
+	}
 
 	for elt := socket.ccList.Front(); elt != nil; elt = elt.Next() {
 		cc, ok := elt.Value.(*controlChannel)
@@ -231,6 +251,25 @@ func (socket *Socket) handleEvent(event *syscall.EpollEvent) error {
 	}
 
 	return fmt.Errorf(errorFdNotFound)
+}
+
+func (socket *Socket) addInterrupt(fd int) (err error) {
+	l := &interrupt{
+		// we will need this to look up master interface by id
+		socket: socket,
+	}
+
+	l.event = syscall.EpollEvent{
+		Events: syscall.EPOLLIN,
+		Fd:     int32(fd),
+	}
+	err = socket.addEvent(&l.event)
+	if err != nil {
+		return fmt.Errorf("Failed to add event: ", err)
+	}
+
+	return nil
+
 }
 
 // handleEvent handles epoll event for listener
@@ -725,7 +764,6 @@ func (cc *controlChannel) parseConnect() (err error) {
 	if err != nil {
 		return err
 	}
-
 	cc.isConnected = true
 
 	return nil
@@ -764,7 +802,6 @@ func (cc *controlChannel) parseConnected() (err error) {
 	if err != nil {
 		return err
 	}
-
 	cc.isConnected = true
 
 	return nil

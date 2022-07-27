@@ -21,12 +21,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/pkg/profile"
 	"memif"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/pkg/profile"
 )
 
 func Disconnected(i *memif.Interface) error {
@@ -43,9 +47,7 @@ func Disconnected(i *memif.Interface) error {
 	return nil
 }
 
-func Connected(i *memif.Interface) error {
-	fmt.Println("Connected: ", i.GetName())
-
+func Responder(i *memif.Interface) error {
 	data, ok := i.GetPrivateData().(*interfaceData)
 	if !ok {
 		return fmt.Errorf("Invalid private data")
@@ -54,39 +56,135 @@ func Connected(i *memif.Interface) error {
 	data.quitChan = make(chan struct{}, 1)
 	data.wg.Add(1)
 
-	go func(errChan chan<- error, quitChan <-chan struct{}, wg *sync.WaitGroup) {
-		defer wg.Done()
-		// allocate packet buffer
-		pkt := make([]byte, 2048)
-		// get rx queue
-		rxq0, err := i.GetRxQueue(0)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		// get tx queue
-		txq0, err := i.GetTxQueue(0)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		for {
-			select {
-			case <-quitChan: // channel closed
-				return
-			default:
-				// read packet from shared memory
-				pktLen, err := rxq0.ReadPacket(pkt)
-				if pktLen > 0 {
-					// write packet to shared memory
-					txq0.WritePacket(pkt[:pktLen])
-				} else if err != nil {
-					errChan <- err
-					return
+	// allocate packet buffer
+	pkt := make([]byte, 2048)
+	// get rx queue
+	rxq0, err := i.GetRxQueue(0)
+	if err != nil {
+		return err
+	}
+	// get tx queue
+	txq0, err := i.GetTxQueue(0)
+	if err != nil {
+		return err
+	}
+	for {
+
+		// read packet from shared memory
+		pktLen, err := rxq0.ReadPacket(pkt)
+		_ = err
+		if pktLen > 0 {
+			fmt.Printf("pktLen: %d\n", pktLen)
+			gopkt := gopacket.NewPacket(pkt[:pktLen], layers.LayerTypeEthernet, gopacket.NoCopy)
+			etherLayer := gopkt.Layer(layers.LayerTypeEthernet)
+			if etherLayer.(*layers.Ethernet).EthernetType == layers.EthernetTypeARP {
+				rEth := layers.Ethernet{
+					SrcMAC: net.HardwareAddr{0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa},
+					DstMAC: net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+
+					EthernetType: layers.EthernetTypeARP,
 				}
+				rArp := layers.ARP{
+					AddrType:          layers.LinkTypeEthernet,
+					Protocol:          layers.EthernetTypeIPv4,
+					HwAddressSize:     6,
+					ProtAddressSize:   4,
+					Operation:         layers.ARPReply,
+					SourceHwAddress:   []byte(net.HardwareAddr{0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa}),
+					SourceProtAddress: []byte("\xc0\xa8\x01\x01"),
+					DstHwAddress:      []byte(net.HardwareAddr{0x02, 0xfe, 0x08, 0x88, 0x45, 0x7f}),
+					DstProtAddress:    []byte("\xc0\xa8\x01\x02"),
+				}
+				buf := gopacket.NewSerializeBuffer()
+				opts := gopacket.SerializeOptions{
+					FixLengths:       true,
+					ComputeChecksums: true,
+				}
+				gopacket.SerializeLayers(buf, opts, &rEth, &rArp)
+				// write packet to shared memory
+				txq0.WritePacket(buf.Bytes())
 			}
+
+			if etherLayer.(*layers.Ethernet).EthernetType == layers.EthernetTypeIPv4 {
+				ipLayer := gopkt.Layer(layers.LayerTypeIPv4)
+				if ipLayer == nil {
+					fmt.Println("Missing IPv4 layer.")
+
+				}
+				ipv4, _ := ipLayer.(*layers.IPv4)
+				if ipv4.Protocol != layers.IPProtocolICMPv4 {
+					fmt.Println("Not ICMPv4 protocol.")
+				}
+				icmpLayer := gopkt.Layer(layers.LayerTypeICMPv4)
+				if icmpLayer == nil {
+					fmt.Println("Missing ICMPv4 layer.")
+				}
+				icmp, _ := icmpLayer.(*layers.ICMPv4)
+				if icmp.TypeCode.Type() != layers.ICMPv4TypeEchoRequest {
+					fmt.Println("Not ICMPv4 echo request.")
+				}
+				fmt.Println("Received an ICMPv4 echo request.")
+
+				// Build packet layers.
+				ethResp := layers.Ethernet{
+					DstMAC: net.HardwareAddr{0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa},
+					//DstMAC: net.HardwareAddr{0x02, 0xfe, 0xa8, 0x77, 0xaf, 0x20},
+					SrcMAC: []byte(net.HardwareAddr{0x02, 0xfe, 0x08, 0x88, 0x45, 0x7f}),
+
+					EthernetType: layers.EthernetTypeIPv4,
+				}
+				ipv4Resp := layers.IPv4{
+					Version:    4,
+					IHL:        5,
+					TOS:        0,
+					Id:         0,
+					Flags:      0,
+					FragOffset: 0,
+					TTL:        255,
+					Protocol:   layers.IPProtocolICMPv4,
+					SrcIP:      []byte("\xc0\xa8\x01\x01"),
+					DstIP:      []byte("\xc0\xa8\x01\x02"),
+				}
+				icmpResp := layers.ICMPv4{
+					TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoReply, 0),
+					Id:       icmp.Id,
+					Seq:      icmp.Seq,
+				}
+
+				// Set up buffer and options for serialization.
+				buf := gopacket.NewSerializeBuffer()
+				opts := gopacket.SerializeOptions{
+					FixLengths:       true,
+					ComputeChecksums: true,
+				}
+				gopacket.SerializeLayers(buf, opts, &ethResp, &ipv4Resp, &icmpResp,
+					gopacket.Payload(icmp.Payload))
+				// write packet to shared memory
+				txq0.WritePacket(buf.Bytes())
+			}
+
 		}
-	}(data.errChan, data.quitChan, &data.wg)
+		return nil
+
+	}
+
+}
+func Connected(i *memif.Interface) error {
+	data, ok := i.GetPrivateData().(*interfaceData)
+	if !ok {
+		return fmt.Errorf("Invalid private data")
+	}
+	_ = data
+
+	// allocate packet buffer
+	pkt := make([]byte, 2048)
+	// get rx queue
+	rxq0, err := i.GetRxQueue(0)
+	_ = err
+
+	// read packet from shared memory
+	pktLen, err := rxq0.ReadPacket(pkt)
+	_, _ = err, pktLen
 
 	return nil
 }
@@ -109,7 +207,7 @@ func main() {
 	memprof := flag.String("memprof", "", "mem profiling output file")
 	role := flag.String("role", "slave", "interface role")
 	name := flag.String("name", "gomemif", "interface name")
-	socketName := flag.String("socket", "", "control socket filename")
+	socketName := flag.String("socket", "/run/vpp/memif.sock", "control socket filename")
 
 	flag.Parse()
 
@@ -150,6 +248,7 @@ func main() {
 		DisconnectedFunc: Disconnected,
 		PrivateData:      &data,
 		Name:             *name,
+		InterruptFunc:    Responder,
 	}
 
 	i, err := socket.NewInterface(args)
@@ -169,7 +268,7 @@ func main() {
 				 * if error is ECONNREFUSED it may simply mean that master
 				 * interface is not up yet, use i.RequestConnection()
 				 */
-				fmt.Println("Faild to connect: ", err)
+				fmt.Println("Failed to connect: ", err)
 				goto exit
 			}
 		}

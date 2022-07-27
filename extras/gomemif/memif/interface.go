@@ -60,6 +60,8 @@ type ConnectedFunc func(i *Interface) error
 // DisconnectedFunc is a callback called when an interface is disconnected
 type DisconnectedFunc func(i *Interface) error
 
+type InterruptFunc func(i *Interface) error
+
 // MemoryConfig represents shared memory configuration
 type MemoryConfig struct {
 	NumQueuePairs    uint16 // number of queue pairs
@@ -77,7 +79,9 @@ type Arguments struct {
 	MemoryConfig     MemoryConfig
 	ConnectedFunc    ConnectedFunc    // callback called when interface changes status to connected
 	DisconnectedFunc DisconnectedFunc // callback called when interface changes status to disconnected
-	PrivateData      interface{}      // private data used by client program
+	InterruptFunc    InterruptFunc
+	PrivateData      interface{} // private data used by client program
+	InterruptFd      uint16
 }
 
 // memoryRegion represents a shared memory mapped file
@@ -110,6 +114,7 @@ type Interface struct {
 	regions     []memoryRegion
 	txQueues    []Queue
 	rxQueues    []Queue
+	onInterrupt InterruptFunc
 }
 
 // IsMaster returns true if the interfaces role is master, else returns false
@@ -270,6 +275,10 @@ func RoleToString(isMaster bool) string {
 	return "Slave"
 }
 
+func memifPathIsAbstract(filename string) bool {
+	return (filename[0] == '@')
+}
+
 // RequestConnection is used by slave interface to connect to a socket and
 // create a control channel
 func (i *Interface) RequestConnection() error {
@@ -283,6 +292,9 @@ func (i *Interface) RequestConnection() error {
 	}
 	usa := &syscall.SockaddrUnix{Name: i.socket.filename}
 
+	if memifPathIsAbstract(i.socket.GetFilename()) {
+		usa.Name = "\000" + usa.Name[1:]
+	}
 	// Connect to listener socket
 	err = syscall.Connect(fd, usa)
 	if err != nil {
@@ -315,7 +327,8 @@ func (socket *Socket) NewInterface(args *Arguments) (*Interface, error) {
 
 	// copy interface configuration
 	i := Interface{
-		args: *args,
+		args:        *args,
+		onInterrupt: args.InterruptFunc,
 	}
 	// set default values
 	if i.args.MemoryConfig.NumQueuePairs == 0 {
@@ -434,6 +447,7 @@ func (i *Interface) initializeQueues() (err error) {
 		if err != nil {
 			return err
 		}
+		i.socket.addInterrupt(q.interruptFd)
 		q.putRing()
 		i.txQueues = append(i.txQueues, *q)
 
@@ -452,11 +466,17 @@ func (i *Interface) initializeQueues() (err error) {
 			i:        i,
 		}
 		q.ring.setCookie(cookie)
-		q.ring.setFlags(1)
+		if i.args.InterruptFunc == nil {
+			q.ring.setFlags(1)
+		} else {
+			q.ring.setFlags(0)
+		}
 		q.interruptFd, err = eventFd()
 		if err != nil {
 			return err
 		}
+		i.args.InterruptFd = uint16(q.interruptFd)
+		i.socket.addInterrupt(q.interruptFd)
 		q.putRing()
 		i.rxQueues = append(i.rxQueues, *q)
 

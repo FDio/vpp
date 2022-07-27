@@ -1,12 +1,14 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 go_binary(
-    name = "responder",
-    srcs = ["responder.go"],
+    name = "icmp_responder_poll",
+    srcs = ["icmp_responder_poll.go"],
     visibility = ["//visibility:public",],
     deps = [
     	"//memif:memif",
         "@com_github_profile//:go_default_library",
+        "@com_github_gopacket//layers:go_default_library",
+        "@com_github_gopacket//:go_default_library"
     ],
 )
 
@@ -19,3 +21,16 @@ go_binary(
         "@com_github_profile//:go_default_library",
     ],
 )
+
+go_binary(
+    name = "icmp_responder_cb",
+    srcs = ["icmp_responder_cb.go"],
+    visibility = ["//visibility:public",],
+    deps = [
+    	"//memif:memif",
+        "@com_github_profile//:go_default_library",
+        "@com_github_gopacket//layers:go_default_library",
+        "@com_github_gopacket//:go_default_library"
+    ],
+)
+
