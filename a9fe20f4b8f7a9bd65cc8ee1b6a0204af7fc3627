@@ -16,6 +16,23 @@
       "message": "perftest-2n-tx2 mrrANDnic_intel-xl*ANDdrv_vfio_pciAND4cAND64bANDeth-l2xcbase-eth-2memif-1dcr",
       "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fd7939d_216b3f1d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-27T16:11:21Z",
+      "side": 1,
+      "message": "perftest-3n-alt mrrANDnic_intel-xl*ANDdrv_vfio_pciAND4cAND64bANDeth-l2xcbase-eth-2memif-1dcr\n\n\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2004-aarch64-2n-tx2/47/ : FAILURE (skipped)\n\n30% performance degradation. So while this improves (or at least does not change) DPDK preformance on x700 series NICs in general (and does not affect other series), on 2n-tx2 a minority of tests show decreased performance. Perhaps because it is xl710 NIC which we do not have on most other testbeds.\n\nWe did not have 3n-alt at the time this got merged.\nRandom selection of other 2n-tx2 tests in (new) trending: http://csit.fd.io/trending/#eNq9kkFuwyAQRU_jbKKRYOzE3WTRJPeICEwaVOwgoJXT0xdTV8SRYqVdeGEM-h_mz9P4cHF08GQ2xWpb1NsCa63iUpSvy_j7tBawhdAhVOyN0PLO1JyBsuod5KUNQrfkDg01-gTr6giVBApnMNjJo_CUDvgjcyUdNM71r-Ouf119hFGprNjzNSuPAmS7cCSy_y5XtgXyNwWncuY7Jyca8vqL8sXYZ9Zl5JelSo6rhau9UYfm631y_A22tmuoX34B96f4pehaSKN8SPs58Ma6E0gfJJsEGvuaH6jBNLD8bmDnIGjwmZn87wzyJ5Gt9gsfhAsbZIjAEBCXjEXbsCyoVYNWQslH2jfNdCaV",
+      "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
