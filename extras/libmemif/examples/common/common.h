@@ -78,6 +78,10 @@ typedef struct memif_connection
   uint8_t ip_addr[4];
   /* interface hw address */
   uint8_t hw_addr[6];
+  /* buffer size */
+  uint16_t buffer_size;
+  /* headroom size */
+  uint16_t headroom_size;
 } memif_connection_t;
 
 void print_version ();
