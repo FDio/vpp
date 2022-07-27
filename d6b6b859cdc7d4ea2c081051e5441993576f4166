@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f846faa_aef201aa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1541
+      },
+      "writtenOn": "2022-07-27T13:36:58Z",
+      "side": 1,
+      "message": "The VRF add table behavior is desired. Most of NAT API\u0027s create VRF table if it doesn\u0027t exist. Rest of the patch +1.",
+      "revId": "d6b6b859cdc7d4ea2c081051e5441993576f4166",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
