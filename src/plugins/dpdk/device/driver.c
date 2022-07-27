@@ -116,6 +116,7 @@ static dpdk_driver_t dpdk_drivers[] = {
   {
     .drivers = DPDK_DRIVERS ({ "net_vmxnet3", "VMware VMXNET3" }),
     .interface_name_prefix = "GigabitEthernet",
+    .enable_rxq_int = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_virtio", "Red Hat Virtio" }),
