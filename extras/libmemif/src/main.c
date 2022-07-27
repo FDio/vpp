@@ -1545,7 +1545,6 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   memif_ring_t *ring = mq->ring;
   memif_buffer_t *b0;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
-  uint32_t offset_mask = c->run_args.buffer_size - 1;
   uint16_t ring_size;
   uint16_t ns;
   int err = MEMIF_ERR_SUCCESS;	/* 0 */
@@ -1620,7 +1619,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 	      if (ms->get_external_buffer_offset)
 		d->offset = ms->get_external_buffer_offset (c->private_ctx);
 	      else
-		d->offset = d->offset - (d->offset & offset_mask);
+		d->offset = d->offset - (d->offset % c->run_args.buffer_size);
 	    }
 	  b0->data = memif_get_buffer (c, ring, mq->next_buf & mask);
 
@@ -1666,7 +1665,6 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
   memif_queue_t *mq = &c->rx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
-  uint32_t offset_mask = c->run_args.buffer_size - 1;
   uint16_t slot, counter = 0;
 
   if (c->args.is_master)
@@ -1692,7 +1690,8 @@ memif_refill_queue (memif_conn_handle_t conn, uint16_t qid, uint16_t count,
       if (ms->get_external_buffer_offset)
 	d->offset = ms->get_external_buffer_offset (c->private_ctx);
       else
-	d->offset = d->offset - (d->offset & offset_mask) + headroom;
+	d->offset =
+	  d->offset - (d->offset % c->run_args.buffer_size) + headroom;
       slot++;
       counter++;
     }
@@ -1723,7 +1722,6 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
-  uint32_t offset_mask = c->run_args.buffer_size - 1;
   memif_buffer_t *b0;
   memif_desc_t *d;
   int64_t data_offset;
@@ -1756,7 +1754,7 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
       if (!c->args.is_master)
 	{
 	  // reset headroom
-	  d->offset = d->offset - (d->offset & offset_mask);
+	  d->offset = d->offset - (d->offset % c->run_args.buffer_size);
 	  // calculate offset from user data
 	  data_offset = b0->data - (d->offset + c->regions[d->region].addr);
 	  if (data_offset != 0)
