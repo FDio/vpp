@@ -16,6 +16,23 @@
       "message": "\u003e Patch Set 16:\n\u003e \n\u003e @Naveen Thanks for the effort. It has been long standing task and necessary for virtual device testing.\n\u003e 1) Can you please provide simple example (ping test) how to write down device tests\n\u003e 2) The setup environment requires VM and may be specific kernel image. Will the environment be cleaned after the test completion?\n\n@Mohsin, \n1) I have added a sample test named test_vm_tap.py.\n2) For debian, the script downloads a generic kernel image into the /tmp/vpp-vm-tests directory. This image is cached for further test runs. When you run make test-wipe, everything is cleaned.",
       "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36ae920f_876551d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 22
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:20:20Z",
+      "side": 1,
+      "message": "\u003e Patch Set 16: Code-Review-1\n\u003e \n\u003e Can you please update the status of the open comments and address any that are still open.\n\u003e \n\u003e +1 to Mohsin\u0027s comment -- please add documentation on how to use this feature that is included in the published doc set.\n\n@Dave, Updated the status of open comments and added a sample test per Mohsin\u0027s request to show how to write VM tests. All the supported command line options can be viewed by running ./run.py --help in the test dir.",
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
