@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a1abe44_aa882c36",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-07-28T21:29:24Z",
+      "side": 1,
+      "message": "Converting MAINTAINERS to yaml in order to make it easier to parse \u0026 generate a report of open gerrit changes requiring review per feature (potentially to generate nag emails to maintainers).",
+      "revId": "c8b9c0f93e9c2720d22762a6e593919281a91db8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
