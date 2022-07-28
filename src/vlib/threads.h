@@ -393,9 +393,18 @@ vlib_worker_thread_barrier_check (void)
        */
       {
 	f64 now;
+	f64 new_offset;
 	vm->time_offset = 0.0;
 	now = vlib_time_now (vm);
-	vm->time_offset = vgm->vlib_mains[0]->time_last_barrier_release - now;
+	new_offset = vgm->vlib_mains[0]->time_last_barrier_release - now;
+	/*
+	 * Ensure monotonicity: time must never go backwards.
+	 * If new offset would cause time to decrease below pre-barrier
+	 * value (t), clamp it to maintain monotonicity.
+	 */
+	if (PREDICT_FALSE (now + new_offset < t))
+	  new_offset = t - now;
+	vm->time_offset = new_offset;
 	vm->time_last_barrier_release = vlib_time_now (vm);
       }
 

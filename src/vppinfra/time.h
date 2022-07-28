@@ -186,18 +186,23 @@ typedef u64 clib_us_time_t;
 always_inline f64
 clib_time_now_internal (clib_time_t * c, u64 n)
 {
-  u64 l = c->last_cpu_time;
-  u64 t = c->total_cpu_time;
-  f64 rv;
-  t += n - l;
-  c->total_cpu_time = t;
-  c->last_cpu_time = n;
-  rv = t * c->seconds_per_clock;
-  if (PREDICT_FALSE
-      ((c->last_cpu_time -
-	c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify))
-    clib_time_verify_frequency (c);
-  return rv;
+  u64 t;
+  if (PREDICT_FALSE ((n - c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify ||
+		     n < c->last_cpu_time))
+    {
+      /* Resynchronize system time and cpu time if:
+       * - cpu time difference is too large (~16s in normal operations), or
+       * - cpu time went backward (thread migrated to different cpu) */
+      clib_time_verify_frequency (c);
+      t = c->total_cpu_time;
+    }
+  else
+    {
+      t = c->total_cpu_time + n - c->last_cpu_time;
+      c->total_cpu_time = t;
+      c->last_cpu_time = n;
+    }
+  return t * c->seconds_per_clock;
 }
 
 /* Maximum f64 value as max clib_time */
