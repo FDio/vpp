@@ -314,6 +314,8 @@ transport_cleanup_half_open (transport_proto_t tp, u32 conn_index)
 int
 transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
 {
+  if (PREDICT_FALSE (!tp_vfts[tp].connect))
+    return SESSION_E_TRANSPORT_NO_REG;
   return tp_vfts[tp].connect (tep);
 }
 
@@ -343,6 +345,8 @@ u32
 transport_start_listen (transport_proto_t tp, u32 session_index,
 			transport_endpoint_cfg_t *tep)
 {
+  if (PREDICT_FALSE (!tp_vfts[tp].start_listen))
+    return SESSION_E_TRANSPORT_NO_REG;
   return tp_vfts[tp].start_listen (session_index, tep);
 }
 
