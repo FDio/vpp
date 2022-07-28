@@ -516,13 +516,18 @@ static inline
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
 
-  /* First call, or time jumped backwards? */
-  if (PREDICT_FALSE
-      ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
+  /* First call? */
+  if (PREDICT_FALSE (tw->last_run_time == 0.0))
     {
       tw->last_run_time = now;
       return callback_vector_arg;
     }
+
+  /* If we get here, now > last_run_time is guaranteed because:
+   * - next_run_time = last_run_time + interval > last_run_time
+   * - We passed the check: now >= next_run_time
+   * - Therefore: now >= next_run_time > last_run_time */
+  ASSERT (now > tw->last_run_time);
 
   if (callback_vector_arg == 0)
     {
