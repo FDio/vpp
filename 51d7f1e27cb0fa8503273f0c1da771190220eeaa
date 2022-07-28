@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "d64e48f1_7ddf2493",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -20,10 +21,34 @@
         "endChar": 24
       },
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f746bc75_999f290f",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "As suggested, added code to check for unset vars and provide feedback. Added all the variables to an array named EnvVarArray. The code loops through the array and exits if any variables are unset and provides feedback to the user.",
+      "parentUuid": "d64e48f1_7ddf2493",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 24
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "e41c12a0_9dbafb76",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -37,10 +62,28 @@
       "side": 1,
       "message": "Indentation wrong inside function.",
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d07c88d0_ed233d4b",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "Fixed function indentation",
+      "parentUuid": "e41c12a0_9dbafb76",
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "d6edf674_5c8483b0",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -60,10 +103,10 @@
         "endChar": 47
       },
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "6f552902_7e20f513",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -83,10 +126,10 @@
         "endChar": 37
       },
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "6d31fb57_ab062b3c",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -106,10 +149,82 @@
         "endChar": 19
       },
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bccc5334_88db9580",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "The number of CPUs are now computed from the CPU mask with number of threads set to 1",
+      "parentUuid": "d6edf674_5c8483b0",
+      "range": {
+        "startLine": 113,
+        "startChar": 46,
+        "endLine": 113,
+        "endChar": 47
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "931bff01_36449a20",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "The number of CPUs are now computed from the CPU mask with threads set to 1",
+      "parentUuid": "6f552902_7e20f513",
+      "range": {
+        "startLine": 113,
+        "startChar": 36,
+        "endLine": 113,
+        "endChar": 37
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a47bf453_f6cf6c36",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "Added a command-line option named --vm-cpu-list to specify the CPU mask. The default value is set to 5-8.",
+      "parentUuid": "6d31fb57_ab062b3c",
+      "range": {
+        "startLine": 113,
+        "startChar": 18,
+        "endLine": 113,
+        "endChar": 19
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "5bea4d75_4814b2c1",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -129,8 +244,31 @@
         "endChar": 18
       },
       "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bdcad13_e6428b20",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 8
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "Added a command-line option --vm-mem to specify the memory. The default value is set to 2.",
+      "parentUuid": "5bea4d75_4814b2c1",
+      "range": {
+        "startLine": 114,
+        "startChar": 16,
+        "endLine": 114,
+        "endChar": 18
+      },
+      "revId": "51d7f1e27cb0fa8503273f0c1da771190220eeaa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "a0da95ba_edc8ebaa",
         "filename": "test/run.py",
@@ -14,10 +15,28 @@
       "side": 1,
       "message": "The docker image builder scripts require an option that builds the environment up to this point, then exits (e.g. --download-requirements) so that the python packages are included in the docker image python cache, thus preventing external package downloading during CI job runs.",
       "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "01c930e5_9a16da91",
+        "filename": "test/run.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "As per our discussion, I have marked all VM tests as extended and created a common prefix i.e. test_vm_*  for all VM tests to make VM tests CI friendly.",
+      "parentUuid": "a0da95ba_edc8ebaa",
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "b1cc3f72_e4ff82be",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -37,10 +56,34 @@
         "endChar": 24
       },
       "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ecf1654_d0aad244",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 7
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "Added set -o nounset. Added a default value for FAILED_DIR to /tmp/vpp-failed-unittests/",
+      "parentUuid": "b1cc3f72_e4ff82be",
+      "range": {
+        "startLine": 24,
+        "startChar": 11,
+        "endLine": 24,
+        "endChar": 24
+      },
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
       "key": {
         "uuid": "022902b6_41659c9e",
         "filename": "test/scripts/run_vpp_in_vm.sh",
@@ -54,8 +97,25 @@
       "side": 1,
       "message": "This function is debian specific without testing what OS this script is running on.  \n\nIt would be better to simply test for the package and fail if it is not available with the error message to run \u0027make install-deps\u0027 from the workspace root and add the appropriate installation dependency to DEB_DEPENDS and RPM_DEPENDS in .../vpp/Makefile",
       "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89693715_184bdd88",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 7
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-07-28T18:15:50Z",
+      "side": 1,
+      "message": "Added a test for detecting the debian OS. For debian, the script downloads the linux-image-generic kernel and uses it to boot the VM. The Kernel version downloaded is the same as the host\u0027s Linux kernel version. For RPM packages, the script sends an error message to provide a kernel image using the command-line option --vm-kernel-image.",
+      "parentUuid": "022902b6_41659c9e",
+      "revId": "e98df58fbb0e9c33556bd0234484b28f705aebae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
