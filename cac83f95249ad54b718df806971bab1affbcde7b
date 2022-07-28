@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb2b45f6_416c1681",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2684
+      },
+      "writtenOn": "2022-07-28T04:57:22Z",
+      "side": 1,
+      "message": "Please review this minor fix for anomaly in the neighbor-probe interval.\n\nHave a great day!!",
+      "revId": "cac83f95249ad54b718df806971bab1affbcde7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
