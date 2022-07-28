@@ -33,6 +33,23 @@
       "message": "Hi exports!Please help me to review it.",
       "revId": "12ea10953c89477129af4288d8b0043a893ca779",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f826b15_31fc5289",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2780
+      },
+      "writtenOn": "2022-07-28T03:36:52Z",
+      "side": 1,
+      "message": "Hi exports!I love vpp, this is my first time to submit patch.",
+      "revId": "12ea10953c89477129af4288d8b0043a893ca779",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
