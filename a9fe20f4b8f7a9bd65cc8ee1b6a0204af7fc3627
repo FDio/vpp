@@ -67,6 +67,23 @@
       "message": "\u003e Not much difference in telemetry output\n\nTo be more specific, parent still suffers from less than 64 packets per call, but dpdk-input still reads less packets overall in current, partly because calls are slightly less frequent, and partly because more calls return zero packets (average packets per call is stable around 7 in current, while in parent it was spread between 7 and 10).",
       "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4169cf7e_3ff2964d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-07-28T13:08:42Z",
+      "side": 1,
+      "message": "\u003e\u003e We did not have 3n-alt at the time this got merged.\n\n\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2004-aarch64-3n-alt/1/ : SUCCESS (skipped)\n\n+18%, so the usual DPDK progression (instead of 2n-tx2 regression).",
+      "revId": "a9fe20f4b8f7a9bd65cc8ee1b6a0204af7fc3627",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
