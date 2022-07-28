@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "99ef5eeb_1043064b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-07-28T10:03:12Z",
+      "side": 1,
+      "message": "Thanks Daniel for the patch\nLooks good to me 😊\nMaybe just adding a small snippet of doc with : what does this folder contain ? how to build ? how to run ? what are the two example binaries for ?\nProbably adding a .rst like `./extras/strongswan/README.rst` would be nice\n\nCheers\n-Nathan",
+      "revId": "278118f891ff03c89b88b5494f252a785f3fb840",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
