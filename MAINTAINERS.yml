@@ -1,0 +1,1112 @@
+# Schema Description
+#
+#  M: Maintainer Full name and E-mail address: Full Name <address@domain>
+#     One maintainer per line.  Multiple M: lines acceptable.
+#  F: Files and directories with wildcard patterns.
+#     A trailing slash includes all files and subdirectory files.
+#     F: drivers/net/  all files in and below drivers/net
+#     F: drivers/net/*  all files in drivers/net, but not below
+#     One pattern per line.  Multiple F: lines acceptable.
+#  E: exclude file(s) matched by F:
+#  C: Single line comment related to current section.
+#      identifier  : single word feature/component identifier
+#  Y: path to feature YAML file
+
+---
+
+VPP-feature-maintainers:
+  - feature     : Build System
+    identifier  : build
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - Makefile
+      - src/CMakeLists.txt
+      - src/cmake/
+      - build/
+
+  - feature     : Build System Internal
+    identifier  : ebuild
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - build-root/Makefile
+      - build-data/
+
+  - feature     : VNET
+    identifier  : vnet
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/error.*
+
+  - feature     : VNET Link Bonding
+    identifier  : bonding
+    maintainers :
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/vnet/bonding/
+
+  - feature     : Sphinx Documents
+    identifier  : docs
+    maintainers :
+      - John DeNisco <jdenisco@cisco.com>
+      - Dave Wallace <dwallacelf@gmail.com>
+    files       :
+      - docs/
+
+  - feature     : Infrastructure Library
+    identifier  : vppinfra
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vppinfra/
+
+  - feature     : Physical Memory Allocator
+    identifier  : pmalloc
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vppinfra/pmalloc.[ch]
+
+  - feature     : Vector Library
+    identifier  : vlib
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vlib/
+    exclude     :
+      - src/vlib/buffer*.[ch]
+      - src/vlib/pci/
+      - src/vlib/linux/pci.[ch]
+      - src/vlib/linux/vfio.[ch]
+
+  - feature     : Vector Library - Buffer Management
+    identifier  : buffers
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vlib/buffer*.[ch]
+
+  - feature     : Vector Library - PCI
+    identifier  : pci
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vlib/pci/
+      - src/vlib/linux/pci.[ch]
+      - src/vlib/linux/vfio.[ch]
+
+  - feature     : Binary API Libraries
+    identifier  : api
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vlibapi/
+      - src/vlibmemory/
+
+  - feature     : VNET Bidirectional Forwarding Detection (BFD)
+    identifier  : bfd
+    maintainers :
+      - Klement Sekera <klement.sekera@gmail.com>
+    files       :
+      - src/vnet/bfd/
+
+  - feature     : VNET Classifier
+    identifier  : classify
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vnet/classify
+
+  - feature     : VNET Policer
+    identifier  : policer
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/policer/
+
+  - feature     : VNET Device Drivers
+    identifier  : devices
+    yaml        :
+      - src/vnet/devices/af_packet/FEATURE.yaml
+      - src/vnet/devices/pipe/FEATURE.yaml
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/devices/
+
+  - feature     : VNET TAP Drivers
+    identifier  : tap
+    yaml        :
+      - src/vnet/devices/tap/FEATURE.yaml
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Steven Luong <sluong@cisco.com>
+      - Mohsin Kazmi <sykazmi@cisco.com>
+    files       :
+      - src/vnet/devices/tap/
+
+  - feature     : VNET Vhost User Driver
+    identifier  : vhost
+    yaml        :
+      - src/vnet/devices/virtio/FEATURE.yaml
+    maintainers :
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/vnet/devices/virtio/vhost_user*
+
+  - feature     : VNET Native Virtio Drivers
+    identifier  : virtio
+    yaml        :
+      - src/vnet/devices/virtio/FEATURE.yaml
+    maintainers :
+      - Mohsin Kazmi <sykazmi@cisco.com>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/devices/virtio/
+
+  - feature     : VNET Ethernet
+    identifier  : ethernet
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/ethernet/
+
+  - feature     : VNET Feature Arcs
+    identifier  : feature
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/feature/
+
+  - feature     : VNET FIB
+    identifier  : fib
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/fib/
+      - src/vnet/mfib/
+      - src/vnet/dpo
+      - src/vnet/adj
+
+  - feature     : VNET IPv4 LPM
+    identifier  : ip
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vnet/ip/
+
+  - feature     : VNET IPv6 LPM
+    identifier  : ip6
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+      - Jon Loeliger <jdl@netgate.com>
+    files       :
+      - src/vnet/ip/
+
+  - feature     : VNET IP Neighbors
+    identifier  : ip-neighbor
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/ip-neighbor
+
+  - feature     : VNET QoS
+    identifier  : qos
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/qos/
+
+  - feature     : VNET Interface Common
+    identifier  : interface
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vnet/interface*.[ch]
+
+  - feature     : VNET Packet Generator
+    identifier  : pg
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vnet/pg/
+
+  - feature     : VNET Segment Routing (IPv6 and MPLS)
+    identifier  : sr
+    maintainers :
+      - Pablo Camarillo <pcamaril@cisco.com>
+      - Ahmed Abdelsalam <ahabdels@cisco.com>
+    files       :
+      - src/vnet/srv6/
+      - src/vnet/srmpls/
+      - src/examples/srv6-sample-localsid/
+
+  - feature     : VNET IPSec
+    identifier  : ipsec
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+      - Radu Nicolau <radu.nicolau@intel.com>
+      - Fan Zhang <roy.fan.zhang@intel.com>
+    files       :
+      - src/vnet/ipsec/
+
+  - feature     : VNET Crypto Infra
+    identifier  : crypto
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/crypto/
+
+  - feature     : VNET TEIB
+    identifier  : teib
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/teib/
+
+  - feature     : VNET SPAN
+    identifier  : span
+    files       :
+      - src/vnet/span
+    comment     : Unmaintained
+
+  - feature     : Plugin - Crypto - native
+    identifier  : crypto-native
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/crypto_native/
+
+  - feature     : Plugin - Crypto - OpenSSL
+    identifier  : crypto-openssl
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/crypto_openssl/
+
+  - feature     : Plugin - Crypto - ipsecmb
+    identifier  : crypto-ipsecmb
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+      - Fan Zhang <roy.fan.zhang@intel.com>
+    files       :
+      - src/plugins/crypto_ipsecmb/
+
+  - feature     : Plugin - Crypto - sw_scheduler
+    identifier  : crypto-sw-scheduler
+      - Fan Zhang <roy.fan.zhang@intel.com>
+    files       :
+      - src/plugs/crypto_sw_scheduler/
+
+  - feature     : VNET L2
+    identifier  : l2
+    maintainers :
+      - John Lo <lojultra2020@outlook.com>
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/vnet/l2/
+
+  - feature     : VNET GRE
+    identifier  : gre
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/gre/
+
+  - feature     : VNET GSO
+    identifier  : gso
+    maintainers :
+      - Andrew Yourtchenko <ayourtch@gmail.com>
+      - Mohsin Kazmi <sykazmi@cisco.com>
+    files       :
+      - src/vnet/gso/
+
+  - feature     : Plugin - MAP
+    identifier  : map
+    yaml        :
+      - src/plugins/map/FEATURE.yaml
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+      - Jon Loeliger <jdl@netgate.com>
+    files       :
+      - src/plugins/map
+
+  - feature     : VNET MPLS
+    identifier  : mpls
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/mpls/
+
+  - feature     : VNET BIER
+    identifier  : bier
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/bier/
+
+  - feature     : VNET Session Layer
+    identifier  : session
+    yaml        :
+      - src/vnet/session/FEATURE.yaml
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/vnet/session
+
+  - feature     : VNET TCP
+    identifier  : tcp
+    yaml        :
+      - src/vnet/tcp/FEATURE.yaml
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/vnet/tcp
+
+  - feature     : VNET UDP
+    identifier  : udp
+    yaml        :
+      - src/vnet/udp/FEATURE.yaml
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/vnet/udp
+
+  - feature     : VNET VXLAN
+    identifier  : vxlan
+    maintainers :
+      - John Lo <lojultra2020@outlook.com>
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/vnet/vxlan/
+
+  - feature     : VNET VXLAN-GPE
+    identifier  : vxlan-gpe
+    maintainers :
+      - Hongjun Ni <hongjun.ni@intel.com>
+    files       :
+      - src/vnet/vxlan-gpe/
+
+  - feature     : VNET IPIP
+    identifier  : ipip
+    yaml        :
+      - src/vnet/ipip/FEATURE.yaml
+    maintainers :
+      - Ole Troan <otroan@employees.org>
+    files       :
+      - src/vnet/ipip/
+
+  - feature     : VNET tunnel
+    identifier  : tunnel
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/tunnel'
+
+  - feature     : VNET TLS and TLS engine plugins
+    identifier  : tls
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+      - Ping Yu <ping.yu@intel.com>
+    files       :
+      - src/vnet/tls
+      - src/plugins/tlsopenssl
+      - src/plugins/tlsmbedtls
+      - src/plugins/tlspicotls
+
+  - feature     : VNET SYSLOG
+    identifier  : syslog
+    maintainers :
+      - Matus Fabian <matfabia@cisco.com>
+    files       :
+      - src/vnet/syslog
+
+  - feature     : Plugin - DHCP
+    identifier  : dhcp
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/dhcp/
+
+  - feature     : VNET - ARP
+    identifier  : arp
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/arp/
+
+  - feature     : Plugin - ARPing CLI
+    identifier  : arping
+    maintainers :
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/plugins/arping/
+
+  - feature     : VNET - IP6 Neighbor Discovery
+    identifier  : ip6-nd
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/vnet/ip6-nd/
+
+  - feature     : VNET GENEVE
+    identifier  : geneve
+    files       :
+      - src/vnet/geneve/
+    comment     : Unmaintained
+
+  - feature     : VNET FLOW
+    identifier  : flow
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/flow/
+
+  - feature     : VNET Hash
+    identifier  : hash
+    maintainers :
+      - Mohsin Kazmi <sykazmi@cisco.com>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vnet/hash/
+
+  - feature     : VPP Main App
+    identifier  : vpp
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/vpp/
+
+  - feature     : Plugin - Access Control List (ACL) Based Forwarding
+    identifier  : abf
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/abf/
+
+  - feature     : Plugin - Allow / Deny List
+    identifier  : adl
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/adl/
+
+  - feature     : Plugin - Simple DNS name resolver
+    identifier  : dns
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/dns/
+
+  - feature     : Plugin - ACL
+    identifier  : acl
+    maintainers :
+      - Andrew Yourtchenko <ayourtch@gmail.com>
+    files       :
+      - src/plugins/acl/
+
+  - feature     : Plugin - NAT
+    identifier  : nat
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+      - Filip Varga <fivarga@cisco.com>
+      - Klement Sekera <klement.sekera@gmail.com>
+    files       :
+      - src/plugins/nat/
+
+  - feature     : Plugin - PNAT Static match and rewrite engine
+    identifier  : pnat
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+    files       :
+      - src/plugins/nat/pnat/
+
+  - feature     : Plugin - AVF Device driver
+    identifier  : avf
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/avf/
+
+  - feature     : Plugin - Dispatch Trace PCAP
+    identifier  : dispatch-trace
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/dispatch-trace
+
+  - feature     : Plugin - DPDK
+    identifier  : dpdk
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Mohammed Hawari <mohammed@hawari.fr>
+    files       :
+      - src/plugins/dpdk/
+
+  - feature     : Plugin - DPDK Crypto
+    identifier  : dpdk-cryptodev
+    maintainers :
+      - Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
+      - Radu Nicolau <radu.nicolau@intel.com>
+      - Fan Zhang <roy.fan.zhang@intel.com>
+    files       :
+      - src/plugins/dpdk/cryptodev/
+
+  - feature     : Plugin - flowprobe
+    identifier  : flowprobe
+    yaml        :
+      - src/plugins/flowprobe/FEATURE.yaml
+    maintainers :
+      - Ole Troan <otroan@employees.org>
+    files       :
+      - src/plugins/flowprobe/
+
+  - feature     : Plugin - http_static
+    identifier  : http_static
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/http_static/
+
+  - feature     : Plugin - builtinurl
+    identifier  : builtinurl
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/builtinurl/
+
+  - feature     : Plugin - GTPU
+    identifier  : gtpu
+    maintainers :
+      - Hongjun Ni <hongjun.ni@intel.com>
+    files       :
+      - src/plugins/gtpu/
+
+  - feature     : Plugin - Internet Key Exchange (IKEv2) Protocol
+    identifier  : ikev2
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Neale Ranns <neale@graphiant.com>
+      - Filip Tehlar <ftehlar@cisco.com>
+      - Benoît Ganne <bganne@cisco.com>
+    files       :
+      - src/plugins/ikev2/
+
+  - feature     : Plugin - Internet Group Management Protocol (IGMP)
+    identifier  : igmp
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/igmp/
+
+  - feature     : Plugin - L3 Cross-Connect (L3XC)
+    identifier  : l3xc
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/l3xc/
+
+  - feature     : Plugin - LISP
+    identifier  : lisp
+    yaml        :
+      - src/plugins/lisp/lisp-cp/FEATURE.yaml
+      - src/plugins/lisp/lisp-gpe/FEATURE.yaml
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/lisp/
+
+  - feature     : Plugin - Link Layer Discovery Protocol (LLDP)
+    identifier  : lldp
+    maintainers :
+      - Klement Sekera <klement.sekera@gmail.com>
+    files       :
+      - src/plugins/lldp/
+
+  - feature     : Plugin - memif device driver
+    identifier  : memif
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/memif/
+
+  - feature     : Plugin - Marvell MUSDK device driver
+    identifier  : marvell
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/marvell/
+
+  - feature     : Plugin - performance counter
+    identifier  : perfmon
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+      - Ray Kinsella <mdr@ashroe.eu>
+    files       :
+      - src/plugins/perfmon/
+
+  - feature     : Plugin - PPPoE
+    identifier  : pppoe
+    maintainers :
+      - Hongjun Ni <hongjun.ni@intel.com>
+    files       :
+      - src/plugins/pppoe/
+
+  - feature     : Plugin - Ping
+    identifier  : ping
+    maintainers :
+      - Andrew Yourtchenko <ayourtch@gmail.com>
+    files       :
+      - src/plugins/ping
+
+  - feature     : Plugin - IPv6 Segment Routing Dynamic Proxy
+    identifier  : srv6-ad
+    maintainers :
+      - Francois Clad <fclad@cisco.com>
+    files       :
+      - src/plugins/srv6-ad/
+
+  - feature     : Plugin - IPv6 Segment Routing Flow-Based Dynamic Proxy
+    identifier  : srv6-ad-flow
+    maintainers :
+      - Francois Clad <fclad@cisco.com>
+    files       :
+      - src/plugins/srv6-ad-flow/
+
+  - feature     : Plugin - IPv6 Segment Routing Masquerading Proxy
+    identifier  : srv6-am
+    maintainers :
+      - Francois Clad <fclad@cisco.com>
+    files       :
+      - src/plugins/srv6-am/
+
+  - feature     : Plugin - IPv6 Segment Routing Static Proxy
+    identifier  : srv6-as
+    maintainers :
+      - Francois Clad <fclad@cisco.com>
+    files       :
+      - src/plugins/srv6-as/
+
+  - feature     : Plugin - IPv6 Segment Routing Mobile
+    identifier  : srv6-mobile
+    maintainers :
+      - Tetsuya Murakami <tetsuya.mrk@gmail.com>
+      - Satoru Matsushima <satoru.matsushima@gmail.com>
+    files       :
+      - src/plugins/srv6-mobile/
+
+  - feature     : Plugin - Link Aggregation Control Protocol
+    identifier  : lacp
+    maintainers :
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/plugins/lacp/
+
+  - feature     : Plugin - Load Balancer
+    identifier  : lb
+    maintainers :
+      - Pfister <ppfister@cisco.com>
+      - Hongjun Ni <hongjun.ni@intel.com>
+    files       :
+      - src/plugins/lb/
+
+  - feature     : Plugin - NSH
+    identifier  : nsh
+    maintainers :
+      - Hongjun Ni <hongjun.ni@intel.com>
+      - Vengada <venggovi@cisco.com>
+    files       :
+      - src/plugins/nsh/
+
+  - feature     : Plugin - TCP MSS Clamping
+    identifier  : mss_clamp
+    maintainers :
+      - Miklos Tirpak <miklos.tirpak@emnify.com>
+    files       :
+      - src/plugins/mss_clamp/
+
+  - feature     : Plugin - Time-based MAC filter
+    identifier  : mactime
+    yaml        :
+      - src/plugins/mactime/FEATURE.yaml
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      -     src/plugins/mactime/
+
+  - feature     : Plugin - Network Delay Simulator
+    identifier  : nsim
+    yaml        :
+      - src/plugins/nsim/FEATURE.yaml
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/nsim/
+
+  - feature     : Plugin - Buffer Metadata Modification Tracker
+    identifier  : mdata
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/mdata/
+
+  - feature     : Plugin - Unit Tests
+    identifier  : unittest
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/unittest/
+
+  - feature     : Test Infrastructure
+    identifier  : tests
+    maintainers :
+      - Klement Sekera <klement.sekera@gmail.com>
+      - Paul Vinciguerra <pvinci@vinciconsulting.com>
+    files       :
+      - test/
+
+  - feature     : SVM Library
+    identifier  : svm
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/svm
+
+  - feature     : VPP API TEST
+    identifier  : vat
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vat/
+
+  - feature     : VPP Executable
+    identifier  : vpp
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/vpp/
+
+  - feature     : Emacs templates
+    identifier  : emacs
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - extras/emacs/
+
+  - feature     : Graphical Event Viewer
+    identifier  : g2
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/tools/g2/
+
+  - feature     : Performance Tooling
+    identifier  : perftool
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/tools/perftool/
+
+  - feature     : Plugin - vmxnet3 device driver
+    identifier  : vmxnet3
+    maintainers :
+      - Steven Luong <sluong@cisco.com>
+    files       :
+      - src/plugins/vmxnet3/
+
+  - feature     : Binary API Compiler for Python
+    identifier  : vppapigen
+    maintainers :
+      - Ole Troan <otroan@employees.org>
+    files       :
+      - src/tools/vppapigen/
+    files       :
+      - extras/scripts/crcchecker.py
+
+  - feature     : API trace tool
+    identifier  : vppapitrace
+    maintainers :
+      - Ole Troan <otroan@employees.org>
+    files       :
+      - src/tools/vppapitrace/
+
+  - feature     : Binary API Compiler for C and C++
+    identifier  : vapi
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+    files       :
+      - src/vpp-api/vapi
+
+  - feature     : Plugin - RDMA (ibverb) driver
+    identifier  : rdma
+    maintainers :
+      - Benoît Ganne <bganne@cisco.com>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/rdma/
+
+  - feature     : Plugin - QUIC protocol
+    identifier  : quic
+    maintainers :
+      - Aloys Augustin <aloaugus@cisco.com>
+      - Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+      - Dave Wallace <dwallacelf@gmail.com>
+      - Florin Coras <fcoras@cisco.com>
+    yaml        :
+      - src/plugins/quic/FEATURE.yaml
+    files       :
+      - src/plugins/quic/
+
+  - feature     : Plugin - snort plugin
+    identifier  : snort
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/snort/
+
+  - feature     : libmemif
+    identifier  : libmemif
+    maintainers :
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - extras/libmemif
+
+  - feature     : gomemif
+    identifier  : gomemif
+    maintainers :
+      - Jakub Grajciar <jgrajcia@cisco.com>
+    files       :
+      - extras/gomemif
+
+  - feature     : VPP Comms Library
+    identifier  : vcl
+    yaml        :
+      - src/vnet/vcl/FEATURE.yaml
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/vcl
+
+  - feature     : Statistics Segment
+    identifier  : stats
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+    files       :
+      - src/vpp/stats/
+      - src/vpp-api/client/stat_client.[ch]
+
+  - feature     : Plugin - Host Stack Applications
+    identifier  : hsa
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+      - Dave Wallace <dwallacelf@gmail.com>
+      - Aloys Augustin <aloaugus@cisco.com>
+      - Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+    files       :
+      - src/plugins/hs_apps/
+
+  - feature     : Python binding for the VPP API
+    identifier  : papi
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+      - Paul Vinciguerra <pvinci@vinciconsulting.com>
+    files       :
+      - src/vpp-api/python
+
+  - feature     : Plugin - Cisco Discovery Protocol
+    identifier  : cdp
+    maintainers :
+      - vpp-dev Mailing List <vpp-dev@lists.fd.io>
+    comment     : Unmaintained
+    files       :
+      - src/plugins/cdp/
+
+  - feature     : Plugin - Source VRF Select
+    identifier  : svs
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/svs/
+
+  - feature     : Plugin - IPv6 Connection Tracker
+    identifier  : ct6
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/ct6
+
+  - feature     : Plugin - Steal The NIC
+    identifier  : stn
+    maintainers :
+      - vpp-dev Mailing List <vpp-dev@lists.fd.io>
+    comment     : Unmaintained
+    files       :
+      - src/plugins/stn
+
+  - feature     : Plugin - IOAM
+    identifier  : ioam
+    maintainers :
+      - vpp-dev Mailing List <vpp-dev@lists.fd.io>
+    comment     : Unmaintained
+    files       :
+      - src/plugins/ioam
+
+  - feature     : Plugin - Awkward chained buffer geometry tool
+    identifier  : oddbuf
+    maintainers :
+      - Dave Barach <vpp@barachs.net>
+    files       :
+      - src/plugins/oddbuf
+
+  - feature     : Plugin - VRRP
+    identifier  : vrrp
+    maintainers :
+      - Matthew Smith <mgsmith@netgate.com>
+    files       :
+      - src/plugins/vrrp
+
+  - feature     : Plugin - Unicast Reverse Path forwarding
+    identifier  : urpf
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/urpf
+
+  - feature     : Plugin - CNat
+    identifier  : cnat
+    maintainers :
+      - Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
+      - Neale Ranns <neale@graphiant.com>
+    files       :
+      - src/plugins/cnat
+
+  - feature     : Plugin - Wireguard
+    identifier  : wireguard
+    maintainers :
+      - Artem Glazychev <artem.glazychev@xored.com>
+      - Fan Zhang <roy.fan.zhang@intel.com>
+    files       :
+      - src/plugins/wireguard
+
+  - feature     : VPP Config Tooling
+    identifier  : vpp_config
+    maintainers :
+      - John DeNisco <jdenisco@cisco.com>
+    files       :
+      - extras/vpp_config
+
+  - feature     : bash functions
+    identifier  : bash
+    maintainers :
+      - Dave Wallace <dwallacelf@gmail.com>
+    files       :
+      - extras/bash/
+
+  - feature     : Plugin - AF_XDP driver
+    identifier  : af_xdp
+    maintainers :
+      - Benoît Ganne <bganne@cisco.com>
+      - Damjan Marion <damarion@cisco.com>
+    files       :
+      - src/plugins/af_xdp/
+
+  - feature     : Plugin - geneve
+    identifier  : geneve
+    maintainers :
+      - vpp-dev Mailing List <vpp-dev@lists.fd.io>
+    files       :
+      - src/plugins/geneve/
+
+  - feature     : Plugin - linux-cp
+    identifier  : linux-cp
+    maintainers :
+      - Neale Ranns <neale@graphiant.com>
+      - Matthew Smith <mgsmith@netgate.com>
+    files       :
+      - src/plugins/linux-cp/
+
+  - feature     : Plugin - SRTP
+    identifier  : srtp
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/srtp/
+
+  - feature     : Plugin - bufmon
+    identifier  : bufmon
+    maintainers :
+      - Benoît Ganne <bganne@cisco.com>
+    files       :
+      - src/plugins/bufmon/
+
+  - feature     : Plugin - HSI
+    identifier  : hsi
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/hsi/
+
+  - feature     : Plugin - HTTP
+    identifier  : http
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/http
+
+  - feature     : Plugin - Prom
+    identifier  : prom
+    maintainers :
+      - Florin Coras <fcoras@cisco.com>
+    files       :
+      - src/plugins/prom
+
+  - feature     : cJSON
+    identifier  : cjson
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+    files       :
+      - src/vppinfra/cJSON.[ch]
+
+  - feature     : VAT2
+    identifier  : vat2
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+    files       :
+      - src/vat2/
+
+  - feature     : VNET Ipfix Export
+    identifier  : ipfix-export
+    maintainers :
+      - Ole Troan <ot@cisco.com>
+      - Paul Atkins <patkins@graphiant.com>
+    files       :
+      - src/vnet/ipfix-export/
+
+  - feature     : RPM packaging on openSUSE
+    identifier  : rpm-packaging
+    maintainers :
+      - Laszlo Kiraly <laszlo.kiraly@est.tech>
+    files       :
+      - src/extras/rpm/opensuse
+
+  - feature     : THE REST
+    identifier  : misc
+    maintainers :
+      - vpp-dev Mailing List <vpp-dev@lists.fd.io>
+    comment     : Missing Maintainer
+    files       :
+      - *
+      - */
