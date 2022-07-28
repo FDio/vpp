@@ -225,6 +225,20 @@ clib_time_verify_frequency (clib_time_t * c)
   now_reference = unix_time_now ();
   now_clock = clib_cpu_time_now ();
 
+  /*
+   * Detect CPU time going backward (e.g., thread migrated to a CPU with
+   * lower TSC). In this case, skip frequency estimation and just resync
+   * timestamps to current values.
+   */
+  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time))
+    {
+      c->last_cpu_time = now_clock;
+      c->last_verify_cpu_time = now_clock;
+      c->last_verify_reference_time = now_reference;
+      clib_warning ("CPU time went backward, resyncing timestamps");
+      return;
+    }
+
   /* Compute change in the reference clock */
   delta_reference = now_reference - c->last_verify_reference_time;
 
@@ -234,11 +248,12 @@ clib_time_verify_frequency (clib_time_t * c)
 
   /*
    * Recompute vpp start time reference, and total clocks
-   * using the current clock rate
+   * using the current clock rate.
+   * Ensure total_cpu_time never decreases to guarantee monotonicity.
    */
   c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-  c->total_cpu_time = (now_reference - c->init_reference_time)
-    * c->clocks_per_second;
+  c->total_cpu_time = clib_max (
+    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
 
   c->last_cpu_time = now_clock;
 
@@ -287,10 +302,11 @@ clib_time_verify_frequency (clib_time_t * c)
 
   /*
    * Recalculate total_cpu_time based on the kernel timebase, and
-   * the calculated clock rate
+   * the calculated clock rate.
+   * Ensure total_cpu_time never decreases to guarantee monotonicity.
    */
-  c->total_cpu_time =
-    (now_reference - c->init_reference_time) * c->clocks_per_second;
+  c->total_cpu_time = clib_max (
+    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
 }
 
 
