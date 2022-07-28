@@ -516,13 +516,17 @@ static inline
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
 
-  /* First call, or time jumped backwards? */
-  if (PREDICT_FALSE
-      ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
+  /* First call? */
+  if (PREDICT_FALSE (tw->last_run_time == 0.0))
     {
       tw->last_run_time = now;
       return callback_vector_arg;
     }
+
+  /* Time jumped backwards? Keep last_run_time as high-water mark so
+   * timers will fire when time advances past it again. */
+  if (PREDICT_FALSE (now <= tw->last_run_time))
+    return callback_vector_arg;
 
   if (callback_vector_arg == 0)
     {
