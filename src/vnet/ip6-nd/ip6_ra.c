@@ -2025,8 +2025,7 @@ ip6_ra_cmd (vlib_main_t * vm,
 	}
       else
 	{
-	  error = unformat_parse_error (line_input);
-	  goto done;
+	  break;
 	}
     }
 
