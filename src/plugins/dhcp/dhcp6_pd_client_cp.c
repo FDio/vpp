@@ -822,15 +822,11 @@ cp_ip6_advertise_prefix (prefix_info_t * prefix_info,
   addr.as_u64[0] &= im->fib_masks[address_info->prefix_length].as_u64[0];
   addr.as_u64[1] &= im->fib_masks[address_info->prefix_length].as_u64[1];
 
-  rv = ip6_ra_prefix (vm, address_info->sw_if_index,
-		      &addr, address_info->prefix_length,
-		      0 /* use_default */ ,
-		      prefix_info->valid_lt,
-		      prefix_info->preferred_lt, 0 /* no_advertise */ ,
-		      0 /* off_link */ ,
-		      0 /* no_autoconfig */ ,
-		      0 /* no_onlink */ ,
-		      enable == 0 /* is_no */ );
+  rv = ip6_ra_prefix (
+    vm, address_info->sw_if_index, &addr, address_info->prefix_length,
+    0 /* use_default */, prefix_info->valid_lt, prefix_info->preferred_lt,
+    0 /* no_advertise */, 0 /* off_link */, 0 /* no_autoconfig */,
+    0 /* no_decrement */, 0 /* no_onlink */, enable == 0 /* is_no */);
   if (rv != 0)
     {
       clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
