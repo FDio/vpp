@@ -1477,6 +1477,7 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
                                     0 /* no_advertise */,
                                     0 /* off_link */,
                                     0 /* no_autoconfig */,
+                                    0 /* no_decrement */,
                                     0 /* no_onlink */,
                                     0 /* is_no */);
             if (rv != 0)
@@ -1783,7 +1784,7 @@ ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 	       ip6_address_t * prefix_addr, u8 prefix_len,
 	       u8 use_default, u32 val_lifetime, u32 pref_lifetime,
 	       u8 no_advertise, u8 off_link, u8 no_autoconfig,
-	       u8 no_onlink, u8 is_no)
+	       u8 no_decrement, u8 no_onlink, u8 is_no)
 {
   ip6_ra_t *radv_info;
 
@@ -1848,7 +1849,7 @@ ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
       prefix->adv_valid_lifetime_in_secs = DEF_ADV_VALID_LIFETIME;
       prefix->adv_pref_lifetime_in_secs = DEF_ADV_PREF_LIFETIME;
       prefix->enabled = 1;
-      prefix->decrement_lifetime_flag = 1;
+      prefix->decrement_lifetime_flag = !(no_decrement != 0);
       prefix->deprecated_prefix_flag = 1;
 
       if (off_link == 0)
@@ -2045,6 +2046,7 @@ ip6_ra_cmd (vlib_main_t * vm,
       u8 use_prefix_default_values = 0;
       u8 no_advertise = 0;
       u8 off_link = 0;
+      u8 no_decrement = 0;
       u8 no_autoconfig = 0;
       u8 no_onlink = 0;
 
@@ -2080,6 +2082,8 @@ ip6_ra_cmd (vlib_main_t * vm,
 	    off_link = 1;
 	  else if (unformat (line_input, "no-autoconfig"))
 	    no_autoconfig = 1;
+	  else if (unformat (line_input, "no-decrement"))
+	    no_decrement = 1;
 	  else if (unformat (line_input, "no-onlink"))
 	    no_onlink = 1;
 	  else
@@ -2094,7 +2098,8 @@ ip6_ra_cmd (vlib_main_t * vm,
 		     use_prefix_default_values,
 		     valid_lifetime_in_secs,
 		     pref_lifetime_in_secs,
-		     no_advertise, off_link, no_autoconfig, no_onlink, is_no);
+		     no_advertise, off_link, no_autoconfig,
+		     no_decrement, no_onlink, is_no);
     }
 
 done:

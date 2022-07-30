@@ -198,7 +198,8 @@ static void
   vl_api_sw_interface_ip6nd_ra_prefix_reply_t *rmp;
   fib_prefix_t pfx;
   int rv = 0;
-  u8 is_no, use_default, no_advertise, off_link, no_autoconfig, no_onlink;
+  u8 is_no, use_default, no_advertise, off_link, no_decrement, no_autoconfig,
+    no_onlink;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -208,14 +209,13 @@ static void
   no_advertise = mp->no_advertise == 1;
   off_link = mp->off_link == 1;
   no_autoconfig = mp->no_autoconfig == 1;
+  no_decrement = mp->no_decrement == 1;
   no_onlink = mp->no_onlink == 1;
 
-  rv = ip6_ra_prefix (vm, ntohl (mp->sw_if_index),
-		      &pfx.fp_addr.ip6,
-		      pfx.fp_len, use_default,
-		      ntohl (mp->val_lifetime),
-		      ntohl (mp->pref_lifetime), no_advertise,
-		      off_link, no_autoconfig, no_onlink, is_no);
+  rv = ip6_ra_prefix (vm, ntohl (mp->sw_if_index), &pfx.fp_addr.ip6,
+		      pfx.fp_len, use_default, ntohl (mp->val_lifetime),
+		      ntohl (mp->pref_lifetime), no_advertise, off_link,
+		      no_autoconfig, no_decrement, no_onlink, is_no);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX_REPLY);

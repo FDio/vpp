@@ -829,6 +829,7 @@ cp_ip6_advertise_prefix (prefix_info_t * prefix_info,
 		      prefix_info->preferred_lt, 0 /* no_advertise */ ,
 		      0 /* off_link */ ,
 		      0 /* no_autoconfig */ ,
+		      0 /* no_decrement */ ,
 		      0 /* no_onlink */ ,
 		      enable == 0 /* is_no */ );
   if (rv != 0)
