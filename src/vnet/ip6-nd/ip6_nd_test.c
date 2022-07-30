@@ -153,6 +153,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   u8 no_advertise = 0;
   u8 off_link = 0;
   u8 no_autoconfig = 0;
+  u8 no_decrement = 0;
   u8 no_onlink = 0;
   u8 is_no = 0;
   u32 val_lifetime = 0;
@@ -180,6 +181,8 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
 	off_link = 1;
       else if (unformat (i, "noauto"))
 	no_autoconfig = 1;
+      else if (unformat (i, "nodecrement"))
+	no_decrement = 1;
       else if (unformat (i, "nolink"))
 	no_onlink = 1;
       else if (unformat (i, "isno"))
@@ -211,6 +214,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   mp->no_advertise = no_advertise;
   mp->off_link = off_link;
   mp->no_autoconfig = no_autoconfig;
+  mp->no_decrement = no_decrement;
   mp->no_onlink = no_onlink;
   mp->is_no = is_no;
   mp->val_lifetime = ntohl (val_lifetime);

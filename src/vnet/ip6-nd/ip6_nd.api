@@ -75,6 +75,7 @@ autoreply define sw_interface_ip6nd_ra_config
     @param no_autoconfig - Setting for the A-flag. When
                            set indicates that this prefix can be used for
                           stateless address configuration.
+    @param no_decrement - Do not decrement valid/pref lifetime
     @param no_onlink - The prefix is not on link. Make sure this is consistent
                        with the off_link parameter else YMMV
     @param is_no - add/delete
@@ -100,6 +101,7 @@ autoreply define sw_interface_ip6nd_ra_prefix
   bool no_advertise;
   bool off_link;
   bool no_autoconfig;
+  bool no_decrement;
   bool no_onlink;
   bool is_no;
   u32 val_lifetime;
