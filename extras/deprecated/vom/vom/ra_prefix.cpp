@@ -29,6 +29,7 @@ ra_prefix::ra_prefix(const route::prefix_t& pfx,
   , m_no_advertise(no_advertise)
   , m_off_link(0)
   , m_no_autoconfig(0)
+  , m_fixed(0)
   , m_no_onlink(0)
   , m_val_lifetime(val_lifetime)
   , m_pref_lifetime(pref_lifetime)
@@ -44,6 +45,7 @@ ra_prefix::to_vpp(vapi_payload_sw_interface_ip6nd_ra_prefix& ra_prefix) const
   ra_prefix.no_advertise = m_no_advertise;
   ra_prefix.off_link = m_off_link;
   ra_prefix.no_autoconfig = m_no_autoconfig;
+  ra_prefix.fixed = m_fixed;
   ra_prefix.no_onlink = m_no_onlink;
   ra_prefix.val_lifetime = m_val_lifetime;
   ra_prefix.pref_lifetime = m_pref_lifetime;

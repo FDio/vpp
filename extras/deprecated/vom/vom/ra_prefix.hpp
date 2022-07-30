@@ -95,6 +95,12 @@ private:
   uint8_t m_no_autoconfig;
 
   /**
+   * Do not decrement valid/preferred lifetimes.
+   * Default is decrement.
+   */
+  uint8_t m_fixed;
+
+  /**
    * Do not use prefix for onlink determination.
    * Default is on-link (this flag is off).
    */
