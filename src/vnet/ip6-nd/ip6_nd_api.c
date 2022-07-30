@@ -215,7 +215,7 @@ static void
 		      pfx.fp_len, use_default,
 		      ntohl (mp->val_lifetime),
 		      ntohl (mp->pref_lifetime), no_advertise,
-		      off_link, no_autoconfig, no_onlink, is_no);
+		      off_link, no_autoconfig, 0, no_onlink, is_no);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX_REPLY);
