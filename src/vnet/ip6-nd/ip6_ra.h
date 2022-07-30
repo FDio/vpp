@@ -28,12 +28,11 @@ extern int ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
 			  u32 initial_count, u32 initial_interval,
 			  u32 max_interval, u32 min_interval, u8 is_no);
 
-extern int ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
-			  ip6_address_t * prefix_addr, u8 prefix_len,
-			  u8 use_default, u32 val_lifetime,
-			  u32 pref_lifetime, u8 no_advertise,
-			  u8 off_link, u8 no_autoconfig,
-			  u8 no_onlink, u8 is_no);
+extern int ip6_ra_prefix (vlib_main_t *vm, u32 sw_if_index,
+			  ip6_address_t *prefix_addr, u8 prefix_len,
+			  u8 use_default, u32 val_lifetime, u32 pref_lifetime,
+			  u8 no_advertise, u8 off_link, u8 no_autoconfig,
+			  u8 no_decrement, u8 no_onlink, u8 is_no);
 
 typedef struct
 {
