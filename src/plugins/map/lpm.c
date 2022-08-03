@@ -28,7 +28,8 @@ masked_address32 (uint32_t addr, uint8_t len)
 static uint64_t
 masked_address64 (uint64_t addr, uint8_t len)
 {
-  return len == 64 ? addr : addr & ~(~0ull >> len);
+  u64 a = clib_net_to_host_u64 (addr);
+  return clib_host_to_net_u64 (len == 64 ? a : a & ~(~0ull >> len));
 }
 
 static void
@@ -113,9 +114,9 @@ lpm_128_lookup (lpm_t *lpm, void *addr_v, u8 pfxlen)
   u32 value;
   clib_bitmap_foreach (i, lpm->prefix_lengths_bitmap)
      {
-      rv = lpm_128_lookup_core(lpm, addr, i, &value);
-      if (rv == 0)
-	return value;
+       rv = lpm_128_lookup_core (lpm, addr, 128 - i, &value);
+       if (rv == 0)
+	 return value;
     }
   return ~0;
 }
