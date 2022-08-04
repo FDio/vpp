@@ -77,4 +77,3 @@ Main next steps for improving this implementation
 -------------------------------------------------
 
 1. Use all benefits of VPP-engine.
-2. Add peers roaming support

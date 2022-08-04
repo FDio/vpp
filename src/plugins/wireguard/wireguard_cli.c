@@ -165,7 +165,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
   u8 public_key[NOISE_PUBLIC_KEY_LEN + 1];
   fib_prefix_t allowed_ip, *allowed_ips = NULL;
   ip_prefix_t pfx;
-  ip_address_t ip;
+  ip_address_t ip = ip_address_initializer;
   u32 portDst = 0, table_id = 0;
   u32 persistent_keepalive = 0;
   u32 tun_sw_if_index = ~0;
@@ -211,6 +211,12 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 	  error = clib_error_return (0, "Input error");
 	  goto done;
 	}
+    }
+
+  if (0 == vec_len (allowed_ips))
+    {
+      error = clib_error_return (0, "Allowed IPs are not specified");
+      goto done;
     }
 
   rv = wg_peer_add (tun_sw_if_index, public_key, table_id, &ip_addr_46 (&ip),

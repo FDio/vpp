@@ -104,6 +104,9 @@ u8 *
 wg_build_rewrite (ip46_address_t *src_addr, u16 src_port,
 		  ip46_address_t *dst_addr, u16 dst_port, u8 is_ip4)
 {
+  if (ip46_address_is_zero (dst_addr) || 0 == dst_port)
+    return NULL;
+
   u8 *rewrite = NULL;
   if (is_ip4)
     {
@@ -150,6 +153,9 @@ bool
 wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
 {
   ASSERT (vm->thread_index == 0);
+
+  if (!wg_peer_can_send (peer))
+    return false;
 
   message_handshake_initiation_t packet;
 
@@ -224,6 +230,9 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
 {
   ASSERT (vm->thread_index == 0);
 
+  if (!wg_peer_can_send (peer))
+    return false;
+
   u32 size_of_packet = message_data_len (0);
   message_data_t *packet =
     (message_data_t *) wg_main.per_thread_data[vm->thread_index].data;
@@ -278,6 +287,9 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 {
   message_handshake_response_t packet;
 
+  if (!wg_peer_can_send (peer))
+    return false;
+
   if (noise_create_response (vm,
 			     &peer->remote,
 			     &packet.sender_index,
@@ -329,10 +341,14 @@ wg_send_handshake_cookie (vlib_main_t *vm, u32 sender_index,
 
   u32 bi0 = 0;
   u8 is_ip4 = ip46_address_is_ip4 (remote_addr);
+  bool ret;
   rewrite = wg_build_rewrite (wg_if_addr, wg_if_port, remote_addr, remote_port,
 			      is_ip4);
-  if (!wg_create_buffer (vm, rewrite, (u8 *) &packet, sizeof (packet), &bi0,
-			 is_ip4))
+
+  ret = wg_create_buffer (vm, rewrite, (u8 *) &packet, sizeof (packet), &bi0,
+			  is_ip4);
+  vec_free (rewrite);
+  if (!ret)
     return false;
 
   ip46_enqueue_packet (vm, bi0, is_ip4);
