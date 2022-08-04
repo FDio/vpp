@@ -7,5 +7,3 @@ features:
 description: "Wireguard protocol implementation"
 state: development
 properties: [API, CLI]
-missing:
-  - Peers roaming between different external IPs
