@@ -554,7 +554,8 @@ arping_neighbor_probe_dst (vlib_main_t *vm, arping_args_t *args)
   arping_intf_t aif;
 
   /* Disallow multiple sends on the same interface for now. Who needs it? */
-  if (am->interfaces && (am->interfaces[args->sw_if_index] != 0))
+  if ((vec_len (am->interfaces) > args->sw_if_index) &&
+      (am->interfaces[args->sw_if_index] != 0))
     {
       error = clib_error_return (
 	0, "arping command is in progress for the same interface. "
