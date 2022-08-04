@@ -16,6 +16,24 @@
       "message": "Instead of moving the code around, I think a better fix is to add an additional check here to make sure vec_len (am-\u003einterfaces) \u003e args-\u003esw_if_index",
       "revId": "08eec7f4629e6888ea5512bb0fbe2525e7b8669f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c31a4232_f9788d7c",
+        "filename": "src/plugins/arping/arping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-08-04T05:19:57Z",
+      "side": 1,
+      "message": "If we do that, we can remove the check am-\u003einterfaces. So it becomes\nif ((vec_len (am-\u003einterfaces) \u003e args-\u003esw_if_index) \u0026\u0026\n    (am-\u003einterfaces[args-\u003esw_if_index] !\u003d 0))",
+      "parentUuid": "c02fd1db_37de59fb",
+      "revId": "08eec7f4629e6888ea5512bb0fbe2525e7b8669f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
