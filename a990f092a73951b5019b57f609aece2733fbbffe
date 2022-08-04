@@ -33,6 +33,75 @@
       "message": "\u003e Patch Set 16: Code-Review-1\n\u003e \n\u003e Can you please update the status of the open comments and address any that are still open.\n\u003e \n\u003e +1 to Mohsin\u0027s comment -- please add documentation on how to use this feature that is included in the published doc set.\n\n@Dave, Updated the status of open comments and added a sample test per Mohsin\u0027s request to show how to write VM tests. All the supported command line options can be viewed by running ./run.py --help in the test dir.",
       "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70431bf7_8adc970b",
+        "filename": "test/run.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-04T18:09:43Z",
+      "side": 1,
+      "message": "2022",
+      "range": {
+        "startLine": 3,
+        "startChar": 16,
+        "endLine": 3,
+        "endChar": 20
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ea70ae7_2cf066c8",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 22
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-04T18:09:43Z",
+      "side": 1,
+      "message": "I\u0027d recommend adding \u0027-p\u0027 here so the command doesn\u0027t fail if the directory already exists.",
+      "range": {
+        "startLine": 155,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 14
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b06c7168_92d19891",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-04T18:09:43Z",
+      "side": 1,
+      "message": "Please add the following comment:\n\n# TODO: Relocate the VppIperf class into its own module file.  test_vcl.py runs iperf so it would make sense to refactor both to use the same python module when running iperf tests.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 4
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
