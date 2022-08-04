@@ -125,16 +125,6 @@ typedef enum
   WG_INPUT_N_NEXT,
 } wg_input_next_t;
 
-/* static void */
-/* set_peer_address (wg_peer_t * peer, ip4_address_t ip4, u16 udp_port) */
-/* { */
-/*   if (peer) */
-/*     { */
-/*       ip46_address_set_ip4 (&peer->dst.addr, &ip4); */
-/*       peer->dst.port = udp_port; */
-/*     } */
-/* } */
-
 static u8
 is_ip4_header (u8 *data)
 {
@@ -171,8 +161,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     }
 
   udp_header_t *uhd = current_b_data - sizeof (udp_header_t);
-  u16 udp_src_port = clib_host_to_net_u16 (uhd->src_port);;
-  u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);;
+  u16 udp_src_port = clib_host_to_net_u16 (uhd->src_port);
+  u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);
 
   message_header_t *header = current_b_data;
 
@@ -269,7 +259,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    return WG_INPUT_ERROR_PEER;
 	  }
 
-	// set_peer_address (peer, ip4_src, udp_src_port);
+	wg_peer_update_endpoint (rp->r_peer_idx, &src_ip, udp_src_port);
+
 	if (PREDICT_FALSE (!wg_send_handshake_response (vm, peer)))
 	  {
 	    vlib_node_increment_counter (vm, node_idx,
@@ -318,7 +309,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    return WG_INPUT_ERROR_PEER;
 	  }
 
-	// set_peer_address (peer, ip4_src, udp_src_port);
+	wg_peer_update_endpoint (peeri, &src_ip, udp_src_port);
+
 	if (noise_remote_begin_session (vm, &peer->remote))
 	  {
 
@@ -582,6 +574,26 @@ error:
   return ret;
 }
 
+static_always_inline void
+wg_find_outer_addr_port (vlib_buffer_t *b, ip46_address_t *addr, u16 *port,
+			 u8 is_ip4)
+{
+  if (is_ip4)
+    {
+      ip4_udp_header_t *ip4_udp_hdr =
+	vlib_buffer_get_current (b) - sizeof (ip4_udp_header_t);
+      ip46_address_set_ip4 (addr, &ip4_udp_hdr->ip4.src_address);
+      *port = clib_net_to_host_u16 (ip4_udp_hdr->udp.src_port);
+    }
+  else
+    {
+      ip6_udp_header_t *ip6_udp_hdr =
+	vlib_buffer_get_current (b) - sizeof (ip6_udp_header_t);
+      ip46_address_set_ip6 (addr, &ip6_udp_hdr->ip6.src_address);
+      *port = clib_net_to_host_u16 (ip6_udp_hdr->udp.src_port);
+    }
+}
+
 always_inline uword
 wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 vlib_frame_t *frame, u8 is_ip4, u16 async_next_node)
@@ -735,8 +747,6 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  peer_idx = NULL;
-
 	  /* Handshake packets should be processed in main thread */
 	  if (thread_index != 0)
 	    {
@@ -808,6 +818,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       message_data_t *data = vlib_buffer_get_current (b[0]);
+      ip46_address_t out_src_ip;
+      u16 out_udp_src_port;
+
+      wg_find_outer_addr_port (b[0], &out_src_ip, &out_udp_src_port, is_ip4);
 
       if (data->receiver_index != last_rec_idx)
 	{
@@ -823,6 +837,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
 	{
+	  wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
+					   out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
 	  last_peer_time_idx = peer_idx;
@@ -890,7 +906,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline uword
-wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+	       u8 is_ip4)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -925,6 +942,10 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       bool is_keepalive = false;
       message_data_t *data = vlib_buffer_get_current (b[0]);
+      ip46_address_t out_src_ip;
+      u16 out_udp_src_port;
+
+      wg_find_outer_addr_port (b[0], &out_src_ip, &out_udp_src_port, is_ip4);
 
       if (data->receiver_index != last_rec_idx)
 	{
@@ -949,6 +970,8 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 
       if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
 	{
+	  wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
+					   out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
 	  last_peer_time_idx = peer_idx;
@@ -995,13 +1018,13 @@ VLIB_NODE_FN (wg6_input_node)
 VLIB_NODE_FN (wg4_input_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return wg_input_post (vm, node, from_frame);
+  return wg_input_post (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
 VLIB_NODE_FN (wg6_input_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return wg_input_post (vm, node, from_frame);
+  return wg_input_post (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
 /* *INDENT-OFF* */
