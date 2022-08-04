@@ -34,6 +34,24 @@
       "parentUuid": "c02fd1db_37de59fb",
       "revId": "08eec7f4629e6888ea5512bb0fbe2525e7b8669f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ebbc59fe_119f22aa",
+        "filename": "src/plugins/arping/arping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 2785
+      },
+      "writtenOn": "2022-08-04T06:49:44Z",
+      "side": 1,
+      "message": "Thanks for your guidance. I have edited.",
+      "parentUuid": "c31a4232_f9788d7c",
+      "revId": "08eec7f4629e6888ea5512bb0fbe2525e7b8669f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
