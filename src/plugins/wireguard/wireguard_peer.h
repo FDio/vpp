@@ -68,6 +68,13 @@ typedef enum
   WG_PEER_ESTABLISHED = 0x2,
 } wg_peer_flags;
 
+typedef struct wg_peer_adj_t_
+{
+  adj_index_t adj_index;
+  fib_node_index_t fib_entry_index;
+  u32 sibling_index;
+} wg_peer_adj_t;
+
 typedef struct wg_peer
 {
   noise_remote_t remote;
@@ -80,7 +87,7 @@ typedef struct wg_peer
   wg_peer_endpoint_t dst;
   wg_peer_endpoint_t src;
   u32 table_id;
-  adj_index_t *adj_indices;
+  wg_peer_adj_t *adjs;
 
   /* rewrite built from address information */
   u8 *rewrite;
@@ -144,6 +151,10 @@ adj_walk_rc_t wg_peer_adj_walk (adj_index_t ai, void *data);
 
 void wg_api_peer_event (index_t peeri, wg_peer_flags flags);
 void wg_peer_update_flags (index_t peeri, wg_peer_flags flag, bool add_del);
+void wg_peer_update_endpoint (index_t peeri, const ip46_address_t *addr,
+			      u16 port);
+void wg_peer_update_endpoint_from_mt (index_t peeri,
+				      const ip46_address_t *addr, u16 port);
 
 static inline bool
 wg_peer_is_dead (wg_peer_t *peer)
@@ -198,6 +209,12 @@ fib_prefix_is_cover_addr_46 (const fib_prefix_t *p1, const ip46_address_t *ip)
       break;
     }
   return (false);
+}
+
+static inline bool
+wg_peer_can_send (wg_peer_t *peer)
+{
+  return peer && peer->rewrite;
 }
 
 #endif // __included_wg_peer_h__

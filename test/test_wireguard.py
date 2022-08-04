@@ -137,15 +137,6 @@ class VppWgInterface(VppInterface):
         return "wireguard-%d" % self._sw_if_index
 
 
-def find_route(test, prefix, is_ip6, table_id=0):
-    routes = test.vapi.ip_route_dump(table_id, is_ip6)
-
-    for e in routes:
-        if table_id == e.route.table_id and str(e.route.prefix) == str(prefix):
-            return True
-    return False
-
-
 NOISE_HANDSHAKE_NAME = b"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s"
 NOISE_IDENTIFIER_NAME = b"WireGuard v1 zx2c4 Jason@zx2c4.com"
 
@@ -175,6 +166,10 @@ class VppWgPeer(VppObject):
         self.last_received_cookie = None
 
         self.noise = NoiseConnection.from_name(NOISE_HANDSHAKE_NAME)
+
+    def change_endpoint(self, endpoint, port):
+        self.endpoint = endpoint
+        self.port = port
 
     def add_vpp_config(self, is_ip6=False):
         rv = self._test.vapi.wireguard_peer_add(
@@ -206,10 +201,12 @@ class VppWgPeer(VppObject):
         peers = self._test.vapi.wireguard_peers_dump()
 
         for p in peers:
+            # "::" endpoint will be returned as "0.0.0.0" in peer's details
+            endpoint = "0.0.0.0" if self.endpoint == "::" else self.endpoint
             if (
                 p.peer.public_key == self.public_key_bytes()
                 and p.peer.port == self.port
-                and str(p.peer.endpoint) == self.endpoint
+                and str(p.peer.endpoint) == endpoint
                 and p.peer.sw_if_index == self.itf.sw_if_index
                 and len(self.allowed_ips) == p.peer.n_allowed_ips
             ):
@@ -470,17 +467,17 @@ class VppWgPeer(VppObject):
     def validate_encapped(self, rxs, tx, is_ip6=False):
         for rx in rxs:
             if is_ip6 is False:
-                rx = IP(self.decrypt_transport(rx))
+                rx = IP(self.decrypt_transport(rx, is_ip6=is_ip6))
 
-                # chech the oringial packet is present
+                # check the original packet is present
                 self._test.assertEqual(rx[IP].dst, tx[IP].dst)
                 self._test.assertEqual(rx[IP].ttl, tx[IP].ttl - 1)
             else:
-                rx = IPv6(self.decrypt_transport(rx))
+                rx = IPv6(self.decrypt_transport(rx, is_ip6=is_ip6))
 
-                # chech the oringial packet is present
+                # check the original packet is present
                 self._test.assertEqual(rx[IPv6].dst, tx[IPv6].dst)
-                self._test.assertEqual(rx[IPv6].ttl, tx[IPv6].ttl - 1)
+                self._test.assertEqual(rx[IPv6].hlim, tx[IPv6].hlim - 1)
 
     def want_events(self):
         self._test.vapi.want_wireguard_peer_events(
@@ -997,6 +994,237 @@ class TestWg(VppTestCase):
         peer_2.remove_vpp_config()
         wg0.remove_vpp_config()
 
+    def _test_wg_peer_roaming_on_handshake_tmpl(self, is_endpoint_set, is_resp, is_ip6):
+        port = 12323
+
+        # create wg interface
+        if is_ip6:
+            wg0 = VppWgInterface(self, self.pg1.local_ip6, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip6()
+        else:
+            wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create more remote hosts
+        NUM_REMOTE_HOSTS = 2
+        self.pg1.generate_remote_hosts(NUM_REMOTE_HOSTS)
+        if is_ip6:
+            self.pg1.configure_ipv6_neighbors()
+        else:
+            self.pg1.configure_ipv4_neighbors()
+
+        # create a peer
+        if is_ip6:
+            peer_1 = VppWgPeer(
+                test=self,
+                itf=wg0,
+                endpoint=self.pg1.remote_hosts[0].ip6 if is_endpoint_set else "::",
+                port=port + 1 if is_endpoint_set else 0,
+                allowed_ips=["1::3:0/112"],
+            ).add_vpp_config()
+        else:
+            peer_1 = VppWgPeer(
+                test=self,
+                itf=wg0,
+                endpoint=self.pg1.remote_hosts[0].ip4 if is_endpoint_set else "0.0.0.0",
+                port=port + 1 if is_endpoint_set else 0,
+                allowed_ips=["10.11.3.0/24"],
+            ).add_vpp_config()
+        self.assertTrue(peer_1.query_vpp_config())
+
+        if is_resp:
+            # wait for the peer to send a handshake initiation
+            rxs = self.pg1.get_capture(1, timeout=2)
+            # prepare a handshake response
+            resp = peer_1.consume_init(rxs[0], self.pg1, is_ip6=is_ip6)
+            # change endpoint
+            if is_ip6:
+                peer_1.change_endpoint(self.pg1.remote_hosts[1].ip6, port + 100)
+                resp[IPv6].src, resp[UDP].sport = peer_1.endpoint, peer_1.port
+            else:
+                peer_1.change_endpoint(self.pg1.remote_hosts[1].ip4, port + 100)
+                resp[IP].src, resp[UDP].sport = peer_1.endpoint, peer_1.port
+            # send the handshake response
+            # expect a keepalive message sent to the new endpoint
+            rxs = self.send_and_expect(self.pg1, [resp], self.pg1)
+            # verify the keepalive message
+            b = peer_1.decrypt_transport(rxs[0], is_ip6=is_ip6)
+            self.assertEqual(0, len(b))
+        else:
+            # change endpoint
+            if is_ip6:
+                peer_1.change_endpoint(self.pg1.remote_hosts[1].ip6, port + 100)
+            else:
+                peer_1.change_endpoint(self.pg1.remote_hosts[1].ip4, port + 100)
+            # prepare and send a handshake initiation
+            # expect a handshake response sent to the new endpoint
+            init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
+            rxs = self.send_and_expect(self.pg1, [init], self.pg1)
+            # verify the response
+            peer_1.consume_response(rxs[0], is_ip6=is_ip6)
+        self.assertTrue(peer_1.query_vpp_config())
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_peer_roaming_on_init_v4(self):
+        """Peer roaming on handshake initiation (v4)"""
+        self._test_wg_peer_roaming_on_handshake_tmpl(
+            is_endpoint_set=False, is_resp=False, is_ip6=False
+        )
+
+    def test_wg_peer_roaming_on_init_v6(self):
+        """Peer roaming on handshake initiation (v6)"""
+        self._test_wg_peer_roaming_on_handshake_tmpl(
+            is_endpoint_set=False, is_resp=False, is_ip6=True
+        )
+
+    def test_wg_peer_roaming_on_resp_v4(self):
+        """Peer roaming on handshake response (v4)"""
+        self._test_wg_peer_roaming_on_handshake_tmpl(
+            is_endpoint_set=True, is_resp=True, is_ip6=False
+        )
+
+    def test_wg_peer_roaming_on_resp_v6(self):
+        """Peer roaming on handshake response (v6)"""
+        self._test_wg_peer_roaming_on_handshake_tmpl(
+            is_endpoint_set=True, is_resp=True, is_ip6=True
+        )
+
+    def _test_wg_peer_roaming_on_data_tmpl(self, is_async, is_ip6):
+        self.vapi.wg_set_async_mode(is_async)
+        port = 12323
+
+        # create wg interface
+        if is_ip6:
+            wg0 = VppWgInterface(self, self.pg1.local_ip6, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip6()
+        else:
+            wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+            wg0.admin_up()
+            wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create more remote hosts
+        NUM_REMOTE_HOSTS = 2
+        self.pg1.generate_remote_hosts(NUM_REMOTE_HOSTS)
+        if is_ip6:
+            self.pg1.configure_ipv6_neighbors()
+        else:
+            self.pg1.configure_ipv4_neighbors()
+
+        # create a peer
+        if is_ip6:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_hosts[0].ip6, port + 1, ["1::3:0/112"]
+            ).add_vpp_config()
+        else:
+            peer_1 = VppWgPeer(
+                self, wg0, self.pg1.remote_hosts[0].ip4, port + 1, ["10.11.3.0/24"]
+            ).add_vpp_config()
+        self.assertTrue(peer_1.query_vpp_config())
+
+        # create a route to rewrite traffic into the wg interface
+        if is_ip6:
+            r1 = VppIpRoute(
+                self, "1::3:0", 112, [VppRoutePath("1::3:1", wg0.sw_if_index)]
+            ).add_vpp_config()
+        else:
+            r1 = VppIpRoute(
+                self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
+            ).add_vpp_config()
+
+        # wait for the peer to send a handshake initiation
+        rxs = self.pg1.get_capture(1, timeout=2)
+
+        # prepare and send a handshake response
+        # expect a keepalive message
+        resp = peer_1.consume_init(rxs[0], self.pg1, is_ip6=is_ip6)
+        rxs = self.send_and_expect(self.pg1, [resp], self.pg1)
+
+        # verify the keepalive message
+        b = peer_1.decrypt_transport(rxs[0], is_ip6=is_ip6)
+        self.assertEqual(0, len(b))
+
+        # change endpoint
+        if is_ip6:
+            peer_1.change_endpoint(self.pg1.remote_hosts[1].ip6, port + 100)
+        else:
+            peer_1.change_endpoint(self.pg1.remote_hosts[1].ip4, port + 100)
+
+        # prepare and send a data packet
+        # expect endpoint change
+        if is_ip6:
+            ip_header = IPv6(src="1::3:1", dst=self.pg0.remote_ip6, hlim=20)
+        else:
+            ip_header = IP(src="10.11.3.1", dst=self.pg0.remote_ip4, ttl=20)
+        data = (
+            peer_1.mk_tunnel_header(self.pg1, is_ip6=is_ip6)
+            / Wireguard(message_type=4, reserved_zero=0)
+            / WireguardTransport(
+                receiver_index=peer_1.sender,
+                counter=0,
+                encrypted_encapsulated_packet=peer_1.encrypt_transport(
+                    ip_header / UDP(sport=222, dport=223) / Raw()
+                ),
+            )
+        )
+        rxs = self.send_and_expect(self.pg1, [data], self.pg0)
+        if is_ip6:
+            self.assertEqual(rxs[0][IPv6].dst, self.pg0.remote_ip6)
+            self.assertEqual(rxs[0][IPv6].hlim, 19)
+        else:
+            self.assertEqual(rxs[0][IP].dst, self.pg0.remote_ip4)
+            self.assertEqual(rxs[0][IP].ttl, 19)
+        self.assertTrue(peer_1.query_vpp_config())
+
+        # prepare and send a packet that will be rewritten into the wg interface
+        # expect a data packet sent to the new endpoint
+        if is_ip6:
+            ip_header = IPv6(src=self.pg0.remote_ip6, dst="1::3:2")
+        else:
+            ip_header = IP(src=self.pg0.remote_ip4, dst="10.11.3.2")
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / ip_header
+            / UDP(sport=555, dport=556)
+            / Raw()
+        )
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # verify the data packet
+        peer_1.validate_encapped(rxs, p, is_ip6=is_ip6)
+
+        # remove configs
+        r1.remove_vpp_config()
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_peer_roaming_on_data_v4_sync(self):
+        """Peer roaming on data packet (v4, sync)"""
+        self._test_wg_peer_roaming_on_data_tmpl(is_async=False, is_ip6=False)
+
+    def test_wg_peer_roaming_on_data_v6_sync(self):
+        """Peer roaming on data packet (v6, sync)"""
+        self._test_wg_peer_roaming_on_data_tmpl(is_async=False, is_ip6=True)
+
+    def test_wg_peer_roaming_on_data_v4_async(self):
+        """Peer roaming on data packet (v4, async)"""
+        self._test_wg_peer_roaming_on_data_tmpl(is_async=True, is_ip6=False)
+
+    def test_wg_peer_roaming_on_data_v6_async(self):
+        """Peer roaming on data packet (v6, async)"""
+        self._test_wg_peer_roaming_on_data_tmpl(is_async=True, is_ip6=True)
+
     def test_wg_peer_resp(self):
         """Send handshake response"""
         port = 12323
@@ -1197,7 +1425,7 @@ class TestWg(VppTestCase):
         for rx in rxs:
             rx = IP(peer_1.decrypt_transport(rx))
 
-            # chech the oringial packet is present
+            # check the original packet is present
             self.assertEqual(rx[IP].dst, p[IP].dst)
             self.assertEqual(rx[IP].ttl, p[IP].ttl - 1)
 
@@ -1358,7 +1586,7 @@ class TestWg(VppTestCase):
         for rx in rxs:
             rx = IPv6(peer_1.decrypt_transport(rx, True))
 
-            # chech the oringial packet is present
+            # check the original packet is present
             self.assertEqual(rx[IPv6].dst, p[IPv6].dst)
             self.assertEqual(rx[IPv6].hlim, p[IPv6].hlim - 1)
 
@@ -1499,7 +1727,7 @@ class TestWg(VppTestCase):
         for rx in rxs:
             rx = IPv6(peer_1.decrypt_transport(rx))
 
-            # chech the oringial packet is present
+            # check the original packet is present
             self.assertEqual(rx[IPv6].dst, p[IPv6].dst)
             self.assertEqual(rx[IPv6].hlim, p[IPv6].hlim - 1)
 
@@ -1638,7 +1866,7 @@ class TestWg(VppTestCase):
         for rx in rxs:
             rx = IP(peer_1.decrypt_transport(rx, True))
 
-            # chech the oringial packet is present
+            # check the original packet is present
             self.assertEqual(rx[IP].dst, p[IP].dst)
             self.assertEqual(rx[IP].ttl, p[IP].ttl - 1)
 
