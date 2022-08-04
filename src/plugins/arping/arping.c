@@ -553,6 +553,7 @@ arping_neighbor_probe_dst (vlib_main_t *vm, arping_args_t *args)
   clib_error_t *error;
   arping_intf_t aif;
 
+  arping_vec_validate (vm, args->sw_if_index);
   /* Disallow multiple sends on the same interface for now. Who needs it? */
   if (am->interfaces && (am->interfaces[args->sw_if_index] != 0))
     {
@@ -563,7 +564,6 @@ arping_neighbor_probe_dst (vlib_main_t *vm, arping_args_t *args)
       return error;
     }
 
-  arping_vec_validate (vm, args->sw_if_index);
   clib_memset (&aif, 0, sizeof (aif));
   aif.interval = args->interval;
   aif.repeat = args->repeat;
