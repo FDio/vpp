@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f2a0987_d89c9ac4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-08-04T12:01:22Z",
+      "side": 1,
+      "message": "Hi,\nCould anyone please provide instructions on how to move forward with this patch ?\nKind regards,\n-Nathan",
+      "revId": "9af76086ed608262802802244fa9505ed2ccf6ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
