@@ -206,12 +206,9 @@ format_dvr_dpo (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     dvr_dpo_t *dd = dvr_dpo_get(index);
 
-    return (format(s, "%U-dvr-%U-dpo %U",
-                   format_dpo_proto, dd->dd_proto,
-                   format_vnet_sw_interface_name,
-                   vnm,
-                   vnet_get_sw_interface(vnm, dd->dd_sw_if_index),
-                   format_dvr_reinject, dd->dd_reinject));
+    return format (s, "%U-dvr-%U-dpo %U", format_dpo_proto, dd->dd_proto,
+		   format_vnet_sw_if_index_name, vnm, dd->dd_sw_if_index,
+		   format_dvr_reinject, dd->dd_reinject);
 }
 
 static void

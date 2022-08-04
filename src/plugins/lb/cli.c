@@ -447,24 +447,22 @@ lb_set_interface_nat_command_fn (vlib_main_t * vm,
         {
           if (lb_nat4_interface_add_del (*sw_if_index, is_del))
             {
-              error = clib_error_return(
-                  0, "%s %U failed", is_del ? "del" : "add",
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, *sw_if_index));
-              goto done;
-            }
-        }
+	      error = clib_error_return (
+		0, "%s %U failed", is_del ? "del" : "add",
+		format_vnet_sw_if_index_name, vnm, *sw_if_index);
+	      goto done;
+	    }
+	}
       else
         {
           if (lb_nat6_interface_add_del (*sw_if_index, is_del))
             {
-              error = clib_error_return(
-                  0, "%s %U failed", is_del ? "del" : "add",
-                  format_vnet_sw_interface_name, vnm,
-                  vnet_get_sw_interface (vnm, *sw_if_index));
-              goto done;
-            }
-        }
+	      error = clib_error_return (
+		0, "%s %U failed", is_del ? "del" : "add",
+		format_vnet_sw_if_index_name, vnm, *sw_if_index);
+	      goto done;
+	    }
+	}
     }
 
 done:

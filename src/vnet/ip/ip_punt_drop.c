@@ -143,9 +143,8 @@ format_ip_punt_redirect (u8 * s, va_list * args)
 
     rx = ip_punt_redirect_get (rxs[rx_sw_if_index]);
 
-    s = format (s, " rx %U via:\n",
-		format_vnet_sw_interface_name, vnm,
-		vnet_get_sw_interface (vnm, rx_sw_if_index));
+    s = format (s, " rx %U via:\n", format_vnet_sw_if_index_name, vnm,
+		rx_sw_if_index);
     s = format (s, " %U", format_fib_path_list, rx->pl, 2);
     s = format (s, " forwarding\n", format_dpo_id, &rx->dpo, 0);
     s = format (s, "  %U\n", format_dpo_id, &rx->dpo, 0);

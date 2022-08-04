@@ -530,11 +530,8 @@ format_fib_path (u8 * s, va_list * args)
 	else
 	{
 	    s = format (s, " %U",
-			format_vnet_sw_interface_name,
-			vnm,
-			vnet_get_sw_interface(
-			    vnm,
-			    path->attached.fp_interface));
+			format_vnet_sw_if_index_name,
+			vnm, path->attached.fp_interface);
 	}
 	break;
     case FIB_PATH_TYPE_RECURSIVE:
@@ -585,11 +582,8 @@ format_fib_path (u8 * s, va_list * args)
         break;
     case FIB_PATH_TYPE_DVR:
         s = format (s, " %U",
-                    format_vnet_sw_interface_name,
-                    vnm,
-                    vnet_get_sw_interface(
-                        vnm,
-                        path->dvr.fp_interface));
+                    format_vnet_sw_if_index_name,
+                    vnm, path->dvr.fp_interface);
         break;
     case FIB_PATH_TYPE_DEAG:
         s = format (s, " %sfib-index:%d",

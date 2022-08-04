@@ -95,8 +95,7 @@ format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
   if (!swif)
     return format (s, "Stale");
 
-  return format (s, "%U", format_vnet_sw_interface_name, vnm,
-		 vnet_get_sw_interface_or_null (vnm, sw_if_index));
+  return format (s, "%U", format_vnet_sw_if_index_name, vnm, sw_if_index);
 }
 
 typedef struct l2fib_dump_walk_ctx_t_

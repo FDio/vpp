@@ -160,11 +160,8 @@ format_interface_rx_dpo (u8* s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     interface_rx_dpo_t *ido = interface_rx_dpo_get(index);
 
-    return (format(s, "%U-rx-dpo: %U",
-                   format_vnet_sw_interface_name,
-                   vnm,
-                   vnet_get_sw_interface(vnm, ido->ido_sw_if_index),
-                   format_dpo_proto, ido->ido_proto));
+    return format (s, "%U-rx-dpo: %U", format_vnet_sw_if_index_name, vnm,
+		   ido->ido_sw_if_index, format_dpo_proto, ido->ido_proto);
 }
 
 static void

@@ -224,9 +224,7 @@ format_lisp_gpe_sub_interface (u8 * s, va_list * ap)
   lisp_gpe_sub_interface_t *l3s = va_arg (*ap, lisp_gpe_sub_interface_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "%-16U",
-	      format_vnet_sw_interface_name,
-	      vnm, vnet_get_sw_interface (vnm, l3s->sw_if_index));
+  s = format (s, "%-16U", format_vnet_sw_if_index_name, vnm, l3s->sw_if_index);
   s = format (s, "%=8d", l3s->key->vni);
   s = format (s, "%=15d", l3s->sw_if_index);
   s = format (s, "%U", format_ip_address, &l3s->key->local_rloc);
