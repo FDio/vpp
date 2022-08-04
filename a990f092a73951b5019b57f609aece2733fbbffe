@@ -58,6 +58,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c265ebe5_8096b96a",
+        "filename": "test/run.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-08-04T20:26:42Z",
+      "side": 1,
+      "message": "Updated to 2022",
+      "parentUuid": "70431bf7_8adc970b",
+      "range": {
+        "startLine": 3,
+        "startChar": 16,
+        "endLine": 3,
+        "endChar": 20
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2ea70ae7_2cf066c8",
@@ -81,6 +105,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a94a8a86_e5359688",
+        "filename": "test/scripts/run_vpp_in_vm.sh",
+        "patchSetId": 22
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-08-04T20:26:42Z",
+      "side": 1,
+      "message": "Resolved by adding the -p option. Thanks.",
+      "parentUuid": "2ea70ae7_2cf066c8",
+      "range": {
+        "startLine": 155,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 14
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b06c7168_92d19891",
@@ -94,6 +142,30 @@
       "writtenOn": "2022-08-04T18:09:43Z",
       "side": 1,
       "message": "Please add the following comment:\n\n# TODO: Relocate the VppIperf class into its own module file.  test_vcl.py runs iperf so it would make sense to refactor both to use the same python module when running iperf tests.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 4
+      },
+      "revId": "a990f092a73951b5019b57f609aece2733fbbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6fee0ac_7c262c60",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 22
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-08-04T20:26:42Z",
+      "side": 1,
+      "message": "Relocated the VppIperf class to its own module named vpp_iperf.py",
+      "parentUuid": "b06c7168_92d19891",
       "range": {
         "startLine": 24,
         "startChar": 0,

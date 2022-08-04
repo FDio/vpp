@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2234f9fb_41f86f9a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-08-04T20:26:42Z",
+      "side": 1,
+      "message": "Thanks for the feedback Dave. I have resolved all outstanding comments.",
+      "revId": "7ea7ab5f215a95dbc1a38acc03b7fea6d3dbedcf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
