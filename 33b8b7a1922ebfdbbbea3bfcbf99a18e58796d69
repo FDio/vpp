@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b5019da_4c8e810f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-08-04T09:14:55Z",
+      "side": 1,
+      "message": "Changed the default parallel value (when MAKE_PARALLEL_JOBS is not defined) from 1 to os.cpu_count())",
+      "revId": "33b8b7a1922ebfdbbbea3bfcbf99a18e58796d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
