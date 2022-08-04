@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f6221e2_e51c1d89",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-08-04T12:03:35Z",
+      "side": 1,
+      "message": "Hi all,\nAnyone for a +2 ?\nKind regards,\n-Nathan",
+      "revId": "0bf42543065c7e1bccbd5d0b040b58a60150d1f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
