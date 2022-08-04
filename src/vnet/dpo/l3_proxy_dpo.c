@@ -116,9 +116,8 @@ format_l3_proxy_dpo (u8 *s, va_list *ap)
 
     if (~0 != l3p->l3p_sw_if_index)
     {
-        return (format(s, "dpo-l3_proxy: %U",
-                       format_vnet_sw_interface_name, vnm,
-                       vnet_get_sw_interface(vnm, l3p->l3p_sw_if_index)));
+      return (format (s, "dpo-l3_proxy: %U", format_vnet_sw_if_index_name, vnm,
+		      l3p->l3p_sw_if_index));
     }
     else
     {

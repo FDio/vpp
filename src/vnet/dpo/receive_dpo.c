@@ -122,10 +122,9 @@ format_receive_dpo (u8 *s, va_list *ap)
 
     if (~0 != rd->rd_sw_if_index)
     {
-        return (format(s, "dpo-receive: %U on %U",
-                       format_ip46_address, &rd->rd_addr, IP46_TYPE_ANY,
-                       format_vnet_sw_interface_name, vnm,
-                       vnet_get_sw_interface(vnm, rd->rd_sw_if_index)));
+      return (format (s, "dpo-receive: %U on %U", format_ip46_address,
+		      &rd->rd_addr, IP46_TYPE_ANY,
+		      format_vnet_sw_if_index_name, vnm, rd->rd_sw_if_index));
     }
     else
     {

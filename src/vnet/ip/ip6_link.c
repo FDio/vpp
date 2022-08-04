@@ -594,11 +594,10 @@ format_ip6_link (u8 * s, va_list * arg)
   if (!ip6_link_is_enabled_i (il))
     return (s);
 
-  s = format (s, "%U is admin %s\n",
-	      format_vnet_sw_interface_name, vnm,
-	      vnet_get_sw_interface (vnm, il->il_sw_if_index),
-	      (vnet_sw_interface_is_admin_up (vnm, il->il_sw_if_index) ?
-	       "up" : "down"));
+  s = format (
+    s, "%U is admin %s\n", format_vnet_sw_if_index_name, vnm,
+    il->il_sw_if_index,
+    (vnet_sw_interface_is_admin_up (vnm, il->il_sw_if_index) ? "up" : "down"));
 
   u32 ai;
   u32 *link_scope = 0, *global_scope = 0;

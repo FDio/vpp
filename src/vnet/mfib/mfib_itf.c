@@ -206,10 +206,8 @@ format_mfib_itf (u8 * s, va_list * args)
     if (~0 != mfib_itf->mfi_sw_if_index)
     {
         return (format(s, " %U: %U",
-                       format_vnet_sw_interface_name,
-                       vnm,
-                       vnet_get_sw_interface(vnm,
-                                             mfib_itf->mfi_sw_if_index),
+                       format_vnet_sw_if_index_name,
+                       vnm, mfib_itf->mfi_sw_if_index,
                        format_mfib_itf_flags, mfib_itf->mfi_flags));
     }
     else

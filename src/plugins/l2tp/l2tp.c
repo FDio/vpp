@@ -53,12 +53,10 @@ format_l2t_session (u8 * s, va_list * args)
   vlib_counter_t v;
 
   s = format (s, "[%d] %U (our) %U (client) %U (sw_if_index %d)\n",
-	      session - lm->sessions,
-	      format_ip6_address, &session->our_address,
-	      format_ip6_address, &session->client_address,
-	      format_vnet_sw_interface_name, lm->vnet_main,
-	      vnet_get_sw_interface (lm->vnet_main, session->sw_if_index),
-	      session->sw_if_index);
+	      session - lm->sessions, format_ip6_address,
+	      &session->our_address, format_ip6_address,
+	      &session->client_address, format_vnet_sw_if_index_name,
+	      lm->vnet_main, session->sw_if_index, session->sw_if_index);
 
   s = format (s, "   local cookies %016llx %016llx remote cookie %016llx\n",
 	      clib_net_to_host_u64 (session->local_cookie[0]),

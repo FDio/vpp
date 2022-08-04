@@ -52,9 +52,8 @@ ip6_ll_fib_create (u32 sw_if_index)
   vnet_main_t *vnm = vnet_get_main ();
   u8 *desc;
 
-  desc = format (NULL, "IP6-link-local:%U",
-		 format_vnet_sw_interface_name,
-		 vnm, vnet_get_sw_interface (vnm, sw_if_index));
+  desc = format (NULL, "IP6-link-local:%U", format_vnet_sw_if_index_name, vnm,
+		 sw_if_index);
 
   ip6_ll_table.ilt_fibs[sw_if_index] =
     ip6_fib_table_create_and_lock (FIB_SOURCE_IP6_ND,

@@ -23,10 +23,8 @@ format_ip6_ll_prefix (u8 * s, va_list * args)
   ip6_ll_prefix_t *ilp = va_arg (*args, ip6_ll_prefix_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "(%U, %U)",
-	      format_ip6_address, &ilp->ilp_addr,
-	      format_vnet_sw_interface_name,
-	      vnm, vnet_get_sw_interface (vnm, ilp->ilp_sw_if_index));
+  s = format (s, "(%U, %U)", format_ip6_address, &ilp->ilp_addr,
+	      format_vnet_sw_if_index_name, vnm, ilp->ilp_sw_if_index);
 
   return (s);
 }
