@@ -1460,14 +1460,14 @@ bfd_find_session_by_disc (bfd_main_t * bm, u32 disc)
  *
  * @return 1 if bfd packet is valid
  */
-int
-bfd_verify_pkt_common (const bfd_pkt_t * pkt)
+bfd_error_t
+bfd_verify_pkt_common (const bfd_pkt_t *pkt)
 {
   if (1 != bfd_pkt_get_version (pkt))
     {
       BFD_ERR ("BFD verification failed - unexpected version: '%d'",
 	       bfd_pkt_get_version (pkt));
-      return 0;
+      return BFD_ERROR_VERSION;
     }
   if (pkt->head.length < sizeof (bfd_pkt_t) ||
       (bfd_pkt_get_auth_present (pkt) &&
@@ -1476,25 +1476,25 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
       BFD_ERR ("BFD verification failed - unexpected length: '%d' (auth "
 	       "present: %d)",
 	       pkt->head.length, bfd_pkt_get_auth_present (pkt));
-      return 0;
+      return BFD_ERROR_LENGTH;
     }
   if (!pkt->head.detect_mult)
     {
       BFD_ERR ("BFD verification failed - unexpected detect-mult: '%d'",
 	       pkt->head.detect_mult);
-      return 0;
+      return BFD_ERROR_DETECT_MULTI;
     }
   if (bfd_pkt_get_multipoint (pkt))
     {
       BFD_ERR ("BFD verification failed - unexpected multipoint: '%d'",
 	       bfd_pkt_get_multipoint (pkt));
-      return 0;
+      return BFD_ERROR_MULTI_POINT;
     }
   if (!pkt->my_disc)
     {
       BFD_ERR ("BFD verification failed - unexpected my-disc: '%d'",
 	       pkt->my_disc);
-      return 0;
+      return BFD_ERROR_MY_DISC;
     }
   if (!pkt->your_disc)
     {
@@ -1503,10 +1503,10 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
 	{
 	  BFD_ERR ("BFD verification failed - unexpected state: '%s' "
 		   "(your-disc is zero)", bfd_state_string (pkt_state));
-	  return 0;
+	  return BFD_ERROR_YOUR_DISC;
 	}
     }
-  return 1;
+  return BFD_ERROR_NONE;
 }
 
 static void
@@ -1805,8 +1805,8 @@ bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt, u16 pkt_size,
   return 0;
 }
 
-void
-bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
+bfd_error_t
+bfd_consume_pkt (vlib_main_t *vm, bfd_main_t *bm, const bfd_pkt_t *pkt,
 		 u32 bs_idx)
 {
   bfd_lock_check (bm);
@@ -1814,7 +1814,7 @@ bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
   bfd_session_t *bs = bfd_find_session_by_idx (bm, bs_idx);
   if (!bs || (pkt->your_disc && pkt->your_disc != bs->local_discr))
     {
-      return;
+      return BFD_ERROR_YOUR_DISC;
     }
   BFD_DBG ("Scanning bfd packet, bs_idx=%d", bs->bs_idx);
   bs->remote_discr = pkt->my_disc;
@@ -1900,7 +1900,7 @@ bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
     {
       BFD_DBG ("Session is admin-down, ignoring packet, bs_idx=%u",
 	       bs->bs_idx);
-      return;
+      return BFD_ERROR_ADMIN_DOWN;
     }
   if (BFD_STATE_admin_down == bs->remote_state)
     {
@@ -1937,6 +1937,7 @@ bfd_consume_pkt (vlib_main_t * vm, bfd_main_t * bm, const bfd_pkt_t * pkt,
 	  bfd_set_state (vm, bm, bs, BFD_STATE_down, 0);
 	}
     }
+  return BFD_ERROR_NONE;
 }
 
 bfd_session_t *

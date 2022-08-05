@@ -931,24 +931,23 @@ typedef enum
 } bfd_udp_input_next_t;
 
 /* Packet counters - BFD control frames */
-#define foreach_bfd_udp_error(F)           \
-  F (NONE, "good bfd packets (processed)") \
-  F (BAD, "invalid bfd packets")
-
-#define F(sym, string) static char BFD_UDP_ERR_##sym##_STR[] = string;
-foreach_bfd_udp_error (F);
-#undef F
+#define foreach_bfd_udp_error(F)                                              \
+  F (NO_SESSION, "no-session")                                                \
+  F (FAILED_VERIFICATION, "failed-verification")                              \
+  F (SRC_MISMATCH, "src-mismatch")                                            \
+  F (DST_MISMATCH, "dst-mismatch")                                            \
+  F (TTL, "ttl")
 
 static char *bfd_udp_error_strings[] = {
-#define F(sym, string) BFD_UDP_ERR_##sym##_STR,
-  foreach_bfd_udp_error (F)
+#define F(sym, string) string,
+  foreach_bfd_error (F) foreach_bfd_udp_error (F)
 #undef F
 };
 
 typedef enum
 {
 #define F(sym, str) BFD_UDP_ERROR_##sym,
-  foreach_bfd_udp_error (F)
+  foreach_bfd_error (F) foreach_bfd_udp_error (F)
 #undef F
     BFD_UDP_N_ERROR,
 } bfd_udp_error_t;
@@ -966,12 +965,8 @@ typedef enum
   F (NONE, "good bfd echo packets (processed)") \
   F (BAD, "invalid bfd echo packets")
 
-#define F(sym, string) static char BFD_UDP_ECHO_ERR_##sym##_STR[] = string;
-foreach_bfd_udp_echo_error (F);
-#undef F
-
 static char *bfd_udp_echo_error_strings[] = {
-#define F(sym, string) BFD_UDP_ECHO_ERR_##sym##_STR,
+#define F(sym, string) string,
   foreach_bfd_udp_echo_error (F)
 #undef F
 };
@@ -983,6 +978,13 @@ typedef enum
 #undef F
     BFD_UDP_ECHO_N_ERROR,
 } bfd_udp_echo_error_t;
+
+static_always_inline bfd_udp_error_t
+bfd_error_to_udp (bfd_error_t e)
+{
+  /* The UDP error is a super set of the proto independent errors */
+  return ((bfd_udp_error_t) e);
+}
 
 static void
 bfd_udp4_find_headers (vlib_buffer_t * b, ip4_header_t ** ip4,
@@ -1019,21 +1021,21 @@ bfd_udp4_verify_transport (const ip4_header_t * ip4,
       BFD_ERR ("IPv4 src addr mismatch, got %U, expected %U",
 	       format_ip4_address, ip4->src_address.as_u8, format_ip4_address,
 	       key->peer_addr.ip4.as_u8);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_SRC_MISMATCH;
     }
   if (ip4->dst_address.as_u32 != key->local_addr.ip4.as_u32)
     {
       BFD_ERR ("IPv4 dst addr mismatch, got %U, expected %U",
 	       format_ip4_address, ip4->dst_address.as_u8, format_ip4_address,
 	       key->local_addr.ip4.as_u8);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_DST_MISMATCH;
     }
   const u8 expected_ttl = 255;
   if (ip4->ttl != expected_ttl)
     {
       BFD_ERR ("IPv4 unexpected TTL value %u, expected %u", ip4->ttl,
 	       expected_ttl);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_TTL;
     }
   if (clib_net_to_host_u16 (udp->src_port) < 49152)
     {
@@ -1049,13 +1051,16 @@ typedef struct
   bfd_pkt_t pkt;
 } bfd_rpc_update_t;
 
-static void
-bfd_rpc_update_session (vlib_main_t * vm, u32 bs_idx, const bfd_pkt_t * pkt)
+static bfd_error_t
+bfd_rpc_update_session (vlib_main_t *vm, u32 bs_idx, const bfd_pkt_t *pkt)
 {
   bfd_main_t *bm = &bfd_main;
+  bfd_error_t err;
   bfd_lock (bm);
-  bfd_consume_pkt (vm, bm, pkt, bs_idx);
+  err = bfd_consume_pkt (vm, bm, pkt, bs_idx);
   bfd_unlock (bm);
+
+  return err;
 }
 
 static bfd_udp_error_t
@@ -1083,11 +1088,13 @@ bfd_udp4_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
       BFD_ERR
 	("BFD packet length is larger than udp payload length (%u > %u)",
 	 pkt->head.length, udp_payload_length);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_LENGTH;
     }
-  if (!bfd_verify_pkt_common (pkt))
+  bfd_udp_error_t err;
+  if (BFD_UDP_ERROR_NONE !=
+      (err = bfd_error_to_udp (bfd_verify_pkt_common (pkt))))
     {
-      return BFD_UDP_ERROR_BAD;
+      return err;
     }
   bfd_session_t *bs = NULL;
   if (pkt->your_disc)
@@ -1112,22 +1119,21 @@ bfd_udp4_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
   if (!bs)
     {
       BFD_ERR ("BFD session lookup failed - no session matches BFD pkt");
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_NO_SESSION;
     }
   BFD_DBG ("BFD session found, bs_idx=%u", bs->bs_idx);
   if (!bfd_verify_pkt_auth (vm, pkt, b->current_length, bs))
     {
       BFD_ERR ("Packet verification failed, dropping packet");
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_FAILED_VERIFICATION;
     }
-  bfd_udp_error_t err;
   if (BFD_UDP_ERROR_NONE != (err = bfd_udp4_verify_transport (ip4, udp, bs)))
     {
       return err;
     }
-  bfd_rpc_update_session (vm, bs->bs_idx, pkt);
+  err = bfd_error_to_udp (bfd_rpc_update_session (vm, bs->bs_idx, pkt));
   *bs_out = bs;
-  return BFD_UDP_ERROR_NONE;
+  return err;
 }
 
 static void
@@ -1174,7 +1180,7 @@ bfd_udp6_verify_transport (const ip6_header_t * ip6,
       BFD_ERR ("IP src addr mismatch, got %U, expected %U",
 	       format_ip6_address, ip6, format_ip6_address,
 	       &key->peer_addr.ip6);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_SRC_MISMATCH;
     }
   if (ip6->dst_address.as_u64[0] != key->local_addr.ip6.as_u64[0] &&
       ip6->dst_address.as_u64[1] != key->local_addr.ip6.as_u64[1])
@@ -1182,14 +1188,14 @@ bfd_udp6_verify_transport (const ip6_header_t * ip6,
       BFD_ERR ("IP dst addr mismatch, got %U, expected %U",
 	       format_ip6_address, ip6, format_ip6_address,
 	       &key->local_addr.ip6);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_DST_MISMATCH;
     }
   const u8 expected_hop_limit = 255;
   if (ip6->hop_limit != expected_hop_limit)
     {
       BFD_ERR ("IPv6 unexpected hop-limit value %u, expected %u",
 	       ip6->hop_limit, expected_hop_limit);
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_TTL;
     }
   if (clib_net_to_host_u16 (udp->src_port) < 49152)
     {
@@ -1226,9 +1232,11 @@ bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 	 pkt->head.length, udp_payload_length);
       return BFD_UDP_ERROR_BAD;
     }
-  if (!bfd_verify_pkt_common (pkt))
+  bfd_udp_error_t err;
+  if (BFD_UDP_ERROR_NONE !=
+      (err = bfd_error_to_udp (bfd_verify_pkt_common (pkt))))
     {
-      return BFD_UDP_ERROR_BAD;
+      return err;
     }
   bfd_session_t *bs = NULL;
   if (pkt->your_disc)
@@ -1255,22 +1263,21 @@ bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
   if (!bs)
     {
       BFD_ERR ("BFD session lookup failed - no session matches BFD pkt");
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_NO_SESSION;
     }
   BFD_DBG ("BFD session found, bs_idx=%u", bs->bs_idx);
   if (!bfd_verify_pkt_auth (vm, pkt, b->current_length, bs))
     {
       BFD_ERR ("Packet verification failed, dropping packet");
-      return BFD_UDP_ERROR_BAD;
+      return BFD_UDP_ERROR_FAILED_VERIFICATION;
     }
-  bfd_udp_error_t err;
   if (BFD_UDP_ERROR_NONE != (err = bfd_udp6_verify_transport (ip6, udp, bs)))
     {
       return err;
     }
-  bfd_rpc_update_session (vm, bs->bs_idx, pkt);
+  err = bfd_error_to_udp (bfd_rpc_update_session (vm, bs->bs_idx, pkt));
   *bs_out = bs;
-  return BFD_UDP_ERROR_NONE;
+  return err;
 }
 
 /*
