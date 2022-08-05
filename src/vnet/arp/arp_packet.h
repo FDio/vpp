@@ -28,6 +28,24 @@ typedef enum
   ARP_REPLY_N_NEXT,
 } arp_reply_next_t;
 
+/**
+ *
+ * Microsoft NLB unicast mac
+ *
+ * More see:
+ * https://docs.microsoft.com/en-us/troubleshoot/windows-server/networking/configure-network-to-support-nlb-operation-mode
+ *
+ * */
+static_always_inline u8
+is_ms_nlb_unicast_mac (mac_address_t *mac, ip4_address_t *addr)
+{
+  const u8 ms_nlb_prefix[] = { 0x02, 0xbf };
+
+  return memcmp (mac->bytes, ms_nlb_prefix, sizeof (ms_nlb_prefix)) == 0 &&
+	 memcmp (mac->bytes + sizeof (ms_nlb_prefix), addr->as_u8,
+		 sizeof (addr->as_u8)) == 0;
+}
+
 static_always_inline u32
 arp_mk_reply (vnet_main_t * vnm,
 	      vlib_buffer_t * p0,
@@ -39,13 +57,20 @@ arp_mk_reply (vnet_main_t * vnm,
   u8 *rewrite0, rewrite0_len;
   ethernet_header_t *eth_tx;
   u32 next0;
+  u8 *dst_addr;
+  u8 is_ms_nlb_reply;
+
+  is_ms_nlb_reply = is_ms_nlb_unicast_mac (&arp0->ip4_over_ethernet[0].mac,
+					   &arp0->ip4_over_ethernet[0].ip4);
+  dst_addr = !is_ms_nlb_reply ? eth_rx->src_address :
+				      arp0->ip4_over_ethernet[0].mac.bytes;
 
   /* Send a reply.
      An adjacency to the sender is not always present,
      so we use the interface to build us a rewrite string
      which will contain all the necessary tags. */
-  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0,
-				     VNET_LINK_ARP, eth_rx->src_address);
+  rewrite0 =
+    ethernet_build_rewrite (vnm, sw_if_index0, VNET_LINK_ARP, dst_addr);
   rewrite0_len = vec_len (rewrite0);
 
   /* Figure out how much to rewind current data from adjacency. */
