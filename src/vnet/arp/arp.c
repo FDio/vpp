@@ -596,8 +596,14 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (eth_rx->src_address,
 	       arp0->ip4_over_ethernet[0].mac.bytes) && !is_vrrp_reply0)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
-	      goto drop;
+	      u8 is_ms_nlb_reply =
+		is_ms_nlb_unicast_mac (&arp0->ip4_over_ethernet[0].mac,
+				       &arp0->ip4_over_ethernet[0].ip4);
+	      if (!is_ms_nlb_reply)
+		{
+		  error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
+		  goto drop;
+		}
 	    }
 
 	  /* Learn or update sender's mapping only for replies to addresses
