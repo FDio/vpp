@@ -415,7 +415,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ethernet_header_t *eth_rx;
 	  const ip4_address_t *if_addr0;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 dst_is_local0, is_vrrp_reply0;
+	  u8 dst_is_local0, is_vrrp_reply0, is_ms_nlb_unicast_reply0;
 	  fib_node_index_t dst_fei, src_fei;
 	  const fib_prefix_t *pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
@@ -596,12 +596,15 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (arp0->ip4_over_ethernet[0].mac.bytes, vrrp_prefix,
 	       sizeof (vrrp_prefix))));
 
+	  is_ms_nlb_unicast_reply0 = is_ms_nlb_unicast_mac (
+	    &arp0->ip4_over_ethernet[0].mac, &arp0->ip4_over_ethernet[0].ip4);
+
 	  /* Trash ARP packets whose ARP-level source addresses do not
 	     match their L2-frame-level source addresses, unless it's
-	     a reply from a VRRP virtual router */
-	  if (!ethernet_mac_address_equal
-	      (eth_rx->src_address,
-	       arp0->ip4_over_ethernet[0].mac.bytes) && !is_vrrp_reply0)
+	     a reply from a VRRP virtual router or MS NLB cluster */
+	  if (!ethernet_mac_address_equal (
+		eth_rx->src_address, arp0->ip4_over_ethernet[0].mac.bytes) &&
+	      !is_vrrp_reply0 && !is_ms_nlb_unicast_reply0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop;
