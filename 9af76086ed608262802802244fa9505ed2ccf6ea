@@ -16,6 +16,23 @@
       "message": "Hi,\nCould anyone please provide instructions on how to move forward with this patch ?\nKind regards,\n-Nathan",
       "revId": "9af76086ed608262802802244fa9505ed2ccf6ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf5f4100_3a43f6c1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-08-05T08:39:22Z",
+      "side": 1,
+      "message": "I think part of the issue with this patch is it looks a bit ad-hoc, and we\u0027d rather not have various parts of stat segment creeping up in API over time.\n\nAt the same time, I agree there is a real usecase here:\n- make sure the control plane can read up-to-date and not 10s old data\n- read a few values out of the stat segment without having to pull the whole stat segment dependencies\n\nSo what about this:\n- an API to force stat segment synchronization (basically an API which would just force the stat segment thread callback to execute before returning). Kind of a memory barrier, but for stat segment\n- another API to query any stat segment counter per path",
+      "revId": "9af76086ed608262802802244fa9505ed2ccf6ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
