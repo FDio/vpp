@@ -1534,7 +1534,12 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
     {
       int rv = vnet_hw_if_set_rx_queue_mode (vnm, queue_indices[i], mode);
       if (rv)
-	goto done;
+	{
+	  error = clib_error_return (
+	    0, "unable to set rx-mode on interface %v queue-id %u.\n",
+	    hw->name, queue_id);
+	  goto done;
+	}
     }
 
 done:
