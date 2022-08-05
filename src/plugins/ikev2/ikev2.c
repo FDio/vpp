@@ -3338,12 +3338,12 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  goto dispatch0;
 		}
 
-	      if (sa0->rekey)
+	      if (vec_len (sa0->rekey) > 0)
 		{
 		  if (!sa0->rekey[0].notify_type &&
 		      sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
 		    {
-		      if (sa0->childs)
+		      if (vec_len (sa0->childs) > 0)
 			ikev2_sa_free_all_child_sa (&sa0->childs);
 		      ikev2_child_sa_t *child;
 		      vec_add2 (sa0->childs, child, 1);
@@ -3372,7 +3372,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 						     1);
 		    }
 		}
-	      else if (sa0->new_child)
+	      else if (vec_len (sa0->new_child) > 0)
 		{
 		  ikev2_child_sa_t *c;
 		  vec_add2 (sa0->childs, c, 1);
