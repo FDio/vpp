@@ -1367,7 +1367,6 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   int p = 0;
   u8 payload = ike->nextpayload;
   u8 *plaintext = 0;
-  u8 rekeying = 0;
   ikev2_rekey_t *rekey;
   ike_payload_header_t *ikep;
   ikev2_notify_t *n = 0;
@@ -1410,11 +1409,15 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	}
       else if (payload == IKEV2_PAYLOAD_NOTIFY)
 	{
-	  n = ikev2_parse_notify_payload (ikep, current_length);
-	  if (n->msg_type == IKEV2_NOTIFY_MSG_REKEY_SA)
+	  ikev2_notify_t *n0;
+	  n0 = ikev2_parse_notify_payload (ikep, current_length);
+	  if (n0->msg_type == IKEV2_NOTIFY_MSG_REKEY_SA)
 	    {
-	      rekeying = 1;
+	      vec_free (n);
+	      n = n0;
 	    }
+	  else
+	    vec_free (n0);
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)
 	{
@@ -1478,7 +1481,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
     }
   else
     {
-      if (rekeying)
+      if (n)
 	{
 	  child_sa = ikev2_sa_get_child (sa, n->spi, n->protocol_id, 1);
 	  if (!child_sa)

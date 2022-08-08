@@ -1391,7 +1391,14 @@ class TemplateResponder(IkePeer):
             plain = (
                 ikev2.IKEv2_payload_Nonce(load=self.sa.i_nonce, next_payload="SA")
                 / plain
-                / ikev2.IKEv2_payload_Notify(type="REKEY_SA", proto="ESP", SPI=c.ispi)
+                / ikev2.IKEv2_payload_Notify(
+                    type="REKEY_SA",
+                    proto="ESP",
+                    SPI=c.ispi,
+                    length=8 + len(c.ispi),
+                    next_payload="Notify",
+                )
+                / ikev2.IKEv2_payload_Notify(type="ESP_TFC_PADDING_NOT_SUPPORTED")
             )
         else:
             first_payload = "IDi"
