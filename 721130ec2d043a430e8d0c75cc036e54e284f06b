@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "376ad51e_e43e8696",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-08-08T14:19:09Z",
+      "side": 1,
+      "message": "Hi @Yong Liu,\nI don\u0027t have the HW, is it possible for us to do a quick test towards the HW?",
+      "revId": "721130ec2d043a430e8d0c75cc036e54e284f06b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
