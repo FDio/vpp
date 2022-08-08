@@ -1,6 +1,7 @@
 {
   "comments": [
     {
+      "unresolved": true,
       "key": {
         "uuid": "de296912_e11ec919",
         "filename": "src/vnet/devices/af_packet/device.c",
@@ -14,10 +15,10 @@
       "side": 1,
       "message": "Shouldn\u0027t af_packet kick again if returned error is \u0027EAGAIN\u0027? For other errors, it shouldn\u0027t kick again.",
       "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "70c67e20_f26af602",
         "filename": "src/vnet/devices/af_packet/device.c",
@@ -32,10 +33,10 @@
       "message": "Does it matter? I mean if the returned error is not EAGAIN, the state of the interface is pretty much broken anyways, so it doesn\u0027t matter if we kick again at each call to the tx function or not...",
       "parentUuid": "de296912_e11ec919",
       "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
       "key": {
         "uuid": "03fa1a7c_ef839b18",
         "filename": "src/vnet/devices/af_packet/device.c",
@@ -50,8 +51,25 @@
       "message": "Yes, that\u0027s why we shouldn\u0027t kick. Instead put the af_packet interface in VPP in error state.",
       "parentUuid": "70c67e20_f26af602",
       "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
-      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
-      "unresolved": true
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7dd17319_98bedb8d",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-08-08T14:36:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "03fa1a7c_ef839b18",
+      "revId": "ab9d930129f469fab6edccfdaf2536156fec86d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
