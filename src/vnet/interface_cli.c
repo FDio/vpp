@@ -77,7 +77,7 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
   int i, verbose = -1, show_bond = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    goto skip_unformat;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -117,6 +117,7 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 
   unformat_free (line_input);
 
+skip_unformat:
   /* Gather interfaces. */
   if (vec_len (hw_if_indices) == 0)
     pool_foreach (hi, im->hw_interfaces)
