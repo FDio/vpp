@@ -101,14 +101,12 @@ ipsec_tun_register_nodes (ip_address_family_t af)
   if (0 == ipsec_tun_node_regs[af]++)
     {
       if (AF_IP4 == af)
-	{
-	  ipsec_register_udp_port (UDP_DST_PORT_ipsec);
-	  ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
-				 ipsec4_tun_input_node.index);
-	}
+	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
+			       ipsec4_tun_input_node.index);
       else
 	ip6_register_protocol (IP_PROTOCOL_IPSEC_ESP,
 			       ipsec6_tun_input_node.index);
+      ipsec_register_udp_port (UDP_DST_PORT_ipsec, (AF_IP4 == af));
     }
 }
 
@@ -119,12 +117,10 @@ ipsec_tun_unregister_nodes (ip_address_family_t af)
   if (0 == --ipsec_tun_node_regs[af])
     {
       if (AF_IP4 == af)
-	{
-	  ipsec_unregister_udp_port (UDP_DST_PORT_ipsec);
-	  ip4_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
-	}
+	ip4_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
       else
 	ip6_unregister_protocol (IP_PROTOCOL_IPSEC_ESP);
+      ipsec_unregister_udp_port (UDP_DST_PORT_ipsec, (AF_IP4 == af));
     }
 }
 

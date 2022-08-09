@@ -3857,7 +3857,8 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
 static vnet_api_error_t
 ikev2_register_udp_port (ikev2_profile_t *p, u16 port)
 {
-  ipsec_register_udp_port (port);
+  ipsec_register_udp_port (port, 0 /* is_ip4 */);
+  ipsec_register_udp_port (port, 1 /* is_ip4 */);
   p->ipsec_over_udp_port = port;
   return 0;
 }
@@ -3868,7 +3869,8 @@ ikev2_unregister_udp_port (ikev2_profile_t *p)
   if (p->ipsec_over_udp_port == IPSEC_UDP_PORT_NONE)
     return;
 
-  ipsec_unregister_udp_port (p->ipsec_over_udp_port);
+  ipsec_unregister_udp_port (p->ipsec_over_udp_port, 0 /* is_ip4 */);
+  ipsec_unregister_udp_port (p->ipsec_over_udp_port, 1 /* is_ip4 */);
   p->ipsec_over_udp_port = IPSEC_UDP_PORT_NONE;
 }
 

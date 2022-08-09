@@ -1192,6 +1192,8 @@ lcp_interface_init (vlib_main_t *vm)
   /* punt IKE */
   vlib_punt_register (punt_hdl, ipsec_punt_reason[IPSEC_PUNT_IP4_SPI_UDP_0],
 		      "linux-cp-punt");
+  vlib_punt_register (punt_hdl, ipsec_punt_reason[IPSEC_PUNT_IP6_SPI_UDP_0],
+		      "linux-cp-punt");
 
   /* punt all unknown ports */
   udp_punt_unknown (vm, 0, 1);

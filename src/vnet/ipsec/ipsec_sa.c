@@ -325,7 +325,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	sa->udp_hdr.src_port = clib_host_to_net_u16 (src_port);
 
       if (ipsec_sa_is_set_IS_INBOUND (sa))
-	ipsec_register_udp_port (clib_host_to_net_u16 (sa->udp_hdr.dst_port));
+	ipsec_register_udp_port (clib_host_to_net_u16 (sa->udp_hdr.dst_port),
+				 !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
     }
 
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
@@ -353,7 +354,8 @@ ipsec_sa_del (ipsec_sa_t * sa)
   if (ipsec_sa_is_set_IS_ASYNC (sa))
     vnet_crypto_request_async_mode (0);
   if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
-    ipsec_unregister_udp_port (clib_net_to_host_u16 (sa->udp_hdr.dst_port));
+    ipsec_unregister_udp_port (clib_net_to_host_u16 (sa->udp_hdr.dst_port),
+			       !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&sa->dpo);
