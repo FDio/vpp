@@ -887,42 +887,40 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  else
 	    l2_len = 0;
 
+	  u16 len;
+	  len = payload_len_total + hdr_len - l2_len;
+
 	  if (VNET_LINK_IP6 == lt)
 	    {
 	      ip6_header_t *ip6 = (ip6_header_t *) (old_ip_hdr);
 	      if (PREDICT_TRUE (NULL == ext_hdr))
 		{
 		  *next_hdr_ptr = ip6->protocol;
-		  ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
+		  ip6->protocol =
+		    (udp) ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
 		}
 	      else
 		{
 		  *next_hdr_ptr = ext_hdr->next_hdr;
-		  ext_hdr->next_hdr = IP_PROTOCOL_IPSEC_ESP;
+		  ext_hdr->next_hdr =
+		    (udp) ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
 		}
 	      ip6->payload_length =
-		clib_host_to_net_u16 (payload_len_total + hdr_len - l2_len -
-				      sizeof (ip6_header_t));
+		clib_host_to_net_u16 (len - sizeof (ip6_header_t));
 	    }
 	  else if (VNET_LINK_IP4 == lt)
 	    {
-	      u16 len;
 	      ip4_header_t *ip4 = (ip4_header_t *) (old_ip_hdr);
 	      *next_hdr_ptr = ip4->protocol;
-	      len = payload_len_total + hdr_len - l2_len;
-	      if (udp)
-		{
-		  esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 1);
-		  udp_len = len - ip_len;
-		}
-	      else
-		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
+	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 1,
+				  (udp != NULL));
 	    }
 
 	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (udp)
 	    {
+	      udp_len = len - ip_len;
 	      esp_fill_udp_hdr (sa0, udp, udp_len);
 	    }
 

@@ -1695,6 +1695,40 @@ class IpsecTun6(object):
             self.logger.info(self.vapi.ppcli("show ipsec all"))
         self.verify_counters6(p, p, count)
 
+    def verify_keepalive(self, p):
+        # the sizeof Raw is calculated to pad to the minimum ehternet
+        # frame size of 64 btyes
+        pkt = (
+            Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac)
+            / IPv6(src=p.remote_tun_if_host, dst=self.tun_if.local_ip6)
+            / UDP(sport=333, dport=4500)
+            / Raw(b"\xff")
+            / Padding(0 * 1)
+        )
+        self.send_and_assert_no_replies(self.tun_if, pkt * 31)
+        self.assert_error_counter_equal(
+            "/err/%s/nat_keepalive" % self.tun6_input_node, 31
+        )
+
+        pkt = (
+            Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac)
+            / IPv6(src=p.remote_tun_if_host, dst=self.tun_if.local_ip6)
+            / UDP(sport=333, dport=4500)
+            / Raw(b"\xfe")
+        )
+        self.send_and_assert_no_replies(self.tun_if, pkt * 31)
+        self.assert_error_counter_equal("/err/%s/too_short" % self.tun6_input_node, 31)
+
+        pkt = (
+            Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac)
+            / IPv6(src=p.remote_tun_if_host, dst=self.tun_if.local_ip6)
+            / UDP(sport=333, dport=4500)
+            / Raw(b"\xfe")
+            / Padding(0 * 21)
+        )
+        self.send_and_assert_no_replies(self.tun_if, pkt * 31)
+        self.assert_error_counter_equal("/err/%s/too_short" % self.tun6_input_node, 62)
+
 
 class IpsecTun6Tests(IpsecTun6):
     """UT test methods for Tunnel v6"""

@@ -86,11 +86,21 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
 }
 
 always_inline u16
-ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
-			vlib_buffer_t * b, const esp_header_t * esp)
+ipsec_ip6_if_no_tunnel (vlib_node_runtime_t *node, vlib_buffer_t *b,
+			const esp_header_t *esp, const ip6_header_t *ip6)
 {
-  b->error = node->errors[IPSEC_TUN_ERROR_NO_TUNNEL];
-  b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
+  if (PREDICT_FALSE (0 == esp->spi))
+    {
+      b->error = node->errors[IPSEC_TUN_ERROR_SPI_0];
+      b->punt_reason = ipsec_punt_reason[(ip6->protocol == IP_PROTOCOL_UDP ?
+						  IPSEC_PUNT_IP6_SPI_UDP_0 :
+						  IPSEC_PUNT_IP6_NO_SUCH_TUNNEL)];
+    }
+  else
+    {
+      b->error = node->errors[IPSEC_TUN_ERROR_NO_TUNNEL];
+      b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
+    }
 
   return VNET_DEVICE_INPUT_NEXT_PUNT;
 }
@@ -164,8 +174,35 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (is_ip6)
 	{
 	  ip60 = (ip6_header_t *) ip40;
-	  esp0 = (esp_header_t *) (ip60 + 1);
-	  buf_rewind0 = hdr_sz0 = sizeof (ip6_header_t);
+	  if (ip60->protocol == IP_PROTOCOL_UDP)
+	    {
+	      /* NAT UDP port 4500 case, don't advance any more */
+	      esp0 = (esp_header_t *) ((u8 *) ip60 + sizeof (ip6_header_t) +
+				       sizeof (udp_header_t));
+	      hdr_sz0 = 0;
+	      buf_rewind0 = sizeof (ip6_header_t) + sizeof (udp_header_t);
+
+	      const udp_header_t *udp0 =
+		(udp_header_t *) ((u8 *) ip60 + sizeof (ip6_header_t));
+
+	      /* length 9 = sizeof(udp_header) + 1 byte of special SPI */
+	      if (clib_net_to_host_u16 (udp0->length) == 9 &&
+		  esp0->spi_bytes[0] == 0xff)
+		{
+		  b[0]->error = node->errors[IPSEC_TUN_ERROR_NAT_KEEPALIVE];
+
+		  next[0] = VNET_DEVICE_INPUT_NEXT_IP6_DROP;
+		  len0 = 0;
+
+		  vlib_buffer_advance (b[0], -buf_rewind0);
+		  goto trace00;
+		}
+	    }
+	  else
+	    {
+	      esp0 = (esp_header_t *) (ip60 + 1);
+	      buf_rewind0 = hdr_sz0 = sizeof (ip6_header_t);
+	    }
 	}
       else
 	{
@@ -240,7 +277,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
-		  next[0] = ipsec_ip6_if_no_tunnel (node, b[0], esp0);
+		  next[0] = ipsec_ip6_if_no_tunnel (node, b[0], esp0, ip60);
 		  n_no_tunnel++;
 		  goto trace00;
 		}

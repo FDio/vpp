@@ -364,8 +364,8 @@ int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
 void ipsec_set_async_mode (u32 is_enabled);
 
-extern void ipsec_register_udp_port (u16 udp_port);
-extern void ipsec_unregister_udp_port (u16 udp_port);
+extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);
+extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
 
 extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
 						 u8 next_header,

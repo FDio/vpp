@@ -561,6 +561,132 @@ class TemplateIpsec6TunIfEsp(TemplateIpsec6TunProtect, TemplateIpsec):
         super(TemplateIpsec6TunIfEsp, self).tearDown()
 
 
+class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
+    """IPsec6 UDP tunnel interface tests"""
+
+    tun4_encrypt_node_name = "esp6-encrypt-tun"
+    tun4_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
+    encryption_type = ESP
+
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsec6TunIfEspUdp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsec6TunIfEspUdp, cls).tearDownClass()
+
+    def verify_encrypted(self, p, sa, rxs):
+        for rx in rxs:
+            try:
+                # ensure the UDP ports are correct before we decrypt
+                # which strips them
+                self.assertTrue(rx.haslayer(UDP))
+                self.assert_equal(rx[UDP].sport, p.nat_header.sport)
+                self.assert_equal(rx[UDP].dport, 4500)
+
+                pkt = sa.decrypt(rx[IP])
+                if not pkt.haslayer(IP):
+                    pkt = IP(pkt[Raw].load)
+
+                self.assert_packet_checksums_valid(pkt)
+                self.assert_equal(
+                    pkt[IP].dst, "1111:1111:1111:1111:1111:1111:1111:1111"
+                )
+                self.assert_equal(pkt[IP].src, self.pg1.remote_ip6)
+            except (IndexError, AssertionError):
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", pkt))
+                except:
+                    pass
+                raise
+
+    def config_sa_tra(self, p):
+        config_tun_params(p, self.encryption_type, p.tun_if)
+
+        p.tun_sa_out = VppIpsecSA(
+            self,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
+            p.auth_algo_vpp_id,
+            p.auth_key,
+            p.crypt_algo_vpp_id,
+            p.crypt_key,
+            self.vpp_esp_protocol,
+            flags=p.flags,
+            udp_src=p.nat_header.sport,
+            udp_dst=p.nat_header.dport,
+        )
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(
+            self,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
+            p.auth_algo_vpp_id,
+            p.auth_key,
+            p.crypt_algo_vpp_id,
+            p.crypt_key,
+            self.vpp_esp_protocol,
+            flags=p.flags,
+            udp_src=p.nat_header.sport,
+            udp_dst=p.nat_header.dport,
+        )
+        p.tun_sa_in.add_vpp_config()
+
+    def setUp(self):
+        super(TemplateIpsec6TunIfEspUdp, self).setUp()
+
+        p = self.ipv6_params
+        p.flags = VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_UDP_ENCAP
+        p.nat_header = UDP(sport=5454, dport=4500)
+
+        self.tun_if = self.pg0
+
+        self.config_network(p)
+        self.config_sa_tra(p)
+        self.config_protect(p)
+
+    def tearDown(self):
+        super(TemplateIpsec6TunIfEspUdp, self).tearDown()
+
+
+class TestIpsec6TunIfEspUdp(TemplateIpsec6TunIfEspUdp, IpsecTun6Tests):
+    """Ipsec ESP 6 UDP tests"""
+
+    tun6_input_node = "ipsec6-tun-input"
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
+
+    def setUp(self):
+        super(TestIpsec6TunIfEspUdp, self).setUp()
+
+    def test_keepalive(self):
+        """IPSEC6 NAT Keepalive"""
+        self.verify_keepalive(self.ipv6_params)
+
+
+class TestIpsec6TunIfEspUdpGCM(TemplateIpsec6TunIfEspUdp, IpsecTun6Tests):
+    """Ipsec ESP 6 UDP GCM tests"""
+
+    tun6_input_node = "ipsec6-tun-input"
+    tun6_encrypt_node_name = "esp6-encrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
+
+    def setUp(self):
+        super(TestIpsec6TunIfEspUdpGCM, self).setUp()
+        p = self.ipv6_params
+        p.auth_algo_vpp_id = VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_NONE
+        p.crypt_algo_vpp_id = (
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_GCM_256
+        )
+        p.crypt_algo = "AES-GCM"
+        p.auth_algo = "NULL"
+        p.crypt_key = b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"
+        p.salt = 0
+
+
 class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
     """Ipsec ESP - TUN tests"""
 

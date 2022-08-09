@@ -182,14 +182,24 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
   *out_next_index = vlib_node_add_next (vm, prev_node->index, node->index);
 }
 
+static inline uword
+ipsec_udp_registration_key (u16 port, u8 is_ip4)
+{
+  uword key = (is_ip4) ? AF_IP4 : AF_IP6;
+
+  key |= (uword) (port << 16);
+  return key;
+}
+
 void
-ipsec_unregister_udp_port (u16 port)
+ipsec_unregister_udp_port (u16 port, u8 is_ip4)
 {
   ipsec_main_t *im = &ipsec_main;
   u32 n_regs;
-  uword *p;
+  uword *p, key;
 
-  p = hash_get (im->udp_port_registrations, port);
+  key = ipsec_udp_registration_key (port, is_ip4);
+  p = hash_get (im->udp_port_registrations, key);
 
   ASSERT (p);
 
@@ -197,33 +207,35 @@ ipsec_unregister_udp_port (u16 port)
 
   if (0 == --n_regs)
     {
-      udp_unregister_dst_port (vlib_get_main (), port, 1);
-      hash_unset (im->udp_port_registrations, port);
+      udp_unregister_dst_port (vlib_get_main (), port, is_ip4);
+      hash_unset (im->udp_port_registrations, key);
     }
   else
     {
-      hash_unset (im->udp_port_registrations, port);
-      hash_set (im->udp_port_registrations, port, n_regs);
+      hash_unset (im->udp_port_registrations, key);
+      hash_set (im->udp_port_registrations, key, n_regs);
     }
 }
 
 void
-ipsec_register_udp_port (u16 port)
+ipsec_register_udp_port (u16 port, u8 is_ip4)
 {
   ipsec_main_t *im = &ipsec_main;
-  u32 n_regs;
-  uword *p;
+  u32 n_regs, node_index;
+  uword *p, key;
 
-  p = hash_get (im->udp_port_registrations, port);
+  key = ipsec_udp_registration_key (port, is_ip4);
+  node_index =
+    (is_ip4) ? ipsec4_tun_input_node.index : ipsec6_tun_input_node.index;
+  p = hash_get (im->udp_port_registrations, key);
 
   n_regs = (p ? p[0] : 0);
 
   if (0 == n_regs++)
-    udp_register_dst_port (vlib_get_main (), port,
-			   ipsec4_tun_input_node.index, 1);
+    udp_register_dst_port (vlib_get_main (), port, node_index, is_ip4);
 
-  hash_unset (im->udp_port_registrations, port);
-  hash_set (im->udp_port_registrations, port, n_regs);
+  hash_unset (im->udp_port_registrations, key);
+  hash_set (im->udp_port_registrations, key, n_regs);
 }
 
 u32
