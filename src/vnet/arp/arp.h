@@ -19,32 +19,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/arp_packet.h>
-
-#define foreach_ethernet_arp_error					\
-  _ (replies_sent, "ARP replies sent")					\
-  _ (l2_type_not_ethernet, "L2 type not ethernet")			\
-  _ (l3_type_not_ip4, "L3 type not IP4")				\
-  _ (l3_src_address_not_local, "IP4 source address not local to subnet") \
-  _ (l3_dst_address_not_local, "IP4 destination address not local to subnet") \
-  _ (l3_dst_address_unset, "IP4 destination address is unset")          \
-  _ (l3_src_address_is_local, "IP4 source address matches local interface") \
-  _ (l3_src_address_learned, "ARP request IP4 source address learned")  \
-  _ (replies_received, "ARP replies received")				\
-  _ (opcode_not_request, "ARP opcode not request")                      \
-  _ (proxy_arp_replies_sent, "Proxy ARP replies sent")			\
-  _ (l2_address_mismatch, "ARP hw addr does not match L2 frame src addr") \
-  _ (gratuitous_arp, "ARP probe or announcement dropped") \
-  _ (interface_no_table, "Interface is not mapped to an IP table") \
-  _ (interface_not_ip_enabled, "Interface is not IP enabled") \
-  _ (unnumbered_mismatch, "RX interface is unnumbered to different subnet") \
-
-typedef enum
-{
-#define _(sym,string) ETHERNET_ARP_ERROR_##sym,
-  foreach_ethernet_arp_error
-#undef _
-    ETHERNET_ARP_N_ERROR,
-} ethernet_arp_reply_error_t;
+#include <vnet/arp/arp.api_enum.h>
 
 extern int arp_proxy_add (u32 fib_index,
 			  const ip4_address_t * lo_addr,
