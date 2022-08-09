@@ -1794,9 +1794,7 @@ class ARPTestCase(VppTestCase):
         # they are all dropped because the subnet's don't match
         self.assertEqual(
             4,
-            self.statistics.get_err_counter(
-                "/err/arp-reply/IP4 destination address not local to subnet"
-            ),
+            self.statistics.get_err_counter("/err/arp-reply/l3_dst_address_not_local"),
         )
 
     def test_arp_incomplete2(self):

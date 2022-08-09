@@ -204,7 +204,7 @@ arp_learn (u32 sw_if_index,
 
   ip_neighbor_learn_dp (&l);
 
-  return (ETHERNET_ARP_ERROR_l3_src_address_learned);
+  return (ARP_ERROR_L3_SRC_ADDRESS_LEARNED);
 }
 
 typedef enum arp_input_next_t_
@@ -249,22 +249,21 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  p0 = vlib_get_buffer (vm, pi0);
 	  arp0 = vlib_buffer_get_current (p0);
 
-	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  error0 = ARP_ERROR_REPLIES_SENT;
 	  next0 = ARP_INPUT_NEXT_DROP;
 
-	  error0 =
-	    (arp0->l2_type !=
-	     clib_net_to_host_u16 (ETHERNET_ARP_HARDWARE_TYPE_ethernet) ?
-	     ETHERNET_ARP_ERROR_l2_type_not_ethernet : error0);
-	  error0 =
-	    (arp0->l3_type !=
-	     clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
-	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
-	  error0 =
-	    (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ?
-	     ETHERNET_ARP_ERROR_l3_dst_address_unset : error0);
+	  error0 = (arp0->l2_type != clib_net_to_host_u16 (
+				       ETHERNET_ARP_HARDWARE_TYPE_ethernet) ?
+			    ARP_ERROR_L2_TYPE_NOT_ETHERNET :
+			    error0);
+	  error0 = (arp0->l3_type != clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
+			    ARP_ERROR_L3_TYPE_NOT_IP4 :
+			    error0);
+	  error0 = (0 == arp0->ip4_over_ethernet[0].ip4.as_u32 ?
+			    ARP_ERROR_L3_DST_ADDRESS_UNSET :
+			    error0);
 
-	  if (ETHERNET_ARP_ERROR_replies_sent == error0)
+	  if (ARP_ERROR_REPLIES_SENT == error0)
 	    {
 	      next0 = ARP_INPUT_NEXT_DISABLED;
 	      vnet_feature_arc_start (am->feature_arc_index,
@@ -289,23 +288,6 @@ typedef enum arp_disabled_next_t_
   ARP_DISABLED_NEXT_DROP,
   ARP_DISABLED_N_NEXT,
 } arp_disabled_next_t;
-
-#define foreach_arp_disabled_error					\
-  _ (DISABLED, "ARP Disabled on this interface")                    \
-
-typedef enum
-{
-#define _(sym,string) ARP_DISABLED_ERROR_##sym,
-  foreach_arp_disabled_error
-#undef _
-    ARP_DISABLED_N_ERROR,
-} arp_disabled_error_t;
-
-static char *arp_disabled_error_strings[] = {
-#define _(sym,string) string,
-  foreach_arp_disabled_error
-#undef _
-};
 
 static uword
 arp_disabled (vlib_main_t * vm,
@@ -333,7 +315,7 @@ arp_disabled (vlib_main_t * vm,
 	  u32 pi0, error0;
 
 	  next0 = ARP_DISABLED_NEXT_DROP;
-	  error0 = ARP_DISABLED_ERROR_DISABLED;
+	  error0 = ARP_ERROR_DISABLED;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -433,14 +415,14 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  eth_rx = ethernet_buffer_get_header (p0);
 
 	  next0 = ARP_REPLY_NEXT_DROP;
-	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  error0 = ARP_ERROR_REPLIES_SENT;
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  /* Check that IP address is local and matches incoming interface. */
 	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	  if (~0 == fib_index0)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_interface_no_table;
+	      error0 = ARP_ERROR_INTERFACE_NO_TABLE;
 	      goto drop;
 
 	    }
@@ -486,34 +468,34 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
                      address. */
                   if (FIB_ENTRY_FLAG_LOCAL & src_flags)
                     {
-                      error0 = ETHERNET_ARP_ERROR_l3_src_address_is_local;
-                      /*
-                       * When VPP has an interface whose address is also
-                       * applied to a TAP interface on the host, then VPP's
-                       * TAP interface will be unnumbered  to the 'real'
-                       * interface and do proxy ARP from the host.
-                       * The curious aspect of this setup is that ARP requests
-                       * from the host will come from the VPP's own address.
-                       * So don't drop immediately here, instead go see if this
-                       * is a proxy ARP case.
-                       */
-                      goto next_feature;
-                    }
-                  /* A Source must also be local to subnet of matching
-                   * interface address. */
-                  if ((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
-                      (FIB_ENTRY_FLAG_CONNECTED & src_flags))
-                    {
-                      attached = 1;
-                      break;
-                    }
-                  /*
-                   * else
-                   *  The packet was sent from an address that is not
-                   *  connected nor attached i.e. it is not from an
-                   *  address that is covered by a link's sub-net,
-                   *  nor is it a already learned host resp.
-                   */
+		      error0 = ARP_ERROR_L3_SRC_ADDRESS_IS_LOCAL;
+		      /*
+		       * When VPP has an interface whose address is also
+		       * applied to a TAP interface on the host, then VPP's
+		       * TAP interface will be unnumbered  to the 'real'
+		       * interface and do proxy ARP from the host.
+		       * The curious aspect of this setup is that ARP requests
+		       * from the host will come from the VPP's own address.
+		       * So don't drop immediately here, instead go see if this
+		       * is a proxy ARP case.
+		       */
+		      goto next_feature;
+		    }
+		  /* A Source must also be local to subnet of matching
+		   * interface address. */
+		  if ((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
+		      (FIB_ENTRY_FLAG_CONNECTED & src_flags))
+		    {
+		      attached = 1;
+		      break;
+		    }
+		  /*
+		   * else
+		   *  The packet was sent from an address that is not
+		   *  connected nor attached i.e. it is not from an
+		   *  address that is covered by a link's sub-net,
+		   *  nor is it a already learned host resp.
+		   */
                 }));
                 /* *INDENT-ON* */
 
@@ -541,7 +523,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		 * configuration. If the matching route is not a host route
 		 * (i.e. a /32)
 		 */
-		error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
+		error0 = ARP_ERROR_L3_SRC_ADDRESS_NOT_LOCAL;
 		goto drop;
 	      }
 	  }
@@ -563,7 +545,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       * blow our ARP cache
 	       */
 	      if (conn_sw_if_index0 != sw_if_index0)
-		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+		error0 = ARP_ERROR_L3_DST_ADDRESS_NOT_LOCAL;
 	      else if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
 		       arp0->ip4_over_ethernet[1].ip4.as_u32)
 		{
@@ -580,7 +562,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      break;
 	    case ARP_DST_FIB_NONE:
 	      /* destination is not connected, stop here */
-	      error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+	      error0 = ARP_ERROR_L3_DST_ADDRESS_NOT_LOCAL;
 	      goto next_feature;
 	    }
 
@@ -603,7 +585,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (eth_rx->src_address,
 	       arp0->ip4_over_ethernet[0].mac.bytes) && !is_vrrp_reply0)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
+	      error0 = ARP_ERROR_L2_ADDRESS_MISMATCH;
 	      goto drop;
 	    }
 
@@ -627,7 +609,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		/* a reply for a non-local destination could be a GARP.
 		 * GARPs for hosts we know were handled above, so this one
 		 * we drop */
-		error0 = ETHERNET_ARP_ERROR_l3_dst_address_not_local;
+		error0 = ARP_ERROR_L3_DST_ADDRESS_NOT_LOCAL;
 
 	      goto next_feature;
 	    }
@@ -649,14 +631,14 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	       */
 	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		{
-		  error0 = ETHERNET_ARP_ERROR_unnumbered_mismatch;
+		  error0 = ARP_ERROR_UNNUMBERED_MISMATCH;
 		  goto drop;
 		}
 	    }
 	  if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
 	      arp0->ip4_over_ethernet[1].ip4.as_u32)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_gratuitous_arp;
+	      error0 = ARP_ERROR_GRATUITOUS_ARP;
 	      goto drop;
 	    }
 
@@ -689,18 +671,12 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_error_count (vm, node->node_index,
-		    ETHERNET_ARP_ERROR_replies_sent, n_replies_sent);
+  vlib_error_count (vm, node->node_index, ARP_ERROR_REPLIES_SENT,
+		    n_replies_sent);
 
   return frame->n_vectors;
 }
 
-
-static char *ethernet_arp_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ethernet_arp_error
-#undef _
-};
 
 /* *INDENT-OFF* */
 
@@ -709,8 +685,8 @@ VLIB_REGISTER_NODE (arp_input_node, static) =
   .function = arp_input,
   .name = "arp-input",
   .vector_size = sizeof (u32),
-  .n_errors = ETHERNET_ARP_N_ERROR,
-  .error_strings = ethernet_arp_error_strings,
+  .n_errors = ARP_N_ERROR,
+  .error_counters = arp_error_counters,
   .n_next_nodes = ARP_INPUT_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
@@ -725,8 +701,8 @@ VLIB_REGISTER_NODE (arp_disabled_node, static) =
   .function = arp_disabled,
   .name = "arp-disabled",
   .vector_size = sizeof (u32),
-  .n_errors = ARP_DISABLED_N_ERROR,
-  .error_strings = arp_disabled_error_strings,
+  .n_errors = ARP_N_ERROR,
+  .error_counters = arp_error_counters,
   .n_next_nodes = ARP_DISABLED_N_NEXT,
   .next_nodes = {
     [ARP_INPUT_NEXT_DROP] = "error-drop",
@@ -740,8 +716,8 @@ VLIB_REGISTER_NODE (arp_reply_node, static) =
   .function = arp_reply,
   .name = "arp-reply",
   .vector_size = sizeof (u32),
-  .n_errors = ETHERNET_ARP_N_ERROR,
-  .error_strings = ethernet_arp_error_strings,
+  .n_errors = ARP_N_ERROR,
+  .error_counters = arp_error_counters,
   .n_next_nodes = ARP_REPLY_N_NEXT,
   .next_nodes = {
     [ARP_REPLY_NEXT_DROP] = "error-drop",
@@ -914,12 +890,39 @@ ethernet_arp_init (vlib_main_t * vm)
     vlib_node_runtime_t *rt =
       vlib_node_get_runtime (vm, arp_input_node.index);
 
-#define _(a,b)                                  \
-    vnet_pcap_drop_trace_filter_add_del         \
-        (rt->errors[ETHERNET_ARP_ERROR_##a],    \
-         1 /* is_add */);
-    foreach_ethernet_arp_error
-#undef _
+    vnet_pcap_drop_trace_filter_add_del (rt->errors[ARP_ERROR_REPLIES_SENT],
+					 1);
+    vnet_pcap_drop_trace_filter_add_del (rt->errors[ARP_ERROR_DISABLED], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L2_TYPE_NOT_ETHERNET], 1);
+    vnet_pcap_drop_trace_filter_add_del (rt->errors[ARP_ERROR_L3_TYPE_NOT_IP4],
+					 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L3_SRC_ADDRESS_NOT_LOCAL], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L3_DST_ADDRESS_NOT_LOCAL], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L3_DST_ADDRESS_UNSET], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L3_SRC_ADDRESS_IS_LOCAL], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L3_SRC_ADDRESS_LEARNED], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_REPLIES_RECEIVED], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_OPCODE_NOT_REQUEST], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_PROXY_ARP_REPLIES_SENT], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_L2_ADDRESS_MISMATCH], 1);
+    vnet_pcap_drop_trace_filter_add_del (rt->errors[ARP_ERROR_GRATUITOUS_ARP],
+					 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_INTERFACE_NO_TABLE], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_INTERFACE_NOT_IP_ENABLED], 1);
+    vnet_pcap_drop_trace_filter_add_del (
+      rt->errors[ARP_ERROR_UNNUMBERED_MISMATCH], 1);
   }
 
   {
