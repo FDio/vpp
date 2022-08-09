@@ -1,0 +1,21 @@
+---
+devices:
+  - name: "client"
+    type: "netns"
+
+  - name: "server"
+    type: "netns"
+
+  - name: "vpp0"
+    type: "veth"
+    peer:
+      name: "client"
+      netns: "client"
+      ip4: "10.0.0.1/24"
+
+  - name: "vpp1"
+    type: "veth"
+    peer:
+      name: "server"
+      netns: "server"
+      ip4: "10.0.1.1/24"
