@@ -1307,7 +1307,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         if counter.startswith("/"):
             counter_value = self.statistics.get_counter(counter)
         else:
-            counters = self.vapi.cli("sh errors").split("\n")
+            counters = self.vapi.cli("sh node counters sev info").split("\n")
             counter_value = 0
             for i in range(1, len(counters) - 1):
                 results = counters[i].split()

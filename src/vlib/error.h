@@ -44,18 +44,23 @@
 
 typedef u16 vlib_error_t;
 
-enum vl_counter_severity_e
+#define foreach_vl_counter_severity                                           \
+  _ (ERROR, "error")                                                          \
+  _ (WARN, "warn")                                                            \
+  _ (INFO, "info")
+
+typedef enum vl_counter_severity_e_
 {
-  VL_COUNTER_SEVERITY_ERROR,
-  VL_COUNTER_SEVERITY_WARN,
-  VL_COUNTER_SEVERITY_INFO,
-};
+#define _(a, b) VL_COUNTER_SEVERITY_##a,
+  foreach_vl_counter_severity
+#undef _
+} vl_counter_severity_e;
 
 typedef struct
 {
   char *name;
   char *desc;
-  enum vl_counter_severity_e severity;
+  vl_counter_severity_e severity;
   u32 stats_entry_index;
 } vlib_error_desc_t;
 
@@ -82,6 +87,8 @@ void vlib_register_errors (struct vlib_main_t *vm, u32 node_index,
 void vlib_unregister_errors (struct vlib_main_t *vm, u32 node_index);
 
 unformat_function_t unformat_vlib_error;
+unformat_function_t unformat_vl_counter_severity;
+format_function_t format_vl_counter_severity;
 
 #endif /* included_vlib_error_h */
 
