@@ -23,6 +23,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 
 #include <vnet/gre/packet.h>
 
@@ -57,35 +58,6 @@ typedef enum
     ESP_DECRYPT_POST_N_NEXT,
 } esp_decrypt_post_next_t;
 
-#define foreach_esp_decrypt_error                                             \
-  _ (RX_PKTS, "ESP pkts received")                                            \
-  _ (RX_POST_PKTS, "ESP-POST pkts received")                                  \
-  _ (HANDOFF, "hand-off")                                                     \
-  _ (DECRYPTION_FAILED, "ESP decryption failed")                              \
-  _ (INTEG_ERROR, "Integrity check failed")                                   \
-  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")             \
-  _ (REPLAY, "SA replayed packet")                                            \
-  _ (RUNT, "undersized packet")                                               \
-  _ (NO_BUFFERS, "no buffers (packet dropped)")                               \
-  _ (OVERSIZED_HEADER, "buffer with oversized header (dropped)")              \
-  _ (NO_TAIL_SPACE, "no enough buffer tail space (dropped)")                  \
-  _ (TUN_NO_PROTO, "no tunnel protocol")                                      \
-  _ (UNSUP_PAYLOAD, "unsupported payload")
-
-typedef enum
-{
-#define _(sym,str) ESP_DECRYPT_ERROR_##sym,
-  foreach_esp_decrypt_error
-#undef _
-    ESP_DECRYPT_N_ERROR,
-} esp_decrypt_error_t;
-
-static char *esp_decrypt_error_strings[] = {
-#define _(sym,string) string,
-  foreach_esp_decrypt_error
-#undef _
-};
-
 typedef struct
 {
   u32 seq;
@@ -95,6 +67,8 @@ typedef struct
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
 } esp_decrypt_trace_t;
+
+typedef vl_counter_esp_decrypt_enum_t esp_decrypt_error_t;
 
 /* The number of byres in the hisequence number */
 #define N_HI_ESN_BYTES 4
@@ -1481,8 +1455,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
@@ -1501,8 +1475,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_post_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .sibling_of = "esp4-decrypt",
 };
@@ -1513,8 +1487,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
@@ -1533,8 +1507,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_post_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .sibling_of = "esp6-decrypt",
 };
@@ -1544,8 +1518,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
     [ESP_DECRYPT_NEXT_DROP] = "ip4-drop",
@@ -1563,8 +1537,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_post_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .sibling_of = "esp4-decrypt-tun",
 };
@@ -1574,8 +1548,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
     [ESP_DECRYPT_NEXT_DROP] = "ip6-drop",
@@ -1593,8 +1567,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_post_node) = {
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
-  .error_strings = esp_decrypt_error_strings,
+  .n_errors = ESP_DECRYPT_N_ERROR,
+  .error_counters = esp_decrypt_error_counters,
 
   .sibling_of = "esp6-decrypt-tun",
 };

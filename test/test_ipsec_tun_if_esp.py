@@ -1842,7 +1842,7 @@ class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
             dst=self.pg1.remote_ip6,
         )
         self.send_and_assert_no_replies(self.tun_if, tx)
-        node_name = "/err/%s/unsupported payload" % self.tun4_decrypt_node_name[0]
+        node_name = "/err/%s/unsup_payload" % self.tun4_decrypt_node_name[0]
         self.assertEqual(1, self.statistics.get_err_counter(node_name))
 
 
@@ -2577,9 +2577,7 @@ class TestIpsec6TunProtect(TemplateIpsec, TemplateIpsec6TunProtect, IpsecTun6):
         # bounce the interface state
         p.tun_if.admin_down()
         self.verify_drop_tun_66(np, count=127)
-        node = (
-            "/err/ipsec6-tun-input/%s" % "ipsec packets received on disabled interface"
-        )
+        node = "/err/ipsec6-tun-input/disabled"
         self.assertEqual(127, self.statistics.get_err_counter(node))
         p.tun_if.admin_up()
         self.verify_tun_66(np, count=127)
