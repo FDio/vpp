@@ -431,14 +431,14 @@ VLIB_NODE_FN (ip4_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                           FIB_MPLS_LSP_MODE_PIPE));
 }
 
-VLIB_REGISTER_NODE(ip4_mpls_label_disposition_pipe_node) = {
-    .name = "ip4-mpls-label-disposition-pipe",
-    .vector_size = sizeof(u32),
+VLIB_REGISTER_NODE (ip4_mpls_label_disposition_pipe_node) = {
+  .name = "ip4-mpls-label-disposition-pipe",
+  .vector_size = sizeof (u32),
 
-    .format_trace = format_mpls_label_disposition_trace,
-    .sibling_of = "ip4-input",
-    .n_errors = IP4_N_ERROR,
-    .error_strings = ip4_error_strings,
+  .format_trace = format_mpls_label_disposition_trace,
+  .sibling_of = "ip4-input",
+  .n_errors = IP4_N_ERROR,
+  .error_counters = ip4_error_counters,
 };
 
 VLIB_NODE_FN (ip6_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
@@ -449,14 +449,14 @@ VLIB_NODE_FN (ip6_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                           FIB_MPLS_LSP_MODE_PIPE));
 }
 
-VLIB_REGISTER_NODE(ip6_mpls_label_disposition_pipe_node) = {
-    .name = "ip6-mpls-label-disposition-pipe",
-    .vector_size = sizeof(u32),
+VLIB_REGISTER_NODE (ip6_mpls_label_disposition_pipe_node) = {
+  .name = "ip6-mpls-label-disposition-pipe",
+  .vector_size = sizeof (u32),
 
-    .format_trace = format_mpls_label_disposition_trace,
-    .sibling_of = "ip6-input",
-    .n_errors = IP6_N_ERROR,
-    .error_strings = ip6_error_strings,
+  .format_trace = format_mpls_label_disposition_trace,
+  .sibling_of = "ip6-input",
+  .n_errors = IP6_N_ERROR,
+  .error_counters = ip6_error_counters,
 };
 
 VLIB_NODE_FN (ip4_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
@@ -467,14 +467,14 @@ VLIB_NODE_FN (ip4_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                           FIB_MPLS_LSP_MODE_UNIFORM));
 }
 
-VLIB_REGISTER_NODE(ip4_mpls_label_disposition_uniform_node) = {
-    .name = "ip4-mpls-label-disposition-uniform",
-    .vector_size = sizeof(u32),
+VLIB_REGISTER_NODE (ip4_mpls_label_disposition_uniform_node) = {
+  .name = "ip4-mpls-label-disposition-uniform",
+  .vector_size = sizeof (u32),
 
-    .format_trace = format_mpls_label_disposition_trace,
-    .sibling_of = "ip4-input",
-    .n_errors = IP4_N_ERROR,
-    .error_strings = ip4_error_strings,
+  .format_trace = format_mpls_label_disposition_trace,
+  .sibling_of = "ip4-input",
+  .n_errors = IP4_N_ERROR,
+  .error_counters = ip4_error_counters,
 };
 
 VLIB_NODE_FN (ip6_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
@@ -485,14 +485,14 @@ VLIB_NODE_FN (ip6_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                           FIB_MPLS_LSP_MODE_UNIFORM));
 }
 
-VLIB_REGISTER_NODE(ip6_mpls_label_disposition_uniform_node) = {
-    .name = "ip6-mpls-label-disposition-uniform",
-    .vector_size = sizeof(u32),
+VLIB_REGISTER_NODE (ip6_mpls_label_disposition_uniform_node) = {
+  .name = "ip6-mpls-label-disposition-uniform",
+  .vector_size = sizeof (u32),
 
-    .format_trace = format_mpls_label_disposition_trace,
-    .sibling_of = "ip6-input",
-    .n_errors = IP6_N_ERROR,
-    .error_strings = ip6_error_strings,
+  .format_trace = format_mpls_label_disposition_trace,
+  .sibling_of = "ip6-input",
+  .n_errors = IP6_N_ERROR,
+  .error_counters = ip6_error_counters,
 };
 
 #ifndef CLIB_MARCH_VARIANT

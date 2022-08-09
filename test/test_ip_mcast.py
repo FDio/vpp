@@ -222,9 +222,7 @@ class TestIPMcast(VppTestCase):
         self.pg0.assert_nothing_captured(
             remark="IP multicast packets forwarded on default route"
         )
-        count = self.statistics.get_err_counter(
-            "/err/ip4-input/Multicast RPF check failed"
-        )
+        count = self.statistics.get_err_counter("/err/ip4-input/rpf_failure")
         self.assertEqual(count, len(tx))
 
         #
@@ -577,9 +575,7 @@ class TestIPMcast(VppTestCase):
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip6(self.pg1, "2002::1", "ff01:2::255")
         self.send_and_assert_no_replies(self.pg1, tx, "RPF miss")
-        count = self.statistics.get_err_counter(
-            "/err/ip6-input/Multicast RPF check failed"
-        )
+        count = self.statistics.get_err_counter("/err/ip6-input/rpf_failure")
         self.assertEqual(count, 2 * len(tx))
 
         #

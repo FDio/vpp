@@ -23,6 +23,7 @@
 #include <vppinfra/vec.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip.api_enum.h>
 #include <vppinfra/fifo.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
@@ -1387,12 +1388,6 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-static char *ip4_full_reass_error_strings[] = {
-#define _(sym, string) string,
-  foreach_ip4_error
-#undef _
-};
-
 VLIB_NODE_FN (ip4_full_reass_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
@@ -1404,8 +1399,8 @@ VLIB_REGISTER_NODE (ip4_full_reass_node) = {
     .name = "ip4-full-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_full_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
-    .error_strings = ip4_full_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_FULL_REASS_N_NEXT,
     .next_nodes =
         {
@@ -1426,8 +1421,8 @@ VLIB_REGISTER_NODE (ip4_local_full_reass_node) = {
     .name = "ip4-local-full-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_full_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
-    .error_strings = ip4_full_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_FULL_REASS_N_NEXT,
     .next_nodes =
         {
@@ -1450,8 +1445,8 @@ VLIB_REGISTER_NODE (ip4_full_reass_node_feature) = {
     .name = "ip4-full-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_full_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
-    .error_strings = ip4_full_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_FULL_REASS_N_NEXT,
     .next_nodes =
         {
@@ -1480,8 +1475,8 @@ VLIB_REGISTER_NODE (ip4_full_reass_node_custom) = {
     .name = "ip4-full-reassembly-custom",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_full_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
-    .error_strings = ip4_full_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_FULL_REASS_N_NEXT,
     .next_nodes =
         {
@@ -1760,13 +1755,12 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 VLIB_REGISTER_NODE (ip4_full_reass_expire_node) = {
-    .function = ip4_full_reass_walk_expired,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "ip4-full-reassembly-expire-walk",
-    .format_trace = format_ip4_full_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_full_reass_error_strings),
-    .error_strings = ip4_full_reass_error_strings,
-
+  .function = ip4_full_reass_walk_expired,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "ip4-full-reassembly-expire-walk",
+  .format_trace = format_ip4_full_reass_trace,
+  .n_errors = IP4_N_ERROR,
+  .error_counters = ip4_error_counters,
 };
 
 static u8 *

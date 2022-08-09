@@ -363,12 +363,6 @@ VLIB_REGISTER_NODE (mpls_midchain_node) = {
   .format_trace = format_mpls_output_trace,
 };
 
-static char *mpls_frag_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ip_frag_error
-#undef _
-};
-
 typedef struct mpls_frag_trace_t_
 {
     u16 pkt_size;
@@ -541,7 +535,7 @@ VLIB_REGISTER_NODE (mpls_frag_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = IP_FRAG_N_ERROR,
-  .error_strings = mpls_frag_error_strings,
+  .error_counters = ip_frag_error_counters,
 
   .n_next_nodes = MPLS_FRAG_N_NEXT,
   .next_nodes = { [MPLS_FRAG_NEXT_REWRITE] = "mpls-output",
