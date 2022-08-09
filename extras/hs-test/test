@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+source vars
+sudo -E go test -buildvcs=false  -v $@
