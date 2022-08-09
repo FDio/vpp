@@ -22,6 +22,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
 #define foreach_ah_encrypt_next \
@@ -37,25 +38,6 @@ typedef enum
 #undef _
     AH_ENCRYPT_N_NEXT,
 } ah_encrypt_next_t;
-
-#define foreach_ah_encrypt_error                                              \
-  _ (RX_PKTS, "AH pkts received")                                             \
-  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")             \
-  _ (SEQ_CYCLED, "sequence number cycled (packet dropped)")
-
-typedef enum
-{
-#define _(sym,str) AH_ENCRYPT_ERROR_##sym,
-  foreach_ah_encrypt_error
-#undef _
-    AH_ENCRYPT_N_ERROR,
-} ah_encrypt_error_t;
-
-static char *ah_encrypt_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ah_encrypt_error
-#undef _
-};
 
 typedef struct
 {
@@ -462,8 +444,8 @@ VLIB_REGISTER_NODE (ah4_encrypt_node) = {
   .format_trace = format_ah_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ah_encrypt_error_strings),
-  .error_strings = ah_encrypt_error_strings,
+  .n_errors = AH_ENCRYPT_N_ERROR,
+  .error_counters = ah_encrypt_error_counters,
 
   .n_next_nodes = AH_ENCRYPT_N_NEXT,
   .next_nodes = {
@@ -488,8 +470,8 @@ VLIB_REGISTER_NODE (ah6_encrypt_node) = {
   .format_trace = format_ah_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ah_encrypt_error_strings),
-  .error_strings = ah_encrypt_error_strings,
+  .n_errors = AH_ENCRYPT_N_ERROR,
+  .error_counters = ah_encrypt_error_counters,
 
   .n_next_nodes = AH_ENCRYPT_N_NEXT,
   .next_nodes = {

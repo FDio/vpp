@@ -23,6 +23,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 
 #define foreach_ah_decrypt_next                 \
   _(DROP, "error-drop")                         \
@@ -37,28 +38,6 @@ typedef enum
 #undef _
     AH_DECRYPT_N_NEXT,
 } ah_decrypt_next_t;
-
-#define foreach_ah_decrypt_error                \
-  _ (RX_PKTS, "AH pkts received")               \
-  _ (DECRYPTION_FAILED, "AH decryption failed") \
-  _ (INTEG_ERROR, "Integrity check failed")     \
-  _ (NO_TAIL_SPACE, "not enough buffer tail space (dropped)")     \
-  _ (DROP_FRAGMENTS, "IP fragments drop")       \
-  _ (REPLAY, "SA replayed packet")
-
-typedef enum
-{
-#define _(sym,str) AH_DECRYPT_ERROR_##sym,
-  foreach_ah_decrypt_error
-#undef _
-    AH_DECRYPT_N_ERROR,
-} ah_decrypt_error_t;
-
-static char *ah_decrypt_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ah_decrypt_error
-#undef _
-};
 
 typedef struct
 {
@@ -443,8 +422,8 @@ VLIB_REGISTER_NODE (ah4_decrypt_node) = {
   .format_trace = format_ah_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ah_decrypt_error_strings),
-  .error_strings = ah_decrypt_error_strings,
+  .n_errors = AH_DECRYPT_N_ERROR,
+  .error_counters = ah_decrypt_error_counters,
 
   .n_next_nodes = AH_DECRYPT_N_NEXT,
   .next_nodes = {
@@ -470,8 +449,8 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
   .format_trace = format_ah_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(ah_decrypt_error_strings),
-  .error_strings = ah_decrypt_error_strings,
+  .n_errors = AH_DECRYPT_N_ERROR,
+  .error_counters = ah_decrypt_error_counters,
 
   .n_next_nodes = AH_DECRYPT_N_NEXT,
   .next_nodes = {
