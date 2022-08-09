@@ -955,12 +955,6 @@ done:
   return frame->n_vectors;
 }
 
-static char *ip4_sv_reass_error_strings[] = {
-#define _(sym, string) string,
-  foreach_ip4_error
-#undef _
-};
-
 VLIB_NODE_FN (ip4_sv_reass_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
@@ -975,8 +969,8 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node) = {
     .name = "ip4-sv-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_sv_reass_error_strings),
-    .error_strings = ip4_sv_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -1002,8 +996,8 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_feature) = {
     .name = "ip4-sv-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_sv_reass_error_strings),
-    .error_strings = ip4_sv_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -1038,8 +1032,8 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
     .name = "ip4-sv-reassembly-output-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_sv_reass_error_strings),
-    .error_strings = ip4_sv_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -1064,8 +1058,8 @@ VLIB_REGISTER_NODE (ip4_sv_reass_custom_node) = {
     .name = "ip4-sv-reassembly-custom-next",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_sv_reass_error_strings),
-    .error_strings = ip4_sv_reass_error_strings,
+    .n_errors = IP4_N_ERROR,
+    .error_counters = ip4_error_counters,
     .n_next_nodes = IP4_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -1313,13 +1307,12 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_expire_node) = {
-    .function = ip4_sv_reass_walk_expired,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "ip4-sv-reassembly-expire-walk",
-    .format_trace = format_ip4_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip4_sv_reass_error_strings),
-    .error_strings = ip4_sv_reass_error_strings,
-
+  .function = ip4_sv_reass_walk_expired,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "ip4-sv-reassembly-expire-walk",
+  .format_trace = format_ip4_sv_reass_trace,
+  .n_errors = IP4_N_ERROR,
+  .error_counters = ip4_error_counters,
 };
 /* *INDENT-ON* */
 

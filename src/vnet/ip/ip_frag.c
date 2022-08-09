@@ -500,12 +500,6 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   return IP_FRAG_ERROR_NONE;
 }
 
-char *ip4_frag_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ip_frag_error
-#undef _
-};
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_frag_node) = {
   .function = ip4_frag,
@@ -515,17 +509,15 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = IP_FRAG_N_ERROR,
-  .error_strings = ip4_frag_error_strings,
+  .error_counters = ip_frag_error_counters,
 
   .n_next_nodes = IP_FRAG_N_NEXT,
-  .next_nodes = {
-    [IP_FRAG_NEXT_IP_REWRITE] = "ip4-rewrite",
-    [IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN] = "ip4-midchain",
-    [IP_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
-    [IP_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
-    [IP_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [IP_FRAG_NEXT_DROP] = "ip4-drop"
-  },
+  .next_nodes = { [IP_FRAG_NEXT_IP_REWRITE] = "ip4-rewrite",
+		  [IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN] = "ip4-midchain",
+		  [IP_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
+		  [IP_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+		  [IP_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+		  [IP_FRAG_NEXT_DROP] = "ip4-drop" },
 };
 /* *INDENT-ON* */
 
@@ -538,17 +530,15 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = IP_FRAG_N_ERROR,
-  .error_strings = ip4_frag_error_strings,
+  .error_counters = ip_frag_error_counters,
 
   .n_next_nodes = IP_FRAG_N_NEXT,
-  .next_nodes = {
-    [IP_FRAG_NEXT_IP_REWRITE] = "ip6-rewrite",
-    [IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN] = "ip6-midchain",
-    [IP_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
-    [IP_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
-    [IP_FRAG_NEXT_ICMP_ERROR] = "error-drop",
-    [IP_FRAG_NEXT_DROP] = "ip6-drop"
-  },
+  .next_nodes = { [IP_FRAG_NEXT_IP_REWRITE] = "ip6-rewrite",
+		  [IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN] = "ip6-midchain",
+		  [IP_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
+		  [IP_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
+		  [IP_FRAG_NEXT_ICMP_ERROR] = "error-drop",
+		  [IP_FRAG_NEXT_DROP] = "ip6-drop" },
 };
 /* *INDENT-ON* */
 

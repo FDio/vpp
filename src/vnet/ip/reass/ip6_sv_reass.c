@@ -763,12 +763,6 @@ ip6_sv_reassembly_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static char *ip6_sv_reassembly_error_strings[] = {
-#define _(sym, string) string,
-  foreach_ip6_error
-#undef _
-};
-
 VLIB_NODE_FN (ip6_sv_reass_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
@@ -781,8 +775,8 @@ VLIB_REGISTER_NODE (ip6_sv_reass_node) = {
     .name = "ip6-sv-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip6_sv_reassembly_error_strings),
-    .error_strings = ip6_sv_reassembly_error_strings,
+    .n_errors = IP6_N_ERROR,
+    .error_counters = ip6_error_counters,
     .n_next_nodes = IP6_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -806,8 +800,8 @@ VLIB_REGISTER_NODE (ip6_sv_reass_node_feature) = {
     .name = "ip6-sv-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_sv_reass_trace,
-    .n_errors = ARRAY_LEN (ip6_sv_reassembly_error_strings),
-    .error_strings = ip6_sv_reassembly_error_strings,
+    .n_errors = IP6_N_ERROR,
+    .error_counters = ip6_error_counters,
     .n_next_nodes = IP6_SV_REASSEMBLY_N_NEXT,
     .next_nodes =
         {
@@ -1060,14 +1054,13 @@ ip6_sv_reass_walk_expired (vlib_main_t *vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reass_expire_node) = {
-    .function = ip6_sv_reass_walk_expired,
-    .format_trace = format_ip6_sv_reass_trace,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "ip6-sv-reassembly-expire-walk",
+  .function = ip6_sv_reass_walk_expired,
+  .format_trace = format_ip6_sv_reass_trace,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "ip6-sv-reassembly-expire-walk",
 
-    .n_errors = ARRAY_LEN (ip6_sv_reassembly_error_strings),
-    .error_strings = ip6_sv_reassembly_error_strings,
-
+  .n_errors = IP6_N_ERROR,
+  .error_counters = ip6_error_counters,
 };
 /* *INDENT-ON* */
 

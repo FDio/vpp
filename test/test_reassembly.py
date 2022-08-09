@@ -235,9 +235,7 @@ class TestIPv4Reassembly(VppTestCase):
     def test_long_fragment_chain(self):
         """long fragment chain"""
 
-        error_cnt_str = (
-            "/err/ip4-full-reassembly-feature/fragment chain too long (drop)"
-        )
+        error_cnt_str = "/err/ip4-full-reassembly-feature/reass_fragment_chain_too_long"
 
         error_cnt = self.statistics.get_err_counter(error_cnt_str)
 
@@ -286,7 +284,7 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         )
         valid_fragments = fragment_rfc791(p, 400)
 
-        counter = "/err/ip4-full-reassembly-feature/malformed packets"
+        counter = "/err/ip4-full-reassembly-feature/reass_malformed_packet"
         error_counter = self.statistics.get_err_counter(counter)
         self.pg_enable_capture()
         self.src_if.add_stream([malformed_packet] + valid_fragments)
@@ -394,7 +392,7 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         # TODO remove above, uncomment below once clearing of counters
         # is supported
         # self.assert_packet_counter_equal(
-        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
+        #     "/err/ip4-full-reassembly-feature/reass_malformed_packet", 1)
 
     def test_random(self):
         """random order reassembly"""
@@ -1394,9 +1392,7 @@ class TestIPv6Reassembly(VppTestCase):
     def test_long_fragment_chain(self):
         """long fragment chain"""
 
-        error_cnt_str = (
-            "/err/ip6-full-reassembly-feature/fragment chain too long (drop)"
-        )
+        error_cnt_str = "/err/ip6-full-reassembly-feature/reass_fragment_chain_too_long"
 
         error_cnt = self.statistics.get_err_counter(error_cnt_str)
 

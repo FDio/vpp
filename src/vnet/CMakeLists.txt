@@ -444,13 +444,11 @@ list(APPEND VNET_HEADERS
   ip/icmp4.h
   ip/icmp6.h
   ip/igmp_packet.h
-  ip/ip4_error.h
   ip/ip4.h
   ip/ip4_mtrie.h
   ip/ip4_inlines.h
   ip/ip4_packet.h
   ip/ip46_address.h
-  ip/ip6_error.h
   ip/ip6.h
   ip/ip6_hop_by_hop.h
   ip/ip6_hop_by_hop_packet.h

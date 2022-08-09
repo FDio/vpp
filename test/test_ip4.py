@@ -1793,9 +1793,7 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
         self.send_and_assert_no_replies(self.pg0, [pkts[0]])
         self.send_and_assert_no_replies(self.pg0, pkts)
 
-        self.assert_error_counter_equal(
-            "/err/ip4-local/ip4 source lookup miss", len(pkts) + 1
-        )
+        self.assert_error_counter_equal("/err/ip4-local/src_lookup_miss", len(pkts) + 1)
 
         # using the same source in different tables, should reject
         # for the table that the source is not present in
@@ -1855,9 +1853,7 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
         self.send_and_assert_no_replies(self.pg0, [pkts[0]])
         self.send_and_assert_no_replies(self.pg0, pkts)
 
-        self.assert_error_counter_equal(
-            "/err/ip6-input/ip6 source lookup miss", len(pkts) + 1
-        )
+        self.assert_error_counter_equal("/err/ip6-input/src_lookup_miss", len(pkts) + 1)
 
         # using the same source in different tables, should reject
         # for the table that the source is not present in

@@ -1148,9 +1148,7 @@ class TestMPLS(VppTestCase):
             self.assertEqual(rx[ICMP].nexthopmtu, 9000 - 4)
 
         self.assertEqual(
-            self.statistics.get_err_counter(
-                "/err/mpls-frag/can't fragment this packet"
-            ),
+            self.statistics.get_err_counter("/err/mpls-frag/dont_fragment_set"),
             len(tx),
         )
         #

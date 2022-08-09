@@ -219,21 +219,13 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-#ifndef CLIB_MARCH_VARIANT
-char *ip6_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ip6_error
-#undef _
-};
-#endif /* CLIB_MARCH_VARIANT */
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_input_node) = {
   .name = "ip6-input",
   .vector_size = sizeof (u32),
 
   .n_errors = IP6_N_ERROR,
-  .error_strings = ip6_error_strings,
+  .error_counters = ip6_error_counters,
 
   .n_next_nodes = IP6_INPUT_N_NEXT,
   .next_nodes = {
