@@ -212,6 +212,108 @@ autoreply define sw_interface_set_mpls_enable
   bool enable [default=true];
 };
 
+counters mpls {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "no error";
+  };
+  unknown_protocol {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown protocol";
+  };
+  unsupported_version {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unsupported version";
+  };
+  pkts_decap {
+    severity info;
+    type counter64;
+    units "packets";
+    description "MPLS input packets decapsulated";
+  };
+  pkts_encap {
+    severity info;
+    type counter64;
+    units "packets";
+    description "MPLS output packets encapsulated";
+  };
+  pkts_need_frag {
+    severity info;
+    type counter64;
+    units "packets";
+    description "MPLS output packets needs fragmentation";
+  };
+  no_label {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS no label for fib/dst";
+  };
+  ttl_expired {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS ttl expired";
+  };
+  s_not_set {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS s-bit not set";
+  };
+  bad_label {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid FIB id in label";
+  };
+  not_ip4 {
+    severity error;
+    type counter64;
+    units "packets";
+    description "non-ip4 packets dropped";
+  };
+  disallowed_fib {
+    severity error;
+    type counter64;
+    units "packets";
+    description "disallowed FIB id";
+  };
+  not_enabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS not enabled";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS DROP DPO";
+  };
+  punt {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS PUNT DPO";
+  };
+};
+
+paths {
+  "/err/mpls-input" "mpls";
+  "/err/mpls-output" "mpls";
+  "/err/mpls-lookup" "mpls";
+  "/err/mpls-midchain" "mpls";
+  "/err/mpls-adj-incomplete" "mpls";
+  "/err/mpls-frag" "mpls";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

@@ -23,14 +23,6 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/adj/adj.h>
 
-typedef enum
-{
-#define mpls_error(n,s) MPLS_ERROR_##n,
-#include <vnet/mpls/error.def>
-#undef mpls_error
-  MPLS_N_ERROR,
-} mpls_error_t;
-
 /**
  * @brief Definition of a callback for receiving MPLS interface state change
  * notifications

@@ -779,7 +779,6 @@ list(APPEND VNET_HEADERS
   mpls/mpls_types.h
   mpls/mpls_tunnel.h
   mpls/packet.h
-  mpls/error.def
 )
 
 list(APPEND VNET_API_FILES mpls/mpls.api)
