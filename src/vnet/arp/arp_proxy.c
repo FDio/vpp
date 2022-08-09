@@ -326,14 +326,14 @@ arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  is_request0 = arp0->opcode
 	    == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
 
-	  error0 = ETHERNET_ARP_ERROR_replies_sent;
+	  error0 = ARP_ERROR_REPLIES_SENT;
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  next0 = ARP_REPLY_NEXT_DROP;
 
 	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 	  if (~0 == fib_index0)
 	    {
-	      error0 = ETHERNET_ARP_ERROR_interface_no_table;
+	      error0 = ARP_ERROR_INTERFACE_NO_TABLE;
 	    }
 
 	  if (0 == error0 && is_request0)
@@ -376,28 +376,28 @@ arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_error_count (vm, node->node_index,
-		    ETHERNET_ARP_ERROR_replies_sent, n_arp_replies_sent);
+  vlib_error_count (vm, node->node_index, ARP_ERROR_REPLIES_SENT,
+		    n_arp_replies_sent);
 
   return frame->n_vectors;
 }
 
-static char *ethernet_arp_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ethernet_arp_error
-#undef _
-};
-
 VLIB_REGISTER_NODE (arp_proxy_node, static) =
 {
-  .function = arp_proxy,.name = "arp-proxy",.vector_size =
-    sizeof (u32),.n_errors = ETHERNET_ARP_N_ERROR,.error_strings =
-    ethernet_arp_error_strings,.n_next_nodes = ARP_REPLY_N_NEXT,.next_nodes =
+  .function = arp_proxy,
+  .name = "arp-proxy",
+  .vector_size = sizeof (u32),
+  .n_errors = ARP_N_ERROR,
+  .error_counters = arp_error_counters,
+  .n_next_nodes = ARP_REPLY_N_NEXT,
+  .next_nodes =
   {
-  [ARP_REPLY_NEXT_DROP] = "error-drop",
-      [ARP_REPLY_NEXT_REPLY_TX] = "interface-output",}
-,.format_buffer = format_ethernet_arp_header,.format_trace =
-    format_ethernet_arp_input_trace,};
+    [ARP_REPLY_NEXT_DROP] = "error-drop",
+    [ARP_REPLY_NEXT_REPLY_TX] = "interface-output",
+  },
+  .format_buffer = format_ethernet_arp_header,
+  .format_trace = format_ethernet_arp_input_trace,
+};
 
 static clib_error_t *
 show_ip4_arp (vlib_main_t * vm,

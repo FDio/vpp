@@ -1761,7 +1761,7 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(
             4,
             self.statistics.get_err_counter(
-                "/err/arp-reply/IP4 destination address not local to subnet"
+                "/err/arp-reply/l3_dst_address_not_local"
             ),
         )
 

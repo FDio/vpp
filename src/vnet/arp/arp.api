@@ -98,3 +98,121 @@ define proxy_arp_intfc_details
   u32 context;
   u32 sw_if_index;
 };
+
+counters arp {
+  replies_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP replies sent";
+  };
+  disabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARP Disabled";
+  };
+  l2_type_not_ethernet {
+    severity error;
+    type counter64;
+    units "packets";
+    description "L2 type not ethernet";
+  };
+  l3_type_not_ip4 {
+    severity error;
+    type counter64;
+    units "packets";
+    description "L3 type not IP4";
+  };
+  l3_src_address_not_local {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP4 source address not local to subnet";
+  };
+  l3_dst_address_not_local {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP4 destination address not local to subnet";
+  };
+  l3_dst_address_unset {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP4 destination address is unset";
+  };
+  l3_src_address_is_local {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP4 source address matches local interface";
+  };
+  l3_src_address_learned {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP request IP4 source address learned";
+  };
+  replies_received {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP replies received";
+  };
+  opcode_not_request {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARP opcode not request";
+  };
+  proxy_arp_replies_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Proxy ARP replies sent";
+  };
+  l2_address_mismatch {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARP hw addr does not match L2 frame src addr";
+  };
+  gratuitous_arp {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARP probe or announcement dropped";
+  };
+  interface_no_table {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Interface is not mapped to an IP table";
+  };
+  interface_not_ip_enabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Interface is not IP enabled";
+  };
+  unnumbered_mismatch {
+    severity error;
+    type counter64;
+    units "packets";
+    description "RX interface is unnumbered to different subnet";
+  };
+};
+
+paths {
+  "/err/arp-reply" "arp";
+  "/err/arp-disabled" "arp";
+  "/err/arp-input" "arp";
+  "/err/arp-proxy" "arp";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
