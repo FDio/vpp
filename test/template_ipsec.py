@@ -330,12 +330,12 @@ class IpsecTra4(object):
     """verify methods for Transport v4"""
 
     def get_replay_counts(self, p):
-        replay_node_name = "/err/%s/SA replayed packet" % self.tra4_decrypt_node_name[0]
+        replay_node_name = "/err/%s/replay" % self.tra4_decrypt_node_name[0]
         count = self.statistics.get_err_counter(replay_node_name)
 
         if p.async_mode:
             replay_post_node_name = (
-                "/err/%s/SA replayed packet" % self.tra4_decrypt_node_name[p.async_mode]
+                "/err/%s/replay" % self.tra4_decrypt_node_name[p.async_mode]
             )
             count += self.statistics.get_err_counter(replay_post_node_name)
 
@@ -344,13 +344,11 @@ class IpsecTra4(object):
     def get_hash_failed_counts(self, p):
         if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
             hash_failed_node_name = (
-                "/err/%s/ESP decryption failed"
-                % self.tra4_decrypt_node_name[p.async_mode]
+                "/err/%s/decryption_failed" % self.tra4_decrypt_node_name[p.async_mode]
             )
         else:
             hash_failed_node_name = (
-                "/err/%s/Integrity check failed"
-                % self.tra4_decrypt_node_name[p.async_mode]
+                "/err/%s/integ_error" % self.tra4_decrypt_node_name[p.async_mode]
             )
         count = self.statistics.get_err_counter(hash_failed_node_name)
 
@@ -365,10 +363,7 @@ class IpsecTra4(object):
         esn_on = p.vpp_tra_sa.esn_en
         ar_on = p.flags & saf.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY
 
-        seq_cycle_node_name = (
-            "/err/%s/sequence number cycled (packet dropped)"
-            % self.tra4_encrypt_node_name
-        )
+        seq_cycle_node_name = "/err/%s/seq_cycled" % self.tra4_encrypt_node_name
         replay_count = self.get_replay_counts(p)
         hash_failed_count = self.get_hash_failed_counts(p)
         seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
@@ -605,18 +600,13 @@ class IpsecTra4(object):
         p = self.params[socket.AF_INET]
         esn_en = p.vpp_tra_sa.esn_en
 
-        seq_cycle_node_name = (
-            "/err/%s/sequence number cycled (packet dropped)"
-            % self.tra4_encrypt_node_name
-        )
+        seq_cycle_node_name = "/err/%s/seq_cycled" % self.tra4_encrypt_node_name
         replay_count = self.get_replay_counts(p)
         hash_failed_count = self.get_hash_failed_counts(p)
         seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
 
         if ESP == self.encryption_type:
-            undersize_node_name = (
-                "/err/%s/undersized packet" % self.tra4_decrypt_node_name[0]
-            )
+            undersize_node_name = "/err/%s/runt" % self.tra4_decrypt_node_name[0]
             undersize_count = self.statistics.get_err_counter(undersize_node_name)
 
         #
@@ -1459,7 +1449,7 @@ class IpsecTun4(object):
         )
         self.send_and_assert_no_replies(self.tun_if, pkt * 31)
         self.assert_error_counter_equal(
-            "/err/%s/NAT Keepalive" % self.tun4_input_node, 31
+            "/err/%s/nat_keepalive" % self.tun4_input_node, 31
         )
 
         pkt = (
@@ -1469,7 +1459,7 @@ class IpsecTun4(object):
             / Raw(b"\xfe")
         )
         self.send_and_assert_no_replies(self.tun_if, pkt * 31)
-        self.assert_error_counter_equal("/err/%s/Too Short" % self.tun4_input_node, 31)
+        self.assert_error_counter_equal("/err/%s/too_short" % self.tun4_input_node, 31)
 
         pkt = (
             Ether(src=self.tun_if.remote_mac, dst=self.tun_if.local_mac)
@@ -1479,7 +1469,7 @@ class IpsecTun4(object):
             / Padding(0 * 21)
         )
         self.send_and_assert_no_replies(self.tun_if, pkt * 31)
-        self.assert_error_counter_equal("/err/%s/Too Short" % self.tun4_input_node, 62)
+        self.assert_error_counter_equal("/err/%s/too_short" % self.tun4_input_node, 62)
 
 
 class IpsecTun4Tests(IpsecTun4):

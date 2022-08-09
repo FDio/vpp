@@ -505,6 +505,274 @@ autoreply define ipsec_set_async_mode {
   bool async_enable;
 };
 
+counters esp_decrypt {
+  rx_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ESP pkts received";
+  };
+  rx_post_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ESP-POST pkts received";
+  };
+  handoff {
+    severity info;
+    type counter64;
+    units "packets";
+    description "hand-off";
+  };
+  decryption_failed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ESP decryption failed";
+  };
+  integ_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "integrity check failed";
+  };
+  crypto_engine_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "crypto engine error (packet dropped)";
+  };
+  replay {
+    severity error;
+    type counter64;
+    units "packets";
+    description "SA replayed packet";
+  };
+  runt {
+    severity error;
+    type counter64;
+    units "packets";
+    description "undersized packet";
+  };
+  no_buffers {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no buffers (packet dropped)";
+  };
+  oversized_header {
+    severity error;
+    type counter64;
+    units "packets";
+    description "buffer with oversized header (dropped)";
+  };
+  no_tail_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no enough buffer tail space (dropped)";
+  };
+  tun_no_proto {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no tunnel protocol";
+  };
+  unsup_payload {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unsupported payload";
+  };
+};
+
+counters esp_encrypt {
+  rx_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ESP pkts received";
+  };
+  post_rx_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ESP-post pkts received";
+  };
+  handoff {
+    severity info;
+    type counter64;
+    units "packets";
+    description "Hand-off";
+  };
+  seq_cycled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "sequence number cycled (packet dropped)";
+  };
+  crypto_engine_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "crypto engine error (packet dropped)";
+  };
+  crypto_queue_full {
+    severity error;
+    type counter64;
+    units "packets";
+    description "crypto queue full (packet dropped)";
+  };
+  no_buffers {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no buffers (packet dropped)";
+  };
+  no_protection {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no protecting SA (packet dropped)";
+  };
+  no_encryption {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no Encrypting SA (packet dropped)";
+  };
+};
+
+counters ah_encrypt {
+  rx_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "AH pkts received";
+  };
+  crypto_engine_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "crypto engine error (packet dropped)";
+  };
+  seq_cycled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "sequence number cycled (packet dropped)";
+  };
+};
+
+counters ah_decrypt {
+  rx_pkts {
+    severity info;
+    type counter64;
+    units "packets";
+    description "AH pkts received";
+  };
+  decryption_failed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "AH decryption failed";
+  };
+  integ_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Integrity check failed";
+  };
+  no_tail_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "not enough buffer tail space (dropped)";
+  };
+  drop_fragments {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP fragments drop";
+  };
+  replay {
+    severity error;
+    type counter64;
+    units "packets";
+    description "SA replayed packet";
+  };
+};
+
+counters ipsec_tun {
+  rx {
+    severity info;
+    type counter64;
+    units "packets";
+    description "good packets received";
+  };
+  disabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ipsec packets received on disabled interface";
+  };
+  no_tunnel {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no matching tunnel";
+  };
+  tunnel_mismatch {
+    severity error;
+    type counter64;
+    units "packets";
+    description "SPI-tunnel mismatch";
+  };
+  nat_keepalive {
+    severity info;
+    type counter64;
+    units "packets";
+    description "NAT Keepalive";
+  };
+  too_short {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Too Short";
+  };
+  spi_0 {
+    severity info;
+    type counter64;
+    units "packets";
+    description "SPI 0";
+  };
+};
+
+paths {
+  "/err/esp4-encrypt" "esp_encrypt";
+  "/err/esp4-encrypt-post" "esp_encrypt";
+  "/err/esp4-encrypt-tun" "esp_encrypt";
+  "/err/esp4-encrypt-tun-post" "esp_encrypt";
+  "/err/esp6-encrypt" "esp_encrypt";
+  "/err/esp6-encrypt-post" "esp_encrypt";
+  "/err/esp6-encrypt-tun" "esp_encrypt";
+  "/err/esp6-encrypt-tun-post" "esp_encrypt";
+  "/err/esp-mpls-encrypt-tun" "esp_encrypt";
+  "/err/esp-mpls-encrypt-tun-post" "esp_encrypt";
+  "/err/esp4-decrypt" "esp_decrypt";
+  "/err/esp4-decrypt-post" "esp_decrypt";
+  "/err/esp4-decrypt-tun" "esp_decrypt";
+  "/err/esp4-decrypt-tun-post" "esp_decrypt";
+  "/err/esp6-decrypt" "esp_decrypt";
+  "/err/esp6-decrypt-post" "esp_decrypt";
+  "/err/esp6-decrypt-tun" "esp_decrypt";
+  "/err/esp6-decrypt-tun-post" "esp_decrypt";
+  "/err/ah4-encrypt" "ah_encrypt";
+  "/err/ah6-encrypt" "ah_encrypt";
+  "/err/ipsec4-tun-input" "ipsec_tun";
+  "/err/ipsec6-tun-input" "ipsec_tun";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
