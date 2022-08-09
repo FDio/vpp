@@ -1,0 +1,19 @@
+FROM ubuntu:20.04
+
+RUN apt-get update \
+ && apt-get install -y openssl libapr1 libnuma1 libsubunit0 \
+    iproute2 libnl-3-dev libnl-route-3-dev python3 iputils-ping  \
+    vim gdb \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY vpp-data/lib/vat2_plugins/ /usr/lib/vat2_plugins/
+COPY vpp-data/lib/vpp_api_test_plugins/ /usr/lib/vpp_api_test_plugins/
+COPY vpp-data/lib/vpp_plugins/ /usr/lib/x86_64-linux-gnu/vpp_plugins/
+COPY vpp-data/bin/* /usr/bin/
+COPY vpp-data/lib/* /usr/lib/
+
+COPY hs-test /hs-test
+
+RUN addgroup vpp
+
+ENTRYPOINT ["tail", "-f", "/dev/null"]
