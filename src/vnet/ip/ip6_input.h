@@ -43,8 +43,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/icmp6.h>
 
-extern char *ip6_error_strings[];
-
 typedef enum
 {
   IP6_INPUT_NEXT_DROP,

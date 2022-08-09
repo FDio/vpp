@@ -374,14 +374,6 @@ VLIB_NODE_FN (ip4_input_no_checksum_node) (vlib_main_t * vm,
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
-#ifndef CLIB_MARCH_VARIANT
-char *ip4_error_strings[] = {
-#define _(sym,string) string,
-  foreach_ip4_error
-#undef _
-};
-#endif
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_node) = {
   .name = "ip4-input",
@@ -389,7 +381,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
   .protocol_hint = VLIB_NODE_PROTO_HINT_IP4,
 
   .n_errors = IP4_N_ERROR,
-  .error_strings = ip4_error_strings,
+  .error_counters = ip4_error_counters,
 
   .n_next_nodes = IP4_INPUT_N_NEXT,
   .next_nodes = {

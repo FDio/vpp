@@ -36,6 +36,7 @@
 #define IP_FRAG_H
 
 #include <vnet/vnet.h>
+#include <vnet/ip/ip.api_enum.h>
 
 #define IP_FRAG_FLAG_IP4_HEADER 0x01	//Encapsulating IPv4 header
 #define IP_FRAG_FLAG_IP6_HEADER 0x02	//Encapsulating IPv6 header
@@ -57,26 +58,7 @@ typedef enum
   IP_FRAG_N_NEXT
 } ip_frag_next_t;
 
-#define foreach_ip_frag_error				\
-  /* Must be first. */					\
- _(NONE, "packet fragmented")				\
- _(SMALL_PACKET, "packet smaller than MTU")             \
- _(FRAGMENT_SENT, "number of sent fragments")           \
- _(CANT_FRAGMENT_HEADER, "can't fragment header")	\
- _(DONT_FRAGMENT_SET, "can't fragment this packet")	\
- _(MALFORMED, "malformed packet")                       \
- _(MEMORY, "could not allocate buffer")                 \
- _(UNKNOWN, "unknown error")
-
-typedef enum
-{
-#define _(sym,str) IP_FRAG_ERROR_##sym,
-  foreach_ip_frag_error
-#undef _
-    IP_FRAG_N_ERROR,
-} ip_frag_error_t;
-
-extern char *ip4_frag_error_strings[];
+typedef vl_counter_ip_frag_enum_t ip_frag_error_t;
 
 void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 mtu,
 			      u8 next_index, u8 flags);

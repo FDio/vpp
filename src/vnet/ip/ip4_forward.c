@@ -1880,7 +1880,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
   .n_errors = IP4_N_ERROR,
-  .error_strings = ip4_error_strings,
+  .error_counters = ip4_error_counters,
   .n_next_nodes = IP_LOCAL_N_NEXT,
   .next_nodes =
   {

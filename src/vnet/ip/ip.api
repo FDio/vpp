@@ -917,6 +917,572 @@ autoreply define ip_path_mtu_replace_end
   u32 context;
 };
 
+counters ip_frag {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packet fragmented";
+  };
+  small_packet {
+    severity error;
+    type counter64;
+    units "packets";
+    description "packet smaller than MTU";
+  };
+  fragment_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "number of sent fragments";
+  };
+  cant_fragment_header {
+    severity error;
+    type counter64;
+    units "packets";
+    description "can't fragment header";
+  };
+  dont_fragment_set {
+    severity error;
+    type counter64;
+    units "packets";
+    description "can't fragment this packet";
+  };
+  malformed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "malformed packet";
+  };
+  memory {
+    severity error;
+    type counter64;
+    units "packets";
+    description "could not allocate buffer";
+  };
+  unknown {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown error";
+  };
+};
+
+counters ip4 {
+  /* Must be first. */
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "valid ip4 packets";
+  };
+
+  /* Errors signalled by ip4-input */
+  too_short {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 length < 20 bytes";
+  };
+  bad_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 length > l2 length";
+  };
+  bad_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad ip4 checksum";
+  };
+  version {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 version != 4";
+  };
+  options {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ip4 options present";
+  };
+  fragment_offset_one {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 fragment offset == 1";
+  };
+  time_expired {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 ttl <= 1";
+  };
+
+  /* Errors signalled by ip4-rewrite. */
+  mtu_exceeded {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 MTU exceeded and DF set";
+  };
+  dst_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 destination lookup miss";
+  };
+  src_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 source lookup miss";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 drop";
+  };
+  punt {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 punt";
+  };
+  same_interface {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 egress interface same as ingress";
+  };
+
+  /* errors signalled by ip4-local. */
+  unknown_protocol {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown ip protocol";
+  };
+  tcp_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad tcp checksum";
+  };
+  udp_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad udp checksum";
+  };
+  udp_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "inconsistent udp/ip lengths";
+  };
+
+  /* spoofed packets in ip4-rewrite-local */
+  spoofed_local_packets {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 spoofed local-address packet drops";
+  };
+
+  /* Errors signalled by ip4-inacl */
+  inacl_table_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "input ACL table-miss drops";
+  };
+  inacl_session_deny {
+    severity error;
+    type counter64;
+    units "packets";
+    description "input ACL session deny drops";
+  };
+
+  /* Errors singalled by ip4-outacl */
+  outacl_table_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "output ACL table-miss drops";
+  };
+  outacl_session_deny {
+    severity error;
+    type counter64;
+    units "packets";
+    description "output ACL session deny drops";
+  };
+
+  /* Errors from mfib-forward */
+  rpf_failure {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Multicast RPF check failed";
+  };
+
+  /* Errors signalled by ip4-reassembly */
+  reass_duplicate_fragment {
+    severity error;
+    type counter64;
+    units "packets";
+    description "duplicate/overlapping fragments";
+  };
+  reass_limit_reached {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drops due to concurrent reassemblies limit";
+  };
+  reass_fragment_chain_too_long {
+    severity error;
+    type counter64;
+    units "packets";
+    description "fragment chain too long (drop)";
+  };
+  reass_no_buf {
+    severity error;
+    type counter64;
+    units "packets";
+    description "out of buffers (drop)";
+  };
+  reass_malformed_packet {
+    severity error;
+    type counter64;
+    units "packets";
+    description "malformed packets";
+  };
+  reass_internal_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drops due to internal reassembly error";
+  };
+  reass_timeout {
+    severity error;
+    type counter64;
+    units "packets";
+    description "fragments dropped due to reassembly timeout";
+  };
+  reass_to_custom_app {
+    severity error;
+    type counter64;
+    units "packets";
+    description "send to custom drop app";
+  };
+  reass_success {
+    severity info;
+    type counter64;
+    units "packets";
+    description "successful reassemblies";
+  };
+  reass_fragments_reassembled {
+    severity info;
+    type counter64;
+    units "packets";
+    description "fragments reassembled";
+  };
+  reass_fragments_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "fragments received";
+  };
+  reass_unsupp_ip_prot {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unsupported ip protocol";
+  };
+};
+
+/**
+ * IPv6 Error/info counters
+ */
+counters ip6 {
+  /* Must be first. */
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "valid ip6 packets";
+  };
+
+  /* Errors signalled by ip6-input */
+  too_short {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 length < 40 bytes";
+  };
+  bad_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 length > l2 length";
+  };
+  version {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 version != 6";
+  };
+  time_expired {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 ttl <= 1";
+  };
+
+  /* Errors signalled by ip6-rewrite. */
+  mtu_exceeded {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 MTU exceeded";
+  };
+  dst_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 destination lookup miss";
+  };
+  src_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 source lookup miss";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 drop";
+  };
+  punt {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 punt";
+  };
+
+  /* errors signalled by ip6-local. */
+  unknown_protocol {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown ip protocol";
+  };
+  udp_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad udp checksum";
+  };
+  icmp_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad icmp checksum";
+  };
+  udp_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "inconsistent udp/ip lengths";
+  };
+  /* Errors signalled by udp6-lookup. */
+  unknown_udp_port {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no listener for udp port";
+  };
+
+  /* spoofed packets in ip6-rewrite-local */
+  spoofed_local_packets {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 spoofed local-address packet drops";
+  };
+
+  /* Errors signalled by ip6-inacl */
+  inacl_table_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "input ACL table-miss drops";
+  };
+  inacl_session_deny {
+    severity error;
+    type counter64;
+    units "packets";
+    description "input ACL session deny drops";
+  };
+
+  /* Errors singalled by ip6-outacl */
+  outacl_table_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "output ACL table-miss drops";
+  };
+  outacl_session_deny {
+    severity error;
+    type counter64;
+    units "packets";
+    description "output ACL session deny drops";
+  };
+
+  /* Errors from mfib-forward */
+  rpf_failure {
+    severity error;
+    type counter64;
+    units "packets";
+    description "Multicast RPF check failed";
+  };
+
+  /* Errors signalled by ip6-reassembly */
+  reass_missing_upper {
+    severity error;
+    type counter64;
+    units "packets";
+    description "missing-upper layer drops";
+  };
+  reass_duplicate_fragment {
+    severity error;
+    type counter64;
+    units "packets";
+    description "duplicate fragments";
+  };
+  reass_overlapping_fragment {
+    severity error;
+    type counter64;
+    units "packets";
+    description "overlapping fragments";
+  };
+  reass_limit_reached {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drops due to concurrent reassemblies limit";
+  };
+  reass_fragment_chain_too_long {
+    severity error;
+    type counter64;
+    units "packets";
+    description "fragment chain too long (drop)";
+  };
+  reass_no_buf {
+    severity error;
+    type counter64;
+    units "packets";
+    description "out of buffers (drop)";
+  };
+  reass_timeout {
+    severity error;
+    type counter64;
+    units "packets";
+    description "fragments dropped due to reassembly timeout";
+  };
+  reass_internal_error {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drops due to internal reassembly error";
+  };
+  reass_invalid_frag_len {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid fragment length";
+  };
+  reass_to_custom_app {
+    severity error;
+    type counter64;
+    units "packets";
+    description "send to custom drop app";
+  };
+  reass_no_frag_hdr {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no fragmentation header";
+  };
+  reass_invalid_frag_size {
+    severity error;
+    type counter64;
+    units "packets";
+    description "drop due to invalid fragment size";
+  };
+  reass_success {
+    severity info;
+    type counter64;
+    units "packets";
+    description "successful reassemblies";
+  };
+  reass_fragments_reassembled {
+    severity info;
+    type counter64;
+    units "packets";
+    description "fragments reassembled";
+  };
+  reass_fragments_rcvd {
+    severity info;
+    type counter64;
+    units "packets";
+    description "fragments received";
+  };
+  reass_unsupp_ip_proto {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unsupported ip protocol";
+  };
+};
+
+paths {
+  "/err/ip-frag" "ip_frag";
+  "/err/mpls-frag" "ip_frag";
+  "/err/ip4-mpls-label-disposition-pipe" "ip4";
+  "/err/ip4-mpls-label-disposition-uniform" "ip4";
+  "/err/ip4-local" "ip4";
+  "/err/ip4-input" "ip4";
+  "/err/ip4-full-reassembly" "ip4";
+  "/err/ip4-local-full-reassembly" "ip4";
+  "/err/ip4-full-reassembly-feature" "ip4";
+  "/err/ip4-full-reassembly-custom" "ip4";
+  "/err/ip4-full-reassembly-expire-walk" "ip4";
+  "/err/ip4-sv-reassembly" "ip4";
+  "/err/ip4-sv-reassembly-feature" "ip4";
+  "/err/ip4-sv-reassembly-output-feature" "ip4";
+  "/err/ip4-sv-reassembly-custom-next" "ip4";
+  "/err/ip4-sv-reassembly-expire-walk" "ip4";
+  "/err/ip6-mpls-label-disposition-pipe" "ip6";
+  "/err/ip6-mpls-label-disposition-uniform" "ip6";
+  "/err/ip6-local" "ip6";
+  "/err/ip6-input" "ip6";
+  "/err/ip6-full-reassembly" "ip6";
+  "/err/ip6-local-full-reassembly" "ip6";
+  "/err/ip6-full-reassembly-feature" "ip6";
+  "/err/ip6-full-reassembly-custom" "ip6";
+  "/err/ip6-full-reassembly-expire-walk" "ip6";
+  "/err/ip6-sv-reassembly" "ip6";
+  "/err/ip6-sv-reassembly-feature" "ip6";
+  "/err/ip6-sv-reassembly-output-feature" "ip6";
+  "/err/ip6-sv-reassembly-custom-next" "ip6";
+  "/err/ip6-sv-reassembly-expire-walk" "ip6";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

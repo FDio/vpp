@@ -1319,7 +1319,7 @@ ip6_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vlib_prefetch_buffer_data (b[3], LOAD);
 	}
 
-      ip6_error_t error[2];
+      vl_counter_ip6_enum_t error[2];
       error[0] = IP6_ERROR_UNKNOWN_PROTOCOL;
       error[1] = IP6_ERROR_UNKNOWN_PROTOCOL;
 
@@ -1671,6 +1671,8 @@ VLIB_REGISTER_NODE (ip6_local_node) =
   .name = "ip6-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
+  .n_errors = IP6_N_ERROR,
+  .error_counters = ip6_error_counters,
   .n_next_nodes = IP_LOCAL_N_NEXT,
   .next_nodes =
   {
@@ -2242,19 +2244,20 @@ VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_midchain_node) =
-{
+VLIB_REGISTER_NODE (ip6_midchain_node) = {
   .name = "ip6-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
   .sibling_of = "ip6-rewrite",
-  };
+};
 
 VLIB_REGISTER_NODE (ip6_rewrite_node) =
 {
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
+  .n_errors = IP6_N_ERROR,
+  .error_counters = ip6_error_counters,
   .n_next_nodes = IP6_REWRITE_N_NEXT,
   .next_nodes =
   {
