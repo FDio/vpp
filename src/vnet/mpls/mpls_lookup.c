@@ -20,6 +20,7 @@
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/replicate_dpo.h>
+#include <vnet/mpls/mpls.api_enum.h>
 
 /**
  * The arc/edge from the MPLS lookup node to the MPLS replicate node
@@ -454,18 +455,12 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char * mpls_error_strings[] = {
-#define mpls_error(n,s) s,
-#include "error.def"
-#undef mpls_error
-};
-
 VLIB_REGISTER_NODE (mpls_lookup_node) = {
   .name = "mpls-lookup",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = MPLS_N_ERROR,
-  .error_strings = mpls_error_strings,
+  .error_counters = mpls_error_counters,
 
   .sibling_of = "mpls-load-balance",
 

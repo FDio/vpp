@@ -19,6 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/feature/feature.h>
+#include <vnet/mpls/mpls.api_enum.h>
 
 typedef struct {
   u32 next_index;
@@ -236,12 +237,6 @@ VLIB_NODE_FN (mpls_input_node) (vlib_main_t * vm,
   return mpls_input_inline (vm, node, from_frame);
 }
 
-static char * mpls_error_strings[] = {
-#define mpls_error(n,s) s,
-#include "error.def"
-#undef mpls_error
-};
-
 VLIB_REGISTER_NODE (mpls_input_node) = {
   .name = "mpls-input",
   /* Takes a vector of packets. */
@@ -250,7 +245,7 @@ VLIB_REGISTER_NODE (mpls_input_node) = {
   .runtime_data_bytes = sizeof(mpls_input_runtime_t),
 
   .n_errors = MPLS_N_ERROR,
-  .error_strings = mpls_error_strings,
+  .error_counters = mpls_error_counters,
 
   .n_next_nodes = MPLS_INPUT_N_NEXT,
   .next_nodes = {

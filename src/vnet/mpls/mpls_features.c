@@ -16,6 +16,7 @@
  */
 
 #include <vnet/mpls/mpls.h>
+#include <vnet/mpls/mpls.api_enum.h>
 
 static u8 *
 format_mpls_drop_trace (u8 * s, va_list * args)
