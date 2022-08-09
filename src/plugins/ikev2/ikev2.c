@@ -1463,6 +1463,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey = sa->rekey;
       if (vec_len (rekey) == 0)
 	goto cleanup_and_exit;
+      rekey->notify_type = 0;
       rekey->protocol_id = proposal->protocol_id;
       rekey->i_proposal =
 	ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
@@ -1491,22 +1492,34 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	      goto cleanup_and_exit;
 	    }
 	  vec_add2 (sa->rekey, rekey, 1);
+	  rekey->notify_type = 0;
 	  rekey->protocol_id = n->protocol_id;
 	  rekey->spi = n->spi;
-	  rekey->i_proposal = proposal;
-	  rekey->r_proposal =
-	    ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
-	  /* update Ni */
-	  vec_reset_length (sa->i_nonce);
-	  vec_add (sa->i_nonce, nonce, nonce_len);
-	  /* generate new Nr */
-	  vec_validate (sa->r_nonce, nonce_len - 1);
-	  RAND_bytes ((u8 *) sa->r_nonce, nonce_len);
+	  if (sa->old_remote_id_present)
+	    {
+	      rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
+	      vec_free (proposal);
+	      vec_free (tsr);
+	      vec_free (tsi);
+	    }
+	  else
+	    {
+	      rekey->i_proposal = proposal;
+	      rekey->r_proposal =
+		ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
+	      /* update Ni */
+	      vec_reset_length (sa->i_nonce);
+	      vec_add (sa->i_nonce, nonce, nonce_len);
+	      /* generate new Nr */
+	      vec_validate (sa->r_nonce, nonce_len - 1);
+	      RAND_bytes ((u8 *) sa->r_nonce, nonce_len);
+	    }
 	}
       else
 	{
 	  /* create new child SA */
 	  vec_add2 (sa->new_child, rekey, 1);
+	  rekey->notify_type = 0;
 	  rekey->i_proposal = proposal;
 	  rekey->r_proposal =
 	    ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
@@ -2555,10 +2568,17 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	}
       else if (vec_len (sa->rekey) > 0)
 	{
-	  ikev2_payload_add_sa (chain, sa->rekey[0].r_proposal);
-	  ikev2_payload_add_nonce (chain, sa->r_nonce);
-	  ikev2_payload_add_ts (chain, sa->rekey[0].tsi, IKEV2_PAYLOAD_TSI);
-	  ikev2_payload_add_ts (chain, sa->rekey[0].tsr, IKEV2_PAYLOAD_TSR);
+	  if (sa->rekey[0].notify_type)
+	    ikev2_payload_add_notify (chain, sa->rekey[0].notify_type, 0);
+	  else
+	    {
+	      ikev2_payload_add_sa (chain, sa->rekey[0].r_proposal);
+	      ikev2_payload_add_nonce (chain, sa->r_nonce);
+	      ikev2_payload_add_ts (chain, sa->rekey[0].tsi,
+				    IKEV2_PAYLOAD_TSI);
+	      ikev2_payload_add_ts (chain, sa->rekey[0].tsr,
+				    IKEV2_PAYLOAD_TSR);
+	    }
 	  vec_del1 (sa->rekey, 0);
 	}
       else if (vec_len (sa->new_child) > 0)
@@ -3320,7 +3340,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      if (sa0->rekey)
 		{
-		  if (sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
+		  if (!sa0->rekey[0].notify_type &&
+		      sa0->rekey[0].protocol_id != IKEV2_PROTOCOL_IKE)
 		    {
 		      if (sa0->childs)
 			ikev2_sa_free_all_child_sa (&sa0->childs);
