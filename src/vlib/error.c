@@ -231,6 +231,23 @@ done:
 }
 
 uword
+unformat_vl_counter_severity (unformat_input_t *input, va_list *args)
+{
+  u32 *result = va_arg (*args, u32 *);
+  vl_counter_severity_e e = VL_COUNTER_SEVERITY_ERROR;
+
+  if (0)
+    ;
+#define _(a, b) else if (unformat (input, b)) e = VL_COUNTER_SEVERITY_##a;
+  foreach_vl_counter_severity
+#undef _
+    else return 0;
+
+  *result = e;
+  return 1;
+}
+
+uword
 unformat_vlib_error (unformat_input_t *input, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
@@ -261,38 +278,33 @@ unformat_vlib_error (unformat_input_t *input, va_list *args)
   return 0;
 }
 
-static char *
-sev2str (enum vl_counter_severity_e s)
+u8 *
+format_vl_counter_severity (u8 *s, va_list *ap)
 {
-  switch (s)
+  vl_counter_severity_e e = va_arg (*ap, vl_counter_severity_e);
+
+  switch (e)
     {
-    case VL_COUNTER_SEVERITY_ERROR:
-      return "error";
-    case VL_COUNTER_SEVERITY_WARN:
-      return "warn";
-    case VL_COUNTER_SEVERITY_INFO:
-      return "info";
-    default:
-      return "unknown";
+#define _(a, b)                                                               \
+  case VL_COUNTER_SEVERITY_##a:                                               \
+    return format (s, "%s", b);
+      foreach_vl_counter_severity
+#undef _
     }
+  return (format (s, "unknown"));
 }
 
 static clib_error_t *
-show_errors (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_counters_internal (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd,
+			     vl_counter_severity_e sev, int verbose)
 {
   vlib_error_main_t *em = &vm->error_main;
   vlib_node_t *n;
   u32 code, i, ni;
   u64 c;
   int index = 0;
-  int verbose = 0;
   u64 *sums = 0;
-
-  if (unformat (input, "verbose %d", &verbose))
-    ;
-  else if (unformat (input, "verbose"))
-    verbose = 1;
 
   vec_validate (sums, vec_len (em->counters));
 
@@ -325,14 +337,19 @@ show_errors (vlib_main_t * vm,
 	      if (c == 0 && verbose < 2)
 		continue;
 
+	      if (sev <= em->counters_heap[i].severity)
+		continue;
+
 	      if (verbose)
-		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s%=6d", c, n->name,
+		vlib_cli_output (vm, "%10lu%=35v%=35s%=10U%=6d", c, n->name,
 				 em->counters_heap[i].desc,
-				 sev2str (em->counters_heap[i].severity), i);
+				 format_vl_counter_severity,
+				 em->counters_heap[i].severity, i);
 	      else
-		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s", c, n->name,
+		vlib_cli_output (vm, "%10lu%=35v%=35s%=10U", c, n->name,
 				 em->counters_heap[i].desc,
-				 sev2str (em->counters_heap[i].severity));
+				 format_vl_counter_severity,
+				 em->counters_heap[i].severity);
 	    }
 	}
       index++;
@@ -361,6 +378,39 @@ show_errors (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+show_errors (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  int verbose = 0;
+
+  if (unformat (input, "verbose %d", &verbose))
+    ;
+  else if (unformat (input, "verbose"))
+    verbose = 1;
+
+  return (show_node_counters_internal (vm, input, cmd,
+				       VL_COUNTER_SEVERITY_ERROR, verbose));
+}
+
+static clib_error_t *
+show_node_counters (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
+{
+  vl_counter_severity_e sev = VL_COUNTER_SEVERITY_INFO;
+  int verbose = 0;
+
+  if (unformat (input, "verbose %d", &verbose))
+    ;
+  else if (unformat (input, "severity %U", unformat_vl_counter_severity, &sev))
+    ;
+  else if (unformat (input, "sev %U", unformat_vl_counter_severity, &sev))
+    ;
+  else if (unformat (input, "verbose"))
+    verbose = 1;
+
+  return (show_node_counters_internal (vm, input, cmd, sev, verbose));
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_errors) = {
   .path = "show errors",
@@ -372,8 +422,8 @@ VLIB_CLI_COMMAND (vlib_cli_show_errors) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_node_counters, static) = {
   .path = "show node counters",
-  .short_help = "Show node counters",
-  .function = show_errors,
+  .short_help = "show node counters [severity <error|warn|info>]",
+  .function = show_node_counters,
 };
 /* *INDENT-ON* */
 
