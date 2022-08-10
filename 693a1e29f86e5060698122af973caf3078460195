@@ -33,6 +33,24 @@
       "message": "Can we keep is_rekey as a boolean, but add sa_count as a parameter too?\nI am not fond of this is_rekey % 2 magic to be honest",
       "revId": "693a1e29f86e5060698122af973caf3078460195",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e39ab3a9_bd222e8d",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 2660
+      },
+      "writtenOn": "2022-08-10T02:51:55Z",
+      "side": 1,
+      "message": "Thank you for the review, Benoît.\nI added sa_count as a parameter and keep the logic around is_rekey.",
+      "parentUuid": "8e7eb91a_a19822cc",
+      "revId": "693a1e29f86e5060698122af973caf3078460195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
