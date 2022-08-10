@@ -7,14 +7,12 @@ import importlib
 import argparse
 
 
-def discover_tests(directory, callback, ignore_path):
+def discover_tests(directory, callback):
     do_insert = True
     for _f in os.listdir(directory):
         f = "%s/%s" % (directory, _f)
         if os.path.isdir(f):
-            if ignore_path is not None and f.startswith(ignore_path):
-                continue
-            discover_tests(f, callback, ignore_path)
+            discover_tests(f, callback)
             continue
         if not os.path.isfile(f):
             continue

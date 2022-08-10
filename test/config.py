@@ -395,7 +395,7 @@ config.test_src_dir = test_dirs
 
 
 if config.venv_dir is None:
-    config.venv_dir = f"{ws}/test/venv"
+    config.venv_dir = f"{ws}/build-root/test/venv"
 
 if config.failed_dir is None:
     config.failed_dir = f"{config.tmp_dir}"

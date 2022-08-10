@@ -18,10 +18,10 @@
 /build-root/rpmbuild/
 /build-root/test-doc/
 /build-root/test-cov/
+/build-root/test/
 /test/run/
 /test/build/
 /test/coverage/
-/test/venv/
 /test/vapi_test/
 /test/doc/build/
 /build-config.mk
