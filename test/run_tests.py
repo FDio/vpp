@@ -947,11 +947,10 @@ if __name__ == "__main__":
 
     filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
 
-    ignore_path = config.venv_dir
     cb = SplitToSuitesCallback(filter_cb)
     for d in config.test_src_dir:
         print("Adding tests from directory tree %s" % d)
-        discover_tests(d, cb, ignore_path)
+        discover_tests(d, cb)
 
     # suites are not hashable, need to use list
     suites = []

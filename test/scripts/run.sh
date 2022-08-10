@@ -55,7 +55,7 @@ fi
 
 if [ -z "$venv_dir" ]
 then
-	venv_dir="$ws_dir/test/venv"
+	venv_dir="$ws_dir/build-root/test/venv"
 	echo "Argument --venv-path not specified, defaulting to '$venv_dir'"
 	extra_args="$extra_args --venv-dir=$venv_dir"
 fi
