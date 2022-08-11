@@ -43,10 +43,12 @@ endif
 DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	bus/dpaa,							\
 	bus/ifpga,							\
+	common/cnxk,						\
 	compress/isal,						\
 	compress/octeontx,					\
 	compress/zlib,						\
 	crypto/ccp,							\
+	crypto/cnxk,						\
 	crypto/dpaa_sec,					\
 	crypto/openssl,						\
 	crypto/aesni_mb,						\
@@ -56,9 +58,11 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	crypto/zuc,						\
 	event/\*,							\
 	mempool/dpaa,						\
+	mempool/cnxk,						\
 	net/af_packet,						\
 	net/bnx2x,							\
 	net/bonding,						\
+	net/cnxk,							\
 	net/ipn3ke,							\
 	net/liquidio,						\
 	net/pcap,							\
@@ -74,6 +78,7 @@ DPDK_LIBS_DISABLED := acl,				\
 	bitratestats,						\
 	bpf,								\
 	cfgfile,							\
+	cnxk,							\
 	distributor,						\
 	efd,								\
 	fib,								\
