@@ -1,0 +1,159 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f7ed84f_d1df1865",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "Quick first review",
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c23f5be_a0e4913c",
+        "filename": "extras/hs-test/go.mod",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "update :-)",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 30
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "697ed7f4_82a83ba5",
+        "filename": "extras/hs-test/hstf_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "Can we remove this?",
+      "range": {
+        "startLine": 14,
+        "startChar": 1,
+        "endLine": 14,
+        "endChar": 50
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "46cb72a1_6dbd9728",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "NetDevConfig?",
+      "range": {
+        "startLine": 14,
+        "startChar": 5,
+        "endLine": 14,
+        "endChar": 9
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39c06720_c061de98",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "Maybe use Item/NetDecConfig here?",
+      "range": {
+        "startLine": 21,
+        "startChar": 11,
+        "endLine": 21,
+        "endChar": 22
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0093aad3_22141613",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "NetDev",
+      "range": {
+        "startLine": 24,
+        "startChar": 5,
+        "endLine": 24,
+        "endChar": 11
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a416960_bb4c8128",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-08-11T19:50:28Z",
+      "side": 1,
+      "message": "Can we add configure function to NetDev struct and use a factory to generate NetDev objects based on NetDevConfig type and ask them to configure themselves. \n\nAlso, maybe move Add* functions to a net util package?",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 1
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
