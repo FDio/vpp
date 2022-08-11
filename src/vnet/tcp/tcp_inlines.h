@@ -237,10 +237,6 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   tcp_header_t *tcp;
   u8 result = 0;
 
-  /* Set the sw_if_index[VLIB_RX] to the interface we received
-   * the connection on (the local interface) */
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->ip.rx_sw_if_index;
-
   if (is_ip4)
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b);
@@ -297,7 +293,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	    {
 	      ip6_main_t *im = &ip6_main;
 	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
-				   vnet_buffer (b)->sw_if_index[VLIB_RX]);
+				   vnet_buffer (b)->ip.rx_sw_if_index);
 	    }
 
 	  tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
@@ -307,6 +303,10 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 					      thread_index, &result);
 	}
     }
+
+  /* Set the sw_if_index[VLIB_RX] to the interface we received
+   * the connection on (the local interface) */
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->ip.rx_sw_if_index;
 
   if (is_nolookup)
     tc =
