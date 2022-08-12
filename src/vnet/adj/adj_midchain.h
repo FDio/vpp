@@ -160,6 +160,11 @@ extern void adj_midchain_delegate_restack(adj_index_t ai);
  */
 extern void adj_midchain_delegate_unstack(adj_index_t ai);
 
+/**
+ * @brief remove a midchain delegate (this stacks it on a drop)
+ */
+extern void adj_midchain_delegate_remove (adj_index_t ai);
+
 extern u8 adj_is_midchain (adj_index_t ai);
 
 #endif
