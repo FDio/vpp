@@ -366,6 +366,7 @@ vcl_bapi_send_attach (void)
     vcm->cfg.preallocated_fifo_pairs;
   bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
   bmp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
+  bmp->options[APP_OPTIONS_SEGMENT_PROPS] = vcm->cfg.huge_page;
   if (nsid_len)
     {
       vl_api_vec_to_api_string (vcm->cfg.namespace_id, &bmp->namespace_id);
