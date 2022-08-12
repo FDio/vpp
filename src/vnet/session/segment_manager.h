@@ -40,6 +40,7 @@ typedef struct _segment_manager_props
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
+  u8 huge_page;				/**< use hugepage */
 } segment_manager_props_t;
 
 typedef enum seg_manager_flag_
