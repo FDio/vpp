@@ -133,6 +133,8 @@ hss_session_send_data (hss_url_handler_args_t *args)
   hss_session_t *hs;
 
   hs = hss_session_get (args->sh.thread_index, args->sh.session_index);
+  if (!hs)
+    return;
 
   if (hs->data && hs->free_data)
     vec_free (hs->data);
