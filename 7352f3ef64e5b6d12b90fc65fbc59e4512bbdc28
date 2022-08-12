@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed8d2772_e0137a96",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-08-12T06:09:07Z",
+      "side": 1,
+      "message": "Sorry, Folorin, the last code committed didn\u0027t be fully tested Yesterday. I have to commit again",
+      "revId": "7352f3ef64e5b6d12b90fc65fbc59e4512bbdc28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
