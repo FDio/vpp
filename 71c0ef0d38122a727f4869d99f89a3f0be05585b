@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a637fb06_73fd7c33",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-12T02:42:19Z",
+      "side": 1,
+      "message": "Upon further testing with Ubuntu 22.04.1, it does not appear that this is required.\nPlease remove this and update the commit message to only submit the spell check fix.",
+      "range": {
+        "startLine": 58,
+        "startChar": 2,
+        "endLine": 61,
+        "endChar": 9
+      },
+      "revId": "71c0ef0d38122a727f4869d99f89a3f0be05585b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
