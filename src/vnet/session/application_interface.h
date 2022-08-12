@@ -232,7 +232,8 @@ typedef enum
   _ (USE_GLOBAL_SCOPE, "App can use global session scope")                    \
   _ (USE_LOCAL_SCOPE, "App can use local session scope")                      \
   _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")                        \
-  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")
+  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")                     \
+  _ (USE_HUGE_PAGE, "Use huge page for FIFO")
 
 typedef enum _app_options
 {
@@ -824,7 +825,7 @@ typedef enum app_sapi_msg_type
 typedef struct app_sapi_attach_msg_
 {
   u8 name[64];
-  u64 options[18];
+  u64 options[19];
 } __clib_packed app_sapi_attach_msg_t;
 
 STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
