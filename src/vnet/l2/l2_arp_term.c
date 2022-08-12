@@ -25,6 +25,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/icmp6.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/ip/ip.api_enum.h>
 #include <vnet/ip/format.h>
 #include <vnet/ethernet/arp_packet.h>
 
