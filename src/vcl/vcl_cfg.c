@@ -416,6 +416,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured app_scope_global (%d)",
 			getpid (), vcl_cfg->app_scope_global);
 	    }
+	  else if (unformat (line_input, "huge_page"))
+	    {
+	      vcl_cfg->huge_page = 1;
+	      VCFG_DBG (0, "VCL<%d>: configured huge_page (%d)", getpid (),
+			vcl_cfg->huge_page);
+	    }
 	  else if (unformat (line_input, "namespace-secret %lu",
 			     &vcl_cfg->namespace_secret))
 	    {
@@ -576,6 +582,15 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       VCFG_DBG (0, "VCL<%d>: configured app_scope_global (%u) from "
 		VPPCOM_ENV_APP_SCOPE_GLOBAL "!", getpid (),
 		vcm->cfg.app_scope_global);
+    }
+  if (getenv (VPPCOM_ENV_APP_HUGE_PAGE))
+    {
+      vcm->cfg.huge_page = 1;
+      VCFG_DBG (
+	0,
+	"VCL<%d>: configured app huge page (%u) from " VPPCOM_ENV_APP_HUGE_PAGE
+	"!",
+	getpid (), vcm->cfg.huge_page);
     }
   env_var_str = getenv (VPPCOM_ENV_VPP_API_SOCKET);
   if (env_var_str)
