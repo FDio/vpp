@@ -127,12 +127,6 @@ format_icmp6_input_trace (u8 * s, va_list * va)
   return s;
 }
 
-static char *icmp_error_strings[] = {
-#define _(f,s) s,
-  foreach_icmp6_error
-#undef _
-};
-
 typedef enum
 {
   ICMP_INPUT_NEXT_PUNT,
@@ -250,8 +244,8 @@ VLIB_REGISTER_NODE (ip6_icmp_input_node) = {
 
   .format_trace = format_icmp6_input_trace,
 
-  .n_errors = ARRAY_LEN (icmp_error_strings),
-  .error_strings = icmp_error_strings,
+  .n_errors = ICMP6_N_ERROR,
+  .error_counters = icmp6_error_counters,
 
   .n_next_nodes = 1,
   .next_nodes = {
@@ -439,8 +433,8 @@ VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
   .name = "ip6-icmp-error",
   .vector_size = sizeof (u32),
 
-  .n_errors = ARRAY_LEN (icmp_error_strings),
-  .error_strings = icmp_error_strings,
+  .n_errors = ICMP6_N_ERROR,
+  .error_counters = icmp6_error_counters,
 
   .n_next_nodes = IP6_ICMP_ERROR_N_NEXT,
   .next_nodes = {

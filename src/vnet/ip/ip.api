@@ -1450,6 +1450,240 @@ counters ip6 {
   };
 };
 
+counters icmp4 {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "valid packets";
+  };
+  unknown_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown type";
+  };
+  invalid_code_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid code for type";
+  };
+  invalid_hop_limit_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "hop_limit != 255";
+  };
+  length_too_small_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "payload length too small for type";
+  };
+  options_with_odd_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "total option length not multiple of 8 bytes";
+  };
+  option_with_zero_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "option has zero length";
+  };
+  echo_replies_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "echo replies sent";
+  };
+  dst_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "icmp6 dst address lookup misses";
+  };
+  dest_unreach_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "destination unreachable response sent";
+  };
+  ttl_expire_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "hop limit exceeded response sent";
+  };
+  param_problem_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "parameter problem response sent";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "error message dropped";
+  };
+};
+
+counters icmp6 {
+  none {
+    severity info;
+    type counter64;
+    units "packets";
+    description "valid packets";
+  };
+  unknown_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown type";
+  };
+  invalid_code_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid code for type";
+  };
+  invalid_hop_limit_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "hop_limit != 255";
+  };
+  length_too_small_for_type {
+    severity error;
+    type counter64;
+    units "packets";
+    description "payload length too small for type";
+  };
+  options_with_odd_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "total option length not multiple of 8 bytes";
+  };
+  option_with_zero_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "option has zero length";
+  };
+  echo_replies_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "echo replies sent";
+  };
+  neighbor_solicitation_source_not_on_link {
+    severity error;
+    type counter64;
+    units "packets";
+    description "neighbor solicitations from source not on link";
+  };
+  neighbor_solicitation_source_unknown {
+    severity error;
+    type counter64;
+    units "packets";
+    description "neighbor solicitations for unknown targets";
+  };
+  neighbor_advertisements_tx {
+    severity info;
+    type counter64;
+    units "packets";
+    description "neighbor advertisements sent";
+  };
+  neighbor_advertisements_rx {
+    severity info;
+    type counter64;
+    units "packets";
+    description "neighbor advertisements received";
+  };
+  router_solicitation_source_not_on_link {
+    severity error;
+    type counter64;
+    units "packets";
+    description "router solicitations from source not on link";
+  };
+  router_solicitation_unsupported_intf {
+    severity error;
+    type counter64;
+    units "packets";
+    description "neighbor discovery unsupported interface";
+  };
+  router_solicitation_radv_not_config {
+    severity error;
+    type counter64;
+    units "packets";
+    description "neighbor discovery not configured";
+  };
+  router_advertisement_source_not_link_local {
+    severity error;
+    type counter64;
+    units "packets";
+    description "router advertisement source not link local";
+  };
+  router_advertisements_tx {
+    severity info;
+    type counter64;
+    units "packets";
+    description "router advertisements sent";
+  };
+  router_advertisements_rx {
+    severity info;
+    type counter64;
+    units "packets";
+    description "router advertisements received";
+  };
+  dst_lookup_miss {
+    severity error;
+    type counter64;
+    units "packets";
+    description "icmp6 dst address lookup misses";
+  };
+  dest_unreach_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "destination unreachable response sent";
+  };
+  packet_too_big_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packet too big response sent";
+  };
+  ttl_expire_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "hop limit exceeded response sent";
+  };
+  param_problem_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "parameter problem response sent";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "error message dropped";
+  };
+  alloc_failure {
+    severity error;
+    type counter64;
+    units "packets";
+    description "buffer allocation failure";
+  };
+};
+
 paths {
   "/err/ip-frag" "ip_frag";
   "/err/mpls-frag" "ip_frag";
@@ -1481,6 +1715,10 @@ paths {
   "/err/ip6-sv-reassembly-output-feature" "ip6";
   "/err/ip6-sv-reassembly-custom-next" "ip6";
   "/err/ip6-sv-reassembly-expire-walk" "ip6";
+  "/err/ip4-icmp-input" "icmp4";
+  "/err/ip4-icmp-error" "icmp4";
+  "/err/ip6-icmp-input" "icmp6";
+  "/err/ip6-icmp-error" "icmp6";
 };
 
 /*

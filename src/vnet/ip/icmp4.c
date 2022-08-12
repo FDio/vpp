@@ -43,12 +43,6 @@
 #include <vnet/ip/ip_sas.h>
 #include <vnet/util/throttle.h>
 
-static char *icmp_error_strings[] = {
-#define _(f,s) s,
-  foreach_icmp4_error
-#undef _
-};
-
 /** ICMP throttling */
 static throttle_t icmp_throttle;
 
@@ -219,8 +213,8 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
 
   .format_trace = format_icmp_input_trace,
 
-  .n_errors = ARRAY_LEN (icmp_error_strings),
-  .error_strings = icmp_error_strings,
+  .n_errors = ICMP4_N_ERROR,
+  .error_counters = icmp4_error_counters,
 
   .n_next_nodes = 1,
   .next_nodes = {
@@ -399,8 +393,8 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
   .name = "ip4-icmp-error",
   .vector_size = sizeof (u32),
 
-  .n_errors = ARRAY_LEN (icmp_error_strings),
-  .error_strings = icmp_error_strings,
+  .n_errors = ICMP4_N_ERROR,
+  .error_counters = icmp4_error_counters,
 
   .n_next_nodes = IP4_ICMP_ERROR_N_NEXT,
   .next_nodes = {
