@@ -204,6 +204,7 @@ typedef struct vppcom_cfg_t_
   u8 *vpp_bapi_socket_name;	/**< bapi socket transport socket name */
   u32 tls_engine;
   u8 mt_wrk_supported;
+  u8 huge_page;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);

@@ -819,6 +819,8 @@ application_alloc_and_init (app_init_args_t * a)
       props->add_segment_size = opts[APP_OPTIONS_ADD_SEGMENT_SIZE];
       props->add_segment = 1;
     }
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_USE_HUGE_PAGE)
+    props->huge_page = 1;
   if (opts[APP_OPTIONS_RX_FIFO_SIZE])
     props->rx_fifo_size = opts[APP_OPTIONS_RX_FIFO_SIZE];
   if (opts[APP_OPTIONS_TX_FIFO_SIZE])

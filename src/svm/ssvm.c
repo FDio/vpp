@@ -227,8 +227,12 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
 
   ASSERT (vec_c_string_is_terminated (memfd->name));
 
-  memfd->fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT,
-				     (char *) memfd->name);
+  if (memfd->huge_page)
+    memfd->fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT_HUGE,
+				       (char *) memfd->name);
+  else
+    memfd->fd =
+      clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT, (char *) memfd->name);
 
   if (memfd->fd == CLIB_MEM_ERROR)
     {
@@ -270,7 +274,7 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
   sh->ssvm_va = pointer_to_uword (sh);
   sh->type = SSVM_SEGMENT_MEMFD;
 
-  page_size = 1ULL << log2_page_size;
+  page_size = clib_mem_get_page_size ();
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   memfd->ssvm_size - page_size,
 				   1 /* locked */ , "ssvm server memfd");
