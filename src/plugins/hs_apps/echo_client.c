@@ -739,7 +739,7 @@ ec_attach ()
   ec_main_t *ecm = &ec_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u32 prealloc_fifos;
-  u64 options[18];
+  u64 options[19];
   int rv;
 
   clib_memset (a, 0, sizeof (*a));

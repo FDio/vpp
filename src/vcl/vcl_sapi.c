@@ -139,6 +139,7 @@ vcl_api_send_attach (clib_socket_t * cs)
     vcm->cfg.preallocated_fifo_pairs;
   mp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
   mp->options[APP_OPTIONS_TLS_ENGINE] = tls_engine;
+  mp->options[APP_OPTIONS_SEGMENT_PROPS] = vcm->cfg.huge_page;
 
   msg.type = APP_SAPI_MSG_TYPE_ATTACH;
   err = clib_socket_sendmsg (cs, &msg, sizeof (msg), 0, 0);

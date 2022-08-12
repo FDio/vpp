@@ -205,6 +205,7 @@ typedef enum
   APP_OPTIONS_FLAGS,
   APP_OPTIONS_EVT_QUEUE_SIZE,
   APP_OPTIONS_SEGMENT_SIZE,
+  APP_OPTIONS_SEGMENT_PROPS,
   APP_OPTIONS_ADD_SEGMENT_SIZE,
   APP_OPTIONS_PRIVATE_SEGMENT_COUNT,
   APP_OPTIONS_RX_FIFO_SIZE,
@@ -234,6 +235,8 @@ typedef enum
   _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")                        \
   _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")
 
+#define foreach_app_seg_props_flags _ (HUGEPAGE, "use hugepage for FIFO")
+
 typedef enum _app_options
 {
 #define _(sym, str) APP_OPTIONS_##sym,
@@ -247,6 +250,20 @@ typedef enum _app_options_flags
   foreach_app_options_flags
 #undef _
 } app_options_flags_t;
+
+typedef enum _app_seg_props
+{
+#define _(sym, str) APP_SEG_PROPS_##sym,
+  foreach_app_seg_props_flags
+#undef _
+} app_seg_props_t;
+
+typedef enum _app_seg_props_flags
+{
+#define _(sym, str) APP_SEG_PROPS_FLAGS_##sym = 1 << APP_SEG_PROPS_##sym,
+  foreach_app_seg_props_flags
+#undef _
+} app_seg_props_flags_t;
 
 #define foreach_fd_type						\
   _(VPP_MQ_SEGMENT, "Fd for vpp's event mq segment")		\
@@ -824,7 +841,7 @@ typedef enum app_sapi_msg_type
 typedef struct app_sapi_attach_msg_
 {
   u8 name[64];
-  u64 options[18];
+  u64 options[19];
 } __clib_packed app_sapi_attach_msg_t;
 
 STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=

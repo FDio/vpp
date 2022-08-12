@@ -37,7 +37,7 @@ enum transport_proto : u8
  define app_attach {
     u32 client_index;
     u32 context;
-    u64 options[18];
+    u64 options[19];
     string namespace_id[];
  };
 
