@@ -416,6 +416,12 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured app_scope_global (%d)",
 			getpid (), vcl_cfg->app_scope_global);
 	    }
+	  else if (unformat (line_input, "huge_page"))
+	    {
+	      vcl_cfg->huge_page = 1;
+	      VCFG_DBG (0, "VCL<%d>: configured huge_page (%d)", getpid (),
+			vcl_cfg->huge_page);
+	    }
 	  else if (unformat (line_input, "namespace-secret %lu",
 			     &vcl_cfg->namespace_secret))
 	    {

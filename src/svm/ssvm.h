@@ -87,7 +87,7 @@ typedef struct
   u8 *name;
   u8 numa;			/**< UNUSED: numa requested at alloc time */
   int is_server;
-
+  int huge_page;
   union
   {
     int fd;			/**< memfd segments */
