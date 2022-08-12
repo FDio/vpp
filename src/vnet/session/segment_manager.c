@@ -98,6 +98,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   u32 fs_index = ~0;
   u8 *seg_name;
   int rv;
+  uword hugepage_size = clib_mem_get_default_hugepage_size ();
 
   props = segment_manager_properties_get (sm);
   app_wrk = app_worker_get (sm->app_wrk_index);
@@ -127,7 +128,14 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
     sizeof (fifo_segment_header_t) +
     vlib_thread_main.n_vlib_mains * sizeof (fifo_segment_slice_t) +
     FIFO_SEGMENT_ALLOC_OVERHEAD;
-  segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
+
+  if (props->huge_page)
+    {
+      segment_size = round_pow2 (segment_size, hugepage_size);
+      fs->ssvm.huge_page = 1;
+    }
+  else
+    segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
 
   seg_name = format (0, "seg-%u-%u-%u%c", app_wrk->app_index,
 		     app_wrk->wrk_index, smm->seg_name_counter++, 0);
