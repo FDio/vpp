@@ -132,6 +132,32 @@ adj_midchain_delegate_stack (adj_index_t ai,
 }
 
 void
+adj_midchain_delegate_remove (adj_index_t ai)
+{
+    adj_midchain_delegate_t *amd;
+    ip_adjacency_t *adj;
+    adj_delegate_t *ad;
+
+    /*
+     * if there's a delegate, it can be removed
+     */
+    adj = adj_get(ai);
+    ad = adj_delegate_get(adj, ADJ_DELEGATE_MIDCHAIN);
+
+    if (NULL != ad)
+    {
+        adj_nbr_midchain_unstack(ai);
+
+        adj_delegate_remove (ai, ADJ_DELEGATE_MIDCHAIN);
+
+        amd = pool_elt_at_index(amd_pool, ad->ad_index);
+        fib_entry_untrack(amd->amd_fei, amd->amd_sibling);
+
+        pool_put(amd_pool, amd);
+    }
+}
+
+void
 adj_midchain_delegate_unstack (adj_index_t ai)
 {
     adj_nbr_midchain_unstack(ai);
