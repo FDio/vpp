@@ -227,8 +227,12 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
 
   ASSERT (vec_c_string_is_terminated (memfd->name));
 
-  memfd->fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT,
-				     (char *) memfd->name);
+  if (memfd->huge_page)
+    memfd->fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT_HUGE,
+				       (char *) memfd->name);
+  else
+    memfd->fd =
+      clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT, (char *) memfd->name);
 
   if (memfd->fd == CLIB_MEM_ERROR)
     {

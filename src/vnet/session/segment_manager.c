@@ -127,7 +127,15 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
     sizeof (fifo_segment_header_t) +
     vlib_thread_main.n_vlib_mains * sizeof (fifo_segment_slice_t) +
     FIFO_SEGMENT_ALLOC_OVERHEAD;
-  segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
+
+  if (props->huge_page)
+    {
+      uword hugepage_size = clib_mem_get_default_hugepage_size ();
+      segment_size = round_pow2 (segment_size, hugepage_size);
+      fs->ssvm.huge_page = 1;
+    }
+  else
+    segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
 
   seg_name = format (0, "seg-%u-%u-%u%c", app_wrk->app_index,
 		     app_wrk->wrk_index, smm->seg_name_counter++, 0);
