@@ -304,10 +304,6 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	}
     }
 
-  /* Set the sw_if_index[VLIB_RX] to the interface we received
-   * the connection on (the local interface) */
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->ip.rx_sw_if_index;
-
   if (is_nolookup)
     tc =
       (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
@@ -320,6 +316,14 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->tcp.data_len = n_data_bytes;
   vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
     + n_data_bytes;
+
+  if (tc)
+    {
+      /* Set the sw_if_index[VLIB_RX] to the interface we received
+       * the connection on (the local interface) */
+      vnet_buffer (b)->sw_if_index[VLIB_RX] =
+	vnet_buffer (b)->ip.rx_sw_if_index;
+    }
 
   *error = result ? TCP_ERROR_NONE + result : *error;
 
