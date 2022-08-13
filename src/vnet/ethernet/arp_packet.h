@@ -110,16 +110,6 @@ typedef enum
   IP4_ARP_N_NEXT,
 } ip4_arp_next_t;
 
-typedef enum
-{
-  IP4_ARP_ERROR_THROTTLED,
-  IP4_ARP_ERROR_RESOLVED,
-  IP4_ARP_ERROR_NO_BUFFERS,
-  IP4_ARP_ERROR_REQUEST_SENT,
-  IP4_ARP_ERROR_NON_ARP_ADJ,
-  IP4_ARP_ERROR_NO_SOURCE_ADDRESS,
-} ip4_arp_error_t;
-
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   mac_address_t mac;

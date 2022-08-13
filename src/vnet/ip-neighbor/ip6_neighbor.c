@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ip-neighbor/ip6_neighbor.h>
+#include <vnet/ip-neighbor/ip_neighbor.api_enum.h>
 #include <vnet/util/throttle.h>
 #include <vnet/fib/fib_sas.h>
 #include <vnet/ip/ip_sas.h>
@@ -119,14 +120,6 @@ typedef enum
   IP6_NBR_N_NEXT,
 } ip6_discover_neighbor_next_t;
 
-typedef enum
-{
-  IP6_NBR_ERROR_DROP,
-  IP6_NBR_ERROR_REQUEST_SENT,
-  IP6_NBR_ERROR_NO_SOURCE_ADDRESS,
-  IP6_NBR_ERROR_NO_BUFFERS,
-} ip6_discover_neighbor_error_t;
-
 static uword
 ip6_discover_neighbor_inline (vlib_main_t * vm,
 			      vlib_node_runtime_t * node,
@@ -192,6 +185,12 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	  to_next_drop += 1;
 	  n_left_to_next_drop -= 1;
 
+	  if (drop0)
+	    {
+	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_THROTTLED];
+	      continue;
+	    }
+
 	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
 	  /* If the interface is link-down, drop the pkt */
@@ -210,7 +209,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 
 	  if (drop0)
 	    {
-	      p0->error = node->errors[IP6_NBR_ERROR_DROP];
+	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_DROP];
 	      continue;
 	    }
 
@@ -222,7 +221,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	      !ip6_sas_by_sw_if_index (sw_if_index0, &ip0->dst_address, &src))
 	    {
 	      /* There is no address on the interface */
-	      p0->error = node->errors[IP6_NBR_ERROR_NO_SOURCE_ADDRESS];
+	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS];
 	      continue;
 	    }
 
@@ -235,12 +234,12 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 				sizeof (p0->opaque2));
 	      b0->flags |= p0->flags & VLIB_BUFFER_IS_TRACED;
 	      b0->trace_handle = p0->trace_handle;
-	      p0->error = node->errors[IP6_NBR_ERROR_REQUEST_SENT];
+	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_REQUEST_SENT];
 	    }
 	  else
 	    {
 	      /* There is no address on the interface */
-	      p0->error = node->errors[IP6_NBR_ERROR_NO_BUFFERS];
+	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_NO_BUFFERS];
 	      continue;
 	    }
 	}
@@ -264,13 +263,6 @@ ip6_glean (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return (ip6_discover_neighbor_inline (vm, node, frame, 1));
 }
 
-static char *ip6_discover_neighbor_error_strings[] = {
-  [IP6_NBR_ERROR_DROP] = "address overflow drops",
-  [IP6_NBR_ERROR_REQUEST_SENT] = "neighbor solicitations sent",
-  [IP6_NBR_ERROR_NO_SOURCE_ADDRESS] = "no source address for ND solicitation",
-  [IP6_NBR_ERROR_NO_BUFFERS] = "no buffers",
-};
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_glean_node) =
 {
@@ -278,8 +270,8 @@ VLIB_REGISTER_NODE (ip6_glean_node) =
   .name = "ip6-glean",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
-  .n_errors = ARRAY_LEN (ip6_discover_neighbor_error_strings),
-  .error_strings = ip6_discover_neighbor_error_strings,
+  .n_errors = IP6_NEIGHBOR_N_ERROR,
+  .error_counters = ip6_neighbor_error_counters,
   .n_next_nodes = IP6_NBR_N_NEXT,
   .next_nodes =
   {
@@ -293,8 +285,8 @@ VLIB_REGISTER_NODE (ip6_discover_neighbor_node) =
   .name = "ip6-discover-neighbor",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
-  .n_errors = ARRAY_LEN (ip6_discover_neighbor_error_strings),
-  .error_strings = ip6_discover_neighbor_error_strings,
+  .n_errors = IP6_NEIGHBOR_N_ERROR,
+  .error_counters = ip6_neighbor_error_counters,
   .n_next_nodes = IP6_NBR_N_NEXT,
   .next_nodes =
   {

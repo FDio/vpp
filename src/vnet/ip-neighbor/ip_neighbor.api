@@ -264,6 +264,85 @@ service {
     events ip_neighbor_event_v2;
 };
 
+counters ip4_neighbor {
+  throttled {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP requests throttled";
+  };
+  resolved {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP requests resolved";
+  };
+  no_buffers {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARP requests out of buffer";
+  };
+  request_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "ARP requests sent";
+  };
+  non_arp_adj {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ARPs to non-ARP adjacencies";
+  };
+  no_source_address {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no source address for ARP request";
+  };
+};
+
+counters ip6_neighbor {
+  throttled {
+    severity info;
+    type counter64;
+    units "packets";
+    description "throttled";
+  };
+  drop {
+    severity error;
+    type counter64;
+    units "packets";
+    description "address overflow drops";
+  };
+  request_sent {
+    severity info;
+    type counter64;
+    units "packets";
+    description "neighbor solicitations sent";
+  };
+  no_source_address {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no source address for ND solicitation";
+  };
+  no_buffers {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no buffers";
+  };
+};
+
+paths {
+  "/err/ip4-arp" "ip4_neighbor";
+  "/err/ip4-glean" "ip4_neighbor";
+  "/err/ip6-arp" "ip6_neighbor";
+  "/err/ip6-glean" "ip6_neighbor";
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
