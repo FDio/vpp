@@ -66,9 +66,9 @@ mac_address_increment (mac_address_t * mac)
 {
   u64 a;
 
-  a = mac_address_as_u64 (mac);
+  a = ethernet_mac_address_u64 (mac->bytes);
   a++;
-  mac_address_from_u64 (mac, a);
+  ethernet_mac_address_from_u64 (a, mac->bytes);
 }
 
 /*
