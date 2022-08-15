@@ -223,9 +223,9 @@ memif_validate_desc_data (memif_per_thread_data_t *ptd, memif_if_t *mif,
 	  desc_data[i] = r->shm + offset;
 	  if (len > max_len)
 	    max_len = len;
-	  xor_status |= desc_status[i].as_u8;
 	  n_rx_bytes += len;
 	}
+      xor_status |= desc_status[i].as_u8;
     }
 
   ptd->max_desc_len = max_len;
