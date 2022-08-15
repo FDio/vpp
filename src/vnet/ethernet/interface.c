@@ -544,9 +544,13 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
       sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
       sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
-      not_all_match_config = (sw_if_index0 ^ sw_if_index1)
-	^ (sw_if_index2 ^ sw_if_index3);
-      not_all_match_config += sw_if_index0 ^ new_rx_sw_if_index;
+      /*others include sw_if_index0 and sw_if_index0 include others,so they are
+       * the same intfc*/
+      not_all_match_config =
+	!((sw_if_index0 == (new_rx_sw_if_index & sw_if_index0 & sw_if_index1 &
+			    sw_if_index2 & sw_if_index3)) &&
+	  (sw_if_index0 == (new_rx_sw_if_index | sw_if_index0 | sw_if_index1 |
+			    sw_if_index2 | sw_if_index3)));
 
       /* Speed path / expected case: all pkts on the same intfc */
       if (PREDICT_TRUE (not_all_match_config == 0))
