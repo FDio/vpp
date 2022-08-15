@@ -527,7 +527,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   while (n_left_from >= 4)
     {
       u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
-      u32 not_all_match_config;
+      u32x4 xor_ifx4;
 
       /* Prefetch next iteration. */
       if (PREDICT_TRUE (n_left_from >= 8))
@@ -544,12 +544,11 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
       sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
       sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
-      not_all_match_config = (sw_if_index0 ^ sw_if_index1)
-	^ (sw_if_index2 ^ sw_if_index3);
-      not_all_match_config += sw_if_index0 ^ new_rx_sw_if_index;
+      xor_ifx4 = u32x4_gather (&sw_if_index0, &sw_if_index1, &sw_if_index2,
+			       &sw_if_index3);
 
       /* Speed path / expected case: all pkts on the same intfc */
-      if (PREDICT_TRUE (not_all_match_config == 0))
+      if (PREDICT_TRUE (u32x4_is_all_equal (xor_ifx4, new_rx_sw_if_index)))
 	{
 	  next[0] = next_index;
 	  next[1] = next_index;
