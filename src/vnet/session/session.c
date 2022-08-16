@@ -22,6 +22,7 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vlib/stats/stats.h>
+#include <vlib/dma/dma.h>
 
 session_main_t session_main;
 
@@ -1988,6 +1989,84 @@ session_manager_main_disable (vlib_main_t * vm)
   transport_enable_disable (vm, 0 /* is_en */ );
 }
 
+/* in this new callback, cookie hint the index */
+void
+session_dma_completion_cb (vlib_main_t *vm, struct vlib_dma_batch *batch)
+{
+  session_worker_t *wrk;
+  wrk = session_main_get_worker (vm->thread_index);
+  session_dma_transfer *dma_transfer;
+
+  dma_transfer = &wrk->dma_trans[wrk->trans_head];
+  vec_add (wrk->pending_tx_buffers, dma_transfer->pending_tx_buffers,
+	   vec_len (dma_transfer->pending_tx_buffers));
+  vec_add (wrk->pending_tx_nexts, dma_transfer->pending_tx_nexts,
+	   vec_len (dma_transfer->pending_tx_nexts));
+  vec_reset_length (dma_transfer->pending_tx_buffers);
+  vec_reset_length (dma_transfer->pending_tx_nexts);
+  wrk->trans_head++;
+  if (wrk->trans_head == wrk->trans_size)
+    wrk->trans_head = 0;
+  return;
+}
+
+static void
+session_prepare_dma_args (vlib_dma_config_t *args)
+{
+  args->max_transfers = DMA_TRANS_SIZE;
+  args->max_transfer_size = 65536;
+  args->features = 0;
+  args->sw_fallback = 1;
+  args->barrier_before_last = 1;
+  args->callback_fn = session_dma_completion_cb;
+}
+
+static void
+session_node_enable_dma (u8 is_en, int n_vlibs)
+{
+  vlib_dma_config_t args;
+  session_prepare_dma_args (&args);
+  session_worker_t *wrk;
+
+  int config_index = -1;
+
+  if (is_en)
+    {
+      vm = vlib_get_main_by_index (0);
+      config_index = vlib_dma_config_add (vm, &args);
+    }
+  else
+    {
+      vm = vlib_get_main_by_index (0);
+      wrk = session_main_get_worker (0);
+      if (wrk->config_index >= 0)
+	vlib_dma_config_del (vm, wrk->config_index);
+    }
+  for (i = 0; i < n_vlibs; i++)
+    {
+      vm = vlib_get_main_by_index (i);
+      wrk = session_main_get_worker (vm->thread_index);
+      wrk->config_index = config_index;
+      if (is_en)
+	{
+	  if (config_index >= 0)
+	    wrk->dma_enabled = true;
+	  wrk->dma_trans = (session_dma_transfer *) clib_mem_alloc (
+	    sizeof (session_dma_transfer) * DMA_TRANS_SIZE);
+	  bzero (wrk->dma_trans,
+		 sizeof (session_dma_transfer) * DMA_TRANS_SIZE);
+	}
+      else
+	{
+	  if (wrk->dma_trans)
+	    clib_mem_free (wrk->dma_trans);
+	}
+      wrk->trans_head = 0;
+      wrk->trans_tail = 0;
+      wrk->trans_size = DMA_TRANS_SIZE;
+    }
+}
+
 void
 session_node_enable_disable (u8 is_en)
 {
@@ -2028,6 +2107,9 @@ session_node_enable_disable (u8 is_en)
 
   if (sm->use_private_rx_mqs)
     application_enable_rx_mqs_nodes (is_en);
+
+  if (sm->dma_enabled)
+    session_node_enable_dma (is_en, n_vlibs);
 }
 
 clib_error_t *
@@ -2170,6 +2252,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->use_private_rx_mqs = 1;
       else if (unformat (input, "no-adaptive"))
 	smm->no_adaptive = 1;
+      else if (unformat (input, "use-dma"))
+	smm->dma_enabled = 1;
       /*
        * Deprecated but maintained for compatibility
        */
