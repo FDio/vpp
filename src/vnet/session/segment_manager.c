@@ -16,7 +16,8 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
-
+#include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
 typedef struct segment_manager_main_
 {
   segment_manager_t *segment_managers;	/**< Pool of segment managers */
