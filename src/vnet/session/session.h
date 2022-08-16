@@ -21,6 +21,7 @@
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
 #include <svm/fifo_segment.h>
+#include <vlib/dma/dma.h>
 
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
@@ -84,6 +85,13 @@ typedef enum session_wrk_flags_
 {
   SESSION_WRK_F_ADAPTIVE = 1 << 0,
 } __clib_packed session_wrk_flag_t;
+
+#define DMA_TRANS_SIZE 1024
+typedef struct
+{
+  u32 *pending_tx_buffers;
+  u16 *pending_tx_nexts;
+} session_dma_transfer;
 
 typedef struct session_worker_
 {
@@ -154,6 +162,15 @@ typedef struct session_worker_
 
   /** List head for first worker evts pending handling on main */
   clib_llist_index_t evts_pending_main;
+
+  int config_index;
+  bool dma_enabled;
+  session_dma_transfer *dma_trans;
+  u16 trans_head;
+  u16 trans_tail;
+  u16 trans_size;
+  u16 batch_num;
+  vlib_dma_batch_t *batch;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
@@ -236,6 +253,9 @@ typedef struct session_main_
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
+
+  /** Session enable dma*/
+  u8 dma;
 
   /** Session table size parameters */
   u32 configured_v4_session_table_buckets;
