@@ -16,7 +16,8 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
-
+#include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
 typedef struct segment_manager_main_
 {
   segment_manager_t *segment_managers;	/**< Pool of segment managers */
@@ -92,6 +93,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 				    u8 notify_app, u8 flags, u8 need_lock)
 {
   segment_manager_main_t *smm = &sm_main;
+  session_main_t *session_mm = &session_main;
   segment_manager_props_t *props;
   app_worker_t *app_wrk;
   fifo_segment_t *fs;
@@ -165,6 +167,17 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   fs->flags = flags;
   fs->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
   fs->h->pct_first_alloc = props->pct_first_alloc;
+
+  vlib_main_t *vm = vlib_get_main ();
+  if (session_mm->dma)
+    {
+      uword n_pages = ((segment_size - 1) >> log2_page_size) + 1;
+      for (u32 i = 0; i < n_pages; i++)
+	{
+	  char *va = (char *) fs->ssvm.sh + i * page_size;
+	  vfio_map_physmem_page (vm, va);
+	}
+    }
 
   if (notify_app)
     {
