@@ -185,6 +185,69 @@ static int nat44_ei_del_static_mapping_internal (
   ip4_address_t l_addr, ip4_address_t e_addr, u16 l_port, u16 e_port,
   nat_protocol_t proto, u32 vrf_id, u32 sw_if_index, u32 flags);
 
+always_inline void
+nat44_ei_port_get (nat44_ei_address_t *a, u8 proto, u16 port)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+#define _(N, i, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    a->busy_##n##_port_bitmap =                                               \
+      clib_bitmap_set (a->busy_##n##_port_bitmap, port, 1);                   \
+    break;
+
+  switch (proto)
+    {
+      foreach_nat_protocol;
+    default:
+      nat_elog_info (nm, "unknown protocol");
+    }
+
+#undef _
+}
+
+always_inline void
+nat44_ei_port_put (nat44_ei_address_t *a, u8 proto, u16 port)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+#define _(N, i, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    a->busy_##n##_port_bitmap =                                               \
+      clib_bitmap_set (a->busy_##n##_port_bitmap, port, 0);                   \
+    break;
+
+  switch (proto)
+    {
+      foreach_nat_protocol;
+    default:
+      nat_elog_info (nm, "unknown protocol");
+    }
+
+#undef _
+}
+
+always_inline bool
+nat44_ei_port_is_used (nat44_ei_address_t *a, u8 proto, u16 port)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+#define _(N, i, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    return clib_bitmap_get (a->busy_##n##_port_bitmap, port);
+
+  switch (proto)
+    {
+      foreach_nat_protocol;
+    default:
+      nat_elog_info (nm, "unknown protocol");
+    }
+
+#undef _
+
+  return 0;
+}
+
 static u8 *
 format_nat44_ei_classify_trace (u8 *s, va_list *args)
 {
@@ -1256,9 +1319,9 @@ nat44_ei_set_outside_address_and_port (nat44_ei_address_t *addresses,
 	{
 #define _(N, j, n, s)                                                         \
   case NAT_PROTOCOL_##N:                                                      \
-    if (a->busy_##n##_port_refcounts[port_host_byte_order])                   \
+    if (nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, port_host_byte_order))    \
       return VNET_API_ERROR_INSTANCE_IN_USE;                                  \
-    ++a->busy_##n##_port_refcounts[port_host_byte_order];                     \
+    nat44_ei_port_get (a, NAT_PROTOCOL_##N, port_host_byte_order);            \
     a->busy_##n##_ports_per_thread[thread_index]++;                           \
     a->busy_##n##_ports++;                                                    \
     return 0;
@@ -1320,8 +1383,9 @@ nat44_ei_free_outside_address_and_port (nat44_ei_address_t *addresses,
     {
 #define _(N, i, n, s)                                                         \
   case NAT_PROTOCOL_##N:                                                      \
-    ASSERT (a->busy_##n##_port_refcounts[port_host_byte_order] >= 1);         \
-    --a->busy_##n##_port_refcounts[port_host_byte_order];                     \
+    ASSERT (                                                                  \
+      nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, port_host_byte_order));     \
+    nat44_ei_port_put (a, NAT_PROTOCOL_##N, port_host_byte_order);            \
     a->busy_##n##_ports--;                                                    \
     a->busy_##n##_ports_per_thread[thread_index]--;                           \
     break;
@@ -1814,9 +1878,9 @@ nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
 			  nat_random_port (&nm->random_seed, 0,               \
 					   port_per_thread - 1) +             \
 			  1024;                                               \
-		if (a->busy_##n##_port_refcounts[portnum])                    \
+		if (nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, portnum))     \
 		  continue;                                                   \
-		--a->busy_##n##_port_refcounts[portnum];                      \
+		nat44_ei_port_get (a, NAT_PROTOCOL_##N, portnum);             \
 		a->busy_##n##_ports_per_thread[thread_index]++;               \
 		a->busy_##n##_ports++;                                        \
 		*addr = a->addr;                                              \
@@ -1894,9 +1958,9 @@ nat44_ei_alloc_range_cb (nat44_ei_address_t *addresses, u32 fib_index,
 	  {                                                                   \
 	    portnum = nat_random_port (&nm->random_seed, nm->start_port,      \
 				       nm->end_port);                         \
-	    if (a->busy_##n##_port_refcounts[portnum])                        \
+	    if (nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, portnum))         \
 	      continue;                                                       \
-	    ++a->busy_##n##_port_refcounts[portnum];                          \
+	    nat44_ei_port_get (a, NAT_PROTOCOL_##N, portnum);                 \
 	    a->busy_##n##_ports++;                                            \
 	    *addr = a->addr;                                                  \
 	    *port = clib_host_to_net_u16 (portnum);                           \
@@ -1943,9 +2007,9 @@ nat44_ei_alloc_mape_cb (nat44_ei_address_t *addresses, u32 fib_index,
 				 pow2_mask (nm->psid_offset));                \
 	    j = nat_random_port (&nm->random_seed, 0, pow2_mask (m));         \
 	    portnum = A | (nm->psid << nm->psid_offset) | (j << (16 - m));    \
-	    if (a->busy_##n##_port_refcounts[portnum])                        \
+	    if (nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, portnum))         \
 	      continue;                                                       \
-	    ++a->busy_##n##_port_refcounts[portnum];                          \
+	    nat44_ei_port_get (a, NAT_PROTOCOL_##N, portnum);                 \
 	    a->busy_##n##_ports++;                                            \
 	    *addr = a->addr;                                                  \
 	    *port = clib_host_to_net_u16 (portnum);                           \
@@ -2111,9 +2175,9 @@ nat44_ei_reserve_port (ip4_address_t addr, u16 port, nat_protocol_t proto)
 	{
 #define _(N, j, n, s)                                                         \
   case NAT_PROTOCOL_##N:                                                      \
-    if (a->busy_##n##_port_refcounts[port])                                   \
-      goto done;                                                              \
-    ++a->busy_##n##_port_refcounts[port];                                     \
+    if (nat44_ei_port_is_used (a, NAT_PROTOCOL_##N, port))                    \
+      continue;                                                               \
+    nat44_ei_port_get (a, NAT_PROTOCOL_##N, port);                            \
     if (port > 1024)                                                          \
       {                                                                       \
 	a->busy_##n##_ports++;                                                \
@@ -2152,7 +2216,7 @@ nat44_ei_free_port (ip4_address_t addr, u16 port, nat_protocol_t proto)
 	{
 #define _(N, j, n, s)                                                         \
   case NAT_PROTOCOL_##N:                                                      \
-    --a->busy_##n##_port_refcounts[port];                                     \
+    nat44_ei_port_put (a, NAT_PROTOCOL_##N, port);                            \
     if (port > 1024)                                                          \
       {                                                                       \
 	a->busy_##n##_ports--;                                                \
@@ -2990,8 +3054,7 @@ nat44_ei_add_address (ip4_address_t *addr, u32 vrf_id)
     }
 
 #define _(N, i, n, s)                                                         \
-  clib_memset (ap->busy_##n##_port_refcounts, 0,                              \
-	       sizeof (ap->busy_##n##_port_refcounts));                       \
+  ap->busy_##n##_port_bitmap = 0;                                             \
   ap->busy_##n##_ports = 0;                                                   \
   ap->busy_##n##_ports_per_thread = 0;                                        \
   vec_validate_init_empty (ap->busy_##n##_ports_per_thread,                   \
