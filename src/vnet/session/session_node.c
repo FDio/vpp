@@ -899,10 +899,83 @@ session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_set_trace_count (vm, node, n_trace);
 }
 
+always_inline int
+session_tx_fill_dma_transfers (vlib_main_t *vm, session_tx_context_t *ctx,
+			       vlib_buffer_t *b)
+{
+  session_main_t *smm = &session_main;
+  u32 len_to_deq;
+  u8 *data0 = NULL;
+  int n_bytes_read, len_write;
+  svm_fifo_seg_t data_fs[2];
+  session_worker_t *wrk = &smm->wrk[vm->thread_index];
+
+  u32 n_segs = 2;
+  u16 n_transfers = 0;
+  /*
+   * Start with the first buffer in chain
+   */
+  b->error = 0;
+  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b->current_data = 0;
+  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
+  len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
+
+  n_bytes_read = svm_fifo_segments (ctx->s->tx_fifo, ctx->sp.tx_offset,
+				    data_fs, &n_segs, len_to_deq);
+
+  len_write = n_bytes_read;
+  ASSERT (n_bytes_read == len_to_deq);
+
+  while (n_bytes_read)
+    {
+      wrk->batch_num++;
+      vlib_dma_batch_add (vm, wrk->batch, data0, data_fs[n_transfers].data,
+			  data_fs[n_transfers].len);
+      data0 += data_fs[n_transfers].len;
+      n_bytes_read -= data_fs[n_transfers].len;
+      n_transfers++;
+    }
+  return len_write;
+}
+
+always_inline int
+session_tx_fill_dma_transfers_tail (vlib_main_t *vm, session_tx_context_t *ctx,
+				    vlib_buffer_t *b, u32 len_to_deq, u8 *data)
+{
+  session_main_t *smm = &session_main;
+  int n_bytes_read, len_write;
+  svm_fifo_seg_t data_fs[2];
+  session_worker_t *wrk = &smm->wrk[vm->thread_index];
+  u32 n_segs = 2;
+  u16 n_transfers = 0;
+
+  n_bytes_read = svm_fifo_segments (ctx->s->tx_fifo, ctx->sp.tx_offset,
+				    data_fs, &n_segs, len_to_deq);
+
+  len_write = n_bytes_read;
+
+  ASSERT (n_bytes_read == len_to_deq);
+
+  while (n_bytes_read)
+    {
+      wrk->batch_num++;
+      vlib_dma_batch_add (vm, wrk->batch, data, data_fs[n_transfers].data,
+			  data_fs[n_transfers].len);
+      data += data_fs[n_transfers].len;
+      n_bytes_read -= data_fs[n_transfers].len;
+      n_transfers++;
+    }
+
+  return len_write;
+}
+
 always_inline void
 session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 			    vlib_buffer_t * b, u16 * n_bufs, u8 peek_data)
 {
+  session_main_t *smm = vnet_get_session_main ();
+  session_worker_t *wrk = &smm->wrk[vm->thread_index];
   vlib_buffer_t *chain_b, *prev_b;
   u32 chain_bi0, to_deq, left_from_seg;
   u16 len_to_deq, n_bytes_read;
@@ -927,9 +1000,18 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
       data = vlib_buffer_get_current (chain_b);
       if (peek_data)
 	{
-	  n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo,
-					ctx->sp.tx_offset, len_to_deq, data);
-	  ctx->sp.tx_offset += n_bytes_read;
+	  if (wrk->config_index < 0)
+	    {
+	      n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset,
+					    len_to_deq, data);
+	      ctx->sp.tx_offset += n_bytes_read;
+	    }
+	  else
+	    {
+	      n_bytes_read = session_tx_fill_dma_transfers_tail (
+		vm, ctx, b, len_to_deq, data);
+	      ctx->sp.tx_offset += n_bytes_read;
+	    }
 	}
       else
 	{
@@ -991,7 +1073,8 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
   u32 len_to_deq;
   u8 *data0;
   int n_bytes_read;
-
+  session_main_t *smm = vnet_get_session_main ();
+  session_worker_t *wrk = &smm->wrk[vm->thread_index];
   /*
    * Start with the first buffer in chain
    */
@@ -1004,12 +1087,20 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 
   if (peek_data)
     {
-      n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset,
-				    len_to_deq, data0);
-      ASSERT (n_bytes_read > 0);
-      /* Keep track of progress locally, transport is also supposed to
-       * increment it independently when pushing the header */
-      ctx->sp.tx_offset += n_bytes_read;
+      if (wrk->config_index < 0)
+	{
+	  n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset,
+					len_to_deq, data0);
+	  ASSERT (n_bytes_read > 0);
+	  /* Keep track of progress locally, transport is also supposed to
+	   * increment it independently when pushing the header */
+	  ctx->sp.tx_offset += n_bytes_read;
+	}
+      else
+	{
+	  n_bytes_read = session_tx_fill_dma_transfers (vm, ctx, b);
+	  ctx->sp.tx_offset += n_bytes_read;
+	}
     }
   else
     {
@@ -1052,6 +1143,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 	  ASSERT (n_bytes_read > 0);
 	}
     }
+
   b->current_length = n_bytes_read;
   ctx->left_to_snd -= n_bytes_read;
 
@@ -1375,6 +1467,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   vec_validate (ctx->transport_pending_bufs, n_left);
 
+  session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
   while (n_left >= 4)
     {
       vlib_buffer_t *b0, *b1;
@@ -1400,10 +1493,20 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
       n_left -= 2;
 
-      vec_add1 (wrk->pending_tx_buffers, bi0);
-      vec_add1 (wrk->pending_tx_buffers, bi1);
-      vec_add1 (wrk->pending_tx_nexts, next_index);
-      vec_add1 (wrk->pending_tx_nexts, next_index);
+      if (wrk->config_index < 0)
+	{
+	  vec_add1 (wrk->pending_tx_buffers, bi0);
+	  vec_add1 (wrk->pending_tx_buffers, bi1);
+	  vec_add1 (wrk->pending_tx_nexts, next_index);
+	  vec_add1 (wrk->pending_tx_nexts, next_index);
+	}
+      else
+	{
+	  vec_add1 (dma_transfer->pending_tx_buffers, bi0);
+	  vec_add1 (dma_transfer->pending_tx_buffers, bi1);
+	  vec_add1 (dma_transfer->pending_tx_nexts, next_index);
+	  vec_add1 (dma_transfer->pending_tx_nexts, next_index);
+	}
     }
   while (n_left)
     {
@@ -1423,9 +1526,16 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       n_left -= 1;
-
-      vec_add1 (wrk->pending_tx_buffers, bi0);
-      vec_add1 (wrk->pending_tx_nexts, next_index);
+      if (wrk->config_index < 0)
+	{
+	  vec_add1 (wrk->pending_tx_buffers, bi0);
+	  vec_add1 (wrk->pending_tx_nexts, next_index);
+	}
+      else
+	{
+	  vec_add1 (dma_transfer->pending_tx_buffers, bi0);
+	  vec_add1 (dma_transfer->pending_tx_nexts, next_index);
+	}
     }
 
   /* Ask transport to push headers */
@@ -1825,6 +1935,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 
+  if (wrk->dma_enabled &&
+      (wrk->trans_head == ((wrk->trans_tail + 1) & (wrk->trans_size - 1))))
+    return 0;
+
+  if (wrk->dma_enabled)
+    wrk->batch = vlib_dma_batch_new (vm, wrk->config_index);
+
   /*
    *  Dequeue new internal mq events
    */
@@ -1893,6 +2010,17 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ei = next_ei;
 	};
     }
+  if (wrk->batch_num)
+    {
+      vlib_dma_batch_set_cookie (vm, wrk->batch, wrk->trans_tail);
+      wrk->batch_num = 0;
+      wrk->trans_tail++;
+      if (wrk->trans_tail == wrk->trans_size)
+	wrk->trans_tail = 0;
+    }
+
+  if (wrk->dma_enabled)
+    vlib_dma_batch_submit (vm, wrk->batch);
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, OLD_IO_EVTS, wrk);
 
