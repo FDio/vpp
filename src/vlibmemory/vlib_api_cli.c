@@ -568,7 +568,10 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      am->replay_in_progress = 0;
 	      return;
 	    }
-	  m->endian_handler (tmpbuf + sizeof (uword));
+	  if (m)
+	    {
+	      m->endian_handler (tmpbuf + sizeof (uword));
+	    }
 	}
 
       /* msg_id always in network byte order */
