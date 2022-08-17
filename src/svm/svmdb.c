@@ -433,7 +433,7 @@ svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
   u8 *key;
   u32 value;
   svmdb_shm_hdr_t *shm = client->shm;
-  serialize_main_t _sm, *sm = &_sm;
+  serialize_main_t _sm = { 0 }, *sm = &_sm;
   clib_error_t *error = 0;
   u8 *sanitized_name = 0;
   int fd = 0;
@@ -495,7 +495,7 @@ out:
 int
 svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename)
 {
-  serialize_main_t _sm, *sm = &_sm;
+  serialize_main_t _sm = { 0 }, *sm = &_sm;
   void *oldheap;
   clib_error_t *error = 0;
   u8 *key, *value;
