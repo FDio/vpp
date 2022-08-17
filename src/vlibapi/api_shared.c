@@ -232,7 +232,10 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   u16 id = clib_net_to_host_u16 (*((u16 *) msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
 
-  m->endian_handler (tmpmem);
+  if (m && m->endian_handler)
+    {
+      m->endian_handler (tmpmem);
+    }
 
   if (m && m->tojson_handler)
     {
