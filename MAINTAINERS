@@ -566,6 +566,11 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/unittest/
 
+Plugin - Intel DMA engines
+I:      dma_intel
+M:      Marvin Liu <yong.liu@intel.com>
+F:      src/plugins/dma_intel
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <klement.sekera@gmail.com>
