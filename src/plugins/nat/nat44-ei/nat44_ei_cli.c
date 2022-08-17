@@ -841,7 +841,7 @@ nat44_ei_show_addresses_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else
 	vlib_cli_output (vm, "  tenant VRF independent");
 #define _(N, i, n, s)                                                         \
-  vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
+  vlib_cli_output (vm, "  %d busy %s ports", ap->busy_ports[i], s);
       foreach_nat_protocol
 #undef _
     }
