@@ -262,6 +262,8 @@ distros
 dlsym
 dns
 dnsmasq
+Dma
+dma
 Dockerfile
 dockerignore
 doesn
@@ -277,6 +279,7 @@ dpo
 dport
 dryrun
 DS
+dsa
 dscp
 dslite
 dsr
