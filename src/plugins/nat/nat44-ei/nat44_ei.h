@@ -71,12 +71,9 @@ typedef struct
 {
   ip4_address_t addr;
   u32 fib_index;
-#define _(N, i, n, s)                                                         \
-  u32 busy_##n##_ports;                                                       \
-  u32 *busy_##n##_ports_per_thread;                                           \
-  uword *busy_##n##_port_bitmap;
-  foreach_nat_protocol
-#undef _
+  u32 busy_ports[NAT_N_PROTOCOLS];
+  u32 *busy_ports_per_thread[NAT_N_PROTOCOLS];
+  uword *busy_port_bitmap[NAT_N_PROTOCOLS];
 } nat44_ei_address_t;
 
 clib_error_t *nat44_ei_api_hookup (vlib_main_t *vm);
