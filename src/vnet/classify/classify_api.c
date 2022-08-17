@@ -63,6 +63,8 @@ static void vl_api_classify_pcap_lookup_table_t_handler
   if (!reg)
     return;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   u32 n_skip = ntohl (mp->skip_n_vectors);
   u32 n_match = ntohl (mp->match_n_vectors);
   u32 mask_len = ntohl (mp->mask_len);
@@ -90,6 +92,8 @@ static void vl_api_classify_pcap_lookup_table_t_handler
   vec_free (mask_vec);
 
 out:
+  BAD_SW_IF_INDEX_LABEL;
+
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (REPLY_MSG_ID_BASE + VL_API_CLASSIFY_PCAP_LOOKUP_TABLE_REPLY);
