@@ -28,6 +28,7 @@ typedef enum
 #define _(N, i, n, s) NAT_PROTOCOL_##N = i,
   foreach_nat_protocol
 #undef _
+    NAT_N_PROTOCOLS
 } nat_protocol_t;
 
 always_inline nat_protocol_t
