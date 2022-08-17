@@ -16,7 +16,6 @@
 
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry_track.h>
 #include <wireguard/wireguard_peer.h>
 #include <wireguard/wireguard_if.h>
 #include <wireguard/wireguard_messages.h>
@@ -64,14 +63,13 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   wg_peer_endpoint_reset (&peer->src);
   wg_peer_endpoint_reset (&peer->dst);
 
-  wg_peer_adj_t *peer_adj;
-  vec_foreach (peer_adj, peer->adjs)
+  adj_index_t *adj_index;
+  vec_foreach (adj_index, peer->adj_indices)
     {
-      wg_peer_by_adj_index[peer_adj->adj_index] = INDEX_INVALID;
-      if (FIB_NODE_INDEX_INVALID != peer_adj->fib_entry_index)
-	fib_entry_untrack (peer_adj->fib_entry_index, peer_adj->sibling_index);
-      if (adj_is_valid (peer_adj->adj_index))
-	adj_nbr_midchain_unstack (peer_adj->adj_index);
+      wg_peer_by_adj_index[*adj_index] = INDEX_INVALID;
+
+      if (adj_is_valid (*adj_index))
+	adj_midchain_delegate_unstack (*adj_index);
     }
   peer->input_thread_index = ~0;
   peer->output_thread_index = ~0;
@@ -87,7 +85,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   peer->timer_need_another_keepalive = false;
   vec_free (peer->rewrite);
   vec_free (peer->allowed_ips);
-  vec_free (peer->adjs);
+  vec_free (peer->adj_indices);
 }
 
 static void
@@ -99,17 +97,17 @@ wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 }
 
 static void
-wg_peer_adj_stack (wg_peer_t *peer, wg_peer_adj_t *peer_adj)
+wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
 {
   ip_adjacency_t *adj;
   u32 sw_if_index;
   wg_if_t *wgi;
   fib_protocol_t fib_proto;
 
-  if (!adj_is_valid (peer_adj->adj_index))
+  if (!adj_is_valid (ai))
     return;
 
-  adj = adj_get (peer_adj->adj_index);
+  adj = adj_get (ai);
   sw_if_index = adj->rewrite_header.sw_if_index;
   u8 is_ip4 = ip46_address_is_ip4 (&peer->src.addr);
   fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
@@ -122,7 +120,7 @@ wg_peer_adj_stack (wg_peer_t *peer, wg_peer_adj_t *peer_adj)
   if (!vnet_sw_interface_is_admin_up (vnet_get_main (), wgi->sw_if_index) ||
       !wg_peer_can_send (peer))
     {
-      adj_nbr_midchain_unstack (peer_adj->adj_index);
+      adj_midchain_delegate_unstack (ai);
     }
   else
     {
@@ -136,14 +134,15 @@ wg_peer_adj_stack (wg_peer_t *peer, wg_peer_adj_t *peer_adj)
       u32 fib_index;
 
       fib_index = fib_table_find (fib_proto, peer->table_id);
-      peer_adj->fib_entry_index =
-	fib_entry_track (fib_index, &dst, FIB_NODE_TYPE_ADJ,
-			 peer_adj->adj_index, &peer_adj->sibling_index);
 
-      adj_nbr_midchain_stack_on_fib_entry (
-	peer_adj->adj_index, peer_adj->fib_entry_index,
-	fib_forw_chain_type_from_fib_proto (dst.fp_proto));
+      adj_midchain_delegate_stack (ai, fib_index, &dst);
     }
+}
+
+static void
+wg_peer_adj_reset_stacking (adj_index_t ai)
+{
+  adj_midchain_delegate_remove (ai);
 }
 
 static void
@@ -207,11 +206,11 @@ walk_rc_t
 wg_peer_if_admin_state_change (index_t peeri, void *data)
 {
   wg_peer_t *peer;
-  wg_peer_adj_t *peer_adj;
+  adj_index_t *adj_index;
   peer = wg_peer_get (peeri);
-  vec_foreach (peer_adj, peer->adjs)
+  vec_foreach (adj_index, peer->adj_indices)
     {
-      wg_peer_adj_stack (peer, peer_adj);
+      wg_peer_adj_stack (peer, *adj_index);
     }
   return (WALK_CONTINUE);
 }
@@ -224,7 +223,6 @@ wg_peer_if_adj_change (index_t peeri, void *data)
   ip_adjacency_t *adj;
   wg_peer_t *peer;
   fib_prefix_t *allowed_ip;
-  wg_peer_adj_t *peer_adj;
 
   adj = adj_get (*adj_index);
 
@@ -234,10 +232,7 @@ wg_peer_if_adj_change (index_t peeri, void *data)
       if (fib_prefix_is_cover_addr_46 (allowed_ip,
 				       &adj->sub_type.nbr.next_hop))
 	{
-	  vec_add2 (peer->adjs, peer_adj, 1);
-	  peer_adj->adj_index = *adj_index;
-	  peer_adj->fib_entry_index = FIB_NODE_INDEX_INVALID;
-	  peer_adj->sibling_index = ~0;
+	  vec_add1 (peer->adj_indices, *adj_index);
 
 	  vec_validate_init_empty (wg_peer_by_adj_index, *adj_index,
 				   INDEX_INVALID);
@@ -248,7 +243,7 @@ wg_peer_if_adj_change (index_t peeri, void *data)
 					   ADJ_FLAG_MIDCHAIN_IP_STACK,
 					   vec_dup (peer->rewrite));
 
-	  wg_peer_adj_stack (peer, peer_adj);
+	  wg_peer_adj_stack (peer, *adj_index);
 	  return (WALK_STOP);
 	}
     }
@@ -342,25 +337,19 @@ wg_peer_update_endpoint (index_t peeri, const ip46_address_t *addr, u16 port)
   peer->rewrite = wg_build_rewrite (&peer->src.addr, peer->src.port,
 				    &peer->dst.addr, peer->dst.port, is_ip4);
 
-  wg_peer_adj_t *peer_adj;
-  vec_foreach (peer_adj, peer->adjs)
+  adj_index_t *adj_index;
+  vec_foreach (adj_index, peer->adj_indices)
     {
-      if (FIB_NODE_INDEX_INVALID != peer_adj->fib_entry_index)
-	{
-	  fib_entry_untrack (peer_adj->fib_entry_index,
-			     peer_adj->sibling_index);
-	  peer_adj->fib_entry_index = FIB_NODE_INDEX_INVALID;
-	  peer_adj->sibling_index = ~0;
-	}
-
-      if (adj_is_valid (peer_adj->adj_index))
+      if (adj_is_valid (*adj_index))
 	{
 	  adj_midchain_fixup_t fixup =
-	    wg_peer_get_fixup (peer, adj_get_link_type (peer_adj->adj_index));
-	  adj_nbr_midchain_update_rewrite (peer_adj->adj_index, fixup, NULL,
+	    wg_peer_get_fixup (peer, adj_get_link_type (*adj_index));
+	  adj_nbr_midchain_update_rewrite (*adj_index, fixup, NULL,
 					   ADJ_FLAG_MIDCHAIN_IP_STACK,
 					   vec_dup (peer->rewrite));
-	  wg_peer_adj_stack (peer, peer_adj);
+
+	  wg_peer_adj_reset_stacking (*adj_index);
+	  wg_peer_adj_stack (peer, *adj_index);
 	}
     }
 }
@@ -507,9 +496,9 @@ format_wg_peer (u8 * s, va_list * va)
 {
   index_t peeri = va_arg (*va, index_t);
   fib_prefix_t *allowed_ip;
+  adj_index_t *adj_index;
   u8 key[NOISE_KEY_LEN_BASE64];
   wg_peer_t *peer;
-  wg_peer_adj_t *peer_adj;
 
   peer = wg_peer_get (peeri);
   key_to_base64 (peer->remote.r_public, NOISE_PUBLIC_KEY_LEN, key);
@@ -522,9 +511,9 @@ format_wg_peer (u8 * s, va_list * va)
     peer->wg_sw_if_index, peer->persistent_keepalive_interval, peer->flags,
     pool_elts (peer->api_clients));
   s = format (s, "\n  adj:");
-  vec_foreach (peer_adj, peer->adjs)
+  vec_foreach (adj_index, peer->adj_indices)
     {
-      s = format (s, " %d", peer_adj->adj_index);
+      s = format (s, " %d", *adj_index);
     }
   s = format (s, "\n  key:%=s %U", key, format_hex_bytes,
 	      peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);

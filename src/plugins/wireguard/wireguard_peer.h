@@ -68,13 +68,6 @@ typedef enum
   WG_PEER_ESTABLISHED = 0x2,
 } wg_peer_flags;
 
-typedef struct wg_peer_adj_t_
-{
-  adj_index_t adj_index;
-  fib_node_index_t fib_entry_index;
-  u32 sibling_index;
-} wg_peer_adj_t;
-
 typedef struct wg_peer
 {
   noise_remote_t remote;
@@ -87,7 +80,7 @@ typedef struct wg_peer
   wg_peer_endpoint_t dst;
   wg_peer_endpoint_t src;
   u32 table_id;
-  wg_peer_adj_t *adjs;
+  adj_index_t *adj_indices;
 
   /* rewrite built from address information */
   u8 *rewrite;

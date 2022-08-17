@@ -2328,3 +2328,86 @@ class WireguardHandoffTests(TestWg):
     @unittest.skip("test disabled")
     def test_wg_multi_interface(self):
         """Multi-tunnel on the same port"""
+
+
+class TestWgFIB(VppTestCase):
+    """Wireguard FIB Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestWgFIB, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestWgFIB, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestWgFIB, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestWgFIB, self).tearDown()
+
+    def test_wg_fib_tracking(self):
+        """FIB tracking"""
+        port = 12323
+
+        # create wg interface
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create a peer
+        peer_1 = VppWgPeer(
+            self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # create a route to rewrite traffic into the wg interface
+        r1 = VppIpRoute(
+            self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
+        ).add_vpp_config()
+
+        # resolve ARP and expect the adjacency to update
+        self.pg1.resolve_arp()
+
+        # wait for the peer to send a handshake initiation
+        rxs = self.pg1.get_capture(2, timeout=6)
+
+        # prepare and send a handshake response
+        # expect a keepalive message
+        resp = peer_1.consume_init(rxs[1], self.pg1)
+        rxs = self.send_and_expect(self.pg1, [resp], self.pg1)
+
+        # verify the keepalive message
+        b = peer_1.decrypt_transport(rxs[0])
+        self.assertEqual(0, len(b))
+
+        # prepare and send a packet that will be rewritten into the wg interface
+        # expect a data packet sent to the new endpoint
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="10.11.3.2")
+            / UDP(sport=555, dport=556)
+            / Raw()
+        )
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # verify the data packet
+        peer_1.validate_encapped(rxs, p)
+
+        # remove configs
+        r1.remove_vpp_config()
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
