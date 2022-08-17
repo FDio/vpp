@@ -565,6 +565,11 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/unittest/
 
+Plugin - DSA device driver
+I:      dsa_intel
+M:      Marvin Liu <yong.liu@intel.com>
+F:      src/plugins/dsa_intel
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <klement.sekera@gmail.com>
