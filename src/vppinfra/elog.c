@@ -1198,7 +1198,7 @@ elog_write_file_not_inline (elog_main_t * em, char *clib_file, int flush_ring)
 __clib_export clib_error_t *
 elog_read_file_not_inline (elog_main_t * em, char *clib_file)
 {
-  serialize_main_t m;
+  serialize_main_t m = { 0 };
   clib_error_t *error;
 
   error = unserialize_open_clib_file (&m, clib_file);
