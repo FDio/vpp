@@ -178,7 +178,7 @@ clib_bitmap_set_no_check (uword * a, uword i, uword new_value)
     @param ai - pointer to the bitmap
     @param i - the bit position to interrogate
     @param value - new value for the bit
-    @returns the old value of the bit
+    @returns the (possibly reallocated) bitmap object pointer
 */
 always_inline uword *
 clib_bitmap_set (uword * ai, uword i, uword value)
