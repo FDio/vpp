@@ -211,6 +211,8 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
 	rv->proposal_num = proposal->proposal_num;
 	rv->protocol_id = proposal->protocol_id;
 	RAND_bytes ((u8 *) & rv->spi, sizeof (rv->spi));
+	if (rv->protocol_id != IKEV2_PROTOCOL_IKE)
+	  rv->spi &= 0xffffffff;
 	goto done;
       }
     else
@@ -480,11 +482,10 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
 }
 
 static void
-ikev2_calc_keys (ikev2_sa_t * sa)
+ikev2_calc_keys_internal (ikev2_sa_t *sa, u8 *skeyseed)
 {
   u8 *tmp;
   /* calculate SKEYSEED = prf(Ni | Nr, g^ir) */
-  u8 *skeyseed = 0;
   u8 *s = 0;
   u16 integ_key_len = 0, salt_len = 0;
   ikev2_sa_transform_t *tr_encr, *tr_prf, *tr_integ;
@@ -502,7 +503,6 @@ ikev2_calc_keys (ikev2_sa_t * sa)
 
   vec_append (s, sa->i_nonce);
   vec_append (s, sa->r_nonce);
-  skeyseed = ikev2_calc_prf (tr_prf, s, sa->dh_shared_key);
 
   /* Calculate S = Ni | Nr | SPIi | SPIr */
   u64 *spi;
@@ -520,7 +520,6 @@ ikev2_calc_keys (ikev2_sa_t * sa)
     salt_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, skeyseed, s, len);
-  vec_free (skeyseed);
   vec_free (s);
 
   int pos = 0;
@@ -565,6 +564,41 @@ ikev2_calc_keys (ikev2_sa_t * sa)
 
   vec_free (keymat);
   sa->keys_generated = 1;
+}
+
+static void
+ikev2_calc_keys_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old)
+{
+  u8 *s = 0, *skeyseed = 0;
+  ikev2_sa_transform_t *tr_prf =
+    ikev2_sa_get_td_for_type (sa_old->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+
+  vec_append (s, sa_new->dh_shared_key);
+  vec_append (s, sa_new->i_nonce);
+  vec_append (s, sa_new->r_nonce);
+  skeyseed = ikev2_calc_prf (tr_prf, sa_old->sk_d, s);
+
+  ikev2_calc_keys_internal (sa_new, skeyseed);
+
+  vec_free (skeyseed);
+  vec_free (s);
+}
+
+static void
+ikev2_calc_keys (ikev2_sa_t *sa)
+{
+  u8 *s = 0, *skeyseed = 0;
+  ikev2_sa_transform_t *tr_prf =
+    ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+
+  vec_append (s, sa->i_nonce);
+  vec_append (s, sa->r_nonce);
+  skeyseed = ikev2_calc_prf (tr_prf, s, sa->dh_shared_key);
+
+  ikev2_calc_keys_internal (sa, skeyseed);
+
+  vec_free (skeyseed);
+  vec_free (s);
 }
 
 static void
@@ -1410,6 +1444,110 @@ ikev2_process_create_child_sa_rekey (ikev2_sa_t *sa, ikev2_sa_t *sar,
   return 1;
 }
 
+static void
+ikev2_complete_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old,
+			 ikev2_sa_rekey_t *sa_rekey)
+{
+  sa_new->del = 0;
+  sa_new->rekey = 0;
+  sa_new->new_child = 0;
+  sa_new->sa_rekey = 0;
+  sa_new->last_sa_init_req_packet_data = 0;
+  sa_new->last_sa_init_res_packet_data = 0;
+  sa_new->last_msg_id = ~0;
+  sa_new->last_res_packet_data = 0;
+  sa_new->last_init_msg_id = 0;
+  clib_memset (&sa_new->stats, 0, sizeof (sa_new->stats));
+
+  sa_new->ispi = sa_rekey->ispi;
+  sa_new->rspi = sa_rekey->rspi;
+  sa_new->i_nonce = sa_rekey->i_nonce;
+  sa_new->r_nonce = sa_rekey->r_nonce;
+  sa_new->dh_group = sa_rekey->dh_group;
+  sa_new->dh_shared_key = sa_rekey->dh_shared_key;
+  sa_new->dh_private_key = sa_rekey->dh_private_key;
+  sa_new->i_dh_data = sa_rekey->i_dh_data;
+  sa_new->r_dh_data = sa_rekey->r_dh_data;
+  sa_new->i_proposals = sa_rekey->i_proposals;
+  sa_new->r_proposals = sa_rekey->r_proposals;
+
+  sa_new->sk_d = 0;
+  sa_new->sk_ai = 0;
+  sa_new->sk_ar = 0;
+  sa_new->sk_ei = 0;
+  sa_new->sk_er = 0;
+  sa_new->sk_pi = 0;
+  sa_new->sk_pr = 0;
+  ikev2_calc_keys_rekey (sa_new, sa_old);
+
+  sa_new->i_auth.data = vec_dup (sa_old->i_auth.data);
+  sa_new->i_auth.key = sa_old->i_auth.key;
+  if (sa_new->i_auth.key)
+    EVP_PKEY_up_ref (sa_new->i_auth.key);
+
+  sa_new->r_auth.data = vec_dup (sa_old->r_auth.data);
+  sa_new->r_auth.key = sa_old->r_auth.key;
+  if (sa_new->r_auth.key)
+    EVP_PKEY_up_ref (sa_new->r_auth.key);
+
+  sa_new->i_id.data = vec_dup (sa_old->i_id.data);
+  sa_new->r_id.data = vec_dup (sa_old->r_id.data);
+
+  sa_old->is_tun_itf_set = 0;
+  sa_old->tun_itf = ~0;
+  sa_old->old_id_expiration = 0;
+  sa_old->current_remote_id_mask = 0;
+  sa_old->old_remote_id = 0;
+  sa_old->old_remote_id_present = 0;
+  sa_old->childs = 0;
+  sa_old->sw_if_index = ~0;
+}
+
+static void
+ikev2_process_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old,
+			ikev2_sa_rekey_t *sa_rekey)
+{
+  ikev2_sa_transform_t *tr;
+
+  if (ikev2_generate_sa_init_data (sa_new) != IKEV2_GENERATE_SA_INIT_OK)
+    {
+      sa_rekey->notify_type = IKEV2_NOTIFY_MSG_INVALID_KE_PAYLOAD;
+      return;
+    }
+
+  sa_new->r_proposals =
+    ikev2_select_proposal (sa_new->i_proposals, IKEV2_PROTOCOL_IKE);
+
+  tr = ikev2_sa_get_td_for_type (sa_new->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
+  if (!tr || tr->dh_type != sa_new->dh_group)
+    {
+      sa_rekey->notify_type = IKEV2_NOTIFY_MSG_INVALID_KE_PAYLOAD;
+      return;
+    }
+
+  sa_rekey->notify_type = 0;
+  sa_rekey->ispi = sa_new->i_proposals[0].spi;
+  sa_rekey->rspi = sa_new->r_proposals[0].spi;
+  sa_rekey->i_nonce = sa_new->i_nonce;
+  sa_rekey->r_nonce = sa_new->r_nonce;
+  sa_rekey->dh_group = sa_new->dh_group;
+  sa_rekey->dh_shared_key = sa_new->dh_shared_key;
+  sa_rekey->dh_private_key = sa_new->dh_private_key;
+  sa_rekey->i_dh_data = sa_new->i_dh_data;
+  sa_rekey->r_dh_data = sa_new->r_dh_data;
+  sa_rekey->i_proposals = sa_new->i_proposals;
+  sa_rekey->r_proposals = sa_new->r_proposals;
+
+  sa_new->i_nonce = 0;
+  sa_new->r_nonce = 0;
+  sa_new->dh_shared_key = 0;
+  sa_new->dh_private_key = 0;
+  sa_new->i_dh_data = 0;
+  sa_new->r_dh_data = 0;
+  sa_new->i_proposals = 0;
+  sa_new->r_proposals = 0;
+}
+
 static int
 ikev2_process_create_child_sa_req (vlib_main_t * vm,
 				   ikev2_sa_t * sa, ike_header_t * ike,
@@ -1515,7 +1653,9 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       p += plen;
     }
 
-  if (!proposal || proposal->protocol_id != IKEV2_PROTOCOL_ESP || !nonce)
+  if (!proposal || !nonce ||
+      (proposal->protocol_id != IKEV2_PROTOCOL_ESP &&
+       proposal->protocol_id != IKEV2_PROTOCOL_IKE))
     goto cleanup_and_exit;
 
   if (sa->is_initiator)
@@ -1570,6 +1710,16 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	      vec_free (tsr);
 	      vec_free (tsi);
 	    }
+	}
+      else if (proposal[0].protocol_id == IKEV2_PROTOCOL_IKE)
+	{
+	  ikev2_sa_rekey_t *sa_rekey;
+	  if (tsi || tsr)
+	    goto cleanup_and_exit;
+	  sar.i_proposals = proposal;
+	  vec_add (sar.i_nonce, nonce, nonce_len);
+	  vec_add2 (sa->sa_rekey, sa_rekey, 1);
+	  ikev2_process_sa_rekey (&sar, sa, sa_rekey);
 	}
       else
 	{
@@ -2414,19 +2564,26 @@ ikev2_add_invalid_ke_payload (ikev2_sa_t *sa, ikev2_payload_chain_t *chain)
 }
 
 static void
+ikev2_add_notify_payload (ikev2_sa_t *sa, ikev2_payload_chain_t *chain,
+			  u16 notify_type)
+{
+  if (notify_type == IKEV2_NOTIFY_MSG_INVALID_KE_PAYLOAD)
+    ikev2_add_invalid_ke_payload (sa, chain);
+  else
+    ikev2_payload_add_notify (chain, notify_type, 0);
+}
+
+static void
 ikev2_add_create_child_resp (ikev2_sa_t *sa, ikev2_rekey_t *rekey,
 			     ikev2_payload_chain_t *chain)
 {
   if (rekey->notify_type)
     {
-      if (rekey->notify_type == IKEV2_NOTIFY_MSG_INVALID_KE_PAYLOAD)
-	ikev2_add_invalid_ke_payload (sa, chain);
-      else
-	ikev2_payload_add_notify (chain, rekey->notify_type, 0);
+      ikev2_add_notify_payload (sa, chain, rekey->notify_type);
       return;
     }
 
-  ikev2_payload_add_sa (chain, rekey->r_proposal);
+  ikev2_payload_add_sa (chain, rekey->r_proposal, 0);
   ikev2_payload_add_nonce (chain, sa->r_nonce);
   if (rekey->kex)
     ikev2_payload_add_ke (chain, sa->dh_group, sa->r_dh_data);
@@ -2482,7 +2639,7 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	  ASSERT (udp);
 
 	  ike->rspi = clib_host_to_net_u64 (sa->rspi);
-	  ikev2_payload_add_sa (chain, sa->r_proposals);
+	  ikev2_payload_add_sa (chain, sa->r_proposals, 0);
 	  ikev2_payload_add_ke (chain, sa->dh_group, sa->r_dh_data);
 	  ikev2_payload_add_nonce (chain, sa->r_nonce);
 
@@ -2510,7 +2667,7 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	{
 	  ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
 	  ikev2_payload_add_auth (chain, &sa->r_auth);
-	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals);
+	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals, 0);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
 	}
@@ -2555,7 +2712,7 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	  if (sa->r_id.type != 0)
 	    ikev2_payload_add_id (chain, &sa->r_id, IKEV2_PAYLOAD_IDR);
 	  ikev2_payload_add_auth (chain, &sa->i_auth);
-	  ikev2_payload_add_sa (chain, sa->childs[0].i_proposals);
+	  ikev2_payload_add_sa (chain, sa->childs[0].i_proposals, 0);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
 	  ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_INITIAL_CONTACT,
@@ -2632,7 +2789,7 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	  notify.spi = sa->childs[0].i_proposals->spi;
 	  *(u32 *) data = clib_host_to_net_u32 (notify.spi);
 
-	  ikev2_payload_add_sa (chain, proposals);
+	  ikev2_payload_add_sa (chain, proposals, 0);
 	  ikev2_payload_add_nonce (chain, sa->i_nonce);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
@@ -2650,6 +2807,19 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 	{
 	  ikev2_add_create_child_resp (sa, &sa->new_child[0], chain);
 	  vec_del1 (sa->new_child, 0);
+	}
+      else if (vec_len (sa->sa_rekey) > 0)
+	{
+	  if (sa->sa_rekey[0].notify_type)
+	    ikev2_add_notify_payload (sa, chain, sa->sa_rekey[0].notify_type);
+	  else
+	    {
+	      ikev2_payload_add_sa (chain, sa->sa_rekey[0].r_proposals, 1);
+	      ikev2_payload_add_nonce (chain, sa->sa_rekey[0].r_nonce);
+	      ikev2_payload_add_ke (chain, sa->sa_rekey[0].dh_group,
+				    sa->sa_rekey[0].r_dh_data);
+	    }
+	  vec_del1 (sa->sa_rekey, 0);
 	}
       else if (sa->unsupported_cp)
 	{
@@ -3451,6 +3621,38 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
 		      slen =
 			ikev2_generate_message (b0, sa0, ike0, 0, udp0, 0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (
+			  vm, node->node_index, IKEV2_ERROR_NO_BUFF_SPACE, 1);
+		    }
+		}
+	      else if (vec_len (sa0->sa_rekey) > 0)
+		{
+		  if (!sa0->sa_rekey[0].notify_type)
+		    {
+		      ikev2_sa_t *sar, *tmp = 0;
+		      pool_get (ptd->sas, tmp);
+		      sa0 = pool_elt_at_index (ptd->sas, p[0]);
+		      /* swap old/new SAs to keep index and inherit IPsec SA */
+		      clib_memcpy_fast (tmp, sa0, sizeof (*tmp));
+		      sar = sa0;
+		      sa0 = tmp;
+		      hash_set (ptd->sa_by_rspi, sa0->rspi, sa0 - ptd->sas);
+		      p = hash_get (ptd->sa_by_rspi, sa0->rspi);
+		      ikev2_complete_sa_rekey (sar, sa0, &sa0->sa_rekey[0]);
+		      hash_set (ptd->sa_by_rspi, sar->rspi, sar - ptd->sas);
+		    }
+		  if (ike_hdr_is_response (ike0))
+		    {
+		      vec_free (sa0->sa_rekey);
+		    }
+		  else
+		    {
+		      stats->n_rekey_req++;
+		      sa0->stats.n_rekey_req++;
+		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
+		      slen =
+			ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		      if (~0 == slen)
 			vlib_node_increment_counter (
 			  vm, node->node_index, IKEV2_ERROR_NO_BUFF_SPACE, 1);
@@ -4526,7 +4728,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   proposals[0].protocol_id = IKEV2_PROTOCOL_IKE;
 
   /* Add and then cleanup proposal data */
-  ikev2_payload_add_sa (chain, proposals);
+  ikev2_payload_add_sa (chain, proposals, 0);
   ikev2_sa_free_proposal_vector (&proposals);
 
   sa.is_initiator = 1;
@@ -4560,6 +4762,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   sa.childs[0].i_proposals[0].protocol_id = IKEV2_PROTOCOL_ESP;
   RAND_bytes ((u8 *) & sa.childs[0].i_proposals[0].spi,
 	      sizeof (sa.childs[0].i_proposals[0].spi));
+  sa.childs[0].i_proposals[0].spi &= 0xffffffff;
 
   /* Add NAT detection notification messages (mandatory) */
   u8 *nat_detection_sha1 = ikev2_compute_nat_sha1 (
@@ -4807,6 +5010,7 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
 
   /*need new ispi */
   RAND_bytes ((u8 *) & proposals[0].spi, sizeof (proposals[0].spi));
+  proposals[0].spi &= 0xffffffff;
   rekey->spi = proposals[0].spi;
   rekey->ispi = csa->i_proposals->spi;
   len = ikev2_generate_message (b0, sa, ike0, proposals, 0, 0);

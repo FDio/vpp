@@ -243,7 +243,7 @@ typedef struct
 {
   u8 proposal_num;
   ikev2_protocol_id_t protocol_id:8;
-  u32 spi;
+  u64 spi;
   ikev2_sa_transform_t *transforms;
 } ikev2_sa_proposal_t;
 
@@ -327,6 +327,22 @@ typedef struct
   ikev2_ts_t *tsi;
   ikev2_ts_t *tsr;
 } ikev2_rekey_t;
+
+typedef struct
+{
+  u16 notify_type;
+  u16 dh_group;
+  u64 ispi;
+  u64 rspi;
+  u8 *i_nonce;
+  u8 *r_nonce;
+  u8 *dh_shared_key;
+  u8 *dh_private_key;
+  u8 *i_dh_data;
+  u8 *r_dh_data;
+  ikev2_sa_proposal_t *i_proposals;
+  ikev2_sa_proposal_t *r_proposals;
+} ikev2_sa_rekey_t;
 
 typedef struct
 {
@@ -431,6 +447,9 @@ typedef struct
   ikev2_rekey_t *rekey;
 
   ikev2_rekey_t *new_child;
+
+  /* pending sa rekeyings */
+  ikev2_sa_rekey_t *sa_rekey;
 
   /* packet data */
   u8 *last_sa_init_req_packet_data;
@@ -601,8 +620,8 @@ void ikev2_payload_add_notify (ikev2_payload_chain_t * c, u16 msg_type,
 			       u8 * data);
 void ikev2_payload_add_notify_2 (ikev2_payload_chain_t * c, u16 msg_type,
 				 u8 * data, ikev2_notify_t * notify);
-void ikev2_payload_add_sa (ikev2_payload_chain_t * c,
-			   ikev2_sa_proposal_t * proposals);
+void ikev2_payload_add_sa (ikev2_payload_chain_t *c,
+			   ikev2_sa_proposal_t *proposals, u8 force_spi);
 void ikev2_payload_add_ke (ikev2_payload_chain_t * c, u16 dh_group,
 			   u8 * dh_data);
 void ikev2_payload_add_nonce (ikev2_payload_chain_t * c, u8 * nonce);
