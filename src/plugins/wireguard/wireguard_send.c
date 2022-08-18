@@ -70,10 +70,8 @@ wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const u8 *rewrite, u8 is_ip4)
       /* copy only ip6 and udp header; wireguard header not needed */
       clib_memcpy (hdr6, rewrite, sizeof (ip6_udp_header_t));
 
-      hdr6->udp.length =
+      hdr6->ip6.payload_length = hdr6->udp.length =
 	clib_host_to_net_u16 (b0->current_length - sizeof (ip6_header_t));
-
-      hdr6->ip6.payload_length = clib_host_to_net_u16 (b0->current_length);
     }
 }
 
