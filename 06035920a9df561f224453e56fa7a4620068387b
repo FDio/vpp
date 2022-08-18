@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1aacc0a7_50e4739c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-08-18T09:57:37Z",
+      "side": 1,
+      "message": "please rename plugin directory to src/plugins_dma_intel_dsa or just src/plugins_dma_intel if it makes more sense to have one plugin for both dsa and cbdma.....",
+      "revId": "06035920a9df561f224453e56fa7a4620068387b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bcc3c97b_35744158",
+        "filename": "src/vlib/dma/dma.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-08-18T09:57:37Z",
+      "side": 1,
+      "message": "please remove",
+      "revId": "06035920a9df561f224453e56fa7a4620068387b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
