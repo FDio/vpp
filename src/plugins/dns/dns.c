@@ -1370,7 +1370,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   dns_main_t *dm = &dns_main;
   vl_api_dns_resolve_name_reply_t *rmp;
   dns_cache_entry_t *ep = 0;
-  dns_pending_request_t _t0, *t0 = &_t0;
+  dns_pending_request_t _t0 = { 0 }, *t0 = &_t0;
   int rv;
   dns_resolve_name_t rn;
 
@@ -1416,7 +1416,7 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
   int i, len;
   u8 *lookup_name = 0;
   u8 digit, nybble;
-  dns_pending_request_t _t0, *t0 = &_t0;
+  dns_pending_request_t _t0 = { 0 }, *t0 = &_t0;
 
   if (mp->is_ip6)
     {
