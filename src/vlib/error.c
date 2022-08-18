@@ -222,6 +222,7 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   for (u32 i = 0; i < n_errors; i++)
     {
       t.format = (char *) format (0, "%v %s: %%d", n->name, cd[i].name);
+      vec_free (vm->error_elog_event_types[n->error_heap_index + i].format);
       vm->error_elog_event_types[n->error_heap_index + i] = t;
       nm->node_by_error[n->error_heap_index + i] = n->index;
     }
