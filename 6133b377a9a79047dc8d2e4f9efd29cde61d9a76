@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e69ae6fc_fdee2fc0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T08:31:33Z",
+      "side": 1,
+      "message": "I see that the current code is plain bad (it was a botched copy paste from endpoint-dependent NAT, where the ports are actually overloaded).\n\nBased on my comments, it looks like we don\u0027t have a test which verifies that a collision is properly handled. Would be great to have one ... ;-) To be able to write one, we would need to adopt ED behaviour where the first port we try is not random, but rather the original source port. Only when that port can\u0027t be taken do we start rolling dice ... This then allows also testing conflict resolution by sending multiple packets with same source ports.",
+      "revId": "6133b377a9a79047dc8d2e4f9efd29cde61d9a76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99ef6122_2eec4dbc",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T08:31:33Z",
+      "side": 1,
+      "message": "I think you need to write\n\na-\u003ebusy_##n##_port_bitmap \u003d clib_bitmap_set (a-\u003ebusy_##n##_port_bitmap, port, 1);\n\nbecause the bitmap might expand and move in memory.",
+      "range": {
+        "startLine": 195,
+        "startChar": 4,
+        "endLine": 195,
+        "endChar": 19
+      },
+      "revId": "6133b377a9a79047dc8d2e4f9efd29cde61d9a76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78546c32_72bb086e",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T08:31:33Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "6133b377a9a79047dc8d2e4f9efd29cde61d9a76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
