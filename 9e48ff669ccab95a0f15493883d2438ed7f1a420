@@ -16,6 +16,80 @@
       "message": "Vastly simpler, 80 fewer lines of code!",
       "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2f25d42_792f8099",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T16:33:57Z",
+      "side": 1,
+      "message": "could we ASSERT here that the bit is not set?",
+      "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa743ea8_8c916c4b",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T16:33:57Z",
+      "side": 1,
+      "message": "could we ASSERT here that the bit is set?",
+      "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29e90dfb_2ca4feaf",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1327,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T16:33:57Z",
+      "side": 1,
+      "message": "this ASSERT is then not needed ..",
+      "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "beca9140_cc699d34",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1861,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-08-18T16:33:57Z",
+      "side": 1,
+      "message": "since the macro is gone, I would expect this comment to be gone too ...\n\nalso I would replace instances of fib_index with ~0 to make it more obvious that it\u0027s a constant",
+      "range": {
+        "startLine": 1861,
+        "startChar": 30,
+        "endLine": 1861,
+        "endChar": 35
+      },
+      "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
