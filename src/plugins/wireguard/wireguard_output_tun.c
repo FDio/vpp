@@ -161,7 +161,7 @@ wg_output_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
+	  b[bi]->error = node->errors[WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR];
 	  nexts[bi] = drop_next;
 	  n_fail--;
 	}
