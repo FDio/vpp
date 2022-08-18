@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e0807de_1f64862f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2022-08-18T16:11:57Z",
+      "side": 1,
+      "message": "Vastly simpler, 80 fewer lines of code!",
+      "revId": "9e48ff669ccab95a0f15493883d2438ed7f1a420",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
