@@ -38,6 +38,7 @@ connect_to_vpp (void)
 			     true) != VAPI_OK)
     {
       clib_warning ("vapi_connect failed");
+      vapi_ctx_free (ctx);
       return 0;
     }
   return ctx;
