@@ -293,7 +293,7 @@ split_and_rehash (vnet_classify_table_t * t,
 
   for (i = 0; i < length_in_entries; i++)
     {
-      u64 new_hash;
+      u32 new_hash;
 
       v = vnet_classify_entry_at_index (t, old_values, i);
 
