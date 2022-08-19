@@ -710,8 +710,11 @@ lcp_router_neigh_del (struct rtnl_neigh *rn)
     {
       ip_address_t nh;
       int rv;
+      struct nl_addr *rna;
 
-      lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
+      if ((rna = rtnl_neigh_get_dst (rn)) == NULL)
+	return;
+      lcp_router_mk_addr (rna, &nh);
 
       if (ip46_address_is_multicast (&ip_addr_46 (&nh)))
 	{
@@ -759,8 +762,11 @@ lcp_router_neigh_add (struct rtnl_neigh *rn)
       struct nl_addr *ll;
       ip_address_t nh;
       int state;
+      struct nl_addr *rna;
 
-      lcp_router_mk_addr (rtnl_neigh_get_dst (rn), &nh);
+      if ((rna = rtnl_neigh_get_dst (rn)) == NULL)
+	return;
+      lcp_router_mk_addr (rna, &nh);
 
       if (ip46_address_is_multicast (&ip_addr_46 (&nh)))
 	{
