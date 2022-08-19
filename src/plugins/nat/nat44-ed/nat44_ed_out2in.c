@@ -279,7 +279,8 @@ nat44_ed_alloc_i2o_port (snat_main_t *sm, snat_address_t *a, snat_session_t *s,
   for (int i = 0; i < ED_PORT_ALLOC_ATTEMPTS; ++i)
     {
       portnum = (sm->port_per_thread * snat_thread_index) +
-		snat_random_port (0, sm->port_per_thread - 1) + 1024;
+		snat_random_port (0, sm->port_per_thread - 1) +
+		ED_USER_PORT_OFFSET;
       portnum = clib_host_to_net_u16 (portnum);
       nat_6t_i2o_flow_init (sm, thread_index, s, i2o_addr, i2o_port, a->addr,
 			    portnum, i2o_fib_index, proto);

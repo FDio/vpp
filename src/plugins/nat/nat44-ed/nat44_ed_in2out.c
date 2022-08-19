@@ -102,14 +102,15 @@ nat_ed_alloc_addr_and_port_with_snat_address (
   u16 port_per_thread, u32 snat_thread_index, snat_session_t *s,
   ip4_address_t *outside_addr, u16 *outside_port)
 {
-  const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
+  const u16 port_thread_offset =
+    (port_per_thread * snat_thread_index) + ED_USER_PORT_OFFSET;
 
   s->o2i.match.daddr = a->addr;
   /* first try port suggested by caller */
   u16 port = clib_net_to_host_u16 (*outside_port);
   u16 port_offset = port - port_thread_offset;
-  if (port <= port_thread_offset ||
-      port > port_thread_offset + port_per_thread)
+  if (port < port_thread_offset ||
+      port >= port_thread_offset + port_per_thread)
     {
       /* need to pick a different port, suggested port doesn't fit in
        * this thread's port range */
