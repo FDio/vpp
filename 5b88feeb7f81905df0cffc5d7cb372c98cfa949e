@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42ecef23_21995927",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2022-08-19T15:49:25Z",
+      "side": 1,
+      "message": "Finally all comments fixed in patch-set 5!  Thanks!",
+      "revId": "5b88feeb7f81905df0cffc5d7cb372c98cfa949e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -16,6 +16,24 @@
       "message": "fib_index was set to ~0, so the conditions being evaluated by the \u0027if\u0027 and the \u0027else if\u0027 are the same. The \u0027else if\u0027 is probably going to get optimized out and is not needed.",
       "revId": "1261ffde5730db856f42936565848ad615a8c29a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0c470b2a_c08a4bd5",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1885,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2022-08-19T15:49:25Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "c7d47e88_ed6c6802",
+      "revId": "1261ffde5730db856f42936565848ad615a8c29a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
