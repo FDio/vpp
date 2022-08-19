@@ -41,6 +41,11 @@
  * as if there were no free ports available to conserve resources */
 #define ED_PORT_ALLOC_ATTEMPTS (10)
 
+/* system ports range is 0-1023, first user port is 1024 per
+ * https://www.rfc-editor.org/rfc/rfc6335#section-6
+ */
+#define ED_USER_PORT_OFFSET 1024
+
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
