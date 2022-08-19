@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "707d032b_17e1147e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-08-19T01:13:34Z",
+      "side": 1,
+      "message": "this patch depend on https://gerrit.fd.io/r/c/vpp/+/36914, so it cannot build now.",
+      "revId": "cfb9d66c35ebcac4362908fc88f95d301991b8f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
