@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f45f992b_568e92af",
+        "filename": "extras/hs-test/go.mod",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c23f5be_a0e4913c",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 30
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "697ed7f4_82a83ba5",
@@ -54,6 +78,30 @@
       "writtenOn": "2022-08-11T19:50:28Z",
       "side": 1,
       "message": "Can we remove this?",
+      "range": {
+        "startLine": 14,
+        "startChar": 1,
+        "endLine": 14,
+        "endChar": 50
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "94c44460_fce1ff3c",
+        "filename": "extras/hs-test/hstf_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "697ed7f4_82a83ba5",
       "range": {
         "startLine": 14,
         "startChar": 1,
@@ -87,6 +135,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e385ad8f_ee334ac2",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "46cb72a1_6dbd9728",
+      "range": {
+        "startLine": 14,
+        "startChar": 5,
+        "endLine": 14,
+        "endChar": 9
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "39c06720_c061de98",
@@ -100,6 +172,30 @@
       "writtenOn": "2022-08-11T19:50:28Z",
       "side": 1,
       "message": "Maybe use Item/NetDecConfig here?",
+      "range": {
+        "startLine": 21,
+        "startChar": 11,
+        "endLine": 21,
+        "endChar": 22
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ee62d62_3fe25efd",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "39c06720_c061de98",
       "range": {
         "startLine": 21,
         "startChar": 11,
@@ -133,6 +229,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e75e1b6_c384ccd4",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0093aad3_22141613",
+      "range": {
+        "startLine": 24,
+        "startChar": 5,
+        "endLine": 24,
+        "endChar": 11
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5a416960_bb4c8128",
@@ -146,6 +266,30 @@
       "writtenOn": "2022-08-11T19:50:28Z",
       "side": 1,
       "message": "Can we add configure function to NetDev struct and use a factory to generate NetDev objects based on NetDevConfig type and ask them to configure themselves. \n\nAlso, maybe move Add* functions to a net util package?",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 1
+      },
+      "revId": "d8cd2d8f7e4d472d3aefecffa95e53069be6d489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18439349_cb8f7777",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-08-19T12:07:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a416960_bb4c8128",
       "range": {
         "startLine": 44,
         "startChar": 0,
