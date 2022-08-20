@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30144d12_0517bd05",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2022-08-20T10:16:23Z",
+      "side": 1,
+      "message": "Hello, please review\nAlso, it fixes same in/out off-by-one worker selection for edge port:\nExampls: 2 workers, (0xffff - 1024) / 2 \u003d 32255 port_per_thread\nIn2out packets with port 32255 + 1024 \u003d 33279 will be kept in worker 0 because will not pass `port \u003e port_thread_offset + port_per_thread` condition. On out2in path, 33279 port will get (33279 - 1024) / 32255 \u003d 1 worker, not 0.",
+      "revId": "a3bdeffdd7d6a2394accf7f0abb736f78f7eeccd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
