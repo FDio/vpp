@@ -796,8 +796,8 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		      i->sw_if_index,
 		      (nat44_ed_is_interface_inside (i) &&
 		       nat44_ed_is_interface_outside (i)) ?
-			"in out" :
-			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
+			      "in out" :
+			      (nat44_ed_is_interface_inside (i) ? "in" : "out"));
   }
 
   pool_foreach (i, sm->output_feature_interfaces)
@@ -806,8 +806,8 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		      format_vnet_sw_if_index_name, vnm, i->sw_if_index,
 		      (nat44_ed_is_interface_inside (i) &&
 		       nat44_ed_is_interface_outside (i)) ?
-			"in out" :
-			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
+			      "in out" :
+			      (nat44_ed_is_interface_inside (i) ? "in" : "out"));
   }
 
   return 0;

@@ -2560,6 +2560,79 @@ class TestNAT44ED(VppTestCase):
             in_if.unconfig()
             out_if.unconfig()
 
+    def test_session_limit_per_vrf(self):
+        """NAT44ED per vrf session limit"""
+
+        inside = self.pg0
+        inside_vrf10 = self.pg2
+        outside = self.pg1
+
+        limit = 5
+
+        # 2 interfaces pg0, pg1 (vrf10, limit 5 tcp sessions)
+        self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=10)
+
+        # expect error when bad is specified
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=20)
+
+        self.nat_add_inside_interface(inside)
+        self.nat_add_inside_interface(inside_vrf10)
+        self.nat_add_outside_interface(outside)
+
+        # vrf independent
+        self.nat_add_interface_address(outside)
+
+        # BUG: causing core dump - when bad vrf_id is specified
+        # self.nat_add_address(outside.local_ip4, vrf_id=20)
+
+        # check limit on vrf 10
+        stream = self.create_tcp_stream(inside_vrf10, outside, limit * 2)
+        inside_vrf10.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(limit)
+
+        # check default vrf w/o limit
+        stream = self.create_tcp_stream(inside, outside, limit * 2)
+        inside.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(len(stream))
+
+        # set new limit and reheck vrf 10
+        self.vapi.nat44_set_session_limit(session_limit=limit * 2, vrf_id=10)
+        config = self.vapi.nat44_show_running_config()
+        old_timeouts = config.timeouts
+        self.vapi.nat_set_timeouts(
+            udp=old_timeouts.udp,
+            tcp_established=1,
+            tcp_transitory=1,
+            icmp=old_timeouts.icmp,
+        )
+
+        stream = self.create_tcp_stream(inside_vrf10, outside, limit * 3)
+        inside_vrf10.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(limit * 2)
+
+        # wait for tcp session expiration and recheck again
+        self.virtual_sleep(1.5, "wait for timeouts")
+
+        inside_vrf10.add_stream(stream)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        capture = outside.get_capture(limit * 2)
+
     def test_delete_interface(self):
         """NAT44ED delete nat interface"""
 
@@ -2930,48 +3003,6 @@ class TestNAT44EDMW(TestNAT44ED):
             proto=IP_PROTOS.icmp,
             ignore_port=True,
         )
-
-    def test_session_limit_per_vrf(self):
-        """NAT44ED per vrf session limit"""
-
-        inside = self.pg0
-        inside_vrf10 = self.pg2
-        outside = self.pg1
-
-        limit = 5
-
-        # 2 interfaces pg0, pg1 (vrf10, limit 5 tcp sessions)
-        self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=10)
-
-        # expect error when bad is specified
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=20)
-
-        self.nat_add_inside_interface(inside)
-        self.nat_add_inside_interface(inside_vrf10)
-        self.nat_add_outside_interface(outside)
-
-        # vrf independent
-        self.nat_add_interface_address(outside)
-
-        # BUG: causing core dump - when bad vrf_id is specified
-        # self.nat_add_address(outside.local_ip4, vrf_id=20)
-
-        stream = self.create_tcp_stream(inside_vrf10, outside, limit * 2)
-        inside_vrf10.add_stream(stream)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        capture = outside.get_capture(limit)
-
-        stream = self.create_tcp_stream(inside, outside, limit * 2)
-        inside.add_stream(stream)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        capture = outside.get_capture(len(stream))
 
     def test_show_max_translations(self):
         """NAT44ED API test - max translations per thread"""
