@@ -470,6 +470,7 @@ typedef struct
   u32 thread_index;
 
   per_vrf_sessions_t *per_vrf_sessions_pool;
+  u32 *per_vrf_sessions;
 
 } snat_main_per_thread_data_t;
 
