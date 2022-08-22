@@ -208,8 +208,17 @@ static_always_inline u8
 nat44_ed_maximum_sessions_exceeded (snat_main_t *sm, u32 fib_index,
 				    u32 thread_index)
 {
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
   u32 translations;
-  translations = pool_elts (sm->per_thread_data[thread_index].sessions);
+
+  translations = pool_elts (tsm->sessions);
+  if (translations >= sm->max_translations_per_thread)
+    return 1;
+
+  translations = (vec_len (tsm->per_vrf_sessions) <= fib_index) ?
+			 0 :
+			 tsm->per_vrf_sessions[fib_index];
   if (vec_len (sm->max_translations_per_fib) <= fib_index)
     fib_index = 0;
   return translations >= sm->max_translations_per_fib[fib_index];
@@ -469,6 +478,9 @@ per_vrf_sessions_register_session (snat_session_t *s, u32 thread_index)
 done:
   s->per_vrf_sessions_index = per_vrf_sessions - tsm->per_vrf_sessions_pool;
   per_vrf_sessions->ses_count++;
+
+  vec_validate (tsm->per_vrf_sessions, per_vrf_sessions->rx_fib_index);
+  tsm->per_vrf_sessions[per_vrf_sessions->rx_fib_index]++;
 }
 
 // fast path
@@ -489,6 +501,12 @@ per_vrf_sessions_unregister_session (snat_session_t *s, u32 thread_index)
 
   per_vrf_sessions->ses_count--;
   s->per_vrf_sessions_index = ~0;
+
+  if (per_vrf_sessions->rx_fib_index < vec_len (tsm->per_vrf_sessions))
+    {
+      ASSERT (tsm->per_vrf_sessions[per_vrf_sessions->rx_fib_index] != 0);
+      tsm->per_vrf_sessions[per_vrf_sessions->rx_fib_index]--;
+    }
 }
 
 // fast path

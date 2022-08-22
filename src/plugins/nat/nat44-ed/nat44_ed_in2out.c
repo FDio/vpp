@@ -1301,7 +1301,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  t->lookup_skipped = lookup_skipped;
 	  clib_memcpy (&t->search_key, &kv0, sizeof (t->search_key));
 
-	  if (s0)
+	  if (s0 && !pool_is_free (tsm->sessions, s0))
 	    {
 	      t->session_index = s0 - tsm->sessions;
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));
@@ -1551,7 +1551,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	  t->translation_error = translation_error;
 	  clib_memcpy (&t->search_key, &kv0, sizeof (t->search_key));
 
-	  if (s0)
+	  if (s0 && !pool_is_free (tsm->sessions, s0))
 	    {
 	      t->session_index = s0 - tsm->sessions;
 	      clib_memcpy (&t->i2of, &s0->i2o, sizeof (t->i2of));

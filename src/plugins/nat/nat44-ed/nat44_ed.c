@@ -3330,6 +3330,7 @@ nat44_ed_worker_db_free (snat_main_per_thread_data_t *tsm)
   pool_free (tsm->lru_pool);
   pool_free (tsm->sessions);
   pool_free (tsm->per_vrf_sessions_pool);
+  vec_free (tsm->per_vrf_sessions);
 }
 
 static void
