@@ -169,7 +169,7 @@ vl_api_nsh_add_del_map_t_handler (vl_api_nsh_add_del_map_t * mp)
 {
   vl_api_nsh_add_del_map_reply_t *rmp;
   int rv;
-  nsh_add_del_map_args_t _a, *a = &_a;
+  nsh_add_del_map_args_t _a = { 0 }, *a = &_a;
   u32 map_index = ~0;
 
   a->is_add = mp->is_add;
