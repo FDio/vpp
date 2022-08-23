@@ -58,13 +58,13 @@ format_rdma_bit_flag (u8 * s, va_list * args)
 
   while (flags)
     {
-      if ((flags & (1 << i)))
+      if ((flags & ((u64) 1 << i)))
 	{
 	  if (i < n_strs && strs[i] != 0)
 	    s = format (s, " %s", strs[i]);
 	  else
 	    s = format (s, " unknown(%u)", i);
-	  flags ^= 1 << i;
+	  flags ^= (u64) 1 << i;
 	}
       i++;
     }
