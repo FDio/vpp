@@ -1564,18 +1564,17 @@ ethernet_input_inline (vlib_main_t * vm,
 
 		  dmacs[0] = *(u64 *) e0;
 
-		  if (ei && vec_len (ei->secondary_addrs))
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      1 /* n_packets */ ,
-						      ei,
-						      1 /* have_sec_dmac */ );
-		  else
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      1 /* n_packets */ ,
-						      ei,
-						      0 /* have_sec_dmac */ );
+		  if (ei)
+		    {
+		      if (vec_len (ei->secondary_addrs))
+			ethernet_input_inline_dmac_check (
+			  hi, dmacs, dmacs_bad, 1 /* n_packets */, ei,
+			  1 /* have_sec_dmac */);
+		      else
+			ethernet_input_inline_dmac_check (
+			  hi, dmacs, dmacs_bad, 1 /* n_packets */, ei,
+			  0 /* have_sec_dmac */);
+		    }
 
 		  if (dmacs_bad[0])
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
