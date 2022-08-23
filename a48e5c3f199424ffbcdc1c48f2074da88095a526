@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9ffba90_62138067",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-08-23T01:45:55Z",
+      "side": 1,
+      "message": "There\u0027s alternative way to add hugepage option. Current way will affect session api and no further usage. You can add a new application option flag like APP_OPTIONS_FLAGS_ACCEPT_REDIRECT.",
+      "range": {
+        "startLine": 208,
+        "startChar": 0,
+        "endLine": 208,
+        "endChar": 28
+      },
+      "revId": "a48e5c3f199424ffbcdc1c48f2074da88095a526",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
