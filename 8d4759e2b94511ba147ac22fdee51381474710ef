@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1215d3f2_f2546c42",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-08-23T16:20:06Z",
+      "side": 1,
+      "message": "Looking at the code ethernet_get_interface, I believe it will return null if hi-\u003ehw_if_index \u003d\u003d 0. That would be local interface. When ei is null (local interface), do we want to check the dmac for that case? Notice after your change\nif ( !(ei \u0026\u0026 ...) ) is true if ei is null",
+      "revId": "8d4759e2b94511ba147ac22fdee51381474710ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
