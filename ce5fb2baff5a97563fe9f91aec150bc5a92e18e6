@@ -33,6 +33,24 @@
       "message": "I prefer to finish upgrading infra to Ubuntu 22.04 first, and only then start testing this.",
       "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03cc158e_fdef3ee6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-08-23T18:59:01Z",
+      "side": 1,
+      "message": "We are 4 weeks away from RC1, do you think the infra upgrade will be finished to get enough leeway before that ? (I would say this should merge within the next 2 weeks so there were 2 more weeks before RC1, for safety).",
+      "parentUuid": "7942c14c_a6f06a42",
+      "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
