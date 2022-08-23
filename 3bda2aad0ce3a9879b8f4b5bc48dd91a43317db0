@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "269c0dec_c4392760",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-08-23T17:12:55Z",
+      "side": 1,
+      "message": "Coverity complains about a lot of uninitialized fields in this function - so I made a strawman solution, but not sure if it is the right one. Could you take a look and either +2 if this is the correct fix, or push a better fix ? thanks a lot!",
+      "revId": "3bda2aad0ce3a9879b8f4b5bc48dd91a43317db0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
