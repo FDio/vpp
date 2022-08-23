@@ -46,6 +46,7 @@ fib_entry_src_get_vft (const fib_entry_src_t *esrc)
         return (&fib_entry_src_bh_vft[FIB_SOURCE_BH_INTERPOSE]);
     }
 
+    ASSERT(bh < FIB_SOURCE_BH_MAX);
     return (&fib_entry_src_bh_vft[bh]);
 }
 
