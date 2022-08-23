@@ -16,6 +16,24 @@
       "message": "Hi @Yong Liu,\nI don\u0027t have the HW, is it possible for us to do a quick test towards the HW?",
       "revId": "721130ec2d043a430e8d0c75cc036e54e284f06b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10712c06_1595c36f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-08-23T08:07:13Z",
+      "side": 1,
+      "message": "Fang, Smith, there\u0027s a similar i226v patch in dpdk. It\u0027s commit id is d9934a8a3dfe4de79306249493813d94369ea992. VPP will bump to dpdk 22.07 in next release. Is there a special request to add this patch at this time?",
+      "parentUuid": "376ad51e_e43e8696",
+      "revId": "721130ec2d043a430e8d0c75cc036e54e284f06b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
