@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "390ce0de_92f3954c",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2016,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-08-23T02:31:09Z",
+      "side": 1,
+      "message": "Please use macro DMA_TRANS_SIZE for maximum transfers setting.",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cb16087_065019cd",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-08-23T02:31:09Z",
+      "side": 1,
+      "message": "Please add a comment for this option.",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0cf37929_588adfff",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1003,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-08-23T02:31:09Z",
+      "side": 1,
+      "message": "Theres\u0027s another variable for dma configuration status wrk-\u003edma_enabled. If check wrk-\u003econfig_index is enough, there\u0027s no need for dma_enabled.",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
