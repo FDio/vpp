@@ -264,9 +264,14 @@ lisp_msg_parse_addr (vlib_buffer_t * b, gid_address_t * eid)
   u32 len;
   clib_memset (eid, 0, sizeof (*eid));
   len = gid_address_parse (vlib_buffer_get_current (b), eid);
-  if (len != ~0)
-    vlib_buffer_pull (b, len);
-  return len;
+  if ((len != ~0) && vlib_buffer_pull (b, len))
+    {
+      return len;
+    }
+  else
+    {
+      return ~0;
+    }
 }
 
 u32
@@ -280,7 +285,10 @@ lisp_msg_parse_eid_rec (vlib_buffer_t * b, gid_address_t * eid)
     return len;
 
   gid_address_ippref_len (eid) = EID_REC_MLEN (h);
-  vlib_buffer_pull (b, len + sizeof (eid_record_hdr_t));
+  if (!vlib_buffer_pull (b, len + sizeof (eid_record_hdr_t)))
+    {
+      return ~0;
+    }
 
   return len + sizeof (eid_record_hdr_t);
 }
