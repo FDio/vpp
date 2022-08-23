@@ -219,7 +219,7 @@ identify_subint (ethernet_main_t * em,
   matched = eth_identify_subint (hi, match_flags, main_intf, vlan_intf,
 				 qinq_intf, new_sw_if_index, error0, is_l2);
 
-  if (matched)
+  if (matched && ei)
     {
       // Perform L3 my-mac filter
       // A unicast packet arriving on an L3 interface must have a dmac
