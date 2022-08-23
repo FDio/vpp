@@ -592,6 +592,7 @@ load_balance_fill_buckets_sticky (load_balance_t *lb,
             {
                 /* fill the bucks from the next up path */
                 load_balance_set_bucket_i(lb, bucket++, buckets, &fwding_paths[fpath].path_dpo);
+                ASSERT(vec_len(fwding_paths) > 0);
                 fpath = (fpath + 1) % vec_len(fwding_paths);
             }
         }
