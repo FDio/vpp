@@ -480,7 +480,7 @@ ipsec_sad_entry_add_v3 (const vl_api_ipsec_sad_entry_v3_t *entry,
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
   u32 id, spi;
-  tunnel_t tun;
+  tunnel_t tun = { 0 };
   int rv;
 
   id = ntohl (entry->sad_id);
