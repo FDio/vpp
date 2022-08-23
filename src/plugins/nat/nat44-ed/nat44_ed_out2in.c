@@ -865,6 +865,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // flow does not exist go slow path
 	  slow_path_reason = NAT_ED_SP_REASON_LOOKUP_FAILED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
+	  kv.value = 0; // fix coverity 249214
 	  goto trace0;
 	}
       ASSERT (thread_index == ed_value_get_thread_index (&value0));
