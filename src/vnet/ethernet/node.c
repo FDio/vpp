@@ -225,7 +225,7 @@ identify_subint (ethernet_main_t * em,
       // A unicast packet arriving on an L3 interface must have a dmac
       // matching the interface mac. If interface has STATUS_L3 bit set
       // mac filter is already done.
-      if (!(*is_l2 || (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
+      if (!(*is_l2 || (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3))))
 	{
 	  u64 dmacs[2];
 	  u8 dmacs_bad[2];
