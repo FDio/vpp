@@ -61,8 +61,8 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 default_disabled : 1;
   u8 deep_bind : 1;
-  const char version[32];
-  const char version_required[32];
+  const char version[64];
+  const char version_required[64];
   const char overrides[256];
   const char *early_init;
   const char *description;
