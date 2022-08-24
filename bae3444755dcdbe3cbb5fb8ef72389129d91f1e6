@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39899063_2699c3e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-08-24T11:51:15Z",
+      "side": 1,
+      "message": "Out if curiosity, in which scenario do you have network interfaces with 0 rxq?",
+      "revId": "bae3444755dcdbe3cbb5fb8ef72389129d91f1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
