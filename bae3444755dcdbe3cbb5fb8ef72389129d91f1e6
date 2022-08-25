@@ -16,6 +16,24 @@
       "message": "Out if curiosity, in which scenario do you have network interfaces with 0 rxq?",
       "revId": "bae3444755dcdbe3cbb5fb8ef72389129d91f1e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1968e955_2172f717",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2785
+      },
+      "writtenOn": "2022-08-25T01:48:08Z",
+      "side": 1,
+      "message": "I create a virtio interface and use linux_cp_plugin create a tap interface base it. While I set tap interface rx-mode as interrupt and try to delete it, it cause this.",
+      "parentUuid": "39899063_2699c3e0",
+      "revId": "bae3444755dcdbe3cbb5fb8ef72389129d91f1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
