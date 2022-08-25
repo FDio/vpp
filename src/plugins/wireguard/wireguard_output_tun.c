@@ -504,12 +504,11 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	{
 	  hdr6_out->wg.header.type = MESSAGE_DATA;
-	  hdr6_out->udp.length = clib_host_to_net_u16 (encrypted_packet_len +
-						       sizeof (udp_header_t));
+	  hdr6_out->ip6.payload_length = hdr6_out->udp.length =
+	    clib_host_to_net_u16 (encrypted_packet_len +
+				  sizeof (udp_header_t));
 	  b[0]->current_length =
 	    (encrypted_packet_len + sizeof (ip6_udp_header_t));
-	  hdr6_out->ip6.payload_length =
-	    clib_host_to_net_u16 (b[0]->current_length);
 	}
 
     out:
