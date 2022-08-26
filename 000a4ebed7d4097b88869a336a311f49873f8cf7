@@ -16,6 +16,23 @@
       "message": "Jenkins Sandbox Test Results with ubuntu22.04 executor:\nhttps://jenkins.fd.io/sandbox/job/vpp-gcc-verify-master-ubuntu2204-x86_64/2/",
       "revId": "000a4ebed7d4097b88869a336a311f49873f8cf7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c10ba2d2_487decb4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-26T03:42:49Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "000a4ebed7d4097b88869a336a311f49873f8cf7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
