@@ -121,6 +121,23 @@
       "message": "perftest-2n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2xcbase",
       "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3874743c_df73e796",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-08-26T14:17:14Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2004-x86_64-2n-icx/8/ : SUCCESS (skipped)\n\nPerformance difference is negligible.",
+      "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
