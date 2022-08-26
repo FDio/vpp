@@ -109,7 +109,7 @@ test_dma_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   u32 port_allocator_seed;
 
-  fill_random_data (from, cfg.max_transfers * rsz);
+  fill_random_data (from, (uword) cfg.max_transfers * rsz);
 
   b = vlib_dma_batch_new (vm, config_index);
   vlib_dma_batch_set_cookie (vm, b, 0x12345678);
