@@ -69,6 +69,23 @@
       "parentUuid": "03cc158e_fdef3ee6",
       "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ac4d16e_bb7af952",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2022-08-26T12:14:19Z",
+      "side": 1,
+      "message": "We have 2n-clx testbeds running with updated drivers/fw for fvl and cvl nics, so should move vpp to dpdk v22.07 ASAP IMV, unless there is a valid reason to drag our feet.",
+      "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
