@@ -778,7 +778,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 {
   vlib_main_t *vm;
   vnet_main_t *vnm;
-  u32 vif_index = 0, host_sw_if_index;
+  u32 vif_index = 0, host_sw_if_index = ~0;
   const vnet_sw_interface_t *sw;
   const vnet_hw_interface_t *hw;
   const lcp_itf_pair_t *lip;
