@@ -86,6 +86,41 @@
       "message": "We have 2n-clx testbeds running with updated drivers/fw for fvl and cvl nics, so should move vpp to dpdk v22.07 ASAP IMV, unless there is a valid reason to drag our feet.",
       "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d19605e0_15b940b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-08-26T13:15:57Z",
+      "side": 1,
+      "message": "Maciek reminded me that the compatibility matrix between DPDK libraries and NIC driver versions are structured in a way that assumes DPDK will be upgraded first. In that case we should merge this ASAP to see the interim performance (before we switch daily perf jobs to Ubuntu 22.04).",
+      "parentUuid": "c3da8acd_9746cae2",
+      "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39e28508_fec2d546",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-08-26T13:15:57Z",
+      "side": 1,
+      "message": "perftest-2n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2xcbase",
+      "revId": "ce5fb2baff5a97563fe9f91aec150bc5a92e18e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
