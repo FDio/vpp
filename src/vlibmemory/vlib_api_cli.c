@@ -646,7 +646,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	    }
 	  else
 	    {
-	      if (m->replay_allowed)
+	      if (m && m->replay_allowed)
 		vlib_cli_output (vm, "Skipping msg id %d: no handler\n",
 				 msg_id);
 	      break;
