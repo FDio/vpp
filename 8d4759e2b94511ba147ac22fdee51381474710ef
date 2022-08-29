@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "770e8f91_c21e7e6a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-08-29T18:12:37Z",
+      "side": 1,
+      "message": "\u003e I looked into the test failure - seems the wireguard tests are flaky... so this change does not make any tests fail. Also, thinking of what you wrote Steven - if the ei is null, then the dereference of it here would cause a crash - which does not happen, therefore this seems like a legit way to tackle this ? I am also adding Matt whose name pops up in \"git blame\" on this code, hoping he might have an opinion as well. :-)\n\n\nYour patch looks fine.\n\nI made some changes to this function 3 years ago and a few later patches have changed the code substantially since then. In looking at the current code, there are a couple of things that could be cleaned up in this function while you\u0027re touching it.\n\nThe two variables ei and ei0 are assigned the same value (return value of ethernet_get_interface (\u0026ethernet_main, hi-\u003ehw_if_index)). I don\u0027t see any reason why both of them are needed. I originally added ei0 and some later patch added ei and dereferences it before the declaration of ei0. So ei could be kept and references to ei0 could be replaced with ei.\n\nThere is also a non-null check against ei0 at line 239 (\"if (ei0 \u0026\u0026 vec_len (ei0-\u003esecondary_addrs))\"). The part of that condition which checks whether ei0 is null will now be redundant since your patch checks the same thing earlier on line 228, particularly if ei and ei0 are condensed into one var as I suggested above.\n\nI\u0027m not sure how you want to proceed. If you just want to keep this change as it is to get rid of the coverity warning, I could merge it without changes. If you want to submit a patchset with the changes I recommended, I can wait. Or one of us could submit a separate change with those improvements. Let me know what you\u0027d like to do.",
+      "parentUuid": "a18f01c9_4b565dee",
+      "revId": "8d4759e2b94511ba147ac22fdee51381474710ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1215d3f2_f2546c42",
