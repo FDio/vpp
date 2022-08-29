@@ -788,27 +788,30 @@ nat44_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
   vnet_main_t *vnm = vnet_get_main ();
+  u32 index;
 
   vlib_cli_output (vm, "NAT44 interfaces:");
-  pool_foreach (i, sm->interfaces)
-   {
-     vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
-		      i->sw_if_index,
-		      (nat44_ed_is_interface_inside (i) &&
-		       nat44_ed_is_interface_outside (i)) ?
-			"in out" :
-			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
-  }
+  pool_foreach_index (index, sm->interfaces)
+    {
+      i = pool_elt_at_index (sm->interfaces, index);
+      vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
+		       i->sw_if_index,
+		       (nat44_ed_is_interface_inside (i) &&
+			nat44_ed_is_interface_outside (i)) ?
+			 "in out" :
+			 (nat44_ed_is_interface_inside (i) ? "in" : "out"));
+    }
 
-  pool_foreach (i, sm->output_feature_interfaces)
-   {
-     vlib_cli_output (vm, " %U output-feature %s",
-		      format_vnet_sw_if_index_name, vnm, i->sw_if_index,
-		      (nat44_ed_is_interface_inside (i) &&
-		       nat44_ed_is_interface_outside (i)) ?
-			"in out" :
-			(nat44_ed_is_interface_inside (i) ? "in" : "out"));
-  }
+  pool_foreach_index (index, sm->output_feature_interfaces)
+    {
+      i = pool_elt_at_index (sm->output_feature_interfaces, index);
+      vlib_cli_output (vm, " %U output-feature %s",
+		       format_vnet_sw_if_index_name, vnm, i->sw_if_index,
+		       (nat44_ed_is_interface_inside (i) &&
+			nat44_ed_is_interface_outside (i)) ?
+			 "in out" :
+			 (nat44_ed_is_interface_inside (i) ? "in" : "out"));
+    }
 
   return 0;
 }
@@ -1247,12 +1250,14 @@ nat44_show_static_mappings_command_fn (vlib_main_t * vm,
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_mapping_resolve_t *rp;
+  u32 index;
 
   vlib_cli_output (vm, "NAT44 static mappings:");
-  pool_foreach (m, sm->static_mappings)
-   {
-    vlib_cli_output (vm, " %U", format_snat_static_mapping, m);
-  }
+  pool_foreach_index (index, sm->static_mappings)
+    {
+      m = pool_elt_at_index (sm->static_mappings, index);
+      vlib_cli_output (vm, " %U", format_snat_static_mapping, m);
+    }
   vec_foreach (rp, sm->sm_to_resolve)
     vlib_cli_output (vm, " %U", format_snat_static_map_to_resolve, rp);
 
@@ -1456,12 +1461,15 @@ nat44_ed_show_vrf_tables_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vrf_table_t *t;
   vrf_route_t *r;
   int i = 0;
+  u32 tindex, rindex;
 
-  pool_foreach (t, sm->vrf_tables)
+  pool_foreach_index (tindex, sm->vrf_tables)
     {
+      t = pool_elt_at_index (sm->vrf_tables, tindex);
       vlib_cli_output (vm, "table %u:", t->table_vrf_id);
-      pool_foreach (r, t->routes)
+      pool_foreach_index (rindex, t->routes)
 	{
+	  r = pool_elt_at_index (t->routes, rindex);
 	  vlib_cli_output (vm, "[%u] vrf-id %u", i, r->vrf_id);
 	  i++;
 	}
@@ -1889,6 +1897,7 @@ VLIB_CLI_COMMAND (nat_show_workers_command, static) = {
   .path = "show nat workers",
   .short_help = "show nat workers",
   .function = nat_show_workers_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -1923,6 +1932,7 @@ VLIB_CLI_COMMAND (nat_show_timeouts_command, static) = {
   .path = "show nat timeouts",
   .short_help = "show nat timeouts",
   .function = nat_show_timeouts_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -1989,9 +1999,10 @@ VLIB_CLI_COMMAND (nat_set_mss_clamping_command, static) = {
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat_show_mss_clamping_command, static) = {
-    .path = "show nat mss-clamping",
-    .short_help = "show nat mss-clamping",
-    .function = nat_show_mss_clamping_command_fn,
+  .path = "show nat mss-clamping",
+  .short_help = "show nat mss-clamping",
+  .function = nat_show_mss_clamping_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -2065,6 +2076,7 @@ VLIB_CLI_COMMAND (nat44_show_addresses_command, static) = {
   .path = "show nat44 addresses",
   .short_help = "show nat44 addresses",
   .function = nat44_show_addresses_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -2098,6 +2110,7 @@ VLIB_CLI_COMMAND (nat44_show_interfaces_command, static) = {
   .path = "show nat44 interfaces",
   .short_help = "show nat44 interfaces",
   .function = nat44_show_interfaces_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -2205,6 +2218,7 @@ VLIB_CLI_COMMAND (nat44_show_static_mappings_command, static) = {
   .path = "show nat44 static mappings",
   .short_help = "show nat44 static mappings",
   .function = nat44_show_static_mappings_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -2258,6 +2272,7 @@ VLIB_CLI_COMMAND (nat44_ed_show_vrf_tables_command, static) = {
   .path = "show nat44 vrf tables",
   .short_help = "show nat44 vrf tables",
   .function = nat44_ed_show_vrf_tables_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
@@ -2275,6 +2290,7 @@ VLIB_CLI_COMMAND (nat44_show_interface_address_command, static) = {
   .path = "show nat44 interface address",
   .short_help = "show nat44 interface address",
   .function = nat44_show_interface_address_command_fn,
+  .is_mp_safe = 1,
 };
 
 /*?
