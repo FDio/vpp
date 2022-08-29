@@ -1149,7 +1149,6 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (data_len);
   written = session_enqueue_stream_connection (&tc->connection, b, 0,
 					       1 /* queue event */ , 1);
-  tc->bytes_in += written;
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1157,17 +1156,20 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   if (PREDICT_TRUE (written == data_len))
     {
       tc->rcv_nxt += written;
+      tc->bytes_in += written;
     }
   /* If more data written than expected, account for out-of-order bytes. */
   else if (written > data_len)
     {
       tc->rcv_nxt += written;
+      tc->bytes_in += data_len;
       TCP_EVT (TCP_EVT_CC_INPUT, tc, data_len, written);
     }
   else if (written > 0)
     {
       /* We've written something but FIFO is probably full now */
       tc->rcv_nxt += written;
+      tc->bytes_in += written;
       error = TCP_ERROR_PARTIALLY_ENQUEUED;
     }
   else
