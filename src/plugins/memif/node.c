@@ -248,6 +248,7 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left = ptd->n_packets;
   u32 packet_len;
   int i = -1;
+  int bad_packets = 0;
 
   /* construct copy and packet vector out of ring slots */
   while (n_left)
@@ -268,7 +269,14 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
       mb0 = desc_data[i];
 
       if (PREDICT_FALSE (desc_status[i].err))
-	vlib_error_count (vm, node->node_index, MEMIF_INPUT_ERROR_BAD_DESC, 1);
+	{
+	  vlib_error_count (vm, node->node_index, MEMIF_INPUT_ERROR_BAD_DESC,
+			    1);
+	  bad_packets++;
+	  ASSERT (n_buffers > 0);
+	  n_buffers--;
+	  goto next_packet;
+	}
       else
 	do
 	  {
@@ -298,9 +306,12 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
       po->packet_len = packet_len;
       po++;
 
+    next_packet:
       /* next packet */
       n_left--;
     }
+  ASSERT (ptd->n_packets >= bad_packets);
+  ptd->n_packets -= bad_packets;
   return n_buffers;
 }
 static_always_inline void
@@ -462,6 +473,21 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 }
 
+static_always_inline void
+memif_advance_ring (memif_ring_type_t type, memif_queue_t *mq,
+		    memif_ring_t *ring, u16 cur_slot)
+{
+  if (type == MEMIF_RING_S2M)
+    {
+      __atomic_store_n (&ring->tail, cur_slot, __ATOMIC_RELEASE);
+      mq->last_head = cur_slot;
+    }
+  else
+    {
+      mq->last_tail = cur_slot;
+    }
+}
+
 static_always_inline uword
 memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   memif_if_t *mif, memif_ring_type_t type, u16 qid,
@@ -533,6 +559,13 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   else
     n_buffers = memif_process_desc (vm, node, ptd, mif);
 
+  if (PREDICT_FALSE (n_buffers == 0))
+    {
+      /* All descriptors are bad. Release slots in the ring and bail */
+      memif_advance_ring (type, mq, ring, cur_slot);
+      goto refill;
+    }
+
   /* allocate free buffers */
   vec_validate_aligned (ptd->buffers, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
   n_alloc = vlib_buffer_alloc_from_pool (vm, ptd->buffers, n_buffers,
@@ -588,15 +621,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   /* release slots from the ring */
-  if (type == MEMIF_RING_S2M)
-    {
-      __atomic_store_n (&ring->tail, cur_slot, __ATOMIC_RELEASE);
-      mq->last_head = cur_slot;
-    }
-  else
-    {
-      mq->last_tail = cur_slot;
-    }
+  memif_advance_ring (type, mq, ring, cur_slot);
 
   /* prepare buffer template and next indices */
   vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_RX] = mif->sw_if_index;
