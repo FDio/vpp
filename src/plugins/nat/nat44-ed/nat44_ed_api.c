@@ -389,13 +389,15 @@ vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
   vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
+  u32 index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  pool_foreach (i, sm->interfaces)
+  pool_foreach_index (index, sm->interfaces)
     {
+      i = pool_elt_at_index (sm->interfaces, index);
       send_nat44_interface_details (i, reg, mp->context);
     }
 }
@@ -721,17 +723,19 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_mapping_resolve_t *rp;
+  u32 index;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  pool_foreach (m, sm->static_mappings)
-   {
-     if (!is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
-       send_nat44_static_mapping_details (m, reg, mp->context);
-  }
+  pool_foreach_index (index, sm->static_mappings)
+    {
+      m = pool_elt_at_index (sm->static_mappings, index);
+      if (!is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
+	send_nat44_static_mapping_details (m, reg, mp->context);
+    }
 
   for (j = 0; j < vec_len (sm->sm_to_resolve); j++)
     {
@@ -861,14 +865,16 @@ static void
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_mapping_resolve_t *rp;
+  u32 index;
   int j;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  pool_foreach (m, sm->static_mappings)
+  pool_foreach_index (index, sm->static_mappings)
     {
+      m = pool_elt_at_index (sm->static_mappings, index);
       if (is_sm_identity_nat (m->flags) && !is_sm_lb (m->flags))
 	{
 	  pool_foreach_index (j, m->locals)
@@ -1226,6 +1232,7 @@ nat44_ed_vrf_tables_send_details (vl_api_registration_t *rp, u32 context,
   vl_api_nat44_ed_vrf_tables_details_t *mp;
 
   u32 *vrf_ids = 0;
+  u32 index;
   vrf_route_t *r;
 
   mp = vl_msg_api_alloc_zero (sizeof (*mp) +
@@ -1235,8 +1242,9 @@ nat44_ed_vrf_tables_send_details (vl_api_registration_t *rp, u32 context,
   mp->context = context;
   mp->n_vrf_ids = clib_host_to_net_u32 (vec_len (t->routes));
 
-  pool_foreach (r, t->routes)
+  pool_foreach_index (index, t->routes)
     {
+      r = pool_elt_at_index (t->routes, index);
       vec_add1 (vrf_ids, r->vrf_id);
     }
 
@@ -1258,6 +1266,7 @@ nat44_ed_vrf_tables_send_details_v2 (vl_api_registration_t *rp, u32 context,
   vl_api_nat44_ed_vrf_tables_v2_details_t *mp;
 
   u32 *vrf_ids = 0;
+  u32 index;
   vrf_route_t *r;
 
   mp = vl_msg_api_alloc_zero (sizeof (*mp) +
@@ -1267,8 +1276,9 @@ nat44_ed_vrf_tables_send_details_v2 (vl_api_registration_t *rp, u32 context,
   mp->context = context;
   mp->n_vrf_ids = clib_net_to_host_u32 (vec_len (t->routes));
   mp->table_vrf_id = clib_net_to_host_u32 (t->table_vrf_id);
-  pool_foreach (r, t->routes)
+  pool_foreach_index (index, t->routes)
     {
+      r = pool_elt_at_index (t->routes, index);
       vec_add1 (vrf_ids, clib_net_to_host_u32 (r->vrf_id));
     }
 
@@ -1289,13 +1299,15 @@ vl_api_nat44_ed_vrf_tables_dump_t_handler (
   snat_main_t *sm = &snat_main;
   vl_api_registration_t *rp;
   vrf_table_t *t;
+  u32 index;
 
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)
     return;
 
-  pool_foreach (t, sm->vrf_tables)
+  pool_foreach_index (index, sm->vrf_tables)
     {
+      t = pool_elt_at_index (sm->vrf_tables, index);
       nat44_ed_vrf_tables_send_details (rp, mp->context, t);
     }
 }
@@ -1307,13 +1319,15 @@ vl_api_nat44_ed_vrf_tables_v2_dump_t_handler (
   snat_main_t *sm = &snat_main;
   vl_api_registration_t *rp;
   vrf_table_t *t;
+  u32 index;
 
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)
     return;
 
-  pool_foreach (t, sm->vrf_tables)
+  pool_foreach_index (index, sm->vrf_tables)
     {
+      t = pool_elt_at_index (sm->vrf_tables, index);
       nat44_ed_vrf_tables_send_details_v2 (rp, mp->context, t);
     }
 }
@@ -1708,8 +1722,32 @@ vl_api_nat44_user_session_v3_dump_t_handler (
 clib_error_t *
 nat44_api_hookup (vlib_main_t * vm)
 {
+  api_main_t *am = vlibapi_get_main ();
   snat_main_t *sm = &snat_main;
+
   sm->msg_id_base = setup_message_id_table ();
+
+  /* Mark VL_API messages as mp safe */
+  vl_api_set_msg_thread_safe (am, sm->msg_id_base + VL_API_NAT_WORKER_DUMP, 1);
+  vl_api_set_msg_thread_safe (am, sm->msg_id_base + VL_API_NAT44_ADDRESS_DUMP,
+			      1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_INTERFACE_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_INTERFACE_ADDR_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_STATIC_MAPPING_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_IDENTITY_MAPPING_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_SHOW_RUNNING_CONFIG, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_ED_VRF_TABLES_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_ED_VRF_TABLES_V2_DUMP, 1);
+  vl_api_set_msg_thread_safe (
+    am, sm->msg_id_base + VL_API_NAT44_ED_SHOW_FQ_OPTIONS, 1);
+
   return 0;
 }
 
