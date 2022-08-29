@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a18f01c9_4b565dee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-08-29T12:10:53Z",
+      "side": 1,
+      "message": "I looked into the test failure - seems the wireguard tests are flaky... so this change does not make any tests fail. Also, thinking of what you wrote Steven - if the ei is null, then the dereference of it here would cause a crash - which does not happen, therefore this seems like a legit way to tackle this ? I am also adding Matt whose name pops up in \"git blame\" on this code, hoping he might have an opinion as well. :-)",
+      "revId": "8d4759e2b94511ba147ac22fdee51381474710ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1215d3f2_f2546c42",
