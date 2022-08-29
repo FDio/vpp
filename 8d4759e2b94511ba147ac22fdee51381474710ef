@@ -53,6 +53,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ef3f2d0_ba2b27d3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-08-29T21:13:08Z",
+      "side": 1,
+      "message": "yeah i was wondering the same thing… I suppose you could merge this one and I do the motions you suggested as part of making https://gerrit.fd.io/r/c/vpp/+/36999 happy. would that work ?",
+      "revId": "8d4759e2b94511ba147ac22fdee51381474710ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1215d3f2_f2546c42",
