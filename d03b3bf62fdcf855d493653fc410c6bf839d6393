@@ -16,6 +16,24 @@
       "message": "To fix VPP device testing on Arm machine with no-multi-seg in startup.conf. Needed for master and 2206 branch. Not for 2202, due to dpdk 22.02 version bump in April 2022, which is after VPP 2202 version release",
       "revId": "d03b3bf62fdcf855d493653fc410c6bf839d6393",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91457131_775a034d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-30T23:56:42Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "58adc095_458b9040",
+      "revId": "d03b3bf62fdcf855d493653fc410c6bf839d6393",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
