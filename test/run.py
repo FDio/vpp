@@ -21,7 +21,7 @@ import logging
 import os
 from pathlib import Path
 import signal
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT, call
 import sys
 import time
 import venv
@@ -31,7 +31,7 @@ import venv
 test_dir = os.path.dirname(os.path.realpath(__file__))
 ws_root = os.path.dirname(test_dir)
 build_root = os.path.join(ws_root, "build-root")
-venv_dir = os.path.join(test_dir, "venv")
+venv_dir = os.path.join(build_root, "test", "venv")
 venv_bin_dir = os.path.join(venv_dir, "bin")
 venv_lib_dir = os.path.join(venv_dir, "lib")
 venv_run_dir = os.path.join(venv_dir, "run")
@@ -215,8 +215,9 @@ def set_environ():
 # Runs a test inside a spawned QEMU VM
 # If a kernel image is not provided, a linux-image-kvm image is
 # downloaded to the test_data_dir
-def vm_test_runner(test_name, kernel_image, test_data_dir, cpu_mask, mem):
+def vm_test_runner(test_name, kernel_image, test_data_dir, cpu_mask, mem, jobs="auto"):
     script = os.path.join(test_dir, "scripts", "run_vpp_in_vm.sh")
+    os.environ["TEST_JOBS"] = str(jobs)
     p = Popen(
         [script, test_name, kernel_image, test_data_dir, cpu_mask, mem],
         stdout=PIPE,
@@ -275,15 +276,45 @@ def set_logging(test_data_dir, test_name):
     logging.basicConfig(filename=filename, level=logging.DEBUG)
 
 
+def run_tests_in_venv(
+    test,
+    jobs,
+    log_dir,
+    socket_dir="",
+):
+    """Runs tests in the virtual environment set by venv_dir.
+
+    Arguments:
+    test: Name of the test to run
+    jobs: Maximum concurrent test jobs
+    log_dir: Directory location for storing log files
+    socket_dir: Use running VPP's socket files
+    """
+    script = os.path.join(test_dir, "scripts", "run.sh")
+    args = [
+        f"--venv-dir={venv_dir}",
+        f"--vpp-ws-dir={ws_root}",
+        f"--use-running-vpp={socket_dir}",
+        f"--filter={test}",
+        f"--jobs={jobs}",
+        f"--log-dir={log_dir}",
+    ]
+    print(f"Running script: {script + ' '.join(args)}")
+    process_args = [script] + args
+    call(process_args)
+
+
 if __name__ == "__main__":
     # Build a Virtual Environment for running tests on host & QEMU
+    # (TODO): Create a single config object by merging the below args with
+    # config.py after gathering dev use-cases.
     parser = argparse.ArgumentParser(
         description="Run VPP Unit Tests", formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
         "--vm",
         dest="vm",
-        required=True,
+        required=False,
         action="store_true",
         help="Run Test Inside a QEMU VM",
     )
@@ -311,7 +342,7 @@ if __name__ == "__main__":
         required=False,
         action="store",
         default="",
-        help="Tests to Run",
+        help="Test Name or Test filter",
     )
     parser.add_argument(
         "--vm-kernel-image",
@@ -339,7 +370,32 @@ if __name__ == "__main__":
         default="2",
         help="Guest Memory in Gibibytes\n" "E.g. 4 (Default: 2)",
     )
+    parser.add_argument(
+        "--log-dir",
+        action="store",
+        help="directory where to store directories "
+        "containing log files (default: /tmp) for non-VM tests",
+    )
+    parser.add_argument(
+        "--jobs",
+        action="store",
+        default="auto",
+        help="maximum concurrent test jobs",
+    )
+    parser.add_argument(
+        "--use-running-vpp",
+        dest="socket_dir",
+        required=False,
+        action="store",
+        default="",
+        help="Run tests against a running VPP.\n"
+        "Specify the path to running VPP's Socket Directory.\n"
+        "Path can be relative or absolute.\n"
+        "The directory must contain the two socket files - "
+        "named api.sock & stats.sock",
+    )
     args = parser.parse_args()
+    vm_tests = False
     # Enable VM tests
     if args.vm and args.test_name:
         test_data_dir = "/tmp/vpp-vm-tests"
@@ -353,7 +409,20 @@ if __name__ == "__main__":
     debug = False if args.release else True
     build_vpp(debug, args.release)
     set_environ()
-    if vm_tests:
+    if os.path.isdir(args.socket_dir):
+        print("Tests will be run against a running VPP..")
+    elif not vm_tests:
+        print("Tests will be run by spawning a new VPP instance..")
+    # Run tests against a running VPP or a new instance of VPP
+    if not vm_tests:
+        run_tests_in_venv(
+            test=args.test_name,
+            jobs=args.jobs,
+            log_dir=args.log_dir,
+            socket_dir=args.socket_dir,
+        )
+    # Run tests against a VPP inside a VM
+    else:
         print("Running VPP unit test(s):{0} inside a QEMU VM".format(args.test_name))
         # Check Available CPUs & Usable Memory
         cpus = expand_mix_string(args.vm_cpu_list)
@@ -366,5 +435,10 @@ if __name__ == "__main__":
             print(f"Error: Mem Size:{args.vm_mem}G > Avail Mem:{avail_mem}G")
             sys.exit(1)
         vm_test_runner(
-            args.test_name, args.kernel_image, test_data_dir, cpus, f"{args.vm_mem}G"
+            args.test_name,
+            args.kernel_image,
+            test_data_dir,
+            cpus,
+            f"{args.vm_mem}G",
+            args.jobs,
         )

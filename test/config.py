@@ -359,6 +359,19 @@ parser.add_argument(
     help=f"if set, keep all pcap files from a test run (default: {default_keep_pcaps})",
 )
 
+parser.add_argument(
+    "--use-running-vpp",
+    dest="socket_dir",
+    required=False,
+    action="store",
+    default="",
+    help="Run tests against a running VPP.\n"
+    "Specify the path to running VPP's Socket Directory.\n"
+    "Path can be relative or absolute.\n"
+    "The directory must contain the two socket files - "
+    "named api.sock & stats.sock",
+)
+
 config = parser.parse_args()
 
 ws = config.vpp_ws_dir
