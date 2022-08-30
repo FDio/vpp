@@ -359,6 +359,29 @@ parser.add_argument(
     help=f"if set, keep all pcap files from a test run (default: {default_keep_pcaps})",
 )
 
+parser.add_argument(
+    "-r",
+    "--use-running-vpp",
+    dest="running_vpp",
+    required=False,
+    action="store_true",
+    default=False,
+    help="Runs tests against a running VPP.",
+)
+
+parser.add_argument(
+    "-d",
+    "--socket-dir",
+    dest="socket_dir",
+    required=False,
+    action="store",
+    default="",
+    help="Relative or absolute path to running VPP's socket directory.\n"
+    "The directory must contain VPP's socket files:api.sock & stats.sock.\n"
+    "Default: /var/run/vpp if VPP is started as the root user, else "
+    "/var/run/user/${uid}/vpp.",
+)
+
 config = parser.parse_args()
 
 ws = config.vpp_ws_dir

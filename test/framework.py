@@ -51,6 +51,7 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+from vpp_running import use_running
 
 
 logger = logging.getLogger(__name__)
@@ -288,6 +289,7 @@ class CPUInterface(ABC):
         cls.cpus = cpus
 
 
+@use_running
 class VppTestCase(CPUInterface, unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
@@ -678,7 +680,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             )
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
-            if not cls.debug_attach:
+            # Pump thread in a non-debug-attached & not running-vpp
+            if not cls.debug_attach and not hasattr(cls, "running_vpp"):
                 cls.pump_thread_stop_flag = Event()
                 cls.pump_thread_wakeup_pipe = os.pipe()
                 cls.pump_thread = Thread(target=pump_output, args=(cls,))
@@ -755,6 +758,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         Disconnect vpp-api, kill vpp and cleanup shared memory files
         """
         cls._debug_quit()
+        if hasattr(cls, "running_vpp"):
+            cls.vpp.quit_vpp()
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, "pump_thread_stop_flag"):
@@ -787,10 +792,16 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                     cls.vpp.kill()
                     outs, errs = cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s", cls.__name__)
-            if not cls.debug_attach:
+            if not cls.debug_attach and not hasattr(cls, "running_vpp"):
                 cls.vpp.stdout.close()
                 cls.vpp.stderr.close()
-            del cls.vpp
+            # If vpp is a dynamic attribute set by the func use_running,
+            # deletion will result in an AttributeError that we can
+            # safetly pass.
+            try:
+                del cls.vpp
+            except AttributeError:
+                pass
 
         if cls.vpp_startup_failed:
             stdout_log = cls.logger.info
