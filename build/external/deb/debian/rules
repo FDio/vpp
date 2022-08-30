@@ -1,6 +1,9 @@
 #!/usr/bin/make -f
 DH_VERBOSE = 1
 DEB_BUILD_OPTIONS = noddebs
+DEB_CFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects -O2
+DEB_LDFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects
+DEB_CFLAGS_MAINT_APPEND = -O3
 PKG=vpp-ext-deps
 
 VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
