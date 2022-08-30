@@ -21,6 +21,7 @@ DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 DPDK_MLX_IBV_LINK            ?= static
+DPDK_MESON_COMPILE_JOBS      ?= 4
 
 dpdk_version                 ?= 22.03
 dpdk_base_url                ?= http://fast.dpdk.org/rel
@@ -196,7 +197,7 @@ endif
 define dpdk_build_cmds
 	cd $(dpdk_build_dir) && \
 	source ../dpdk-meson-venv/bin/activate && \
-	meson compile $(DPDK_VERBOSE_BUILD) -C . | tee $(dpdk_build_log) && \
+	meson compile $(DPDK_VERBOSE_BUILD) -j $(DPDK_MESON_COMPILE_JOBS) -C . | tee $(dpdk_build_log) && \
 	deactivate
 endef
 
