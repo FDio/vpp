@@ -118,6 +118,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   af_packet_if_t *interfaces;
 
+  u32 polling_count;
   /* rx buffer cache */
   u32 **rx_buffers;
 
