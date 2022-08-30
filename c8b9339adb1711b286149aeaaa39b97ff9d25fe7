@@ -16,6 +16,24 @@
       "message": "Root cause of this issue is fact that 22.04 turns LTO on. Might be better choice to use \"DEB_CFLAGS_APPEND\u003d\"-fno-lto -fno-fat-lto-objects\" to prevent this to happen without reducing number of jobs.",
       "revId": "c8b9339adb1711b286149aeaaa39b97ff9d25fe7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2cea646_b94bcde0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-30T15:03:29Z",
+      "side": 1,
+      "message": "Ok, I\u0027ll try that and see how it behaves.\n\nThanks for the review!",
+      "parentUuid": "4af941f5_e503438e",
+      "revId": "c8b9339adb1711b286149aeaaa39b97ff9d25fe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
