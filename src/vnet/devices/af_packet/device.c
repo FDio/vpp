@@ -632,6 +632,40 @@ error:
   return 0;			/* no error */
 }
 
+static clib_error_t *
+af_packet_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
+				    vnet_hw_if_rx_mode mode)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  af_packet_if_t *apif;
+
+  apif = vec_elt_at_index (apm->interfaces, hw->dev_instance);
+
+  if (mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
+    {
+      vlib_log_err (apm->log_class,
+		    "af_packet_%s adaptive mode is not supported",
+		    apif->host_if_name);
+      return clib_error_return (
+	0, "af_packet_%s adaptive mode is not supported", apif->host_if_name);
+    }
+
+  af_packet_queue_t *rx_queue = vec_elt_at_index (apif->rx_queues, qid);
+
+  if (rx_queue->mode != mode)
+    {
+      rx_queue->mode = mode;
+
+      if (mode == VNET_HW_IF_RX_MODE_POLLING)
+	apm->polling_count++;
+      else if (mode == VNET_HW_IF_RX_MODE_INTERRUPT && apm->polling_count > 0)
+	apm->polling_count--;
+    }
+
+  return 0;
+}
+
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
   .format_device_name = format_af_packet_device_name,
@@ -644,6 +678,7 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
+  .rx_mode_change_function = af_packet_interface_rx_mode_change,
 };
 
 /*

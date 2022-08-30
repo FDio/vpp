@@ -504,12 +504,15 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 done:
 
-  if ((((block_desc_t *) (block_start = rx_queue->rx_ring[block]))
-	 ->hdr.bh1.block_status &
-       TP_STATUS_USER) != 0)
-    vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_POLLING);
-  else
-    vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_INTERRUPT);
+  if (apm->polling_count == 0)
+    {
+      if ((((block_desc_t *) (block_start = rx_queue->rx_ring[block]))
+	     ->hdr.bh1.block_status &
+	   TP_STATUS_USER) != 0)
+	vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_POLLING);
+      else
+	vlib_node_set_state (vm, node->node_index, VLIB_NODE_STATE_INTERRUPT);
+    }
 
   vlib_error_count (vm, node->node_index, AF_PACKET_INPUT_ERROR_TOTAL_RECV_BLK,
 		    total);
