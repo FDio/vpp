@@ -225,25 +225,24 @@ identify_subint (ethernet_main_t * em,
       // A unicast packet arriving on an L3 interface must have a dmac
       // matching the interface mac. If interface has STATUS_L3 bit set
       // mac filter is already done.
-      if (!(*is_l2 || (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3))))
+      if ((!*is_l2) && ei &&
+	  (!(ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3))))
 	{
 	  u64 dmacs[2];
 	  u8 dmacs_bad[2];
 	  ethernet_header_t *e0;
-	  ethernet_interface_t *ei0;
 
 	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
 	  dmacs[0] = *(u64 *) e0;
-	  ei0 = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
 
-	  if (ei0 && vec_len (ei0->secondary_addrs))
+	  if (vec_len (ei->secondary_addrs))
 	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      1 /* have_sec_dmac */ );
+					      1 /* n_packets */, ei,
+					      1 /* have_sec_dmac */);
 	  else
 	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      0 /* have_sec_dmac */ );
+					      1 /* n_packets */, ei,
+					      0 /* have_sec_dmac */);
 	  if (dmacs_bad[0])
 	    *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 	}
