@@ -222,7 +222,7 @@ dsa_config (vlib_main_t *vm, unformat_input_t *input)
 {
   clib_error_t *error = 0;
   intel_dsa_channel_t *ch;
-  u8 did, qid;
+  u32 did, qid;
 
   if (intel_dsa_main.lock == 0)
     clib_spinlock_init (&(intel_dsa_main.lock));
