@@ -1346,7 +1346,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       udp_header_t *udp0;
       icmp46_header_t *icmp0;
       snat_session_t *s0 = 0;
-      clib_bihash_kv_16_8_t kv0, value0;
+      clib_bihash_kv_16_8_t kv0 = { 0 }, value0;
       int translation_error = NAT_ED_TRNSL_ERR_SUCCESS;
 
       b0 = *b;
