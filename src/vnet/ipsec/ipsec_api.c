@@ -568,6 +568,31 @@ vl_api_ipsec_sad_entry_add_t_handler (vl_api_ipsec_sad_entry_add_t *mp)
 }
 
 static void
+vl_api_ipsec_sad_entry_update_t_handler (vl_api_ipsec_sad_entry_update_t *mp)
+{
+  vl_api_ipsec_sad_entry_update_reply_t *rmp;
+  u32 id;
+  tunnel_t tun = { 0 };
+  int rv;
+
+  id = ntohl (mp->sad_id);
+
+  if (mp->is_tun)
+    {
+      rv = tunnel_decode (&mp->tunnel, &tun);
+
+      if (rv)
+	goto out;
+    }
+
+  rv = ipsec_sa_update (id, htons (mp->udp_src_port), htons (mp->udp_dst_port),
+			&tun, mp->is_tun);
+
+out:
+  REPLY_MACRO (VL_API_IPSEC_SAD_ENTRY_UPDATE_REPLY);
+}
+
+static void
 send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
 			 u32 context)
 {

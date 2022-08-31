@@ -1291,7 +1291,7 @@ class IpsecTun4(object):
         decrypt_pkts = []
         for rx in rxs:
             if p.nat_header:
-                self.assertEqual(rx[UDP].dport, 4500)
+                self.assertEqual(rx[UDP].dport, p.nat_header.dport)
             self.assert_packet_checksums_valid(rx)
             self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
             try:
