@@ -146,8 +146,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left_from > 0)
     {
       u32 sw_if_index0, len0, hdr_sz0;
-      clib_bihash_kv_24_16_t bkey60;
-      clib_bihash_kv_8_16_t bkey40;
+      clib_bihash_kv_24_16_t bkey60 = { 0 };
+      clib_bihash_kv_8_16_t bkey40 = { 0 };
       ipsec4_tunnel_kv_t *key40;
       ipsec6_tunnel_kv_t *key60;
       ip4_header_t *ip40;
