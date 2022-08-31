@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3d558b0_ff87d7e7",
+        "filename": "src/vnet/devices/af_packet/af_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-08-31T09:09:24Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be per interface and not global for all interfaces?",
+      "revId": "959e1df3df0cab6247d6c0a64ba5a0f2d5fc1121",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
