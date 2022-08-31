@@ -750,6 +750,7 @@ list(APPEND VNET_API_FILES
 list(APPEND VNET_HEADERS
   tunnel/tunnel.h
   tunnel/tunnel_dp.h
+  tunnel/tunnel_types_api.h
 )
 
 ##############################################################################
@@ -776,6 +777,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
 
 list(APPEND VNET_HEADERS
   mpls/mpls.h
+  mpls/mpls_lookup.h
   mpls/mpls_types.h
   mpls/mpls_tunnel.h
   mpls/packet.h
@@ -1413,10 +1415,13 @@ list(APPEND VNET_MULTIARCH_SOURCES
 )
 
 list(APPEND VNET_HEADERS
-  bier/bier_types.h
+  bier/bier_bit_string.h
   bier/bier_entry.h
+  bier/bier_fwd.h
+  bier/bier_hdr_inlines.h
   bier/bier_update.h
   bier/bier_table.h
+  bier/bier_types.h
 )
 
 list(APPEND VNET_API_FILES bier/bier.api)
