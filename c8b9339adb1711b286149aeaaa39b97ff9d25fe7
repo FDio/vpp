@@ -34,6 +34,24 @@
       "parentUuid": "4af941f5_e503438e",
       "revId": "c8b9339adb1711b286149aeaaa39b97ff9d25fe7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed144c62_b4975503",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-08-31T00:26:35Z",
+      "side": 1,
+      "message": "I cannot figure out how to pass these flags to the dpdk meson build from withing build/external/packages/dpdk.mk.  I\u0027m not too keen on patching the dpdk meson.build configuration as this would not get upstreamed.\n\nUnless there is a way to do so, I\u0027m fine with the current patch since most of the time, vpp-ext-deps will not be built in the CI jobs, since vpp-ext-deps is cached in the docker executor and installed from the cached debian package.",
+      "parentUuid": "e2cea646_b94bcde0",
+      "revId": "c8b9339adb1711b286149aeaaa39b97ff9d25fe7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
