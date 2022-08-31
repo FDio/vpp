@@ -1055,7 +1055,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
       ip_protocol_t proto0;
       ip4_header_t *ip0;
       snat_session_t *s0 = 0;
-      clib_bihash_kv_16_8_t kv0, value0;
+      clib_bihash_kv_16_8_t kv0 = { 0 }, value0;
       nat_translation_error_e translation_error = NAT_ED_TRNSL_ERR_SUCCESS;
       nat_6t_flow_t *f = 0;
       nat_6t_t lookup;
