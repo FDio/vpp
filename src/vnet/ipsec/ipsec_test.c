@@ -307,6 +307,12 @@ api_ipsec_sad_entry_add_del_v3 (vat_main_t *vat)
 }
 
 static int
+api_ipsec_sad_entry_update (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
 api_ipsec_tunnel_protect_update (vat_main_t *vat)
 {
   return -1;

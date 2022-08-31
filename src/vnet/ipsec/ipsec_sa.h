@@ -270,6 +270,8 @@ extern vlib_simple_counter_main_t ipsec_sa_lost_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 
+extern int ipsec_sa_update (u32 id, u16 src_port, u16 dst_port,
+			    const tunnel_t *tun, bool is_tun);
 extern int
 ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
