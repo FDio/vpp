@@ -154,6 +154,7 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  	    vlib_buffer_advance(b0, sizeof(*h0)+sizeof(*vlan0));
 	      error0 = PPPOE_ERROR_CONTROL_PLANE;
 	      next0 = PPPOE_INPUT_NEXT_CP_INPUT;
+	      result0.fields.session_index = ~0;
 	      goto trace0;
             }
 
@@ -251,6 +252,7 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  	    vlib_buffer_advance(b1, sizeof(*h1)+sizeof(*vlan1));
 	      error1 = PPPOE_ERROR_CONTROL_PLANE;
 	      next1 = PPPOE_INPUT_NEXT_CP_INPUT;
+	      result1.fields.session_index = ~0;
 	      goto trace1;
             }
 
@@ -378,6 +380,7 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  	    vlib_buffer_advance(b0, sizeof(*h0)+sizeof(*vlan0));
 	      error0 = PPPOE_ERROR_CONTROL_PLANE;
 	      next0 = PPPOE_INPUT_NEXT_CP_INPUT;
+	      result0.fields.session_index = ~0;
 	      goto trace00;
             }
 
