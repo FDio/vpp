@@ -50,12 +50,14 @@ typedef struct
   /** vectors for each of the policy types */
   u32 *fp_policies[IPSEC_SPD_POLICY_N_TYPES];
   u32 *fp_mask_types[IPSEC_SPD_POLICY_N_TYPES];
-
-  clib_bihash_40_8_t fp_ip6_lookup_hash; /* spd fp ip6 lookup hash table. */
-  clib_bihash_16_8_t fp_ip4_lookup_hash; /* spd fp ip4 lookup hash table. */
-
-  u8 fp_ip6_lookup_hash_initialized;
-
+  u8 *name4_out;
+  u8 *name4_in;
+  u8 *name6_out;
+  u8 *name6_in;
+  u32 ip6_out_lookup_hash_idx; /* fp ip6 lookup hash out index in the pool */
+  u32 ip4_out_lookup_hash_idx; /* fp ip4 lookup hash out index in the pool */
+  u32 ip6_in_lookup_hash_idx;  /* fp ip6 lookup hash in index in the pool */
+  u32 ip4_in_lookup_hash_idx;  /* fp ip4 lookup hash in index in the pool */
 } ipsec_spd_fp_t;
 
 /**
@@ -67,7 +69,6 @@ typedef struct
   u32 id;
   /** vectors for each of the policy types */
   u32 *policies[IPSEC_SPD_POLICY_N_TYPES];
-  /* TODO remove fp_spd. Use directly ipsec_spd_t for fast path */
   ipsec_spd_fp_t fp_spd;
 } ipsec_spd_t;
 

@@ -179,7 +179,8 @@ ipsec_output_policy_match_n (ipsec_spd_t *spd,
 
   clib_memset (policies, 0, n * sizeof (ipsec_policy_t *));
 
-  if (im->ipv4_fp_spd_is_enabled)
+  if (im->fp_spd_ipv4_out_is_enabled &&
+      PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip4_out_lookup_hash_idx))
     {
       ipsec_fp_5tuple_from_ip4_range_n (tuples, ip4_5tuples, n);
       counter += ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples,
@@ -330,7 +331,8 @@ ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
   if (!spd)
     return 0;
 
-  if (im->ipv4_fp_spd_is_enabled)
+  if (im->fp_spd_ipv4_out_is_enabled &&
+      PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip4_out_lookup_hash_idx))
     {
       ipsec_fp_5tuple_from_ip4_range (&tuples[0], la, ra, lp, rp, pr);
       ipsec_fp_out_policy_match_n (&spd->fp_spd, 0, tuples, policies,
@@ -437,7 +439,8 @@ ipsec6_output_policy_match (ipsec_spd_t *spd, ip6_address_t *la,
   if (!spd)
     return 0;
 
-  if (im->ipv6_fp_spd_is_enabled)
+  if (im->fp_spd_ipv6_out_is_enabled &&
+      PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip6_out_lookup_hash_idx))
     {
 
       ipsec_fp_5tuple_from_ip6_range (&tuples[0], la, ra, lp, rp, pr);
