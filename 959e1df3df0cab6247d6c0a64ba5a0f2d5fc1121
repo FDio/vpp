@@ -16,6 +16,24 @@
       "message": "shouldn\u0027t it be per interface and not global for all interfaces?",
       "revId": "959e1df3df0cab6247d6c0a64ba5a0f2d5fc1121",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f803009_eb5b0220",
+        "filename": "src/vnet/devices/af_packet/af_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-08-31T09:13:35Z",
+      "side": 1,
+      "message": "Driver node and all associated states are independent of the respective interfaces in VPP. Node state will be polling even 1 queue of that interface is in POLLING while rest of them are in interrupt mode. polling_count variable is count the number of queues in af_packet interfaces are in polling mode.",
+      "parentUuid": "d3d558b0_ff87d7e7",
+      "revId": "959e1df3df0cab6247d6c0a64ba5a0f2d5fc1121",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
