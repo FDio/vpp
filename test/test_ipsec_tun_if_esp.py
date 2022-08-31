@@ -300,7 +300,7 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect, TemplateIpsec):
                 # which strips them
                 self.assertTrue(rx.haslayer(UDP))
                 self.assert_equal(rx[UDP].sport, p.nat_header.sport)
-                self.assert_equal(rx[UDP].dport, 4500)
+                self.assert_equal(rx[UDP].dport, p.nat_header.dport)
 
                 pkt = sa.decrypt(rx[IP])
                 if not pkt.haslayer(IP):
@@ -344,7 +344,8 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect, TemplateIpsec):
             p.crypt_algo_vpp_id,
             p.crypt_key,
             self.vpp_esp_protocol,
-            flags=p.flags,
+            flags=p.flags
+            | VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND,
             udp_src=p.nat_header.sport,
             udp_dst=p.nat_header.dport,
         )
@@ -427,6 +428,24 @@ class TestIpsec4TunIfEspUdpGCM(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
         p.auth_algo = "NULL"
         p.crypt_key = b"JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h"
         p.salt = 0
+
+
+class TestIpsec4TunIfEspUdpUpdate(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
+    """Ipsec ESP UDP update tests"""
+
+    tun4_input_node = "ipsec4-tun-input"
+
+    def setUp(self):
+        super(TestIpsec4TunIfEspUdpUpdate, self).setUp()
+        p = self.ipv4_params
+        p.nat_header = UDP(sport=6565, dport=7676)
+        config_tun_params(p, self.encryption_type, p.tun_if)
+        p.tun_sa_in.update_vpp_config(
+            udp_src=p.nat_header.dport, udp_dst=p.nat_header.sport
+        )
+        p.tun_sa_out.update_vpp_config(
+            udp_src=p.nat_header.sport, udp_dst=p.nat_header.dport
+        )
 
 
 class TestIpsec4TunIfEsp2(TemplateIpsec4TunIfEsp, IpsecTcpTests):
@@ -583,7 +602,7 @@ class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
                 # which strips them
                 self.assertTrue(rx.haslayer(UDP))
                 self.assert_equal(rx[UDP].sport, p.nat_header.sport)
-                self.assert_equal(rx[UDP].dport, 4500)
+                self.assert_equal(rx[UDP].dport, p.nat_header.dport)
 
                 pkt = sa.decrypt(rx[IP])
                 if not pkt.haslayer(IP):
@@ -629,7 +648,8 @@ class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
             p.crypt_algo_vpp_id,
             p.crypt_key,
             self.vpp_esp_protocol,
-            flags=p.flags,
+            flags=p.flags
+            | VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND,
             udp_src=p.nat_header.sport,
             udp_dst=p.nat_header.dport,
         )
@@ -2957,7 +2977,8 @@ class TemplateIpsecItf4(object):
             self.vpp_esp_protocol,
             dst,
             src,
-            flags=p.flags,
+            flags=p.flags
+            | VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND,
         )
         p.tun_sa_in.add_vpp_config()
 
@@ -3062,6 +3083,20 @@ class TestIpsecItf4(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
         self.assertEqual(p.tun_if.get_tx_stats(), 3 * n_pkts)
 
         self.tun4_encrypt_node_name = "esp4-encrypt-tun"
+
+        # update the SA tunnel
+        config_tun_params(
+            p, self.encryption_type, None, self.pg2.local_ip4, self.pg2.remote_ip4
+        )
+        p.tun_sa_in.update_vpp_config(
+            is_tun=True, tun_src=self.pg2.remote_ip4, tun_dst=self.pg2.local_ip4
+        )
+        p.tun_sa_out.update_vpp_config(
+            is_tun=True, tun_src=self.pg2.local_ip4, tun_dst=self.pg2.remote_ip4
+        )
+        self.verify_tun_44(p, count=n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 5 * n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 4 * n_pkts)
 
         self.vapi.cli("clear interfaces")
 
