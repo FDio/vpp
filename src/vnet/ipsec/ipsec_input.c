@@ -19,6 +19,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/feature/feature.h>
+#include <vnet/ipsec/ipsec_spd_fp_lookup.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -147,6 +148,18 @@ ipsec4_input_spd_find_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
     }
 
   return p;
+}
+
+always_inline void
+ipsec_fp_in_5tuple_from_ip4_range (ipsec_fp_5tuple_t *tuple, u32 la, u32 ra,
+				   u32 spi, u8 action)
+{
+  clib_memset (tuple->l3_zero_pad, 0, sizeof (tuple->l3_zero_pad));
+  tuple->laddr.as_u32 = la;
+  tuple->raddr.as_u32 = ra;
+  tuple->spi = spi;
+  tuple->action = action;
+  tuple->is_ipv6 = 0;
 }
 
 always_inline ipsec_policy_t *
@@ -317,6 +330,9 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       ipsec_policy_t *p0 = NULL;
       u8 has_space0;
       bool search_flow_cache = false;
+      ipsec_policy_t *policies[1];
+      ipsec_fp_5tuple_t tuples[1];
+      bool ip_v6 = true;
 
       if (n_left_from > 2)
 	{
@@ -351,7 +367,19 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  search_flow_cache = im->input_flow_cache_flag;
 
 	esp_or_udp:
-	  if (search_flow_cache) // attempt to match policy in flow cache
+	  if (im->fp_spd_ipv4_in_is_enabled &&
+	      PREDICT_TRUE (INDEX_INVALID !=
+			    spd0->fp_spd.ip4_in_lookup_hash_idx))
+	    {
+	      ipsec_fp_in_5tuple_from_ip4_range (
+		&tuples[0], ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		clib_net_to_host_u32 (esp0->spi),
+		IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
+	      ipsec_fp_in_policy_match_n (&spd0->fp_spd, !ip_v6, tuples,
+					  policies, 1);
+	      p0 = policies[0];
+	    }
+	  else if (search_flow_cache) // attempt to match policy in flow cache
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
@@ -392,7 +420,16 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      pi0 = ~0;
 	    };
 
-	  if (search_flow_cache)
+	  if (im->fp_spd_ipv4_in_is_enabled &&
+	      PREDICT_TRUE (INDEX_INVALID !=
+			    spd0->fp_spd.ip4_in_lookup_hash_idx))
+	    {
+	      tuples->action = IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS;
+	      ipsec_fp_in_policy_match_n (&spd0->fp_spd, !ip_v6, tuples,
+					  policies, 1);
+	      p0 = policies[0];
+	    }
+	  else if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
@@ -424,7 +461,18 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      pi0 = ~0;
 	    };
 
-	  if (search_flow_cache)
+	  if (im->fp_spd_ipv4_in_is_enabled &&
+	      PREDICT_TRUE (INDEX_INVALID !=
+			    spd0->fp_spd.ip4_in_lookup_hash_idx))
+	    {
+	      tuples->action = IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD;
+	      ipsec_fp_in_policy_match_n (&spd0->fp_spd, !ip_v6, tuples,
+					  policies, 1);
+	      p0 = policies[0];
+	    }
+	  else
+
+	    if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,

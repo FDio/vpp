@@ -134,10 +134,17 @@ typedef union
 	ip6_address_t ip6_raddr;
       };
     };
-
-    u16 lport;
-    u16 rport;
-    u16 protocol;
+    union
+    {
+      struct
+      {
+	u16 lport;
+	u16 rport;
+      };
+      u32 spi;
+    };
+    u8 protocol;
+    u8 action;
     u16 is_ipv6;
   };
   /* for ipv6 */

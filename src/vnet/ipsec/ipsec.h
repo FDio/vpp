@@ -30,6 +30,9 @@
 
 #include <vppinfra/bihash_24_16.h>
 
+#define IPSEC_FP_IP4_HASHES_POOL_SIZE 128
+#define IPSEC_FP_IP6_HASHES_POOL_SIZE 128
+
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
 typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
 typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
@@ -143,10 +146,16 @@ typedef struct
   ipsec_spd_t *spds;
   /* pool of policies */
   ipsec_policy_t *policies;
+  /* pool of bihash tables for ipv4 ipsec rules */
+  clib_bihash_16_8_t *fp_ip4_lookup_hashes_pool;
+  /* pool of bihash tables for ipv6 ipsec rules */
+  clib_bihash_40_8_t *fp_ip6_lookup_hashes_pool;
 
-  u32 ipv4_fp_spd_is_enabled;
-  u32 ipv6_fp_spd_is_enabled;
-
+  u32 fp_spd_ipv4_out_is_enabled;
+  u32 fp_spd_ipv4_in_is_enabled;
+  u32 fp_spd_ipv6_out_is_enabled;
+  u32 fp_spd_ipv6_in_is_enabled;
+  /* pool of fast path mask types */
   ipsec_fp_mask_type_entry_t *fp_mask_types;
   u32 fp_lookup_hash_buckets; /* number of buckets should be power of two */
 
