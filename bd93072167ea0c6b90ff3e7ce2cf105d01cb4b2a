@@ -90,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bcca2eb4_76cac6b2",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-08-31T09:32:33Z",
+      "side": 1,
+      "message": "Incremental checksum may be faster in this scenario but if the packet also contain GSO/TSO flag it will be chunked anyway.",
+      "parentUuid": "6f75ab4e_baecde73",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d5a801cb_b1696e0c",
         "filename": "src/vnet/ipip/ipip.c",
         "patchSetId": 20
@@ -107,6 +125,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "202f263b_0f988cb8",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-08-31T09:32:33Z",
+      "side": 1,
+      "message": "This flag is set for NICs to leverage the NICs offload functionality. It can be TSO and/or checksum offload.",
+      "parentUuid": "d5a801cb_b1696e0c",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4d14a309_7072d3c9",
         "filename": "src/vnet/ipip/ipip.c",
         "patchSetId": 20
@@ -118,6 +154,24 @@
       "writtenOn": "2022-06-28T01:05:56Z",
       "side": 1,
       "message": "does the TNL_IPIP flag work when there\u0027s an MPLS label between the outer and inner IP headers?",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bda2bcaf_19e6a965",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-08-31T09:32:33Z",
+      "side": 1,
+      "message": "Flag is an indication of an IPIP tunnel for NICs, so NICs will use the offsets (l3_hdr_offset and outer_l3_hdr_offset) between the two IP headers to process the offload.",
+      "parentUuid": "4d14a309_7072d3c9",
       "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
