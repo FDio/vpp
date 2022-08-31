@@ -295,6 +295,26 @@ class VppIpsecSA(VppObject):
         self.test.registry.register(self, self.test.logger)
         return self
 
+    def update_vpp_config(
+        self, udp_src=None, udp_dst=None, is_tun=False, tun_src=None, tun_dst=None
+    ):
+        if is_tun:
+            if tun_src:
+                self.tun_src = ip_address(text_type(tun_src))
+            if tun_dst:
+                self.tun_dst = ip_address(text_type(tun_dst))
+        if udp_src:
+            self.udp_src = udp_src
+        if udp_dst:
+            self.udp_dst = udp_dst
+        self.test.vapi.ipsec_sad_entry_update(
+            sad_id=self.id,
+            is_tun=is_tun,
+            tunnel=self.tunnel_encode(),
+            udp_src_port=udp_src,
+            udp_dst_port=udp_dst,
+        )
+
     def remove_vpp_config(self):
         self.test.vapi.ipsec_sad_entry_del(id=self.id)
 
