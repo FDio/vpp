@@ -495,11 +495,6 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;
 
-  im->ipv4_fp_spd_is_enabled = 0;
-  im->ipv6_fp_spd_is_enabled = 0;
-
-  im->fp_lookup_hash_buckets = IPSEC_FP_HASH_LOOKUP_HASH_BUCKETS;
-
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_NONE;
@@ -638,6 +633,13 @@ ipsec_init (vlib_main_t * vm)
   vec_validate_init_empty_aligned (im->next_header_registrations, 255, ~0,
 				   CLIB_CACHE_LINE_BYTES);
 
+  im->fp_spd_ipv4_out_is_enabled = 0;
+  im->fp_spd_ipv6_out_is_enabled = 0;
+  im->fp_spd_ipv4_in_is_enabled = 0;
+  im->fp_spd_ipv6_in_is_enabled = 0;
+
+  im->fp_lookup_hash_buckets = IPSEC_FP_HASH_LOOKUP_HASH_BUCKETS;
+
   return 0;
 }
 
@@ -652,22 +654,41 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
   u32 ipsec4_out_spd_hash_num_buckets;
   u32 ipsec4_in_spd_hash_num_buckets;
   u32 ipsec_spd_fp_num_buckets;
+  bool fp_spd_ip4_enabled = false;
+  bool fp_spd_ip6_enabled = false;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "ipv6-outbound-spd-fast-path on"))
 	{
-	  im->ipv6_fp_spd_is_enabled = 1;
+	  im->fp_spd_ipv6_out_is_enabled = 1;
+	  fp_spd_ip6_enabled = true;
 	}
       else if (unformat (input, "ipv6-outbound-spd-fast-path off"))
-	im->ipv6_fp_spd_is_enabled = 0;
+	im->fp_spd_ipv6_out_is_enabled = 0;
       else if (unformat (input, "ipv4-outbound-spd-fast-path on"))
 	{
-	  im->ipv4_fp_spd_is_enabled = 1;
+	  im->fp_spd_ipv4_out_is_enabled = 1;
 	  im->output_flow_cache_flag = 0;
+	  fp_spd_ip4_enabled = true;
 	}
       else if (unformat (input, "ipv4-outbound-spd-fast-path off"))
-	im->ipv4_fp_spd_is_enabled = 0;
+	im->fp_spd_ipv4_out_is_enabled = 0;
+      else if (unformat (input, "ipv6-inbound-spd-fast-path on"))
+	{
+	  im->fp_spd_ipv6_in_is_enabled = 1;
+	  fp_spd_ip6_enabled = true;
+	}
+      else if (unformat (input, "ipv6-inbound-spd-fast-path off"))
+	im->fp_spd_ipv6_in_is_enabled = 0;
+      else if (unformat (input, "ipv4-inbound-spd-fast-path on"))
+	{
+	  im->fp_spd_ipv4_in_is_enabled = 1;
+	  im->input_flow_cache_flag = 0;
+	  fp_spd_ip4_enabled = true;
+	}
+      else if (unformat (input, "ipv4-inbound-spd-fast-path off"))
+	im->fp_spd_ipv4_in_is_enabled = 0;
       else if (unformat (input, "spd-fast-path-num-buckets %d",
 			 &ipsec_spd_fp_num_buckets))
 	{
@@ -676,7 +697,7 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 				       << max_log2 (ipsec_spd_fp_num_buckets);
 	}
       else if (unformat (input, "ipv4-outbound-spd-flow-cache on"))
-	im->output_flow_cache_flag = im->ipv4_fp_spd_is_enabled ? 0 : 1;
+	im->output_flow_cache_flag = im->fp_spd_ipv4_out_is_enabled ? 0 : 1;
       else if (unformat (input, "ipv4-outbound-spd-flow-cache off"))
 	im->output_flow_cache_flag = 0;
       else if (unformat (input, "ipv4-outbound-spd-hash-buckets %d",
@@ -687,7 +708,7 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 	    1ULL << max_log2 (ipsec4_out_spd_hash_num_buckets);
 	}
       else if (unformat (input, "ipv4-inbound-spd-flow-cache on"))
-	im->input_flow_cache_flag = 1;
+	im->input_flow_cache_flag = im->fp_spd_ipv4_in_is_enabled ? 0 : 1;
       else if (unformat (input, "ipv4-inbound-spd-flow-cache off"))
 	im->input_flow_cache_flag = 0;
       else if (unformat (input, "ipv4-inbound-spd-hash-buckets %d",
@@ -744,6 +765,14 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
       vec_add2 (im->ipsec4_in_spd_hash_tbl, im->ipsec4_in_spd_hash_tbl,
 		im->ipsec4_in_spd_hash_num_buckets);
     }
+
+  if (fp_spd_ip4_enabled)
+    pool_alloc_aligned (im->fp_ip4_lookup_hashes_pool,
+			IPSEC_FP_IP4_HASHES_POOL_SIZE, CLIB_CACHE_LINE_BYTES);
+
+  if (fp_spd_ip6_enabled)
+    pool_alloc_aligned (im->fp_ip6_lookup_hashes_pool,
+			IPSEC_FP_IP6_HASHES_POOL_SIZE, CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }

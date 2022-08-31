@@ -21,6 +21,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_t *spd = 0;
+  ipsec_spd_fp_t *fp_spd = 0;
   uword *p;
   u32 spd_index, k, v;
 
@@ -36,6 +37,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       spd = pool_elt_at_index (im->spds, spd_index);
       if (!spd)
 	return VNET_API_ERROR_INVALID_VALUE;
+
       /* *INDENT-OFF* */
       hash_foreach (k, v, im->spd_index_by_sw_if_index, ({
         if (v == spd_index)
@@ -46,18 +48,64 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
       foreach_ipsec_spd_policy_type
 #undef _
-	if (im->ipv4_fp_spd_is_enabled)
-      {
-	ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
-	clib_bihash_free_16_8 (&fp_spd->fp_ip4_lookup_hash);
-      }
+	fp_spd = &spd->fp_spd;
 
-      if (im->ipv6_fp_spd_is_enabled)
+      if (im->fp_spd_ipv4_out_is_enabled)
 	{
-	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+	  if (fp_spd->ip4_out_lookup_hash_idx != INDEX_INVALID)
+	    {
+	      clib_bihash_16_8_t *bihash_table =
+		pool_elt_at_index (im->fp_ip4_lookup_hashes_pool,
+				   fp_spd->ip4_out_lookup_hash_idx);
 
-	  clib_bihash_free_40_8 (&fp_spd->fp_ip6_lookup_hash);
+	      clib_bihash_free_16_8 (bihash_table);
+	      vec_free (fp_spd->name4_out);
+	      pool_put_index (im->fp_ip4_lookup_hashes_pool,
+			      fp_spd->ip4_out_lookup_hash_idx);
+	    }
+	}
+
+      if (im->fp_spd_ipv4_in_is_enabled)
+	{
+	  if (fp_spd->ip4_in_lookup_hash_idx != INDEX_INVALID)
+	    {
+	      clib_bihash_16_8_t *bihash_table = pool_elt_at_index (
+		im->fp_ip4_lookup_hashes_pool, fp_spd->ip4_in_lookup_hash_idx);
+
+	      clib_bihash_free_16_8 (bihash_table);
+	      vec_free (fp_spd->name4_in);
+	      pool_put_index (im->fp_ip4_lookup_hashes_pool,
+			      fp_spd->ip4_in_lookup_hash_idx);
+	    }
+	}
+
+      if (im->fp_spd_ipv6_out_is_enabled)
+	{
+	  if (fp_spd->ip6_out_lookup_hash_idx != INDEX_INVALID)
+	    {
+	      clib_bihash_40_8_t *bihash_table =
+		pool_elt_at_index (im->fp_ip6_lookup_hashes_pool,
+				   fp_spd->ip6_out_lookup_hash_idx);
+
+	      clib_bihash_free_40_8 (bihash_table);
+	      vec_free (fp_spd->name6_out);
+	      pool_put_index (im->fp_ip6_lookup_hashes_pool,
+			      fp_spd->ip6_out_lookup_hash_idx);
+	    }
+	}
+      if (im->fp_spd_ipv6_in_is_enabled)
+	{
+	  if (fp_spd->ip6_in_lookup_hash_idx != INDEX_INVALID)
+	    {
+	      clib_bihash_40_8_t *bihash_table = pool_elt_at_index (
+		im->fp_ip6_lookup_hashes_pool, fp_spd->ip6_in_lookup_hash_idx);
+
+	      clib_bihash_free_40_8 (bihash_table);
+	      vec_free (fp_spd->name6_in);
+	      pool_put_index (im->fp_ip6_lookup_hashes_pool,
+			      fp_spd->ip6_in_lookup_hash_idx);
+	    }
 	}
 
       pool_put (im->spds, spd);
@@ -69,24 +117,85 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       spd_index = spd - im->spds;
       spd->id = spd_id;
       hash_set (im->spd_index_by_spd_id, spd_id, spd_index);
-      if (im->ipv4_fp_spd_is_enabled)
-	{
-	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
-	  clib_bihash_init_16_8 (
-	    &fp_spd->fp_ip4_lookup_hash, "SPD_FP ip4 rules lookup bihash",
-	    im->fp_lookup_hash_buckets,
-	    im->fp_lookup_hash_buckets * IPSEC_FP_IP4_HASH_MEM_PER_BUCKET);
+      fp_spd = &spd->fp_spd;
+      fp_spd->ip4_out_lookup_hash_idx = INDEX_INVALID;
+      fp_spd->ip4_in_lookup_hash_idx = INDEX_INVALID;
+      fp_spd->ip6_out_lookup_hash_idx = INDEX_INVALID;
+      fp_spd->ip6_in_lookup_hash_idx = INDEX_INVALID;
+
+      if (im->fp_spd_ipv4_out_is_enabled)
+	{
+	  if (pool_elts (im->fp_ip4_lookup_hashes_pool) <
+	      pool_max_len (im->fp_ip4_lookup_hashes_pool))
+	    {
+	      clib_bihash_16_8_t *bihash_table;
+	      fp_spd->name4_out = format (0, "spd_%u_fp_ip4_out", spd_id);
+
+	      pool_get (im->fp_ip4_lookup_hashes_pool, bihash_table);
+	      fp_spd->ip4_out_lookup_hash_idx =
+		bihash_table - im->fp_ip4_lookup_hashes_pool;
+	      clib_bihash_init_16_8 (bihash_table, (char *) fp_spd->name4_out,
+				     im->fp_lookup_hash_buckets,
+				     im->fp_lookup_hash_buckets *
+				       IPSEC_FP_IP4_HASH_MEM_PER_BUCKET);
+	    }
 	}
-      if (im->ipv6_fp_spd_is_enabled)
-	{
-	  ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
-	  clib_bihash_init_40_8 (
-	    &fp_spd->fp_ip6_lookup_hash, "SPD_FP ip6 rules lookup bihash",
-	    im->fp_lookup_hash_buckets,
-	    im->fp_lookup_hash_buckets * IPSEC_FP_IP6_HASH_MEM_PER_BUCKET);
-	  fp_spd->fp_ip6_lookup_hash_initialized = 1;
+      if (im->fp_spd_ipv4_in_is_enabled)
+	{
+	  if (pool_elts (im->fp_ip4_lookup_hashes_pool) <
+	      pool_max_len (im->fp_ip4_lookup_hashes_pool))
+	    {
+	      clib_bihash_16_8_t *bihash_table;
+	      fp_spd->name4_in = format (0, "spd_%u_fp_ip4_in", spd_id);
+
+	      pool_get (im->fp_ip4_lookup_hashes_pool, bihash_table);
+	      fp_spd->ip4_in_lookup_hash_idx =
+		bihash_table - im->fp_ip4_lookup_hashes_pool;
+	      clib_bihash_init_16_8 (bihash_table, (char *) fp_spd->name4_in,
+				     im->fp_lookup_hash_buckets,
+				     im->fp_lookup_hash_buckets *
+				       IPSEC_FP_IP4_HASH_MEM_PER_BUCKET);
+	    }
+	}
+      if (im->fp_spd_ipv6_out_is_enabled)
+	{
+	  if (pool_elts (im->fp_ip6_lookup_hashes_pool) <
+	      pool_max_len (im->fp_ip6_lookup_hashes_pool))
+	    {
+	      clib_bihash_40_8_t *bihash_table;
+	      ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+
+	      fp_spd->name6_out = format (0, "spd_%u_fp_ip6_out", spd_id);
+
+	      fp_spd->name6_out = format (0, "spd_%u_fp_ip6_out", spd_id);
+	      pool_get (im->fp_ip6_lookup_hashes_pool, bihash_table);
+	      fp_spd->ip6_out_lookup_hash_idx =
+		bihash_table - im->fp_ip6_lookup_hashes_pool;
+	      clib_bihash_init_40_8 (bihash_table, (char *) fp_spd->name6_out,
+				     im->fp_lookup_hash_buckets,
+				     im->fp_lookup_hash_buckets *
+				       IPSEC_FP_IP6_HASH_MEM_PER_BUCKET);
+	    }
+	}
+      if (im->fp_spd_ipv6_in_is_enabled)
+	{
+	  if (pool_elts (im->fp_ip6_lookup_hashes_pool) <
+	      pool_max_len (im->fp_ip6_lookup_hashes_pool))
+	    {
+	      clib_bihash_40_8_t *bihash_table;
+	      ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
+
+	      fp_spd->name6_in = format (0, "spd_%u_fp_ip6_in", spd_id);
+	      pool_get (im->fp_ip6_lookup_hashes_pool, bihash_table);
+	      fp_spd->ip6_out_lookup_hash_idx =
+		bihash_table - im->fp_ip6_lookup_hashes_pool;
+	      clib_bihash_init_40_8 (bihash_table, (char *) fp_spd->name6_in,
+				     im->fp_lookup_hash_buckets,
+				     im->fp_lookup_hash_buckets *
+				       IPSEC_FP_IP6_HASH_MEM_PER_BUCKET);
+	    }
 	}
     }
   return 0;
