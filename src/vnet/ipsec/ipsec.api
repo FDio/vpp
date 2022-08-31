@@ -200,6 +200,28 @@ autoreply define ipsec_sad_entry_del
   u32 id;
 };
 
+/** \brief An API to update the tunnel parameters and the ports associated with an SA
+
+    Used in the NAT-T case when the NAT data changes
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_id - the id of the SA to update
+    @param is_tun - update the tunnel if non-zero, else update only the ports
+    @param tunnel - sender context, to match reply w/ request
+    @param udp_src_port - new src port for NAT-T. Used if different from 0xffff
+    @param udp_dst_port - new dst port for NAT-T. Used if different from 0xffff
+ */
+autoreply define ipsec_sad_entry_update
+{
+  u32 client_index;
+  u32 context;
+  u32 sad_id;
+  bool is_tun;
+  vl_api_tunnel_t tunnel;
+  u16 udp_src_port [default=0xffff];
+  u16 udp_dst_port [default=0xffff];
+};
+
 define ipsec_sad_entry_add_del_reply
 {
   option deprecated;
