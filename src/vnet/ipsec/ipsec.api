@@ -199,6 +199,12 @@ autoreply define ipsec_sad_entry_del
   u32 context;
   u32 id;
 };
+autoreply define ipsec_sad_entry_update
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ipsec_sad_entry_v3_t entry;
+};
 
 define ipsec_sad_entry_add_del_reply
 {
