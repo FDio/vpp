@@ -1295,11 +1295,15 @@ def run_vppapigen(
 
     result = plugin.run(outputdir, filename, s)
     if result:
-        if isinstance(output, str):
-            with open(output, "w", encoding="UTF-8") as f:
-                print(result, file=f)
-        else:
-            print(result, file=output)
+        import tempfile
+        import shutil
+
+        tmp_fd, tmp_path = tempfile.mkstemp()
+        with os.fdopen(tmp_fd, "w") as out:
+            print(result, file=out)
+        path = os.path.join(os.path.dirname(output), os.path.basename(tmp_path))
+        shutil.move(tmp_path, path)
+        os.rename(path, output)
     else:
         log.exception("Running plugin failed: %s %s", filename, result)
         return 1
@@ -1331,13 +1335,7 @@ def main():
     cliparser.add_argument("--includedir", action="append")
     cliparser.add_argument("--outputdir", action="store")
     cliparser.add_argument("--input")
-    cliparser.add_argument(
-        "--output",
-        nargs="?",
-        type=argparse.FileType("w", encoding="UTF-8"),
-        default=sys.stdout,
-    )
-
+    cliparser.add_argument("--output")
     cliparser.add_argument("output_module", nargs="?", default="C")
     cliparser.add_argument("--debug", action="store_true")
     cliparser.add_argument("--show-name", nargs=1)
