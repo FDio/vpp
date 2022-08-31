@@ -246,7 +246,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 num_pkts = 0;
   u32 rx_frame_offset = 0;
   block_desc_t *bd = 0;
-  vlib_buffer_t bt;
+  vlib_buffer_t bt = {};
   u8 is_ip = (apif->mode == AF_PACKET_IF_MODE_IP);
 
   if (is_ip)
