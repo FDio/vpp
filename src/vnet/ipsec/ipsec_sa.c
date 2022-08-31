@@ -171,6 +171,87 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
 }
 
 int
+ipsec_sa_update (u32 id, u32 salt, u16 src_port, u16 dst_port,
+		 const tunnel_t *tun)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+  u32 sa_index;
+  uword *p;
+  int rv;
+
+  p = hash_get (im->sa_index_by_sa_id, id);
+  if (!p)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  sa = ipsec_sa_get (p[0]);
+  sa_index = sa - ipsec_sa_pool;
+  sa->salt = salt;
+
+  if (ipsec_sa_is_set_IS_TUNNEL (sa) &&
+      (ip_address_cmp (&tun->t_src, &sa->tunnel.t_src) != 0 ||
+       ip_address_cmp (&tun->t_dst, &sa->tunnel.t_dst) != 0))
+    {
+      tunnel_unresolve (&sa->tunnel);
+      tunnel_copy (tun, &sa->tunnel);
+      if (!ipsec_sa_is_set_IS_INBOUND (sa))
+	{
+	  dpo_reset (&sa->dpo);
+
+	  sa->tunnel_flags = sa->tunnel.t_encap_decap_flags;
+
+	  rv = tunnel_resolve (&sa->tunnel, FIB_NODE_TYPE_IPSEC_SA, sa_index);
+
+	  if (rv)
+	    {
+	      hash_unset (im->sa_index_by_sa_id, sa->id);
+	      pool_put (ipsec_sa_pool, sa);
+	      return rv;
+	    }
+	  ipsec_sa_stack (sa);
+	  /* generate header templates */
+	  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
+	    {
+	      tunnel_build_v6_hdr (&sa->tunnel,
+				   (ipsec_sa_is_set_UDP_ENCAP (sa) ?
+					    IP_PROTOCOL_UDP :
+					    IP_PROTOCOL_IPSEC_ESP),
+				   &sa->ip6_hdr);
+	    }
+	  else
+	    {
+	      tunnel_build_v4_hdr (&sa->tunnel,
+				   (ipsec_sa_is_set_UDP_ENCAP (sa) ?
+					    IP_PROTOCOL_UDP :
+					    IP_PROTOCOL_IPSEC_ESP),
+				   &sa->ip4_hdr);
+	    }
+	}
+    }
+
+  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+    {
+      if (dst_port != IPSEC_UDP_PORT_NONE && dst_port != 0 &&
+	  dst_port != clib_net_to_host_u16 (sa->udp_hdr.dst_port))
+	{
+	  if (ipsec_sa_is_set_IS_INBOUND (sa))
+	    {
+	      ipsec_unregister_udp_port (
+		clib_net_to_host_u16 (sa->udp_hdr.dst_port),
+		!ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
+	      ipsec_register_udp_port (sa->udp_hdr.dst_port,
+				       !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
+	    }
+	  sa->udp_hdr.dst_port = clib_host_to_net_u16 (dst_port);
+	}
+      if (src_port == IPSEC_UDP_PORT_NONE && src_port != 0 &&
+	  src_port != clib_net_to_host_u16 (sa->udp_hdr.src_port))
+	sa->udp_hdr.src_port = clib_host_to_net_u16 (src_port);
+    }
+  return (0);
+}
+
+int
 ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
 		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
