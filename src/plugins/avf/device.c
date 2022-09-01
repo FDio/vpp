@@ -1278,11 +1278,21 @@ avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
     {
       vlib_process_signal_event_pointer (vm, avf_process_node.index,
 					 AVF_PROCESS_EVENT_REQ, req);
-
+      f64 start = vlib_time_now (vm);
+    retry:
       vlib_process_wait_for_event_or_clock (vm, 5.0);
+      f64 finish = vlib_time_now (vm);
+      clib_warning ("Time taken for the request: %f", finish - start);
 
       if (vlib_process_get_events (vm, &event_data) != 0)
-	clib_panic ("avf process node failed to reply in 5 seconds");
+	{
+	  if (finish - start < 5.0)
+	    {
+	      goto retry;
+	    }
+	  clib_panic ("avf process node failed to reply in 5 seconds");
+	}
+
       vec_free (event_data);
     }
   else
