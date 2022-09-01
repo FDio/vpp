@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "31c23847_fd667d6f",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-01T03:10:07Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "51580e97_2b404ae7",
+      "range": {
+        "startLine": 178,
+        "startChar": 0,
+        "endLine": 178,
+        "endChar": 34
+      },
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "390ce0de_92f3954c",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 2
@@ -37,6 +61,24 @@
       "writtenOn": "2022-08-23T02:31:09Z",
       "side": 1,
       "message": "Please use macro DMA_TRANS_SIZE for maximum transfers setting.",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4726a3e_35744c8f",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2016,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-01T03:10:07Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "390ce0de_92f3954c",
       "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -60,6 +102,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d35febce_abcd6dce",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-01T03:10:07Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "1cb16087_065019cd",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0cf37929_588adfff",
         "filename": "src/vnet/session/session_node.c",
         "patchSetId": 2
@@ -71,6 +131,24 @@
       "writtenOn": "2022-08-23T02:31:09Z",
       "side": 1,
       "message": "Theres\u0027s another variable for dma configuration status wrk-\u003edma_enabled. If check wrk-\u003econfig_index is enough, there\u0027s no need for dma_enabled.",
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77e01307_7d24ef11",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1003,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-01T03:10:07Z",
+      "side": 1,
+      "message": "will check",
+      "parentUuid": "0cf37929_588adfff",
       "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
