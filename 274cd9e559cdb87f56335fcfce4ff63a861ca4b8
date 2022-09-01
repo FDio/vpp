@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80ea245d_dad9e832",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1196,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2022-09-01T21:41:34Z",
+      "side": 1,
+      "message": "shouldn\u0027t be there def_slow to support NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH as well?",
+      "revId": "274cd9e559cdb87f56335fcfce4ff63a861ca4b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
