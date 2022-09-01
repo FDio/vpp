@@ -3,6 +3,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "51580e97_2b404ae7",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-09-01T02:30:19Z",
+      "side": 1,
+      "message": "SVM shared memory is not in the scope of physical memory. This map will be failed for this reason. If SVM is enabled in backend device, mapping can be skipped.",
+      "range": {
+        "startLine": 178,
+        "startChar": 0,
+        "endLine": 178,
+        "endChar": 34
+      },
+      "revId": "a95cfa723cd19d196ae38b5ba3343efd92d8a237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "390ce0de_92f3954c",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 2
