@@ -74,7 +74,7 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
             t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
             t0->entry_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
             t0->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
-                                     vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+                                     vnet_buffer(b0)->sw_if_index[VLIB_RX]);
         }
         if (b1->flags & VLIB_BUFFER_IS_TRACED)
         {
