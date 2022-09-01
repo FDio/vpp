@@ -42,6 +42,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from vpp_papi import VppEnum
 from framework import VppTestCase
+from framework import tag_run_solo
 from re import compile
 import unittest
 
@@ -492,7 +493,7 @@ class VppWgPeer(VppObject):
         self._test.assertEqual(rv.flags, expect)
         self._test.assertEqual(rv.peer_index, self.index)
 
-
+@tag_run_solo
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2226,7 +2227,140 @@ class TestWg(VppTestCase):
         wg0.remove_vpp_config()
         wg1.remove_vpp_config()
 
+    def test_wg_handshake_sending_when_admin_down(self):
+        """Handshake sending when admin down"""
+        port = 12323
 
+        # create wg interface
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.config_ip4()
+
+        # create a peer
+        peer_1 = VppWgPeer(
+            self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # wait for the peer to send a handshake initiation
+        # expect no handshakes
+        for i in range(2):
+            self.pg1.assert_nothing_captured(remark="handshake packet(s) sent")
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # administratively enable the wg interface
+        # expect the peer to send a handshake initiation
+        wg0.admin_up()
+        rxs = self.pg1.get_capture(1, timeout=2)
+        peer_1.consume_init(rxs[0], self.pg1)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # administratively disable the wg interface
+        # expect no handshakes
+        wg0.admin_down()
+        for i in range(6):
+            self.pg1.assert_nothing_captured(remark="handshake packet(s) sent")
+
+        # remove configs
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_data_sending_when_admin_down(self):
+        """Data sending when admin down"""
+        port = 12323
+
+        # create wg interface
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # create a peer
+        peer_1 = VppWgPeer(
+            self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # create a route to rewrite traffic into the wg interface
+        r1 = VppIpRoute(
+            self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
+        ).add_vpp_config()
+
+        # wait for the peer to send a handshake initiation
+        rxs = self.pg1.get_capture(1, timeout=2)
+
+        # prepare and send a handshake response
+        # expect a keepalive message
+        resp = peer_1.consume_init(rxs[0], self.pg1)
+        rxs = self.send_and_expect(self.pg1, [resp], self.pg1)
+
+        # verify the keepalive message
+        b = peer_1.decrypt_transport(rxs[0])
+        self.assertEqual(0, len(b))
+
+        # prepare and send a packet that will be rewritten into the wg interface
+        # expect a data packet sent
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="10.11.3.2")
+            / UDP(sport=555, dport=556)
+            / Raw()
+        )
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # verify the data packet
+        peer_1.validate_encapped(rxs, p)
+
+        # administratively disable the wg interface
+        wg0.admin_down()
+
+        # send a packet that will be rewritten into the wg interface
+        # expect no data packets sent
+        self.send_and_assert_no_replies(self.pg0, [p])
+
+        # administratively enable the wg interface
+        # expect the peer to send a handshake initiation
+        wg0.admin_up()
+        peer_1.noise_reset()
+        rxs = self.pg1.get_capture(1, timeout=2)
+        resp = peer_1.consume_init(rxs[0], self.pg1)
+
+        # send a packet that will be rewritten into the wg interface
+        # expect no data packets sent because the peer is not initiated
+        self.send_and_assert_no_replies(self.pg0, [p])
+        self.assertEqual(
+            self.base_kp4_err + 1, self.statistics.get_err_counter(self.kp4_error)
+        )
+
+        # send a handshake response and expect a keepalive message
+        rxs = self.send_and_expect(self.pg1, [resp], self.pg1)
+
+        # verify the keepalive message
+        b = peer_1.decrypt_transport(rxs[0])
+        self.assertEqual(0, len(b))
+
+        # send a packet that will be rewritten into the wg interface
+        # expect a data packet sent
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1)
+
+        # verify the data packet
+        peer_1.validate_encapped(rxs, p)
+
+        # remove configs
+        r1.remove_vpp_config()
+        peer_1.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+
+@tag_run_solo
 class WireguardHandoffTests(TestWg):
     """Wireguard Tests in multi worker setup"""
 
@@ -2395,7 +2529,7 @@ class TestWgFIB(VppTestCase):
         self.assertEqual(0, len(b))
 
         # prepare and send a packet that will be rewritten into the wg interface
-        # expect a data packet sent to the new endpoint
+        # expect a data packet sent
         p = (
             Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
             / IP(src=self.pg0.remote_ip4, dst="10.11.3.2")
