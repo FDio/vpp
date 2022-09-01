@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce79f7b9_3256a2a6",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-01T01:23:12Z",
+      "side": 1,
+      "message": "i\u0027d make this explicit about what parameters are allowed to be updated. If you pass a full SA representation, then the API expectation are not met. maybe:\n\n/**\n * An API to update the tunnel parameters associated with an SA\n * Used in the NAT-T case when the NAT data changes\n */\nautoreply define ipsec_sad_entry_update_tunnel\n{\n  u32 client_index;\n  u32 context;\n  u32 sad_id;\n  vl_api_tunnel_t tunnel;\n  u16 udp_src_port [default\u003d0xffff];\n  u16 udp_dst_port [default\u003d0xffff];\n};",
+      "revId": "60cabefb4e604587485bafcec643bc76ac7b115f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "30e36fbc_ec562421",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-01T01:23:12Z",
+      "side": 1,
+      "message": "are you sure about this? The peer would need to change its salt too.",
+      "revId": "60cabefb4e604587485bafcec643bc76ac7b115f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "69f4bfbd_c0384514",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-01T01:23:12Z",
+      "side": 1,
+      "message": "if the source address has changed for an inbound SA, then the ipsec_tun.c DB needs updating.",
+      "revId": "60cabefb4e604587485bafcec643bc76ac7b115f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
