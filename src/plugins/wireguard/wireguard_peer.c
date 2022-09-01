@@ -202,16 +202,76 @@ wg_peer_get_fixup (wg_peer_t *peer, vnet_link_t lt)
   return (NULL);
 }
 
+static void
+wg_peer_disable (vlib_main_t *vm, wg_peer_t *peer)
+{
+  index_t peeri = peer - wg_peer_pool;
+
+  wg_timers_stop (peer);
+  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
+
+  for (int i = 0; i < WG_N_TIMERS; i++)
+    {
+      peer->timers[i] = ~0;
+      peer->timers_dispatched[i] = 0;
+    }
+  peer->timer_handshake_attempts = 0;
+
+  peer->last_sent_handshake = vlib_time_now (vm) - (REKEY_TIMEOUT + 1);
+  peer->last_sent_packet = 0;
+  peer->last_received_packet = 0;
+  peer->session_derived = 0;
+  peer->rehandshake_started = 0;
+
+  peer->new_handshake_interval_tick = 0;
+  peer->rehandshake_interval_tick = 0;
+
+  peer->timer_need_another_keepalive = false;
+
+  noise_remote_clear (vm, &peer->remote);
+}
+
+static void
+wg_peer_enable (vlib_main_t *vm, wg_peer_t *peer)
+{
+  index_t peeri = peer - wg_peer_pool;
+  wg_if_t *wg_if;
+  u8 public_key[NOISE_PUBLIC_KEY_LEN];
+
+  wg_if = wg_if_get (wg_if_find_by_sw_if_index (peer->wg_sw_if_index));
+  clib_memcpy (public_key, peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
+
+  noise_remote_init (&peer->remote, peeri, public_key, wg_if->local_idx);
+
+  wg_send_handshake (vm, peer, false);
+  if (peer->persistent_keepalive_interval != 0)
+    {
+      wg_send_keepalive (vm, peer);
+    }
+}
+
 walk_rc_t
 wg_peer_if_admin_state_change (index_t peeri, void *data)
 {
   wg_peer_t *peer;
   adj_index_t *adj_index;
+  vlib_main_t *vm = vlib_get_main ();
+
   peer = wg_peer_get (peeri);
   vec_foreach (adj_index, peer->adj_indices)
     {
       wg_peer_adj_stack (peer, *adj_index);
     }
+
+  if (vnet_sw_interface_is_admin_up (vnet_get_main (), peer->wg_sw_if_index))
+    {
+      wg_peer_enable (vm, peer);
+    }
+  else
+    {
+      wg_peer_disable (vm, peer);
+    }
+
   return (WALK_CONTINUE);
 }
 
@@ -431,10 +491,13 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 		     wg_if->local_idx);
   cookie_maker_init (&peer->cookie_maker, public_key);
 
-  wg_send_handshake (vm, peer, false);
-  if (peer->persistent_keepalive_interval != 0)
+  if (vnet_sw_interface_is_admin_up (vnet_get_main (), tun_sw_if_index))
     {
-      wg_send_keepalive (vm, peer);
+      wg_send_handshake (vm, peer, false);
+      if (peer->persistent_keepalive_interval != 0)
+	{
+	  wg_send_keepalive (vm, peer);
+	}
     }
 
   *peer_index = peer - wg_peer_pool;
