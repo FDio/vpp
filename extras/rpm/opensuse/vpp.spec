@@ -46,12 +46,10 @@ BuildRequires:  libtool
 BuildRequires:  lsb-release
 BuildRequires:  make
 BuildRequires:  openssl-devel
-BuildRequires:  python-devel
-BuildRequires:  python-pip
 BuildRequires:  python-rpm-macros
-BuildRequires:  python2-ply
 BuildRequires:  python3-devel
 BuildRequires:  python3-pip
+BuildRequires:  python3-ply
 BuildRequires:  shadow
 Conflicts:      otherproviders(vpp-any)
 Provides:       %{name}-any = %{version}
@@ -126,7 +124,7 @@ Group:          Development/Libraries/Python
 Requires:       %{lname} = %{version}
 Requires:       %{name} = %{version}
 Requires:       %{name}-devel = %{version}
-Requires:       python-setuptools
+Requires:       python3-setuptools
 Conflicts:      otherproviders(%{name}-any-python-api)
 Provides:       %{name}-any-python-api = %{version}
 
