@@ -90,6 +90,10 @@ set(CPACK_${CPACK_GENERATOR}_COMPONENT_INSTALL ON)
 set(CPACK_${type}_PACKAGE_DESCRIPTION "memif Shared Memory Interface")
 set(CPACK_${type}_PACKAGE_RELEASE 1)
 
+
+if("${OS_ID_LIKE}" STREQUAL "")
+	set(OS_ID_LIKE "${OS_ID}")
+endif()
 if(OS_ID_LIKE MATCHES "debian")
   set(CPACK_GENERATOR "DEB")
   set(type "DEBIAN")
