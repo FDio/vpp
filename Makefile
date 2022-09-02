@@ -587,6 +587,12 @@ build-coverity:
 	$(call make,$(PLATFORM)_coverity,install-packages)
 	@make -C build-root PLATFORM=vpp TAG=vpp_coverity libmemif-install
 
+.PHONY: build-memif
+build-memif:
+	$(call make,$(PLATFORM),install-packages)
+	@make -C build-root PLATFORM=vpp TAG=libmemif-install
+
+
 .PHONY: debug-release
 debug-release:
 	$(call run, $(BR)/install-$(PLATFORM)-native,$(GDB) $(GDB_ARGS) --args)
@@ -601,7 +607,7 @@ run-vat:
 
 .PHONY: pkg-deb
 pkg-deb:
-	$(call make,$(PLATFORM),vpp-package-deb)
+	$(call make,$(PLATFORM),vpp-package-deb libmemif-package-deb)
 
 .PHONY: pkg-snap
 pkg-snap:

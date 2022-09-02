@@ -33,3 +33,10 @@ libmemif_configure = \
 libmemif_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
 libmemif_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install
+
+libmemif-package-deb: libmemif-install
+  @$(CMAKE) --build $(PACKAGE_BUILD_DIR)/libmemif -- package
+  @find $(PACKAGE_BUILD_DIR) \
+    -maxdepth 2 \
+    \( -name '*.changes' -o -name '*.deb' -o -name '*.buildinfo' \) \
+    -exec mv {} $(CURDIR) \;
