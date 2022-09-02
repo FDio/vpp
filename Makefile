@@ -167,22 +167,15 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel nasm
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel libuuid-devel
 
-RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
-RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
+RPM_SUSE_PYTHON_DEPS = python3 python3-devel python3-devel python3-ply python3-pip
+RPM_SUSE_PYTHON_DEPS += python3-rpm-macros python3-rpm-macros python3-virtualenv
 
 RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 
 ifeq ($(OS_ID),opensuse-leap)
-ifeq ($(OS_VERSION_ID),15.3)
 	RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel xmlto
 	RPM_SUSE_DEVEL_DEPS += lsb-release
 	RPM_SUSE_DEVEL_DEPS += asciidoc git
-	RPM_SUSE_PYTHON_DEPS += python3 python2-ply
-endif
-ifeq ($(OS_VERSION_ID),15.0)
-	RPM_SUSE_DEVEL_DEPS += gcc git curl
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
-endif
 endif
 
 RPM_SUSE_DEPENDS += $(RPM_SUSE_BUILDTOOLS_DEPS) $(RPM_SUSE_DEVEL_DEPS) $(RPM_SUSE_PYTHON_DEPS) $(RPM_SUSE_PLATFORM_DEPS)
@@ -340,7 +333,7 @@ else ifeq ($(OS_ID),fedora)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 endif
-else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION_ID)),$(OS_ID)-$(OS_VERSION_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
 else

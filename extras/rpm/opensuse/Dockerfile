@@ -1,11 +1,12 @@
 # Run from top of vpp repo with command:
 # docker build -f extras/rpm/opensuse/Dockerfile .
 
-ARG SUSE_VERSION=15.3
+ARG SUSE_VERSION=15.4
 
 FROM opensuse/leap:${SUSE_VERSION} as vppbuild
 COPY . /vpp
 WORKDIR /vpp
+RUN zypper refresh
 RUN zypper install -y make sudo
 COPY . .
 RUN UNATTENDED=y make install-dep
