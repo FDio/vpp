@@ -242,6 +242,8 @@ vrrp_proto_start_stop_command_fn (vlib_main_t * vm,
       if (unformat (input, "%U", unformat_vnet_sw_interface, vmp->vnet_main,
 		    &sw_if_index))
 	;
+      else if (unformat (input, "sw_if_index %u", &sw_if_index))
+	;
       else if (unformat (input, "vr_id %u", &vr_id))
 	;
       else if (unformat (input, "ipv6"))
@@ -310,6 +312,8 @@ vrrp_peers_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "%U", unformat_vnet_sw_interface, vmp->vnet_main,
 		    &sw_if_index))
+	;
+      else if (unformat (input, "sw_if_index %u", &sw_if_index))
 	;
       else if (unformat (input, "vr_id %u", &vr_id))
 	;
@@ -417,6 +421,8 @@ vrrp_vr_track_if_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "%U", unformat_vnet_sw_interface, vmp->vnet_main,
 		    &sw_if_index))
+	;
+      else if (unformat (input, "sw_if_index %u", &sw_if_index))
 	;
       else if (unformat (input, "add"))
 	is_add = 1;
