@@ -23,6 +23,7 @@ endif
 libmemif_cmake_args ?=
 libmemif_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 libmemif_cmake_args += -DCMAKE_C_FLAGS="$($(TAG)_TAG_CFLAGS)"
+libmemif_cmake_args += -DCMAKE_BUILD_TYPE="$($(TAG)_TAG_BUILD_TYPE)"
 libmemif_cmake_args += -DCMAKE_SHARED_LINKER_FLAGS="$($(TAG)_TAG_LDFLAGS)"
 libmemif_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(PACKAGE_INSTALL_DIR)/../vpp"
 
@@ -33,3 +34,10 @@ libmemif_configure = \
 libmemif_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
 
 libmemif_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install
+
+libmemif-package-deb: libmemif-install
+	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/libmemif -- package
+	@find $(PACKAGE_BUILD_DIR) \
+	-maxdepth 2 \
+	\( -name '*.changes' -o -name '*.deb' -o -name '*.buildinfo' \) \
+	-exec mv {} $(CURDIR) \;
