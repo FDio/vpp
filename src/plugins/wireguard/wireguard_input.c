@@ -837,8 +837,11 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
 	{
-	  wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
-					   out_udp_src_port);
+	  if (PREDICT_FALSE (
+		!ip46_address_is_equal (&peer->dst.addr, &out_src_ip) ||
+		peer->dst.port != out_udp_src_port))
+	    wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
+					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
 	  last_peer_time_idx = peer_idx;
@@ -970,8 +973,11 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
 	{
-	  wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
-					   out_udp_src_port);
+	  if (PREDICT_FALSE (
+		!ip46_address_is_equal (&peer->dst.addr, &out_src_ip) ||
+		peer->dst.port != out_udp_src_port))
+	    wg_peer_update_endpoint_from_mt (*peer_idx, &out_src_ip,
+					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
 	  last_peer_time_idx = peer_idx;
