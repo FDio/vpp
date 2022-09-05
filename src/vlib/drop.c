@@ -236,7 +236,7 @@ process_drop_punt (vlib_main_t * vm,
 
       /* If there is no punt function, free the frame as well. */
       if (disposition == ERROR_DISPOSITION_PUNT && !vm->os_punt_frame)
-	vlib_frame_free (vm, node, frame);
+	vlib_frame_free (vm, frame);
     }
   else
     vm->os_punt_frame (vm, node, frame);
