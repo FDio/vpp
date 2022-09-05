@@ -338,8 +338,7 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
 
       if (-1 == vrrp_adv_l3_build (vr, b, dst))
 	{
-	  vlib_frame_free (vm, vlib_node_get_runtime (vm, node_index),
-			   to_frame);
+	  vlib_frame_free (vm, to_frame);
 	  vlib_buffer_free (vm, bi, n_buffers);
 	  return -1;
 	}

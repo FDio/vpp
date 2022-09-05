@@ -389,6 +389,9 @@ typedef struct vlib_frame_t
   /* Number of vector elements currently in frame. */
   u16 n_vectors;
 
+  /* Index of frame size corresponding to allocated node. */
+  u16 frame_size_index;
+
   /* Scalar and vector arguments to next node. */
   u8 arguments[0];
 } vlib_frame_t;

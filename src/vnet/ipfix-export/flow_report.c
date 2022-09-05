@@ -484,8 +484,7 @@ flow_report_process_send (vlib_main_t *vm, flow_report_main_t *frm,
 	vlib_put_frame_to_node (vm, next_node, nf);
       else
 	{
-	  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, next_node);
-	  vlib_frame_free (vm, rt, nf);
+	  vlib_frame_free (vm, nf);
 	}
     }
 }
