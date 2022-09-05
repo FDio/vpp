@@ -465,9 +465,13 @@ static clib_error_t *
 nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   snat_main_per_thread_data_t *tsm;
   snat_main_t *sm = &snat_main;
   snat_session_t *s;
+  clib_error_t *error = 0;
+  u8 had_input = 1;
+  int verbose = 0;
 
   u32 count = 0;
 
@@ -481,11 +485,40 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   } udp = { 0 }, tcp = { 0 }, tcp_established = { 0 }, tcp_transitory = { 0 },
     icmp = { 0 }, other = { 0 };
 
-  u32 fib;
+  u32 fib, translations;
 
-  for (fib = 0; fib < vec_len (sm->max_translations_per_fib); fib++)
-    vlib_cli_output (vm, "max translations per thread: %u fib %u",
-		     sm->max_translations_per_fib[fib], fib);
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      had_input = 0;
+      goto print;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+print:
+  vlib_cli_output (vm, "max translations per thread: %u",
+		   sm->max_translations_per_thread);
+  if (verbose)
+    {
+      for (fib = 0; fib < vec_len (sm->max_translations_per_fib); fib++)
+	{
+	  translations = sm->max_translations_per_fib[fib];
+	  if (translations == sm->max_translations_per_thread)
+	    continue;
+	  vlib_cli_output (vm, "max translations per thread: %u fib %u",
+			   translations, fib);
+	}
+    }
 
   if (sm->num_workers > 1)
     {
@@ -603,7 +636,11 @@ nat44_show_summary_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "other sessions:");
   vlib_cli_output (vm, "    total: %u (timed out: %u)", other.total,
 		   other.timed_out);
-  return 0;
+
+done:
+  if (had_input)
+    unformat_free (line_input);
+  return error;
 }
 
 static clib_error_t *
@@ -2033,7 +2070,7 @@ VLIB_CLI_COMMAND (add_address_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_show_summary_command, static) = {
   .path = "show nat44 summary",
-  .short_help = "show nat44 summary",
+  .short_help = "show nat44 summary [verbose]",
   .function = nat44_show_summary_command_fn,
 };
 
