@@ -913,6 +913,17 @@ vlib_worker_thread_node_refork (void)
   vec_validate_aligned (old_counters_all_clear, j, CLIB_CACHE_LINE_BYTES);
   vm_clone->error_main.counters_last_clear = old_counters_all_clear;
 
+  for (j = 0; j < vec_len (nm_clone->next_frames); j++)
+    {
+      vlib_next_frame_t *nf = &nm_clone->next_frames[j];
+      if ((nf->flags & VLIB_FRAME_IS_ALLOCATED) && nf->frame != NULL)
+	{
+	  vlib_frame_t *f = nf->frame;
+	  nf->frame = NULL;
+	  vlib_frame_free (vm_clone, f);
+	}
+    }
+
   vec_free (nm_clone->next_frames);
   nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
 					   CLIB_CACHE_LINE_BYTES);

@@ -912,7 +912,7 @@ tuntap_punt_frame (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   tuntap_tx (vm, node, frame);
-  vlib_frame_free (vm, node, frame);
+  vlib_frame_free (vm, frame);
 }
 
 /**
@@ -930,7 +930,7 @@ tuntap_nopunt_frame (vlib_main_t * vm,
   u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   vlib_buffer_free (vm, buffers, n_packets);
-  vlib_frame_free (vm, node, frame);
+  vlib_frame_free (vm, frame);
 }
 
 /* *INDENT-OFF* */

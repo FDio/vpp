@@ -577,7 +577,7 @@ null_node_fn (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, node->node_index, 0, n_vectors);
   vlib_buffer_free (vm, vlib_frame_vector_args (frame), n_vectors);
-  vlib_frame_free (vm, node, frame);
+  vlib_frame_free (vm, frame);
 
   return n_vectors;
 }
