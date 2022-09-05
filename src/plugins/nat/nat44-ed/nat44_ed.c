@@ -3240,16 +3240,12 @@ nat44_set_session_limit (u32 session_limit, u32 vrf_id)
 {
   snat_main_t *sm = &snat_main;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
-  u32 len = vec_len (sm->max_translations_per_fib);
 
-  if (len <= fib_index)
-    {
-      vec_validate (sm->max_translations_per_fib, fib_index + 1);
+  if (~0 == fib_index)
+    return -1;
 
-      for (; len < vec_len (sm->max_translations_per_fib); len++)
-	sm->max_translations_per_fib[len] = sm->max_translations_per_thread;
-    }
-
+  vec_validate_init_empty (sm->max_translations_per_fib, fib_index,
+			   sm->max_translations_per_thread);
   sm->max_translations_per_fib[fib_index] = session_limit;
   return 0;
 }

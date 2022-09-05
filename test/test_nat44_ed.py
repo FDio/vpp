@@ -2939,9 +2939,12 @@ class TestNAT44EDMW(TestNAT44ED):
 
         limit = 5
 
-        # 2 interfaces pg0, pg1 (vrf10, limit 1 tcp session)
-        # non existing vrf_id makes process core dump
+        # 2 interfaces pg0, pg1 (vrf10, limit 5 tcp sessions)
         self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=10)
+
+        # expect error when bad is specified
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.nat44_set_session_limit(session_limit=limit, vrf_id=20)
 
         self.nat_add_inside_interface(inside)
         self.nat_add_inside_interface(inside_vrf10)
