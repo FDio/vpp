@@ -106,6 +106,7 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   f->vector_offset = to_node->vector_offset;
   f->aux_offset = to_node->aux_offset;
   f->flags = 0;
+  f->frame_size_index = to_node->frame_size_index;
 
   fs->n_alloc_frames += 1;
 
@@ -186,17 +187,15 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
 
 /* Free given frame. */
 void
-vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
+vlib_frame_free (vlib_main_t * vm, vlib_frame_t * f)
 {
   vlib_node_main_t *nm = &vm->node_main;
-  vlib_node_t *node;
   vlib_frame_size_t *fs;
 
   ASSERT (vm == vlib_get_main ());
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
-  node = vlib_get_node (vm, r->node_index);
-  fs = vec_elt_at_index (nm->frame_sizes, node->frame_size_index);
+  fs = vec_elt_at_index (nm->frame_sizes, f->frame_size_index);
 
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
@@ -1171,7 +1170,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 	  /* The node has gained a frame, implying packets from the current frame
 	     were re-queued to this same node. we don't need the saved one
 	     anymore */
-	  vlib_frame_free (vm, n, f);
+	  vlib_frame_free (vm, f);
 	}
     }
   else
@@ -1179,7 +1178,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
       if (f->frame_flags & VLIB_FRAME_FREE_AFTER_DISPATCH)
 	{
 	  ASSERT (!(n->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH));
-	  vlib_frame_free (vm, n, f);
+	  vlib_frame_free (vm, f);
 	}
     }
 
