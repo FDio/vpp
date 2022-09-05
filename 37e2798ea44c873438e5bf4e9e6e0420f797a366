@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce7107bb_655e4472",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2825
+      },
+      "writtenOn": "2022-09-05T03:15:44Z",
+      "side": 1,
+      "message": "  the control ping api is mp safe,but the api trace info is opposite. \n   \n    4481.801078823: api-msg-done(barrier): control_ping\n    4481.801088226: api-msg: control_ping\n    4481.801090627: api-msg-done(barrier): control_ping\n    4482.801902744: api-msg: control_ping\n    4482.801919326: api-msg-done(barrier): control_ping\n    4482.801929473: api-msg: control_ping\n    4482.801932027: api-msg-done(barrier): control_ping\n",
+      "revId": "37e2798ea44c873438e5bf4e9e6e0420f797a366",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
