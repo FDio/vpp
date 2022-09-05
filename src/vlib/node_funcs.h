@@ -1256,8 +1256,7 @@ vlib_node_vectors_per_main_loop_as_integer (vlib_main_t * vm, u32 node_index)
   return v >> VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE;
 }
 
-void
-vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f);
+void vlib_frame_free (vlib_main_t *vm, vlib_frame_t *f);
 
 /* Return the edge index if present, ~0 otherwise */
 uword vlib_node_get_next (vlib_main_t * vm, uword node, uword next_node);
