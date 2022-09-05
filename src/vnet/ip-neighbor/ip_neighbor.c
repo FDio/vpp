@@ -1441,7 +1441,7 @@ ip_neighbor_add_del_interface_address_v4 (ip4_main_t * im,
    * Flush the ARP cache of all entries covered by the address
    * that is being removed.
    */
-  IP_NEIGHBOR_DBG ("addr-%d: %U, %U/%d",
+  IP_NEIGHBOR_DBG ("addr-%s: %U, %U/%d",
 		   (is_del ? "del" : "add"),
 		   format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index, format_ip4_address, address, address_length);
