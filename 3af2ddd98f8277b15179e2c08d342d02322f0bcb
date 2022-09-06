@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3af2ddd98f8277b15179e2c08d342d02322f0bcb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "908e45dc_ad1b8b19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-06T05:47:50Z",
+      "side": 1,
+      "message": "there\u0027s parsing for the interface name, which is usually more convenient for a user.",
+      "revId": "3af2ddd98f8277b15179e2c08d342d02322f0bcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
