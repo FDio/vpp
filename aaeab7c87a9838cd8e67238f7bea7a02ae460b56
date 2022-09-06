@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "aaeab7c87a9838cd8e67238f7bea7a02ae460b56",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "40ac7d67_efec5c92",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-06T17:39:27Z",
+      "side": 1,
+      "message": "Please rebase this patch per https://lists.fd.io/g/vpp-dev/message/21846",
+      "revId": "aaeab7c87a9838cd8e67238f7bea7a02ae460b56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
