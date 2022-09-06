@@ -1166,6 +1166,7 @@ list(APPEND VNET_HEADERS
 ##############################################################################
 
 list(APPEND VNET_SOURCES
+  fib/foobar.c
   fib/fib.c
   fib/ip4_fib_hash.c
   fib/ip4_fib.c
