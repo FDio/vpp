@@ -1038,6 +1038,12 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
       outer = vc.offloads.stripping_support.outer & mask;
       inner = vc.offloads.stripping_support.inner & mask;
 
+      /* Check for ability to modify the VLAN setting */
+      outer =
+	vc.offloads.stripping_support.outer & VIRTCHNL_VLAN_TOGGLE ? outer : 0;
+      inner =
+	vc.offloads.stripping_support.inner & VIRTCHNL_VLAN_TOGGLE ? inner : 0;
+
       if ((outer || inner) &&
 	  (error = avf_op_disable_vlan_stripping_v2 (vm, ad, outer, inner)))
 	return error;
