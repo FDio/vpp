@@ -67,6 +67,24 @@
       "message": "The fix works - many thanks Mohammed ! LGTM 😊\n\nCurrent patch is working:\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/2/csit_current/0/log.html.gz\n\nParent patch is failing as expected:\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/2/csit_parent/0/log.html.gz\n\nThe overall result should be PASS for the current patch, but it isn\u0027t - need to fix the patch-on-patch verify logic here 😊",
       "revId": "3fc8ba7deeaa8937df1421154da92dbafc90ff8f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b078a09_52f691ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-09-07T10:50:26Z",
+      "side": 1,
+      "message": "\u003e The overall result should be PASS for the current patch, but it isn\u0027t - need to fix the patch-on-patch verify logic here 😊\n\nI am not sure we want to allow the job to vote +1 if the parent fails. Maybe vote 0 would be more appropriate, signaling it is a fix, but a human should review whether the fix has good enough performance (as the job does not know the previous performance before the parent started failing).\n\nIn this case the preformance is good.",
+      "parentUuid": "c02839cc_3cacd31f",
+      "revId": "3fc8ba7deeaa8937df1421154da92dbafc90ff8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
