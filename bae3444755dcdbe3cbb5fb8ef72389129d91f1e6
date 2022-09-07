@@ -69,6 +69,24 @@
       "parentUuid": "5a2cb0fa_50af0455",
       "revId": "bae3444755dcdbe3cbb5fb8ef72389129d91f1e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1defb16_cfa1d542",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-07T16:21:21Z",
+      "side": 1,
+      "message": "Thanks for the backtrace. It seems we are removing the queues and accessing them again when vnet_delete_hw_interface is called with an interrupt pending.\n\ncould you try changing the order of calls in src/vnet/interface.c:1112-1114 to :\n````\n  vnet_hw_if_update_runtime_data (vnm, hw_if_index);\n  vnet_hw_if_unregister_all_rx_queues (vnm, hw_if_index);\n  vnet_hw_if_unregister_all_tx_queues (vnm, hw_if_index);\n````\n?",
+      "parentUuid": "95151f9b_256ddcf9",
+      "revId": "bae3444755dcdbe3cbb5fb8ef72389129d91f1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
