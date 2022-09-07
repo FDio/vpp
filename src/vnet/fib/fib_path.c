@@ -1507,6 +1507,12 @@ fib_path_copy (fib_node_index_t path_index,
     clib_memset(&path->fp_dpo, 0, sizeof(path->fp_dpo));
     dpo_reset(&path->fp_dpo);
 
+    if (path->fp_type == FIB_PATH_TYPE_EXCLUSIVE)
+    {
+	clib_memset(&path->exclusive.fp_ex_dpo, 0, sizeof(dpo_id_t));
+	dpo_copy(&path->exclusive.fp_ex_dpo, &orig_path->exclusive.fp_ex_dpo);
+    }
+
     return (fib_path_get_index(path));
 }
 
