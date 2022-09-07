@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e35b0d4_5fb22067",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "some comments in line on how i expect you\u0027d code this.\n\nas written, it\u0027s expect that it would assert where it does. when you call dpo_set you\u0027ve created one lock/reference to the idx, this you then \u0027give\u0027 to FIB. when you then remove the entry, that reference is dropped, and the number of locks go to 0.",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59f59c59_8ca12a14",
+        "filename": "src/vnet/fib/foobar.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "1/\n\nsomewhere no doubt you\u0027ve got a pool of foobar objects;\n\n```\ntypedef struct foobar_t_ {\n u32 n_locks;\n} foorbar_t;\n\nfoobar_t *foorbar_pool;\n```\n\nat forwarding time your \u0027idx\u0027 is going to be in vnet_buffer(b)-\u003eip.adj_index[VLIB_TX], so it makes sense for it to be a pool index.\n\nyou\u0027ve also got a CLI/API that creates them;\n\n```\nstatic clib_error_t *\nfoobar_add_del (vlib_main_t *vm, unformat_input_t *input,\n\t        vlib_cli_command_t *cmd)\n{\n   foobar_t *foo;\n   u32 idx;\n   \n   unformat(bla, bla, \u0026idx);\n\n   if (is_add) {\n      pool_get(foobar_pool, foo);\n      // lock it here so that it is \u0027owned\u0027 by this CLI\n      // that is it\u0027s not going to be returned to the pool\n      // until the DEL CLI is called\n      foo-\u003en_locks \u003d 1;\n      \n      clib_warning(\"I allocated index %\", foo - foobar_pool);\n   } else {\n      // it maybe that there are still FIB entries that use this foobar\n      // which is ok, when they re removed we can return it too the pool\n      // at that point.\n      foorbar_unlock(idx)\n   }\n   return NULL;\n}\n```",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6fad96b_4854c2db",
+        "filename": "src/vnet/fib/foobar.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "3/\n\nand this becomes;\n\n```\n   foo \u003d pool_elt_at_index(idx);\n   foo-\u003en_locks++;\n```",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1658a898_7cb18c06",
+        "filename": "src/vnet/fib/foobar.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "2/\n\n```\nstatic void foobar_unlock(u32 idx)\n{\n   foorbar_t *foo;\n   foo \u003d pool_elt_at_index(idx);\n   foo-\u003en_lcoks--;\n   if (0 \u003d\u003d foo-\u003en_locks)\n      // last lock gone, return to pool\n      pool_put(foo);\n}\n```",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "887cd76d_878d9132",
+        "filename": "src/vnet/fib/foobar.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "4/\n\nthis would then be\n\n```\nfoobar_unlock(dpo-\u003edpoi_index);\n```",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7293deec_7be0a009",
+        "filename": "src/vnet/fib/foobar.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-07T02:48:35Z",
+      "side": 1,
+      "message": "5/\n\nhere you\u0027re creating another reference to instance \u0027idx\u0027 of a foobar_t object. This reference belongs to the fib_route_path_t, but is \u0027given\u0027 to fib in path_add2. so on exit from this function there would be 2 lock held on the instance; one due to its use by FIB and one from when it was created via the CLI.\n\nwhen you call path_remove2, FIB drops its reference to the foobar_t. that would leave you with only the reference from the foobar add/del CLI.",
+      "revId": "92f2695925ae28d12d2ce046a6850317d7efd9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
