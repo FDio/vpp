@@ -50,6 +50,23 @@
       "message": "perftest-2n-clx mrrANDnic_intel-xxv710ANDdrv_avfAND1cAND64bANDethip4-ip4base",
       "revId": "3fc8ba7deeaa8937df1421154da92dbafc90ff8f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c02839cc_3cacd31f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2022-09-07T10:38:55Z",
+      "side": 1,
+      "message": "The fix works - many thanks Mohammed ! LGTM 😊\n\nCurrent patch is working:\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/2/csit_current/0/log.html.gz\n\nParent patch is failing as expected:\nhttps://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/2/csit_parent/0/log.html.gz\n\nThe overall result should be PASS for the current patch, but it isn\u0027t - need to fix the patch-on-patch verify logic here 😊",
+      "revId": "3fc8ba7deeaa8937df1421154da92dbafc90ff8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
