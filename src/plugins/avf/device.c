@@ -1266,12 +1266,13 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 
   if (req->calling_process_index != avf_process_node.index)
     vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+  // TODO: Make sure no calling proces uses event type 0.
 }
 
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
+  uword event_type, *event_data = 0;
   req->calling_process_index = vlib_get_current_process_node_index (vm);
 
   if (req->calling_process_index != avf_process_node.index)
@@ -1281,8 +1282,19 @@ avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 
       vlib_process_wait_for_event_or_clock (vm, 5.0);
 
-      if (vlib_process_get_events (vm, &event_data) != 0)
-	clib_panic ("avf process node failed to reply in 5 seconds");
+      event_type = vlib_process_get_events (vm, &event_data);
+      switch (event_type)
+	{
+	case 0: // The expected signal.
+	  break;
+	case ~0: // Timeout.
+	  clib_warning ("avf process node failed to reply in 5 seconds");
+	  clib_panic ("avf process node failed to reply in 5 seconds");
+	  break;
+	default:
+	  clib_warning ("unexpected signals, aboting");
+	  clib_panic ("unexpected signals, aboting");
+	}
       vec_free (event_data);
     }
   else
