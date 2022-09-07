@@ -37,7 +37,7 @@ class TestCLI(VppTestCase):
         self.assertNotEqual(rv.retval, 0)
 
         rv = self.vapi.papi.cli_inband(cmd="show version")
-        self.assertEqual(rv.retval, 0)
+        self.assertEqual(rv.retval, 42)
 
     def test_long_cli_delay(self):
         """Test that VppApiClient raises VppIOError if timeout."""  # noqa
