@@ -1443,6 +1443,14 @@ vlib_frame_bitmap_count_set_bits (uword *bmp)
   return count;
 }
 
+static_always_inline uword
+vlib_frame_bitmap_is_bit_set (uword *bmp, uword bit_index)
+{
+  bmp += bit_index / uword_bits;
+  bit_index %= uword_bits;
+  return (bmp[0] >> bit_index) & 1;
+}
+
 static_always_inline int
 vlib_frame_bitmap_find_first_set (uword *bmp)
 {
