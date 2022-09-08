@@ -279,8 +279,7 @@ teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
     }
   else
     {
-      TEIB_INFO ("no such entry: %U, %U, %U",
-		 format_vnet_sw_if_index_name,
+      TEIB_INFO ("no such entry: %U, %U", format_vnet_sw_if_index_name,
 		 vnet_get_main (), sw_if_index, format_ip_address, peer);
       return (VNET_API_ERROR_NO_SUCH_ENTRY);
     }
