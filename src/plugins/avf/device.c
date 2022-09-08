@@ -1272,29 +1272,45 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 
   if (req->calling_process_index != avf_process_node.index)
     vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+  // TODO: Make sure no calling proces uses event type 0.
 }
 
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
+  uword how_many_responses, *event_data = 0;
+  f64 wait_time_remaining = 5.0;
   req->calling_process_index = vlib_get_current_process_node_index (vm);
 
-  if (req->calling_process_index != avf_process_node.index)
+  if (req->calling_process_index == avf_process_node.index)
     {
-      vlib_process_signal_event_pointer (vm, avf_process_node.index,
-					 AVF_PROCESS_EVENT_REQ, req);
-
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-      if (vlib_process_get_events (vm, &event_data) != 0)
-	clib_panic ("avf process node failed to reply in 5 seconds");
-      vec_free (event_data);
+      avf_process_handle_request (vm, req);
+      return req->error;
     }
-  else
-    avf_process_handle_request (vm, req);
 
-  return req->error;
+  // Wake avf process and wait for confirmation it did its job.
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
+				     AVF_PROCESS_EVENT_REQ, req);
+  do
+    {
+      wait_time_remaining =
+	vlib_process_wait_for_event_or_clock (vm, wait_time_remaining);
+      // 0 is the event type for response mentioned several lines above.
+      how_many_responses =
+	vlib_process_get_events_with_type (vm, &event_data, 0);
+      if (how_many_responses == 1)
+	{
+	  vec_free (event_data);
+	  return req->error;
+	}
+      if (how_many_responses != 0)
+	clib_panic ("too many signal type 0 responses");
+
+      // It was an unrelated signal, such as SOCKET_READ_EVENT.
+      // Wait again if there is spare time.
+    }
+  while (wait_time_remaining > 0.0);
+  clib_panic ("avf process node failed to reply in 5 seconds");
 }
 
 static u32
