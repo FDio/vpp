@@ -93,4 +93,37 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
 #endif
 }
 
+static_always_inline void
+clib_array_mask_set_u32_x64 (u32 *a, u32 v, uword bmp, int n_elts)
+{
+#if defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u32x16 r = u32x16_splat (v);
+  for (; n_elts > 0; n_elts -= 16, a += 16, bmp >>= 16)
+    u32x16_mask_store (r, a, bmp);
+#elif defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u32x8 r = u32x8_splat (v);
+  for (; n_elts > 0; n_elts -= 8, a += 8, bmp >>= 8)
+    u32x8_mask_store (r, a, bmp);
+#else
+  while (bmp)
+    {
+      a[get_lowest_set_bit_index (bmp)] = v;
+      bmp = clear_lowest_set_bit (bmp);
+    }
+#endif
+}
+
+static_always_inline void
+clib_array_mask_set_u32 (u32 *a, u32 v, uword *bmp, u32 n_elts)
+{
+  while (n_elts >= uword_bits)
+    {
+      clib_array_mask_set_u32_x64 (a, v, bmp++[0], uword_bits);
+      a += uword_bits;
+      n_elts -= uword_bits;
+    }
+
+  clib_array_mask_set_u32_x64 (a, v, bmp[0] & pow2_mask (n_elts), n_elts);
+}
+
 #endif
