@@ -1216,7 +1216,7 @@ static unsigned char *print(const cJSON * const item, cJSON_bool format, const i
     /* check if reallocate is available */
     if (hooks->reallocate != NULL)
     {
-        printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1, default_buffer_size);
+        printed = (unsigned char*) hooks->reallocate(buffer->buffer, buffer->offset + 1, buffer->length);
         if (printed == NULL) {
             goto fail;
         }
