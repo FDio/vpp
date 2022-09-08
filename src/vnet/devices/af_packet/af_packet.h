@@ -23,8 +23,16 @@
 #include <vlib/log.h>
 
 typedef struct tpacket_block_desc block_desc_t;
+typedef struct tpacket_req tpacket_req_t;
 typedef struct tpacket_req3 tpacket_req3_t;
+typedef struct tpacket2_hdr tpacket2_hdr_t;
 typedef struct tpacket3_hdr tpacket3_hdr_t;
+
+typedef union _tpacket_req_u
+{
+  tpacket_req_t req;
+  tpacket_req3_t req3;
+} tpacket_req_u_t;
 
 typedef enum
 {
@@ -37,6 +45,7 @@ typedef enum
   AF_PACKET_IF_FLAGS_QDISC_BYPASS = 1,
   AF_PACKET_IF_FLAGS_CKSUM_GSO = 2,
   AF_PACKET_IF_FLAGS_FANOUT = 4,
+  AF_PACKET_IF_FLAGS_VERSION_2 = 8,
 } af_packet_if_flags_t;
 
 typedef struct
@@ -58,8 +67,8 @@ typedef struct
   int fd;
   union
   {
-    tpacket_req3_t *rx_req;
-    tpacket_req3_t *tx_req;
+    tpacket_req_u_t *rx_req;
+    tpacket_req_u_t *tx_req;
   };
 
   union
@@ -71,6 +80,7 @@ typedef struct
   union
   {
     u32 next_rx_block;
+    u32 next_rx_frame;
     u32 next_tx_frame;
   };
 
@@ -95,7 +105,7 @@ typedef struct
   af_packet_if_mode_t mode;
   u8 is_admin_up;
   u8 is_cksum_gso_enabled;
-
+  u8 version;
   af_packet_queue_t *rx_queues;
   af_packet_queue_t *tx_queues;
 
@@ -139,6 +149,7 @@ typedef struct
   u32 tx_frames_per_block;
   u8 num_rxqs;
   u8 num_txqs;
+  u8 is_v2;
   af_packet_if_mode_t mode;
   af_packet_if_flags_t flags;
 
