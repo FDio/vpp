@@ -189,22 +189,15 @@ af_packet_set_tx_queues (vlib_main_t *vm, af_packet_if_t *apif)
 }
 
 static int
-create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
-		       tpacket_req3_t *tx_req, int *fd, af_packet_ring_t *ring,
-		       u32 fanout_id, af_packet_if_flags_t *flags)
+create_packet_sock (int host_if_index, tpacket_req_u_t *rx_req,
+		    tpacket_req_u_t *tx_req, int *fd, af_packet_ring_t *ring,
+		    u32 fanout_id, af_packet_if_flags_t *flags, int ver)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct sockaddr_ll sll;
   socklen_t req_sz = sizeof (tpacket_req3_t);
   int ret;
-  int ver = TPACKET_V3;
   u32 ring_sz = 0;
-
-  if (rx_req)
-    ring_sz += rx_req->tp_block_size * rx_req->tp_block_nr;
-
-  if (tx_req)
-    ring_sz += tx_req->tp_block_size * tx_req->tp_block_nr;
 
   if ((*fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0)
     {
@@ -297,7 +290,13 @@ create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
 	      goto error;
 	    }
 	}
-
+      if (ver == TPACKET_V2)
+	{
+	  req_sz = sizeof (tpacket_req_t);
+	  ring_sz += rx_req->req.tp_block_size * rx_req->req.tp_block_nr;
+	}
+      else
+	ring_sz += rx_req->req3.tp_block_size * rx_req->req3.tp_block_nr;
       if (setsockopt (*fd, SOL_PACKET, PACKET_RX_RING, rx_req, req_sz) < 0)
 	{
 	  vlib_log_err (apm->log_class,
@@ -309,15 +308,23 @@ create_packet_v3_sock (int host_if_index, tpacket_req3_t *rx_req,
     }
 
   if (tx_req)
-    if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
-      {
-	vlib_log_err (apm->log_class,
-		      "Failed to set packet tx ring options: %s (errno %d)",
-		      strerror (errno), errno);
-	ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-	goto error;
-      }
-
+    {
+      if (ver == TPACKET_V2)
+	{
+	  req_sz = sizeof (tpacket_req_t);
+	  ring_sz += tx_req->req.tp_block_size * tx_req->req.tp_block_nr;
+	}
+      else
+	ring_sz += tx_req->req3.tp_block_size * tx_req->req3.tp_block_nr;
+      if (setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz) < 0)
+	{
+	  vlib_log_err (apm->log_class,
+			"Failed to set packet tx ring options: %s (errno %d)",
+			strerror (errno), errno);
+	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+	  goto error;
+	}
+    }
   ring->ring_start_addr = mmap (NULL, ring_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED | MAP_LOCKED, *fd, 0);
   if (ring->ring_start_addr == MAP_FAILED)
@@ -347,8 +354,8 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 		      u8 queue_id)
 {
   af_packet_main_t *apm = &af_packet_main;
-  tpacket_req3_t *rx_req = 0;
-  tpacket_req3_t *tx_req = 0;
+  tpacket_req_u_t *rx_req = 0;
+  tpacket_req_u_t *tx_req = 0;
   int ret, fd = -1;
   af_packet_ring_t ring = { 0 };
   u8 *ring_addr = 0;
@@ -360,22 +367,31 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
     {
       rx_frames_per_block = arg->rx_frames_per_block ?
 				    arg->rx_frames_per_block :
-				    AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK;
+				    ((apif->version == TPACKET_V3) ?
+				       AF_PACKET_DEFAULT_RX_FRAMES_PER_BLOCK :
+				       AF_PACKET_DEFAULT_TX_FRAMES_PER_BLOCK);
 
       rx_frame_size = arg->rx_frame_size ? arg->rx_frame_size :
-						 AF_PACKET_DEFAULT_RX_FRAME_SIZE;
+						 ((apif->version == TPACKET_V3) ?
+						    AF_PACKET_DEFAULT_RX_FRAME_SIZE :
+						    AF_PACKET_DEFAULT_TX_FRAME_SIZE);
       vec_validate (rx_queue->rx_req, 0);
-      rx_queue->rx_req->tp_block_size = rx_frame_size * rx_frames_per_block;
-      rx_queue->rx_req->tp_frame_size = rx_frame_size;
-      rx_queue->rx_req->tp_block_nr = AF_PACKET_RX_BLOCK_NR;
-      rx_queue->rx_req->tp_frame_nr =
-	AF_PACKET_RX_BLOCK_NR * rx_frames_per_block;
-      rx_queue->rx_req->tp_retire_blk_tov = 1; // 1 ms block timout
-      rx_queue->rx_req->tp_feature_req_word = 0;
-      rx_queue->rx_req->tp_sizeof_priv = 0;
+      rx_queue->rx_req->req.tp_block_size =
+	rx_frame_size * rx_frames_per_block;
+      rx_queue->rx_req->req.tp_frame_size = rx_frame_size;
+      rx_queue->rx_req->req.tp_block_nr = (apif->version == TPACKET_V3) ?
+						  AF_PACKET_RX_BLOCK_NR :
+						  AF_PACKET_TX_BLOCK_NR;
+      rx_queue->rx_req->req.tp_frame_nr =
+	rx_queue->rx_req->req.tp_block_nr * rx_frames_per_block;
+      if (apif->version == TPACKET_V3)
+	{
+	  rx_queue->rx_req->req3.tp_retire_blk_tov = 1; // 1 ms block timout
+	  rx_queue->rx_req->req3.tp_feature_req_word = 0;
+	  rx_queue->rx_req->req3.tp_sizeof_priv = 0;
+	}
       rx_req = rx_queue->rx_req;
     }
-
   if (tx_queue)
     {
       tx_frames_per_block = arg->tx_frames_per_block ?
@@ -385,21 +401,26 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
 						 AF_PACKET_DEFAULT_TX_FRAME_SIZE;
 
       vec_validate (tx_queue->tx_req, 0);
-      tx_queue->tx_req->tp_block_size = tx_frame_size * tx_frames_per_block;
-      tx_queue->tx_req->tp_frame_size = tx_frame_size;
-      tx_queue->tx_req->tp_block_nr = AF_PACKET_TX_BLOCK_NR;
-      tx_queue->tx_req->tp_frame_nr =
+      tx_queue->tx_req->req.tp_block_size =
+	tx_frame_size * tx_frames_per_block;
+      tx_queue->tx_req->req.tp_frame_size = tx_frame_size;
+      tx_queue->tx_req->req.tp_block_nr = AF_PACKET_TX_BLOCK_NR;
+      tx_queue->tx_req->req.tp_frame_nr =
 	AF_PACKET_TX_BLOCK_NR * tx_frames_per_block;
-      tx_queue->tx_req->tp_retire_blk_tov = 0;
-      tx_queue->tx_req->tp_sizeof_priv = 0;
-      tx_queue->tx_req->tp_feature_req_word = 0;
+      if (apif->version == TPACKET_V3)
+	{
+	  tx_queue->tx_req->req3.tp_retire_blk_tov = 0;
+	  tx_queue->tx_req->req3.tp_sizeof_priv = 0;
+	  tx_queue->tx_req->req3.tp_feature_req_word = 0;
+	}
       tx_req = tx_queue->tx_req;
     }
 
   if (rx_queue || tx_queue)
     {
-      ret = create_packet_v3_sock (apif->host_if_index, rx_req, tx_req, &fd,
-				   &ring, apif->dev_instance, &arg->flags);
+      ret =
+	create_packet_sock (apif->host_if_index, rx_req, tx_req, &fd, &ring,
+			    apif->dev_instance, &arg->flags, apif->version);
 
       if (ret != 0)
 	goto error;
@@ -411,28 +432,28 @@ af_packet_queue_init (vlib_main_t *vm, af_packet_if_t *apif,
   if (rx_queue)
     {
       rx_queue->fd = fd;
-      vec_validate (rx_queue->rx_ring, rx_queue->rx_req->tp_block_nr - 1);
+      vec_validate (rx_queue->rx_ring, rx_queue->rx_req->req.tp_block_nr - 1);
       vec_foreach_index (i, rx_queue->rx_ring)
 	{
 	  rx_queue->rx_ring[i] =
-	    ring_addr + i * rx_queue->rx_req->tp_block_size;
+	    ring_addr + i * rx_queue->rx_req->req.tp_block_size;
 	}
 
       rx_queue->next_rx_block = 0;
       rx_queue->queue_id = queue_id;
       rx_queue->is_rx_pending = 0;
-      ring_addr = ring_addr + rx_queue->rx_req->tp_block_size *
-				rx_queue->rx_req->tp_block_nr;
+      ring_addr = ring_addr + rx_queue->rx_req->req.tp_block_size *
+				rx_queue->rx_req->req.tp_block_nr;
     }
 
   if (tx_queue)
     {
       tx_queue->fd = fd;
-      vec_validate (tx_queue->tx_ring, tx_queue->tx_req->tp_block_nr - 1);
+      vec_validate (tx_queue->tx_ring, tx_queue->tx_req->req.tp_block_nr - 1);
       vec_foreach_index (i, tx_queue->tx_ring)
 	{
 	  tx_queue->tx_ring[i] =
-	    ring_addr + i * tx_queue->tx_req->tp_block_size;
+	    ring_addr + i * tx_queue->tx_req->req.tp_block_size;
 	}
 
       tx_queue->next_tx_frame = 0;
@@ -603,6 +624,11 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->host_if_name = host_if_name_dup;
   apif->per_interface_next_index = ~0;
   apif->mode = arg->mode;
+
+  if (arg->is_v2)
+    apif->version = TPACKET_V2;
+  else
+    apif->version = TPACKET_V3;
 
   ret = af_packet_device_init (vm, apif, arg);
   if (ret != 0)
