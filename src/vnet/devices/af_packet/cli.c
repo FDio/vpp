@@ -89,6 +89,8 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	arg->flags &= ~AF_PACKET_IF_FLAGS_CKSUM_GSO;
       else if (unformat (line_input, "mode ip"))
 	arg->mode = AF_PACKET_IF_MODE_IP;
+      else if (unformat (line_input, "v2"))
+	arg->is_v2 = 1;
       else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
 			 hwaddr))
 	arg->hw_addr = hwaddr;
@@ -160,7 +162,7 @@ done:
 ?*/
 VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
-  .short_help = "create host-interface name <ifname> [num-rx-queues <n>] "
+  .short_help = "create host-interface [v2] name <ifname> [num-rx-queues <n>] "
 		"[num-tx-queues <n>] [hw-addr <mac-addr>] [mode ip] "
 		"[qdisc-bypass-disable] [cksum-gso-disable]",
   .function = af_packet_create_command_fn,

@@ -135,6 +135,10 @@ vl_api_af_packet_create_v3_t_handler (vl_api_af_packet_create_v3_t *mp)
     ((int) AF_PACKET_API_FLAG_CKSUM_GSO == (int) AF_PACKET_IF_FLAGS_CKSUM_GSO),
     "af-packet checksum/gso offload api flag mismatch");
 
+  STATIC_ASSERT (
+    ((int) AF_PACKET_API_FLAG_VERSION_2 == (int) AF_PACKET_IF_FLAGS_VERSION_2),
+    "af-packet version 2 api flag mismatch");
+
   // Default flags
   arg->flags = clib_net_to_host_u32 (mp->flags);
 
@@ -144,6 +148,7 @@ vl_api_af_packet_create_v3_t_handler (vl_api_af_packet_create_v3_t *mp)
   if (clib_net_to_host_u16 (mp->num_tx_queues) > 1)
     arg->num_txqs = clib_net_to_host_u16 (mp->num_tx_queues);
 
+  arg->is_v2 = (arg->flags & AF_PACKET_API_FLAG_VERSION_2) ? 1 : 0;
   rv = af_packet_create_if (arg);
 
 error:

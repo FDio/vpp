@@ -57,8 +57,13 @@ typedef struct
   u32 pkt_num;
   void *block_start;
   block_desc_t bd;
-  tpacket3_hdr_t tph;
+  union
+  {
+    tpacket3_hdr_t tph3;
+    tpacket2_hdr_t tph2;
+  };
   vnet_virtio_net_hdr_t vnet_hdr;
+  u8 is_v3;
 } af_packet_input_trace_t;
 
 static u8 *
@@ -72,27 +77,51 @@ format_af_packet_input_trace (u8 * s, va_list * args)
   s = format (s, "af_packet: hw_if_index %d rx-queue %u next-index %d",
 	      t->hw_if_index, t->queue_id, t->next_index);
 
-  s = format (
-    s, "\n%Ublock %u:\n%Uaddress %p version %u seq_num %lu pkt_num %u",
-    format_white_space, indent + 2, t->block, format_white_space, indent + 4,
-    t->block_start, t->bd.version, t->bd.hdr.bh1.seq_num, t->pkt_num);
-  s =
-    format (s,
-	    "\n%Utpacket3_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
-	    "\n%Usec 0x%x nsec 0x%x vlan %U"
+  if (t->is_v3)
+    {
+      s = format (
+	s, "\n%Ublock %u:\n%Uaddress %p version %u seq_num %lu pkt_num %u",
+	format_white_space, indent + 2, t->block, format_white_space,
+	indent + 4, t->block_start, t->bd.version, t->bd.hdr.bh1.seq_num,
+	t->pkt_num);
+      s = format (
+	s,
+	"\n%Utpacket3_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
+	"\n%Usec 0x%x nsec 0x%x vlan %U"
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	    " vlan_tpid %u"
+	" vlan_tpid %u"
 #endif
-	    ,
-	    format_white_space, indent + 2, format_white_space, indent + 4,
-	    t->tph.tp_status, t->tph.tp_len, t->tph.tp_snaplen, t->tph.tp_mac,
-	    t->tph.tp_net, format_white_space, indent + 4, t->tph.tp_sec,
-	    t->tph.tp_nsec, format_ethernet_vlan_tci, t->tph.hv1.tp_vlan_tci
+	,
+	format_white_space, indent + 2, format_white_space, indent + 4,
+	t->tph3.tp_status, t->tph3.tp_len, t->tph3.tp_snaplen, t->tph3.tp_mac,
+	t->tph3.tp_net, format_white_space, indent + 4, t->tph3.tp_sec,
+	t->tph3.tp_nsec, format_ethernet_vlan_tci, t->tph3.hv1.tp_vlan_tci
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	    ,
-	    t->tph.hv1.tp_vlan_tpid
+	,
+	t->tph3.hv1.tp_vlan_tpid
 #endif
-    );
+      );
+    }
+  else
+    {
+      s = format (
+	s,
+	"\n%Utpacket2_hdr:\n%Ustatus 0x%x len %u snaplen %u mac %u net %u"
+	"\n%Usec 0x%x nsec 0x%x vlan %U"
+#ifdef TP_STATUS_VLAN_TPID_VALID
+	" vlan_tpid %u"
+#endif
+	,
+	format_white_space, indent + 2, format_white_space, indent + 4,
+	t->tph2.tp_status, t->tph2.tp_len, t->tph2.tp_snaplen, t->tph2.tp_mac,
+	t->tph2.tp_net, format_white_space, indent + 4, t->tph2.tp_sec,
+	t->tph2.tp_nsec, format_ethernet_vlan_tci, t->tph2.tp_vlan_tci
+#ifdef TP_STATUS_VLAN_TPID_VALID
+	,
+	t->tph2.tp_vlan_tpid
+#endif
+      );
+    }
 
   s = format (s,
 	      "\n%Uvnet-hdr:\n%Uflags 0x%02x gso_type 0x%02x hdr_len %u"
@@ -222,9 +251,9 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
 }
 
 always_inline uword
-af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			   vlib_frame_t *frame, af_packet_if_t *apif,
-			   u16 queue_id, u8 is_cksum_gso_enabled)
+af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame, af_packet_if_t *apif,
+			      u16 queue_id, u8 is_cksum_gso_enabled)
 {
   af_packet_main_t *apm = &af_packet_main;
   af_packet_queue_t *rx_queue = vec_elt_at_index (apif->rx_queues, queue_id);
@@ -237,12 +266,12 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 total = 0;
   u32 *to_next = 0;
   u32 block = rx_queue->next_rx_block;
-  u32 block_nr = rx_queue->rx_req->tp_block_nr;
+  u32 block_nr = rx_queue->rx_req->req3.tp_block_nr;
   u8 *block_start = 0;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 thread_index = vm->thread_index;
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
-  u32 min_bufs = rx_queue->rx_req->tp_frame_size / n_buffer_bytes;
+  u32 min_bufs = rx_queue->rx_req->req3.tp_frame_size / n_buffer_bytes;
   u32 num_pkts = 0;
   u32 rx_frame_offset = 0;
   block_desc_t *bd = 0;
@@ -458,6 +487,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  af_packet_input_trace_t *tr;
 		  vlib_set_trace_count (vm, node, --n_trace);
 		  tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+		  tr->is_v3 = 1;
 		  tr->next_index = next0;
 		  tr->hw_if_index = apif->hw_if_index;
 		  tr->queue_id = queue_id;
@@ -465,7 +495,7 @@ af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  tr->block_start = bd;
 		  tr->pkt_num = bd->hdr.bh1.num_pkts - num_pkts;
 		  clib_memcpy_fast (&tr->bd, bd, sizeof (block_desc_t));
-		  clib_memcpy_fast (&tr->tph, tph, sizeof (tpacket3_hdr_t));
+		  clib_memcpy_fast (&tr->tph3, tph, sizeof (tpacket3_hdr_t));
 		  if (is_cksum_gso_enabled)
 		    clib_memcpy_fast (&tr->vnet_hdr, vnet_hdr,
 				      sizeof (vnet_virtio_net_hdr_t));
@@ -526,6 +556,247 @@ done:
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
   return n_rx_packets;
+}
+
+always_inline uword
+af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame, af_packet_if_t *apif,
+			      u16 queue_id, u8 is_cksum_gso_enabled)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_queue_t *rx_queue = vec_elt_at_index (apif->rx_queues, queue_id);
+  tpacket2_hdr_t *tph;
+  u32 next_index;
+  u32 block = 0;
+  u32 rx_frame;
+  u32 n_free_bufs;
+  u32 n_rx_packets = 0;
+  u32 n_rx_bytes = 0;
+  u32 *to_next = 0;
+  u32 frame_size = rx_queue->rx_req->req.tp_frame_size;
+  u32 frame_num = rx_queue->rx_req->req.tp_frame_nr;
+  u8 *block_start = rx_queue->rx_ring[block];
+  uword n_trace = vlib_get_trace_count (vm, node);
+  u32 thread_index = vm->thread_index;
+  u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
+  u32 min_bufs = rx_queue->rx_req->req.tp_frame_size / n_buffer_bytes;
+  u8 is_ip = (apif->mode == AF_PACKET_IF_MODE_IP);
+  vlib_buffer_t bt = {};
+
+  if (is_ip)
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    }
+  else
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+      if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+	next_index = apif->per_interface_next_index;
+
+      /* redirect if feature path enabled */
+      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+    }
+
+  n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
+  if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
+    {
+      vec_validate (apm->rx_buffers[thread_index],
+		    VLIB_FRAME_SIZE + n_free_bufs - 1);
+      n_free_bufs += vlib_buffer_alloc (
+	vm, &apm->rx_buffers[thread_index][n_free_bufs], VLIB_FRAME_SIZE);
+      vec_set_len (apm->rx_buffers[thread_index], n_free_bufs);
+    }
+
+  rx_frame = rx_queue->next_rx_frame;
+  tph = (tpacket2_hdr_t *) (block_start + rx_frame * frame_size);
+  while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs))
+    {
+      vlib_buffer_t *b0 = 0, *first_b0 = 0, *prev_b0 = 0;
+      u32 next0 = next_index;
+
+      u32 n_left_to_next;
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs) &&
+	     n_left_to_next)
+	{
+	  vnet_virtio_net_hdr_t *vnet_hdr = 0;
+	  u32 data_len = tph->tp_snaplen;
+	  u32 offset = 0;
+	  u32 bi0 = 0, first_bi0 = 0;
+	  u8 l4_hdr_sz = 0;
+
+	  if (is_cksum_gso_enabled)
+	    vnet_hdr =
+	      (vnet_virtio_net_hdr_t *) ((u8 *) tph + tph->tp_mac -
+					 sizeof (vnet_virtio_net_hdr_t));
+	  while (data_len)
+	    {
+	      /* grab free buffer */
+	      u32 last_empty_buffer =
+		vec_len (apm->rx_buffers[thread_index]) - 1;
+	      bi0 = apm->rx_buffers[thread_index][last_empty_buffer];
+	      b0 = vlib_get_buffer (vm, bi0);
+	      vec_set_len (apm->rx_buffers[thread_index], last_empty_buffer);
+	      n_free_bufs--;
+
+	      /* copy data */
+	      u32 bytes_to_copy =
+		data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
+	      u32 vlan_len = 0;
+	      u32 bytes_copied = 0;
+	      b0->current_data = 0;
+	      /* Kernel removes VLAN headers, so reconstruct VLAN */
+	      if (PREDICT_FALSE (tph->tp_status & TP_STATUS_VLAN_VALID))
+		{
+		  if (PREDICT_TRUE (offset == 0))
+		    {
+		      clib_memcpy_fast (vlib_buffer_get_current (b0),
+					(u8 *) tph + tph->tp_mac,
+					sizeof (ethernet_header_t));
+		      ethernet_header_t *eth = vlib_buffer_get_current (b0);
+		      ethernet_vlan_header_t *vlan =
+			(ethernet_vlan_header_t *) (eth + 1);
+		      vlan->priority_cfi_and_id =
+			clib_host_to_net_u16 (tph->tp_vlan_tci);
+		      vlan->type = eth->type;
+		      eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+		      vlan_len = sizeof (ethernet_vlan_header_t);
+		      bytes_copied = sizeof (ethernet_header_t);
+		    }
+		}
+	      clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)) +
+				  bytes_copied + vlan_len,
+				(u8 *) tph + tph->tp_mac + offset +
+				  bytes_copied,
+				(bytes_to_copy - bytes_copied));
+
+	      /* fill buffer header */
+	      b0->current_length = bytes_to_copy + vlan_len;
+
+	      if (offset == 0)
+		{
+		  b0->total_length_not_including_first_buffer = 0;
+		  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = apif->sw_if_index;
+		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+		  first_bi0 = bi0;
+		  first_b0 = vlib_get_buffer (vm, first_bi0);
+
+		  if (is_cksum_gso_enabled)
+		    {
+		      if (vnet_hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
+			fill_cksum_offload (first_b0, &l4_hdr_sz, is_ip);
+		      if (vnet_hdr->gso_type & (VIRTIO_NET_HDR_GSO_TCPV4 |
+						VIRTIO_NET_HDR_GSO_TCPV6))
+			fill_gso_offload (first_b0, vnet_hdr->gso_size,
+					  l4_hdr_sz);
+		    }
+		}
+	      else
+		buffer_add_to_chain (b0, first_b0, prev_b0, bi0);
+
+	      prev_b0 = b0;
+	      offset += bytes_to_copy;
+	      data_len -= bytes_to_copy;
+	    }
+	  n_rx_packets++;
+	  n_rx_bytes += tph->tp_snaplen;
+	  to_next[0] = first_bi0;
+	  to_next += 1;
+	  n_left_to_next--;
+
+	  /* drop partial packets */
+	  if (PREDICT_FALSE (tph->tp_len != tph->tp_snaplen))
+	    {
+	      next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+	      first_b0->error =
+		node->errors[AF_PACKET_INPUT_ERROR_PARTIAL_PKT];
+	    }
+	  else
+	    {
+	      if (PREDICT_FALSE (is_ip))
+		{
+		  switch (first_b0->data[0] & 0xf0)
+		    {
+		    case 0x40:
+		      next0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+		      break;
+		    case 0x60:
+		      next0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		      break;
+		    default:
+		      next0 = VNET_DEVICE_INPUT_NEXT_DROP;
+		      break;
+		    }
+		  if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+		    next0 = apif->per_interface_next_index;
+		}
+	      else
+		{
+		  /* copy feature arc data from template */
+		  first_b0->current_config_index = bt.current_config_index;
+		  vnet_buffer (first_b0)->feature_arc_index =
+		    vnet_buffer (&bt)->feature_arc_index;
+		}
+	    }
+
+	  /* trace */
+	  if (PREDICT_FALSE (n_trace > 0 &&
+			     vlib_trace_buffer (vm, node, next0, first_b0,
+						/* follow_chain */ 0)))
+	    {
+	      af_packet_input_trace_t *tr;
+	      vlib_set_trace_count (vm, node, --n_trace);
+	      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+	      tr->is_v3 = 0;
+	      tr->next_index = next0;
+	      tr->hw_if_index = apif->hw_if_index;
+	      tr->queue_id = queue_id;
+	      clib_memcpy_fast (&tr->tph2, tph, sizeof (struct tpacket2_hdr));
+	      if (is_cksum_gso_enabled)
+		clib_memcpy_fast (&tr->vnet_hdr, vnet_hdr,
+				  sizeof (vnet_virtio_net_hdr_t));
+	      else
+		clib_memset_u8 (&tr->vnet_hdr, 0,
+				sizeof (vnet_virtio_net_hdr_t));
+	    }
+
+	  /* enque and take next packet */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, first_bi0, next0);
+
+	  /* next packet */
+	  tph->tp_status = TP_STATUS_KERNEL;
+	  rx_frame = (rx_frame + 1) % frame_num;
+	  tph = (struct tpacket2_hdr *) (block_start + rx_frame * frame_size);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  rx_queue->next_rx_frame = rx_frame;
+
+  vlib_increment_combined_counter (
+    vnet_get_main ()->interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
+
+  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  return n_rx_packets;
+}
+
+always_inline uword
+af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame, af_packet_if_t *apif,
+			   u16 queue_id, u8 is_cksum_gso_enabled)
+
+{
+  if (apif->version == TPACKET_V3)
+    return af_packet_v3_device_input_fn (vm, node, frame, apif, queue_id,
+					 is_cksum_gso_enabled);
+  else
+    return af_packet_v2_device_input_fn (vm, node, frame, apif, queue_id,
+					 is_cksum_gso_enabled);
 }
 
 VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
