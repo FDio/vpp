@@ -740,7 +740,7 @@ docs:
 
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
-	$(call banner,"Building for PLATFORM=vpp using gcc")
+	$(call banner,"Building for PLATFORM=vpp")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
@@ -749,7 +749,8 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 
-MAKE_VERIFY_GATE_OS ?= ubuntu-20.04
+# Note: 'make verify' target is not used by ci-management scripts
+MAKE_VERIFY_GATE_OS ?= ubuntu-22.04
 .PHONY: verify
 verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
