@@ -364,6 +364,7 @@ vl_socket_read_ready (clib_file_t * uf)
       a->reg_index = reg_index;
       a->data = data_for_process;
 
+      clib_warning ("signaling SOCKET_READ_EVENT");
       vlib_process_signal_event (vm, vl_api_clnt_node.index,
 				 SOCKET_READ_EVENT,
 				 a - socket_main.process_args);
