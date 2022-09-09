@@ -1272,28 +1272,44 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 
   if (req->calling_process_index != avf_process_node.index)
     vlib_process_signal_event (vm, req->calling_process_index, 0, 0);
+  // TODO: Use one-time events instead.
 }
 
 static clib_error_t *
 avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 {
-  uword *event_data = 0;
+  uword how_many_responses, *event_data = 0;
   req->calling_process_index = vlib_get_current_process_node_index (vm);
+  f64 sleep = 5.0;
+  f64 deadline = vlib_time_now (vm) + sleep;
 
-  if (req->calling_process_index != avf_process_node.index)
+  if (req->calling_process_index == avf_process_node.index)
     {
-      vlib_process_signal_event_pointer (vm, avf_process_node.index,
-					 AVF_PROCESS_EVENT_REQ, req);
-
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
-
-      if (vlib_process_get_events (vm, &event_data) != 0)
-	clib_panic ("avf process node failed to reply in 5 seconds");
-      vec_free (event_data);
+      avf_process_handle_request (vm, req);
+      return req->error;
     }
-  else
-    avf_process_handle_request (vm, req);
 
+  // Delegate to avf process and wait for confirmation it did its job.
+  vlib_process_signal_event_pointer (vm, avf_process_node.index,
+				     AVF_PROCESS_EVENT_REQ, req);
+again:
+  vlib_process_wait_for_event_or_clock (vm, sleep);
+  // TODO: Use one-time events instead.
+  how_many_responses = vlib_process_get_events_with_type (vm, &event_data, 0);
+  if (how_many_responses == 1)
+    goto done;
+  if (how_many_responses != 0)
+    clib_panic ("too many signal type 0 responses");
+  // It was an unrelated signal, such as SOCKET_READ_EVENT.
+  // Wait again if there is spare time.
+  // Avoid busy wait when there is SOCKET_READ_EVENT.
+  vlib_process_suspend (vm, 1e-3);
+  sleep = deadline - vlib_time_now (vm);
+  if (sleep <= 0.0)
+    clib_panic ("avf process node failed to reply in time");
+  goto again;
+done:
+  vec_free (event_data);
   return req->error;
 }
 
