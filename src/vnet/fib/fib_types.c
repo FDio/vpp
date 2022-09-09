@@ -541,6 +541,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
 {
     fib_route_path_t *rpath = va_arg (*args, fib_route_path_t *);
     dpo_proto_t *payload_proto = va_arg (*args, void*);
+    dpo_proto_t explicit_proto = DPO_PROTO_NONE;
     u32 weight, preference, udp_encap_id, fi;
     mpls_label_t out_label;
     vnet_main_t *vnm;
@@ -726,6 +727,14 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
                 vec_add1(rpath->frp_label_stack, fml);
             }
         }
+      else if (unformat (input, "ip4"))
+        {
+	  explicit_proto = DPO_PROTO_IP4;
+        }
+      else if (unformat (input, "ip6"))
+        {
+	  explicit_proto = DPO_PROTO_IP6;
+        }
         else if (unformat (input, "%U",
                            unformat_vnet_sw_interface, vnm,
                            &rpath->frp_sw_if_index))
@@ -749,6 +758,9 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             return (0);
         }
     }
+
+    if (DPO_PROTO_NONE != explicit_proto)
+      *payload_proto = rpath->frp_proto = explicit_proto;
 
     return (1);
 }
