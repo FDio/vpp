@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "469a8cd8_88835d1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-09-09T14:16:57Z",
+      "side": 1,
+      "message": "A piece of syslog showing it (an older patch set with more logging) works:\n\nvpp[371]: vl_api_clnt_process:421: handling SOCKET_READ_EVENT properly\nvpp[371]: avf_process_request:1292: signalling avf request\nvpp[371]: vl_socket_read_ready:367: signaling SOCKET_READ_EVENT\nvpp[371]: avf_process_request:1316: probably got SOCKET_READ_EVENT, try again in a millisecond.\nvpp[371]: avf_process_request:1316: probably got SOCKET_READ_EVENT, try again in a millisecond.\nvpp[371]: avf_process_request:1316: probably got SOCKET_READ_EVENT, try again in a millisecond.\nvpp[371]: avf_process_request:1304: got avf response\nvpp[371]: vl_api_clnt_process:421: handling SOCKET_READ_EVENT properly",
+      "revId": "0863448d77144210339ee187effe10bc48c127c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
