@@ -418,6 +418,7 @@ vl_api_clnt_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  break;
 	case SOCKET_READ_EVENT:
+	  clib_warning ("handling SOCKET_READ_EVENT properly");
 	  for (i = 0; i < vec_len (event_data); i++)
 	    {
 	      vl_api_registration_t *regp;
