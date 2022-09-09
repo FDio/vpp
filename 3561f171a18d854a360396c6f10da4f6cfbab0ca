@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "32096852_8dcceee4",
+        "filename": "src/vat2/CMakeLists.txt",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2022-09-09T16:10:42Z",
+      "side": 1,
+      "message": "Are we really \"enforcing\" copyright update every time we change a file?\nIs s/2018/2022/g actually correct? In other projects this should really be 2018, 2022 or 2018-2022. Depending.\nI suggest removing -1 from these patches on copyright and take copyright discussion to the list to make everyone aware. If there is anything to be aware of.",
+      "parentUuid": "56fc8008_e34f9175",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "3561f171a18d854a360396c6f10da4f6cfbab0ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "59818884_af45c57b",
         "filename": "src/vlibapi/CMakeLists.txt",
         "patchSetId": 9
