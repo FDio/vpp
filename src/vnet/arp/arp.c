@@ -556,7 +556,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  error0 =
 		    arp_learn (sw_if_index0, &arp0->ip4_over_ethernet[0]);
 		}
-	      goto drop;
+	      goto next_feature;
 	    case ARP_DST_FIB_CONN:
 	      /* destination is connected, continue to process */
 	      break;
