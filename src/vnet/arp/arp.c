@@ -658,7 +658,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	next_feature:
 	  vnet_feature_next (&next0, p0);
-	  goto enqueue;
 
 	drop:
 	  p0->error = node->errors[error0];

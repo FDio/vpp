@@ -1762,6 +1762,10 @@ class ARPTestCase(VppTestCase):
         #
         self.pg2.configure_ipv4_neighbors()
 
+        cntr = self.statistics.get_err_counter(
+            "/err/arp-reply/l3_dst_address_not_local"
+        )
+
         for op in ["is-at", "who-has"]:
             p1 = [
                 (
@@ -1793,7 +1797,7 @@ class ARPTestCase(VppTestCase):
 
         # they are all dropped because the subnet's don't match
         self.assertEqual(
-            4,
+            cntr + 4,
             self.statistics.get_err_counter("/err/arp-reply/l3_dst_address_not_local"),
         )
 
