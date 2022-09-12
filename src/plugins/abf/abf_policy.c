@@ -192,50 +192,45 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
        */
       return (VNET_API_ERROR_INVALID_VALUE);
     }
-  else
+
+  /*
+   * update an existing policy.
+   * - add the path to the path-list and swap our ancestry
+   * - backwalk to poke all attachments to update
+   */
+  fib_node_index_t old_pl;
+
+  ap = abf_policy_get (api);
+  old_pl = ap->ap_pl;
+
+  fib_path_list_lock (old_pl);
+  ap->ap_pl = fib_path_list_copy_and_path_remove (
+    ap->ap_pl, (FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF),
+    rpaths);
+
+  fib_path_list_child_remove (old_pl, ap->ap_sibling);
+  ap->ap_sibling = ~0;
+
+  if (FIB_NODE_INDEX_INVALID == ap->ap_pl)
     {
       /*
-       * update an existing policy.
-       * - add the path to the path-list and swap our ancestry
-       * - backwalk to poke all attachments to update
+       * no more paths on this policy. It's toast
+       * remove the CLI/API's lock
        */
-      fib_node_index_t old_pl;
-
-      ap = abf_policy_get (api);
-      old_pl = ap->ap_pl;
-
-      fib_path_list_lock (old_pl);
-      ap->ap_pl =
-	fib_path_list_copy_and_path_remove (ap->ap_pl,
-					    (FIB_PATH_LIST_FLAG_SHARED |
-					     FIB_PATH_LIST_FLAG_NO_URPF),
-					    rpaths);
-
-      fib_path_list_child_remove (old_pl, ap->ap_sibling);
-      ap->ap_sibling = ~0;
-
-      if (FIB_NODE_INDEX_INVALID == ap->ap_pl)
-	{
-	  /*
-	   * no more paths on this policy. It's toast
-	   * remove the CLI/API's lock
-	   */
-	  fib_node_unlock (&ap->ap_node);
-	}
-      else
-	{
-	  ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						    abf_policy_fib_node_type,
-						    api);
-
-	  fib_node_back_walk_ctx_t ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
-	  };
-
-	  fib_walk_sync (abf_policy_fib_node_type, api, &ctx);
-	}
-      fib_path_list_unlock (old_pl);
+      fib_node_unlock (&ap->ap_node);
     }
+  else
+    {
+      ap->ap_sibling =
+	fib_path_list_child_add (ap->ap_pl, abf_policy_fib_node_type, api);
+
+      fib_node_back_walk_ctx_t ctx = {
+	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+      };
+
+      fib_walk_sync (abf_policy_fib_node_type, api, &ctx);
+    }
+  fib_path_list_unlock (old_pl);
 
   return (0);
 }
@@ -272,14 +267,25 @@ abf_policy_cmd (vlib_main_t * vm,
 			 unformat_fib_route_path, &rpath, &payload_proto))
 	vec_add1 (rpaths, rpath);
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input));
+	{
+	  clib_error_t *err;
+	  err = clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return err;
+	}
     }
 
   if (INDEX_INVALID == policy_id)
     {
       vlib_cli_output (vm, "Specify a Policy ID");
-      return 0;
+      goto out;
+    }
+
+  if (vec_len (rpaths) == 0)
+    {
+      vlib_cli_output (vm, "Hop path must not be empty");
+      goto out;
     }
 
   if (!is_del)
@@ -287,7 +293,7 @@ abf_policy_cmd (vlib_main_t * vm,
       if (INDEX_INVALID == acl_index)
 	{
 	  vlib_cli_output (vm, "ACL index must be set");
-	  return 0;
+	  goto out;
 	}
 
       rv = abf_policy_update (policy_id, acl_index, rpaths);
@@ -296,7 +302,7 @@ abf_policy_cmd (vlib_main_t * vm,
 	{
 	  vlib_cli_output (vm,
 			   "ACL index must match existing ACL index in policy");
-	  return 0;
+	  goto out;
 	}
     }
   else
@@ -304,6 +310,7 @@ abf_policy_cmd (vlib_main_t * vm,
       abf_policy_delete (policy_id, rpaths);
     }
 
+out:
   unformat_free (line_input);
   return (NULL);
 }

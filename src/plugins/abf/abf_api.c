@@ -69,6 +69,12 @@ vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
   int rv = 0;
   u8 pi;
 
+  if (mp->policy.n_paths == 0)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
   vec_validate (paths, mp->policy.n_paths - 1);
 
   for (pi = 0; pi < mp->policy.n_paths; pi++)

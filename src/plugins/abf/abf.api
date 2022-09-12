@@ -51,7 +51,7 @@ define abf_plugin_get_version_reply
 /** \brief A description of an ABF policy
     @param policy_id User chosen Identifier for the policy
     @param acl_index The ACL that the policy will match against
-    @param n_paths Number of paths
+    @param n_paths Number of paths, 1..255
     @param paths The set of forwarding paths that are being added or removed.
  */
 typedef abf_policy
