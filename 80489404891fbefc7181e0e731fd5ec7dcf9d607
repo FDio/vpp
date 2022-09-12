@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "63a1db04_7dea62d5",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-12T13:07:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c5857fe0_443cfc58",
+      "range": {
+        "startLine": 238,
+        "startChar": 10,
+        "endLine": 238,
+        "endChar": 28
+      },
+      "revId": "80489404891fbefc7181e0e731fd5ec7dcf9d607",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2030b30a_4a0a1272",
@@ -37,6 +61,24 @@
       "writtenOn": "2022-09-09T17:23:06Z",
       "side": 1,
       "message": "Is this used anywhere now?",
+      "revId": "80489404891fbefc7181e0e731fd5ec7dcf9d607",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d493618_6ada5a2c",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-12T13:07:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2030b30a_4a0a1272",
       "revId": "80489404891fbefc7181e0e731fd5ec7dcf9d607",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
