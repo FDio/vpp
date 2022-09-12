@@ -16,6 +16,24 @@
       "message": "Copyright year needs to be updated to 2022 for nearly all files.",
       "revId": "7c704e705d6bd67447984d2a217c8d4f6fd05b5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2e6b20d_d1d3d04d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-12T21:41:45Z",
+      "side": 1,
+      "message": "Comment retracted",
+      "parentUuid": "8588f2cc_02da9cf4",
+      "revId": "7c704e705d6bd67447984d2a217c8d4f6fd05b5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
