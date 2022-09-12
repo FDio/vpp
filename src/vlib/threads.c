@@ -527,6 +527,8 @@ start_workers (vlib_main_t * vm)
   u32 stats_err_entry_index = fvm->error_main.stats_err_entry_index;
   clib_mem_heap_t *main_heap = clib_mem_get_per_cpu_heap ();
   vlib_stats_register_mem_heap (main_heap);
+  vec_validate (time_error_counter, tm->n_vlib_mains - 1);
+  vlib_stats_register_time_error ();
 
   vec_reset_length (vlib_worker_threads);
 
