@@ -208,6 +208,20 @@ clib_cpu_time_now (void)
 
 void clib_time_verify_frequency (clib_time_t * c);
 
+typedef struct
+{
+  uword tsc_error;
+  uword large_freq_change;
+} time_error_t;
+
+extern time_error_t *time_error_counter;
+
+always_inline time_error_t *
+clib_time_get_error (void)
+{
+  return time_error_counter;
+}
+
 /* Define it as the type returned by clib_time_now */
 typedef f64 clib_time_type_t;
 typedef u64 clib_us_time_t;
@@ -221,6 +235,12 @@ clib_time_now_internal (clib_time_t * c, u64 n)
   u64 l = c->last_cpu_time;
   u64 t = c->total_cpu_time;
   f64 rv;
+
+  if (PREDICT_FALSE (n < l) && (PREDICT_TRUE (time_error_counter != 0)))
+    {
+      uword tid = os_get_thread_index ();
+      time_error_counter[tid].tsc_error += 1;
+    }
   t += n - l;
   c->total_cpu_time = t;
   c->last_cpu_time = n;

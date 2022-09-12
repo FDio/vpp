@@ -124,6 +124,7 @@ void vlib_stats_segment_lock (void);
 void vlib_stats_segment_unlock (void);
 void vlib_stats_register_mem_heap (clib_mem_heap_t *);
 f64 vlib_stats_get_segment_update_rate (void);
+void vlib_stats_register_time_error (void);
 
 /* gauge */
 u32 vlib_stats_add_gauge (char *fmt, ...);

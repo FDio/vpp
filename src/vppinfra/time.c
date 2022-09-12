@@ -47,6 +47,8 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
+__clib_export time_error_t *time_error_counter;
+
 /* Not very accurate way of determining cpu clock frequency
    for unix.  Better to use /proc/cpuinfo on linux. */
 static f64
@@ -307,10 +309,11 @@ clib_time_verify_frequency (clib_time_t * c)
     delta = -delta;
 
   /* If rate change > 1%, reject this sample */
-  if (PREDICT_FALSE ((delta / c->clocks_per_second) > .01))
+  if ((PREDICT_FALSE ((delta / c->clocks_per_second) > .01) &&
+       PREDICT_TRUE (time_error_counter != 0)))
     {
-      clib_warning ("Rejecting large frequency change of %.2f%%",
-		    (delta / c->clocks_per_second) * 100.0);
+      uword tid = os_get_thread_index ();
+      time_error_counter[tid].large_freq_change += 1;
       return;
     }
 

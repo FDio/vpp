@@ -93,6 +93,7 @@ add_vpp_library(vlib
   stats/format.c
   stats/init.c
   stats/provider_mem.c
+  stats/provider_time.c
   stats/stats.c
   threads.c
   threads_cli.c
