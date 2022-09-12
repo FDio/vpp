@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "317a44d4_4bbe8184",
+        "filename": "src/vat2/CMakeLists.txt",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-12T21:41:07Z",
+      "side": 1,
+      "message": "\u003e Are we really \"enforcing\" copyright update every time we change a file?\nIMHO, -1 is not exactly \u0027enforcement\u0027 ;)\nI picked up the habit of noting missing copyright updates in the CSIT project where it was eventually codified in a pre-commit verification script.\n\nMy past experience with copyrights included rather strict requirements to keep them up to date, but I am not a lawyer so it is not clear to me whether copyright statement on open source code has different requirements applied to it - especially in light of the source code of conduct sign-offs on each commit and the public nature of the git repository.\n\n\u003e Is s/2018/2022/g actually correct? In other projects this should really be 2018, 2022 or 2018-2022. Depending.\n\n\u0027s/2018/2022/g\u0027 is the way CSIT has updated copyright dates for many years.\nIANAL, so am not qualified to comment on the correctness of this versus the other formats you have described (both of which I have used in past software projects).\n\n\u003e I suggest removing -1 from these patches on copyright and take copyright discussion to the list to make everyone aware. If there is anything to be aware of.\n\nDone. Thanks for the comments!",
+      "parentUuid": "32096852_8dcceee4",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "3561f171a18d854a360396c6f10da4f6cfbab0ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "59818884_af45c57b",
