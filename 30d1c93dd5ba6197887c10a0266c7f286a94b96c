@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f546c06c_0d046448",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-12T18:14:40Z",
+      "side": 1,
+      "message": "Maybe move these functions to their respective test cases? Maybe have configure method on all test cases?",
+      "range": {
+        "startLine": 96,
+        "startChar": 5,
+        "endLine": 96,
+        "endChar": 22
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "007c8841_105bdc17",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-12T18:14:40Z",
+      "side": 1,
+      "message": "Can we make this a bit more descriptive? :-)",
+      "range": {
+        "startLine": 174,
+        "startChar": 5,
+        "endLine": 174,
+        "endChar": 14
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "671f1a99_77234fca",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-12T18:14:40Z",
+      "side": 1,
+      "message": "Can we dynamically load these by scanning a separate tests folder? That way we won\u0027t have to constantly update this",
+      "range": {
+        "startLine": 242,
+        "startChar": 0,
+        "endLine": 250,
+        "endChar": 24
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2330378c_00fe4799",
+        "filename": "extras/hs-test/tc_2veths.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-12T18:14:40Z",
+      "side": 1,
+      "message": "Let\u0027s have all of the tests be a new type of struct, i.e., TestCase or something like that. And let\u0027s add to it configure, unconfigure and run functions?",
+      "range": {
+        "startLine": 11,
+        "startChar": 5,
+        "endLine": 11,
+        "endChar": 13
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
