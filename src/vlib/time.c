@@ -24,6 +24,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/time.h>
+#include <vppinfra/format_table.h>
 
 static f64 vlib_time_virtual_stop;
 
@@ -81,4 +82,34 @@ VLIB_CLI_COMMAND (vlib_time_virtual_command) = {
   .path = "set clock adjust",
   .short_help = "set clock adjust <nn>",
   .function = vlib_time_virtual_adjust_command_fn,
+};
+
+static clib_error_t *
+show_time_error_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  int tid, c = 0;
+  table_t _t = {}, *t = &_t;
+
+  memset (t, 0, sizeof (t[0]));
+  table_add_header_row (t, 0);
+  table_add_header_col (t, 3, "Thread", "TSC Rollback", "Large Frequency");
+  vec_foreach_index (tid, time_error_counter)
+    {
+      table_format_cell (t, c, -1, "Thread %u", tid);
+      table_format_cell (t, c, 0, "%u", time_error_counter[tid].tsc_error);
+      table_format_cell (t, c, 1, "%u",
+			 time_error_counter[tid].large_freq_change);
+      c++;
+    }
+  vlib_cli_output (vm, "%U", format_table, t);
+  table_free (t);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_time_error_command, static) = {
+  .path = "show time error",
+  .short_help = "show time error",
+  .function = show_time_error_command_fn,
+  .is_mp_safe = 1,
 };
