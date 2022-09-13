@@ -114,6 +114,12 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
     {
       ipsec_sa_set_IS_CTR (sa);
     }
+  else if (IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS (crypto_alg))
+    {
+      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
+      ipsec_sa_set_IS_CTR (sa);
+      ipsec_sa_set_IS_AEAD (sa);
+    }
 }
 
 void

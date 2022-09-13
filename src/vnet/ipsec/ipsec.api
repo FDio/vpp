@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "5.0.2";
+option version = "5.0.3";
 
 import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
