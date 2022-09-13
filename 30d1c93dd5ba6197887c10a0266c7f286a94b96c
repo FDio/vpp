@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "11ca6db5_59e0511a",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-13T08:53:13Z",
+      "side": 1,
+      "message": "yes, I forgot to move them. Not sure about making them as methods because not every action has a configuration, for example echo test just runs echo command.",
+      "parentUuid": "f546c06c_0d046448",
+      "range": {
+        "startLine": 96,
+        "startChar": 5,
+        "endLine": 96,
+        "endChar": 22
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "007c8841_105bdc17",
         "filename": "extras/hs-test/main.go",
         "patchSetId": 3
@@ -37,6 +61,30 @@
       "writtenOn": "2022-09-12T18:14:40Z",
       "side": 1,
       "message": "Can we make this a bit more descriptive? :-)",
+      "range": {
+        "startLine": 174,
+        "startChar": 5,
+        "endLine": 174,
+        "endChar": 14
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9d575f8_781be660",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-13T08:53:13Z",
+      "side": 1,
+      "message": "This is the result of the binary run, maybe ActionResult?",
+      "parentUuid": "007c8841_105bdc17",
       "range": {
         "startLine": 174,
         "startChar": 5,
@@ -72,6 +120,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "002d9952_f6d2c133",
+        "filename": "extras/hs-test/main.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-13T08:53:13Z",
+      "side": 1,
+      "message": "I was thinking about this same thing, but I could only come up with a solution that involves plugins, which need extra steps anyway",
+      "parentUuid": "671f1a99_77234fca",
+      "range": {
+        "startLine": 242,
+        "startChar": 0,
+        "endLine": 250,
+        "endChar": 24
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2330378c_00fe4799",
         "filename": "extras/hs-test/tc_2veths.go",
         "patchSetId": 3
@@ -83,6 +155,30 @@
       "writtenOn": "2022-09-12T18:14:40Z",
       "side": 1,
       "message": "Let\u0027s have all of the tests be a new type of struct, i.e., TestCase or something like that. And let\u0027s add to it configure, unconfigure and run functions?",
+      "range": {
+        "startLine": 11,
+        "startChar": 5,
+        "endLine": 11,
+        "endChar": 13
+      },
+      "revId": "30d1c93dd5ba6197887c10a0266c7f286a94b96c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d788624_a9ff047d",
+        "filename": "extras/hs-test/tc_2veths.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-13T08:53:13Z",
+      "side": 1,
+      "message": "here it would be just do_work() function as it can do different actions from configure. Unconfig also does not make much sense, we just kill the container",
+      "parentUuid": "2330378c_00fe4799",
       "range": {
         "startLine": 11,
         "startChar": 5,
