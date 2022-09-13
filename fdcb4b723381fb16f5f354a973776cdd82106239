@@ -16,6 +16,23 @@
       "message": "Hello. Could you please review this patch ?\nThanks!",
       "revId": "fdcb4b723381fb16f5f354a973776cdd82106239",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d8e0718_978cf657",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-09-13T22:08:35Z",
+      "side": 1,
+      "message": "The code that is executed at line 107 is identical to the code executed at line 117. Instead of adding another branch here and duplicating the code, could the condition in the \u0027if()\u0027 on line 107 be changed so it also is true when the algorithm is chacha20/poly1305?\n\nYou could either just add \u0027|| IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS()\u0027 or you could change IPSEC_CRYPTO_ALG_IS_GCM() to also check for IPSEC_CRYPTO_ALG_CHACHA20_POLY1305. If you change the macro, the name should probably be changed from IPSEC_CRYPTO_ALG_IS_GCM to IPSEC_CRYPTO_ALG_IS_AEAD or something like that. IPSEC_CRYPTO_ALG_IS_GCM() only gets called on line 107, so it should be safe to change it if you decide to go that route.",
+      "revId": "fdcb4b723381fb16f5f354a973776cdd82106239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
