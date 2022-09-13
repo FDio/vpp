@@ -21,19 +21,20 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/tunnel/tunnel.h>
 
-#define foreach_ipsec_crypto_alg    \
-  _ (0, NONE, "none")               \
-  _ (1, AES_CBC_128, "aes-cbc-128") \
-  _ (2, AES_CBC_192, "aes-cbc-192") \
-  _ (3, AES_CBC_256, "aes-cbc-256") \
-  _ (4, AES_CTR_128, "aes-ctr-128") \
-  _ (5, AES_CTR_192, "aes-ctr-192") \
-  _ (6, AES_CTR_256, "aes-ctr-256") \
-  _ (7, AES_GCM_128, "aes-gcm-128") \
-  _ (8, AES_GCM_192, "aes-gcm-192") \
-  _ (9, AES_GCM_256, "aes-gcm-256") \
-  _ (10, DES_CBC, "des-cbc")        \
-  _ (11, 3DES_CBC, "3des-cbc")
+#define foreach_ipsec_crypto_alg                                              \
+  _ (0, NONE, "none")                                                         \
+  _ (1, AES_CBC_128, "aes-cbc-128")                                           \
+  _ (2, AES_CBC_192, "aes-cbc-192")                                           \
+  _ (3, AES_CBC_256, "aes-cbc-256")                                           \
+  _ (4, AES_CTR_128, "aes-ctr-128")                                           \
+  _ (5, AES_CTR_192, "aes-ctr-192")                                           \
+  _ (6, AES_CTR_256, "aes-ctr-256")                                           \
+  _ (7, AES_GCM_128, "aes-gcm-128")                                           \
+  _ (8, AES_GCM_192, "aes-gcm-192")                                           \
+  _ (9, AES_GCM_256, "aes-gcm-256")                                           \
+  _ (10, DES_CBC, "des-cbc")                                                  \
+  _ (11, 3DES_CBC, "3des-cbc")                                                \
+  _ (12, CHACHA20_POLY1305, "chacha20-poly1305")
 
 typedef enum
 {
@@ -52,6 +53,9 @@ typedef enum
   (((_alg == IPSEC_CRYPTO_ALG_AES_CTR_128) ||                                 \
     (_alg == IPSEC_CRYPTO_ALG_AES_CTR_192) ||                                 \
     (_alg == IPSEC_CRYPTO_ALG_AES_CTR_256)))
+
+#define IPSEC_CRYPTO_ALG_CTR_AEAD_OTHERS(_alg)                                \
+  (_alg == IPSEC_CRYPTO_ALG_CHACHA20_POLY1305)
 
 #define foreach_ipsec_integ_alg                                            \
   _ (0, NONE, "none")                                                      \
