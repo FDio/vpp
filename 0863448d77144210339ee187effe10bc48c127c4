@@ -68,6 +68,24 @@
       "message": "Can you provide steps to reproduce this issue, ideally as sequence of API messages (\u0027binary-api\u0027 CLIs)",
       "revId": "0863448d77144210339ee187effe10bc48c127c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e16085e_841f858f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-09-13T15:47:37Z",
+      "side": 1,
+      "message": "My reproducer was a device test customized to repeatedly add and del l2-patch until the socket event was quick enough.\nPAPI history: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-device-master-ubuntu2204-x86_64-1n-skx/133/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2\nSyslog showing event type 2: https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-device-master-ubuntu2204-x86_64-1n-skx/133/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k3\nThe VPP build was this Change, patch set #8. CSIT change was https://gerrit.fd.io/r/c/csit/+/37076/13/ (including its parent).",
+      "parentUuid": "8666b6c0_747f127a",
+      "revId": "0863448d77144210339ee187effe10bc48c127c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
