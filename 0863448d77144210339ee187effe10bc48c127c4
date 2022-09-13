@@ -51,6 +51,23 @@
       "parentUuid": "0c8e601a_afe0bee2",
       "revId": "0863448d77144210339ee187effe10bc48c127c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8666b6c0_747f127a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-09-13T15:35:18Z",
+      "side": 1,
+      "message": "Can you provide steps to reproduce this issue, ideally as sequence of API messages (\u0027binary-api\u0027 CLIs)",
+      "revId": "0863448d77144210339ee187effe10bc48c127c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
