@@ -288,6 +288,8 @@ int vnet_app_del_cert_key_pair (u32 index);
 /** Ask for app cb on pair deletion */
 int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 
+uword unformat_vnet_uri (unformat_input_t *input, va_list *args);
+
 typedef struct app_session_transport_
 {
   ip46_address_t rmt_ip;	/**< remote ip */
