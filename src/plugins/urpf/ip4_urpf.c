@@ -60,6 +60,13 @@ VLIB_NODE_FN (ip4_rx_urpf_strict) (vlib_main_t * vm,
   return (urpf_inline (vm, node, frame, AF_IP4, VLIB_RX, URPF_MODE_STRICT));
 }
 
+VLIB_NODE_FN (ip4_rx_urpf_custom_vrf)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return (
+    urpf_inline (vm, node, frame, AF_IP4, VLIB_RX, URPF_MODE_CUSTOM_VRF));
+}
+
 VLIB_NODE_FN (ip4_tx_urpf_loose) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * frame)
@@ -72,6 +79,13 @@ VLIB_NODE_FN (ip4_tx_urpf_strict) (vlib_main_t * vm,
 				   vlib_frame_t * frame)
 {
   return (urpf_inline (vm, node, frame, AF_IP4, VLIB_TX, URPF_MODE_STRICT));
+}
+
+VLIB_NODE_FN (ip4_tx_urpf_custom_vrf)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return (
+    urpf_inline (vm, node, frame, AF_IP4, VLIB_TX, URPF_MODE_CUSTOM_VRF));
 }
 
 /* *INDENT-OFF* */
@@ -92,6 +106,21 @@ VLIB_REGISTER_NODE (ip4_rx_urpf_loose) = {
 
 VLIB_REGISTER_NODE (ip4_rx_urpf_strict) = {
   .name = "ip4-rx-urpf-strict",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = URPF_N_NEXT,
+  .next_nodes = {
+    [URPF_NEXT_DROP] = "ip4-drop",
+  },
+  .n_errors = ARRAY_LEN (ip4_urpf_error_strings),
+  .error_strings = ip4_urpf_error_strings,
+
+  .format_buffer = format_ip4_header,
+  .format_trace = format_urpf_trace,
+};
+
+VLIB_REGISTER_NODE (ip4_rx_urpf_custom_vrf) = {
+  .name = "ip4-rx-urpf-custom_vrf",
   .vector_size = sizeof (u32),
 
   .n_next_nodes = URPF_N_NEXT,
@@ -135,6 +164,21 @@ VLIB_REGISTER_NODE (ip4_tx_urpf_strict) = {
   .format_trace = format_urpf_trace,
 };
 
+VLIB_REGISTER_NODE (ip4_tx_urpf_custom_vrf) = {
+  .name = "ip4-tx-urpf-custom_vrf",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = URPF_N_NEXT,
+  .next_nodes = {
+    [URPF_NEXT_DROP] = "ip4-drop",
+  },
+  .n_errors = ARRAY_LEN (ip4_urpf_error_strings),
+  .error_strings = ip4_urpf_error_strings,
+
+  .format_buffer = format_ip4_header,
+  .format_trace = format_urpf_trace,
+};
+
 VNET_FEATURE_INIT (ip4_rx_urpf_loose_feat, static) =
 {
   .arc_name = "ip4-unicast",
@@ -149,6 +193,12 @@ VNET_FEATURE_INIT (ip4_rx_urpf_strict_feat, static) =
   .runs_before = VNET_FEATURES ("ip4-policer-classify"),
 };
 
+VNET_FEATURE_INIT (ip4_rx_urpf_custom_vrf_feat, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-rx-urpf-custom_vrf",
+  .runs_before = VNET_FEATURES ("ip4-policer-classify"),
+};
+
 VNET_FEATURE_INIT (ip4_tx_urpf_loose_feat, static) =
 {
   .arc_name = "ip4-output",
@@ -159,6 +209,11 @@ VNET_FEATURE_INIT (ip4_tx_urpf_strict_feat, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "ip4-tx-urpf-strict",
+};
+
+VNET_FEATURE_INIT (ip4_tx_urpf_custom_vrf_feat, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "ip4-tx-urpf-custom_vrf",
 };
 /* *INDENT-ON* */
 
