@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b8c0a25_9f1da4cd",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T16:18:10Z",
+      "side": 0,
+      "message": "This looks like an unintented change",
+      "range": {
+        "startLine": 955,
+        "startChar": 39,
+        "endLine": 955,
+        "endChar": 40
+      },
+      "revId": "934f9b095f2541888eff9c717f2d3e7f793456e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
