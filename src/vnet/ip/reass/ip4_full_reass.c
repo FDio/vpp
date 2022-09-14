@@ -427,8 +427,7 @@ ip4_full_reass_free (ip4_full_reass_main_t * rm,
  * with local variables would cause either buffer leak or corruption */
 always_inline void
 ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 ip4_full_reass_t *reass, u32 *n_left_to_next,
-			 u32 **to_next)
+			 ip4_full_reass_t *reass)
 {
   u32 range_bi = reass->first_bi;
   vlib_buffer_t *range_b;
@@ -452,40 +451,23 @@ ip4_full_reass_drop_all (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (~0 != reass->error_next_index &&
       reass->error_next_index < node->n_next_nodes)
     {
-      u32 next_index;
-
-      next_index = reass->error_next_index;
-      u32 bi = ~0;
+      u32 n_free = vec_len (to_free);
 
       /* record number of packets sent to custom app */
       vlib_node_increment_counter (vm, node->node_index,
-				   IP4_ERROR_REASS_TO_CUSTOM_APP,
-				   vec_len (to_free));
+				   IP4_ERROR_REASS_TO_CUSTOM_APP, n_free);
 
-      while (vec_len (to_free) > 0)
-	{
-	  vlib_get_next_frame (vm, node, next_index, *to_next,
-			       (*n_left_to_next));
+      if (node->flags & VLIB_NODE_FLAG_TRACE)
+	for (u32 i = 0; i < n_free; i++)
+	  {
+	    vlib_buffer_t *b = vlib_get_buffer (vm, to_free[i]);
+	    if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	      ip4_full_reass_add_trace (vm, node, reass, to_free[i],
+					RANGE_DISCARD, 0, ~0);
+	  }
 
-	  while (vec_len (to_free) > 0 && (*n_left_to_next) > 0)
-	    {
-	      bi = vec_pop (to_free);
-
-	      if (~0 != bi)
-		{
-		  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-		  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-		    {
-		      ip4_full_reass_add_trace (vm, node, reass, bi,
-						RANGE_DISCARD, 0, ~0);
-		    }
-		  *to_next[0] = bi;
-		  (*to_next) += 1;
-		  (*n_left_to_next) -= 1;
-		}
-	    }
-	  vlib_put_next_frame (vm, node, next_index, (*n_left_to_next));
-	}
+      vlib_buffer_enqueue_to_single_next (vm, node, to_free,
+					  reass->error_next_index, n_free);
     }
   else
     {
@@ -564,8 +546,7 @@ always_inline ip4_full_reass_t *
 ip4_full_reass_find_or_create (vlib_main_t *vm, vlib_node_runtime_t *node,
 			       ip4_full_reass_main_t *rm,
 			       ip4_full_reass_per_thread_t *rt,
-			       ip4_full_reass_kv_t *kv, u8 *do_handoff,
-			       u32 *n_left_to_next, u32 **to_next)
+			       ip4_full_reass_kv_t *kv, u8 *do_handoff)
 {
   ip4_full_reass_t *reass;
   f64 now;
@@ -590,7 +571,7 @@ again:
 	{
 	  vlib_node_increment_counter (vm, node->node_index,
 				       IP4_ERROR_REASS_TIMEOUT, 1);
-	  ip4_full_reass_drop_all (vm, node, reass, n_left_to_next, to_next);
+	  ip4_full_reass_drop_all (vm, node, reass);
 	  ip4_full_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -1259,8 +1240,8 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  };
 	  u8 do_handoff = 0;
 
-	  ip4_full_reass_t *reass = ip4_full_reass_find_or_create (
-	    vm, node, rm, rt, &kv, &do_handoff, &n_left_to_next, &to_next);
+	  ip4_full_reass_t *reass =
+	    ip4_full_reass_find_or_create (vm, node, rm, rt, &kv, &do_handoff);
 
 	  if (reass)
 	    {
@@ -1318,8 +1299,7 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  vlib_node_increment_counter (vm, node->node_index, counter,
 					       1);
-		  ip4_full_reass_drop_all (vm, node, reass, &n_left_to_next,
-					   &to_next);
+		  ip4_full_reass_drop_all (vm, node, reass);
 		  ip4_full_reass_free (rm, rt, reass);
 		  goto next_packet;
 		}
@@ -1688,7 +1668,6 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
       uword thread_index = 0;
       int index;
       const uword nthreads = vlib_num_workers () + 1;
-      u32 n_left_to_next, *to_next;
 
       for (thread_index = 0; thread_index < nthreads; ++thread_index)
 	{
@@ -1734,8 +1713,7 @@ ip4_full_reass_walk_expired (vlib_main_t *vm, vlib_node_runtime_t *node,
           vec_foreach (i, pool_indexes_to_free)
           {
             ip4_full_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
-	    ip4_full_reass_drop_all (vm, node, reass, &n_left_to_next,
-				     &to_next);
+	    ip4_full_reass_drop_all (vm, node, reass);
 	    ip4_full_reass_free (rm, rt, reass);
 	  }
 
