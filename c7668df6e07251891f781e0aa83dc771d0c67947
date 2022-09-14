@@ -84,6 +84,24 @@
       "message": "Please rebase this patch on the top of master to resolve the build failures.",
       "revId": "c7668df6e07251891f781e0aa83dc771d0c67947",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8da4ecd_327bf69d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T17:05:45Z",
+      "side": 1,
+      "message": "thanks for reminder",
+      "parentUuid": "c824db33_3f7415be",
+      "revId": "c7668df6e07251891f781e0aa83dc771d0c67947",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
