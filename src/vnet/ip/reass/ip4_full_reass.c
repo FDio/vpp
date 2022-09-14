@@ -1165,204 +1165,192 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       bool is_local)
 {
   u32 *from = vlib_frame_vector_args (frame);
-  u32 n_left_from, n_left_to_next, *to_next, next_index;
+  u32 n_left, n_next = 0, to_next[VLIB_FRAME_SIZE];
   ip4_full_reass_main_t *rm = &ip4_full_reass_main;
   ip4_full_reass_per_thread_t *rt = &rm->per_thread_data[vm->thread_index];
   clib_spinlock_lock (&rt->lock);
+  u16 nexts[VLIB_FRAME_SIZE];
 
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-  while (n_left_from > 0)
+  n_left = frame->n_vectors;
+  while (n_left > 0)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      u32 bi0;
+      vlib_buffer_t *b0;
+      u32 next0;
+      u32 error0 = IP4_ERROR_NONE;
 
-      while (n_left_from > 0 && n_left_to_next > 0)
+      bi0 = from[0];
+      b0 = vlib_get_buffer (vm, bi0);
+
+      ip4_header_t *ip0 = vlib_buffer_get_current (b0);
+      if (!ip4_get_fragment_more (ip0) && !ip4_get_fragment_offset (ip0))
 	{
-	  u32 bi0;
-	  vlib_buffer_t *b0;
-	  u32 next0;
-	  u32 error0 = IP4_ERROR_NONE;
-
-	  bi0 = from[0];
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  ip4_header_t *ip0 = vlib_buffer_get_current (b0);
-	  if (!ip4_get_fragment_more (ip0) && !ip4_get_fragment_offset (ip0))
+	  // this is a whole packet - no fragmentation
+	  if (CUSTOM != type)
 	    {
-	      // this is a whole packet - no fragmentation
-	      if (CUSTOM != type)
-		{
-		  next0 = IP4_FULL_REASS_NEXT_INPUT;
-		}
-	      else
-		{
-		  next0 = vnet_buffer (b0)->ip.reass.next_index;
-		}
-	      ip4_full_reass_add_trace (vm, node, NULL, bi0, PASSTHROUGH, 0,
-					~0);
-	      goto packet_enqueue;
-	    }
-
-	  if (is_local && !rm->is_local_reass_enabled)
-	    {
-	      next0 = IP4_FULL_REASS_NEXT_DROP;
-	      goto packet_enqueue;
-	    }
-
-	  const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
-	  const u32 fragment_length =
-	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
-	  const u32 fragment_last = fragment_first + fragment_length - 1;
-
-	  /* Keep track of received fragments */
-	  vlib_node_increment_counter (vm, node->node_index,
-				       IP4_ERROR_REASS_FRAGMENTS_RCVD, 1);
-
-	  if (fragment_first > fragment_last ||
-	      fragment_first + fragment_length > UINT16_MAX - 20 ||
-	      (fragment_length < 8 && // 8 is minimum frag length per RFC 791
-	       ip4_get_fragment_more (ip0)))
-	    {
-	      next0 = IP4_FULL_REASS_NEXT_DROP;
-	      error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
-	      goto packet_enqueue;
-	    }
-
-	  u32 fib_index = vec_elt (ip4_main.fib_index_by_sw_if_index,
-				   vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-
-	  ip4_full_reass_kv_t kv = { .k.fib_index = fib_index,
-				     .k.src.as_u32 = ip0->src_address.as_u32,
-				     .k.dst.as_u32 = ip0->dst_address.as_u32,
-				     .k.frag_id = ip0->fragment_id,
-				     .k.proto = ip0->protocol
-
-	  };
-	  u8 do_handoff = 0;
-
-	  ip4_full_reass_t *reass =
-	    ip4_full_reass_find_or_create (vm, node, rm, rt, &kv, &do_handoff);
-
-	  if (reass)
-	    {
-	      const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
-	      if (0 == fragment_first)
-		{
-		  reass->sendout_thread_index = vm->thread_index;
-		}
-	    }
-
-	  if (PREDICT_FALSE (do_handoff))
-	    {
-	      next0 = IP4_FULL_REASS_NEXT_HANDOFF;
-	      vnet_buffer (b0)->ip.reass.owner_thread_index =
-		kv.v.memory_owner_thread_index;
-	    }
-	  else if (reass)
-	    {
-	      u32 handoff_thread_idx;
-	      u32 counter = ~0;
-	      switch (ip4_full_reass_update
-		      (vm, node, rm, rt, reass, &bi0, &next0,
-		       &error0, CUSTOM == type, &handoff_thread_idx))
-		{
-		case IP4_REASS_RC_OK:
-		  /* nothing to do here */
-		  break;
-		case IP4_REASS_RC_HANDOFF:
-		  next0 = IP4_FULL_REASS_NEXT_HANDOFF;
-		  b0 = vlib_get_buffer (vm, bi0);
-		  vnet_buffer (b0)->ip.reass.owner_thread_index =
-		    handoff_thread_idx;
-		  break;
-		case IP4_REASS_RC_TOO_MANY_FRAGMENTS:
-		  counter = IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG;
-		  break;
-		case IP4_REASS_RC_NO_BUF:
-		  counter = IP4_ERROR_REASS_NO_BUF;
-		  break;
-		case IP4_REASS_RC_INTERNAL_ERROR:
-		  counter = IP4_ERROR_REASS_INTERNAL_ERROR;
-		  /* Sanitization is needed in internal error cases only, as
-		   * the incoming packet is already dropped in other cases,
-		   * also adding bi0 back to the reassembly list, fixes the
-		   * leaking of buffers during internal errors.
-		   *
-		   * Also it doesnt make sense to send these buffers custom
-		   * app, these fragments are with internal errors */
-		  sanitize_reass_buffers_add_missing (vm, reass, &bi0);
-		  reass->error_next_index = ~0;
-		  break;
-		}
-
-	      if (~0 != counter)
-		{
-		  vlib_node_increment_counter (vm, node->node_index, counter,
-					       1);
-		  ip4_full_reass_drop_all (vm, node, reass);
-		  ip4_full_reass_free (rm, rt, reass);
-		  goto next_packet;
-		}
+	      next0 = IP4_FULL_REASS_NEXT_INPUT;
 	    }
 	  else
 	    {
-	      next0 = IP4_FULL_REASS_NEXT_DROP;
-	      error0 = IP4_ERROR_REASS_LIMIT_REACHED;
+	      next0 = vnet_buffer (b0)->ip.reass.next_index;
 	    }
-
-
-	packet_enqueue:
-
-	  if (bi0 != ~0)
-	    {
-	      to_next[0] = bi0;
-	      to_next += 1;
-	      n_left_to_next -= 1;
-
-	      /* bi0 might have been updated by reass_finalize, reload */
-	      b0 = vlib_get_buffer (vm, bi0);
-	      if (IP4_ERROR_NONE != error0)
-		{
-		  b0->error = node->errors[error0];
-		}
-
-	      if (next0 == IP4_FULL_REASS_NEXT_HANDOFF)
-		{
-		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-		    {
-		      ip4_full_reass_add_trace (
-			vm, node, NULL, bi0, HANDOFF, 0,
-			vnet_buffer (b0)->ip.reass.owner_thread_index);
-		    }
-		}
-	      else if (FEATURE == type && IP4_ERROR_NONE == error0)
-		{
-		  vnet_feature_next (&next0, b0);
-		}
-
-	      /* Increment the counter to-custom-app also as this fragment is
-	       * also going to application */
-	      if (CUSTOM == type)
-		{
-		  vlib_node_increment_counter (
-		    vm, node->node_index, IP4_ERROR_REASS_TO_CUSTOM_APP, 1);
-		}
-
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					       to_next, n_left_to_next,
-					       bi0, next0);
-	      IP4_REASS_DEBUG_BUFFER (bi0, enqueue_next);
-	    }
-
-	next_packet:
-	  from += 1;
-	  n_left_from -= 1;
+	  ip4_full_reass_add_trace (vm, node, NULL, bi0, PASSTHROUGH, 0, ~0);
+	  goto packet_enqueue;
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      if (is_local && !rm->is_local_reass_enabled)
+	{
+	  next0 = IP4_FULL_REASS_NEXT_DROP;
+	  goto packet_enqueue;
+	}
+
+      const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
+      const u32 fragment_length =
+	clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
+      const u32 fragment_last = fragment_first + fragment_length - 1;
+
+      /* Keep track of received fragments */
+      vlib_node_increment_counter (vm, node->node_index,
+				   IP4_ERROR_REASS_FRAGMENTS_RCVD, 1);
+
+      if (fragment_first > fragment_last ||
+	  fragment_first + fragment_length > UINT16_MAX - 20 ||
+	  (fragment_length < 8 && // 8 is minimum frag length per RFC 791
+	   ip4_get_fragment_more (ip0)))
+	{
+	  next0 = IP4_FULL_REASS_NEXT_DROP;
+	  error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
+	  goto packet_enqueue;
+	}
+
+      u32 fib_index = vec_elt (ip4_main.fib_index_by_sw_if_index,
+			       vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+
+      ip4_full_reass_kv_t kv = { .k.fib_index = fib_index,
+				 .k.src.as_u32 = ip0->src_address.as_u32,
+				 .k.dst.as_u32 = ip0->dst_address.as_u32,
+				 .k.frag_id = ip0->fragment_id,
+				 .k.proto = ip0->protocol
+
+      };
+      u8 do_handoff = 0;
+
+      ip4_full_reass_t *reass =
+	ip4_full_reass_find_or_create (vm, node, rm, rt, &kv, &do_handoff);
+
+      if (reass)
+	{
+	  const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
+	  if (0 == fragment_first)
+	    {
+	      reass->sendout_thread_index = vm->thread_index;
+	    }
+	}
+
+      if (PREDICT_FALSE (do_handoff))
+	{
+	  next0 = IP4_FULL_REASS_NEXT_HANDOFF;
+	  vnet_buffer (b0)->ip.reass.owner_thread_index =
+	    kv.v.memory_owner_thread_index;
+	}
+      else if (reass)
+	{
+	  u32 handoff_thread_idx;
+	  u32 counter = ~0;
+	  switch (ip4_full_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
+					 &error0, CUSTOM == type,
+					 &handoff_thread_idx))
+	    {
+	    case IP4_REASS_RC_OK:
+	      /* nothing to do here */
+	      break;
+	    case IP4_REASS_RC_HANDOFF:
+	      next0 = IP4_FULL_REASS_NEXT_HANDOFF;
+	      b0 = vlib_get_buffer (vm, bi0);
+	      vnet_buffer (b0)->ip.reass.owner_thread_index =
+		handoff_thread_idx;
+	      break;
+	    case IP4_REASS_RC_TOO_MANY_FRAGMENTS:
+	      counter = IP4_ERROR_REASS_FRAGMENT_CHAIN_TOO_LONG;
+	      break;
+	    case IP4_REASS_RC_NO_BUF:
+	      counter = IP4_ERROR_REASS_NO_BUF;
+	      break;
+	    case IP4_REASS_RC_INTERNAL_ERROR:
+	      counter = IP4_ERROR_REASS_INTERNAL_ERROR;
+	      /* Sanitization is needed in internal error cases only, as
+	       * the incoming packet is already dropped in other cases,
+	       * also adding bi0 back to the reassembly list, fixes the
+	       * leaking of buffers during internal errors.
+	       *
+	       * Also it doesnt make sense to send these buffers custom
+	       * app, these fragments are with internal errors */
+	      sanitize_reass_buffers_add_missing (vm, reass, &bi0);
+	      reass->error_next_index = ~0;
+	      break;
+	    }
+
+	  if (~0 != counter)
+	    {
+	      vlib_node_increment_counter (vm, node->node_index, counter, 1);
+	      ip4_full_reass_drop_all (vm, node, reass);
+	      ip4_full_reass_free (rm, rt, reass);
+	      goto next_packet;
+	    }
+	}
+      else
+	{
+	  next0 = IP4_FULL_REASS_NEXT_DROP;
+	  error0 = IP4_ERROR_REASS_LIMIT_REACHED;
+	}
+
+    packet_enqueue:
+
+      if (bi0 != ~0)
+	{
+	  /* bi0 might have been updated by reass_finalize, reload */
+	  b0 = vlib_get_buffer (vm, bi0);
+	  if (IP4_ERROR_NONE != error0)
+	    {
+	      b0->error = node->errors[error0];
+	    }
+
+	  if (next0 == IP4_FULL_REASS_NEXT_HANDOFF)
+	    {
+	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip4_full_reass_add_trace (
+		    vm, node, NULL, bi0, HANDOFF, 0,
+		    vnet_buffer (b0)->ip.reass.owner_thread_index);
+		}
+	    }
+	  else if (FEATURE == type && IP4_ERROR_NONE == error0)
+	    {
+	      vnet_feature_next (&next0, b0);
+	    }
+
+	  /* Increment the counter to-custom-app also as this fragment is
+	   * also going to application */
+	  if (CUSTOM == type)
+	    {
+	      vlib_node_increment_counter (vm, node->node_index,
+					   IP4_ERROR_REASS_TO_CUSTOM_APP, 1);
+	    }
+
+	  to_next[n_next] = bi0;
+	  nexts[n_next] = next0;
+	  n_next++;
+	  IP4_REASS_DEBUG_BUFFER (bi0, enqueue_next);
+	}
+
+    next_packet:
+      from += 1;
+      n_left -= 1;
     }
 
   clib_spinlock_unlock (&rt->lock);
+
+  vlib_buffer_enqueue_to_next (vm, node, to_next, nexts, n_next);
   return frame->n_vectors;
 }
 
