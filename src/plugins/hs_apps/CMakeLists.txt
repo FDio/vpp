@@ -20,6 +20,7 @@ add_vpp_plugin(hs_apps
   echo_server.c
   hs_apps.c
   http_cli.c
+  http_client_cli.c
   http_tps.c
   proxy.c
 )
