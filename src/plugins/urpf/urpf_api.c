@@ -26,6 +26,8 @@
 #include <vnet/format_fns.h>
 #include <urpf/urpf.api_enum.h>
 #include <urpf/urpf.api_types.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types.h>
 
 /**
  * Base message ID fot the plugin
@@ -62,7 +64,34 @@ vl_api_urpf_update_t_handler (vl_api_urpf_update_t * mp)
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = urpf_mode_decode (mp->mode, &mode);
+  if (rv)
+    goto done;
 
+  rv = ip_address_family_decode (mp->af, &af);
+  if (rv)
+    goto done;
+
+  rv = urpf_update (mode, htonl (mp->sw_if_index), af,
+		    (mp->is_input ? VLIB_RX : VLIB_TX), 0);
+  if (rv)
+    goto done;
+
+  BAD_SW_IF_INDEX_LABEL;
+done:
+  REPLY_MACRO (VL_API_URPF_UPDATE_REPLY);
+}
+
+static void
+vl_api_urpf_update_v2_t_handler (vl_api_urpf_update_v2_t *mp)
+{
+  vl_api_urpf_update_reply_t *rmp;
+  ip_address_family_t af;
+  urpf_mode_t mode;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = urpf_mode_decode (mp->mode, &mode);
   if (rv)
     goto done;
 
@@ -71,12 +100,15 @@ vl_api_urpf_update_t_handler (vl_api_urpf_update_t * mp)
   if (rv)
     goto done;
 
-  urpf_update (mode, htonl (mp->sw_if_index), af,
-	       (mp->is_input ? VLIB_RX : VLIB_TX));
+  rv = urpf_update (mode, htonl (mp->sw_if_index), af,
+		    (mp->is_input ? VLIB_RX : VLIB_TX), ntohl (mp->table_id));
+
+  if (rv)
+    goto done;
 
   BAD_SW_IF_INDEX_LABEL;
 done:
-  REPLY_MACRO (VL_API_URPF_UPDATE_REPLY);
+  REPLY_MACRO (VL_API_URPF_UPDATE_V2_REPLY);
 }
 
 #include <urpf/urpf.api.c>
