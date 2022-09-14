@@ -160,6 +160,7 @@ VNET_FEATURE_INIT (ip4_tx_urpf_strict_feat, static) =
   .arc_name = "ip4-output",
   .node_name = "ip4-tx-urpf-strict",
 };
+
 /* *INDENT-ON* */
 
 /*
