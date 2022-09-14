@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99b2cbbf_03f31e04",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T22:31:31Z",
+      "side": 1,
+      "message": "PREDICT_TRUE",
+      "range": {
+        "startLine": 977,
+        "startChar": 6,
+        "endLine": 977,
+        "endChar": 28
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d7ea763_80f091ac",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T22:31:31Z",
+      "side": 1,
+      "message": "PREDICT_TRUE",
+      "range": {
+        "startLine": 990,
+        "startChar": 6,
+        "endLine": 990,
+        "endChar": 27
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35e1ee2a_b8076cd9",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1091,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T22:31:31Z",
+      "side": 1,
+      "message": "let\u0027s keep it int. It was int because on this branch we have an assert that validates that the return is greater than 0.",
+      "range": {
+        "startLine": 1091,
+        "startChar": 2,
+        "endLine": 1091,
+        "endChar": 5
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff02a79f_e5bed686",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1355,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T22:31:31Z",
+      "side": 1,
+      "message": "PREDICT_TRUE",
+      "range": {
+        "startLine": 1355,
+        "startChar": 6,
+        "endLine": 1355,
+        "endChar": 27
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e26a3ad1_a04f98bd",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1940,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-14T22:31:31Z",
+      "side": 1,
+      "message": "Still a bit worried about this since it postpones all session layer operations, including those that are not io related, until dma is done. Guess we can live with it for now because it only affects dma, but it would be good to optimize at one point",
+      "range": {
+        "startLine": 1940,
+        "startChar": 10,
+        "endLine": 1940,
+        "endChar": 76
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
