@@ -21,6 +21,7 @@
 #define foreach_urpf_mode \
   _(OFF, "off")           \
   _(LOOSE, "loose")       \
+  _(CUSTOM, "custom")     \
   _(STRICT, "strict")     \
 
 typedef enum urpf_mode_t_
@@ -34,7 +35,15 @@ typedef enum urpf_mode_t_
 
 extern u8 *format_urpf_mode (u8 * s, va_list * a);
 
-extern void urpf_update (urpf_mode_t mode,
+typedef struct 
+{
+  urpf_mode_t *mode;
+  u32 fib_index;
+} urpf_data_t;
+
+static urpf_data_t *urpf_cfgs[N_AF][VLIB_N_DIR];
+
+extern void urpf_update (urpf_data_t data,
 			 u32 sw_if_index,
 			 ip_address_family_t af, vlib_dir_t dir);
 

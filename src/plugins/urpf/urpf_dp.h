@@ -140,6 +140,12 @@ urpf_inline (vlib_main_t * vm,
 	  fib_index1 = ip4_main.fib_index_by_sw_if_index
 	    [vnet_buffer (b[1])->sw_if_index[dir]];
 
+	  if (URPF_MODE_CUSTOM == mode)
+	    {
+		  fib_index0 = urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+		  fib_index1 = urpf_cfgs[af][dir][vnet_buffer (b[1])->sw_if_index[dir]].fib_index;
+	    }
+
 	  ip4_fib_forwarding_lookup_x2 (fib_index0,
 					fib_index1,
 					&ip0->src_address,
@@ -160,6 +166,12 @@ urpf_inline (vlib_main_t * vm,
 	  fib_index1 = ip6_main.fib_index_by_sw_if_index
 	    [vnet_buffer (b[1])->sw_if_index[dir]];
 
+	  if (URPF_MODE_CUSTOM == mode)
+	    {
+		  fib_index0 = urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+		  fib_index1 = urpf_cfgs[af][dir][vnet_buffer (b[1])->sw_if_index[dir]].fib_index;
+	    }
+
 	  ip0 = (ip6_header_t *) h0;
 	  ip1 = (ip6_header_t *) h1;
 
@@ -174,7 +186,7 @@ urpf_inline (vlib_main_t * vm,
       lb0 = load_balance_get (lb_index0);
       lb1 = load_balance_get (lb_index1);
 
-      if (URPF_MODE_STRICT == mode)
+      if (URPF_MODE_STRICT == mode || URPF_MODE_CUSTOM == mode)
 	{
 	  /* for RX the check is: would this source adddress be forwarded
 	   * out of the interface on which it was recieved, if yes allow.
@@ -261,6 +273,12 @@ urpf_inline (vlib_main_t * vm,
 
 	  fib_index0 = ip4_main.fib_index_by_sw_if_index
 	    [vnet_buffer (b[0])->sw_if_index[dir]];
+
+	  if (URPF_MODE_CUSTOM == mode)
+	    {
+		  fib_index0 = urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+	    }
+
 	  ip0 = (ip4_header_t *) h0;
 
 	  lb_index0 = ip4_fib_forwarding_lookup (fib_index0,
@@ -278,6 +296,11 @@ urpf_inline (vlib_main_t * vm,
 	  fib_index0 = ip6_main.fib_index_by_sw_if_index
 	    [vnet_buffer (b[0])->sw_if_index[dir]];
 
+	  if (URPF_MODE_CUSTOM == mode)
+	    {
+		  fib_index0 = urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+	    }
+
 	  lb_index0 = ip6_fib_table_fwding_lookup (fib_index0,
 						   &ip0->src_address);
 	  pass0 = ip6_address_is_multicast (&ip0->src_address);
@@ -285,7 +308,7 @@ urpf_inline (vlib_main_t * vm,
 
       lb0 = load_balance_get (lb_index0);
 
-      if (URPF_MODE_STRICT == mode)
+      if (URPF_MODE_STRICT == mode || URPF_MODE_CUSTOM == mode)
 	{
 	  int res0;
 

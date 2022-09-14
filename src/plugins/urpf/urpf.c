@@ -36,20 +36,24 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
     [VLIB_RX] = {
       [URPF_MODE_STRICT] = "ip4-rx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip4-rx-urpf-loose",
+      [URPF_MODE_CUSTOM] = "ip4-rx-urpf-custom",
     },
     [VLIB_TX] = {
       [URPF_MODE_STRICT] = "ip4-tx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip4-tx-urpf-loose",
+      [URPF_MODE_CUSTOM] = "ip4-tx-urpf-custom",
     },
   },
   [AF_IP6] = {
     [VLIB_RX] = {
       [URPF_MODE_STRICT] = "ip6-rx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip6-rx-urpf-loose",
+      [URPF_MODE_CUSTOM] = "ip6-rx-urpf-custom",
     },
     [VLIB_TX] = {
       [URPF_MODE_STRICT] = "ip6-tx-urpf-strict",
       [URPF_MODE_LOOSE] = "ip6-tx-urpf-loose",
+      [URPF_MODE_CUSTOM] = "ip6-tx-urpf-custom",
     },
   },
 };
@@ -58,7 +62,6 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
 /**
  * Per-af, per-direction, per-interface uRPF configs
  */
-static urpf_mode_t *urpf_cfgs[N_AF][VLIB_N_DIR];
 
 u8 *
 format_urpf_mode (u8 * s, va_list * a)
@@ -96,31 +99,32 @@ unformat_urpf_mode (unformat_input_t * input, va_list * args)
 }
 
 void
-urpf_update (urpf_mode_t mode,
+urpf_update (urpf_data_t data,
 	     u32 sw_if_index, ip_address_family_t af, vlib_dir_t dir)
 {
-  urpf_mode_t old;
-
-  vec_validate_init_empty (urpf_cfgs[af][dir], sw_if_index, URPF_MODE_OFF);
+  urpf_data_t old;
+  urpf_mode_t off = URPF_MODE_OFF;
+  urpf_data_t empty = {.fib_index = 0, .mode = &off};
+  vec_validate_init_empty (urpf_cfgs[af][dir], sw_if_index, empty);
   old = urpf_cfgs[af][dir][sw_if_index];
 
-  if (mode != old)
+  urpf_cfgs[af][dir][sw_if_index] = data;
+  if (data.mode != old.mode | data.fib_index != old.fib_index)
     {
-      if (URPF_MODE_OFF != old)
+      if (URPF_MODE_OFF != old.mode)
 	/* disable what we have */
 	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][old],
+				     urpf_feats[af][dir][*old.mode],
 				     sw_if_index, 0, 0, 0);
 
-      if (URPF_MODE_OFF != mode)
+      if (URPF_MODE_OFF != data.mode)
 	/* enable what's new */
 	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][mode],
+				     urpf_feats[af][dir][*data.mode],
 				     sw_if_index, 1, 0, 0);
     }
   /* else - no change to existing config */
 
-  urpf_cfgs[af][dir][sw_if_index] = mode;
 }
 
 static clib_error_t *
@@ -134,11 +138,13 @@ urpf_cli_update (vlib_main_t * vm,
   urpf_mode_t mode;
   u32 sw_if_index;
   vlib_dir_t dir;
+  u32 fib_index;
 
   sw_if_index = ~0;
   af = AF_IP4;
   dir = VLIB_RX;
   mode = URPF_MODE_STRICT;
+  fib_index = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -150,6 +156,8 @@ urpf_cli_update (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "%U", unformat_urpf_mode, &mode))
 	;
+      else if (unformat (line_input, "fib-index %d", &fib_index))
+  ;
       else if (unformat (line_input, "%U", unformat_ip_address_family, &af))
 	;
       else if (unformat (line_input, "%U", unformat_vlib_rx_tx, &dir))
@@ -168,7 +176,8 @@ urpf_cli_update (vlib_main_t * vm,
       goto done;
     }
 
-  urpf_update (mode, sw_if_index, af, dir);
+  urpf_data_t data = {.fib_index = fib_index, .mode = &mode};
+  urpf_update (data, sw_if_index, af, dir);
 done:
   unformat_free (line_input);
 
@@ -233,7 +242,7 @@ done:
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set urpf",
   .function = urpf_cli_update,
-  .short_help = "set urpf [ip4|ip6] [rx|tx] [off|strict|loose] <INTERFACE>",
+  .short_help = "set urpf [ip4|ip6] [rx|tx] [off|strict|loose|custom] <INTERFACE> [fib-index <fib-index>]",
 };
 /* *INDENT-ON* */
 

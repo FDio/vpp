@@ -29,6 +29,7 @@ enum urpf_mode:u8
   URPF_API_MODE_OFF,
   URPF_API_MODE_LOOSE,
   URPF_API_MODE_STRICT,
+  URPF_API_MODE_CUSTOM,
 };
 
 /**
@@ -39,6 +40,7 @@ enum urpf_mode:u8
  * @param af - Address Family
  * @param sw_if_index - Interface
  * @param is_input - Direction.
+ * @param table-id - Table ID
  */
 autoreply define urpf_update
 {
@@ -48,6 +50,7 @@ autoreply define urpf_update
   vl_api_urpf_mode_t mode;
   vl_api_address_family_t af;
   vl_api_interface_index_t sw_if_index;
+  u32 table_id;
 };
 
 /*

@@ -26,6 +26,8 @@
 #include <vnet/format_fns.h>
 #include <urpf/urpf.api_enum.h>
 #include <urpf/urpf.api_types.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip_types.h>
 
 /**
  * Base message ID fot the plugin
@@ -57,21 +59,24 @@ vl_api_urpf_update_t_handler (vl_api_urpf_update_t * mp)
   vl_api_urpf_update_reply_t *rmp;
   ip_address_family_t af;
   urpf_mode_t mode;
+  u32 fib_index;
   int rv = 0;
+  fib_protocol_t proto;
 
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = urpf_mode_decode (mp->mode, &mode);
-
   if (rv)
     goto done;
 
   rv = ip_address_family_decode (mp->af, &af);
-
+  proto = ip_address_family_to_fib_proto(af);
+  fib_index = fib_table_find (proto, mp->table_id);
   if (rv)
     goto done;
 
-  urpf_update (mode, htonl (mp->sw_if_index), af,
+  urpf_data_t data = {.fib_index = fib_index, .mode = &mode};
+  urpf_update (data, htonl (mp->sw_if_index), af,
 	       (mp->is_input ? VLIB_RX : VLIB_TX));
 
   BAD_SW_IF_INDEX_LABEL;
