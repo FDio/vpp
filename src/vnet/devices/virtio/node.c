@@ -390,6 +390,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   vring->last_used_idx = last;
 
+  vring->total_packets += n_rx_packets;
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
 				   + VNET_INTERFACE_COUNTER_RX, thread_index,
 				   vif->sw_if_index, n_rx_packets,
