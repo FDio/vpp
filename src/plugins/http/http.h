@@ -49,7 +49,7 @@ typedef struct http_conn_id_
 STATIC_ASSERT (sizeof (http_conn_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
-typedef enum http_state_
+typedef enum http_conn_state_
 {
   HTTP_CONN_STATE_LISTEN,
   HTTP_CONN_STATE_CONNECTING,
@@ -59,13 +59,13 @@ typedef enum http_state_
   HTTP_CONN_STATE_CLOSED
 } http_conn_state_t;
 
-typedef enum http_req_state_
+typedef enum http_state_
 {
-  HTTP_REQ_STATE_WAIT_METHOD,
-  HTTP_REQ_STATE_WAIT_APP,
-  HTTP_REQ_STATE_SEND_MORE_DATA,
-  HTTP_REQ_N_STATES,
-} http_req_state_t;
+  HTTP_STATE_WAIT_METHOD,
+  HTTP_STATE_WAIT_APP,
+  HTTP_STATE_IO_MORE_DATA,
+  HTTP_N_STATES,
+} http_state_t;
 
 typedef enum http_req_method_
 {
@@ -143,6 +143,7 @@ typedef struct http_tc_
 #define h_tc_session_handle c_http_conn_id.tc_session_handle
 #define h_pa_wrk_index	    c_http_conn_id.parent_app_wrk_index
 #define h_pa_session_handle c_http_conn_id.app_session_handle
+#define h_pa_app_api_ctx    c_http_conn_id.parent_app_api_ctx
 #define h_hc_index	    connection.c_index
 
   http_conn_state_t state;
@@ -151,11 +152,14 @@ typedef struct http_tc_
   /*
    * Current request
    */
-  http_req_state_t req_state;
+  http_state_t http_state;
   http_req_method_t method;
   u8 *rx_buf;
   u32 rx_buf_offset;
   http_buffer_t tx_buf;
+  u8 is_client;
+  u32 to_recv;
+  u32 bytes_dequeued;
 } http_conn_t;
 
 typedef struct http_worker_
