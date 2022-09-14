@@ -92,6 +92,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "39c8fe6a_025230cc",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2051,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2df483f8_c49bb6f6",
+      "range": {
+        "startLine": 2035,
+        "startChar": 0,
+        "endLine": 2051,
+        "endChar": 5
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a949eae3_c9127afd",
@@ -105,6 +129,78 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "use-dma",
+      "range": {
+        "startLine": 2244,
+        "startChar": 33,
+        "endLine": 2244,
+        "endChar": 36
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee5cde1a_061d5049",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2244,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a949eae3_c9127afd",
+      "range": {
+        "startLine": 2244,
+        "startChar": 33,
+        "endLine": 2244,
+        "endChar": 36
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d89fd5c_1655a737",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2244,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a949eae3_c9127afd",
+      "range": {
+        "startLine": 2244,
+        "startChar": 33,
+        "endLine": 2244,
+        "endChar": 36
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1778d54b_a9f75d74",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2244,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a949eae3_c9127afd",
       "range": {
         "startLine": 2244,
         "startChar": 33,
@@ -138,6 +234,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bdcf40c2_fa43d330",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "17265b4a_80f3afbf",
+      "range": {
+        "startLine": 167,
+        "startChar": 2,
+        "endLine": 167,
+        "endChar": 6
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2bfb9359_f16beb50",
@@ -151,6 +271,30 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "dma_enabled",
+      "range": {
+        "startLine": 258,
+        "startChar": 5,
+        "endLine": 258,
+        "endChar": 8
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b26d92c1_f140f565",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2bfb9359_f16beb50",
       "range": {
         "startLine": 258,
         "startChar": 5,
@@ -184,6 +328,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "373bfeb6_2f54bcd7",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 974,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e2bbf5c9_3ac3e2a5",
+      "range": {
+        "startLine": 974,
+        "startChar": 28,
+        "endLine": 974,
+        "endChar": 45
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6f9e00d1_904ffe98",
@@ -197,6 +365,54 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "Add new always_inline functions that take all args needed\nsession_tx_copy_data\nsession_tx_copy_data_tail\nsession_tx_add_pending_buffer \u003c- this one is for filling in wrk-\u003epending_tx_buffers",
+      "range": {
+        "startLine": 1005,
+        "startChar": 23,
+        "endLine": 1006,
+        "endChar": 27
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9f5b283_05e7531e",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1006,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6f9e00d1_904ffe98",
+      "range": {
+        "startLine": 1005,
+        "startChar": 23,
+        "endLine": 1006,
+        "endChar": 27
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce01e80f_332f80d8",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1006,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6f9e00d1_904ffe98",
       "range": {
         "startLine": 1005,
         "startChar": 23,
@@ -230,6 +446,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f927752f_7414622e",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1070,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "15f35aef_52d3bf25",
+      "range": {
+        "startLine": 1070,
+        "startChar": 24,
+        "endLine": 1070,
+        "endChar": 41
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa8db52b_8f078b2d",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1070,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "15f35aef_52d3bf25",
+      "range": {
+        "startLine": 1070,
+        "startChar": 24,
+        "endLine": 1070,
+        "endChar": 41
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3569c2e8_044df3b5",
@@ -243,6 +507,54 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "Same comment as above. That is, use session_tx_copy_data",
+      "range": {
+        "startLine": 1092,
+        "startChar": 18,
+        "endLine": 1092,
+        "endChar": 31
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "183c9986_2d2bcc00",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1092,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3569c2e8_044df3b5",
+      "range": {
+        "startLine": 1092,
+        "startChar": 18,
+        "endLine": 1092,
+        "endChar": 31
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5744f290_a6ccddc7",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1092,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3569c2e8_044df3b5",
       "range": {
         "startLine": 1092,
         "startChar": 18,
@@ -276,6 +588,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "af79b385_c6859ea5",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1497,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2eab105e_0d97bcd3",
+      "range": {
+        "startLine": 1496,
+        "startChar": 0,
+        "endLine": 1497,
+        "endChar": 2
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "51e9c52a_501ea071",
@@ -289,6 +625,30 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "See comment above",
+      "range": {
+        "startLine": 1528,
+        "startChar": 0,
+        "endLine": 1530,
+        "endChar": 2
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e5fc7b9_de2986fa",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1530,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "51e9c52a_501ea071",
       "range": {
         "startLine": 1528,
         "startChar": 0,
@@ -322,6 +682,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "80099e34_f8645bec",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1943,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "yes, when retrun, code will not do the batch and the submit, util trans_head \u003d 0",
+      "parentUuid": "319de90f_355fb35c",
+      "range": {
+        "startLine": 1937,
+        "startChar": 0,
+        "endLine": 1943,
+        "endChar": 60
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3253f295_71de47ee",
@@ -335,6 +719,30 @@
       "writtenOn": "2022-09-13T18:36:58Z",
       "side": 1,
       "message": "Again, only 1 PREDICT_FALSE if",
+      "range": {
+        "startLine": 2013,
+        "startChar": 0,
+        "endLine": 2023,
+        "endChar": 43
+      },
+      "revId": "b0ed0257b24e62cd8d835b12eceddd07f243605c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f38f617c_7f277c2b",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2023,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T14:52:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3253f295_71de47ee",
       "range": {
         "startLine": 2013,
         "startChar": 0,
