@@ -642,6 +642,7 @@ virtio_pci_control_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
   vring->device_event->off_wrap = 0;
   vring->device_event->flags = 0;
 
+  vring->total_packets = 0;
   vring->queue_id = queue_num;
   vring->queue_size = queue_size;
   vring->avail_wrap_counter = 1;
@@ -694,6 +695,7 @@ virtio_pci_control_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
   clib_memset (ptr, 0, i);
   vnet_virtio_vring_init (vring, queue_size, ptr, VNET_VIRTIO_PCI_VRING_ALIGN);
   vring->queue_id = queue_num;
+  vring->total_packets = 0;
 
   ASSERT (vring->buffers == 0);
   virtio_log_debug (vif, "control-queue: number %u, size %u", queue_num,
@@ -765,6 +767,7 @@ virtio_pci_vring_split_init (vlib_main_t * vm, virtio_if_t * vif,
   vring->queue_id = queue_num;
   vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
   vring->flow_table = 0;
+  vring->total_packets = 0;
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);
@@ -854,6 +857,7 @@ virtio_pci_vring_packed_init (vlib_main_t * vm, virtio_if_t * vif,
 
   vring->avail_wrap_counter = 1;
   vring->used_wrap_counter = 1;
+  vring->total_packets = 0;
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, queue_size, CLIB_CACHE_LINE_BYTES);

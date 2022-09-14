@@ -110,6 +110,7 @@ typedef struct
   vnet_hw_if_rx_mode mode;
   virtio_vring_buffering_t *buffering;
   gro_flow_table_t *flow_table;
+  u64 total_packets;
 } vnet_virtio_vring_t;
 
 typedef union
