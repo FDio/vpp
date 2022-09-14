@@ -112,6 +112,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f73407e_48f38f10",
+        "filename": "src/svm/ssvm.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T06:52:28Z",
+      "side": 1,
+      "message": "sorry, just checked, not the same, we need to use system default huge page size 2M or 1G, not fd\u0027s default page size 4K.",
+      "parentUuid": "a1528af1_69b58b6d",
+      "range": {
+        "startLine": 277,
+        "startChar": 14,
+        "endLine": 277,
+        "endChar": 40
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "beb44f56_1eac6afe",
