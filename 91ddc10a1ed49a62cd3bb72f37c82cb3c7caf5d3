@@ -26,6 +26,30 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "f083fc3c_ef5a0d85",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T04:22:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1662a004_3bfd0f4e",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 38
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "80bfa89f_ac1a3f0c",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 8
@@ -64,6 +88,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1528af1_69b58b6d",
+        "filename": "src/svm/ssvm.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T04:22:32Z",
+      "side": 1,
+      "message": "it is the same, deleted this change",
+      "parentUuid": "aef22d24_905e5a9d",
+      "range": {
+        "startLine": 277,
+        "startChar": 14,
+        "endLine": 277,
+        "endChar": 40
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "beb44f56_1eac6afe",
@@ -77,6 +125,30 @@
       "writtenOn": "2022-09-13T19:38:38Z",
       "side": 1,
       "message": "See other comment. Do we really need this?",
+      "range": {
+        "startLine": 586,
+        "startChar": 0,
+        "endLine": 587,
+        "endChar": 5
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2708395d_2ea6cf3d",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T04:22:32Z",
+      "side": 1,
+      "message": "dno\u0027t need now, deleted it",
+      "parentUuid": "beb44f56_1eac6afe",
       "range": {
         "startLine": 586,
         "startChar": 0,
@@ -110,6 +182,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cbf68d5_06dc0907",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T04:22:32Z",
+      "side": 1,
+      "message": "nop, deleted it",
+      "parentUuid": "4c31ed81_98513ab4",
+      "range": {
+        "startLine": 45,
+        "startChar": 8,
+        "endLine": 45,
+        "endChar": 32
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f3cfb100_3f91e5dd",
@@ -123,6 +219,30 @@
       "writtenOn": "2022-09-13T19:38:38Z",
       "side": 1,
       "message": "Grab this in the if on line 132",
+      "range": {
+        "startLine": 101,
+        "startChar": 2,
+        "endLine": 101,
+        "endChar": 62
+      },
+      "revId": "91ddc10a1ed49a62cd3bb72f37c82cb3c7caf5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4082748_955bd962",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-14T04:22:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f3cfb100_3f91e5dd",
       "range": {
         "startLine": 101,
         "startChar": 2,
