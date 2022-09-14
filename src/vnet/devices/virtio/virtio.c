@@ -116,6 +116,7 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   else
     vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
 
+  vring->total_packets = 0;
   vring->queue_size = sz;
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
