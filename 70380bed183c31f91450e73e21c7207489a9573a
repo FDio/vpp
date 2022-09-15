@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1ea5a16_96e8b054",
+        "filename": "src/plugins/urpf/urpf.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "The api checker will probably yell at this. We can do a `urpf_update_v2` message copying the handler",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3050f28_6eaf560c",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "We can maybe add the fib_index as an extra param instead of requiring a urpf_data_t\ne.g.\nurpf_update (urpf_mode_t mode,\n\t     u32 sw_if_index, ip_address_family_t af, vlib_dir_t dir, u32 fib_index)",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a62377b_b19c3274",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "probably `table %d` ? and table_index. And could then do the fib_index -\u003e table_index conversion inside the urpf_update call",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9caec99c_1aad2f89",
+        "filename": "src/plugins/urpf/urpf.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "`urpf_mode_t mode;` ?",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "506234b2_2632b0f0",
+        "filename": "src/plugins/urpf/urpf_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "you probably need a `ntohl(mp-\u003etable_id)`",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a4e13589_46f01e00",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "we can put the previous `fib_index{0,1} \u003d ip4_main ...` call in an else statement",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd065156_ef39aada",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-15T14:16:12Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "70380bed183c31f91450e73e21c7207489a9573a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
