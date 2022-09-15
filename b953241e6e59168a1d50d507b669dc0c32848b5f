@@ -16,6 +16,23 @@
       "message": "Hi Ole,\n\nCould you take a look at the patch?",
       "revId": "b953241e6e59168a1d50d507b669dc0c32848b5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "41a496af_54506eea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-09-15T18:26:00Z",
+      "side": 1,
+      "message": "The change to linux-cp looks fine. I\u0027m not sure of the larger implications of changing the ordering of fields by vppapigen code though. Someone with more familiarity with vppapigen should review.",
+      "revId": "b953241e6e59168a1d50d507b669dc0c32848b5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
