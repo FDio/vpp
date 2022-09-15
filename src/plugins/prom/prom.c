@@ -305,6 +305,8 @@ prom_stat_patterns_add (u8 **patterns)
     {
       found = 0;
       len = vec_len (*pattern);
+      if (len == 0)
+	continue;
       vec_foreach (existing, pm->stats_patterns)
 	{
 	  if (vec_len (*existing) != len)
