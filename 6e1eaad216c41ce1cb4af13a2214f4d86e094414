@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "370b17ec_2c375a99",
+        "filename": "src/plugins/prom/prom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-15T15:42:56Z",
+      "side": 1,
+      "message": "Now I\u0027m curious :-)\n\nHow did you hit this or is this purely coverity? Wonder if the rest of the infra even allows adding 0 len patterns.",
+      "range": {
+        "startLine": 308,
+        "startChar": 6,
+        "endLine": 308,
+        "endChar": 19
+      },
+      "revId": "6e1eaad216c41ce1cb4af13a2214f4d86e094414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
