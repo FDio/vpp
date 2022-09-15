@@ -103,6 +103,7 @@ void
 clib_mem_main_init ()
 {
   clib_mem_main_t *mm = &clib_mem_main;
+  long sysconf_page_size;
   uword page_size;
   void *va;
   int fd;
@@ -111,7 +112,12 @@ clib_mem_main_init ()
     return;
 
   /* system page size */
-  page_size = sysconf (_SC_PAGESIZE);
+  sysconf_page_size = sysconf (_SC_PAGESIZE);
+  if (sysconf_page_size < 0)
+    {
+      clib_panic ("Could not determine the page size");
+    }
+  page_size = sysconf_page_size;
   mm->log2_page_sz = min_log2 (page_size);
 
   /* default system hugeppage size */
