@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "173d63b8_9dfd300f",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-15T01:07:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "99b2cbbf_03f31e04",
+      "range": {
+        "startLine": 977,
+        "startChar": 6,
+        "endLine": 977,
+        "endChar": 28
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2d7ea763_80f091ac",
@@ -37,6 +61,30 @@
       "writtenOn": "2022-09-14T22:31:31Z",
       "side": 1,
       "message": "PREDICT_TRUE",
+      "range": {
+        "startLine": 990,
+        "startChar": 6,
+        "endLine": 990,
+        "endChar": 27
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31d97671_91e96346",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 990,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-15T01:07:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2d7ea763_80f091ac",
       "range": {
         "startLine": 990,
         "startChar": 6,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e5f78a0_d66ee981",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1091,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-15T01:07:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "35e1ee2a_b8076cd9",
+      "range": {
+        "startLine": 1091,
+        "startChar": 2,
+        "endLine": 1091,
+        "endChar": 5
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ff02a79f_e5bed686",
@@ -93,6 +165,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3444783d_1f0075e7",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1355,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-15T01:07:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ff02a79f_e5bed686",
+      "range": {
+        "startLine": 1355,
+        "startChar": 6,
+        "endLine": 1355,
+        "endChar": 27
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e26a3ad1_a04f98bd",
@@ -106,6 +202,30 @@
       "writtenOn": "2022-09-14T22:31:31Z",
       "side": 1,
       "message": "Still a bit worried about this since it postpones all session layer operations, including those that are not io related, until dma is done. Guess we can live with it for now because it only affects dma, but it would be good to optimize at one point",
+      "range": {
+        "startLine": 1940,
+        "startChar": 10,
+        "endLine": 1940,
+        "endChar": 76
+      },
+      "revId": "a8200677e6b42c87875ecfc2a04cec0a5a899e30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9c77bfc_01b725ba",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1940,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2022-09-15T01:07:18Z",
+      "side": 1,
+      "message": "agreed",
+      "parentUuid": "e26a3ad1_a04f98bd",
       "range": {
         "startLine": 1940,
         "startChar": 10,
