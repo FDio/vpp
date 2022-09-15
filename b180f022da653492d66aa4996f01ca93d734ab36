@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f623098_b6aeb1cc",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-15T15:28:31Z",
+      "side": 1,
+      "message": "Doesn\u0027t this have to return? Otherwise it\u0027s exactly the same as before, i.e., page_size \u003d (unsigned long) (negative-number)",
+      "range": {
+        "startLine": 117,
+        "startChar": 6,
+        "endLine": 117,
+        "endChar": 55
+      },
+      "revId": "b180f022da653492d66aa4996f01ca93d734ab36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
