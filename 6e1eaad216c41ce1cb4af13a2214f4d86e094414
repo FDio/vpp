@@ -46,6 +46,30 @@
       },
       "revId": "6e1eaad216c41ce1cb4af13a2214f4d86e094414",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8614cf4_6c357df4",
+        "filename": "src/plugins/prom/prom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-09-15T16:11:24Z",
+      "side": 1,
+      "message": "Ack!",
+      "parentUuid": "4e5e92c9_2ef5c842",
+      "range": {
+        "startLine": 308,
+        "startChar": 6,
+        "endLine": 308,
+        "endChar": 19
+      },
+      "revId": "6e1eaad216c41ce1cb4af13a2214f4d86e094414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
