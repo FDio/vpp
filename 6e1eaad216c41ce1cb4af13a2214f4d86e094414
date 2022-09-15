@@ -22,6 +22,30 @@
       },
       "revId": "6e1eaad216c41ce1cb4af13a2214f4d86e094414",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e5e92c9_2ef5c842",
+        "filename": "src/plugins/prom/prom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-09-15T16:08:13Z",
+      "side": 1,
+      "message": "Purely coverity :-) It did seem like a reasonable defensive programming though, even though it is one of those \"doctor it hurts when I do this\" so I speculated on the worst case that the rest of the infra can let this slip through.",
+      "parentUuid": "370b17ec_2c375a99",
+      "range": {
+        "startLine": 308,
+        "startChar": 6,
+        "endLine": 308,
+        "endChar": 19
+      },
+      "revId": "6e1eaad216c41ce1cb4af13a2214f4d86e094414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
