@@ -319,6 +319,9 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
 
   fd = xsk_socket__fd (*xsk);
   optlen = sizeof (opt);
+#ifndef SOL_XDP
+#define SOL_XDP 283
+#endif
   if (getsockopt (fd, SOL_XDP, XDP_OPTIONS, &opt, &optlen))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
