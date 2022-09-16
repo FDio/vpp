@@ -27,6 +27,8 @@ cnat_maglev_shuffle (cnat_maglev_perm_t *permutation, u32 *buckets)
     return;
 
   M = vec_len (buckets);
+  if (M == 0)
+    return;
   vec_set (buckets, -1);
 
   vec_validate (next, N - 1);
@@ -131,6 +133,8 @@ cnat_maglev_print_changes (vlib_main_t *vm, u32 *changed_bk_indices,
 {
   u32 good_flow_buckets = 0, reset_flow_buckets = 0, stable_to_reset = 0;
   u32 reset_to_stable = 0, switched_stable = 0;
+  if (vec_len (new_maglev_lb) == 0)
+    return;
   for (u32 i = 0; i < vec_len (new_maglev_lb); i++)
     {
       u8 is_new_changed =
