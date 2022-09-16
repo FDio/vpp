@@ -1493,8 +1493,15 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (bd_id == ~0)
     {
-      error = clib_error_return (0, "bridge-domain-id not specified");
-      goto done;
+      if (is_add)
+	{
+	  bd_id = bd_get_unused_id ();
+	}
+      else
+	{
+	  error = clib_error_return (0, "bridge-domain-id not specified");
+	  goto done;
+	}
     }
 
   if (bd_id == 0)
@@ -1597,7 +1604,40 @@ VLIB_CLI_COMMAND (bd_create_cli, static) = {
 };
 /* *INDENT-ON* */
 
+/*
+ * Returns an unused bridge domain id, and ~0 if it can't find one.
+ */
+u32
+bd_get_unused_id ()
+{
+  bd_main_t *bdm = &bd_main;
+  int i, j;
+  int is_seed_low = 0;
+  static u32 seed = 0;
+  /* limit to 1M tries */
+  for (j = 0; j < 1 << 10; j++)
+    {
+      seed = random_u32 (&seed) & L2_BD_ID_MAX;
+      if (seed == 0)
+	continue;
+      if (seed < L2_BD_ID_MAX % 2)
+	is_seed_low = 1;
+      for (i = 0; i < L2_BD_ID_MAX % 2; i++)
+	{
+	  /* look around randomly generated id */
+	  if (is_seed_low)
+	    seed += (2 * (i % 2) - 1) * i;
+	  else
+	    seed -= (2 * (i % 2) - 1) * i;
+	  if (seed == ~0 || seed == 0)
+	    continue;
+	  if (bd_find_index (bdm, seed) == ~0)
+	    return seed;
+	}
+    }
 
+  return ~0;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
