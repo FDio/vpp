@@ -60,15 +60,16 @@ check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
 {
   if (PREDICT_FALSE (ip->ip_version_and_header_length != 0x45))
     {
-      if ((ip->ip_version_and_header_length & 0xf) != 5)
+      if ((ip->ip_version_and_header_length & 0xf0) != 0x40 ||
+          (ip->ip_version_and_header_length & 0x0f) < 5)
+	*error = IP4_ERROR_VERSION;
+      else
 	{
 	  *error = IP4_ERROR_OPTIONS;
 	  if (verify_checksum &&
 	      clib_ip_csum ((u8 *) ip, ip4_header_bytes (ip)) != 0)
 	    *error = IP4_ERROR_BAD_CHECKSUM;
 	}
-      else
-	*error = IP4_ERROR_VERSION;
     }
   else if (PREDICT_FALSE (verify_checksum &&
 			  clib_ip_csum ((u8 *) ip, sizeof (ip4_header_t)) !=
