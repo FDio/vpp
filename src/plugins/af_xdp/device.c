@@ -21,6 +21,7 @@
 #include <linux/ethtool.h>
 #include <linux/if_link.h>
 #include <linux/sockios.h>
+#include <linux/limits.h>
 #include <bpf/libbpf.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -197,6 +198,11 @@ static int
 af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
 {
   int fd;
+  struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
+
+  if (setrlimit(RLIMIT_MEMLOCK, &r))
+    clib_warning ("setrlimit(%s) failed: %s (errno %d)",
+		  ad->linux_ifname, strerror(errno), errno);
 
   ad->linux_ifindex = if_nametoindex (ad->linux_ifname);
   if (!ad->linux_ifindex)
