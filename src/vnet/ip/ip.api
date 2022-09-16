@@ -1020,6 +1020,12 @@ counters ip4 {
     units "packets";
     description "ip4 ttl <= 1";
   };
+  hdr_too_short {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 IHL < 5";
+  };
 
   /* Errors signalled by ip4-rewrite. */
   mtu_exceeded {
