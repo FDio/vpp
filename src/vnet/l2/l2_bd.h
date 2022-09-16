@@ -2,6 +2,7 @@
  * l2_bd.h : layer 2 bridge domain
  *
  * Copyright (c) 2013 Cisco and/or its affiliates.
+ * Copyright (c) 2022 Nordix Foundation.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -166,7 +167,7 @@ u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,
 void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
 void bd_set_learn_limit (vlib_main_t *vm, u32 bd_index, u32 learn_limit);
 int bd_add_del (l2_bridge_domain_add_del_args_t * args);
-
+u32 bd_get_unused_id ();
 /**
  * \brief Get a bridge domain.
  *
