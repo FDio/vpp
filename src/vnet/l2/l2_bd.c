@@ -2,6 +2,7 @@
  * l2_bd.c : layer 2 bridge domain
  *
  * Copyright (c) 2013 Cisco and/or its affiliates.
+ * Copyright (c) 2022 Nordix Foundation.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -1357,6 +1358,40 @@ VLIB_CLI_COMMAND (bd_show_cli, static) = {
 };
 /* *INDENT-ON* */
 
+/*
+ * Returns an unused bridge domain id, and ~0 if it can't find one.
+ */
+u32
+bd_get_unused_id ()
+{
+  bd_main_t *bdm = &bd_main;
+  int i, j;
+  int is_seed_low = 0;
+  static u32 seed = 0;
+  /* limit to 1M tries */
+  for (j = 0; j < 1 << 10; j++)
+    {
+      seed = random_u32 (&seed) & L2_BD_ID_MAX;
+      if (seed == 0)
+        continue;
+      if (seed < L2_BD_ID_MAX % 2) is_seed_low = 1;
+      for (i = 0; i < L2_BD_ID_MAX % 2; i++)
+	    {
+	      /* look around randomly generated id */
+        if (is_seed_low)
+          seed += (2 * (i % 2) - 1) * i;
+        else
+          seed -= (2 * (i % 2) - 1) * i;
+	      if (seed == ~0 || seed == 0)
+	        continue;
+	      if (bd_find_index (bdm, seed) == ~0)
+	        return seed;
+	    }
+    }
+
+  return ~0;
+}
+
 int
 bd_add_del (l2_bridge_domain_add_del_args_t * a)
 {
@@ -1493,8 +1528,14 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (bd_id == ~0)
     {
-      error = clib_error_return (0, "bridge-domain-id not specified");
-      goto done;
+      if (is_add)
+        {
+          bd_id = bd_get_unused_id();
+        } else
+        {
+          error = clib_error_return (0, "bridge-domain-id not specified");
+          goto done;
+        }
     }
 
   if (bd_id == 0)
