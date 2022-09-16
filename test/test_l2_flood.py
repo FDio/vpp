@@ -57,7 +57,9 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1)
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
@@ -169,7 +171,7 @@ class TestL2Flood(VppTestCase):
                 enable=0,
             )
 
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+        self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
 
     def test_flood_one(self):
         """L2 no-Flood Test"""
@@ -177,7 +179,9 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1)
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
 
         #
         # add 2 interfaces to the BD. this means a flood goes to only
@@ -207,7 +211,7 @@ class TestL2Flood(VppTestCase):
             self.vapi.sw_interface_set_l2_bridge(
                 rx_sw_if_index=i.sw_if_index, bd_id=1, enable=0
             )
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+        self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
 
     def test_uu_fwd(self):
         """UU Flood"""
@@ -215,7 +219,9 @@ class TestL2Flood(VppTestCase):
         #
         # Create a single bridge Domain
         #
-        self.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1)
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, is_add=1, uu_flood=1, flood=1, forward=1, learn=1
+        )
 
         #
         # add each interface to the BD. 3 interfaces per split horizon group
@@ -352,7 +358,7 @@ class TestL2Flood(VppTestCase):
                 rx_sw_if_index=i.sw_if_index, bd_id=1, enable=0
             )
 
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
+        self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
 
 
 if __name__ == "__main__":

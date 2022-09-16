@@ -132,14 +132,16 @@ class TestL2bdArpTerm(VppTestCase):
 
     def bd_add_del(self, bd_id=1, is_add=1):
         if is_add:
-            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
+            self.vapi.bridge_domain_add_del_v2(
+                bd_id=bd_id, is_add=is_add, flood=1, uu_flood=1, forward=1, learn=1
+            )
         for swif in self.bd_swifs(bd_id):
             swif_idx = swif.sw_if_index
             self.vapi.sw_interface_set_l2_bridge(
                 rx_sw_if_index=swif_idx, bd_id=bd_id, enable=is_add
             )
         if not is_add:
-            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
+            self.vapi.bridge_domain_add_del_v2(bd_id=bd_id, is_add=is_add)
 
     @classmethod
     def arp_req(cls, src_host, host):

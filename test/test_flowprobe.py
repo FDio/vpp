@@ -165,7 +165,9 @@ class MethodHolder(VppTestCase):
 
             # Create BD with MAC learning and unknown unicast flooding disabled
             # and put interfaces to this BD
-            cls.vapi.bridge_domain_add_del(bd_id=1, uu_flood=1, learn=1)
+            cls.vapi.bridge_domain_add_del_v2(
+                bd_id=1, uu_flood=1, learn=1, flood=1, forward=1, is_add=1
+            )
             cls.vapi.sw_interface_set_l2_bridge(
                 rx_sw_if_index=cls.pg1._sw_if_index, bd_id=1
             )

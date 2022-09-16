@@ -84,7 +84,7 @@ class VppBridgeDomain(VppObject):
         self.arp_ufwd = arp_ufwd
 
     def add_vpp_config(self):
-        self._test.vapi.bridge_domain_add_del(
+        self._test.vapi.bridge_domain_add_del_v2(
             bd_id=self.bd_id,
             flood=self.flood,
             uu_flood=self.uu_flood,
@@ -98,7 +98,7 @@ class VppBridgeDomain(VppObject):
         return self
 
     def remove_vpp_config(self):
-        self._test.vapi.bridge_domain_add_del(bd_id=self.bd_id, is_add=0)
+        self._test.vapi.bridge_domain_add_del_v2(bd_id=self.bd_id, is_add=0)
 
     def query_vpp_config(self):
         return find_bridge_domain(self._test, self.bd_id)

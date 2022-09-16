@@ -69,7 +69,9 @@ class TestL2LearnLimitBdEnable(VppTestCase):
         """L2BD test with bridge domain limit"""
         self.vapi.want_l2_macs_events(enable_disable=1, learn_limit=1000)
         self.vapi.bridge_domain_set_default_learn_limit(4)
-        self.vapi.bridge_domain_add_del(bd_id=3)
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=3, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
         self.vapi.sw_interface_set_l2_bridge(self.pg_interfaces[2].sw_if_index, bd_id=3)
 
         self.vapi.bridge_domain_set_learn_limit(2, 5)
@@ -95,13 +97,17 @@ class TestL2LearnLimitBdEnable(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg_interfaces[2].sw_if_index, bd_id=3, enable=0
         )
-        self.vapi.bridge_domain_add_del(is_add=0, bd_id=3)
+        self.vapi.bridge_domain_add_del_v2(is_add=0, bd_id=3)
 
     def setUp(self):
         super(TestL2LearnLimitBdEnable, self).setUp()
 
-        self.vapi.bridge_domain_add_del(bd_id=1)
-        self.vapi.bridge_domain_add_del(bd_id=2)
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=2, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
 
         self.vapi.sw_interface_set_l2_bridge(self.pg_interfaces[0].sw_if_index, bd_id=1)
         self.vapi.sw_interface_set_l2_bridge(self.pg_interfaces[1].sw_if_index, bd_id=2)
@@ -114,8 +120,8 @@ class TestL2LearnLimitBdEnable(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(
             rx_sw_if_index=self.pg_interfaces[1].sw_if_index, bd_id=2, enable=0
         )
-        self.vapi.bridge_domain_add_del(bd_id=1, is_add=0)
-        self.vapi.bridge_domain_add_del(bd_id=2, is_add=0)
+        self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
+        self.vapi.bridge_domain_add_del_v2(bd_id=2, is_add=0)
 
 
 if __name__ == "__main__":
