@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright(c) 2021 Cisco Systems, Inc.
+ * Copyright(c) 2022 Nordix Foundation.
  */
 
 #include <vat/vat.h>
@@ -632,6 +633,18 @@ api_bridge_domain_add_del (vat_main_t *vam)
 done:
   vec_free (bd_tag);
   return ret;
+}
+
+static int
+api_bridge_domain_allocate (vat_main_t *vam)
+{
+  return -1;
+}
+
+static void
+vl_api_bridge_domain_allocate_reply_t_handler (
+  vl_api_bridge_domain_allocate_reply_t *mp)
+{
 }
 
 #define foreach_pbb_vtr_op                                                    \
