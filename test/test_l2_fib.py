@@ -112,7 +112,9 @@ class TestL2fib(VppTestCase):
             for bd_id in n_brs:
                 # Create BD with MAC learning and unknown unicast flooding
                 # disabled and put interfaces to this BD
-                cls.vapi.bridge_domain_add_del(bd_id=bd_id, uu_flood=0, learn=0)
+                cls.vapi.bridge_domain_add_del_v2(
+                    bd_id=bd_id, is_add=1, uu_flood=0, learn=0, flood=1, forward=1
+                )
                 ifs = [cls.pg_interfaces[i] for i in cls.bd_ifs(bd_id)]
                 for pg_if in ifs:
                     cls.vapi.sw_interface_set_l2_bridge(
