@@ -78,6 +78,11 @@ VLIB_NODE_FN (ip4_options_node) (vlib_main_t * vm,
 	    {
 	    case IP4_ROUTER_ALERT_OPTION:
 	      /*
+	       * check the option length
+	       */
+	      if (options[1] != 4)
+		break;
+	      /*
 	       * if it's an IGMP packet, pass up the local stack
 	       */
 	      if (IP_PROTOCOL_IGMP == ip4->protocol)

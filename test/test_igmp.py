@@ -218,7 +218,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -241,7 +243,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -264,7 +268,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -284,7 +290,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -305,7 +313,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -368,7 +378,9 @@ class TestIgmp(VppTestCase):
                 dst="239.1.1.1",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Membership Query", mrcode=100)
@@ -581,7 +593,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -599,7 +613,9 @@ class TestIgmp(VppTestCase):
                 dst="224.0.0.22",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -695,7 +711,9 @@ class TestIgmp(VppTestCase):
                 dst="224.0.0.22",
                 tos=0xC0,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -769,7 +787,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -791,7 +811,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -817,7 +839,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -844,7 +868,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -865,7 +891,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
@@ -894,7 +922,9 @@ class TestIgmp(VppTestCase):
                 tos=0xC0,
                 ttl=1,
                 options=[
-                    IPOption(copy_flag=1, optclass="control", option="router_alert")
+                    IPOption(
+                        copy_flag=1, optclass="control", option="router_alert", length=4
+                    )
                 ],
             )
             / IGMPv3(type="Version 3 Membership Report")
