@@ -132,6 +132,9 @@ class TestL2bdMultiInst(VppTestCase):
         # Create list of BDs
         self.bd_list = []
 
+        # Create dict of BDs
+        self.bd_map = {}
+
         # Create list of deleted BDs
         self.bd_deleted_list = []
 
@@ -186,19 +189,27 @@ class TestL2bdMultiInst(VppTestCase):
             (Default value = 1)
         """
         for b in range(start, start + count):
-            self.vapi.bridge_domain_add_del(bd_id=b)
-            self.logger.info("Bridge domain ID %d created" % b)
-            if self.bd_list.count(b) == 0:
-                self.bd_list.append(b)
-            if self.bd_deleted_list.count(b) == 1:
-                self.bd_deleted_list.remove(b)
+            if b == start:
+                self.vapi.bridge_domain_add_del(bd_id=b)
+                bd_id = b
+            else:
+                ret = self.vapi.bridge_domain_allocate(
+                    bd_id=0xFFFFFFFF, flood=1, uu_flood=1, forward=1, learn=1
+                )
+                bd_id = ret.bd_id
+            self.logger.info("Bridge domain ID %d created" % bd_id)
+            if self.bd_list.count(bd_id) == 0:
+                self.bd_map[b] = bd_id
+                self.bd_list.append(bd_id)
+            if self.bd_deleted_list.count(bd_id) == 1:
+                self.bd_deleted_list.remove(bd_id)
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
                 self.vapi.sw_interface_set_l2_bridge(
-                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=bd_id
                 )
                 self.logger.info(
-                    "pg-interface %s added to bridge domain ID %d" % (pg_if.name, b)
+                    "pg-interface %s added to bridge domain ID %d" % (pg_if.name, bd_id)
                 )
                 self.pg_in_bd.append(pg_if)
                 hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
@@ -220,16 +231,22 @@ class TestL2bdMultiInst(VppTestCase):
             (Default value = 1)
         """
         for b in range(start, start + count):
+            bd_id = self.bd_map[b]
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
                 self.vapi.sw_interface_set_l2_bridge(
-                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b, enable=0
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=bd_id, enable=0
                 )
                 self.pg_in_bd.remove(pg_if)
-            self.vapi.bridge_domain_add_del(bd_id=b, is_add=0)
-            self.bd_list.remove(b)
-            self.bd_deleted_list.append(b)
-            self.logger.info("Bridge domain ID %d deleted" % b)
+                self.logger.info(
+                    "pg-interface %s removed from bridge domain ID %d"
+                    % (pg_if.name, bd_id)
+                )
+            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=0)
+            self.bd_map.pop(b)
+            self.bd_list.remove(bd_id)
+            self.bd_deleted_list.append(bd_id)
+            self.logger.info("Bridge domain ID %d deleted" % bd_id)
 
     def create_stream(self, src_if):
         """

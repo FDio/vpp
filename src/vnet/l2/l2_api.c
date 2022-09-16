@@ -3,6 +3,7 @@
  * l2_api.c - layer 2 forwarding api
  *
  * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2022 Nordix Foundation.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -508,6 +509,36 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 
   vl_api_bridge_domain_add_del_reply_t *rmp;
   REPLY_MACRO (VL_API_BRIDGE_DOMAIN_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_bridge_domain_allocate_t_handler (vl_api_bridge_domain_allocate_t *mp)
+{
+  vl_api_bridge_domain_allocate_reply_t *rmp;
+  u32 bd_id = ntohl (mp->bd_id);
+  int rv = 0;
+
+  if (~0 == bd_id)
+    bd_id = bd_get_unused_id ();
+
+  if (~0 == bd_id)
+    rv = VNET_API_ERROR_EAGAIN;
+  else
+    {
+      l2_bridge_domain_add_del_args_t a = { .is_add = 1, // add always
+					    .flood = mp->flood,
+					    .uu_flood = mp->uu_flood,
+					    .forward = mp->forward,
+					    .learn = mp->learn,
+					    .arp_term = mp->arp_term,
+					    .arp_ufwd = mp->arp_ufwd,
+					    .mac_age = mp->mac_age,
+					    .bd_id = bd_id,
+					    .bd_tag = mp->bd_tag };
+      rv = bd_add_del (&a);
+    }
+  REPLY_MACRO2 (VL_API_BRIDGE_DOMAIN_ALLOCATE_REPLY,
+		({ rmp->bd_id = htonl (bd_id); }));
 }
 
 static void

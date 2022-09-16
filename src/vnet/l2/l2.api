@@ -1,6 +1,7 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2022 Nordix Foundation.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,7 +15,7 @@
  * limitations under the License.
  */
 
-option version = "3.1.0";
+option version = "3.2.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -332,6 +333,47 @@ autoreply define bridge_domain_add_del
   string bd_tag[64];
   bool is_add [default=true];
 };
+
+/** \brief L2 bridge domain allocate request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id -  if the id == ~0 vpp allocates an unused id and proceeds as in bridge_domain_add_del
+              if the id != ~0 vpp set the id and proceed as in bridge_domain_add_del
+    @param flood - enable/disable bcast/mcast flooding in the bd
+    @param uu_flood - enable/disable unknown unicast flood in the bd
+    @param forward - enable/disable forwarding on all interfaces in the bd
+    @param learn - enable/disable learning on all interfaces in the bd
+    @param arp_term - enable/disable arp termination in the bd
+    @param arp_ufwd - enable/disable arp unicast forwarding in the bd
+    @param mac_age - mac aging time in min, 0 for disabled
+*/
+define bridge_domain_allocate
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  bool flood;
+  bool uu_flood;
+  bool forward;
+  bool learn;
+  bool arp_term;
+  bool arp_ufwd;
+  u8 mac_age;
+  string bd_tag[64];
+};
+
+/** \brief L2 bridge domain allocation response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the set bridge flags request
+    @param resulting_id - the allocated id for the new bridge domain
+*/
+define bridge_domain_allocate_reply
+{
+  u32 context;
+  i32 retval;
+  u32 bd_id;
+};
+
 
 /** \brief L2 bridge domain request operational state details
     @param client_index - opaque cookie to identify the sender
