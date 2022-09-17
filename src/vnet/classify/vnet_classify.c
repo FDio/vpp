@@ -265,6 +265,7 @@ static inline void make_working_copy
       working_copy =
 	clib_mem_alloc_aligned (required_length, CLIB_CACHE_LINE_BYTES);
       t->working_copies[thread_index] = working_copy;
+      t->working_copy_lengths[thread_index] = required_length;
     }
 
   clib_mem_set_heap (oldheap);
