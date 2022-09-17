@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3af1acd7_82a36e9b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2022-09-17T10:30:05Z",
+      "side": 1,
+      "message": "Hi, this one is related with https://gerrit.fd.io/r/c/vpp/+/37135\nKindly please review",
+      "revId": "8cf0508c77c3a668f942bc1bf0c989de57957b0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
