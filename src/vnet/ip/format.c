@@ -94,16 +94,15 @@ unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
   tcp_udp_port_info_t *pi;
   u32 i, port;
 
+  if (unformat_user (input, unformat_vlib_number, &port) && port < (1 << 16))
+    port = clib_host_to_net_u16 (port);
 
-  if (unformat_user (input, unformat_vlib_number_by_name,
-		     im->port_info_by_name, &i))
+  else if (unformat_user (input, unformat_vlib_number_by_name,
+			  im->port_info_by_name, &i))
     {
       pi = vec_elt_at_index (im->port_infos, i);
       port = pi->port;
     }
-  else if (unformat_user (input, unformat_vlib_number, &port)
-	   && port < (1 << 16))
-    port = clib_host_to_net_u16 (port);
 
   else
     return 0;

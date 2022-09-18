@@ -835,6 +835,33 @@ class TestNAT44ED(VppTestCase):
 
         return out_port
 
+    def init_udp_session(self, in_if, out_if, in_port, ext_port):
+        # packet in->out
+        p = (
+            Ether(src=in_if.remote_mac, dst=in_if.local_mac)
+            / IP(src=in_if.remote_ip4, dst=out_if.remote_ip4)
+            / UDP(sport=in_port, dport=ext_port)
+        )
+        in_if.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = out_if.get_capture(1)
+        p = capture[0]
+        out_port = p[UDP].sport
+
+        # packet out->in
+        p = (
+            Ether(src=out_if.remote_mac, dst=out_if.local_mac)
+            / IP(src=out_if.remote_ip4, dst=self.nat_addr)
+            / UDP(sport=ext_port, dport=out_port)
+        )
+        out_if.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        in_if.get_capture(1)
+
+        return out_port
+
     def twice_nat_common(
         self, self_twice_nat=False, same_pg=False, lb=False, client_id=None
     ):
@@ -1204,6 +1231,106 @@ class TestNAT44ED(VppTestCase):
         self.assertEqual(static_user.nsessions, 0)
         self.assertEqual(non_static_user.nstaticsessions, 0)
         self.assertEqual(non_static_user.nsessions, 3)
+
+    def test_sessions_filter(self):
+        """NAT44ED CLI test - show sessions filter"""
+
+        in_if = [self.pg0, self.pg5]
+        in_addr = [i.remote_ip4 for i in in_if]
+        in_port = [2000, 34768]
+        in_table = [i.ip4_table_id for i in in_if]
+
+        out_if = [self.pg1, self.pg6]
+        out_addr = [i.remote_ip4 for i in out_if]
+        out_port = [80, 443]
+        out_table = [i.ip4_table_id for i in out_if]
+
+        # ensure uniqueness
+        for d in in_if, in_addr, out_if, out_addr:
+            self.assertEqual(len(d), len(set(d)))
+
+        self.nat_add_address(self.nat_addr)
+        for i in in_if:
+            self.nat_add_inside_interface(i)
+        for i in out_if:
+            self.nat_add_outside_interface(i)
+
+        nat_port = [
+            self.init_tcp_session(in_if[0], out_if[0], in_port[0], out_port[0]),
+            self.init_udp_session(in_if[1], out_if[1], in_port[1], out_port[1]),
+        ]
+
+        # check both sessions are there
+        out = self.vapi.cli("show nat44 sessions")
+        self.logger.info(out)
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check saddr filtering
+        out = self.vapi.cli(
+            "show nat44 sessions filter i2o saddr {}".format(in_addr[0])
+        )
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli(
+            "show nat44 sessions filter o2i saddr {}".format(out_addr[1])
+        )
+        self.assertNotIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check daddr filtering
+        out = self.vapi.cli(
+            "show nat44 sessions filter i2o daddr {}".format(out_addr[0])
+        )
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli(
+            "show nat44 sessions filter o2i daddr {}".format(self.nat_addr)
+        )
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check sport filtering
+        out = self.vapi.cli(
+            "show nat44 sessions filter i2o sport {}".format(in_port[0])
+        )
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli(
+            "show nat44 sessions filter o2i sport {}".format(out_port[1])
+        )
+        self.assertNotIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check dport filtering
+        out = self.vapi.cli(
+            "show nat44 sessions filter i2o dport {}".format(out_port[0])
+        )
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli(
+            "show nat44 sessions filter o2i dport {}".format(nat_port[1])
+        )
+        self.assertNotIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check proto filtering
+        out = self.vapi.cli("show nat44 sessions filter i2o proto {}".format("tcp"))
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli("show nat44 sessions filter o2i proto {}".format("udp"))
+        self.assertNotIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
+
+        # check vrf filtering
+        out = self.vapi.cli("show nat44 sessions filter i2o vrf {}".format(in_table[0]))
+        self.assertIn("i2o {}".format(in_addr[0]), out)
+        self.assertNotIn("i2o {}".format(in_addr[1]), out)
+        out = self.vapi.cli(
+            "show nat44 sessions filter o2i vrf {}".format(out_table[1])
+        )
+        self.assertNotIn("i2o {}".format(in_addr[0]), out)
+        self.assertIn("i2o {}".format(in_addr[1]), out)
 
     def test_frag_out_of_order_do_not_translate(self):
         """NAT44ED don't translate fragments arriving out of order"""

@@ -1504,6 +1504,8 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 filter_o2i_sp = 0, filter_o2i_dp = 0;
   ip_protocol_t proto;
   u8 filter_proto = 0;
+  u32 i2o_fib, o2i_fib, vrf_id;
+  u8 filter_i2o_fib = 0, filter_o2i_fib = 0;
   u8 had_input = 1, filtering = 0;
   int i = 0, showed_sessions;
 
@@ -1527,13 +1529,17 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "filter o2i daddr %U",
 			 unformat_ip4_address, &o2i_da))
 	filter_o2i_da = filtering = 1;
-      else if (unformat (line_input, "filter i2o sport %u", &i2o_sp))
+      else if (unformat (line_input, "filter i2o sport %U",
+			 unformat_tcp_udp_port, &i2o_sp))
 	filter_i2o_sp = filtering = 1;
-      else if (unformat (line_input, "filter i2o dport %u", &i2o_dp))
+      else if (unformat (line_input, "filter i2o dport %U",
+			 unformat_tcp_udp_port, &i2o_dp))
 	filter_i2o_dp = filtering = 1;
-      else if (unformat (line_input, "filter o2i sport %u", &o2i_sp))
+      else if (unformat (line_input, "filter o2i sport %U",
+			 unformat_tcp_udp_port, &o2i_sp))
 	filter_o2i_sp = filtering = 1;
-      else if (unformat (line_input, "filter o2i dport %u", &o2i_dp))
+      else if (unformat (line_input, "filter o2i dport %U",
+			 unformat_tcp_udp_port, &o2i_dp))
 	filter_o2i_dp = filtering = 1;
       else if (unformat (line_input, "filter i2o proto %U",
 			 unformat_ip_protocol, &proto))
@@ -1541,6 +1547,26 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "filter o2i proto %U",
 			 unformat_ip_protocol, &proto))
 	filter_proto = filtering = 1;
+      else if (unformat (line_input, "filter i2o vrf %u", &vrf_id))
+	{
+	  i2o_fib = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+	  if (~0 == i2o_fib)
+	    {
+	      error = clib_error_return (0, "no such vrf %u", vrf_id);
+	      goto done;
+	    }
+	  filter_i2o_fib = filtering = 1;
+	}
+      else if (unformat (line_input, "filter o2i vrf %u", &vrf_id))
+	{
+	  o2i_fib = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+	  if (~0 == o2i_fib)
+	    {
+	      error = clib_error_return (0, "no such vrf %u", vrf_id);
+	      goto done;
+	    }
+	  filter_o2i_fib = filtering = 1;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -1566,6 +1592,10 @@ print:
 	{
 	  if (filtering)
 	    {
+	      if (filter_i2o_fib && i2o_fib != s->i2o.match.fib_index)
+		continue;
+	      if (filter_o2i_fib && o2i_fib != s->o2i.match.fib_index)
+		continue;
 	      if (filter_i2o_sa && i2o_sa.as_u32 != s->i2o.match.saddr.as_u32)
 		continue;
 	      if (filter_i2o_da && i2o_da.as_u32 != s->i2o.match.daddr.as_u32)
@@ -1574,17 +1604,13 @@ print:
 		continue;
 	      if (filter_o2i_da && o2i_da.as_u32 != s->o2i.match.daddr.as_u32)
 		continue;
-	      if (filter_i2o_sp &&
-		  i2o_sp != clib_net_to_host_u16 (s->i2o.match.sport))
+	      if (filter_i2o_sp && i2o_sp != s->i2o.match.sport)
 		continue;
-	      if (filter_i2o_dp &&
-		  i2o_dp != clib_net_to_host_u16 (s->i2o.match.dport))
+	      if (filter_i2o_dp && i2o_dp != s->i2o.match.dport)
 		continue;
-	      if (filter_o2i_sp &&
-		  o2i_sp != clib_net_to_host_u16 (s->o2i.match.sport))
+	      if (filter_o2i_sp && o2i_sp != s->o2i.match.sport)
 		continue;
-	      if (filter_o2i_dp &&
-		  o2i_dp != clib_net_to_host_u16 (s->o2i.match.dport))
+	      if (filter_o2i_dp && o2i_dp != s->o2i.match.dport)
 		continue;
 	      if (filter_proto && proto != s->proto)
 		continue;
@@ -2286,7 +2312,8 @@ VLIB_CLI_COMMAND (nat44_show_interface_address_command, static) = {
 VLIB_CLI_COMMAND (nat44_show_sessions_command, static) = {
   .path = "show nat44 sessions",
   .short_help = "show nat44 sessions [filter {i2o | o2i} {saddr <ip4-addr> "
-		"| sport <n> | daddr <ip4-addr> | dport <n> | proto <proto>} "
+		"| sport <n> | daddr <ip4-addr> | dport <n> | proto <proto> "
+		"| vrf <table-id>} "
 		"[filter .. [..]]]",
   .function = nat44_show_sessions_command_fn,
 };
