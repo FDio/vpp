@@ -200,6 +200,17 @@ def _is_platform_aarch64():
 is_platform_aarch64 = _is_platform_aarch64()
 
 
+def _is_distro_ubuntu2204():
+    with open("/etc/os-release") as f:
+        for line in f.readlines():
+            if "jammy" in line:
+                return True
+    return False
+
+
+is_distro_ubuntu2204 = _is_distro_ubuntu2204()
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
@@ -245,6 +256,8 @@ class TestCaseTag(Enum):
     FIXME_VPP_WORKERS = 2
     # marks the suites broken when ASan is enabled
     FIXME_ASAN = 3
+    # marks suites broken on Ubuntu-22.04
+    FIXME_UBUNTU2204 = 4
 
 
 def create_tag_decorator(e):
@@ -261,6 +274,7 @@ def create_tag_decorator(e):
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
+tag_fixme_ubuntu2204 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2204)
 
 
 class DummyVpp:
@@ -334,6 +348,12 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
             if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
                 cls = unittest.skip("Skipping @tag_fixme_asan tests")(cls)
+
+    @classmethod
+    def skip_fixme_ubuntu2204(cls):
+        """if distro is ubuntu 22.04 and @tag_fixme_ubuntu2204 mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_UBUNTU2204):
+            cls = unittest.skip("Skipping @tag_fixme_ubuntu2204 tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1748,6 +1768,12 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
+
+            if is_distro_ubuntu2204 == True and test.has_tag(
+                TestCaseTag.FIXME_UBUNTU2204
+            ):
+                test_title = colorize(f"FIXME on Ubuntu-22.04: {test_title}", RED)
+                test.skip_fixme_ubuntu2204()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:

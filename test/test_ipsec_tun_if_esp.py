@@ -8,7 +8,7 @@ from scapy.packet import Raw, bind_layers
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204
 from framework import VppTestRunner
 from template_ipsec import (
     TemplateIpsec,
@@ -944,6 +944,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4
             self.verify_encrypted(p, p.vpp_tun_sa, [rx])
 
 
+@tag_fixme_ubuntu2204
 class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
     """IPsec IPv4 Tunnel interface all Algos"""
 
