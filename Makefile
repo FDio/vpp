@@ -760,3 +760,7 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
 else
 	$(call banner,"Skipping tests. Tests under 'make verify' supported on $(MAKE_VERIFY_GATE_OS)")
 endif
+
+.PHONY: check-dpdk-mlx
+check-dpdk-mlx:
+	@make -C build/external dpdk-show-DPDK_MLX_DEFAULT
