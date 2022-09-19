@@ -3088,7 +3088,7 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
   /* first try static mappings without port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, proto);
+      m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, 0);
       if (m)
 	{
 	  {
