@@ -38,8 +38,8 @@ ARCH_X86_64=$(filter x86_64,$(shell uname -m))
 include packages.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
-include packages/dpdk.mk
 include packages/rdma-core.mk
+include packages/dpdk.mk
 include packages/libbpf.mk
 
 .PHONY: clean

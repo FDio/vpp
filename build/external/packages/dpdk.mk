@@ -14,9 +14,6 @@
 DPDK_PKTMBUF_HEADROOM        ?= 128
 DPDK_USE_LIBBSD              ?= n
 DPDK_DEBUG                   ?= n
-DPDK_MLX4_PMD                ?= n
-DPDK_MLX5_PMD                ?= n
-DPDK_MLX5_COMMON_PMD         ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
@@ -34,6 +31,11 @@ dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
 dpdk_depends		     := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
+
+DPDK_MLX_DEFAULT             := $(shell if grep "rdma=$(rdma-core_version) dpdk=$(dpdk_version)" mlx_rdma_dpdk_matrix.txt >/dev/null; then echo 'y'; else echo 'n'; fi)
+DPDK_MLX4_PMD                ?= $(DPDK_MLX_DEFAULT)
+DPDK_MLX5_PMD                ?= $(DPDK_MLX_DEFAULT)
+DPDK_MLX5_COMMON_PMD         ?= $(DPDK_MLX_DEFAULT)
 # Debug or release
 
 DPDK_BUILD_TYPE:=release
@@ -173,6 +175,7 @@ PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 
 define dpdk_config_cmds
 	cd $(dpdk_build_dir) && \
+	if [ $(DPDK_MLX_DEFAULT) = y ]; then touch dpdk_mlx.ok; else rm -rf dpdk_mlx.ok; fi && \
 	rm -rf ../dpdk-meson-venv && \
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
