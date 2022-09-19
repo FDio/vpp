@@ -146,5 +146,9 @@ $(B)/.$1.install.ok: $(B)/.$1.build.ok
 .PHONY: $1-install
 $1-install: $(B)/.$1.install.ok
 
+.PHONY: $1-show-%
+$1-show-%:
+	@echo $$($$*)
+
 ALL_TARGETS += $1-install
 endef
