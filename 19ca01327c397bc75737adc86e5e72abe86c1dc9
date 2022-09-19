@@ -16,6 +16,24 @@
       "message": "Since we\u0027re upgrading all VPP build/test infra to run on ubuntu 22.04, this should also be based on ubuntu:22.04",
       "revId": "19ca01327c397bc75737adc86e5e72abe86c1dc9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8113448_e8aaa5d6",
+        "filename": "extras/hs-test/Dockerfile.vpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-09-19T14:30:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "17de7c26_1a5004af",
+      "revId": "19ca01327c397bc75737adc86e5e72abe86c1dc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
