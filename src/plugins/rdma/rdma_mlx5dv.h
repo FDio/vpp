@@ -24,16 +24,16 @@
 #include <vppinfra/types.h>
 #include <vppinfra/error.h>
 /* CQE flags - bits 16-31 of qword at offset 0x1c */
-#define CQE_FLAG_L4_OK			10
-#define CQE_FLAG_L3_OK			9
-#define CQE_FLAG_L2_OK			8
-#define CQE_FLAG_IP_FRAG		7
+#define CQE_FLAG_L4_OK			(1 << 10)
+#define CQE_FLAG_L3_OK			(1 << 9)
+#define CQE_FLAG_L2_OK			(1 << 8)
+#define CQE_FLAG_IP_FRAG		(1 << 7)
 #define CQE_FLAG_L4_HDR_TYPE(f)		(((f) >> 4) & 7)
 #define CQE_FLAG_L3_HDR_TYPE_SHIFT	(2)
 #define CQE_FLAG_L3_HDR_TYPE_MASK	(3 << CQE_FLAG_L3_HDR_TYPE_SHIFT)
 #define CQE_FLAG_L3_HDR_TYPE(f)		(((f) & CQE_FLAG_L3_HDR_TYPE_MASK)  >> CQE_FLAG_L3_HDR_TYPE_SHIFT)
-#define CQE_FLAG_L3_HDR_TYPE_IP4	1
-#define CQE_FLAG_L3_HDR_TYPE_IP6	2
+#define CQE_FLAG_L3_HDR_TYPE_IP4	2
+#define CQE_FLAG_L3_HDR_TYPE_IP6	1
 #define CQE_FLAG_IP_EXT_OPTS		1
 
 /* CQE byte count (Striding RQ) */
