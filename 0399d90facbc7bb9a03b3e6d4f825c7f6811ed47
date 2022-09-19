@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17750fc6_0ef93311",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-19T01:37:04Z",
+      "side": 1,
+      "message": "make this urpf_cfgs valid for the case the FIB comes from the interface, then you can remove the new mode. seems odd to me that the CUSTOM mode defaults to STRICT.",
+      "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
