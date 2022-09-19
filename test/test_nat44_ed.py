@@ -4889,6 +4889,46 @@ class TestNAT44EDMW(TestNAT44ED):
 
         self.assertGreaterEqual(err, sessions_per_batch)
 
+    def test_addronly_out2in_worker(self):
+        """NAT44ED worker thread test: address only nat"""
+
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg0.sw_if_index, prefix="10.10.10.1/24"
+        )
+
+        self.nat_add_inside_interface(self.pg0)
+        self.nat_add_outside_interface(self.pg1)
+        port = 80
+        flags = self.config_flags.NAT_IS_ADDR_ONLY
+        start = 10
+        end = 20
+
+        for i in range(start, end):
+            local_ip = "10.10.10." + str(i)
+            external_ip = "1.1.1." + str(i)
+            self.vapi.nat44_add_del_static_mapping(
+                is_add=1,
+                local_ip_address=local_ip,
+                external_ip_address=external_ip,
+                external_sw_if_index=0xFFFFFFFF,
+                flags=flags,
+            )
+            # test out to in while no session create
+            p = (
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IP(src=self.pg1.remote_ip4, dst=external_ip)
+                / TCP(sport=port, dport=port)
+            )
+            self.send_and_expect(self.pg1, p, self.pg0)
+
+        sessions = self.vapi.cli("show nat44 sessions")
+        rx = re.search(r"thread \d+ vpp_wk_0: (\d+) sessions", sessions)
+        if rx:
+            session_count = end - start
+            self.assertNotEqual(int(rx.group(1)), session_count)
+        else:
+            raise
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
