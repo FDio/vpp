@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34d5f82d_b50d8c67",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-19T13:55:51Z",
+      "side": 1,
+      "message": "Verification of 22.04 \u0027make test\u0027 passing with this patch: https://jenkins.fd.io/sandbox/job/daw-vpp-verify-master-ubuntu2204-x86_64/4/",
+      "revId": "fe3f24a7ff4923ef6ba68668eaf62e79dc449824",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
