@@ -85,9 +85,36 @@ ipsec_is_policy_inbound (ipsec_policy_t *policy)
 {
   if (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
       policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||
-      policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD)
+      policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD ||
+      policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ||
+      policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS ||
+      policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD)
     return 1;
 
+  return 0;
+}
+
+static_always_inline int
+ipsec_is_fp_enabled (ipsec_main_t *im, ipsec_spd_t *spd,
+		     ipsec_policy_t *policy)
+{
+  if ((im->fp_spd_ipv4_out_is_enabled &&
+       PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip4_out_lookup_hash_idx) &&
+       policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND) ||
+      (im->fp_spd_ipv4_in_is_enabled &&
+       PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip4_in_lookup_hash_idx) &&
+       (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
+	policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||
+	policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD)) ||
+      (im->fp_spd_ipv6_in_is_enabled &&
+       PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip6_in_lookup_hash_idx) &&
+       (policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ||
+	policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS ||
+	policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD)) ||
+      (im->fp_spd_ipv6_out_is_enabled &&
+       PREDICT_TRUE (INDEX_INVALID != spd->fp_spd.ip6_out_lookup_hash_idx) &&
+       policy->type == IPSEC_SPD_POLICY_IP6_OUTBOUND))
+    return 1;
   return 0;
 }
 
@@ -178,20 +205,7 @@ ipsec_add_del_policy (vlib_main_t * vm,
        * Try adding the policy into fast path SPD first. Only adding to
        * traditional SPD when failed.
        **/
-      if ((im->fp_spd_ipv4_out_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip4_out_lookup_hash_idx) &&
-	   policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND) ||
-	  (im->fp_spd_ipv4_in_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip4_in_lookup_hash_idx) &&
-	   (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
-	    policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||
-	    policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD)) ||
-	  (im->fp_spd_ipv6_out_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip6_out_lookup_hash_idx) &&
-	   policy->type == IPSEC_SPD_POLICY_IP6_OUTBOUND))
+      if (ipsec_is_fp_enabled (im, spd, policy))
 	return ipsec_fp_add_del_policy ((void *) &spd->fp_spd, policy, 1,
 					stat_index);
 
@@ -216,20 +230,8 @@ ipsec_add_del_policy (vlib_main_t * vm,
        * traditional SPD when fp delete fails.
        **/
 
-      if ((im->fp_spd_ipv4_out_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip4_out_lookup_hash_idx) &&
-	   policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND) ||
-	  (im->fp_spd_ipv4_in_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip4_in_lookup_hash_idx) &&
-	   (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
-	    policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS ||
-	    policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD)) ||
-	  (im->fp_spd_ipv6_out_is_enabled &&
-	   PREDICT_TRUE (INDEX_INVALID !=
-			 spd->fp_spd.ip6_out_lookup_hash_idx) &&
-	   policy->type == IPSEC_SPD_POLICY_IP6_OUTBOUND))
+      if (ipsec_is_fp_enabled (im, spd, policy))
+
 	{
 	  if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
 	    {
@@ -426,7 +428,8 @@ ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
 }
 
 static_always_inline void
-ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
+ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
+			      bool inbound)
 {
   u64 *pladdr_start = (u64 *) &policy->laddr.start;
   u64 *pladdr_stop = (u64 *) &policy->laddr.stop;
@@ -470,7 +473,18 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask)
   else
     *prmask = 0;
 
-  ipsec_fp_get_policy_ports_mask (policy, mask);
+  if (inbound)
+    {
+      if (policy->type != IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
+	mask->spi = 0;
+
+      mask->protocol = 0;
+    }
+  else
+    {
+      mask->action = 0;
+      ipsec_fp_get_policy_ports_mask (policy, mask);
+    }
 }
 
 static_always_inline void
@@ -642,7 +656,7 @@ ipsec_fp_ip6_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
   int res;
   bool inbound = ipsec_is_policy_inbound (policy);
 
-  ipsec_fp_ip6_get_policy_mask (policy, &mask);
+  ipsec_fp_ip6_get_policy_mask (policy, &mask, inbound);
   pool_get (im->policies, vp);
   policy_index = vp - im->policies;
   vlib_validate_combined_counter (&ipsec_spd_policy_counters, policy_index);
@@ -748,7 +762,7 @@ ipsec_fp_ip6_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
   ipsec_policy_t *vp;
   u32 ii, iii, imt;
 
-  ipsec_fp_ip6_get_policy_mask (policy, &mask);
+  ipsec_fp_ip6_get_policy_mask (policy, &mask, inbound);
   ipsec_fp_get_policy_5tuple (policy, &policy_5tuple, inbound);
   fill_ip6_hash_policy_kv (&policy_5tuple, &mask, &kv);
   res = clib_bihash_search_inline_2_40_8 (bihash_table, &kv, &result);
