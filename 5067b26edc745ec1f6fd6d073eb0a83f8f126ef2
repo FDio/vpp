@@ -52,6 +52,24 @@
       "parentUuid": "2ec8d325_a489551a",
       "revId": "5067b26edc745ec1f6fd6d073eb0a83f8f126ef2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8574faba_ce68ca68",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-20T22:33:49Z",
+      "side": 1,
+      "message": "TOO_SHORT is for a slightly different case, when the payload length field in the header is less than the header length. Can we have a new HDR_TOO_SHORT please.",
+      "parentUuid": "d1d24d2e_fbbca74c",
+      "revId": "5067b26edc745ec1f6fd6d073eb0a83f8f126ef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
