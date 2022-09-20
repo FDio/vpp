@@ -476,6 +476,17 @@ const char *bfd_poll_state_string (bfd_poll_state_e state);
  */
 void bfd_register_listener (bfd_notify_fn_t fn);
 
+typedef enum
+{
+  BFD_TX_IP4_ARP,
+  BFD_TX_IP6_NDP,
+  BFD_TX_IP4_REWRITE,
+  BFD_TX_IP6_REWRITE,
+  BFD_TX_IP4_MIDCHAIN,
+  BFD_TX_IP6_MIDCHAIN,
+  BFD_TX_N_NEXT,
+} bfd_tx_next_t;
+
 #endif /* __included_bfd_main_h__ */
 
 /*

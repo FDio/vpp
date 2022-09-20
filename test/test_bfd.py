@@ -774,6 +774,7 @@ def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None, is_tunnel=False):
             )
         else:
             break
+    test.logger.debug(test.vapi.ppcli("show trace"))
     if is_tunnel:
         # strip an IP layer and move to the next
         p = p[IP].payload
@@ -856,6 +857,7 @@ class BFD4TestCase(VppTestCase):
         try:
             self.bfd_udp4_sessions = self.statistics["/bfd/udp4/sessions"]
             self.bfd_udp6_sessions = self.statistics["/bfd/udp6/sessions"]
+            self.vapi.cli("trace add bfd-process 500")
             self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()

@@ -54,18 +54,6 @@ typedef struct
   int echo_source_is_set;
   /* loopback interface used to get echo source ip */
   u32 echo_source_sw_if_index;
-  /* node index of "ip4-arp" node */
-  u32 ip4_arp_idx;
-  /* node index of "ip6-discover-neighbor" node */
-  u32 ip6_ndp_idx;
-  /* node index of "ip4-rewrite" node */
-  u32 ip4_rewrite_idx;
-  /* node index of "ip6-rewrite" node */
-  u32 ip6_rewrite_idx;
-  /* node index of "ip4-midchain" node */
-  u32 ip4_midchain_idx;
-  /* node index of "ip6-midchain" node */
-  u32 ip6_midchain_idx;
   /* log class */
   vlib_log_class_t log_class;
   /* number of active udp4 sessions */
@@ -384,16 +372,23 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
 }
 
 static void
-bfd_create_frame_to_next_node (vlib_main_t *vm, bfd_main_t *bm,
-			       const bfd_session_t *bs, u32 bi, u32 next_node,
+bfd_create_frame_to_next_node (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			       u32 bi, const bfd_session_t *bs, u32 next,
 			       vlib_combined_counter_main_t *tx_counter)
 {
-  vlib_frame_t *f = vlib_get_frame_to_node (vm, next_node);
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_node_t *from_node = vlib_get_node (vm, rt->node_index);
+  ASSERT (next < vec_len (from_node->next_nodes));
+  u32 to_node_index = from_node->next_nodes[next];
+  vlib_frame_t *f = vlib_get_frame_to_node (vm, to_node_index);
   u32 *to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
-  vlib_put_frame_to_node (vm, next_node, f);
-  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  if (b->flags & VLIB_BUFFER_IS_TRACED)
+    {
+      f->frame_flags |= VLIB_NODE_FLAG_TRACE;
+    }
+  vlib_put_frame_to_node (vm, to_node_index, f);
   vlib_increment_combined_counter (tx_counter, vm->thread_index, bs->bs_idx, 1,
 				   vlib_buffer_length_in_chain (vm, b));
 }
@@ -415,10 +410,10 @@ bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
       switch (bs->transport)
 	{
 	case BFD_TRANSPORT_UDP4:
-	  *next_node = bfd_udp_main.ip4_arp_idx;
+	  *next_node = BFD_TX_IP4_ARP;
 	  return 1;
 	case BFD_TRANSPORT_UDP6:
-	  *next_node = bfd_udp_main.ip6_ndp_idx;
+	  *next_node = BFD_TX_IP6_NDP;
 	  return 1;
 	}
       break;
@@ -426,10 +421,10 @@ bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
       switch (bs->transport)
 	{
 	case BFD_TRANSPORT_UDP4:
-	  *next_node = bfd_udp_main.ip4_rewrite_idx;
+	  *next_node = BFD_TX_IP4_REWRITE;
 	  return 1;
 	case BFD_TRANSPORT_UDP6:
-	  *next_node = bfd_udp_main.ip6_rewrite_idx;
+	  *next_node = BFD_TX_IP6_REWRITE;
 	  return 1;
 	}
       break;
@@ -437,10 +432,10 @@ bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
       switch (bs->transport)
 	{
 	case BFD_TRANSPORT_UDP4:
-	  *next_node = bfd_udp_main.ip4_midchain_idx;
+	  *next_node = BFD_TX_IP4_MIDCHAIN;
 	  return 1;
 	case BFD_TRANSPORT_UDP6:
-	  *next_node = bfd_udp_main.ip6_midchain_idx;
+	  *next_node = BFD_TX_IP6_MIDCHAIN;
 	  return 1;
 	}
       break;
@@ -452,33 +447,33 @@ bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
 }
 
 int
-bfd_transport_udp4 (vlib_main_t *vm, u32 bi, const struct bfd_session_s *bs,
-		    int is_echo)
+bfd_transport_udp4 (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
+		    const struct bfd_session_s *bs, int is_echo)
 {
   u32 next_node;
   int rv = bfd_udp_calc_next_node (bs, &next_node);
   bfd_main_t *bm = bfd_udp_main.bfd_main;
   if (rv)
     {
-      bfd_create_frame_to_next_node (vm, bm, bs, bi, next_node,
+      bfd_create_frame_to_next_node (vm, rt, bi, bs, next_node,
 				     is_echo ? &bm->tx_echo_counter :
-					       &bm->tx_counter);
+						     &bm->tx_counter);
     }
   return rv;
 }
 
 int
-bfd_transport_udp6 (vlib_main_t *vm, u32 bi, const struct bfd_session_s *bs,
-		    int is_echo)
+bfd_transport_udp6 (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
+		    const struct bfd_session_s *bs, int is_echo)
 {
   u32 next_node;
   int rv = bfd_udp_calc_next_node (bs, &next_node);
   bfd_main_t *bm = bfd_udp_main.bfd_main;
   if (rv)
     {
-      bfd_create_frame_to_next_node (
-	vm, bfd_udp_main.bfd_main, bs, bi, next_node,
-	is_echo ? &bm->tx_echo_counter : &bm->tx_counter);
+      bfd_create_frame_to_next_node (vm, rt, bi, bs, next_node,
+				     is_echo ? &bm->tx_echo_counter :
+						     &bm->tx_counter);
     }
   return 1;
 }
@@ -1639,25 +1634,6 @@ bfd_udp_init (vlib_main_t * vm)
 	      sizeof (bfd_udp_key_t));
   bfd_udp_main.bfd_main = &bfd_main;
   bfd_udp_main.vnet_main = vnet_get_main ();
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip4-arp");
-  ASSERT (node);
-  bfd_udp_main.ip4_arp_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip6-discover-neighbor");
-  ASSERT (node);
-  bfd_udp_main.ip6_ndp_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-rewrite");
-  ASSERT (node);
-  bfd_udp_main.ip4_rewrite_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
-  ASSERT (node);
-  bfd_udp_main.ip6_rewrite_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-midchain");
-  ASSERT (node);
-  bfd_udp_main.ip4_midchain_idx = node->index;
-  node = vlib_get_node_by_name (vm, (u8 *) "ip6-midchain");
-  ASSERT (node);
-  bfd_udp_main.ip6_midchain_idx = node->index;
-
   bfd_udp_stats_init (&bfd_udp_main);
 
   bfd_udp_main.log_class = vlib_log_register_class ("bfd", "udp");
