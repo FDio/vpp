@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed196509_b2732cb7",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1340,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-20T22:39:10Z",
+      "side": 1,
+      "message": "// clang-format off",
+      "revId": "56dd67b0e09cccf06be74c54d0e24e9d3021c533",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
