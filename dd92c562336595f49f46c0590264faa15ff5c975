@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "660e5863_953e9479",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2022-09-20T18:53:58Z",
+      "side": 1,
+      "message": "Note this is in the same style as ip_table_allocate from https://gerrit.fd.io/r/c/vpp/+/33675 https://jira.fd.io/browse/VPP-1993",
+      "revId": "dd92c562336595f49f46c0590264faa15ff5c975",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
