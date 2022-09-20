@@ -500,30 +500,29 @@ bfd_session_set_flags (vlib_main_t * vm, bfd_session_t * bs, u8 admin_up_down)
 }
 
 u8 *
-bfd_input_format_trace (u8 * s, va_list * args)
+format_bfd_pkt (u8 *s, va_list *args)
 {
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  const bfd_input_trace_t *t = va_arg (*args, bfd_input_trace_t *);
-  const bfd_pkt_t *pkt = (bfd_pkt_t *) t->data;
-  if (t->len > STRUCT_SIZE_OF (bfd_pkt_t, head))
+  u32 len = va_arg (*args, u32);
+  u8 *data = va_arg (*args, u8 *);
+
+  const bfd_pkt_t *pkt = (bfd_pkt_t *) data;
+  if (len > STRUCT_SIZE_OF (bfd_pkt_t, head))
     {
-      s = format (s, "BFD v%u, diag=%u(%s), state=%u(%s),\n"
-		  "    flags=(P:%u, F:%u, C:%u, A:%u, D:%u, M:%u), "
-		  "detect_mult=%u, length=%u\n",
-		  bfd_pkt_get_version (pkt), bfd_pkt_get_diag_code (pkt),
-		  bfd_diag_code_string (bfd_pkt_get_diag_code (pkt)),
-		  bfd_pkt_get_state (pkt),
-		  bfd_state_string (bfd_pkt_get_state (pkt)),
-		  bfd_pkt_get_poll (pkt), bfd_pkt_get_final (pkt),
-		  bfd_pkt_get_control_plane_independent (pkt),
-		  bfd_pkt_get_auth_present (pkt), bfd_pkt_get_demand (pkt),
-		  bfd_pkt_get_multipoint (pkt), pkt->head.detect_mult,
-		  pkt->head.length);
-      if (t->len >= sizeof (bfd_pkt_t) &&
-	  pkt->head.length >= sizeof (bfd_pkt_t))
+      s = format (
+	s,
+	"BFD v%u, diag=%u(%s), state=%u(%s),\n"
+	"    flags=(P:%u, F:%u, C:%u, A:%u, D:%u, M:%u), "
+	"detect_mult=%u, length=%u",
+	bfd_pkt_get_version (pkt), bfd_pkt_get_diag_code (pkt),
+	bfd_diag_code_string (bfd_pkt_get_diag_code (pkt)),
+	bfd_pkt_get_state (pkt), bfd_state_string (bfd_pkt_get_state (pkt)),
+	bfd_pkt_get_poll (pkt), bfd_pkt_get_final (pkt),
+	bfd_pkt_get_control_plane_independent (pkt),
+	bfd_pkt_get_auth_present (pkt), bfd_pkt_get_demand (pkt),
+	bfd_pkt_get_multipoint (pkt), pkt->head.detect_mult, pkt->head.length);
+      if (len >= sizeof (bfd_pkt_t) && pkt->head.length >= sizeof (bfd_pkt_t))
 	{
-	  s = format (s, "    my discriminator: %u\n",
+	  s = format (s, "\n    my discriminator: %u\n",
 		      clib_net_to_host_u32 (pkt->my_disc));
 	  s = format (s, "    your discriminator: %u\n",
 		      clib_net_to_host_u32 (pkt->your_disc));
@@ -534,16 +533,16 @@ bfd_input_format_trace (u8 * s, va_list * args)
 	  s = format (s, "    required min echo rx interval: %u",
 		      clib_net_to_host_u32 (pkt->req_min_echo_rx));
 	}
-      if (t->len >= sizeof (bfd_pkt_with_common_auth_t) &&
+      if (len >= sizeof (bfd_pkt_with_common_auth_t) &&
 	  pkt->head.length >= sizeof (bfd_pkt_with_common_auth_t) &&
 	  bfd_pkt_get_auth_present (pkt))
 	{
 	  const bfd_pkt_with_common_auth_t *with_auth = (void *) pkt;
 	  const bfd_auth_common_t *common = &with_auth->common_auth;
 	  s = format (s, "\n    auth len: %u\n", common->len);
-	  s = format (s, "    auth type: %u:%s\n", common->type,
+	  s = format (s, "    auth type: %u:%s", common->type,
 		      bfd_auth_type_str (common->type));
-	  if (t->len >= sizeof (bfd_pkt_with_sha1_auth_t) &&
+	  if (len >= sizeof (bfd_pkt_with_sha1_auth_t) &&
 	      pkt->head.length >= sizeof (bfd_pkt_with_sha1_auth_t) &&
 	      (BFD_AUTH_TYPE_keyed_sha1 == common->type ||
 	       BFD_AUTH_TYPE_meticulous_keyed_sha1 == common->type))
@@ -557,11 +556,19 @@ bfd_input_format_trace (u8 * s, va_list * args)
 			  sizeof (sha1->hash));
 	    }
 	}
-      else
-	{
-	  s = format (s, "\n");
-	}
     }
+
+  return s;
+}
+
+u8 *
+bfd_input_format_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  const bfd_input_trace_t *t = va_arg (*args, bfd_input_trace_t *);
+
+  s = format (s, "%U", format_bfd_pkt, t->len, t->data);
 
   return s;
 }
@@ -739,17 +746,18 @@ bfd_add_transport_layer (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
 }
 
 static int
-bfd_transport_control_frame (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
+bfd_transport_control_frame (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
+			     bfd_session_t *bs)
 {
   switch (bs->transport)
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp4 (vm, bi, bs, 0 /* is_echo */);
+      return bfd_transport_udp4 (vm, rt, bi, bs, 0 /* is_echo */);
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp6 (vm, bi, bs, 0 /* is_echo */);
+      return bfd_transport_udp6 (vm, rt, bi, bs, 0 /* is_echo */);
       break;
     }
   return 0;
@@ -773,17 +781,18 @@ bfd_echo_add_transport_layer (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
 }
 
 static int
-bfd_transport_echo (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
+bfd_transport_echo (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
+		    bfd_session_t *bs)
 {
   switch (bs->transport)
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd echo via udp4, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp4 (vm, bi, bs, 1 /* is_echo */);
+      return bfd_transport_udp4 (vm, rt, bi, bs, 1 /* is_echo */);
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd echo via udp6, bs_idx=%u", bs->bs_idx);
-      return bfd_transport_udp6 (vm, bi, bs, 1 /* is_echo */);
+      return bfd_transport_udp6 (vm, rt, bi, bs, 1 /* is_echo */);
       break;
     }
   return 0;
@@ -902,8 +911,39 @@ bfd_init_control_frame (bfd_session_t *bs, vlib_buffer_t *b)
   b->current_length = bfd_length;
 }
 
+typedef struct
+{
+  u32 bs_idx;
+  u32 len;
+  u8 data[400];
+} bfd_process_trace_t;
+
 static void
-bfd_send_echo (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
+bfd_process_trace_buf (vlib_main_t *vm, vlib_node_runtime_t *rt,
+		       vlib_buffer_t *b, bfd_session_t *bs)
+{
+  u32 n_trace = vlib_get_trace_count (vm, rt);
+  if (n_trace > 0)
+    {
+      bfd_process_trace_t *tr;
+      if (vlib_trace_buffer (vm, rt, 0, b, 0))
+	{
+	  tr = vlib_add_trace (vm, rt, b, sizeof (*tr));
+	  tr->bs_idx = bs->bs_idx;
+	  u64 len = (b->current_length < sizeof (tr->data)) ?
+			    b->current_length :
+			    sizeof (tr->data);
+	  tr->len = len;
+	  clib_memcpy_fast (tr->data, vlib_buffer_get_current (b), len);
+	  --n_trace;
+	  vlib_set_trace_count (vm, rt, n_trace);
+	}
+    }
+}
+
+static void
+bfd_send_echo (vlib_main_t *vm, vlib_node_runtime_t *rt, bfd_main_t *bm,
+	       bfd_session_t *bs, u64 now)
 {
   if (!bfd_is_echo_possible (bs))
     {
@@ -931,6 +971,7 @@ bfd_send_echo (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
 	bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_nsec,
 				bs->echo_secret);
       b->current_length = sizeof (*pkt);
+      bfd_process_trace_buf (vm, rt, b, bs);
       if (!bfd_echo_add_transport_layer (vm, bi, bs))
 	{
 	  BFD_ERR ("cannot send echo packet out, turning echo off");
@@ -938,7 +979,7 @@ bfd_send_echo (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
 	  vlib_buffer_free_one (vm, bi);
 	  return;
 	}
-      if (!bfd_transport_echo (vm, bi, bs))
+      if (!bfd_transport_echo (vm, rt, bi, bs))
 	{
 	  BFD_ERR ("cannot send echo packet out, turning echo off");
 	  bs->echo = 0;
@@ -957,7 +998,8 @@ bfd_send_echo (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
 }
 
 static void
-bfd_send_periodic (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
+bfd_send_periodic (vlib_main_t *vm, vlib_node_runtime_t *rt, bfd_main_t *bm,
+		   bfd_session_t *bs, u64 now)
 {
   if (!bs->remote_min_rx_usec && BFD_POLL_NOT_NEEDED == bs->poll_state)
     {
@@ -1014,8 +1056,9 @@ bfd_send_periodic (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
 	  break;
 	}
       bfd_add_auth_section (vm, b, bs);
+      bfd_process_trace_buf (vm, rt, b, bs);
       bfd_add_transport_layer (vm, bi, bs);
-      if (!bfd_transport_control_frame (vm, bi, bs))
+      if (!bfd_transport_control_frame (vm, rt, bi, bs))
 	{
 	  vlib_buffer_free_one (vm, bi);
 	}
@@ -1090,7 +1133,8 @@ bfd_check_rx_timeout (vlib_main_t * vm, bfd_main_t * bm, bfd_session_t * bs,
 }
 
 void
-bfd_on_timeout (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
+bfd_on_timeout (vlib_main_t *vm, vlib_node_runtime_t *rt, bfd_main_t *bm,
+		bfd_session_t *bs, u64 now)
 {
   BFD_DBG ("Timeout for bs_idx=%lu", bs->bs_idx);
   switch (bs->local_state)
@@ -1098,11 +1142,11 @@ bfd_on_timeout (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
     case BFD_STATE_admin_down:
       /* fallthrough */
     case BFD_STATE_down:
-      bfd_send_periodic (vm, bm, bs, now);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_init:
       bfd_check_rx_timeout (vm, bm, bs, now, 1);
-      bfd_send_periodic (vm, bm, bs, now);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_up:
       bfd_check_rx_timeout (vm, bm, bs, now, 1);
@@ -1119,20 +1163,33 @@ bfd_on_timeout (vlib_main_t *vm, bfd_main_t *bm, bfd_session_t *bs, u64 now)
 			  bs->config_required_min_rx_nsec));
 	  bfd_set_poll_state (bs, BFD_POLL_NEEDED);
 	}
-      bfd_send_periodic (vm, bm, bs, now);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       if (bs->echo)
 	{
-	  bfd_send_echo (vm, bm, bs, now);
+	  bfd_send_echo (vm, rt, bm, bs, now);
 	}
       break;
     }
+}
+
+u8 *
+format_bfd_process_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  bfd_process_trace_t *t = va_arg (*args, bfd_process_trace_t *);
+
+  s =
+    format (s, "bs_idx=%u => %U", t->bs_idx, format_bfd_pkt, t->len, t->data);
+
+  return s;
 }
 
 /*
  * bfd process node function
  */
 static uword
-bfd_process (vlib_main_t *vm, CLIB_UNUSED (vlib_node_runtime_t *rt),
+bfd_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	     CLIB_UNUSED (vlib_frame_t *f))
 {
   bfd_main_t *bm = &bfd_main;
@@ -1213,7 +1270,7 @@ bfd_process (vlib_main_t *vm, CLIB_UNUSED (vlib_node_runtime_t *rt),
 	      {
 		bfd_session_t *bs =
 		  pool_elt_at_index (bm->sessions, *session_index);
-		bfd_send_periodic (vm, bm, bs, now);
+		bfd_send_periodic (vm, rt, bm, bs, now);
 		bfd_set_timer (bm, bs, now, 1);
 	      }
 	    else
@@ -1259,7 +1316,7 @@ bfd_process (vlib_main_t *vm, CLIB_UNUSED (vlib_node_runtime_t *rt),
 	  {
 	    bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
 	    bs->tw_id = 0;	/* timer is gone because it expired */
-	    bfd_on_timeout (vm, bm, bs, now);
+	    bfd_on_timeout (vm, rt, bm, bs, now);
 	    bfd_set_timer (bm, bs, now, 1);
 	  }
       }
@@ -1280,13 +1337,21 @@ bfd_process (vlib_main_t *vm, CLIB_UNUSED (vlib_node_runtime_t *rt),
 /*
  * bfd process node declaration
  */
-VLIB_REGISTER_NODE (bfd_process_node, static) = {
-  .function = bfd_process,
-  .type = VLIB_NODE_TYPE_PROCESS,
-  .name = "bfd-process",
-  .n_next_nodes = 0,
-  .next_nodes = {},
-};
+VLIB_REGISTER_NODE (bfd_process_node,
+		    static) = { .function = bfd_process,
+				.type = VLIB_NODE_TYPE_PROCESS,
+				.name = "bfd-process",
+				.flags = (VLIB_NODE_FLAG_TRACE_SUPPORTED),
+				.format_trace = format_bfd_process_trace,
+				.n_next_nodes = BFD_TX_N_NEXT,
+				.next_nodes = {
+				  [BFD_TX_IP4_ARP] = "ip4-arp",
+				  [BFD_TX_IP6_NDP] = "ip6-discover-neighbor",
+				  [BFD_TX_IP4_REWRITE] = "ip4-rewrite",
+				  [BFD_TX_IP6_REWRITE] = "ip6-rewrite",
+				  [BFD_TX_IP4_MIDCHAIN] = "ip4-midchain",
+				  [BFD_TX_IP6_MIDCHAIN] = "ip6-midchain",
+				} };
 
 static clib_error_t *
 bfd_sw_interface_up_down (CLIB_UNUSED (vnet_main_t *vnm),
