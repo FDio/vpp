@@ -180,7 +180,7 @@ snat_set_log_level_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   snat_main_t *sm = &snat_main;
-  u8 log_level = NAT_LOG_NONE;
+  u32 log_level = NAT_LOG_NONE;
   clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
