@@ -604,12 +604,59 @@ done:
   return r;
 }
 
+static int
+get_max_node_mask_size (void)
+{
+  int node_mask_size = 0;
+  int fd;
+  char *s;
+  unformat_input_t input;
+
+  fd = open ("/proc/self/status", O_RDONLY);
+  if (fd < 0)
+    goto done;
+
+  unformat_init_clib_file (&input, fd);
+  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (&input, "Mems_allowed:\t%s", &s))
+	node_mask_size = (strlen (s) + 1) * 32 / 9;
+      else
+	unformat_skip_line (&input);
+    }
+  vec_free (s);
+  unformat_free (&input);
+  close (fd);
+
+done:
+  if (node_mask_size == 0)
+    {
+      int pol;
+      unsigned long *mask = NULL;
+      node_mask_size = 16;
+      do
+	{
+	  node_mask_size <<= 1;
+	  mask = realloc (mask, node_mask_size / 8);
+	  if (!mask)
+	    return node_mask_size;
+	}
+      while (syscall (__NR_get_mempolicy, &pol, mask, node_mask_size + 1, 0,
+		      0) < 0 &&
+	     errno == EINVAL && node_mask_size < 4096 * 8);
+      free (mask);
+    }
+  return node_mask_size;
+}
+
 __clib_export int
 clib_mem_set_numa_affinity (u8 numa_node, int force)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   long unsigned int mask[16] = { 0 };
-  int mask_len = sizeof (mask) * 8 + 1;
+  int numa_max_node_num = get_max_node_mask_size ();
+  ASSERT (numa_max_node_num <= sizeof (mask) * 8);
+  int mask_len = numa_max_node_num + 1;
 
   /* no numa support */
   if (mm->numa_node_bitmap == 0)
