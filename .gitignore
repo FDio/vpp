@@ -119,3 +119,7 @@ compile_commands.json
 
 # debian packaging
 .pc
+
+# No test log files
+**/test-run-*-*-*
+
