@@ -25,6 +25,7 @@ from subprocess import Popen, PIPE, STDOUT, call
 import sys
 import time
 import venv
+import datetime
 
 
 # Required Std. Path Variables
@@ -300,6 +301,7 @@ def run_tests_in_venv(
         f"--filter={test}",
         f"--jobs={jobs}",
         f"--log-dir={log_dir}",
+        f"--tmp-dir={log_dir}",
     ]
     if running_vpp:
         args = args + [f"--use-running-vpp"]
@@ -376,9 +378,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log-dir",
         action="store",
-        default="/tmp",
+        default=os.path.abspath(f"./test-run-{datetime.date.today()}"),
         help="directory where to store directories "
-        "containing log files (default: /tmp)",
+        "containing log files (default: ./test-run-YYYY-MM-DD)",
     )
     parser.add_argument(
         "--jobs",
