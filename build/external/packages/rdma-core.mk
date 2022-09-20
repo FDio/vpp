@@ -32,27 +32,15 @@ define  rdma-core_config_cmds
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0\
 	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) -DCMAKE_INSTALL_PREFIX=$(rdma-core_install_dir) \
 	    -DCMAKE_INSTALL_LIBDIR=lib \
-	    -DCMAKE_C_FLAGS='-fPIC -fvisibility=hidden' > $(rdma-core_config_log)
+	    -DCMAKE_C_FLAGS='-fPIC' -DNO_MAN_PAGES=ON > $(rdma-core_config_log)
 endef
 
 define  rdma-core_build_cmds
-	$(CMAKE) --build $(rdma-core_build_dir) -- libccan.a libibverbs.a librdma_util.a libmlx5.a libmlx4.a > $(rdma-core_build_log)
-	sed 's/^Libs.private:.*/Libs.private: -lmlx4 -lmlx5 -libverbs -lrdma_util -lccan -lpthread/' -i $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc >> $(rdma-core_build_log)
+	$(CMAKE) --build $(rdma-core_build_dir) > $(rdma-core_build_log)
 endef
 
 define  rdma-core_install_cmds
-	mkdir -p $(rdma-core_install_dir)/lib/pkgconfig
-	cp -avL $(rdma-core_build_dir)/include $(rdma-core_install_dir) > $(rdma-core_install_log)
-	cp -avL $(rdma-core_build_dir)/lib/pkgconfig/libibverbs.pc \
-	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx5.pc \
-	  $(rdma-core_build_dir)/lib/pkgconfig/libmlx4.pc \
-	  $(rdma-core_install_dir)/lib/pkgconfig >> $(rdma-core_install_log)
-	cp -avL $(rdma-core_build_dir)/lib/statics/libibverbs.a \
-	  $(rdma-core_build_dir)/lib/statics/libmlx5.a \
-	  $(rdma-core_build_dir)/lib/statics/libmlx4.a \
-	  $(rdma-core_build_dir)/util/librdma_util.a \
-	  $(rdma-core_build_dir)/ccan/libccan.a \
-	  $(rdma-core_install_dir)/lib >> $(rdma-core_install_log)
+	$(CMAKE) --install $(rdma-core_build_dir) > $(rdma-core_install_log)
 endef
 
 $(eval $(call package,rdma-core))
