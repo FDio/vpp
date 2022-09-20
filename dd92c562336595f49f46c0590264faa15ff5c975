@@ -16,6 +16,23 @@
       "message": "Note this is in the same style as ip_table_allocate from https://gerrit.fd.io/r/c/vpp/+/33675 https://jira.fd.io/browse/VPP-1993",
       "revId": "dd92c562336595f49f46c0590264faa15ff5c975",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2bb9aeb_9e026f66",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-09-20T22:45:58Z",
+      "side": 1,
+      "message": "Instead of introducing a brand new API which is almost similar to bridge_domain_add_del, I think we should introduce v2 of bridge_domain_add_del, ie, bridge_domain_add_del_v2, make bd_id field optional [default\u003d0xFFFFFFFF], and start deprecating bridge_domain_add_del.",
+      "revId": "dd92c562336595f49f46c0590264faa15ff5c975",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
