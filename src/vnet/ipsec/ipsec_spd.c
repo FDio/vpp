@@ -189,7 +189,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 
 	      fp_spd->name6_in = format (0, "spd_%u_fp_ip6_in", spd_id);
 	      pool_get (im->fp_ip6_lookup_hashes_pool, bihash_table);
-	      fp_spd->ip6_out_lookup_hash_idx =
+	      fp_spd->ip6_in_lookup_hash_idx =
 		bihash_table - im->fp_ip6_lookup_hashes_pool;
 	      clib_bihash_init_40_8 (bihash_table, (char *) fp_spd->name6_in,
 				     im->fp_lookup_hash_buckets,
