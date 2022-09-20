@@ -516,6 +516,8 @@ vcl_session_reset_handler (vcl_worker_t * wrk,
 
   if (session->session_state != VCL_STATE_CLOSED)
     session->session_state = VCL_STATE_DISCONNECT;
+
+  session->flags |= (VCL_SESSION_F_RD_SHUTDOWN | VCL_SESSION_F_WR_SHUTDOWN);
   VDBG (0, "session %u [0x%llx]: reset", sid, reset_msg->handle);
   return sid;
 }
@@ -1067,6 +1069,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	{
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
 	  s->session_state = VCL_STATE_DISCONNECT;
+	  s->flags |= (VCL_SESSION_F_RD_SHUTDOWN | VCL_SESSION_F_WR_SHUTDOWN);
 	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
 	  *ecpy = *e;
 	  ecpy->postponed = 1;
@@ -3118,7 +3121,16 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       session_events = s->vep.ev.events;
       add_event = 1;
-      events[*num_ev].events = EPOLLHUP | EPOLLRDHUP;
+      events[*num_ev].events = EPOLLERR | EPOLLHUP;
+      if ((EPOLLRDHUP & session_events) &&
+	  (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
+	{
+	  events[*num_ev].events = EPOLLRDHUP;
+	}
+      if ((EPOLLIN & session_events) && (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
+	{
+	  events[*num_ev].events |= EPOLLIN;
+	}
       session_evt_data = s->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
