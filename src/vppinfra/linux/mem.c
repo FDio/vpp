@@ -31,6 +31,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
 #include <vppinfra/linux/sysfs.h>
+#include <numa.h>
 
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE 1024
@@ -609,7 +610,9 @@ clib_mem_set_numa_affinity (u8 numa_node, int force)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   long unsigned int mask[16] = { 0 };
-  int mask_len = sizeof (mask) * 8 + 1;
+  int numa_max_node_num = numa_num_possible_nodes ();
+  ASSERT (numa_max_node_num <= sizeof (mask) * 8);
+  int mask_len = numa_max_node_num + 1;
 
   /* no numa support */
   if (mm->numa_node_bitmap == 0)
