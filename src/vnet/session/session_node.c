@@ -971,10 +971,10 @@ session_tx_fill_dma_transfers_tail (session_worker_t *wrk,
 
 always_inline int
 session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
-		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0)
+		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0, u8 use_dma)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (use_dma)
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
   else
@@ -984,10 +984,10 @@ session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
 
 always_inline int
 session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
-			   vlib_buffer_t *b, u32 len_to_deq, u8 *data)
+			   vlib_buffer_t *b, u32 len_to_deq, u8 *data, u8 use_dma)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (use_dma)
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
   else
@@ -1084,7 +1084,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx,
 
 always_inline void
 session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
-			vlib_buffer_t *b, u16 *n_bufs, u8 peek_data)
+			vlib_buffer_t *b, u16 *n_bufs, u8 peek_data, u8 have_dma)
 {
   u32 len_to_deq;
   u8 *data0;
@@ -1101,7 +1101,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
 
   if (peek_data)
     {
-      n_bytes_read = session_tx_copy_data (wrk, ctx, b, len_to_deq, data0);
+      n_bytes_read = session_tx_copy_data (wrk, ctx, b, len_to_deq, data0, have_dma);
       ASSERT (n_bytes_read > 0);
       /* Keep track of progress locally, transport is also supposed to
        * increment it independently when pushing the header */
@@ -1350,9 +1350,9 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
 }
 
 always_inline void
-session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index, have_dma)
 {
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (have_dma)
     {
       vec_add1 (wrk->pending_tx_buffers, bi);
       vec_add1 (wrk->pending_tx_nexts, next_index);
@@ -1369,7 +1369,7 @@ always_inline int
 session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				vlib_node_runtime_t * node,
 				session_evt_elt_t * elt,
-				int *n_tx_packets, u8 peek_data)
+				int *n_tx_packets, u8 peek_data, u8 have_dma)
 {
   u32 n_trace, n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
@@ -1506,15 +1506,15 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
-      session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, peek_data);
+      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data, have_dma);
+      session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, peek_data, have_dma);
 
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
       n_left -= 2;
 
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
-      session_tx_add_pending_buffer (wrk, bi1, next_index);
+      session_tx_add_pending_buffer (wrk, bi0, next_index, have_dma);
+      session_tx_add_pending_buffer (wrk, bi1, next_index, have_dma);
     }
   while (n_left)
     {
@@ -1530,12 +1530,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       bi0 = ctx->tx_buffers[--n_bufs];
       b0 = vlib_get_buffer (vm, bi0);
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
+      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data, have_dma);
 
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       n_left -= 1;
 
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
+      session_tx_add_pending_buffer (wrk, bi0, next_index, have_dma);
     }
 
   /* Ask transport to push headers */
@@ -1579,7 +1579,12 @@ session_tx_fifo_peek_and_snd (session_worker_t * wrk,
 			      vlib_node_runtime_t * node,
 			      session_evt_elt_t * e, int *n_tx_packets)
 {
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1);
+  if (PREDICT_TRUE (!wrk->dma_enabled))
+    return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets,
+                                           1 /* peek */, 0 /* have_dma */);
+  else
+    return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets,
+                                           1 /* peek */, 1 /* have_dma */);
 }
 
 int
