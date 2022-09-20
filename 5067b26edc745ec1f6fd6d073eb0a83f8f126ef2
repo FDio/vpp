@@ -16,6 +16,24 @@
       "message": "could you add a new error to ip4_error.h to distinguish between these two cases?",
       "revId": "5067b26edc745ec1f6fd6d073eb0a83f8f126ef2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ec8d325_a489551a",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2022-09-20T07:24:45Z",
+      "side": 1,
+      "message": "We\u0027ve already got IP4_ERROR_TOO_SHORT which means basically the same, so I\u0027ve reused it here. Thanks",
+      "parentUuid": "25c17acb_bce16375",
+      "revId": "5067b26edc745ec1f6fd6d073eb0a83f8f126ef2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
