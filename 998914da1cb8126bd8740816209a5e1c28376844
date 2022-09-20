@@ -16,6 +16,23 @@
       "message": "there was no feedback from the list... think we might just merge this ? could you give it a try ? (I am wondering if we should run a variation thereof from the CI job to add the needed reviewers ?)",
       "revId": "998914da1cb8126bd8740816209a5e1c28376844",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "845e8a8c_8c38940b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-20T20:54:21Z",
+      "side": 1,
+      "message": "My only concern is that MAINTAINERS contains stale entries (departed or inactive maintainers) as well as vpp-dev@lists.fd.io and other email addresses which are not valid LF ID\u0027s.  So use of the script may not be directly applicable to adding reviewers to gerrit changes.\n\nBut these can be address later.",
+      "revId": "998914da1cb8126bd8740816209a5e1c28376844",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
