@@ -82,7 +82,7 @@ int bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp4 (vlib_main_t *vm, u32 bi,
+int bfd_transport_udp4 (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
 			const struct bfd_session_s *bs, int is_echo);
 
 /**
@@ -90,7 +90,7 @@ int bfd_transport_udp4 (vlib_main_t *vm, u32 bi,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp6 (vlib_main_t *vm, u32 bi,
+int bfd_transport_udp6 (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
 			const struct bfd_session_s *bs, int is_echo);
 
 /**
