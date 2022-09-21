@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bac381a7_285333f4",
+        "filename": "build/external/packages/rdma-core.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 0,
+      "message": "Not needed anymore (because symbols are hidden afterwards in the DPDK plugin and RDMA plugin builds",
+      "range": {
+        "startLine": 35,
+        "startChar": 28,
+        "endLine": 35,
+        "endChar": 47
+      },
+      "revId": "0f2a526c545306700347edceada8926b708bfc4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c500a835_164e52f7",
+        "filename": "src/plugins/rdma/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 0,
+      "message": "Not needed anymore (because rdma-core is not build with default visibility hidden anymore)",
+      "range": {
+        "startLine": 22,
+        "startChar": 29,
+        "endLine": 22,
+        "endChar": 42
+      },
+      "revId": "0f2a526c545306700347edceada8926b708bfc4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d32cbd2a_a40326b1",
+        "filename": "build/external/deb/debian/rules",
+        "patchSetId": 4
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 1,
+      "message": "full rdma-core install includes binaries dependent on rdma shared libs... deb packaging needs to be able to find them",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 34
+      },
+      "revId": "dae67bf7b1bdc6c8f73d368dc57f41e38a20d9ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33ebd7b1_ce847204",
+        "filename": "build/external/packages/rdma-core.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 1,
+      "message": "Full build of rdma-core might fail with default rundir (might be too long because includes install_prefix)",
+      "range": {
+        "startLine": 35,
+        "startChar": 6,
+        "endLine": 35,
+        "endChar": 37
+      },
+      "revId": "dae67bf7b1bdc6c8f73d368dc57f41e38a20d9ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25b23901_de66d4f8",
+        "filename": "build/external/packages/rdma-core.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 1,
+      "message": "avoid useless pandoc dependency",
+      "range": {
+        "startLine": 36,
+        "startChar": 29,
+        "endLine": 36,
+        "endChar": 46
+      },
+      "revId": "dae67bf7b1bdc6c8f73d368dc57f41e38a20d9ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc2f982a_0aff2507",
+        "filename": "src/plugins/dpdk/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 1,
+      "message": "Don\u0027t export any symbol from DPDK or libibverbs in dpdk_plugin.so",
+      "range": {
+        "startLine": 107,
+        "startChar": 47,
+        "endLine": 107,
+        "endChar": 69
+      },
+      "revId": "dae67bf7b1bdc6c8f73d368dc57f41e38a20d9ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d9890f4_f5791156",
+        "filename": "src/plugins/rdma/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-09-21T12:12:19Z",
+      "side": 1,
+      "message": "Don\u0027t export any symbol from libibverbs.a or libmlx5.a in rdma_plugin.so",
+      "range": {
+        "startLine": 29,
+        "startChar": 82,
+        "endLine": 29,
+        "endChar": 104
+      },
+      "revId": "dae67bf7b1bdc6c8f73d368dc57f41e38a20d9ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
