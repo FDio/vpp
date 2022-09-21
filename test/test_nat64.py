@@ -9,7 +9,7 @@ from io import BytesIO
 
 import scapy.compat
 from config import config
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204
 from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.data import IP_PROTOS
@@ -34,6 +34,7 @@ from vpp_papi import VppEnum
 
 
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class TestNAT64(VppTestCase):
     """NAT64 Test Cases"""
 

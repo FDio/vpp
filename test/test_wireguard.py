@@ -41,6 +41,7 @@ from vpp_interface import VppInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from vpp_papi import VppEnum
+from framework import tag_fixme_ubuntu2204, tag_fixme_debian11
 from framework import VppTestCase
 from re import compile
 import unittest
@@ -493,6 +494,8 @@ class VppWgPeer(VppObject):
         self._test.assertEqual(rv.peer_index, self.index)
 
 
+@tag_fixme_ubuntu2204
+@tag_fixme_debian11
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2227,6 +2230,8 @@ class TestWg(VppTestCase):
         wg1.remove_vpp_config()
 
 
+@tag_fixme_ubuntu2204
+@tag_fixme_debian11
 class WireguardHandoffTests(TestWg):
     """Wireguard Tests in multi worker setup"""
 

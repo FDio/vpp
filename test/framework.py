@@ -212,6 +212,17 @@ def _is_distro_ubuntu2204():
 is_distro_ubuntu2204 = _is_distro_ubuntu2204()
 
 
+def _is_distro_debian11():
+    with open("/etc/os-release") as f:
+        for line in f.readlines():
+            if "bullseye" in line:
+                return True
+    return False
+
+
+is_distro_debian11 = _is_distro_debian11()
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
@@ -259,6 +270,8 @@ class TestCaseTag(Enum):
     FIXME_ASAN = 3
     # marks suites broken on Ubuntu-22.04
     FIXME_UBUNTU2204 = 4
+    # marks suites broken on Debian-11
+    FIXME_DEBIAN11 = 5
 
 
 def create_tag_decorator(e):
@@ -276,6 +289,7 @@ tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_ubuntu2204 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2204)
+tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
 
 
 class DummyVpp:
@@ -356,6 +370,12 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         """if distro is ubuntu 22.04 and @tag_fixme_ubuntu2204 mark for skip"""
         if cls.has_tag(TestCaseTag.FIXME_UBUNTU2204):
             cls = unittest.skip("Skipping @tag_fixme_ubuntu2204 tests")(cls)
+
+    @classmethod
+    def skip_fixme_debian11(cls):
+        """if distro is Debian-11 and @tag_fixme_debian11 mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_DEBIAN11):
+            cls = unittest.skip("Skipping @tag_fixme_debian11 tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1785,6 +1805,10 @@ class VppTestResult(unittest.TestResult):
             ):
                 test_title = colorize(f"FIXME on Ubuntu-22.04: {test_title}", RED)
                 test.skip_fixme_ubuntu2204()
+
+            if is_distro_debian11 == True and test.has_tag(TestCaseTag.FIXME_DEBIAN11):
+                test_title = colorize(f"FIXME on Debian-11: {test_title}", RED)
+                test.skip_fixme_debian11()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
