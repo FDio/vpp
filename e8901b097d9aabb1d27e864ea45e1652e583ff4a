@@ -22,6 +22,30 @@
       },
       "revId": "e8901b097d9aabb1d27e864ea45e1652e583ff4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd78351c_be1b9420",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-21T01:33:41Z",
+      "side": 1,
+      "message": "Refactored whole doc section to use packagecloud apt setup scripts.",
+      "parentUuid": "c680e0c3_e6bf8b3d",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 90
+      },
+      "revId": "e8901b097d9aabb1d27e864ea45e1652e583ff4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
