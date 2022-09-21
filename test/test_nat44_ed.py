@@ -5,6 +5,7 @@ from io import BytesIO
 from random import randint, choice
 
 import scapy.compat
+from framework import tag_fixme_ubuntu2204
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
@@ -2550,6 +2551,7 @@ class TestNAT44ED(VppTestCase):
             out_if.unconfig()
 
 
+@tag_fixme_ubuntu2204
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
 
