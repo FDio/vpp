@@ -147,6 +147,8 @@ class _PacketInfo(object):
 
 def pump_output(testclass):
     """pump output from vpp stdout/stderr to proper queues"""
+    if not hasattr(testclass, "vpp"):
+        return
     stdout_fragment = ""
     stderr_fragment = ""
     while not testclass.pump_thread_stop_flag.is_set():
@@ -212,6 +214,17 @@ def _is_distro_ubuntu2204():
 is_distro_ubuntu2204 = _is_distro_ubuntu2204()
 
 
+def _is_distro_debian11():
+    with open("/etc/os-release") as f:
+        for line in f.readlines():
+            if "bullseye" in line:
+                return True
+    return False
+
+
+is_distro_debian11 = _is_distro_debian11()
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
@@ -237,7 +250,7 @@ class KeepAliveReporter(object):
         """
         Write current test tmpdir & desc to keep-alive pipe to signal liveness
         """
-        if self.pipe is None:
+        if not hasattr(test, "vpp") or self.pipe is None:
             # if not running forked..
             return
 
@@ -259,6 +272,8 @@ class TestCaseTag(Enum):
     FIXME_ASAN = 3
     # marks suites broken on Ubuntu-22.04
     FIXME_UBUNTU2204 = 4
+    # marks suites broken on Debian-11
+    FIXME_DEBIAN11 = 5
 
 
 def create_tag_decorator(e):
@@ -276,6 +291,7 @@ tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_ubuntu2204 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2204)
+tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
 
 
 class DummyVpp:
@@ -356,6 +372,12 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         """if distro is ubuntu 22.04 and @tag_fixme_ubuntu2204 mark for skip"""
         if cls.has_tag(TestCaseTag.FIXME_UBUNTU2204):
             cls = unittest.skip("Skipping @tag_fixme_ubuntu2204 tests")(cls)
+
+    @classmethod
+    def skip_fixme_debian11(cls):
+        """if distro is Debian-11 and @tag_fixme_debian11 mark for skip"""
+        if cls.has_tag(TestCaseTag.FIXME_DEBIAN11):
+            cls = unittest.skip("Skipping @tag_fixme_debian11 tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -556,6 +578,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def run_vpp(cls):
+        if (
+            is_distro_ubuntu2204 == True and cls.has_tag(TestCaseTag.FIXME_UBUNTU2204)
+        ) or (is_distro_debian11 == True and cls.has_tag(TestCaseTag.FIXME_DEBIAN11)):
+            return
         cls.logger.debug(f"Assigned cpus: {cls.cpus}")
         cmdline = cls.vpp_cmdline
 
@@ -694,6 +720,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                 cls.attach_vpp()
             else:
                 cls.run_vpp()
+                if not hasattr(cls, "vpp"):
+                    return
             cls.reporter.send_keep_alive(cls, "setUpClass")
             VppTestResult.current_test_case_info = TestCaseInfo(
                 cls.logger, cls.tempdir, cls.vpp.pid, config.vpp
@@ -854,6 +882,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     def tearDownClass(cls):
         """Perform final cleanup after running all tests in this test-case"""
         cls.logger.debug("--- tearDownClass() for %s called ---" % cls.__name__)
+        if not hasattr(cls, "vpp"):
+            return
         cls.reporter.send_keep_alive(cls, "tearDownClass")
         cls.quit()
         cls.file_handler.close()
@@ -871,6 +901,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             "--- tearDown() for %s.%s(%s) called ---"
             % (self.__class__.__name__, self._testMethodName, self._testMethodDoc)
         )
+        if not hasattr(self, "vpp"):
+            return
 
         try:
             if not self.vpp_dead:
@@ -904,6 +936,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     def setUp(self):
         """Clear trace before running each test"""
         super(VppTestCase, self).setUp()
+        if not hasattr(self, "vpp"):
+            return
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
             raise VppDiedError(
@@ -1008,6 +1042,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def create_pg_ip4_interfaces(cls, interfaces, gso=0, gso_size=0):
+        if not hasattr(cls, "vpp"):
+            cls.pg_interfaces = []
+            return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
             interfaces, gso, gso_size, pgmode.PG_API_MODE_IP4
@@ -1015,6 +1052,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def create_pg_ip6_interfaces(cls, interfaces, gso=0, gso_size=0):
+        if not hasattr(cls, "vpp"):
+            cls.pg_interfaces = []
+            return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
             interfaces, gso, gso_size, pgmode.PG_API_MODE_IP6
@@ -1022,6 +1062,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def create_pg_interfaces(cls, interfaces, gso=0, gso_size=0):
+        if not hasattr(cls, "vpp"):
+            cls.pg_interfaces = []
+            return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
             interfaces, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
@@ -1029,6 +1072,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def create_pg_ethernet_interfaces(cls, interfaces, gso=0, gso_size=0):
+        if not hasattr(cls, "vpp"):
+            cls.pg_interfaces = []
+            return cls.pg_interfaces
         pgmode = VppEnum.vl_api_pg_interface_mode_t
         return cls.create_pg_interfaces_internal(
             interfaces, gso, gso_size, pgmode.PG_API_MODE_ETHERNET
@@ -1042,6 +1088,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
+        if not hasattr(cls, "vpp"):
+            cls.lo_interfaces = []
+            return cls.lo_interfaces
         result = [VppLoInterface(cls) for i in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
@@ -1056,6 +1105,9 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         :param count: number of interfaces created.
         :returns: List of created interfaces.
         """
+        if not hasattr(cls, "vpp"):
+            cls.bvi_interfaces = []
+            return cls.bvi_interfaces
         result = [VppBviInterface(cls) for i in range(count)]
         for intf in result:
             setattr(cls, intf.name, intf)
@@ -1785,6 +1837,10 @@ class VppTestResult(unittest.TestResult):
             ):
                 test_title = colorize(f"FIXME on Ubuntu-22.04: {test_title}", RED)
                 test.skip_fixme_ubuntu2204()
+
+            if is_distro_debian11 == True and test.has_tag(TestCaseTag.FIXME_DEBIAN11):
+                test_title = colorize(f"FIXME on Debian-11: {test_title}", RED)
+                test.skip_fixme_debian11()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
