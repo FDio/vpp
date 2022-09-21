@@ -116,7 +116,7 @@ class PollHook(Hook):
         Poll the vpp status and throw an exception if it's not running
         :raises VppDiedError: exception if VPP is not running anymore
         """
-        if self.test.vpp_dead:
+        if not hasattr(self.test, "vpp") or self.test.vpp_dead:
             # already dead, nothing to do
             return
 
