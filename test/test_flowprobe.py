@@ -13,7 +13,8 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
 from config import config
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204, tag_fixme_debian11
+from framework import is_distro_ubuntu2204, is_distro_debian11
 from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from vpp_object import VppObject
@@ -151,6 +152,10 @@ class MethodHolder(VppTestCase):
         variables and configure VPP.
         """
         super(MethodHolder, cls).setUpClass()
+        if (is_distro_ubuntu2204 == True or is_distro_debian11 == True) and not hasattr(
+            cls, "vpp"
+        ):
+            return
         try:
             # Create pg interfaces
             cls.create_pg_interfaces(range(9))
@@ -337,6 +342,8 @@ class MethodHolder(VppTestCase):
 
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
+@tag_fixme_debian11
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 

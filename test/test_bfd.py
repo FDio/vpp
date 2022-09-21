@@ -30,7 +30,8 @@ from bfd import (
     BFDState,
     BFD_vpp_echo,
 )
-from framework import tag_fixme_vpp_workers
+from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204, tag_fixme_debian11
+from framework import is_distro_ubuntu2204, is_distro_debian11
 from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from util import ppp
@@ -818,6 +819,8 @@ def bfd_stats_diff(stats_before, stats_after):
 
 
 @tag_run_solo
+@tag_fixme_ubuntu2204
+@tag_fixme_debian11
 class BFD4TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD)"""
 
@@ -828,6 +831,10 @@ class BFD4TestCase(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        if (is_distro_ubuntu2204 == True or is_distro_debian11 == True) and not hasattr(
+            cls, "vpp"
+        ):
+            return
         super(BFD4TestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
         try:
@@ -1722,6 +1729,7 @@ class BFD4TestCase(VppTestCase):
 
 @tag_run_solo
 @tag_fixme_vpp_workers
+@tag_fixme_ubuntu2204
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6)"""
 
@@ -1732,6 +1740,8 @@ class BFD6TestCase(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        if is_distro_ubuntu2204 == True and not hasattr(cls, "vpp"):
+            return
         super(BFD6TestCase, cls).setUpClass()
         cls.vapi.cli("set log class bfd level debug")
         try:
@@ -1755,6 +1765,8 @@ class BFD6TestCase(VppTestCase):
 
     def setUp(self):
         super(BFD6TestCase, self).setUp()
+        if is_distro_ubuntu2204 == True and not hasattr(self, "vpp"):
+            return
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
         self.pg0.enable_capture()

@@ -5,6 +5,7 @@ from io import BytesIO
 from random import randint, choice
 
 import scapy.compat
+from framework import tag_fixme_ubuntu2204, is_distro_ubuntu2204
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
@@ -159,6 +160,8 @@ class TestNAT44ED(VppTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        if is_distro_ubuntu2204 == True and not hasattr(cls, "vpp"):
+            return
 
         cls.create_pg_interfaces(range(12))
         cls.interfaces = list(cls.pg_interfaces[:4])
@@ -2550,6 +2553,7 @@ class TestNAT44ED(VppTestCase):
             out_if.unconfig()
 
 
+@tag_fixme_ubuntu2204
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
 
