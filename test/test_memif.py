@@ -5,7 +5,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, ICMP
 
 from framework import VppTestCase, VppTestRunner
-from framework import tag_run_solo
+from framework import tag_run_solo, tag_fixme_debian11, is_distro_debian11
 from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -13,6 +13,7 @@ from vpp_papi import VppEnum
 
 
 @tag_run_solo
+@tag_fixme_debian11
 class TestMemif(VppTestCase):
     """Memif Test Case"""
 
@@ -36,6 +37,9 @@ class TestMemif(VppTestCase):
         cls.remote_test.start_remote()
         cls.remote_test.set_request_timeout(10)
         super(TestMemif, cls).setUpClass()
+        if is_distro_debian11 == True and not hasattr(cls, "vpp"):
+            cls.remote_test.quit_remote()
+            return
         cls.remote_test.setUpClass(cls.tempdir)
         cls.create_pg_interfaces(range(1))
         for pg in cls.pg_interfaces:

@@ -8,6 +8,7 @@ import unittest
 from io import BytesIO
 
 import scapy.compat
+from framework import tag_fixme_debian11, is_distro_debian11
 from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import (
@@ -910,6 +911,7 @@ def get_nat44_ei_in2out_worker_index(ip, vpp_worker_count):
     return 1 + h % vpp_worker_count
 
 
+@tag_fixme_debian11
 class TestNAT44EI(MethodHolder):
     """NAT44EI Test Cases"""
 
@@ -919,6 +921,8 @@ class TestNAT44EI(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44EI, cls).setUpClass()
+        if is_distro_debian11 == True and not hasattr(cls, "vpp"):
+            return
         cls.vapi.cli("set log class nat44-ei level debug")
 
         cls.tcp_port_in = 6303
