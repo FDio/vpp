@@ -110,9 +110,6 @@ openssl_ops_enc_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       EVP_EncryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
-	EVP_CIPHER_CTX_set_padding (ctx, 0);
-
-      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
 	  chp = chunks + op->chunk_index;
 	  u32 offset = 0;
@@ -166,9 +163,6 @@ openssl_ops_dec_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       int out_len = 0;
 
       EVP_DecryptInit_ex (ctx, cipher, NULL, key->data, op->iv);
-
-      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
-	EVP_CIPHER_CTX_set_padding (ctx, 0);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
 	{
@@ -518,6 +512,7 @@ crypto_openssl_init (vlib_main_t * vm)
   vec_foreach (ptd, per_thread_data)
   {
     ptd->evp_cipher_ctx = EVP_CIPHER_CTX_new ();
+    EVP_CIPHER_CTX_set_padding (ptd->evp_cipher_ctx, 0);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     ptd->hmac_ctx = HMAC_CTX_new ();
     ptd->hash_ctx = EVP_MD_CTX_create ();
