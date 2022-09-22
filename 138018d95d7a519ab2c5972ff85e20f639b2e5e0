@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "138018d95d7a519ab2c5972ff85e20f639b2e5e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48b78110_37046aa1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-09-22T13:04:54Z",
+      "side": 1,
+      "message": "Hello. Could you please take a look at this patch?\n\nNot sure why it\u0027s failing on some tests(non-ipsec) on ubuntu22.04, locally all ipsec tests are just fine.\n\nThere was a pretty big change during migration openssl 1.1.1f \u003e 3.x.x and some(most of) implementations changed.\n\nOpenssl API was totally refactored: high level API logic in EVP functions changed dramatically. Using openssl 1.1.1f, if add some error handling, there\u0027s the same error about the padding on EVP_decrypt stage. But decryption callback was almost in the beginning of the function, so decryption worked(there\u0027s no handling of errors from EVP functions in ipsec_openssl plugin). Now it\u0027s not.\n\nIf just try to print buffers after the encryption stage - padding was not added(exact the same digits up to 8 bytes of padding if talking about 3DES for example). And function that removes padding in openssl returned a error cause there was no padding actualy.\n\nI think, padding could be safely removed, cause VPP has it\u0027s own(/src/vnet/ipsec/ipsec.c when defining engines with IV/ICV/Block align)\n\nWhat do you think about it ?",
+      "revId": "138018d95d7a519ab2c5972ff85e20f639b2e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
