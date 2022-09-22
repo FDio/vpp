@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2849548a_21ca8784",
+        "filename": "src/vnet/l2/l2.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-09-22T19:38:09Z",
+      "side": 1,
+      "message": "add a line\n  option deprecated;",
+      "revId": "60601d38cc3b1c7b5eaef6d882ea94eddd98448b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "294ae618_19b6b6c8",
+        "filename": "src/vnet/l2/l2_bd.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-09-22T19:38:09Z",
+      "side": 1,
+      "message": "(void) -\u003e ()",
+      "revId": "60601d38cc3b1c7b5eaef6d882ea94eddd98448b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
