@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "57366b6b_aff8b5fe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2582
+      },
+      "writtenOn": "2022-09-22T15:01:11Z",
+      "side": 1,
+      "message": "Should I rework all the test cases to use this new api function? Or the bridge_domain_add_del_v2 can be tested in test_l2bd_multi_instance suite and do the cleanup when the bridge_domain_add_del is removed.",
+      "revId": "dd92c562336595f49f46c0590264faa15ff5c975",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d2bb9aeb_9e026f66",
         "filename": "src/vnet/l2/l2.api",
         "patchSetId": 6
