@@ -64,6 +64,7 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
  */
 
 urpf_data_t *urpf_cfgs[N_AF][VLIB_N_DIR];
+u32 urpf_cfgs_size[N_AF][VLIB_N_DIR];
 
 u8 *
 format_urpf_mode (u8 * s, va_list * a)
@@ -130,6 +131,8 @@ urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
 
   urpf_data_t data = { .fib_index = fib_index, .mode = mode };
   urpf_cfgs[af][dir][sw_if_index] = data;
+  if (sw_if_index > urpf_cfgs_size[af][dir])
+    urpf_cfgs_size[af][dir] = sw_if_index;
   if (data.mode != old.mode || data.fib_index != old.fib_index)
     {
       if (URPF_MODE_OFF != old.mode)
@@ -349,6 +352,81 @@ VLIB_CLI_COMMAND (urpf_accept_command, static) = {
   .short_help = "urpf-accept [table <table-id>] [add|del] <PREFIX>",
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+urpf_cli_show (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vlib_dir_t dir;
+  ip_address_family_t af;
+  clib_error_t *error = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  dir = VLIB_RX;
+  af = AF_IP4;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vlib_rx_tx, &dir))
+	;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  for (int i = 0; i < 2; i++)
+    {
+      if (i == 1)
+	af = AF_IP6;
+
+      char *modestr;
+      u32 i;
+      if (urpf_cfgs_size[af][dir] > 0)
+	for (i = 0; i < urpf_cfgs_size[af][dir] + 1; i++)
+	  {
+	    if (urpf_cfgs[af][dir][i].mode == URPF_MODE_CUSTOM_VRF)
+	      {
+		modestr = "custom_vrf";
+		vlib_cli_output (vm, "%U (%U)[urpf mode:%s] [fib:%u]",
+				 format_vnet_sw_if_index_name, vnm, i,
+				 format_ip_address_family, af, modestr,
+				 urpf_cfgs[af][dir][i].fib_index);
+	      }
+	    else
+	      {
+		if (urpf_cfgs[af][dir][i].mode == URPF_MODE_LOOSE)
+		  {
+		    modestr = "loose";
+		    vlib_cli_output (vm, "%U (%U)[urpf mode:%s]",
+				     format_vnet_sw_if_index_name, vnm, i,
+				     format_ip_address_family, af, modestr);
+		  }
+		else if (urpf_cfgs[af][dir][i].mode == URPF_MODE_STRICT)
+		  {
+		    modestr = "strict";
+		    vlib_cli_output (vm, "%U (%U)[urpf mode:%s]",
+				     format_vnet_sw_if_index_name, vnm, i,
+				     format_ip_address_family, af, modestr);
+		  }
+	      }
+	  }
+    }
+  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (urpf_show_command, static) = {
+  .path = "show urpf",
+  .function = urpf_cli_show,
+  .short_help = "show urpf [rx|tx]",
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
