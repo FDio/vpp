@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d99c2a8a_190d8f57",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2022-09-23T13:48:27Z",
+      "side": 1,
+      "message": ".",
+      "parentUuid": "af06f35e_3ada063a",
+      "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d253e507_9beaf256",
@@ -31,6 +49,24 @@
       "writtenOn": "2022-09-19T09:47:45Z",
       "side": 1,
       "message": "Why?",
+      "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b22bd3b6_2c7efd68",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2022-09-23T13:48:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d253e507_9beaf256",
       "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -58,6 +94,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d29c086_2d4278c1",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2022-09-23T13:48:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7e51c3b9_6f6fafb3",
+      "range": {
+        "startLine": 155,
+        "startChar": 2,
+        "endLine": 155,
+        "endChar": 13
+      },
+      "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "17750fc6_0ef93311",
@@ -71,6 +131,24 @@
       "writtenOn": "2022-09-19T01:37:04Z",
       "side": 1,
       "message": "make this urpf_cfgs valid for the case the FIB comes from the interface, then you can remove the new mode. seems odd to me that the CUSTOM mode defaults to STRICT.",
+      "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd9fb42c_8b1c1d17",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2022-09-23T13:48:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "17750fc6_0ef93311",
       "revId": "0399d90facbc7bb9a03b3e6d4f825c7f6811ed47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
