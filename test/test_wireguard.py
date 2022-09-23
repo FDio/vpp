@@ -956,35 +956,26 @@ class TestWg(VppTestCase):
         peer_2.consume_cookie(rxs[0])
 
         # (peer_1) prepare and send a bunch of handshake initiations with correct mac2
-        # expect no ratelimiting and a handshake response
+        # expect a handshake response and then ratelimiting
+        # (peer_2) prepare and send a bunch of handshake initiations with correct mac2
+        # expect a handshake response and then ratelimiting
+        PEER_1_NUM_TO_REJECT = 2
+        PEER_2_NUM_TO_REJECT = 5
         init_1 = peer_1.mk_handshake(self.pg1)
-        txs = [init_1] * HANDSHAKE_NUM_BEFORE_RATELIMITING
+        txs = [init_1] * (HANDSHAKE_NUM_BEFORE_RATELIMITING + PEER_1_NUM_TO_REJECT)
+        init_2 = peer_2.mk_handshake(self.pg1)
+        txs += [init_2] * (HANDSHAKE_NUM_BEFORE_RATELIMITING + PEER_2_NUM_TO_REJECT)
         rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
+
         self.assertEqual(
-            self.base_ratelimited4_err,
+            self.base_ratelimited4_err + PEER_1_NUM_TO_REJECT + PEER_2_NUM_TO_REJECT,
             self.statistics.get_err_counter(self.ratelimited4_err),
         )
 
         # (peer_1) verify the response
-        peer_1.consume_response(rxs[0])
-        peer_1.noise_reset()
-
-        # (peer_1) send another two handshake initiations with correct mac2
-        # expect ratelimiting
-        # (peer_2) prepare and send a handshake initiation with correct mac2
-        # expect no ratelimiting and a handshake response
-        init_2 = peer_2.mk_handshake(self.pg1)
-        txs = [init_1, init_2, init_1]
-        rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
-
-        # (peer_1) verify ratelimiting
-        self.assertEqual(
-            self.base_ratelimited4_err + 2,
-            self.statistics.get_err_counter(self.ratelimited4_err),
-        )
-
         # (peer_2) verify the response
-        peer_2.consume_response(rxs[0])
+        peer_1.consume_response(rxs[0])
+        peer_2.consume_response(rxs[1])
 
         # clear up under load state
         self.sleep(UNDER_LOAD_INTERVAL)
