@@ -3125,7 +3125,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if ((EPOLLRDHUP & session_events) &&
 	  (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
 	{
-	  events[*num_ev].events = EPOLLRDHUP;
+	  events[*num_ev].events |= EPOLLRDHUP;
 	}
       if ((EPOLLIN & session_events) && (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
 	{
