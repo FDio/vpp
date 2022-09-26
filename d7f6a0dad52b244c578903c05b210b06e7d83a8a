@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0dfba7b2_2afa57b5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-09-26T12:48:23Z",
+      "side": 1,
+      "message": "Thanks Hedi for the updated patch ! ltgm 😊\n\nCheers\n-Nathan",
+      "revId": "d7f6a0dad52b244c578903c05b210b06e7d83a8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
