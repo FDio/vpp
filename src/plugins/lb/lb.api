@@ -36,6 +36,7 @@ autoreply  define lb_conf
     @param node_port - Node's port(applicable in NAT4/NAT6 mode only).
     @param new_flows_table_length - Size of the new connections flow table used
            for this VIP (must be power of 2).
+    @param src_ip_sticky - source ip based sticky session.
     @param is_del - The VIP should be removed.
 */
 autoreply  define lb_add_del_vip {
@@ -50,8 +51,9 @@ autoreply  define lb_add_del_vip {
   u16 target_port;
   u16 node_port;
   u32 new_flows_table_length [default=1024];
+  bool src_ip_sticky;
   bool is_del;
-  option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (gre6|gre4|l3dsr|nat4|nat6)] [dscp <n>] [type (nodeport|clusterip) target_port <n>] [new_len <n>] [del]";
+  option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (gre6|gre4|l3dsr|nat4|nat6)] [dscp <n>] [type (nodeport|clusterip) target_port <n>] [new_len <n>] [src_ip_sticky] [del]";
 };
 
 /** \brief Add an application server for a given VIP

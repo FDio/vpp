@@ -113,6 +113,11 @@ vl_api_lb_add_del_vip_t_handler
     args.type = type;
     args.new_length = ntohl(mp->new_flows_table_length);
 
+    if (mp->src_ip_sticky)
+      {
+        args.src_ip_sticky = 1;
+      }
+
     if (mp->encap == LB_API_ENCAP_TYPE_L3DSR) {
         args.encap_args.dscp = (u8)(mp->dscp & 0x3F);
       }
