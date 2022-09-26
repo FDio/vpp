@@ -304,7 +304,6 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 	  wg_timers_session_derived (peer);
 	  wg_timers_any_authenticated_packet_sent (peer);
 	  wg_timers_any_authenticated_packet_traversal (peer);
-	  peer->last_sent_handshake = vlib_time_now (vm);
 
 	  u32 bi0 = 0;
 	  u8 is_ip4 = ip46_address_is_ip4 (&peer->dst.addr);
