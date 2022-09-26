@@ -38,6 +38,7 @@ from Crypto.Random import get_random_bytes
 
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_interface import VppInterface
+from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from vpp_papi import VppEnum
@@ -171,7 +172,7 @@ class VppWgPeer(VppObject):
         self.endpoint = endpoint
         self.port = port
 
-    def add_vpp_config(self, is_ip6=False):
+    def add_vpp_config(self):
         rv = self._test.vapi.wireguard_peer_add(
             peer={
                 "public_key": self.public_key_bytes(),
@@ -493,6 +494,12 @@ class VppWgPeer(VppObject):
         self._test.assertEqual(rv.peer_index, self.index)
 
 
+def is_handshake_init(p):
+    wg_p = Wireguard(p[Raw])
+
+    return wg_p[Wireguard].message_type == 1
+
+
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -557,6 +564,25 @@ class TestWg(VppTestCase):
         self.base_ratelimited6_err = self.statistics.get_err_counter(
             self.ratelimited6_err
         )
+
+    def send_and_assert_no_replies_ignoring_init(
+        self, intf, pkts, remark="", timeout=None
+    ):
+        self.pg_send(intf, pkts)
+
+        def _filter_out_fn(p):
+            return is_ipv6_misc(p) or is_handshake_init(p)
+
+        try:
+            if not timeout:
+                timeout = 1
+            for i in self.pg_interfaces:
+                i.assert_nothing_captured(
+                    timeout=timeout, remark=remark, filter_out_fn=_filter_out_fn
+                )
+                timeout = 0.1
+        finally:
+            pass
 
     def test_wg_interface(self):
         """Simple interface creation"""
@@ -1334,7 +1360,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp4_err + 1, self.statistics.get_err_counter(self.kp4_error)
         )
@@ -1348,7 +1374,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_peer4_out_err + 1,
             self.statistics.get_err_counter(self.peer4_out_err),
@@ -1357,7 +1383,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_mac4_err + 1, self.statistics.get_err_counter(self.mac4_error)
         )
@@ -1366,7 +1392,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, False, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_peer4_in_err + 1,
             self.statistics.get_err_counter(self.peer4_in_err),
@@ -1387,7 +1413,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp4_err + 2, self.statistics.get_err_counter(self.kp4_error)
         )
@@ -1473,7 +1499,7 @@ class TestWg(VppTestCase):
 
         peer_1 = VppWgPeer(
             self, wg0, self.pg1.remote_ip6, port + 1, ["1::3:0/112"]
-        ).add_vpp_config(True)
+        ).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
 
         r1 = VppIpRoute(
@@ -1493,7 +1519,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
 
         self.assertEqual(
             self.base_kp6_err + 1, self.statistics.get_err_counter(self.kp6_error)
@@ -1508,7 +1534,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_peer6_out_err + 1,
             self.statistics.get_err_counter(self.peer6_out_err),
@@ -1517,7 +1543,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1, True)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
 
         self.assertEqual(
             self.base_mac6_err + 1, self.statistics.get_err_counter(self.mac6_error)
@@ -1527,7 +1553,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, True, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_peer6_in_err + 1,
             self.statistics.get_err_counter(self.peer6_in_err),
@@ -1548,7 +1574,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp6_err + 2, self.statistics.get_err_counter(self.kp6_error)
         )
@@ -1634,7 +1660,7 @@ class TestWg(VppTestCase):
 
         peer_1 = VppWgPeer(
             self, wg0, self.pg1.remote_ip4, port + 1, ["1::3:0/112"]
-        ).add_vpp_config(True)
+        ).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
 
         r1 = VppIpRoute(
@@ -1650,7 +1676,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp6_err + 1, self.statistics.get_err_counter(self.kp6_error)
         )
@@ -1658,7 +1684,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
 
         self.assertEqual(
             self.base_mac4_err + 1, self.statistics.get_err_counter(self.mac4_error)
@@ -1668,7 +1694,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, False, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_peer4_in_err + 1,
             self.statistics.get_err_counter(self.peer4_in_err),
@@ -1689,7 +1715,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp6_err + 2, self.statistics.get_err_counter(self.kp6_error)
         )
@@ -1790,7 +1816,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp4_err + 1, self.statistics.get_err_counter(self.kp4_error)
         )
@@ -1798,7 +1824,7 @@ class TestWg(VppTestCase):
         # send a handsake from the peer with an invalid MAC
         p = peer_1.mk_handshake(self.pg1, True)
         p[WireguardInitiation].mac1 = b"foobar"
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_mac6_err + 1, self.statistics.get_err_counter(self.mac6_error)
         )
@@ -1807,7 +1833,7 @@ class TestWg(VppTestCase):
         p = peer_1.mk_handshake(
             self.pg1, True, X25519PrivateKey.generate().public_key()
         )
-        self.send_and_assert_no_replies(self.pg1, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [p])
         self.assertEqual(
             self.base_peer6_in_err + 1,
             self.statistics.get_err_counter(self.peer6_in_err),
@@ -1828,7 +1854,7 @@ class TestWg(VppTestCase):
             / UDP(sport=555, dport=556)
             / Raw()
         )
-        self.send_and_assert_no_replies(self.pg0, [p])
+        self.send_and_assert_no_replies_ignoring_init(self.pg0, [p])
         self.assertEqual(
             self.base_kp4_err + 2, self.statistics.get_err_counter(self.kp4_error)
         )
@@ -2316,7 +2342,7 @@ class WireguardHandoffTests(TestWg):
             self.assertEqual(rx[IP].ttl, 19)
 
         # send a packets that are routed into the tunnel
-        # from owrker 0
+        # from worker 0
         rxs = self.send_and_expect(self.pg0, pe * 255, self.pg1, worker=0)
 
         peer_1.validate_encapped(rxs, pe)
