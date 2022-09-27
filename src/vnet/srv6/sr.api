@@ -195,6 +195,37 @@ define sr_localsids_details
   u32 xconnect_iface_or_vrf_table;
 };
 
+
+/** \brief Dump the list of SR LocalSIDs along with packet statistics
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sr_localsids_with_packet_stats_dump
+{
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+define sr_localsids_with_packet_stats_details
+{
+  u32 context;
+  vl_api_ip6_address_t addr;
+  bool end_psp;
+  vl_api_sr_behavior_t behavior;
+  u32 fib_table;
+  u32 vlan_index;
+  vl_api_address_t xconnect_nh_addr;
+  u32 xconnect_iface_or_vrf_table;
+  u64 good_traffic_bytes;
+  u64 good_traffic_pkt_count;
+  u64 bad_traffic_bytes;
+  u64 bad_traffic_pkt_count;
+  option status="in_progress";
+};
+
+
+
 /** \brief Dump the list of SR policies
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
