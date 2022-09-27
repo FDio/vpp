@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4363dfff_d09e32bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-27T17:06:21Z",
+      "side": 1,
+      "message": "I have verified that this fixes the ipsec tests which were failing and forced to be skipped in https://gerrit.fd.io/r/c/vpp/+/37144\n\nI will push a separate patch that re-enables those tests in the CI.",
+      "revId": "05554c6e98f5bd088543f7b33aabc9b215d55cd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
