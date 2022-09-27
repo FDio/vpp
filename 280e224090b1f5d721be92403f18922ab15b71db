@@ -33,6 +33,91 @@
       "message": "recheck",
       "revId": "280e224090b1f5d721be92403f18922ab15b71db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3dc63ff_792bf985",
+        "filename": "src/plugins/urpf/urpf.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:06:45Z",
+      "side": 1,
+      "message": "remove this.",
+      "revId": "280e224090b1f5d721be92403f18922ab15b71db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d333e78f_9792dd70",
+        "filename": "src/plugins/urpf/urpf.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:06:45Z",
+      "side": 1,
+      "message": "if table_id\u003d~0 \u003d\u003e use the value from the interface.",
+      "revId": "280e224090b1f5d721be92403f18922ab15b71db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85dba845_5b6ea230",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:06:45Z",
+      "side": 1,
+      "message": "remove these.",
+      "revId": "280e224090b1f5d721be92403f18922ab15b71db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81c5024a_1fff0b49",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:06:45Z",
+      "side": 1,
+      "message": "if table_id !\u003d ~0",
+      "revId": "280e224090b1f5d721be92403f18922ab15b71db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9f4fb81_24f155b6",
+        "filename": "src/plugins/urpf/urpf.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:06:45Z",
+      "side": 1,
+      "message": "you\u0027ll need to register for changes to the VRF/table bindings to update this should it change. see ip[46]_table_bind_callback_t;",
+      "revId": "280e224090b1f5d721be92403f18922ab15b71db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
