@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "103ffc04ee14b7f09ef1233fe60bfbf573989aad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "584c44d4_440f3d0e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-27T15:25:17Z",
+      "side": 1,
+      "message": "Please ensure that the git history for the test files is not lost/obscured.",
+      "revId": "103ffc04ee14b7f09ef1233fe60bfbf573989aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
