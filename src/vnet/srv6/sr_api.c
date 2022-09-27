@@ -255,6 +255,73 @@ static void vl_api_sr_localsids_dump_t_handler
   /* *INDENT-ON* */
 }
 
+static void
+send_sr_localsid_with_packet_stats_details (int local_sid_index,
+					    ip6_sr_localsid_t *t,
+					    vl_api_registration_t *reg,
+					    u32 context)
+{
+  vl_api_sr_localsids_with_packet_stats_details_t *rmp;
+  vlib_counter_t good_traffic, bad_traffic;
+  ip6_sr_main_t *sm = &sr_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_SR_LOCALSIDS_WITH_PACKET_STATS_DETAILS);
+  ip6_address_encode (&t->localsid, rmp->addr);
+  rmp->end_psp = t->end_psp;
+  rmp->behavior = t->behavior;
+  rmp->fib_table = htonl (t->fib_table);
+  rmp->vlan_index = htonl (t->vlan_index);
+  ip_address_encode (&t->next_hop, IP46_TYPE_ANY, &rmp->xconnect_nh_addr);
+
+  if (t->behavior == SR_BEHAVIOR_T || t->behavior == SR_BEHAVIOR_DT6)
+    rmp->xconnect_iface_or_vrf_table =
+      htonl (fib_table_get_table_id (t->sw_if_index, FIB_PROTOCOL_IP6));
+  else if (t->behavior == SR_BEHAVIOR_DT4)
+    rmp->xconnect_iface_or_vrf_table =
+      htonl (fib_table_get_table_id (t->sw_if_index, FIB_PROTOCOL_IP4));
+  else
+    rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
+
+  rmp->context = context;
+  vlib_get_combined_counter (&(sm->sr_ls_valid_counters), local_sid_index,
+			     &good_traffic);
+  vlib_get_combined_counter (&(sm->sr_ls_invalid_counters), local_sid_index,
+			     &bad_traffic);
+  rmp->good_traffic_bytes = clib_host_to_net_u64 (good_traffic.bytes);
+  rmp->good_traffic_pkt_count = clib_host_to_net_u64 (good_traffic.packets);
+  rmp->bad_traffic_bytes = clib_host_to_net_u64 (bad_traffic.bytes);
+  rmp->bad_traffic_pkt_count = clib_host_to_net_u64 (bad_traffic.packets);
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_sr_localsids_with_packet_stats_dump_t_handler (
+  vl_api_sr_localsids_with_packet_stats_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_localsid_t **localsid_list = 0;
+  ip6_sr_localsid_t *t;
+  int i;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  pool_foreach (t, sm->localsids)
+    {
+      vec_add1 (localsid_list, t);
+    }
+  for (i = 0; i < vec_len (localsid_list); i++)
+    {
+      t = localsid_list[i];
+      send_sr_localsid_with_packet_stats_details (i, t, reg, mp->context);
+    }
+}
+
 static void send_sr_policies_details
   (ip6_sr_policy_t * t, vl_api_registration_t * reg, u32 context)
 {
