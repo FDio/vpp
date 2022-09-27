@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "e45552c68c55d1538f7f5a986bb64974dab46146",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1cc57c0_99c7e0ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-27T06:09:24Z",
+      "side": 1,
+      "message": "will merge on UT pass.",
+      "revId": "e45552c68c55d1538f7f5a986bb64974dab46146",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
