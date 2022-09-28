@@ -207,6 +207,105 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_lb_add_del_vip_v2 (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_vip_v2_t *mp;
+  int ret;
+  ip46_address_t ip_prefix;
+  u8 prefix_length = 0;
+  u8 protocol = 0;
+  u32 port = 0;
+  u32 encap = 0;
+  u32 dscp = ~0;
+  u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
+  u32 target_port = 0;
+  u32 new_length = 1024;
+  u8 src_ip_sticky = 0;
+  int is_del = 0;
+
+  if (!unformat (line_input, "%U", unformat_ip46_prefix, &ip_prefix,
+		 &prefix_length, IP46_TYPE_ANY, &prefix_length))
+    {
+      errmsg ("lb_add_del_vip: invalid vip prefix\n");
+      return -99;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "new_len %d", &new_length))
+	;
+      else if (unformat (line_input, "del"))
+	is_del = 1;
+      else if (unformat (line_input, "src_ip_sticky"))
+	src_ip_sticky = 1;
+      else if (unformat (line_input, "protocol tcp"))
+	{
+	  protocol = IP_PROTOCOL_TCP;
+	}
+      else if (unformat (line_input, "protocol udp"))
+	{
+	  protocol = IP_PROTOCOL_UDP;
+	}
+      else if (unformat (line_input, "port %d", &port))
+	;
+      else if (unformat (line_input, "encap gre4"))
+	encap = LB_ENCAP_TYPE_GRE4;
+      else if (unformat (line_input, "encap gre6"))
+	encap = LB_ENCAP_TYPE_GRE6;
+      else if (unformat (line_input, "encap l3dsr"))
+	encap = LB_ENCAP_TYPE_L3DSR;
+      else if (unformat (line_input, "encap nat4"))
+	encap = LB_ENCAP_TYPE_NAT4;
+      else if (unformat (line_input, "encap nat6"))
+	encap = LB_ENCAP_TYPE_NAT6;
+      else if (unformat (line_input, "dscp %d", &dscp))
+	;
+      else if (unformat (line_input, "type clusterip"))
+	srv_type = LB_SRV_TYPE_CLUSTERIP;
+      else if (unformat (line_input, "type nodeport"))
+	srv_type = LB_SRV_TYPE_NODEPORT;
+      else if (unformat (line_input, "target_port %d", &target_port))
+	;
+      else
+	{
+	  errmsg ("invalid arguments\n");
+	  return -99;
+	}
+    }
+
+  if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
+    {
+      errmsg ("lb_vip_add error: should not configure dscp for none L3DSR.");
+      return -99;
+    }
+
+  if ((encap == LB_ENCAP_TYPE_L3DSR) && (dscp >= 64))
+    {
+      errmsg ("lb_vip_add error: dscp for L3DSR should be less than 64.");
+      return -99;
+    }
+
+  M (LB_ADD_DEL_VIP, mp);
+  ip_address_encode (&ip_prefix, IP46_TYPE_ANY, &mp->pfx.address);
+  mp->pfx.len = prefix_length;
+  mp->protocol = (u8) protocol;
+  mp->port = htons ((u16) port);
+  mp->encap = (u8) encap;
+  mp->dscp = (u8) dscp;
+  mp->type = (u8) srv_type;
+  mp->target_port = htons ((u16) target_port);
+  mp->node_port = htons ((u16) target_port);
+  mp->new_flows_table_length = htonl (new_length);
+  mp->is_del = is_del;
+  mp->src_ip_sticky = src_ip_sticky;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static int api_lb_add_del_as (vat_main_t * vam)
 {
 
