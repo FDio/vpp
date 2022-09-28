@@ -1217,6 +1217,44 @@ send_nat44_ei_user_session_details (nat44_ei_session_t *s,
 }
 
 static void
+send_nat44_ei_user_session_v2_details (nat44_ei_session_t *s,
+				       vl_api_registration_t *reg, u32 context)
+{
+  vl_api_nat44_ei_user_session_v2_details_t *rmp;
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_EI_USER_SESSION_V2_DETAILS + nm->msg_id_base);
+  clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
+  clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
+
+  if (nat44_ei_is_session_static (s))
+    rmp->flags |= NAT44_EI_STATIC_MAPPING;
+
+  rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
+  rmp->time_since_last_heard = clib_host_to_net_u64 (
+    (u64) (vlib_time_now (vlib_get_main ()) - s->last_heard));
+  rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
+  rmp->total_pkts = ntohl (s->total_pkts);
+  rmp->context = context;
+  if (nat44_ei_is_unk_proto_session (s))
+    {
+      rmp->outside_port = 0;
+      rmp->inside_port = 0;
+      rmp->protocol = ntohs (s->in2out.port);
+    }
+  else
+    {
+      rmp->outside_port = s->out2in.port;
+      rmp->inside_port = s->in2out.port;
+      rmp->protocol = ntohs (nat_proto_to_ip_proto (s->nat_proto));
+    }
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
 vl_api_nat44_ei_user_session_dump_t_handler (
   vl_api_nat44_ei_user_session_dump_t *mp)
 {
@@ -1262,6 +1300,59 @@ vl_api_nat44_ei_user_session_dump_t_handler (
       s = pool_elt_at_index (tnm->sessions, session_index);
 
       send_nat44_ei_user_session_details (s, reg, mp->context);
+
+      elt_index = elt->next;
+      elt = pool_elt_at_index (tnm->list_pool, elt_index);
+      session_index = elt->value;
+    }
+}
+
+static void
+vl_api_nat44_ei_user_session_v2_dump_t_handler (
+  vl_api_nat44_ei_user_session_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_main_per_thread_data_t *tnm;
+  nat44_ei_session_t *s;
+  clib_bihash_kv_8_8_t key, value;
+  nat44_ei_user_key_t ukey;
+  nat44_ei_user_t *u;
+  u32 session_index, head_index, elt_index;
+  dlist_elt_t *head, *elt;
+  ip4_header_t ip;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  clib_memcpy (&ukey.addr, mp->ip_address, 4);
+  ip.src_address.as_u32 = ukey.addr.as_u32;
+  ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
+  key.key = ukey.as_u64;
+  if (nm->num_workers > 1)
+    tnm = vec_elt_at_index (
+      nm->per_thread_data,
+      nat44_ei_get_in2out_worker_index (&ip, ukey.fib_index, 0));
+  else
+    tnm = vec_elt_at_index (nm->per_thread_data, nm->num_workers);
+
+  if (clib_bihash_search_8_8 (&tnm->user_hash, &key, &value))
+    return;
+  u = pool_elt_at_index (tnm->users, value.value);
+  if (!u->nsessions && !u->nstaticsessions)
+    return;
+
+  head_index = u->sessions_per_user_list_head_index;
+  head = pool_elt_at_index (tnm->list_pool, head_index);
+  elt_index = head->next;
+  elt = pool_elt_at_index (tnm->list_pool, elt_index);
+  session_index = elt->value;
+  while (session_index != ~0)
+    {
+      s = pool_elt_at_index (tnm->sessions, session_index);
+
+      send_nat44_ei_user_session_v2_details (s, reg, mp->context);
 
       elt_index = elt->next;
       elt = pool_elt_at_index (tnm->list_pool, elt_index);
