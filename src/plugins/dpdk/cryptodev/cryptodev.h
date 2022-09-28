@@ -24,9 +24,9 @@
 #define CRYPTODEV_NB_CRYPTO_OPS	   1024
 #define CRYPTODEV_CACHE_QUEUE_SIZE VNET_CRYPTO_FRAME_POOL_SIZE
 #define CRYPTODEV_CACHE_QUEUE_MASK (VNET_CRYPTO_FRAME_POOL_SIZE - 1)
-#define CRYPTODEV_MAX_INFLIGHT	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
+#define CRYPTODEV_MAX_INFLIGHT	   255
 #define CRYPTODEV_AAD_MASK	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
-#define CRYPTODEV_DEQ_CACHE_SZ	   32
+#define CRYPTODE_ENQ_DEQ_MAX	   32
 #define CRYPTODEV_NB_SESSION	   4096
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
@@ -146,6 +146,23 @@ typedef struct
 
 typedef struct
 {
+  vnet_crypto_async_frame_t *f;
+  u8 enqueued;
+  u8 dequeued;
+  u8 deq_state;
+} cryptodev_async_ring_elt;
+
+typedef struct
+{
+  cryptodev_async_ring_elt *frames;
+  uint16_t head;
+  uint16_t tail;
+  uint16_t enq; /*record the frame currently being enqueued */
+  uint16_t deq; /*record the frame currently being dequeued */
+} cryptodev_async_frame_sw_ring;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vlib_buffer_t *b[VNET_CRYPTO_FRAME_SIZE];
   union
@@ -158,8 +175,8 @@ typedef struct
     };
     struct
     {
-      struct rte_crypto_raw_dp_ctx *ctx;
-      struct rte_ring *cached_frame;
+      struct rte_crypto_raw_dp_ctx *ctx[CRYPTODEV_N_OP_TYPES];
+      cryptodev_async_frame_sw_ring frame_ring[CRYPTODEV_N_OP_TYPES];
       u16 aad_index;
       u8 *aad_buf;
       u64 aad_phy_addr;
@@ -167,8 +184,9 @@ typedef struct
     };
   };
   u16 cryptodev_id;
-  u16 cryptodev_q;
-  u16 inflight;
+  u16 cryptodev_q[CRYPTODEV_N_OP_TYPES];
+  u8 inflight[CRYPTODEV_N_OP_TYPES];
+  cryptodev_op_type_t last_deq;
 } cryptodev_engine_thread_t;
 
 typedef struct
@@ -190,13 +208,14 @@ extern cryptodev_main_t cryptodev_main;
 
 static_always_inline void
 cryptodev_mark_frame_err_status (vnet_crypto_async_frame_t *f,
-				 vnet_crypto_op_status_t s)
+				 vnet_crypto_op_status_t s,
+				 vnet_crypto_async_frame_state_t fs)
 {
   u32 n_elts = f->n_elts, i;
 
   for (i = 0; i < n_elts; i++)
     f->elts[i].status = s;
-  f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
+  f->state = fs;
 }
 
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
