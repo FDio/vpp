@@ -1420,6 +1420,7 @@ send_nat44_user_session_details (snat_session_t * s,
 				 vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_user_session_details_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
   snat_main_t *sm = &snat_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -1437,7 +1438,8 @@ send_nat44_user_session_details (snat_session_t * s,
 
   rmp->flags |= NAT_API_IS_EXT_HOST_VALID;
 
-  rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
+  rmp->last_heard = clib_host_to_net_u64 (
+    (u64) vlib_time_now (vnm->vlib_main) - s->last_heard);
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
   rmp->context = context;
