@@ -68,6 +68,7 @@ dpdk_device_setup (dpdk_device_t * xd)
   u32 max_frame_size;
   int rv;
   int j;
+  u32 max_mtu = ethernet_main.default_mtu;
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -179,8 +180,16 @@ dpdk_device_setup (dpdk_device_t * xd)
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
 #endif
 
-  max_frame_size = clib_min (xd->max_supported_frame_size,
-			     ethernet_main.default_mtu + hi->frame_overhead);
+  if (dev_info.max_mtu < max_mtu)
+    {
+      dpdk_log_warn (
+	"[%u] mtu: limiting from %u (configured) to %u (device max)",
+	xd->port_id, max_mtu, dev_info.max_mtu);
+      max_mtu = dev_info.max_mtu;
+    }
+
+  max_frame_size =
+    clib_min (xd->max_supported_frame_size, max_mtu + hi->frame_overhead);
 
 #if RTE_VERSION >= RTE_VERSION_NUM(21, 11, 0, 0)
   conf.rxmode.mtu = max_frame_size - xd->driver_frame_overhead;
