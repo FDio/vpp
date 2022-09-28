@@ -1535,6 +1535,51 @@ send_nat44_user_session_v2_details (snat_session_t *s,
 }
 
 static void
+send_nat44_user_session_v3_details (snat_session_t *s,
+				    vl_api_registration_t *reg, u32 context)
+{
+  vl_api_nat44_user_session_v3_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  u64 now = vlib_time_now (vlib_get_main ());
+  u64 sess_timeout_time = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_USER_SESSION_V2_DETAILS + sm->msg_id_base);
+  clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
+  clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
+
+  if (nat44_ed_is_session_static (s))
+    rmp->flags |= NAT_API_IS_STATIC;
+
+  if (nat44_ed_is_twice_nat_session (s))
+    rmp->flags |= NAT_API_IS_TWICE_NAT;
+
+  rmp->flags |= NAT_API_IS_EXT_HOST_VALID;
+
+  rmp->last_heard = clib_host_to_net_u64 ((u64) (now - s->last_heard));
+  rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
+  rmp->total_pkts = ntohl (s->total_pkts);
+  rmp->context = context;
+  rmp->outside_port = s->out2in.port;
+  rmp->inside_port = s->in2out.port;
+  rmp->protocol = clib_host_to_net_u16 (s->proto);
+  clib_memcpy (rmp->ext_host_address, &s->ext_host_addr, 4);
+  rmp->ext_host_port = s->ext_host_port;
+  if (nat44_ed_is_twice_nat_session (s))
+    {
+      clib_memcpy (rmp->ext_host_nat_address, &s->ext_host_nat_addr, 4);
+      rmp->ext_host_nat_port = s->ext_host_nat_port;
+    }
+
+  sess_timeout_time = s->last_heard + nat44_session_get_timeout (sm, s);
+  rmp->is_timed_out = (now >= sess_timeout_time);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
 vl_api_nat44_user_session_v2_dump_t_handler (
   vl_api_nat44_user_session_v2_dump_t *mp)
 {

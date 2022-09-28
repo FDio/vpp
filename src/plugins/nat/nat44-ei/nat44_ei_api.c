@@ -1217,6 +1217,43 @@ send_nat44_ei_user_session_details (nat44_ei_session_t *s,
 }
 
 static void
+send_nat44_ei_user_session_v2_details (nat44_ei_session_t *s,
+				       vl_api_registration_t *reg, u32 context)
+{
+  vl_api_nat44_ei_user_session_v2_details_t *rmp;
+  nat44_ei_main_t *nm = &nat44_ei_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_EI_USER_SESSION_DETAILS + nm->msg_id_base);
+  clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
+  clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
+
+  if (nat44_ei_is_session_static (s))
+    rmp->flags |= NAT44_EI_STATIC_MAPPING;
+
+  rmp->last_heard = clib_host_to_net_u64 (
+    (u64) (vlib_time_now (vlib_get_main ()) - s->last_heard));
+  rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
+  rmp->total_pkts = ntohl (s->total_pkts);
+  rmp->context = context;
+  if (nat44_ei_is_unk_proto_session (s))
+    {
+      rmp->outside_port = 0;
+      rmp->inside_port = 0;
+      rmp->protocol = ntohs (s->in2out.port);
+    }
+  else
+    {
+      rmp->outside_port = s->out2in.port;
+      rmp->inside_port = s->in2out.port;
+      rmp->protocol = ntohs (nat_proto_to_ip_proto (s->nat_proto));
+    }
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
 vl_api_nat44_ei_user_session_dump_t_handler (
   vl_api_nat44_ei_user_session_dump_t *mp)
 {
