@@ -324,6 +324,7 @@ typedef struct {
    */
   u8 flags;
 #define LB_VIP_FLAGS_USED 0x1
+#define LB_VIP_FLAGS_SRC_IP_STICKY 0x2
 
   /**
    * Pool of AS indexes used for this VIP.
@@ -346,43 +347,100 @@ typedef struct {
                              || (vip)->type == LB_VIP_TYPE_IP4_L3DSR \
                              || (vip)->type == LB_VIP_TYPE_IP4_NAT4 )
 
+#define lb_vip_is_src_ip_sticky(vip)                                          \
+  (((vip)->flags & LB_VIP_FLAGS_SRC_IP_STICKY) != 0)
+
+/* clang-format off */
 #define lb_vip_is_gre4(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                             || (vip)->type == LB_VIP_TYPE_IP4_GRE4) \
-                            && ((vip)->port == 0))
-
+                            && ((vip)->port == 0) \
+                            && !lb_vip_is_src_ip_sticky (vip))
 
 #define lb_vip_is_gre6(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
                             || (vip)->type == LB_VIP_TYPE_IP4_GRE6) \
-                            && ((vip)->port == 0))
+                            && ((vip)->port == 0) \
+                            && !lb_vip_is_src_ip_sticky (vip))
 
 #define lb_vip_is_gre4_port(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                                  || (vip)->type == LB_VIP_TYPE_IP4_GRE4) \
-                                 && ((vip)->port != 0))
+                                 && ((vip)->port != 0) \
+                                 && !lb_vip_is_src_ip_sticky (vip))
 
 #define lb_vip_is_gre6_port(vip) (((vip)->type == LB_VIP_TYPE_IP6_GRE6 \
                                  || (vip)->type == LB_VIP_TYPE_IP4_GRE6) \
-                                 && ((vip)->port != 0))
+                                 && ((vip)->port != 0) \
+                                 && !lb_vip_is_src_ip_sticky (vip))
+/* clang-format on */
+
+#define lb_vip_is_gre4_sticky(vip)                                            \
+  (((vip)->type == LB_VIP_TYPE_IP6_GRE4 ||                                    \
+    (vip)->type == LB_VIP_TYPE_IP4_GRE4) &&                                   \
+   ((vip)->port == 0) && lb_vip_is_src_ip_sticky (vip))
+
+#define lb_vip_is_gre6_sticky(vip)                                            \
+  (((vip)->type == LB_VIP_TYPE_IP6_GRE6 ||                                    \
+    (vip)->type == LB_VIP_TYPE_IP4_GRE6) &&                                   \
+   ((vip)->port == 0) && lb_vip_is_src_ip_sticky (vip))
+
+#define lb_vip_is_gre4_port_sticky(vip)                                       \
+  (((vip)->type == LB_VIP_TYPE_IP6_GRE4 ||                                    \
+    (vip)->type == LB_VIP_TYPE_IP4_GRE4) &&                                   \
+   ((vip)->port != 0) && lb_vip_is_src_ip_sticky (vip))
+
+#define lb_vip_is_gre6_port_sticky(vip)                                       \
+  (((vip)->type == LB_VIP_TYPE_IP6_GRE6 ||                                    \
+    (vip)->type == LB_VIP_TYPE_IP4_GRE6) &&                                   \
+   ((vip)->port != 0) && lb_vip_is_src_ip_sticky (vip))
 
 always_inline bool
 lb_vip_is_l3dsr(const lb_vip_t *vip)
 {
-  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port ==0);
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port == 0 &&
+	  !lb_vip_is_src_ip_sticky (vip));
 }
 
 always_inline bool
 lb_vip_is_l3dsr_port(const lb_vip_t *vip)
 {
-  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port !=0);
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port != 0 &&
+	  !lb_vip_is_src_ip_sticky (vip));
 }
 always_inline bool
 lb_vip_is_nat4_port(const lb_vip_t *vip)
 {
-  return (vip->type == LB_VIP_TYPE_IP4_NAT4 && vip->port !=0);
+  return (vip->type == LB_VIP_TYPE_IP4_NAT4 && vip->port != 0 &&
+	  !lb_vip_is_src_ip_sticky (vip));
 }
 always_inline bool
 lb_vip_is_nat6_port(const lb_vip_t *vip)
 {
-  return (vip->type == LB_VIP_TYPE_IP6_NAT6 && vip->port !=0);
+  return (vip->type == LB_VIP_TYPE_IP6_NAT6 && vip->port != 0 &&
+	  !lb_vip_is_src_ip_sticky (vip));
+}
+
+always_inline bool
+lb_vip_is_l3dsr_sticky (const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port == 0 &&
+	  lb_vip_is_src_ip_sticky (vip));
+}
+always_inline bool
+lb_vip_is_l3dsr_port_sticky (const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP4_L3DSR && vip->port != 0 &&
+	  lb_vip_is_src_ip_sticky (vip));
+}
+always_inline bool
+lb_vip_is_nat4_port_sticky (const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP4_NAT4 && vip->port != 0 &&
+	  lb_vip_is_src_ip_sticky (vip));
+}
+always_inline bool
+lb_vip_is_nat6_port_sticky (const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP6_NAT6 && vip->port != 0 &&
+	  lb_vip_is_src_ip_sticky (vip));
 }
 
 format_function_t format_lb_vip;
@@ -542,6 +600,14 @@ typedef struct {
   dpo_type_t dpo_l3dsr_port_type;
   dpo_type_t dpo_nat4_port_type;
   dpo_type_t dpo_nat6_port_type;
+  dpo_type_t dpo_gre4_sticky_type;
+  dpo_type_t dpo_gre6_sticky_type;
+  dpo_type_t dpo_gre4_port_sticky_type;
+  dpo_type_t dpo_gre6_port_sticky_type;
+  dpo_type_t dpo_l3dsr_sticky_type;
+  dpo_type_t dpo_l3dsr_port_sticky_type;
+  dpo_type_t dpo_nat4_port_sticky_type;
+  dpo_type_t dpo_nat6_port_sticky_type;
   /**
    * Node type for registering to fib changes.
    */
@@ -575,6 +641,7 @@ typedef struct {
   u8 plen;
   u8 protocol;
   u16 port;
+  u8 src_ip_sticky;
   lb_vip_type_t type;
   u32 new_length;
   lb_vip_encap_args_t encap_args;
