@@ -333,7 +333,7 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
   ph = pool_header (pp[0]);
   vec_resize (ph->free_indices, n_elts);
   vec_dec_len (ph->free_indices, n_elts);
-  clib_bitmap_vec_validate (ph->free_bitmap, len + n_elts - 1);
+  clib_bitmap_validate (ph->free_bitmap, (len + n_elts) ?: 1);
 }
 
 #define pool_alloc_aligned_heap(P, N, A, H)                                   \
