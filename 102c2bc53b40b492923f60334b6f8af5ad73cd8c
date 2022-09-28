@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f059654b_30d89b26",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-09-28T14:03:04Z",
+      "side": 1,
+      "message": "Still a fix for the numa issue: https://jenkins.fd.io/view/vpp/job/vpp-csit-verify-perf-master-ubuntu2204-aarch64-3n-alt/5/",
+      "revId": "102c2bc53b40b492923f60334b6f8af5ad73cd8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
