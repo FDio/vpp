@@ -137,10 +137,11 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
     return -1;
   n_elts = frame->n_elts;
 
-  if (PREDICT_FALSE (CRYPTODEV_NB_CRYPTO_OPS - cet->inflight < n_elts))
+  if (PREDICT_FALSE (CRYPTODEV_NB_CRYPTO_OPS - cet->inflight[0] < n_elts))
     {
       cryptodev_mark_frame_err_status (frame,
-				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+				       VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
       return -1;
     }
 
@@ -148,7 +149,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
 	rte_mempool_get_bulk (cet->cop_pool, (void **) cet->cops, n_elts) < 0))
     {
       cryptodev_mark_frame_err_status (frame,
-				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+				       VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
       return -1;
     }
 
@@ -184,7 +186,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
 		    cryptodev_session_create (vm, last_key_index, 0) < 0))
 		{
 		  cryptodev_mark_frame_err_status (
-		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+		    VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
 		  return -1;
 		}
 	    }
@@ -228,11 +231,11 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
       n_elts--;
     }
 
-  n_enqueue = rte_cryptodev_enqueue_burst (cet->cryptodev_id, cet->cryptodev_q,
-					   (struct rte_crypto_op **) cet->cops,
-					   frame->n_elts);
+  n_enqueue = rte_cryptodev_enqueue_burst (
+    cet->cryptodev_id, cet->cryptodev_q[0],
+    (struct rte_crypto_op **) cet->cops, frame->n_elts);
   ASSERT (n_enqueue == frame->n_elts);
-  cet->inflight += n_enqueue;
+  cet->inflight[0] += n_enqueue;
 
   return 0;
 }
@@ -256,10 +259,11 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
     return -1;
   n_elts = frame->n_elts;
 
-  if (PREDICT_FALSE (CRYPTODEV_MAX_INFLIGHT - cet->inflight < n_elts))
+  if (PREDICT_FALSE (CRYPTODEV_MAX_INFLIGHT - cet->inflight[0] < n_elts))
     {
       cryptodev_mark_frame_err_status (frame,
-				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+				       VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
       return -1;
     }
 
@@ -267,7 +271,8 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
 	rte_mempool_get_bulk (cet->cop_pool, (void **) cet->cops, n_elts) < 0))
     {
       cryptodev_mark_frame_err_status (frame,
-				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+				       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+				       VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
       return -1;
     }
 
@@ -301,7 +306,8 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
 							   aad_len) < 0))
 		{
 		  cryptodev_mark_frame_err_status (
-		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+		    VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
 		  return -1;
 		}
 	    }
@@ -315,7 +321,8 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
 							   aad_len) < 0))
 		{
 		  cryptodev_mark_frame_err_status (
-		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
+		    VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED);
 		  return -1;
 		}
 	    }
@@ -361,11 +368,11 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
       n_elts--;
     }
 
-  n_enqueue = rte_cryptodev_enqueue_burst (cet->cryptodev_id, cet->cryptodev_q,
-					   (struct rte_crypto_op **) cet->cops,
-					   frame->n_elts);
+  n_enqueue = rte_cryptodev_enqueue_burst (
+    cet->cryptodev_id, cet->cryptodev_q[0],
+    (struct rte_crypto_op **) cet->cops, frame->n_elts);
   ASSERT (n_enqueue == frame->n_elts);
-  cet->inflight += n_enqueue;
+  cet->inflight[0] += n_enqueue;
 
   return 0;
 }
@@ -402,15 +409,15 @@ cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   u32 n_elts, n_completed_ops = rte_ring_count (cet->ring);
   u32 ss0 = 0, ss1 = 0, ss2 = 0, ss3 = 0; /* sum of status */
 
-  if (cet->inflight)
+  if (cet->inflight[0])
     {
       n_elts = rte_cryptodev_dequeue_burst (
-	cet->cryptodev_id, cet->cryptodev_q,
+	cet->cryptodev_id, cet->cryptodev_q[0],
 	(struct rte_crypto_op **) cet->cops, VNET_CRYPTO_FRAME_SIZE);
 
       if (n_elts)
 	{
-	  cet->inflight -= n_elts;
+	  cet->inflight[0] -= n_elts;
 	  n_completed_ops += n_elts;
 
 	  rte_ring_sp_enqueue_burst (cet->ring, (void **) cet->cops, n_elts,

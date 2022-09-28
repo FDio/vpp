@@ -512,10 +512,11 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_inst_t *cinst = 0;
-  uword idx;
+  uword idx_enc, idx_dec;
 
   /* assign resource is only allowed when no inflight op is in the queue */
-  if (cet->inflight)
+  if (cet->inflight[CRYPTODEV_OP_TYPE_ENCRYPT] ||
+      cet->inflight[CRYPTODEV_OP_TYPE_DECRYPT])
     return -EBUSY;
 
   switch (op)
@@ -526,11 +527,19 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
 	return -1;
 
       clib_spinlock_lock (&cmt->tlock);
-      idx = clib_bitmap_first_clear (cmt->active_cdev_inst_mask);
-      clib_bitmap_set (cmt->active_cdev_inst_mask, idx, 1);
-      cinst = vec_elt_at_index (cmt->cryptodev_inst, idx);
+      idx_enc = clib_bitmap_first_clear (cmt->active_cdev_inst_mask);
+      idx_dec = idx_enc + vec_len (cmt->cryptodev_inst) / 2;
+      clib_bitmap_set (cmt->active_cdev_inst_mask, idx_enc, 1);
+      cinst = vec_elt_at_index (cmt->cryptodev_inst, idx_enc);
       cet->cryptodev_id = cinst->dev_id;
-      cet->cryptodev_q = cinst->q_id;
+      cet->cryptodev_q[0] = cinst->q_id;
+      clib_bitmap_set (cmt->active_cdev_inst_mask, idx_dec, 1);
+      cinst = vec_elt_at_index (cmt->cryptodev_inst, idx_dec);
+      cet->cryptodev_q[1] = cinst->q_id;
+      vec_alloc_aligned (cet->frame_ring[0].frames,
+			 VNET_CRYPTO_FRAME_POOL_SIZE, 0);
+      vec_alloc_aligned (cet->frame_ring[1].frames,
+			 VNET_CRYPTO_FRAME_POOL_SIZE, 0);
       clib_spinlock_unlock (&cmt->tlock);
       break;
     case CRYPTODEV_RESOURCE_ASSIGN_UPDATE:
@@ -539,23 +548,31 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
 	  == 1)
 	return -EBUSY;
 
-      vec_foreach_index (idx, cmt->cryptodev_inst)
-      {
-	cinst = cmt->cryptodev_inst + idx;
-	if (cinst->dev_id == cet->cryptodev_id &&
-	    cinst->q_id == cet->cryptodev_q)
-	  break;
-      }
+      vec_foreach_index (idx_enc, cmt->cryptodev_inst)
+	{
+	  cinst = cmt->cryptodev_inst + idx_enc;
+	  if (cinst->dev_id == cet->cryptodev_id &&
+	      cinst->q_id == cet->cryptodev_q[0])
+	    break;
+	}
       /* invalid existing worker resource assignment */
-      if (idx == vec_len (cmt->cryptodev_inst))
+      if (idx_enc >= vec_len (cmt->cryptodev_inst) / 2)
 	return -EINVAL;
       clib_spinlock_lock (&cmt->tlock);
-      clib_bitmap_set_no_check (cmt->active_cdev_inst_mask, idx, 0);
+      idx_dec = idx_enc + vec_len (cmt->cryptodev_inst) / 2;
+      clib_bitmap_set_no_check (cmt->active_cdev_inst_mask, idx_enc, 0);
+      clib_bitmap_set_no_check (cmt->active_cdev_inst_mask, idx_dec, 0);
       clib_bitmap_set_no_check (cmt->active_cdev_inst_mask,
 				cryptodev_inst_index, 1);
+      clib_bitmap_set_no_check (
+	cmt->active_cdev_inst_mask,
+	cryptodev_inst_index + vec_len (cmt->cryptodev_inst) / 2, 1);
       cinst = cmt->cryptodev_inst + cryptodev_inst_index;
       cet->cryptodev_id = cinst->dev_id;
-      cet->cryptodev_q = cinst->q_id;
+      cet->cryptodev_q[0] = cinst->q_id;
+      cinst = cmt->cryptodev_inst + cryptodev_inst_index +
+	      vec_len (cmt->cryptodev_inst) / 2;
+      cet->cryptodev_q[1] = cinst->q_id;
       clib_spinlock_unlock (&cmt->tlock);
       break;
     default:
@@ -582,9 +599,15 @@ format_cryptodev_inst (u8 * s, va_list * args)
     if (vlib_num_workers () > 0 && thread_index == 0)
       continue;
 
-    if (cet->cryptodev_id == cit->dev_id && cet->cryptodev_q == cit->q_id)
+    if (cet->cryptodev_id == cit->dev_id && cet->cryptodev_q[0] == cit->q_id)
       {
-	s = format (s, "%u (%v)\n", thread_index,
+	s = format (s, "%u (%v) - encryption\n", thread_index,
+		    vlib_worker_threads[thread_index].name);
+	break;
+      }
+    if (cet->cryptodev_id == cit->dev_id && cet->cryptodev_q[1] == cit->q_id)
+      {
+	s = format (s, "%u (%v) - decryption\n", thread_index,
 		    vlib_worker_threads[thread_index].name);
 	break;
       }
@@ -671,7 +694,7 @@ cryptodev_set_assignment_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   if (thread_index > vec_len (cmt->per_thread_data) ||
-      inst_index > vec_len (cmt->cryptodev_inst))
+      inst_index >= vec_len (cmt->cryptodev_inst) / 2)
     {
       error = clib_error_return (0, "wrong thread id or resource id");
       return error;
@@ -1167,7 +1190,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   cmt->drivers_cnt = vec_len (unique_drivers);
   vec_free (unique_drivers);
 
-  clib_bitmap_vec_validate (cmt->active_cdev_inst_mask, tm->n_vlib_mains);
+  clib_bitmap_vec_validate (cmt->active_cdev_inst_mask, n_workers);
   clib_spinlock_init (&cmt->tlock);
 
   vec_validate_aligned(cmt->per_thread_data, tm->n_vlib_mains - 1,
