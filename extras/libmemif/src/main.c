@@ -1551,7 +1551,6 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   uint16_t dst_left, src_left;
   uint16_t saved_count;
   uint16_t saved_next_buf;
-  uint16_t slot;
   memif_buffer_t *saved_b;
   *count_out = 0;
 
