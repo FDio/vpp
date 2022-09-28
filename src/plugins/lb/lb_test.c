@@ -129,6 +129,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
   u32 target_port = 0;
   u32 new_length = 1024;
+  u8 src_ip_sticky = 0;
   int is_del = 0;
 
   if (!unformat(line_input, "%U", unformat_ip46_prefix, &ip_prefix,
@@ -143,6 +144,8 @@ static int api_lb_add_del_vip (vat_main_t * vam)
       ;
     else if (unformat(line_input, "del"))
       is_del = 1;
+    else if (unformat (line_input, "src_ip_sticky"))
+      src_ip_sticky = 1;
     else if (unformat(line_input, "protocol tcp"))
       {
         protocol = IP_PROTOCOL_TCP;
@@ -201,6 +204,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   mp->node_port = htons((u16)target_port);
   mp->new_flows_table_length = htonl(new_length);
   mp->is_del = is_del;
+  mp->src_ip_sticky = src_ip_sticky;
 
   S(mp);
   W (ret);

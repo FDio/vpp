@@ -32,6 +32,7 @@ lb_vip_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
 
   args.new_length = 1024;
+  args.src_ip_sticky = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -49,6 +50,8 @@ lb_vip_command_fn (vlib_main_t * vm,
       ;
     else if (unformat(line_input, "del"))
       del = 1;
+    else if (unformat (line_input, "src_ip_sticky"))
+      args.src_ip_sticky = 1;
     else if (unformat(line_input, "protocol tcp"))
       {
         args.protocol = (u8)IP_PROTOCOL_TCP;
@@ -177,15 +180,14 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (lb_vip_command, static) =
-{
+VLIB_CLI_COMMAND (lb_vip_command, static) = {
   .path = "lb vip",
   .short_help = "lb vip <prefix> "
-      "[protocol (tcp|udp) port <n>] "
-      "[encap (gre6|gre4|l3dsr|nat4|nat6)] "
-      "[dscp <n>] "
-      "[type (nodeport|clusterip) target_port <n>] "
-      "[new_len <n>] [del]",
+		"[protocol (tcp|udp) port <n>] "
+		"[encap (gre6|gre4|l3dsr|nat4|nat6)] "
+		"[dscp <n>] "
+		"[type (nodeport|clusterip) target_port <n>] "
+		"[new_len <n>] [src_ip_sticky] [del]",
   .function = lb_vip_command_fn,
 };
 
