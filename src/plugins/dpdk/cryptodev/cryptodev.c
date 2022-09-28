@@ -514,6 +514,11 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
   cryptodev_inst_t *cinst = 0;
   uword idx;
 
+  /*assign limits for how many packets should be enqueued and dequeued to QAT
+   * at once*/
+  cet->enq_deq_limits[0] = CRYPTODE_ENQ_MAX;
+  cet->enq_deq_limits[1] = CRYPTODE_DEQ_MAX;
+
   /* assign resource is only allowed when no inflight op is in the queue */
   if (cet->inflight)
     return -EBUSY;
@@ -531,6 +536,8 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
       cinst = vec_elt_at_index (cmt->cryptodev_inst, idx);
       cet->cryptodev_id = cinst->dev_id;
       cet->cryptodev_q = cinst->q_id;
+      vec_alloc_aligned (cet->frame_ring.frames, VNET_CRYPTO_FRAME_POOL_SIZE,
+			 0);
       clib_spinlock_unlock (&cmt->tlock);
       break;
     case CRYPTODEV_RESOURCE_ASSIGN_UPDATE:
@@ -540,14 +547,14 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
 	return -EBUSY;
 
       vec_foreach_index (idx, cmt->cryptodev_inst)
-      {
-	cinst = cmt->cryptodev_inst + idx;
-	if (cinst->dev_id == cet->cryptodev_id &&
-	    cinst->q_id == cet->cryptodev_q)
-	  break;
-      }
+	{
+	  cinst = cmt->cryptodev_inst + idx;
+	  if (cinst->dev_id == cet->cryptodev_id &&
+	      cinst->q_id == cet->cryptodev_q)
+	    break;
+	}
       /* invalid existing worker resource assignment */
-      if (idx == vec_len (cmt->cryptodev_inst))
+      if (idx > vec_len (cmt->cryptodev_inst))
 	return -EINVAL;
       clib_spinlock_lock (&cmt->tlock);
       clib_bitmap_set_no_check (cmt->active_cdev_inst_mask, idx, 0);
@@ -625,6 +632,40 @@ VLIB_CLI_COMMAND (show_cryptodev_assignment, static) = {
     .path = "show cryptodev assignment",
     .short_help = "show cryptodev assignment",
     .function = cryptodev_show_assignment_fn,
+};
+
+static clib_error_t *
+cryptodev_show_sw_rings_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  cryptodev_main_t *cmt = &cryptodev_main;
+  u32 thread_index = 0;
+  vec_foreach_index (thread_index, cmt->per_thread_data)
+    {
+      cryptodev_engine_thread_t *cet = cmt->per_thread_data + thread_index;
+      if (vlib_num_workers () > 0 && thread_index == 0)
+	continue;
+      vlib_cli_output (vm, "\n\n");
+      vlib_cli_output (vm, "Frames total: %d", cet->frames_on_ring);
+      vlib_cli_output (vm, "Frames pending in a ring: %d",
+		       cet->frames_on_ring - cet->enqueued_not_dequeueq -
+			 cet->deqeued_not_returned);
+      vlib_cli_output (vm, "Frames enqueued but not dequeued: %d",
+		       cet->enqueued_not_dequeueq);
+      vlib_cli_output (vm, "Frames dequed but not returned: %d",
+		       cet->deqeued_not_returned);
+      vlib_cli_output (vm, "inflight: %d", cet->inflight);
+      vlib_cli_output (vm, "Head: %d", cet->frame_ring.head);
+      vlib_cli_output (vm, "Tail: %d", cet->frame_ring.tail);
+      vlib_cli_output (vm, "\n\n");
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_cryptodev_sw_rings, static) = {
+  .path = "show cryptodev sw_rings",
+  .short_help = "show cryptodev sw_rings",
+  .function = cryptodev_show_sw_rings_fn,
 };
 
 static clib_error_t *
@@ -1167,7 +1208,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   cmt->drivers_cnt = vec_len (unique_drivers);
   vec_free (unique_drivers);
 
-  clib_bitmap_vec_validate (cmt->active_cdev_inst_mask, tm->n_vlib_mains);
+  clib_bitmap_vec_validate (cmt->active_cdev_inst_mask, n_workers);
   clib_spinlock_init (&cmt->tlock);
 
   vec_validate_aligned(cmt->per_thread_data, tm->n_vlib_mains - 1,
