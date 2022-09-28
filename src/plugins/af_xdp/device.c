@@ -22,7 +22,7 @@
 #include <linux/if_link.h>
 #include <linux/sockios.h>
 #include <linux/limits.h>
-#include <bpf/libbpf.h>
+#include <bpf/bpf.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
@@ -313,6 +313,8 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
+  if (args->prog)
+    sock_config.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
   if (xsk_socket__create
       (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
     {
@@ -325,13 +327,27 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
     }
 
   fd = xsk_socket__fd (*xsk);
+  if (args->prog)
+    {
+      struct bpf_map *map =
+	bpf_object__find_map_by_name (ad->bpf_obj, "xsks_map");
+      int ret = xsk_socket__update_xskmap (*xsk, bpf_map__fd (map));
+      if (ret)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return_unix (
+	    0, "xsk_socket__update_xskmap %s qid %d return %d", ad->linux_ifname,
+	    qid, ret);
+	  goto err2;
+	}
+    }
   optlen = sizeof (opt);
 #ifndef SOL_XDP
 #define SOL_XDP 283
 #endif
   if (getsockopt (fd, SOL_XDP, XDP_OPTIONS, &opt, &optlen))
     {
-      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_4;
       args->error =
 	clib_error_return_unix (0, "getsockopt(XDP_OPTIONS) failed");
       goto err2;
