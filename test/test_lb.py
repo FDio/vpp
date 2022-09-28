@@ -21,6 +21,7 @@ from vpp_ip import INVALID_INDEX
   - IP6 to GRE6 encap on per-port vip case
   - IP4 to L3DSR encap on vip case
   - IP4 to L3DSR encap on per-port vip case
+  - IP4 to L3DSR encap on per-port vip with src_ip_sticky case
   - IP4 to NAT4 encap on per-port vip case
   - IP6 to NAT6 encap on per-port vip case
 
@@ -39,7 +40,7 @@ class TestLB(VppTestCase):
         super(TestLB, cls).setUpClass()
 
         cls.ass = range(5)
-        cls.packets = range(1)
+        cls.packets = range(100)
 
         try:
             cls.create_pg_interfaces(range(2))
@@ -123,11 +124,12 @@ class TestLB(VppTestCase):
             scapy.compat.raw(inner), scapy.compat.raw(self.info.data[IPver])
         )
 
-    def checkCapture(self, encap, isv4):
+    def checkCapture(self, encap, isv4, src_ip_sticky=False):
         self.pg0.assert_nothing_captured()
         out = self.pg1.get_capture(len(self.packets))
 
         load = [0] * len(self.ass)
+        sticky_as = {}
         self.info = None
         for p in out:
             try:
@@ -201,6 +203,13 @@ class TestLB(VppTestCase):
                     udp = UDP(scapy.compat.raw(p[IPv6].payload))
                     self.assertEqual(udp.dport, 3307)
                 load[asid] += 1
+
+                # In case of source ip sticky, check that packets with same
+                # src_ip are routed to same as.
+                if src_ip_sticky and sticky_as.get(ip.src, asid) != asid:
+                    raise Exception("Packets with same src_ip are routed to another as")
+                sticky_as[ip.src] = asid
+
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
                 raise
@@ -417,6 +426,37 @@ class TestLB(VppTestCase):
                 )
             self.vapi.cli(
                 "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7 del"
+            )
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip4_l3dsr_port_src_ip_sticky(self):
+        """Load Balancer IP4 L3DSR on per-port-vip with src_ip_sticky case"""
+        try:
+            self.vapi.cli(
+                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7 src_ip_sticky"
+            )
+            for asid in self.ass:
+                self.vapi.cli(
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u" % (asid)
+                )
+
+            # Generate duplicated packets
+            pkts = self.generatePackets(self.pg0, isv4=True)
+            pkts = pkts[: len(pkts) // 2]
+            pkts = pkts + pkts
+
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="l3dsr", isv4=True, src_ip_sticky=True)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli(
+                    "lb as 90.0.0.0/8 protocol udp port 20000 10.0.0.%u del" % (asid)
+                )
+            self.vapi.cli(
+                "lb vip 90.0.0.0/8 protocol udp port 20000 encap l3dsr dscp 7 src_ip_sticky del"
             )
             self.vapi.cli("test lb flowtable flush")
 
