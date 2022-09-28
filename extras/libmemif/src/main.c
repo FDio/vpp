@@ -1615,7 +1615,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 	  /* slave resets buffer offset */
 	  if (c->args.is_master == 0)
 	    {
-	      memif_desc_t *d = &ring->desc[slot & mask];
+	      memif_desc_t *d = &ring->desc[mq->next_buf & mask];
 	      if (ms->get_external_buffer_offset)
 		d->offset = ms->get_external_buffer_offset (c->private_ctx);
 	      else
