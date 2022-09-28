@@ -1197,7 +1197,8 @@ send_nat44_ei_user_session_details (nat44_ei_session_t *s,
   if (nat44_ei_is_session_static (s))
     rmp->flags |= NAT44_EI_STATIC_MAPPING;
 
-  rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
+  rmp->last_heard = clib_host_to_net_u64 (
+    (u64) (vlib_time_now (vnet_get_main ()->vlib_main) - s->last_heard));
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
   rmp->context = context;
