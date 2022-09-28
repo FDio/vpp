@@ -247,6 +247,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     macros
     maplog
     pmalloc
+    pool_alloc
     pool_iterate
     ptclosure
     random
