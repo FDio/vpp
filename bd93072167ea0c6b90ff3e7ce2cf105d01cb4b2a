@@ -106,6 +106,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "340ff56a_c58c3349",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-09-29T15:39:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bcca2eb4_76cac6b2",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d5a801cb_b1696e0c",
@@ -141,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1dedfe13_d699e7ed",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-09-29T15:39:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "202f263b_0f988cb8",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4d14a309_7072d3c9",
@@ -172,6 +208,24 @@
       "side": 1,
       "message": "Flag is an indication of an IPIP tunnel for NICs, so NICs will use the offsets (l3_hdr_offset and outer_l3_hdr_offset) between the two IP headers to process the offload.",
       "parentUuid": "4d14a309_7072d3c9",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5c951eb_7a22e4cb",
+        "filename": "src/vnet/ipip/ipip.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-09-29T15:39:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bda2bcaf_19e6a965",
       "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
