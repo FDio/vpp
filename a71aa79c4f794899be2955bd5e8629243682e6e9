@@ -16,6 +16,24 @@
       "message": "Should this be merged?",
       "revId": "a71aa79c4f794899be2955bd5e8629243682e6e9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cb74f12c_4775f184",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2810
+      },
+      "writtenOn": "2022-09-29T06:32:13Z",
+      "side": 1,
+      "message": "When \"lpm_128_add\" function set bitmap, the bit position is (128 - pfxlen),\nso \"lpm_128_lookup\" function first gets the bit position to i, then should use (128 - i) as pfxlen to search lookup table.\n\nFor \"masked_address64\" function, it should be the same as masked_address32. When we use ip address and mask to calculate hash key, we need uniformly use host byte order. \n\nThe patch has been verified with below config:\nmap add domain ip4-pfx 0.0.0.0/0 ip6-pfx 1:2:3::/96 ip6-src 2001:db8::/96 ea-bits-len 0 psid-offset 0 psid-len 0\nmap interface Gi0/1 map-t\nmap interface Gi0/2 map-t\nWithout this patch, downlink ipv6 packets cannot hit lookup table by node ip6-map-t in MAP-T mode.",
+      "parentUuid": "9b61dd66_1e603905",
+      "revId": "a71aa79c4f794899be2955bd5e8629243682e6e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
