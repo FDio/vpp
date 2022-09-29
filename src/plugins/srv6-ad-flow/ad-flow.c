@@ -94,14 +94,6 @@ srv6_ad_flow_localsid_creation_fn (ip6_sr_localsid_t *localsid)
       return SID_CREATE_INVALID_IFACE_INDEX;
     }
 
-  vnet_sw_interface_t *sw =
-    vnet_get_sw_interface (sm->vnet_main, ls_mem->sw_if_index_in);
-  if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-    {
-      adj_unlock (ls_mem->nh_adj);
-      clib_mem_free (ls_mem);
-      return SID_CREATE_INVALID_IFACE_TYPE;
-    }
 
   if (ls_mem->inner_type == AD_TYPE_IP4)
     {
