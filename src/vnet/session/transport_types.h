@@ -113,7 +113,7 @@ typedef struct _transport_connection
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
-  u32 cc_stat_tstamp;		/**< CC stats timestamp */
+  f64 cc_stat_tstamp;		/**< CC stats timestamp */
 #endif
 
   /**
