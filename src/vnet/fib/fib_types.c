@@ -81,8 +81,6 @@ void
 fib_prefix_from_ip46_addr (const ip46_address_t *addr,
 			   fib_prefix_t *pfx)
 {
-    ASSERT(!ip46_address_is_zero(addr));
-
     pfx->fp_proto = ((ip46_address_is_ip4(addr) ?
 		      FIB_PROTOCOL_IP4 :
 		      FIB_PROTOCOL_IP6));
