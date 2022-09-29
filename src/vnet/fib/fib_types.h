@@ -276,8 +276,9 @@ extern void fib_prefix_normalize(const fib_prefix_t *p,
 /**
  * \brief Host prefix from ip
  */
-extern void fib_prefix_from_ip46_addr (const ip46_address_t *addr,
-			   fib_prefix_t *pfx);
+extern void fib_prefix_from_ip46_addr (fib_protocol_t fproto,
+		                       const ip46_address_t *addr,
+		                       fib_prefix_t *pfx);
 
 extern u8 * format_fib_prefix(u8 * s, va_list * args);
 extern u8 * format_fib_forw_chain_type(u8 * s, va_list * args);
