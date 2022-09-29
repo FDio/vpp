@@ -145,7 +145,7 @@ def GetMask(item):
     if "format" in item:
         format = item["format"]
         if format == "mac":
-            mask = "ff.ff.ff.ff.ff.ff"
+            mask = "ff:ff:ff:ff:ff:ff"
         elif format == "ipv4":
             mask = "255.255.255.255"
         elif format == "ipv6":
