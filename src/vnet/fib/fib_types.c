@@ -78,16 +78,15 @@ format_fib_mpls_label (u8 *s, va_list *ap)
 }
 
 void
-fib_prefix_from_ip46_addr (const ip46_address_t *addr,
+fib_prefix_from_ip46_addr (fib_protocol_t fproto,
+			   const ip46_address_t *addr,
 			   fib_prefix_t *pfx)
 {
-    ASSERT(!ip46_address_is_zero(addr));
+    ASSERT(FIB_PROTOCOL_MPLS != fproto);
 
-    pfx->fp_proto = ((ip46_address_is_ip4(addr) ?
-		      FIB_PROTOCOL_IP4 :
-		      FIB_PROTOCOL_IP6));
-    pfx->fp_len = ((ip46_address_is_ip4(addr) ?
-		    32 : 128));
+    pfx->fp_proto = fproto;
+    pfx->fp_len = ((FIB_PROTOCOL_IP4 == fproto) ?
+		    32 : 128);
     pfx->fp_addr = *addr;
     pfx->___fp___pad = 0;
 }

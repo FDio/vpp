@@ -1998,7 +1998,11 @@ fib_path_resolve (fib_node_index_t path_index)
 	}
 	else
 	{
-	    fib_prefix_from_ip46_addr(&path->recursive.fp_nh.fp_ip, &pfx);
+	    ASSERT(!ip46_address_is_zero(&path->recursive.fp_nh.fp_ip));
+
+	    fib_protocol_t fp = (ip46_address_is_ip4(&path->recursive.fp_nh.fp_ip) ?
+                                        FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+	    fib_prefix_from_ip46_addr(fp, &path->recursive.fp_nh.fp_ip, &pfx);
 	}
 
         fib_table_lock(path->recursive.fp_tbl_id,

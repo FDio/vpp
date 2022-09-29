@@ -470,7 +470,8 @@ int vnet_geneve_add_del_tunnel
       fib_prefix_t tun_remote_pfx;
       vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
-      fib_prefix_from_ip46_addr (&t->remote, &tun_remote_pfx);
+      fib_protocol_t fp = fib_ip_proto (is_ip6);
+      fib_prefix_from_ip46_addr (fp, &t->remote, &tun_remote_pfx);
       if (!ip46_address_is_multicast (&t->remote))
 	{
 	  /* Unicast tunnel -
@@ -494,8 +495,6 @@ int vnet_geneve_add_del_tunnel
 	   * with different VNIs, create the output fib adjecency only if
 	   * it does not already exist
 	   */
-	  fib_protocol_t fp = fib_ip_proto (is_ip6);
-
 	  if (vtep_addr_ref (&vxm->vtep_table,
 			     t->encap_fib_index, &t->remote) == 1)
 	    {
