@@ -4,7 +4,7 @@
     "layout" : [
         {
             "name" : "length",
-            "size" : "1",
+            "size" : "8",
             "default" : "1",
             "readonly" : "true"
         },
@@ -23,6 +23,10 @@
         {
             "name" : "qfi",
             "size" : "6"
+        },
+        {
+            "name" : "nextext",
+            "size" : "8"
         }
     ]
 }
