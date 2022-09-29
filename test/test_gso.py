@@ -419,7 +419,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assert_ip_checksum_valid(rx)
-            self.assert_udp_checksum_valid(rx, ignore_zero_checksum=False)
+            self.assert_udp_checksum_valid(rx, ignore_zero_checksum=True)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
@@ -452,7 +452,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assert_ip_checksum_valid(rx)
-            self.assert_udp_checksum_valid(rx, ignore_zero_checksum=False)
+            self.assert_udp_checksum_valid(rx, ignore_zero_checksum=True)
             self.assertEqual(rx[VXLAN].vni, 10)
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
