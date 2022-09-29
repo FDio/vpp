@@ -16,6 +16,24 @@
       "message": "when there are no GSO, we had 2 cases and I think we want to keep that:\n - no encap/decap flags: we want to do an ipv4 incremental checksum\n - encap/decap flags: we do full ipv4 checksum",
       "revId": "add81aa2ed800ba8d4974921140abb930f57dd82",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cc57e91_7059a921",
+        "filename": "src/vnet/adj/adj_dp.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-09-29T17:25:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "47e812c2_bf6b7260",
+      "revId": "add81aa2ed800ba8d4974921140abb930f57dd82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
