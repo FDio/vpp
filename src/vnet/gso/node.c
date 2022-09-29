@@ -744,6 +744,7 @@ vnet_gso_node_inline (vlib_main_t * vm,
 			{
 			  sbi0 = to_next[0] = from_seg[0];
 			  sb0 = vlib_get_buffer (vm, sbi0);
+			  vnet_buffer_offload_flags_clear (sb0, 0x7F);
 			  ASSERT (sb0->current_length > 0);
 			  to_next += 1;
 			  from_seg += 1;
