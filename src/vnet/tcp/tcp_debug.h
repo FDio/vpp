@@ -867,11 +867,12 @@ if (TCP_DEBUG_CC > 1)							\
  */
 #if TCP_DEBUG_CS || TCP_DEBUG_ALWAYS
 
-#define STATS_INTERVAL 1
+#define STATS_INTERVAL 0.001
 
-#define tcp_cc_time_to_print_stats(_tc)					\
-  _tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now() 		\
-  || tcp_in_fastrecovery (_tc)						\
+#define tcp_cc_time_to_print_stats(_tc)                                       \
+  _tc->c_cc_stat_tstamp + STATS_INTERVAL <                                    \
+      tcp_time_now_us (_tc->c_thread_index) ||                                \
+    tcp_in_fastrecovery (_tc)
 
 #define TCP_EVT_CC_RTO_STAT_PRINT(_tc)					\
 {									\
@@ -887,14 +888,14 @@ if (TCP_DEBUG_CC > 1)							\
   ed->data[3] = _tc->rttvar;	 					\
 }
 
-#define TCP_EVT_CC_RTO_STAT_HANDLER(_tc, ...)				\
-{									\
-if (tcp_cc_time_to_print_stats (_tc))					\
-{									\
-  TCP_EVT_CC_RTO_STAT_PRINT (_tc);					\
-  _tc->c_cc_stat_tstamp = tcp_time_now ();				\
-}									\
-}
+#define TCP_EVT_CC_RTO_STAT_HANDLER(_tc, ...)                                 \
+  {                                                                           \
+    if (tcp_cc_time_to_print_stats (_tc))                                     \
+      {                                                                       \
+	TCP_EVT_CC_RTO_STAT_PRINT (_tc);                                      \
+	_tc->c_cc_stat_tstamp = tcp_time_now_us (_tc->c_thread_index);        \
+      }                                                                       \
+  }
 
 #define TCP_EVT_CC_SND_STAT_PRINT(_tc)					\
 {									\
@@ -911,14 +912,14 @@ if (tcp_cc_time_to_print_stats (_tc))					\
   ed->data[3] = _tc->snd_rxt_bytes;					\
 }
 
-#define TCP_EVT_CC_SND_STAT_HANDLER(_tc, ...)				\
-{									\
-if (tcp_cc_time_to_print_stats (_tc))					\
-{									\
-    TCP_EVT_CC_SND_STAT_PRINT(_tc);					\
-    _tc->c_cc_stat_tstamp = tcp_time_now ();				\
-}									\
-}
+#define TCP_EVT_CC_SND_STAT_HANDLER(_tc, ...)                                 \
+  {                                                                           \
+    if (tcp_cc_time_to_print_stats (_tc))                                     \
+      {                                                                       \
+	TCP_EVT_CC_SND_STAT_PRINT (_tc);                                      \
+	_tc->c_cc_stat_tstamp = tcp_time_now_us (_tc->c_thread_index);        \
+      }                                                                       \
+  }
 
 #define TCP_EVT_CC_STAT_PRINT(_tc)					\
 {									\
@@ -937,14 +938,14 @@ if (tcp_cc_time_to_print_stats (_tc))					\
   TCP_EVT_CC_SND_STAT_PRINT (_tc);					\
 }
 
-#define TCP_EVT_CC_STAT_HANDLER(_tc, ...)				\
-{									\
-if (tcp_cc_time_to_print_stats (_tc))					\
-{									\
-  TCP_EVT_CC_STAT_PRINT (_tc);						\
-  _tc->c_cc_stat_tstamp = tcp_time_now();				\
-}									\
-}
+#define TCP_EVT_CC_STAT_HANDLER(_tc, ...)                                     \
+  {                                                                           \
+    if (tcp_cc_time_to_print_stats (_tc))                                     \
+      {                                                                       \
+	TCP_EVT_CC_STAT_PRINT (_tc);                                          \
+	_tc->c_cc_stat_tstamp = tcp_time_now_us (_tc->c_thread_index);        \
+      }                                                                       \
+  }
 #else
 #define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
 #define TCP_EVT_CC_STAT_PRINT(_tc)
