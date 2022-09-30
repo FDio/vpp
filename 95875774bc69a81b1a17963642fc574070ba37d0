@@ -16,6 +16,24 @@
       "message": "the all zeros address is always considered to be IPv4.\nIt would be better if you changed this function to take the address family as an argument to remove the ambiguity.",
       "revId": "95875774bc69a81b1a17963642fc574070ba37d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1260490_216fa965",
+        "filename": "src/vnet/fib/fib_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-09-30T16:44:27Z",
+      "side": 0,
+      "message": "Thanks for your review and guidance!\n\nAbout this function, what I see is:\n1. when be called from fib_path_resolve, the argument addr will never be zero because of enum FIB_PATH_TYPE_RECURSIVE.\n2. when be called from create vxlan/vxlan-gpe/geneve/gtpu, the argument addr may be zero from user input.\n3. the all zeros address is always considered to be IPv4.\n4. vpp uses ip46_address_is_ip4(addr) to determine the addr’s address family, and it has been in the function.\n\nI have tested it, and vpp does regard string \"::c0a8:0003\" as IPv4 \"192.168.0.3\".\n\nTo remove the ambiguity about the addr’s address family, all we can do is take the result of ip46_address_is_ip4(addr) as an argument.\nDo I understand it correctly? And am I right to do this?",
+      "parentUuid": "facca5f3_16d050a3",
+      "revId": "95875774bc69a81b1a17963642fc574070ba37d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
