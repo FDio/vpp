@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "730fe3ad_146ea141",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-09-30T03:33:42Z",
+      "side": 1,
+      "message": "this can come outside the af conditional block.",
+      "revId": "ce86de554eabbb9d132d8729845187cd2d2dcbaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
