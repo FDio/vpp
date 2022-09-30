@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b86f90b7_04e335fa",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-09-30T14:14:06Z",
+      "side": 1,
+      "message": "use \u0027grep -q\u0027 to remove the grep output instead of redirecting stdout to /dev/null",
+      "range": {
+        "startLine": 35,
+        "startChar": 43,
+        "endLine": 35,
+        "endChar": 133
+      },
+      "revId": "a9a8d0232cc595538467996251693f0acdfc0aef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
