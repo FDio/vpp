@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a18dee76_ae5e1132",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-09-30T13:11:57Z",
+      "side": 1,
+      "message": "The category in the subject should be \"nat:\" instead of \"nat stats:\". ",
+      "revId": "ce29f5a40a057a166822e0e53686e748816f8032",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e866acb_61a097e2",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1442,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-09-30T13:11:57Z",
+      "side": 1,
+      "message": "You could just pass vlib_get_main() here instead of retrieving a pointer to a vnet_main_t and accessing from there.\n\nAlso, there is a nat44_user_session_v2_details that should be updated in the same way.",
+      "revId": "ce29f5a40a057a166822e0e53686e748816f8032",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57954a02_5e0b5b87",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1202,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-09-30T13:11:57Z",
+      "side": 1,
+      "message": "You can just pass vlib_get_main() here.",
+      "revId": "ce29f5a40a057a166822e0e53686e748816f8032",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
