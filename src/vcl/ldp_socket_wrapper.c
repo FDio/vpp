@@ -63,6 +63,8 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include <vppinfra/clib.h>
+
 #include <vcl/ldp_socket_wrapper.h>
 
 

@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <sched.h>
 
+#include <vppinfra/clib.h>
 #include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>

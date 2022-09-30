@@ -45,6 +45,7 @@
 #ifndef included_vlib_node_funcs_h
 #define included_vlib_node_funcs_h
 
+#include <vppinfra/clib.h>
 #include <vppinfra/fifo.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/interrupt.h>
