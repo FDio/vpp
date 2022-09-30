@@ -40,6 +40,7 @@
 #ifndef included_vlib_main_h
 #define included_vlib_main_h
 
+#include <vppinfra/clib.h>
 #include <vppinfra/callback_data.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/format.h>

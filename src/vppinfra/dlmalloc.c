@@ -5,6 +5,7 @@
   comments, complaints, performance data, etc to dl@cs.oswego.edu
 */
 
+#include <vppinfra/clib.h>
 #include <vppinfra/dlmalloc.h>
 
 /*------------------------------ internal #includes ---------------------- */
