@@ -343,7 +343,7 @@ more:
       goto more;
     }
 
-  if (drop_on_congestion && n_drop)
+  if (n_drop)
     vlib_buffer_free (vm, drop_list, n_drop);
 
   return n_packets - n_drop;
