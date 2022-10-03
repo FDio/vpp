@@ -26,7 +26,7 @@ To dump memory traces for analysis:
 
 .. code-block:: console
 
-    $ vppctl show memory-trace on main-heap
+    $ vppctl show memory main-heap verbose
     Thread 0 vpp_main
       base 0x7fffb6422000, size 1g, locked, unmap-on-destroy, name 'main heap'
 	page stats: page-size 4K, total 262144, mapped 30343, not-mapped 231801
