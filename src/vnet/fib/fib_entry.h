@@ -421,6 +421,9 @@ extern const int fib_entry_get_dpo_for_source (
     fib_node_index_t fib_entry_index,
     fib_source_t source,
     dpo_id_t *dpo);
+extern fib_node_index_t fib_entry_get_path_list_for_source (
+    fib_node_index_t fib_entry_index,
+    fib_source_t source);
 
 extern adj_index_t fib_entry_get_adj(fib_node_index_t fib_entry_index);
 
