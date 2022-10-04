@@ -16,6 +16,24 @@
       "message": "Is there no need or possible tests for this change?",
       "revId": "ee1b2c1a005acf8605beacae7acea020caa40cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ad6ba25_b7af56cf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2022-10-04T14:50:19Z",
+      "side": 1,
+      "message": "It\u0027s a bit difficult to test it as that would involve creating a specific node, generating frames with aux data and sending them to the reassembly node... This feature is more exposed to developers than to end users... But once a user-exposed feature relies on this change, we should definitely integrate a test for it",
+      "parentUuid": "9d1b687f_ea0baa1b",
+      "revId": "ee1b2c1a005acf8605beacae7acea020caa40cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
