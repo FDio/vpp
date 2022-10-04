@@ -45,7 +45,6 @@ class VppIperf:
             )
 
     def start_iperf_server(self):
-        print("Starting iPerf Server Daemon in Namespace ", self.server_ns)
         args = [
             "ip",
             "netns",
@@ -54,22 +53,21 @@ class VppIperf:
             self.iperf,
             "-s",
             "-D",
-            "-B",
-            self.server_ip,
         ]
         args.extend(self.server_args.split())
+        args = " ".join(args)
         try:
             subprocess.run(
                 args,
-                stderr=subprocess.STDOUT,
                 timeout=self.duration + 5,
                 encoding="utf-8",
+                capture_output=False,
+                shell=True,
             )
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
 
     def start_iperf_client(self):
-        print("Starting iPerf Client in Namespace ", self.client_ns)
         args = [
             "ip",
             "netns",
@@ -82,30 +80,92 @@ class VppIperf:
             str(self.duration),
         ]
         args.extend(self.client_args.split())
+        args = " ".join(args)
         try:
-            subprocess.run(
+            return subprocess.run(
                 args,
-                stderr=subprocess.STDOUT,
                 timeout=self.duration + 5,
                 encoding="utf-8",
+                capture_output=True,
+                shell=True,
             )
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
 
     def start(self):
-        """Run iPerf and return True if successful"""
-        self.ensure_init()
-        try:
-            self.start_iperf_server()
-        except Exception as e:
-            subprocess.run(["pkill", "iperf"])
-            raise Exception("Error starting iPerf Server", e)
+        """Runs iPerf.
 
-        try:
-            self.start_iperf_client()
-        except Exception as e:
-            raise Exception("Error starting iPerf Client", e)
-        subprocess.run(["pkill", "iperf"])
+        Raises any encountered exceptions.
+        Return True if we have no errors in iPerf stderr, else False."""
+        self.ensure_init()
+        self.start_iperf_server()
+        result = self.start_iperf_client()
+        # print(f"iperf client args: {result.args}")
+        print(result.stdout)
+        if result.stderr:
+            print(f"Starting iPerf Client in Namespace: {self.client_ns}")
+            print(f"iperf client args: {result.args}")
+            print(f"iperf client has errors: {result.stderr}")
+            return False
+        else:
+            return True
+
+
+## Functions to start and stop iPerf using the iPerf object
+def start_iperf(
+    ip_version,
+    client_ns="iprf_client_ns",
+    server_ns="iprf_server_ns",
+    server_ipv4_address="10.0.0.102",
+    server_ipv6_address="2001:1::2",
+    client_args="",
+    server_args="",
+    duration=10,
+):
+    """Start an iperf connection stream using the iPerf object.
+
+    Starts iPerf an connection stream between an iPerf client in the
+    client namespace (client_ns) and a server in another
+    namespace (server_ns).
+    Parameters:
+    ip_version - 4 or 6
+    client_ns - iPerf client namespace
+    server_ns - iPerf server namespace
+    server_ipv4_address - ipv4 address of the server, if ip_version=4
+    server_ipv6_address - ipv6 address of the server, if ip_version=6
+    client_args - Additonal iperf control arguments to be passed
+                    to the iperf client from the test (str)
+    server_args - Additonal iperf control arguments to be passed
+                    to the iperf server from the test (str)
+    duration    - Iperf duration in seconds
+    """
+    if ip_version == 4:
+        iperf_server_ip = server_ipv4_address
+    elif ip_version == 6:
+        iperf_server_ip = server_ipv6_address
+        client_args = "-V" + " " + client_args
+        server_args = "-V" + " " + server_args
+    iperf = VppIperf()
+    iperf.client_ns = client_ns
+    iperf.server_ns = server_ns
+    iperf.server_ip = iperf_server_ip
+    iperf.client_args = client_args
+    iperf.server_args = server_args
+    iperf.duration = duration
+    return iperf.start()
+
+
+def stop_iperf():
+    args = ["pkill", "iperf"]
+    args = " ".join(args)
+    try:
+        return subprocess.run(
+            args,
+            encoding="utf-8",
+            shell=True,
+        )
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
