@@ -159,14 +159,9 @@ mount -t tmpfs -o "noexec,nosuid,size=10%,mode=0755" tmpfs /run
 mount -t 9p /dev/vpp9p ${WS_ROOT}
 mount -t 9p tmp9p /tmp
 modprobe -a vhost_net
-env SOCKET=1 SANITY=no \
-FAILED_DIR=${FAILED_DIR} RND_SEED=${RND_SEED} BR=${BR} \
-VENV_PATH=${VENV_PATH} TEST=${TEST} TEST_JOBS=${TEST_JOBS} \
-VPP_BUILD_DIR=${VPP_BUILD_DIR} VPP_BIN=${VPP_BIN} VPP_PLUGIN_PATH=${VPP_PLUGIN_PATH} \
-VPP_TEST_PLUGIN_PATH=${VPP_TEST_PLUGIN_PATH} VPP_INSTALL_PATH=${VPP_INSTALL_PATH} \
-LD_LIBRARY_PATH=${LD_LIBRARY_PATH} TEST_DATA_DIR=${TEST_DATA_DIR} INITRD=${INITRD} \
-bash -c "${WS_ROOT}/test/scripts/run.sh --filter=${TEST} --jobs=${TEST_JOBS} --failed-dir=${FAILED_DIR} \
---venv-dir=${VENV_PATH} --vpp-ws-dir=${WS_ROOT} --extended"
+${VENV_PATH}/bin/python3 ${WS_ROOT}/test/run_tests.py --filter=${TEST} --jobs=${TEST_JOBS} \
+--failed-dir=${FAILED_DIR} --venv-dir=${VENV_PATH} --vpp-ws-dir=${WS_ROOT} --extended \
+--vpp-tag=vpp_debug --cache-vpp-output
 poweroff -f
 _EOF_
 
