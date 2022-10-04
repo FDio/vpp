@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a774f6e3_612c7276",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-04T01:54:59Z",
+      "side": 1,
+      "message": "The state of DPDK_MLX_DEFAULT needs to be output to a file so CI can detect a job failure (file doesn\u0027t exist) .vs. comparison failure.\n\nI pushed a new patchset with the above change.",
+      "range": {
+        "startLine": 178,
+        "startChar": 0,
+        "endLine": 178,
+        "endChar": 89
+      },
+      "revId": "8518043da33881d9abe6074f49a0f2a57aabf455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
