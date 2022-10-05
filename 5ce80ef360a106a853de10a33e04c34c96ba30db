@@ -33,6 +33,24 @@
       "message": "please avoid adding libnuma dependency....",
       "revId": "5ce80ef360a106a853de10a33e04c34c96ba30db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8af18fac_1f579456",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2022-10-05T14:27:18Z",
+      "side": 1,
+      "message": "The dependency has been removed, can you have another look, Damjan? Thank you.",
+      "parentUuid": "393fa015_86290439",
+      "revId": "5ce80ef360a106a853de10a33e04c34c96ba30db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
