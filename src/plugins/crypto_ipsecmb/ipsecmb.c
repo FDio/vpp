@@ -59,6 +59,7 @@ typedef struct
 } ipsecmb_aes_key_data_t;
 
 static ipsecmb_main_t ipsecmb_main = { };
+static IMB_JOB jobs[IMB_MAX_BURST_SIZE] = { 0 };
 
 /*
  * (Alg, JOB_HASH_ALG, fn, block-size-bytes, hash-size-bytes, digest-size-bytes)
@@ -148,44 +149,49 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,
 						     vm->thread_index);
   JOB_AES_HMAC *job;
-  u32 i, n_fail = 0;
+  u32 i, n_fail = 0, ops_index = 0;
   u8 scratch[n_ops][digest_size];
+  u32 burst_sz = (n_ops > IMB_MAX_BURST_SIZE) ? IMB_MAX_BURST_SIZE : n_ops;
 
-  /*
-   * queue all the jobs first ...
-   */
-  for (i = 0; i < n_ops; i++)
+  while (n_ops)
     {
-      vnet_crypto_op_t *op = ops[i];
-      u8 *kd = (u8 *) imbm->key_data[op->key_index];
+      u32 n = (n_ops / burst_sz) ? burst_sz : n_ops;
+      /*
+       * configure all the jobs first ...
+       */
+      for (i = 0; i < n; i++, ops_index++)
+	{
+	  vnet_crypto_op_t *op = ops[ops_index];
+	  u8 *kd = (u8 *) imbm->key_data[op->key_index];
 
-      job = IMB_GET_NEXT_JOB (ptd->mgr);
+	  job = &jobs[i];
 
-      job->src = op->src;
-      job->hash_start_src_offset_in_bytes = 0;
-      job->msg_len_to_hash_in_bytes = op->len;
-      job->hash_alg = alg;
-      job->auth_tag_output_len_in_bytes = digest_size;
-      job->auth_tag_output = scratch[i];
+	  job->src = op->src;
+	  job->hash_start_src_offset_in_bytes = 0;
+	  job->msg_len_to_hash_in_bytes = op->len;
+	  job->auth_tag_output_len_in_bytes = digest_size;
+	  job->auth_tag_output = scratch[ops_index];
 
-      job->cipher_mode = NULL_CIPHER;
-      job->cipher_direction = DECRYPT;
-      job->chain_order = HASH_CIPHER;
+	  job->u.HMAC._hashed_auth_key_xor_ipad = kd;
+	  job->u.HMAC._hashed_auth_key_xor_opad = kd + hash_size;
+	  job->user_data = op;
+	}
 
-      job->u.HMAC._hashed_auth_key_xor_ipad = kd;
-      job->u.HMAC._hashed_auth_key_xor_opad = kd + hash_size;
-      job->user_data = op;
+      /*
+       * submit all jobs to be processed and retire completed jobs
+       */
+      IMB_SUBMIT_HASH_BURST_NOCHECK (ptd->mgr, jobs, n, alg);
 
-      job = IMB_SUBMIT_JOB (ptd->mgr);
+      for (i = 0; i < n; i++)
+	{
+	  job = &jobs[i];
+	  ipsecmb_retire_hmac_job (job, &n_fail, digest_size);
+	}
 
-      if (job)
-	ipsecmb_retire_hmac_job (job, &n_fail, digest_size);
+      n_ops -= n;
     }
 
-  while ((job = IMB_FLUSH_JOB (ptd->mgr)))
-    ipsecmb_retire_hmac_job (job, &n_fail, digest_size);
-
-  return n_ops - n_fail;
+  return ops_index - n_fail;
 }
 
 #define _(a, b, c, d, e, f)                                             \
@@ -222,52 +228,57 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
   ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,
 						     vm->thread_index);
   JOB_AES_HMAC *job;
-  u32 i, n_fail = 0;
+  u32 i, n_fail = 0, ops_index = 0;
+  u32 burst_sz = (n_ops > IMB_MAX_BURST_SIZE) ? IMB_MAX_BURST_SIZE : n_ops;
 
-  for (i = 0; i < n_ops; i++)
+  while (n_ops)
     {
-      ipsecmb_aes_key_data_t *kd;
-      vnet_crypto_op_t *op = ops[i];
-      kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
-      __m128i iv;
+      u32 n = (n_ops / burst_sz) ? burst_sz : n_ops;
 
-      job = IMB_GET_NEXT_JOB (ptd->mgr);
-
-      job->src = op->src;
-      job->dst = op->dst;
-      job->msg_len_to_cipher_in_bytes = op->len;
-      job->cipher_start_src_offset_in_bytes = 0;
-
-      job->hash_alg = NULL_HASH;
-      job->cipher_mode = cipher_mode;
-      job->cipher_direction = direction;
-      job->chain_order = (direction == ENCRYPT ? CIPHER_HASH : HASH_CIPHER);
-
-      if ((direction == ENCRYPT) && (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV))
+      for (i = 0; i < n; i++)
 	{
-	  iv = ptd->cbc_iv;
-	  _mm_storeu_si128 ((__m128i *) op->iv, iv);
-	  ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
+	  ipsecmb_aes_key_data_t *kd;
+	  vnet_crypto_op_t *op = ops[ops_index++];
+	  kd = (ipsecmb_aes_key_data_t *) imbm->key_data[op->key_index];
+	  __m128i iv;
+
+	  job = &jobs[i];
+
+	  job->src = op->src;
+	  job->dst = op->dst;
+	  job->msg_len_to_cipher_in_bytes = op->len;
+	  job->cipher_start_src_offset_in_bytes = 0;
+
+	  job->hash_alg = NULL_HASH;
+
+	  if ((direction == ENCRYPT) &&
+	      (op->flags & VNET_CRYPTO_OP_FLAG_INIT_IV))
+	    {
+	      iv = ptd->cbc_iv;
+	      _mm_storeu_si128 ((__m128i *) op->iv, iv);
+	      ptd->cbc_iv = _mm_aesenc_si128 (iv, iv);
+	    }
+
+	  job->aes_enc_key_expanded = kd->enc_key_exp;
+	  job->aes_dec_key_expanded = kd->dec_key_exp;
+	  job->iv = op->iv;
+	  job->iv_len_in_bytes = AES_BLOCK_SIZE;
+
+	  job->user_data = op;
 	}
 
-      job->aes_key_len_in_bytes = key_len / 8;
-      job->aes_enc_key_expanded = kd->enc_key_exp;
-      job->aes_dec_key_expanded = kd->dec_key_exp;
-      job->iv = op->iv;
-      job->iv_len_in_bytes = AES_BLOCK_SIZE;
+      IMB_SUBMIT_CIPHER_BURST_NOCHECK (ptd->mgr, jobs, n, cipher_mode,
+				       direction, key_len / 8);
+      for (i = 0; i < n; i++)
+	{
+	  job = &jobs[i];
+	  ipsecmb_retire_cipher_job (job, &n_fail);
+	}
 
-      job->user_data = op;
-
-      job = IMB_SUBMIT_JOB (ptd->mgr);
-
-      if (job)
-	ipsecmb_retire_cipher_job (job, &n_fail);
+      n_ops -= n;
     }
 
-  while ((job = IMB_FLUSH_JOB (ptd->mgr)))
-    ipsecmb_retire_cipher_job (job, &n_fail);
-
-  return n_ops - n_fail;
+  return ops_index - n_fail;
 }
 
 #define _(a, b, c)                                                            \
