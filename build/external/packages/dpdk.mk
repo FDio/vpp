@@ -175,7 +175,7 @@ PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 
 define dpdk_config_cmds
 	cd $(dpdk_build_dir) && \
-	echo "DPDK_MLX_DEFAULT=$(DPDK_MLX_DEFAULT)" > dpdk_mlx_default.sh && \
+	echo "DPDK_MLX_DEFAULT=$(DPDK_MLX_DEFAULT)" > ../../../dpdk_mlx_default.sh && \
 	rm -rf ../dpdk-meson-venv && \
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
