@@ -82,14 +82,14 @@ adj_mcast_add_or_lock (fib_protocol_t proto,
 	 */
 	vnet_update_adjacency_for_sw_interface(vnm, sw_if_index,
                                                adj_get_index(adj));
+
+	adj_delegate_adj_created(adj);
     }
     else
     {
 	adj = adj_get(adj_mcasts[proto][sw_if_index]);
         adj_lock(adj_get_index(adj));
     }
-
-    adj_delegate_adj_created(adj);
 
     return (adj_get_index(adj));
 }
