@@ -27,8 +27,8 @@
 /build-config.mk
 /build/external/*.tar.gz
 /build/external/*.tar.xz
-/build/external/vpp-*.deb
-/build/external/vpp-*.changes
+/build/external/vpp-*
+/build/external/dpdk_mlx_default.sh
 /build/external/downloads/
 /path_setup
 /tools/
