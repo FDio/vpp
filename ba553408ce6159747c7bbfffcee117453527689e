@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a88b9251_0a59ea5c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2022-10-05T15:40:30Z",
+      "side": 1,
+      "message": "I am bringing this rebased patch to your attention again so that it does not get forgotten.",
+      "revId": "ba553408ce6159747c7bbfffcee117453527689e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
