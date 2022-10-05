@@ -16,6 +16,23 @@
       "message": "These tests fail intermittently with the debug verify job.\nIt may be due to running parallel jobs, but there isn\u0027t currently a way to force jobs to be run solo only with debug image.\n\nFor now, it would be best to skip them so the debug verify job can be run per-patch reliably.",
       "revId": "2233de8ba486f085b0257a906302eb21b1b8480a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3fc1a91_29ba16c6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-05T03:10:39Z",
+      "side": 1,
+      "message": "Debug verify job currently running hourly:\nhttps://jenkins.fd.io/view/vpp/job/vpp-debug-verify-master-ubuntu2204-x86_64/\n\nMostly passing :)\n",
+      "revId": "2233de8ba486f085b0257a906302eb21b1b8480a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
