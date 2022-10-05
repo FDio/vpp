@@ -274,6 +274,8 @@ class TestCaseTag(Enum):
     FIXME_UBUNTU2204 = 4
     # marks suites broken on Debian-11
     FIXME_DEBIAN11 = 5
+    # marks suites broken on debug vpp image
+    FIXME_VPP_DEBUG = 6
 
 
 def create_tag_decorator(e):
@@ -292,6 +294,7 @@ tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_ubuntu2204 = create_tag_decorator(TestCaseTag.FIXME_UBUNTU2204)
 tag_fixme_debian11 = create_tag_decorator(TestCaseTag.FIXME_DEBIAN11)
+tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
 
 
 class DummyVpp:
@@ -378,6 +381,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         """if distro is Debian-11 and @tag_fixme_debian11 mark for skip"""
         if cls.has_tag(TestCaseTag.FIXME_DEBIAN11):
             cls = unittest.skip("Skipping @tag_fixme_debian11 tests")(cls)
+
+    @classmethod
+    def skip_fixme_vpp_debug(cls):
+        cls = unittest.skip("Skipping @tag_fixme_vpp_debug tests")(cls)
 
     @classmethod
     def instance(cls):
@@ -1841,6 +1848,10 @@ class VppTestResult(unittest.TestResult):
             if is_distro_debian11 == True and test.has_tag(TestCaseTag.FIXME_DEBIAN11):
                 test_title = colorize(f"FIXME on Debian-11: {test_title}", RED)
                 test.skip_fixme_debian11()
+
+            if "debug" in config.vpp_tag and test.has_tag(TestCaseTag.FIXME_VPP_DEBUG):
+                test_title = colorize(f"FIXME on VPP Debug: {test_title}", RED)
+                test.skip_fixme_vpp_debug()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
