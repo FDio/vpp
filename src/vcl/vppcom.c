@@ -4490,6 +4490,17 @@ vppcom_session_get_error (uint32_t session_handle)
     return VPPCOM_OK;
 }
 
+int
+vppcom_worker_is_detached (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+
+  if (!vcm->cfg.use_mq_eventfd)
+    return VPPCOM_ENOTSUP;
+
+  return wrk->api_client_handle == ~0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -102,7 +102,8 @@ typedef enum
   VPPCOM_ENOPROTOOPT = -ENOPROTOOPT,
   VPPCOM_EPIPE = -EPIPE,
   VPPCOM_ENOENT = -ENOENT,
-  VPPCOM_EADDRINUSE = -EADDRINUSE
+  VPPCOM_EADDRINUSE = -EADDRINUSE,
+  VPPCOM_ENOTSUP = -ENOTSUP
 } vppcom_error_t;
 
 typedef enum
@@ -271,6 +272,14 @@ extern int vppcom_worker_mqs_epfd (void);
  * Application can use this API to find the detailed session error
  */
 extern int vppcom_session_get_error (uint32_t session_handle);
+
+/**
+ * Returns true if current worker is disconnected from vpp
+ *
+ * Application can use this API to check if VPP is disconnected
+ * as long as `use-mq-eventfd` is being set
+ */
+extern int vppcom_worker_is_detached (void);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
