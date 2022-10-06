@@ -83,6 +83,7 @@ wg_peer_clear (vlib_main_t * vm, wg_peer_t * peer)
   peer->new_handshake_interval_tick = 0;
   peer->rehandshake_interval_tick = 0;
   peer->timer_need_another_keepalive = false;
+  peer->handshake_is_sent = false;
   vec_free (peer->rewrite);
   vec_free (peer->allowed_ips);
   vec_free (peer->adj_indices);

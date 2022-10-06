@@ -214,8 +214,11 @@ wg_send_handshake_thread_fn (void *arg)
 
   wg_main_t *wmp = &wg_main;
   wg_peer_t *peer = wg_peer_get (a->peer_idx);
+  bool handshake;
 
   wg_send_handshake (wmp->vlib_main, peer, a->is_retry);
+  handshake = false;
+  __atomic_store_n (&peer->handshake_is_sent, handshake, __ATOMIC_RELEASE);
   return 0;
 }
 
@@ -227,8 +230,18 @@ wg_send_handshake_from_mt (u32 peer_idx, bool is_retry)
     .is_retry = is_retry,
   };
 
-  vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn,
-			       (u8 *) & a, sizeof (a));
+  wg_peer_t *peer = wg_peer_get (peer_idx);
+
+  bool handshake =
+    __atomic_load_n (&peer->handshake_is_sent, __ATOMIC_ACQUIRE);
+
+  if (handshake == false)
+    {
+      handshake = true;
+      __atomic_store_n (&peer->handshake_is_sent, handshake, __ATOMIC_RELEASE);
+      vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn, (u8 *) &a,
+				   sizeof (a));
+    }
 }
 
 bool
