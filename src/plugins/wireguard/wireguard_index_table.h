@@ -17,10 +17,13 @@
 #define __included_wg_index_table_h__
 
 #include <vppinfra/types.h>
+#include <vlib/vlib.h>
+#include <vnet/crypto/crypto.h>
 
 typedef struct
 {
   uword *hash;
+  clib_rwlock_t r_hash_table_lock;
 } wg_index_table_t;
 
 u32 wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx,
