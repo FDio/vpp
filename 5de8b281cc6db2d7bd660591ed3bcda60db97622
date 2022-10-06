@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "75681851_699b254d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4498,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-10-06T17:47:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bd787aa2_94338bfc",
+      "range": {
+        "startLine": 4498,
+        "startChar": 2,
+        "endLine": 4498,
+        "endChar": 35
+      },
+      "revId": "5de8b281cc6db2d7bd660591ed3bcda60db97622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aa71fadb_f4b2a4f6",
@@ -54,6 +78,30 @@
       "writtenOn": "2022-10-06T16:55:53Z",
       "side": 1,
       "message": "let\u0027s call this vppcom_worker_is_detached since all workers will do this in parallel.",
+      "range": {
+        "startLine": 281,
+        "startChar": 11,
+        "endLine": 281,
+        "endChar": 42
+      },
+      "revId": "5de8b281cc6db2d7bd660591ed3bcda60db97622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c602155_868ed993",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-10-06T17:47:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "aa71fadb_f4b2a4f6",
       "range": {
         "startLine": 281,
         "startChar": 11,
