@@ -23,7 +23,11 @@
  * debug configuration. Comes with some overhead so it's not recommended for
  * production/performance scenarios. Takes priority over TCP_DEBUG_ENABLE.
  */
+#ifdef VPP_TCP_DEBUG_ALWAYS
+#define TCP_DEBUG_ALWAYS (1)
+#else
 #define TCP_DEBUG_ALWAYS (0)
+#endif
 /**
  * Build debugging infra only if enabled. Debug components controlled via
  * macros that follow.
