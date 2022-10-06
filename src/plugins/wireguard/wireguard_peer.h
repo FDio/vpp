@@ -115,6 +115,9 @@ typedef struct wg_peer
   u32 rehandshake_interval_tick;
 
   bool timer_need_another_keepalive;
+
+  /* Handshake is sent to main thread? */
+  bool handshake_is_sent;
 } wg_peer_t;
 
 typedef struct wg_peer_table_bind_ctx_t_
