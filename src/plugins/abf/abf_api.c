@@ -113,16 +113,14 @@ vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t * mp)
 
   if (mp->is_add)
     {
-      abf_itf_attach (fproto,
-		      ntohl (mp->attach.policy_id),
-		      ntohl (mp->attach.priority),
-		      ntohl (mp->attach.sw_if_index));
+      rv = abf_itf_attach (fproto, ntohl (mp->attach.policy_id),
+			   ntohl (mp->attach.priority),
+			   ntohl (mp->attach.sw_if_index));
     }
   else
     {
-      abf_itf_detach (fproto,
-		      ntohl (mp->attach.policy_id),
-		      ntohl (mp->attach.sw_if_index));
+      rv = abf_itf_detach (fproto, ntohl (mp->attach.policy_id),
+			   ntohl (mp->attach.sw_if_index));
     }
 
   REPLY_MACRO (VL_API_ABF_ITF_ATTACH_ADD_DEL_REPLY);
