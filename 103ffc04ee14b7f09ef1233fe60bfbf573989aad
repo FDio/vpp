@@ -33,6 +33,24 @@
       "message": "Please ensure that the git history for the test files is not lost/obscured.",
       "revId": "103ffc04ee14b7f09ef1233fe60bfbf573989aad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "51752bdd_7968179e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2767
+      },
+      "writtenOn": "2022-10-06T18:04:18Z",
+      "side": 1,
+      "message": "Hi Dave! I think the \"git log --follow\" command should print a file\u0027s full Git history regardless of where the file was moved. Thanks!",
+      "parentUuid": "584c44d4_440f3d0e",
+      "revId": "103ffc04ee14b7f09ef1233fe60bfbf573989aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
