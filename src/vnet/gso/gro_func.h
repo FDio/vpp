@@ -392,6 +392,7 @@ gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number, u8 is_l2)
       ip4->length =
 	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
 			      gho0.l3_hdr_offset);
+      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4 - b0->data;
       b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4);
       vnet_buffer_offload_flags_set (b0, (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
 					  VNET_BUFFER_OFFLOAD_F_IP_CKSUM));
@@ -403,12 +404,14 @@ gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number, u8 is_l2)
       ip6->payload_length =
 	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
 			      gho0.l4_hdr_offset);
+      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6 - b0->data;
       b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6);
       vnet_buffer_offload_flags_set (b0, VNET_BUFFER_OFFLOAD_F_TCP_CKSUM);
     }
 
   tcp_header_t *tcp0 =
     (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
+  vnet_buffer (b0)->l4_hdr_offset = (u8 *) tcp0 - b0->data;
   tcp0->ack_number = ack_number;
   b0->flags &= ~VLIB_BUFFER_IS_TRACED;
 }
