@@ -4490,6 +4490,16 @@ vppcom_session_get_error (uint32_t session_handle)
     return VPPCOM_OK;
 }
 
+int
+vppcom_is_disconnected_from_vpp (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+
+  ASSERT (vcm->cfg.use_mq_eventfd);
+
+  return wrk->api_client_handle == ~0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
