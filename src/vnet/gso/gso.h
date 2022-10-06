@@ -119,6 +119,7 @@ gso_fixup_segmented_buf (vlib_main_t *vm, vlib_buffer_t *b0, u32 next_tcp_seq,
 
   tcp->flags = tcp_flags;
   tcp->seq_number = clib_host_to_net_u32 (next_tcp_seq);
+  c->odd = 0;
 
   if (is_ip6)
     {
