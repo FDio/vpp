@@ -33,6 +33,23 @@
       "message": "Thanks Tomasz. Not sure why the last build failed, looks like it could be picking up and old version of the header file. Strange.",
       "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf15008c_8c3c53b2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T15:56:26Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
