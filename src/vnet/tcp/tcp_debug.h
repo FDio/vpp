@@ -17,6 +17,7 @@
 #define SRC_VNET_TCP_TCP_DEBUG_H_
 
 #include <vlib/vlib.h>
+#include <vpp/vnet/config.h>
 
 /**
  * Build debugging infra unconditionally. Debug components controlled via
