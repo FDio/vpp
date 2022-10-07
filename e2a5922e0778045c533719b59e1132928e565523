@@ -1,0 +1,180 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "309e64d9_37cccef1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "Very nice work Marcel. I have a few comments but I found nothing critical during my review.",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ecfd58a_69776177",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "it could make sense to swap places between `cbc_iv` and `mgr` so that iv seats on the aligned address",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dfb7eff0_a556443b",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffdba956_3e3f1f05",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "const ?\nnot a big problem but `(n_ops / burst_sz)` division could be avoided",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12d30670_d57bc048",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7af6fa89_03ce71cd",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f80e5807_359da2f0",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "why not declare `__m128i iv` here? instead at the top",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b34d3b5_6258b711",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 793,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9046430_f9326d5a",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "could array of jobs be part of `ptd`? no malloc() required then",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa1dbf9f_430e3a22",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 821,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-07T13:32:43Z",
+      "side": 1,
+      "message": "would it make sense init_mb_mgr_auto() ? not exactly in the scope of this feature though",
+      "range": {
+        "startLine": 815,
+        "startChar": 7,
+        "endLine": 821,
+        "endChar": 0
+      },
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
