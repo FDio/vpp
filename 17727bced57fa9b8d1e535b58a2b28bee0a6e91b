@@ -33,6 +33,24 @@
       "message": "This is a change in API behaviour, so per rules, you need to keep existing messages as they are and introduce corresponding _v(n+1) message variants.\n\nFor that, I would suggest using a different naming (as in, something else than least_heard).",
       "revId": "17727bced57fa9b8d1e535b58a2b28bee0a6e91b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6813ea43_1c652cbe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-10-07T10:33:13Z",
+      "side": 1,
+      "message": "Got it, thanks",
+      "parentUuid": "a3541d7b_e7dc79de",
+      "revId": "17727bced57fa9b8d1e535b58a2b28bee0a6e91b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
