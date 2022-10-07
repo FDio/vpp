@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cb984fd_fa9938f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-10-07T10:28:59Z",
+      "side": 1,
+      "message": "I don\u0027t like this because the message added is the same as one before, with a different semantics. I strongly suggest using a different name, not last_heard.\n\nMaybe something like \u0027time_since_last_heard\u0027",
+      "revId": "d32878335858cab404eb4a936ff25c4a32f5032e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
