@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6216f55b_08d385c7",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7ecfd58a_69776177",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dfb7eff0_a556443b",
@@ -48,6 +66,24 @@
       "writtenOn": "2022-10-07T13:32:43Z",
       "side": 1,
       "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d59eae0_18496a21",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dfb7eff0_a556443b",
       "revId": "e2a5922e0778045c533719b59e1132928e565523",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ccd8b9fc_535fb083",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ffdba956_3e3f1f05",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "12d30670_d57bc048",
@@ -82,6 +136,24 @@
       "writtenOn": "2022-10-07T13:32:43Z",
       "side": 1,
       "message": "const ?",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b21798b5_d0bc062c",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "12d30670_d57bc048",
       "revId": "e2a5922e0778045c533719b59e1132928e565523",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9fc21757_e9390db2",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7af6fa89_03ce71cd",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f80e5807_359da2f0",
@@ -116,6 +206,24 @@
       "writtenOn": "2022-10-07T13:32:43Z",
       "side": 1,
       "message": "why not declare `__m128i iv` here? instead at the top",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "767a5a4c_abf1874a",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f80e5807_359da2f0",
       "revId": "e2a5922e0778045c533719b59e1132928e565523",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "72c29a95_cfbc4375",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 793,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b34d3b5_6258b711",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e9046430_f9326d5a",
@@ -154,6 +280,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4859abb_b9c62c90",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e9046430_f9326d5a",
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fa1dbf9f_430e3a22",
@@ -167,6 +311,30 @@
       "writtenOn": "2022-10-07T13:32:43Z",
       "side": 1,
       "message": "would it make sense init_mb_mgr_auto() ? not exactly in the scope of this feature though",
+      "range": {
+        "startLine": 815,
+        "startChar": 7,
+        "endLine": 821,
+        "endChar": 0
+      },
+      "revId": "e2a5922e0778045c533719b59e1132928e565523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3efffc00_be1a0a19",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 821,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T14:41:24Z",
+      "side": 1,
+      "message": "Yes, I thought the same but maybe as part of a separate patch to bring the module more up-to-date.",
+      "parentUuid": "fa1dbf9f_430e3a22",
       "range": {
         "startLine": 815,
         "startChar": 7,
