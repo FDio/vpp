@@ -16,6 +16,23 @@
       "message": "Thanks! It looks good to me",
       "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9173afc4_70c74f19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-07T15:54:04Z",
+      "side": 1,
+      "message": "Thanks Tomasz. Not sure why the last build failed, looks like it could be picking up and old version of the header file. Strange.",
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
