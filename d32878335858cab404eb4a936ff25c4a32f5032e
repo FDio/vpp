@@ -51,6 +51,24 @@
       "parentUuid": "4cb984fd_fa9938f7",
       "revId": "d32878335858cab404eb4a936ff25c4a32f5032e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "984de6f1_0278cc29",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2022-10-07T10:37:12Z",
+      "side": 1,
+      "message": "you cannot change an API if it\u0027s not marked as \"work in progress\". the only allowed modification of existing stable API is marking it as \"deprecated\", which then allows you to remove it after two VPP releases.\n\nso for any change in API itself you need to introduce a new API.",
+      "parentUuid": "2b4c29fb_523e8d22",
+      "revId": "d32878335858cab404eb4a936ff25c4a32f5032e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
