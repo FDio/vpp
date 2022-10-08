@@ -360,6 +360,12 @@ ipsec_sa_del (ipsec_sa_t * sa)
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&sa->dpo);
+
+  if (sa->async_op_data.crypto_async_enc_op_id &&
+      !ipsec_sa_is_set_IS_AEAD (sa))
+    {
+      vnet_crypto_key_del (vm, sa->async_op_data.linked_key_index);
+    }
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_key_index);
