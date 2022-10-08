@@ -24,22 +24,6 @@ vlib_combined_counter_main_t ipsec_spd_policy_counters = {
   .stat_segment_name = "/net/ipsec/policy",
 };
 
-static int
-ipsec_spd_entry_sort (void *a1, void *a2)
-{
-  ipsec_main_t *im = &ipsec_main;
-  u32 *id1 = a1;
-  u32 *id2 = a2;
-  ipsec_policy_t *p1, *p2;
-
-  p1 = pool_elt_at_index (im->policies, *id1);
-  p2 = pool_elt_at_index (im->policies, *id2);
-  if (p1 && p2)
-    return p2->priority - p1->priority;
-
-  return 0;
-}
-
 int
 ipsec_policy_mk_type (bool is_outbound,
 		      bool is_ipv6,
@@ -189,6 +173,7 @@ ipsec_add_del_policy (vlib_main_t * vm,
   if (is_add)
     {
       u32 policy_index;
+      u32 i;
 
       if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
 	{
@@ -216,9 +201,20 @@ ipsec_add_del_policy (vlib_main_t * vm,
       vlib_validate_combined_counter (&ipsec_spd_policy_counters,
 				      policy_index);
       vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
-      vec_add1 (spd->policies[policy->type], policy_index);
-      vec_sort_with_function (spd->policies[policy->type],
-			      ipsec_spd_entry_sort);
+
+      vec_foreach_index (i, spd->policies[policy->type])
+	{
+	  ipsec_policy_t *p =
+	    pool_elt_at_index (im->policies, spd->policies[policy->type][i]);
+
+	  if (p->priority <= vp->priority)
+	    {
+	      break;
+	    }
+	}
+
+      vec_insert_elts (spd->policies[policy->type], &policy_index, 1, i);
+
       *stat_index = policy_index;
     }
   else
