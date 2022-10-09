@@ -55,8 +55,6 @@ typedef struct
  */
 typedef struct
 {
-  /** vectors for each of the fast path policy types */
-  u32 *fp_policies[IPSEC_SPD_POLICY_N_TYPES];
   ipsec_fp_mask_id_t *fp_mask_ids[IPSEC_SPD_POLICY_N_TYPES];
   /* names of bihash tables */
   u8 *name4_out;
