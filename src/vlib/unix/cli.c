@@ -2605,7 +2605,15 @@ more:
     }
 
   /* Build an unformat structure around our command */
-  unformat_init_vector (&input, cf->current_command);
+  if (!cf->line_mode)
+    {
+      unformat_init_vector (&input, cf->current_command);
+    }
+  else
+    {
+      unformat_init_string (&input, (char *) cf->current_command,
+			    vec_len (cf->current_command));
+    }
 
   /* Remove leading white space from input. */
   (void) unformat (&input, "");
@@ -2616,8 +2624,11 @@ more:
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output,
 		    cli_file_index);
 
-  /* Zero buffer since otherwise unformat_free will call vec_free on it. */
-  input.buffer = 0;
+  if (!cf->line_mode)
+    {
+      /* Zero buffer since otherwise unformat_free will call vec_free on it. */
+      input.buffer = 0;
+    }
 
   unformat_free (&input);
 
