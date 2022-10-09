@@ -2550,6 +2550,7 @@ unix_cli_process_input (unix_cli_main_t * cm, uword cli_file_index)
   unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
   unformat_input_t input;
   int vlib_parse_eval (u8 *);
+  u8 line_mode;
 
   cm->current_input_file_index = cli_file_index;
 
@@ -2604,8 +2605,19 @@ more:
       vec_free (expanded);
     }
 
+  /* cf memory may be invalid when vlib_cli_input finish */
+  line_mode = cf->line_mode;
+
   /* Build an unformat structure around our command */
-  unformat_init_vector (&input, cf->current_command);
+  if (!line_mode)
+    {
+      unformat_init_vector (&input, cf->current_command);
+    }
+  else
+    {
+      unformat_init_string (&input, (char *) cf->current_command,
+			    vec_len (cf->current_command));
+    }
 
   /* Remove leading white space from input. */
   (void) unformat (&input, "");
@@ -2616,8 +2628,11 @@ more:
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output,
 		    cli_file_index);
 
-  /* Zero buffer since otherwise unformat_free will call vec_free on it. */
-  input.buffer = 0;
+  if (!line_mode)
+    {
+      /* Zero buffer since otherwise unformat_free will call vec_free on it. */
+      input.buffer = 0;
+    }
 
   unformat_free (&input);
 
