@@ -488,7 +488,7 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 {
   vl_api_registration_t *reg;
   policer_classify_main_t *pcm = &policer_classify_main;
-  u32 *vec_tbl;
+  u32 *vec_tbl, table_index;
   int i;
   u32 filter_sw_if_index;
 
@@ -502,20 +502,29 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
     return;
 
   if (filter_sw_if_index != ~0)
-    vec_tbl =
-      &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
-  else
-    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
-
-  if (vec_len (vec_tbl))
     {
-      for (i = 0; i < vec_len (vec_tbl); i++)
+      if (clib_bitmap_get (pcm->policer_classify_on_sw_if_index[mp->type],
+			   filter_sw_if_index))
 	{
-	  if (vec_elt (vec_tbl, i) == ~0)
-	    continue;
-
-	  send_policer_classify_details (i, vec_elt (vec_tbl, i), reg,
+	  table_index =
+	    pcm->classify_table_index_by_sw_if_index[mp->type]
+						    [filter_sw_if_index];
+	  send_policer_classify_details (filter_sw_if_index, table_index, reg,
 					 mp->context);
+	}
+    }
+  else
+    {
+      vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
+      if (vec_len (vec_tbl))
+	{
+	  for (i = 0; i < vec_len (vec_tbl); i++)
+	    {
+	      if (clib_bitmap_get (
+		    pcm->policer_classify_on_sw_if_index[mp->type], i))
+		send_policer_classify_details (i, vec_elt (vec_tbl, i), reg,
+					       mp->context);
+	    }
 	}
     }
 }
