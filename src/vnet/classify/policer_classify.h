@@ -39,6 +39,9 @@ typedef struct
   /* Classifier table vectors */
   u32 *classify_table_index_by_sw_if_index[POLICER_CLASSIFY_N_TABLES];
 
+  /* bitmaps 1=sw_if_index has policer classify enabled */
+  uword *policer_classify_on_sw_if_index[POLICER_CLASSIFY_N_TABLES];
+
   /* L2 next nodes for each feature */
   u32 feat_next_node_index[32];
 
