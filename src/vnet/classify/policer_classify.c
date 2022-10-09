@@ -90,16 +90,23 @@ vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 	}
 
       /* Return ok on ADD operaton if feature is already enabled */
-      if (is_add &&
-	  pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] != ~0)
+      if (is_add && clib_bitmap_get (pcm->policer_classify_on_sw_if_index[ti],
+				     sw_if_index))
 	return 0;
 
       vnet_policer_classify_feature_enable (vm, pcm, sw_if_index, ti, is_add);
 
       if (is_add)
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = pct[ti];
+	{
+	  pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = pct[ti];
+	  pcm->policer_classify_on_sw_if_index[ti] = clib_bitmap_set (
+	    pcm->policer_classify_on_sw_if_index[ti], sw_if_index, 1);
+	}
       else
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
+	{
+	  pcm->policer_classify_on_sw_if_index[ti] = clib_bitmap_set(
+	    pcm->policer_classify_on_sw_if_index[ti], sw_if_index, 0);
+	}
     }
 
 
