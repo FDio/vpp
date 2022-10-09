@@ -34,6 +34,24 @@
       "parentUuid": "facca5f3_16d050a3",
       "revId": "95875774bc69a81b1a17963642fc574070ba37d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c92f9042_6a4a6f5a",
+        "filename": "src/vnet/fib/fib_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-10-09T20:52:03Z",
+      "side": 0,
+      "message": "i think you should change the signature of fib_prefix_from_ip46_addr to be either:\n  fib_prefix_from_ip46_addr (fib_protocol_t fproto, ...) or\n  fib_prefix_from_ip46_addr (ip46_type_t, ...) or\n  fib_prefix_from_ip46_addr (ip_Address_family_t, ...)\nand so force the caller to set the address type. The first option is my preference.",
+      "parentUuid": "d1260490_216fa965",
+      "revId": "95875774bc69a81b1a17963642fc574070ba37d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
