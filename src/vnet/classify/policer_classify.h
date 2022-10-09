@@ -39,6 +39,9 @@ typedef struct
   /* Classifier table vectors */
   u32 *classify_table_index_by_sw_if_index[POLICER_CLASSIFY_N_TABLES];
 
+  /* Policer classify set flag for each interface */
+  u8 *intf_pc_set_flag[POLICER_CLASSIFY_N_TABLES];
+
   /* L2 next nodes for each feature */
   u32 feat_next_node_index[32];
 

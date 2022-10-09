@@ -570,9 +570,19 @@ policer_classify_inline (vlib_main_t * vm,
 					    L2INPUT_FEAT_POLICER_CLAS);
 	    }
 	  else
-	    vnet_get_config_data (pcm->vnet_config_main[tid],
-				  &b0->current_config_index, &next0,
-				  /* # bytes of config data */ 0);
+	    {
+	      u32 sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      if (0 != pcm->intf_pc_set_flag[tid][sw_if_index])
+		{
+		  vnet_get_config_data (pcm->vnet_config_main[tid],
+					 &b0->current_config_index, &next0,
+					 /* # bytes of config data */ 0);
+		}
+	      else
+		{
+		  next0 = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT;
+		}
+	    }
 
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
 
