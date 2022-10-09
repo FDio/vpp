@@ -210,9 +210,143 @@ format_ipsec_policy (u8 *s, va_list *args)
 }
 
 u8 *
-format_ipsec_policy_fp (u8 *s, va_list *args)
+format_ipsec_fp_policy (u8 *s, va_list *args)
 {
   return format_ipsec_policy_with_suffix (s, args, (u8 *) "<fast-path>");
+}
+
+/**
+ * @brief Context when walking the fp bihash  table. We need to filter
+ * only those policies that are of given type as we walk the table.
+ */
+typedef struct ipsec_spd_policy_ctx_t_
+{
+  u32 *policies;
+  ipsec_spd_policy_type_t t;
+} ipsec_fp_walk_ctx_t;
+
+static int
+ipsec_fp_table_walk_ip4_cb (clib_bihash_kv_16_8_t *kvp, void *arg)
+{
+  ipsec_fp_walk_ctx_t *ctx = (ipsec_fp_walk_ctx_t *) arg;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *p;
+
+  ipsec_fp_lookup_value_t *val = (ipsec_fp_lookup_value_t *) &kvp->value;
+
+  u32 *policy_id;
+
+  vec_foreach (policy_id, val->fp_policies_ids)
+    {
+      p = pool_elt_at_index (im->policies, *policy_id);
+      if (p->type == ctx->t)
+	vec_add1 (ctx->policies, *policy_id);
+    }
+
+  return BIHASH_WALK_CONTINUE;
+}
+
+static int
+ipsec_fp_table_walk_ip6_cb (clib_bihash_kv_40_8_t *kvp, void *arg)
+{
+  ipsec_fp_walk_ctx_t *ctx = (ipsec_fp_walk_ctx_t *) arg;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *p;
+
+  ipsec_fp_lookup_value_t *val = (ipsec_fp_lookup_value_t *) &kvp->value;
+
+  u32 *policy_id;
+
+  vec_foreach (policy_id, val->fp_policies_ids)
+    {
+      p = pool_elt_at_index (im->policies, *policy_id);
+      if (p->type == ctx->t)
+	vec_add1 (ctx->policies, *policy_id);
+    }
+
+  return BIHASH_WALK_CONTINUE;
+}
+
+u8 *
+format_ipsec_fp_policies (u8 *s, va_list *args)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_t *spd = va_arg (*args, ipsec_spd_t *);
+  ipsec_spd_policy_type_t t = va_arg (*args, ipsec_spd_policy_type_t);
+  u32 *i;
+  ipsec_fp_walk_ctx_t ctx = {
+    .policies = 0,
+    .t = t,
+  };
+
+  u32 ip4_in_lookup_hash_idx = spd->fp_spd.ip4_in_lookup_hash_idx;
+  u32 ip4_out_lookup_hash_idx = spd->fp_spd.ip4_out_lookup_hash_idx;
+  u32 ip6_in_lookup_hash_idx = spd->fp_spd.ip6_in_lookup_hash_idx;
+  u32 ip6_out_lookup_hash_idx = spd->fp_spd.ip6_out_lookup_hash_idx;
+
+  switch (t)
+    {
+    case IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT:
+    case IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS:
+    case IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD:
+      if (INDEX_INVALID != ip4_in_lookup_hash_idx)
+	{
+	  clib_bihash_16_8_t *bihash_table = pool_elt_at_index (
+	    im->fp_ip4_lookup_hashes_pool, ip4_in_lookup_hash_idx);
+
+	  clib_bihash_foreach_key_value_pair_16_8 (
+	    bihash_table, ipsec_fp_table_walk_ip4_cb, &ctx);
+	}
+
+      break;
+
+    case IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT:
+    case IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS:
+    case IPSEC_SPD_POLICY_IP6_INBOUND_DISCARD:
+      if (INDEX_INVALID != ip6_in_lookup_hash_idx)
+	{
+	  clib_bihash_40_8_t *bihash_table = pool_elt_at_index (
+	    im->fp_ip6_lookup_hashes_pool, ip6_in_lookup_hash_idx);
+
+	  clib_bihash_foreach_key_value_pair_40_8 (
+	    bihash_table, ipsec_fp_table_walk_ip6_cb, &ctx);
+	}
+
+      break;
+    case IPSEC_SPD_POLICY_IP4_OUTBOUND:
+      if (INDEX_INVALID != ip4_out_lookup_hash_idx)
+	{
+	  clib_bihash_16_8_t *bihash_table = pool_elt_at_index (
+	    im->fp_ip4_lookup_hashes_pool, ip4_out_lookup_hash_idx);
+
+	  clib_bihash_foreach_key_value_pair_16_8 (
+	    bihash_table, ipsec_fp_table_walk_ip4_cb, &ctx);
+	}
+
+      break;
+    case IPSEC_SPD_POLICY_IP6_OUTBOUND:
+      if (INDEX_INVALID != ip6_out_lookup_hash_idx)
+	{
+	  clib_bihash_40_8_t *bihash_table = pool_elt_at_index (
+	    im->fp_ip6_lookup_hashes_pool, ip6_out_lookup_hash_idx);
+
+	  clib_bihash_foreach_key_value_pair_40_8 (
+	    bihash_table, ipsec_fp_table_walk_ip6_cb, &ctx);
+	}
+
+      break;
+    default:
+      break;
+    }
+
+  vec_foreach (i, ctx.policies)
+    {
+      s = format (s, "\n %U", format_ipsec_fp_policy, *i);
+    }
+
+  vec_free (ctx.policies);
+
+  return s;
 }
 
 u8 *
@@ -239,10 +373,7 @@ format_ipsec_spd (u8 * s, va_list * args)
     {                                                                         \
       s = format (s, "\n %U", format_ipsec_policy, *i);                       \
     }                                                                         \
-  vec_foreach (i, spd->fp_spd.fp_policies[IPSEC_SPD_POLICY_##v])              \
-    {                                                                         \
-      s = format (s, "\n %U", format_ipsec_policy_fp, *i);                    \
-    }
+  s = format (s, "\n %U", format_ipsec_fp_policies, spd, IPSEC_SPD_POLICY_##v);
   foreach_ipsec_spd_policy_type;
 #undef _
 
