@@ -530,6 +530,7 @@ policer_classify_inline (vlib_main_t * vm,
 	  u32 hash0;
 	  u8 *h0;
 	  u8 act0;
+	  u32 sw_if_index;
 
 	  /* Stride 3 seems to work best */
 	  if (PREDICT_TRUE (n_left_from > 3))
@@ -570,9 +571,19 @@ policer_classify_inline (vlib_main_t * vm,
 					    L2INPUT_FEAT_POLICER_CLAS);
 	    }
 	  else
-	    vnet_get_config_data (pcm->vnet_config_main[tid],
-				  &b0->current_config_index, &next0,
-				  /* # bytes of config data */ 0);
+	    {
+	      sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      if (0 != pcm->classify_table_index_by_sw_if_index[tid][sw_if_index])
+	        {
+	          vnet_get_config_data (pcm->vnet_config_main[tid],
+					&b0->current_config_index, &next0,
+					/* # bytes of config data */ 0);
+	        }
+	      else
+	        {
+	          next0 = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT;
+	        }
+	    }
 
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
 
