@@ -94,6 +94,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "64face83_6e053475",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-10T20:02:54Z",
+      "side": 1,
+      "message": "JOB_AES_HMAC is the old (deprecated) name for a generic ipsec-mb job structure. This has been replaced by the IMB_JOB structure for a while now, but we still support the old name for backward compatibility. This entire module uses old naming for ipsec-mb data types and should be updated. But I\u0027d like to do that in a separate patch.",
+      "parentUuid": "885e9db9_3f26d7cd",
+      "range": {
+        "startLine": 36,
+        "startChar": 2,
+        "endLine": 36,
+        "endChar": 15
+      },
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c5c50369_2c7d06e6",
         "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
         "patchSetId": 6
@@ -105,6 +129,24 @@
       "writtenOn": "2022-10-10T15:52:31Z",
       "side": 1,
       "message": "why build aes-hmac jobs in chacha-poly op ?",
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9c6ec86_56116f38",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-10T20:02:54Z",
+      "side": 1,
+      "message": "As mentioned in the previous comment, this is a generic job type, and the name should be updated in a separate patch.",
+      "parentUuid": "c5c50369_2c7d06e6",
       "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
