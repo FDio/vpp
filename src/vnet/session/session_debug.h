@@ -17,6 +17,7 @@
 
 #include <vnet/session/transport.h>
 #include <vlib/vlib.h>
+#include <vpp/vnet/config.h>
 
 #define foreach_session_dbg_evt			\
   _(ENQ, "enqueue")				\
@@ -94,7 +95,12 @@ typedef struct session_dbg_main_
 
 extern session_dbg_main_t session_dbg_main;
 
+#ifdef VPP_SESSION_DEBUG
+#define SESSION_DEBUG 1 * (TRANSPORT_DEBUG > 0)
+#else
 #define SESSION_DEBUG 0 * (TRANSPORT_DEBUG > 0)
+#endif
+
 #define SESSION_DEQ_EVTS (0)
 #define SESSION_DISPATCH_DBG (0)
 #define SESSION_EVT_POLL_DBG (0)

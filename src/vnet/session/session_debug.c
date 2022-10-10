@@ -61,6 +61,11 @@ VLIB_CLI_COMMAND (show_session_dbg_clock_cycles_command, static) =
 };
 /* *INDENT-ON* */
 
+static_always_inline f64
+session_time_now (vlib_main_t *vm)
+{
+  return clib_time_now (&vm->clib_time) + vm->time_offset;
+}
 
 static clib_error_t *
 clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -77,7 +82,7 @@ clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       sde = &session_dbg_main.wrk[thread];
       clib_memset (sde, 0, sizeof (session_dbg_evts_t));
-      sde->last_time = vlib_time_now (vlib_mains[thread]);
+      sde->last_time = session_time_now (vlib_get_main_by_index (thread));
       sde->start_time = sde->last_time;
     }
 
@@ -107,7 +112,8 @@ session_debug_init (void)
   for (thread = 0; thread < num_threads; thread++)
     {
       clib_memset (&sdm->wrk[thread], 0, sizeof (session_dbg_evts_t));
-      sdm->wrk[thread].start_time = vlib_time_now (vlib_mains[thread]);
+      sdm->wrk[thread].start_time =
+	session_time_now (vlib_get_main_by_index (thread));
     }
 }
 #else
