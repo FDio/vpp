@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "015454f1_45dd2da1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-10T12:28:41Z",
+      "side": 1,
+      "message": "Looks good to me! Neale, any additional comments/questions?",
+      "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

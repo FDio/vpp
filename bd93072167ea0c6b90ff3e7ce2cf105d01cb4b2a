@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "31194b5d_6b4f30bf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-10T12:28:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "297677fc_d361c194",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7b847228_c2281361",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "It is required with the changes coming with this patch.",
       "parentUuid": "7b847228_c2281361",
+      "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4a3ebe56_a796ef4b",
+        "filename": "src/vnet/gso/node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-10T12:28:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e7639c28_3825869e",
       "revId": "bd93072167ea0c6b90ff3e7ce2cf105d01cb4b2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
