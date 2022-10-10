@@ -50,6 +50,46 @@
       "message": "recheck",
       "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "885e9db9_3f26d7cd",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-10-10T15:52:31Z",
+      "side": 1,
+      "message": "Add a specific JOB struct type in generic thread data structure doesn\u0027t make sense to me. if this thread data structure only be used in AES-HMAC, maybe we could create a new one ?",
+      "range": {
+        "startLine": 36,
+        "startChar": 2,
+        "endLine": 36,
+        "endChar": 15
+      },
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5c50369_2c7d06e6",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-10-10T15:52:31Z",
+      "side": 1,
+      "message": "why build aes-hmac jobs in chacha-poly op ?",
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
