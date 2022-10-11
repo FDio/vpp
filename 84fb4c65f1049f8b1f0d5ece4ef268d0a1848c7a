@@ -34,6 +34,23 @@
       "parentUuid": "81d45ed9_517b942c",
       "revId": "84fb4c65f1049f8b1f0d5ece4ef268d0a1848c7a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1cc22ded_5418a1cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-10-11T02:40:03Z",
+      "side": 1,
+      "message": "I only reviewed l2 code and they looked fine.\nI did not review the test code.",
+      "revId": "84fb4c65f1049f8b1f0d5ece4ef268d0a1848c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
