@@ -30,6 +30,7 @@ OPTIONS:
   --build-type, -t        Build type (release, debug, ...)
   --native-only, -n       Only compile for Native CPU (no multiarch)
   --wipe, -w              Wipe whole repo (except startup.* files)
+  --sanitize, -s          Enable sanitizer (mem)
 __EOF__
 }
 
@@ -82,6 +83,15 @@ while (( "$#" )); do
     -w|--wipe)
       wipe=yes
       shift 1
+      ;;
+    -s|--sanitize)
+      shift 1
+      case "$1" in
+	mem)
+	  shift 1
+	  args+=("-DVPP_ENABLE_SANITIZE_ADDR=ON")
+	  ;;
+      esac
       ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
