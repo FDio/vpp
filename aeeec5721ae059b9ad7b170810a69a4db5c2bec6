@@ -33,6 +33,23 @@
       "message": "csit-3n-icx-perftest mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4ipsec40tnlsw-ip4base-*-aes256gcm mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4-ip4base mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND78bANDethip6-ip6base mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4lispip4-ip4base mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4gtpusw-ip4base",
       "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3dea6cf9_9ec48e08",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-10-11T08:24:17Z",
+      "side": 1,
+      "message": "perftest-2n-icx mrrANDnic_intel-xxv710AND1cAND64bANDethip4-ip4base-2vhost-gso-iperf3",
+      "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
