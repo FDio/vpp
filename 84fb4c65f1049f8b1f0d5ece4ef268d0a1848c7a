@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81d45ed9_517b942c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-11T02:31:31Z",
+      "side": 1,
+      "message": "Test code LGTM\n\n@Laszlo, please resolve all of the open comments.\n@Steven, please add Code-Review +1 if you approve VPP code.\n",
+      "revId": "84fb4c65f1049f8b1f0d5ece4ef268d0a1848c7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
