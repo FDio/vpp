@@ -84,6 +84,23 @@
       "message": "\u003e vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-icx/2/ : FAILURE (skipped)\n\nTypo.\nperftest-2n-icx mrrANDnic_intel-xxv710AND1cANDethip4-ip4base-2vhost-gso-iperf3",
       "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aabb29df_9d2388b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-10-11T11:49:46Z",
+      "side": 1,
+      "message": "perftest-3n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4ipsec40tnlsw-ip4base-int-aes256gcm",
+      "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
