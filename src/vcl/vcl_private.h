@@ -341,6 +341,10 @@ typedef struct vppcom_main_t_
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
 
+  /** Counter to determine order of execution of `vcl_api_retry_attach`
+   * function by multiple workers */
+  int reattach_count;
+
   /** Lock to protect segment hash table */
   clib_rwlock_t segment_table_lock;
 

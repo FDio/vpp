@@ -28,6 +28,8 @@ func RegisterActions() {
 	reg("vpp-envoy", ConfigureEnvoyProxy)
 	reg("http-tps", ConfigureHttpTps)
 	reg("2veths", Configure2Veths)
+	reg("vcl-test-server", RunVclEchoServer)
+	reg("vcl-test-client", RunVclEchoClient)
 }
 
 func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
@@ -145,6 +147,48 @@ func RunEchoClnInternal() *ActionResult {
 	cmd := fmt.Sprintf("test echo client %s uri tcp://10.10.10.1/1234", getArgs())
 	return ApiCliInband("/tmp/2veths", cmd)
 }
+
+func RunVclEchoServer(args []string) *ActionResult {
+	f, err := os.Create("vcl_1.conf")
+	if err != nil {
+		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
+	}
+	fmt.Fprintf(f, vclTemplate, "/tmp/echo-srv/var/run/app_ns_sockets/1", "1")
+	f.Close()
+
+	os.Setenv("VCL_CONFIG", "/vcl_1.conf")
+	cmd := "vcl_test_server -p tcp 12346"
+	errCh := exechelper.Start(cmd)
+	select {
+	case err := <-errCh:
+		writeSyncFile(NewActionResult(err, ActionResultWithDesc("vcl_test_server: ")))
+	default:
+	}
+	writeSyncFile(OkResult())
+	return nil
+}
+
+func RunVclEchoClient(args []string) *ActionResult {
+	outBuff := bytes.NewBuffer([]byte{})
+	errBuff := bytes.NewBuffer([]byte{})
+
+	f, err := os.Create("vcl_2.conf")
+	if err != nil {
+		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
+	}
+	fmt.Fprintf(f, vclTemplate, "/tmp/echo-cln/var/run/app_ns_sockets/2", "2")
+	f.Close()
+
+	os.Setenv("VCL_CONFIG", "/vcl_2.conf")
+	cmd := "vcl_test_client -U -p tcp 10.10.10.1 12346"
+	err = exechelper.Run(cmd,
+		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
+		exechelper.WithStdout(os.Stdout), exechelper.WithStderr(os.Stderr))
+
+	return NewActionResult(err, ActionResultWithStdout(string(outBuff.String())),
+		ActionResultWithStderr(string(errBuff.String())))
+}
+
 func configure2vethsTopo(ifName, interfaceAddress, namespaceId string, secret uint64) ConfFn {
 	return func(ctx context.Context,
 		vppConn api.Connection) error {
