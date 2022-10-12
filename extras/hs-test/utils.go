@@ -50,6 +50,16 @@ plugins {
 
 `
 
+const vclTemplate = `vcl {
+  app-socket-api %[1]s
+  app-scope-global
+  app-scope-local
+  namespace-id %[2]s
+  namespace-secret %[2]s
+  use-mq-eventfd
+}
+`
+
 const TopologyDir string = "topo/"
 
 type Stanza struct {
@@ -142,7 +152,7 @@ func hstExec(args string, instance string) (string, error) {
 func waitForSyncFile(fname string) (*JsonResult, error) {
 	var res JsonResult
 
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 360; i++ {
 		f, err := os.Open(fname)
 		if err == nil {
 			defer f.Close()
