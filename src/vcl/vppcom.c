@@ -1268,13 +1268,56 @@ vcl_api_attach (void)
   return vcl_bapi_attach ();
 }
 
+int
+vcl_is_first_reattach_to_execute ()
+{
+  if (vcm->reattach_count == 0)
+    return 1;
+
+  return 0;
+}
+
+void
+vcl_set_reattach_counter ()
+{
+  ++vcm->reattach_count;
+
+  if (vcm->reattach_count == vec_len (vcm->workers))
+    vcm->reattach_count = 0;
+}
+
+/**
+ * Reattach vcl to vpp after it has previously been disconnected.
+ *
+ * The logic should be:
+ * - first worker to hit `vcl_api_retry_attach` should attach to vpp,
+ *   to reproduce the `vcl_api_attach` in `vppcom_app_create`.
+ * - the rest of the workers should `reproduce vcl_worker_register_with_vpp`
+ *   from `vppcom_worker_register` since they were already allocated.
+ */
+
 static void
 vcl_api_retry_attach (vcl_worker_t *wrk)
 {
   vcl_session_t *s;
 
-  if (vcl_api_attach ())
-    return;
+  clib_spinlock_lock (&vcm->workers_lock);
+  if (vcl_is_first_reattach_to_execute ())
+    {
+      if (vcl_api_attach ())
+	{
+	  clib_spinlock_unlock (&vcm->workers_lock);
+	  return;
+	}
+      vcl_set_reattach_counter ();
+      clib_spinlock_unlock (&vcm->workers_lock);
+    }
+  else
+    {
+      vcl_set_reattach_counter ();
+      clib_spinlock_unlock (&vcm->workers_lock);
+      vcl_worker_register_with_vpp ();
+    }
 
   /* Treat listeners as configuration that needs to be re-added to vpp */
   pool_foreach (s, wrk->sessions)

@@ -77,7 +77,7 @@ func writeSyncFile(res *ActionResult) error {
 		defer f.Close()
 		f.Write([]byte(str))
 	} else {
-		return fmt.Errorf("sync file exists, delete the file frst")
+		return fmt.Errorf("sync file exists, delete the file first")
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func ActionResultWithStderr(s string) ActionResultOptionFn {
 
 func ActionResultWithStdout(s string) ActionResultOptionFn {
 	return func(res *ActionResult) {
-		res.ErrOutput = s
+		res.StdOutput = s
 	}
 }
 
