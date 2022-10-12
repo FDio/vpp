@@ -118,6 +118,23 @@
       "message": "perftest-3n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4ipsec40tnlsw-ip4base-int-aes256gcm",
       "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d41b1bf0_6e6df642",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-10-12T14:20:25Z",
+      "side": 1,
+      "message": "\u003e\u003e ethip4ipsec40tnlsw-ip4base-int-aes256gcm\n\n\u003e vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/3/ : FAILURE (skipped)\n\nThe only test with visible difference is this one. I guess the observed 1-2% regression corresponds to the edits in esp_encrypt.c file.\nIf the edits are needed, it is fine, but if they are not needed they should be removed.",
+      "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
