@@ -59,6 +59,7 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
     }
 
   wrk->api_client_handle = mp->api_client_handle;
+  wrk->vpp_wrk_index = 0; // Reattaching via `vcl_api_retry_attach` wants this.
   segment_handle = mp->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
