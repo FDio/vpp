@@ -10,8 +10,8 @@ type NetType string
 
 const (
 	NetNs NetType = "netns"
-	Veth          = "veth"
-	Tap           = "tap"
+	Veth  string  = "veth"
+	Tap   string  = "tap"
 )
 
 type NetConfig struct {

@@ -10,6 +10,7 @@ import (
 	"git.fd.io/govpp.git/api"
 	"github.com/edwarnicke/exechelper"
 	"github.com/edwarnicke/govpp/binapi/af_packet"
+	"github.com/edwarnicke/govpp/binapi/ethernet_types"
 	interfaces "github.com/edwarnicke/govpp/binapi/interface"
 	"github.com/edwarnicke/govpp/binapi/interface_types"
 	ip_types "github.com/edwarnicke/govpp/binapi/ip_types"
@@ -28,6 +29,8 @@ func RegisterActions() {
 	reg("vpp-envoy", ConfigureEnvoyProxy)
 	reg("http-tps", ConfigureHttpTps)
 	reg("2veths", Configure2Veths)
+	reg("vcl-test-server", RunVclEchoServer)
+	reg("vcl-test-client", RunVclEchoClient)
 }
 
 func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
@@ -145,11 +148,59 @@ func RunEchoClnInternal() *ActionResult {
 	cmd := fmt.Sprintf("test echo client %s uri tcp://10.10.10.1/1234", getArgs())
 	return ApiCliInband("/tmp/2veths", cmd)
 }
-func configure2vethsTopo(ifName, interfaceAddress, namespaceId string, secret uint64) ConfFn {
+
+func RunVclEchoServer(args []string) *ActionResult {
+	f, err := os.Create("vcl_1.conf")
+	if err != nil {
+		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
+	}
+	fmt.Fprintf(f, vclTemplate, "/tmp/echo-srv/var/run/app_ns_sockets/1", "1")
+	f.Close()
+
+	os.Setenv("VCL_CONFIG", "/vcl_1.conf")
+	cmd := fmt.Sprintf("vcl_test_server -p %s 12346", args[2])
+	errCh := exechelper.Start(cmd)
+	select {
+	case err := <-errCh:
+		writeSyncFile(NewActionResult(err, ActionResultWithDesc("vcl_test_server: ")))
+	default:
+	}
+	writeSyncFile(OkResult())
+	return nil
+}
+
+func RunVclEchoClient(args []string) *ActionResult {
+	outBuff := bytes.NewBuffer([]byte{})
+	errBuff := bytes.NewBuffer([]byte{})
+
+	f, err := os.Create("vcl_2.conf")
+	if err != nil {
+		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
+	}
+	fmt.Fprintf(f, vclTemplate, "/tmp/echo-cln/var/run/app_ns_sockets/2", "2")
+	f.Close()
+
+	os.Setenv("VCL_CONFIG", "/vcl_2.conf")
+	cmd := fmt.Sprintf("vcl_test_client -U -p %s 10.10.10.1 12346", args[2])
+	err = exechelper.Run(cmd,
+		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
+		exechelper.WithStdout(os.Stdout), exechelper.WithStderr(os.Stderr))
+
+	return NewActionResult(err, ActionResultWithStdout(string(outBuff.String())),
+		ActionResultWithStderr(string(errBuff.String())))
+}
+
+func configure2vethsTopo(ifName, interfaceAddress, namespaceId string, secret uint64, optionalHardwareAddress ...string) ConfFn {
 	return func(ctx context.Context,
 		vppConn api.Connection) error {
 
-		swIfIndex, err := configureAfPacket(ctx, vppConn, ifName, interfaceAddress)
+		var swIfIndex interface_types.InterfaceIndex
+		var err error
+		if optionalHardwareAddress == nil {
+			swIfIndex, err = configureAfPacket(ctx, vppConn, ifName, interfaceAddress)
+		} else {
+			swIfIndex, err = configureAfPacket(ctx, vppConn, ifName, interfaceAddress, optionalHardwareAddress[0])
+		}
 		if err != nil {
 			fmt.Printf("failed to create af packet: %v", err)
 		}
@@ -191,6 +242,8 @@ func Configure2Veths(args []string) *ActionResult {
 	var fn func(context.Context, api.Connection) error
 	if args[2] == "srv" {
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1)
+	} else if args[2] == "srv-with-preset-hw-addr" {
+		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1, "00:00:5e:00:53:01")
 	} else {
 		fn = configure2vethsTopo("vppcln", "10.10.10.2/24", "2", 2)
 	}
@@ -204,14 +257,23 @@ func Configure2Veths(args []string) *ActionResult {
 }
 
 func configureAfPacket(ctx context.Context, vppCon api.Connection,
-	name, interfaceAddress string) (interface_types.InterfaceIndex, error) {
+	name, interfaceAddress string, optionalHardwareAddress ...string) (interface_types.InterfaceIndex, error) {
+	var err error
 	ifaceClient := interfaces.NewServiceClient(vppCon)
-	afPacketCreate := &af_packet.AfPacketCreateV2{
+	afPacketCreate := af_packet.AfPacketCreateV2{
 		UseRandomHwAddr: true,
 		HostIfName:      name,
 		NumRxQueues:     1,
 	}
-	afPacketCreateRsp, err := af_packet.NewServiceClient(vppCon).AfPacketCreateV2(ctx, afPacketCreate)
+	if len(optionalHardwareAddress) > 0 {
+		afPacketCreate.HwAddr, err = ethernet_types.ParseMacAddress(optionalHardwareAddress[0])
+		if err != nil {
+			fmt.Printf("failed to parse mac address: %v", err)
+			return 0, err
+		}
+		afPacketCreate.UseRandomHwAddr = false
+	}
+	afPacketCreateRsp, err := af_packet.NewServiceClient(vppCon).AfPacketCreateV2(ctx, &afPacketCreate)
 	if err != nil {
 		fmt.Printf("failed to create af packet: %v", err)
 		return 0, err
