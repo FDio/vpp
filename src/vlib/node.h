@@ -201,7 +201,8 @@ static __clib_unused vlib_node_registration_t __clib_unused_##x
 #endif
 
 #define VLIB_NODE_FN(node)                                                    \
-  uword CLIB_MARCH_SFX (node##_fn) ();                                        \
+  uword CLIB_MARCH_SFX (node##_fn) (vlib_main_t *, vlib_node_runtime_t *,     \
+				    vlib_frame_t *);                          \
   static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
     node##_fn_registration) = {                                               \
     .function = &CLIB_MARCH_SFX (node##_fn),                                  \

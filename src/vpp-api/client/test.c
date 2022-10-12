@@ -70,7 +70,6 @@ wrap_vac_callback (unsigned char *data, int len)
 static void
 test_connect ()
 {
-  static int i;
   int rv = vac_connect("vac_client", NULL, wrap_vac_callback, 32 /* rx queue-length*/);
   if (rv != 0) {
     printf("Connect failed: %d\n", rv);
@@ -78,7 +77,6 @@ test_connect ()
   }
   printf(".");
   vac_disconnect();
-  i++;
 }
 
 static void

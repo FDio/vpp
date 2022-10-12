@@ -532,7 +532,7 @@ typedef struct
   u8 dpd_disabled;
 
   /* pointer to name resolver function in dns plugin */
-  int (*dns_resolve_name) ();
+  void *dns_resolve_name_ptr;
 
   /* flag indicating whether lazy init is done or not */
   int lazy_init_done;

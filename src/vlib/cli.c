@@ -872,14 +872,14 @@ show_memory_usage (vlib_main_t * vm,
     }
   if (stats_segment)
     {
-      void *oldheap = vlib_stats_set_heap (0);
+      void *oldheap = vlib_stats_set_heap ();
       was_enabled = clib_mem_trace_enable_disable (0);
       u8 *s_in_svm = format (0, "%U\n", format_clib_mem_heap, 0, 1);
       if (oldheap)
 	clib_mem_set_heap (oldheap);
       u8 *s = vec_dup (s_in_svm);
 
-      oldheap = vlib_stats_set_heap (0);
+      oldheap = vlib_stats_set_heap ();
       vec_free (s_in_svm);
       if (oldheap)
 	{

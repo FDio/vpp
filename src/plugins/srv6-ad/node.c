@@ -203,7 +203,6 @@ srv6_ad_localsid_fn (vlib_main_t * vm,
 {
   ip6_sr_main_t *sm = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
-  u32 cnt_packets = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -264,7 +263,6 @@ srv6_ad_localsid_fn (vlib_main_t * vm,
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 
-	  cnt_packets++;
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);

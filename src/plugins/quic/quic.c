@@ -2674,7 +2674,6 @@ quic_get_counter_value (u32 event_code)
 
   u32 code, i;
   u64 c, sum = 0;
-  int index = 0;
 
   vm = vlib_get_main ();
   em = &vm->error_main;
@@ -2689,7 +2688,6 @@ quic_get_counter_value (u32 event_code)
       if (i < vec_len (em->counters_last_clear))
 	c -= em->counters_last_clear[i];
       sum += c;
-      index++;
     }
   return sum;
 }

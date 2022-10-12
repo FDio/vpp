@@ -573,8 +573,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					       ESP_ENCRYPT_NEXT_HANDOFF_MPLS));
   vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
   u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
-  u16 async_nexts[VLIB_FRAME_SIZE], *async_next = async_nexts, n_async = 0;
-  u16 noop_nexts[VLIB_FRAME_SIZE], *noop_next = noop_nexts, n_noop = 0;
+  u16 n_async = 0;
+  u16 noop_nexts[VLIB_FRAME_SIZE], n_noop = 0;
   u32 sync_bi[VLIB_FRAME_SIZE];
   u32 noop_bi[VLIB_FRAME_SIZE];
   esp_encrypt_error_t err;
@@ -995,7 +995,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  noop_bi[n_noop] = from[b - bufs];
 	  n_noop++;
-	  noop_next++;
 	}
       else if (!is_async)
 	{
@@ -1007,7 +1006,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	{
 	  n_async++;
-	  async_next++;
 	}
       n_left -= 1;
       b += 1;

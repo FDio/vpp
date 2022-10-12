@@ -179,7 +179,6 @@ ipfix_classify_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
   tcpudp_header_t *tcpudp;
   udp_header_t *udp;
   int field_index;
-  u32 records_this_buffer;
   u16 new_l0, old_l0;
   ip_csum_t sum0;
   vlib_main_t *vm = frm->vlib_main;
@@ -251,7 +250,6 @@ ipfix_classify_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 
 		  next_offset = (u32) (((u8 *) (s + 1)) - (u8 *) tp);
 		  record_offset = next_offset;
-		  records_this_buffer = 0;
 		}
 
 	      field_index = 0;
@@ -275,7 +273,6 @@ ipfix_classify_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 				  sizeof (packets));
 		next_offset += sizeof (packets);
 	      }
-	      records_this_buffer++;
 	      stream->sequence_number++;
 
 	      /* Next record will have the same size as this record */

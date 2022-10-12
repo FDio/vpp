@@ -45,7 +45,6 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
   ipfix_set_header_t *s = NULL;
   ip4_header_t *ip;
   udp_header_t *udp;
-  u32 records_this_buffer;
   u16 new_l0, old_l0;
   ip_csum_t sum0;
   vlib_main_t *vm = vlib_get_main ();
@@ -99,7 +98,6 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 		  h->sequence_number =
 		    clib_host_to_net_u32 (h->sequence_number);
 		  next_offset = (u32) (((u8 *) (s + 1)) - (u8 *) tp);
-		  records_this_buffer = 0;
 		}
 
 	      next_offset = ioam_analyse_add_ipfix_record (fr,
@@ -114,8 +112,6 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 	      //u32 pak_sent = clib_host_to_net_u32(stats->pak_sent);
 	      //memcpy (b0->data + next_offset, &pak_sent, sizeof(u32));
 	      //next_offset += sizeof(u32);
-
-	      records_this_buffer++;
 
 	      /* Flush data if packet len is about to reach path mtu */
 	      if (next_offset > (exp->path_mtu - UDP_PING_EXPORT_RECORD_SIZE))

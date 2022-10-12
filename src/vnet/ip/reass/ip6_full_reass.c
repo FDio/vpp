@@ -705,8 +705,6 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *last_b = NULL;
   u32 sub_chain_bi = reass->first_bi;
   u32 total_length = 0;
-  u32 buf_cnt = 0;
-  u32 dropped_cnt = 0;
   u32 *vec_drop_compress = NULL;
   ip6_full_reass_rc_t rv = IP6_FULL_REASS_RC_OK;
   do
@@ -748,7 +746,6 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	vlib_buffer_length_in_chain (vm, tmp) - trim_front - trim_end;
       while (1)
 	{
-	  ++buf_cnt;
 	  if (trim_front)
 	    {
 	      if (trim_front > tmp->current_length)
@@ -804,7 +801,6 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto free_buffers_and_return;
 		}
 	      vec_add1 (vec_drop_compress, tmp_bi);
-	      ++dropped_cnt;
 	    }
 	  if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {

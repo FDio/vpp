@@ -51,23 +51,23 @@ static inline void mul64by64(u64 a, u64 b, u64 * hi, u64 * lo)
 
 static inline u64 mod128by64(u64 x, u64 y, u64 m, double di)
 {
-    u64 q1, q2, q;
-    u64 p1, p0;
-    double dq;
+  u64 q1, q2;
+  u64 p1, p0;
+  double dq;
 
-    /* calculate quotient first pass 53 bits */
-    dq = (TWO64 * (double)x + (double)y) * di;
+  /* calculate quotient first pass 53 bits */
+  dq = (TWO64 * (double) x + (double) y) * di;
 
-    if (dq >= TWO64)
-        q1 = 0xfffffffffffff800L;
-    else
-        q1 = dq;
+  if (dq >= TWO64)
+    q1 = 0xfffffffffffff800L;
+  else
+    q1 = dq;
 
-    /* q1 * m to compare the product to the dividend.  */
-    mul64by64(q1, m, &p1, &p0);
+  /* q1 * m to compare the product to the dividend.  */
+  mul64by64 (q1, m, &p1, &p0);
 
-    /* Adjust quotient. is it > actual result: */
-    if (x < p1 || (x == p1 && y < p0))
+  /* Adjust quotient. is it > actual result: */
+  if (x < p1 || (x == p1 && y < p0))
     {
         /* q1 > quotient.  calculate abs remainder */
         x = p1 - (x + (p0 < y));
@@ -77,7 +77,6 @@ static inline u64 mod128by64(u64 x, u64 y, u64 m, double di)
         q2 = (u64) ((TWO64 * (double)x + (double)y) * di);
         mul64by64(q2, m, &p1, &p0);
 
-        q = q1 - q2;
         if (x < p1 || (x == p1 && y <= p0))
         {
             y = p0 - y;
@@ -86,7 +85,6 @@ static inline u64 mod128by64(u64 x, u64 y, u64 m, double di)
         {
             y = p0 - y;
             y += m;
-            q--;
         }
     }
     else
@@ -97,12 +95,10 @@ static inline u64 mod128by64(u64 x, u64 y, u64 m, double di)
         q2 = (u64) ((TWO64 * (double)x + (double)y) * di);
         mul64by64(q2, m, &p1, &p0);
 
-        q = q1 + q2;
         if (x < p1 || (x == p1 && y < p0))
         {
             y = y - p0;
             y += m;
-            q--;
         }
         else
         {
@@ -110,7 +106,6 @@ static inline u64 mod128by64(u64 x, u64 y, u64 m, double di)
             if (y >= m)
             {
                 y -= m;
-                q++;
             }
         }
     }

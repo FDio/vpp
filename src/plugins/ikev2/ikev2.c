@@ -4445,7 +4445,7 @@ ikev2_resolve_responder_hostname (vlib_main_t *vm, ikev2_responder_t *r)
   u8 *name;
   int rv;
 
-  if (!km->dns_resolve_name)
+  if (!km->dns_resolve_name_ptr)
     return clib_error_return (0, "cannot load symbols from dns plugin");
 
   t0->request_type = DNS_API_PENDING_NAME_TO_IP;
@@ -4453,7 +4453,8 @@ ikev2_resolve_responder_hostname (vlib_main_t *vm, ikev2_responder_t *r)
    * whereas DNS resolver expects a NULL-terminated C-string */
   name = vec_dup (r->hostname);
   vec_terminate_c_string (name);
-  rv = km->dns_resolve_name (name, &ep, t0, rn);
+  rv = ((__typeof__ (dns_resolve_name) *) km->dns_resolve_name_ptr) (name, &ep,
+								     t0, rn);
   vec_free (name);
   if (rv < 0)
     return clib_error_return (0, "dns lookup failure");
@@ -5443,9 +5444,9 @@ ikev2_lazy_init (ikev2_main_t *km)
 
   km->punt_hdl = vlib_punt_client_register ("ikev2");
 
-  km->dns_resolve_name =
+  km->dns_resolve_name_ptr =
     vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
-  if (!km->dns_resolve_name)
+  if (!km->dns_resolve_name_ptr)
     ikev2_log_error ("cannot load symbols from dns plugin");
 
   /* wake up ikev2 process */

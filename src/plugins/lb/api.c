@@ -209,7 +209,6 @@ static void send_lb_as_details
   lb_main_t *lbm = &lb_main;
   int msg_size = 0;
   u32 *as_index;
-  u32 asindex = 0;
 
   /* construct as list under this vip */
   lb_as_t *as;
@@ -233,7 +232,6 @@ static void send_lb_as_details
         rmp->in_use_since = htonl(as->last_used);
 
         vl_api_send_msg (reg, (u8 *) rmp);
-        asindex++;
       }
   }
 

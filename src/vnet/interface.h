@@ -320,7 +320,8 @@ static __clib_unused vnet_device_class_t __clib_unused_##x
 #endif
 
 #define VNET_DEVICE_CLASS_TX_FN(devclass)                                     \
-  uword CLIB_MARCH_SFX (devclass##_tx_fn) ();                                 \
+  uword CLIB_MARCH_SFX (devclass##_tx_fn) (                                   \
+    vlib_main_t *, vlib_node_runtime_t *, vlib_frame_t *);                    \
   static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
     devclass##_tx_fn_registration) = {                                        \
     .function = &CLIB_MARCH_SFX (devclass##_tx_fn),                           \

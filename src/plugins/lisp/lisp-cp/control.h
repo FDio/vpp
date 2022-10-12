@@ -299,7 +299,7 @@ extern vlib_node_registration_t lisp_cp_input_node;
 extern vlib_node_registration_t lisp_cp_lookup_ip4_node;
 extern vlib_node_registration_t lisp_cp_lookup_ip6_node;
 
-clib_error_t *lisp_cp_init ();
+clib_error_t *lisp_cp_init (vlib_main_t *);
 
 always_inline lisp_cp_main_t *
 vnet_lisp_cp_get_main ()

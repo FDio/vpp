@@ -229,7 +229,7 @@ plugin_enabled ()
 extern vlib_node_registration_t det44_in2out_node;
 extern vlib_node_registration_t det44_out2in_node;
 
-int det44_plugin_enable ();
+int det44_plugin_enable (det44_config_t);
 int det44_plugin_disable ();
 
 int det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);

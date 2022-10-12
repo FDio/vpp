@@ -647,7 +647,6 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *last_b = NULL;
   u32 sub_chain_bi = reass->first_bi;
   u32 total_length = 0;
-  u32 buf_cnt = 0;
   do
     {
       u32 tmp_bi = sub_chain_bi;
@@ -684,7 +683,6 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	vlib_buffer_length_in_chain (vm, tmp) - trim_front - trim_end;
       while (1)
 	{
-	  ++buf_cnt;
 	  if (trim_front)
 	    {
 	      if (trim_front > tmp->current_length)

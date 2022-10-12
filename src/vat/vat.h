@@ -131,7 +131,7 @@ typedef struct
 
 struct vat_registered_features_t;
 
-typedef struct
+typedef struct vat_main_
 {
   /* vpe input queue */
   svm_queue_t *vl_input_queue;
@@ -234,7 +234,7 @@ typedef struct
 
   struct vat_registered_features_t *feature_function_registrations;
 
-  int (*api_sw_interface_dump) ();
+  int (*api_sw_interface_dump) (struct vat_main_ *);
 
   /* Convenience */
   vlib_main_t *vlib_main;

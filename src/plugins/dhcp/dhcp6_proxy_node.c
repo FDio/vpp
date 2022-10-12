@@ -136,8 +136,8 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
   dhcp_proxy_main_t *dpm = &dhcp_proxy_main;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  u32 pkts_to_server = 0, pkts_to_client = 0, pkts_no_server = 0;
-  u32 pkts_no_interface_address = 0, pkts_no_exceeding_max_hop = 0;
+  u32 pkts_to_server = 0, pkts_to_client = 0;
+  u32 pkts_no_interface_address = 0;
   u32 pkts_no_src_address = 0;
   u32 pkts_wrong_msg_type = 0;
   u32 pkts_too_big = 0;
@@ -236,7 +236,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	    {
 	      error0 = DHCPV6_PROXY_ERROR_NO_SERVER;
 	      next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-	      pkts_no_server++;
 	      goto do_trace;
 	    }
 
@@ -274,7 +273,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	    {
 	      error0 = DHCPV6_RELAY_PKT_DROP_MAX_HOPS;
 	      next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-	      pkts_no_exceeding_max_hop++;
 	      goto do_trace;
 	    }
 
