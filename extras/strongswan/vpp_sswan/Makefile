@@ -32,9 +32,9 @@ CFLAGS_I=-include $(CONFIGH) \
 
 LDFLAGS= -lvppinfra \
 	-lvlibmemoryclient \
-	-lvppapiclient \
+	-lvlibapi \
 	-lsvm \
-	-lvlib
+	-lvppapiclient
 
 VERSION_VPP=$(shell (dpkg -s vpp | grep Version) | grep -Po '(?<=Version: )\d\d.\d\d')
 
