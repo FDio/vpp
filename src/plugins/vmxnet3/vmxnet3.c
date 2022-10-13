@@ -692,7 +692,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 
   if (args->bind)
     {
-      error = vlib_pci_bind_to_uio (vm, &args->addr, (char *) "auto");
+      error = vlib_pci_bind_to_uio (vm, &args->addr, (char *) "auto",
+				    VMXNET3_BIND_FORCE == args->bind);
       if (error)
 	{
 	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
