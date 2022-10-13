@@ -1,0 +1,1 @@
+Gomemif has been migrated to GoVPP repository https://github.com/FDio/govpp
