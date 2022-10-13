@@ -680,7 +680,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         continue;
       }
 
-    error = vlib_pci_bind_to_uio (vm, addr, (char *) conf->uio_driver_name);
+    error = vlib_pci_bind_to_uio (vm, addr, (char *) conf->uio_driver_name,
+				  0 /* force */);
 
     if (error)
       {
