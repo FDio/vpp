@@ -501,6 +501,7 @@ def is_handshake_init(p):
     return wg_p[Wireguard].message_type == 1
 
 
+@tag_fixme_vpp_debug
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
