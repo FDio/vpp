@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6cf162d2_98444b08",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2022-10-13T19:43:46Z",
+      "side": 1,
+      "message": "Any reason not to use xsk_socket__update_xskmap() here instead?",
+      "revId": "4ecb9faaad96937b31091a9a48725cf2c6affbbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
