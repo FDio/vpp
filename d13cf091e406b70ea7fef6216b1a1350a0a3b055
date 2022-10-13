@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3eec4b7_148df43e",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-13T18:13:04Z",
+      "side": 1,
+      "message": "spelling -\u003e found",
+      "range": {
+        "startLine": 529,
+        "startChar": 17,
+        "endLine": 529,
+        "endChar": 23
+      },
+      "revId": "d13cf091e406b70ea7fef6216b1a1350a0a3b055",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
