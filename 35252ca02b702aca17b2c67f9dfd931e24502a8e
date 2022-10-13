@@ -16,6 +16,23 @@
       "message": "The build issue has been resolved. This was caused by another patch that got merged which changed the PKG_SUFFIX in build/external/Makefile. That caused the dependencies not to be updated.\n\nPlease review and submit if there are no further issues.",
       "revId": "35252ca02b702aca17b2c67f9dfd931e24502a8e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfb08a27_9e1fb8b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2022-10-13T10:05:03Z",
+      "side": 1,
+      "message": "thanks! looks good to me",
+      "revId": "35252ca02b702aca17b2c67f9dfd931e24502a8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
