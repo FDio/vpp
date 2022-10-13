@@ -1343,6 +1343,24 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   }
   /* *INDENT-ON* */
 
+  if (args->bind)
+    {
+      vlib_pci_addr_t pci = { .as_u32 = args->addr };
+      error = vlib_pci_bind_to_uio (vm, &pci, (char *) "auto",
+				    VIRTIO_BIND_FORCE == args->bind);
+      if (error)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  args->error =
+	    clib_error_return (error, "%U: %s", format_vlib_pci_addr, &pci,
+			       "error encountered on binding pci device");
+	  vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+		    format_vlib_pci_addr, &pci,
+		    "error encountered on binding pci devicee");
+	  return;
+	}
+    }
+
   pool_get (vim->interfaces, vif);
   vif->dev_instance = vif - vim->interfaces;
   vif->per_interface_next_index = ~0;
