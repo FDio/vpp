@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eff3e461_94f9c4b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-10-13T23:49:59Z",
+      "side": 1,
+      "message": "a better way to achieve this is to register with VNET_SW_INTERFACE_ADD_DEL_FUNCTION add delete the policers state when the interface is deleted.",
+      "revId": "427923780bd78c66611c4c44d7033919c32649e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
