@@ -227,6 +227,13 @@ typedef enum
 #undef _
 } virtio_flag_t;
 
+typedef enum
+{
+  VIRTIO_BIND_NONE = 0,
+  VIRTIO_BIND_DEFAULT = 1,
+  VIRTIO_BIND_FORCE = 2,
+} __clib_packed virtio_bind_t;
+
 typedef struct
 {
   u32 addr;
@@ -238,6 +245,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  virtio_bind_t bind;
   u32 buffering_size;
   u32 virtio_flags;
   clib_error_t *error;
