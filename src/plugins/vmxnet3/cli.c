@@ -47,8 +47,10 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.enable_gso = 1;
       else if (unformat (line_input, "elog"))
 	args.enable_elog = 1;
+      else if (unformat (line_input, "bind force"))
+	args.bind = VMXNET3_BIND_FORCE;
       else if (unformat (line_input, "bind"))
-	args.bind = 1;
+	args.bind = VMXNET3_BIND_DEFAULT;
       else if (unformat (line_input, "rx-queue-size %u", &size))
 	args.rxq_size = size;
       else if (unformat (line_input, "tx-queue-size %u", &size))
@@ -77,10 +79,11 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
-  .short_help = "create interface vmxnet3 <pci-address>"
-                " [rx-queue-size <size>] [tx-queue-size <size>]"
-                " [num-tx-queues <number>] [num-rx-queues <number>] [bind]"
-                " [gso]",
+  .short_help =
+    "create interface vmxnet3 <pci-address>"
+    " [rx-queue-size <size>] [tx-queue-size <size>]"
+    " [num-tx-queues <number>] [num-rx-queues <number>] [bind [force]]"
+    " [gso]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */
