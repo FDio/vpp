@@ -681,7 +681,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         continue;
       }
 
-    error = vlib_pci_bind_to_uio (vm, addr, (char *) conf->uio_driver_name);
+    error = vlib_pci_bind_to_uio (vm, addr, (char *) conf->uio_driver_name,
+				  conf->uio_bind_force);
 
     if (error)
       {
@@ -1089,6 +1090,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
+      else if (unformat (input, "uio-bind-force"))
+	conf->uio_bind_force = 1;
       else if (unformat (input, "socket-mem %s", &socket_mem))
 	;
       else if (unformat (input, "no-pci"))

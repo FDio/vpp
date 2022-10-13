@@ -666,6 +666,18 @@ or auto (default)
 
    uio-driver vfio-pci
 
+uio-bind-force
+^^^^^^^^^^^^^^^^^^^^^^
+
+Force VPP to rebind the interface(s) to the selected UIO driver, even if the
+interface is up in Linux.
+By default, VPP will refuse to bind an interface if it is up in Linux,
+in case it is in active use.
+
+.. code-block:: console
+
+   uio-bind-force
+
 no-multi-seg
 ^^^^^^^^^^^^
 
