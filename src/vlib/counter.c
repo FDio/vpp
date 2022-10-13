@@ -108,7 +108,10 @@ vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
       vec_free (cm->counters);
     }
   else
-    vlib_stats_remove_entry (cm->stats_entry_index);
+    {
+      vlib_stats_remove_entry (cm->stats_entry_index);
+      cm->counters = NULL;
+    }
 }
 
 void
@@ -176,7 +179,10 @@ vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
       vec_free (cm->counters);
     }
   else
-    vlib_stats_remove_entry (cm->stats_entry_index);
+    {
+      vlib_stats_remove_entry (cm->stats_entry_index);
+      cm->counters = NULL;
+    }
 }
 
 u32

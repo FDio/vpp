@@ -89,6 +89,9 @@ test_simple_counter_expand (vlib_main_t *vm)
       epoch = new_epoch;
     }
 
+  vlib_free_simple_counter (&counter);
+  vlib_validate_simple_counter (&counter, 0);
+
   return 0;
 }
 
@@ -135,6 +138,9 @@ test_combined_counter_expand (vlib_main_t *vm)
 				  "Stats segment epoch should have increased");
       epoch = new_epoch;
     }
+
+  vlib_free_combined_counter (&counter);
+  vlib_validate_combined_counter (&counter, 0);
 
   return 0;
 }
