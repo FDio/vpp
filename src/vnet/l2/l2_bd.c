@@ -1608,28 +1608,25 @@ VLIB_CLI_COMMAND (bd_create_cli, static) = {
  * Returns an unused bridge domain id, and ~0 if it can't find one.
  */
 u32
-bd_get_unused_id ()
+bd_get_unused_id (void)
 {
   bd_main_t *bdm = &bd_main;
   int i, j;
-  int is_seed_low = 0;
   static u32 seed = 0;
+
   /* limit to 1M tries */
   for (j = 0; j < 1 << 10; j++)
     {
-      seed = random_u32 (&seed) & L2_BD_ID_MAX;
-      if (seed == 0)
-	continue;
-      if (seed < L2_BD_ID_MAX % 2)
-	is_seed_low = 1;
-      for (i = 0; i < L2_BD_ID_MAX % 2; i++)
+      seed = random_u32 (&seed);
+      for (i = 0; i < 1 << 10; i++)
 	{
-	  /* look around randomly generated id */
-	  if (is_seed_low)
-	    seed += (2 * (i % 2) - 1) * i;
-	  else
-	    seed -= (2 * (i % 2) - 1) * i;
-	  if (seed == ~0 || seed == 0)
+	  /*
+	   * iterate seed+0, seed+1, seed-1, seed+2, seed-2, ... to generate id
+	   */
+	  seed += (2 * (i % 2) - 1) * i;
+	  /* bd_id must be (1 <= bd_id <= L2_BD_ID_MAX) */
+	  seed &= L2_BD_ID_MAX;
+	  if (seed == 0)
 	    continue;
 	  if (bd_find_index (bdm, seed) == ~0)
 	    return seed;
