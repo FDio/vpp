@@ -207,6 +207,7 @@ func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
 		"-v", fmt.Sprintf("%s/envoy/proxy.yaml:/etc/envoy/envoy.yaml", wd),
 		"-v", fmt.Sprintf("shared-vol:/tmp/%s", dockerInstance),
 		"-v", fmt.Sprintf("%s/envoy:/tmp", wd),
+		"-e", "ENVOY_UID=0",
 		"-e", "VCL_CONFIG=/tmp/vcl.conf",
 		"envoyproxy/envoy-contrib:v1.21-latest"}
 	fmt.Println(c)
@@ -221,7 +222,7 @@ func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
 				break
 			}
 			if count > 5 {
-				errCh <- fmt.Errorf("Failed to start envoy docker after %d attempts", count)
+				errCh <- fmt.Errorf("failed to start envoy docker after %d attempts", count)
 				return
 			}
 		}

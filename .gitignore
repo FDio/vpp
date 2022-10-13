@@ -123,3 +123,7 @@ compile_commands.json
 # No test log files
 **/test-run-*-*-*
 
+# host stack test framework
+/extras/hs-test/vpp-data
+/extras/hs-test/hs-test
+/extras/hs-test/http_server
