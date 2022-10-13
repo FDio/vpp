@@ -7,7 +7,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
 from parameterized import parameterized
-from framework import VppTestRunner
+from framework import VppTestRunner, tag_fixme_vpp_debug
 from template_ipsec import (
     IpsecTra46Tests,
     IpsecTun46Tests,
@@ -1947,6 +1947,7 @@ class Test_openssl_ESNon_ARon_AES_CBC_128_MD5_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_vpp_debug
 class Test_openssl_ESNon_ARon_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNon ARon AES-CBC-192/SHA1-96 IPSec test"""
 
@@ -2163,6 +2164,7 @@ class Test_openssl_ESNoff_ARon_AES_CTR_128_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_vpp_debug
 class Test_openssl_ESNoff_ARon_AES_CTR_192_SHA1_96(RunTestIpsecEspAll):
     """openssl ESNoff ARon AES-CTR-192/SHA1-96 IPSec test"""
 
@@ -2347,6 +2349,7 @@ class Test_async_ESNon_ARoff_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_vpp_debug
 class Test_async_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
     """async ESNoff ARon AES-GCM-128/NONE IPSec test"""
 
@@ -2355,6 +2358,7 @@ class Test_async_ESNoff_ARon_AES_GCM_128_NONE(RunTestIpsecEspAll):
         self.run_test()
 
 
+@tag_fixme_vpp_debug
 class Test_async_ESNoff_ARon_AES_GCM_192_NONE(RunTestIpsecEspAll):
     """async ESNoff ARon AES-GCM-192/NONE IPSec test"""
 
