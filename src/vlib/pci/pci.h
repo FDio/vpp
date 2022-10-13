@@ -182,8 +182,8 @@ static void __vlib_rm_pci_device_registration_##x (void)        \
 }                                                               \
 __VA_ARGS__ pci_device_registration_t x
 
-clib_error_t *vlib_pci_bind_to_uio (vlib_main_t * vm, vlib_pci_addr_t * addr,
-				    char *uio_driver_name);
+clib_error_t *vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
+				    char *uio_driver_name, int force);
 
 /* Configuration space read/write. */
 clib_error_t *vlib_pci_read_write_config (vlib_main_t * vm,

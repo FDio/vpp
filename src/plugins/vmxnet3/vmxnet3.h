@@ -606,6 +606,13 @@ typedef struct
 
 extern vmxnet3_main_t vmxnet3_main;
 
+typedef enum
+{
+  VMXNET3_BIND_NONE = 0,
+  VMXNET3_BIND_DEFAULT = 1,
+  VMXNET3_BIND_FORCE = 2,
+} __clib_packed vmxnet3_bind_t;
+
 typedef struct
 {
   vlib_pci_addr_t addr;
@@ -614,7 +621,7 @@ typedef struct
   u16 rxq_num;
   u16 txq_size;
   u16 txq_num;
-  u8 bind;
+  vmxnet3_bind_t bind;
   u8 enable_gso;
   /* return */
   i32 rv;
