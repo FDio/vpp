@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2edae6c6_a39a0604",
+        "filename": "src/vnet/session/session_debug.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-10-13T17:24:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2714d454_2c518085",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 16
+      },
+      "revId": "ed3555bad88023cb2508764b95b6af0cd58027d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "41b96bd2_81b3b4ff",
@@ -37,6 +61,30 @@
       "writtenOn": "2022-10-12T21:18:14Z",
       "side": 1,
       "message": "Maybe move this in session_dbg_time_now?",
+      "range": {
+        "startLine": 85,
+        "startChar": 41,
+        "endLine": 85,
+        "endChar": 72
+      },
+      "revId": "ed3555bad88023cb2508764b95b6af0cd58027d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "37361489_1b909662",
+        "filename": "src/vnet/session/session_debug.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-10-13T17:24:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "41b96bd2_81b3b4ff",
       "range": {
         "startLine": 85,
         "startChar": 41,
