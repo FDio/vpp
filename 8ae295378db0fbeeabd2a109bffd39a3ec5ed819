@@ -183,6 +183,24 @@
       "parentUuid": "c5c50369_2c7d06e6",
       "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "17487e9c_fccd4e1c",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-10-13T08:41:07Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a9c6ec86_56116f38",
+      "revId": "8ae295378db0fbeeabd2a109bffd39a3ec5ed819",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
