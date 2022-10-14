@@ -16,6 +16,24 @@
       "message": "typo: exceedes -\u003e exceeds\n\nnit: Message is long. Suggest dropping the \"Default or\" and just use \"Configured MTU %u exceeds...\"",
       "revId": "6c325cd0fd5f13fba568ae86e237c9047e075ed5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d062698_ed69924f",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 2692
+      },
+      "writtenOn": "2022-10-14T08:15:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "60602aa1_02b218c5",
+      "revId": "6c325cd0fd5f13fba568ae86e237c9047e075ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
