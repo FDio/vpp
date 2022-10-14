@@ -22,6 +22,30 @@
       },
       "revId": "d13cf091e406b70ea7fef6216b1a1350a0a3b055",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9786856f_cc98b7ef",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-14T06:58:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e3eec4b7_148df43e",
+      "range": {
+        "startLine": 529,
+        "startChar": 17,
+        "endLine": 529,
+        "endChar": 23
+      },
+      "revId": "d13cf091e406b70ea7fef6216b1a1350a0a3b055",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
