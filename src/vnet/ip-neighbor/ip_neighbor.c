@@ -850,7 +850,7 @@ ip_neighbor_cmd (vlib_main_t * vm,
 /*?
  * Add or delete IPv4 ARP cache entries.
  *
- * @note 'set ip neighbor' options (e.g. delete, static, 'fib-id <id>',
+ * @note 'set ip neighbor' options (e.g. delete, static,
  * 'count <number>', 'interface ip4_addr mac_addr') can be added in
  * any order and combination.
  *
@@ -859,32 +859,37 @@ ip_neighbor_cmd (vlib_main_t * vm,
  * Add or delete IPv4 ARP cache entries as follows. MAC Address can be in
  * either aa:bb:cc:dd:ee:ff format or aabb.ccdd.eeff format.
  * @cliexcmd{set ip neighbor GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
- * @cliexcmd{set ip neighbor delete GigabitEthernet2/0/0 6.0.0.3 de:ad:be:ef:ba:be}
+ * @cliexcmd{set ip neighbor delete GigabitEthernet2/0/0 6.0.0.3
+ * de:ad:be:ef:ba:be}
  *
- * To add or delete an IPv4 ARP cache entry to or from a specific fib
+ * To add or delete an IPv4 ARP cache entry
  * table:
- * @cliexcmd{set ip neighbor fib-id 1 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
- * @cliexcmd{set ip neighbor fib-id 1 delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip neighbor GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip neighbor delete GigabitEthernet2/0/0 6.0.0.3
+ * dead.beef.babe}
  *
  * Add or delete IPv4 static ARP cache entries as follows:
- * @cliexcmd{set ip neighbor static GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
- * @cliexcmd{set ip neighbor static delete GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip neighbor static GigabitEthernet2/0/0 6.0.0.3
+ * dead.beef.babe}
+ * @cliexcmd{set ip neighbor static delete GigabitEthernet2/0/0 6.0.0.3
+ * dead.beef.babe}
  *
  * For testing / debugging purposes, the 'set ip neighbor' command can add or
  * delete multiple entries. Supply the 'count N' parameter:
- * @cliexcmd{set ip neighbor count 10 GigabitEthernet2/0/0 6.0.0.3 dead.beef.babe}
+ * @cliexcmd{set ip neighbor count 10 GigabitEthernet2/0/0 6.0.0.3
+ * dead.beef.babe}
  * @endparblock
  ?*/
 VLIB_CLI_COMMAND (ip_neighbor_command, static) = {
   .path = "set ip neighbor",
-  .short_help =
-  "set ip neighbor [del] <intfc> <ip-address> <mac-address> [static] [no-fib-entry] [count <count>] [fib-id <fib-id>] [proxy <lo-addr> - <hi-addr>]",
+  .short_help = "set ip neighbor [del] <intfc> <ip-address> <mac-address> "
+               "[static] [no-fib-entry] [count <count>]",
   .function = ip_neighbor_cmd,
 };
 VLIB_CLI_COMMAND (ip_neighbor_command2, static) = {
   .path = "ip neighbor",
-  .short_help =
-  "ip neighbor [del] <intfc> <ip-address> <mac-address> [static] [no-fib-entry] [count <count>] [fib-id <fib-id>] [proxy <lo-addr> - <hi-addr>]",
+  .short_help = "ip neighbor [del] <intfc> <ip-address> <mac-address> "
+               "[static] [no-fib-entry] [count <count>]",
   .function = ip_neighbor_cmd,
 };
 /* *INDENT-ON* */
