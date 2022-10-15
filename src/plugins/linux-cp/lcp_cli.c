@@ -215,6 +215,7 @@ lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *ns;
   int r;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -227,9 +228,14 @@ lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "clear netns"))
 	;
+      else
+	{
+	  vec_free (ns);
+	  error = clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   vlib_cli_output (vm, "lcp set default netns '%s'\n", (char *) ns);
 
@@ -238,7 +244,10 @@ lcp_default_netns_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (r)
     return clib_error_return (0, "linux-cp set default netns failed (%d)", r);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (lcp_default_netns_command, static) = {
