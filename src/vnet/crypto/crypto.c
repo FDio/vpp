@@ -307,28 +307,13 @@ vnet_crypto_register_enqueue_handler (vlib_main_t *vm, u32 engine_index,
   return;
 }
 
-static int
-engine_index_cmp (void *v1, void *v2)
-{
-  u32 *a1 = v1;
-  u32 *a2 = v2;
-
-  if (*a1 > *a2)
-    return 1;
-  if (*a1 < *a2)
-    return -1;
-  return 0;
-}
-
 static void
 vnet_crypto_update_cm_dequeue_handlers (void)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_op_data_t *otd;
   vnet_crypto_engine_t *e;
-  u32 *active_engines = 0, *ei, last_ei = ~0, i;
-
-  vec_reset_length (cm->dequeue_handlers);
+  u32 i;
 
   for (i = 0; i < VNET_CRYPTO_ASYNC_OP_N_IDS; i++)
     {
@@ -338,24 +323,8 @@ vnet_crypto_update_cm_dequeue_handlers (void)
       e = cm->engines + otd->active_engine_index_async;
       if (!e->dequeue_handler)
 	continue;
-      vec_add1 (active_engines, otd->active_engine_index_async);
+      cm->dequeue_handlers[i] = e->dequeue_handler;
     }
-
-  vec_sort_with_function (active_engines, engine_index_cmp);
-
-  vec_foreach (ei, active_engines)
-    {
-      if (ei[0] == last_ei)
-	continue;
-      if (ei[0] == ~0)
-	continue;
-
-      e = cm->engines + ei[0];
-      vec_add1 (cm->dequeue_handlers, e->dequeue_handler);
-      last_ei = ei[0];
-    }
-
-  vec_free (active_engines);
 }
 
 void
