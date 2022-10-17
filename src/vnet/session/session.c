@@ -216,15 +216,16 @@ session_alloc (u32 thread_index)
 void
 session_free (session_t * s)
 {
+  u8 thread_index = s->thread_index;
+
+  SESSION_EVT (SESSION_EVT_FREE, s);
   if (CLIB_DEBUG)
     {
-      u8 thread_index = s->thread_index;
       clib_memset (s, 0xFA, sizeof (*s));
       pool_put (session_main.wrk[thread_index].sessions, s);
       return;
     }
-  SESSION_EVT (SESSION_EVT_FREE, s);
-  pool_put (session_main.wrk[s->thread_index].sessions, s);
+  pool_put (session_main.wrk[thread_index].sessions, s);
 }
 
 u8
