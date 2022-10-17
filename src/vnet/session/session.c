@@ -1476,6 +1476,7 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
    * worker because local tables (for ct sessions) are not backed by a fib */
   ls = listen_session_get (s_index);
   ls->connection_index = tc_index;
+  ls->opaque = sep->opaque;
 
   return 0;
 }
