@@ -64,6 +64,8 @@ typedef struct
   u8 flags;				/**< connection flags */
   u16 mss;				/**< connection mss */
   u32 sw_if_index;			/**< connection sw_if_index */
+  u32 next_node_index;	/**< Can be used to control next node in output */
+  u32 next_node_opaque; /**< Opaque to pass to next node */
 } udp_connection_t;
 
 typedef struct
@@ -129,6 +131,8 @@ extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
 extern vlib_node_registration_t udp4_local_node;
 extern vlib_node_registration_t udp6_local_node;
+extern vlib_node_registration_t udp4_output_node;
+extern vlib_node_registration_t udp6_output_node;
 
 void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);
