@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14ca6a40_02cd0ee6",
+        "filename": "src/plugins/wireguard/wireguard_send.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-10-17T13:43:30Z",
+      "side": 1,
+      "message": "since handshake is bool type, please use if (handshake \u003d\u003d false) instead.",
+      "revId": "c974d5995c0ac95e6862e3de92eb92ff535fd3a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
