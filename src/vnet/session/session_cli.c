@@ -840,33 +840,118 @@ static clib_error_t *
 session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
-  u8 is_en = 2;
+  int is_en = cmd->function_arg;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "enable"))
-	is_en = 1;
-      else if (unformat (input, "disable"))
-	is_en = 0;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (is_en > 1)
-    return clib_error_return (0, "expected enable | disable");
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
 
   return vnet_session_enable_disable (vm, is_en);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (session_enable_disable_command, static) =
-{
-  .path = "session",
-  .short_help = "session [enable|disable]",
+VLIB_CLI_COMMAND (session_enable_command, static) = {
+  .path = "session enable",
+  .short_help = "session enable",
+  .function_arg = 1,
   .function = session_enable_disable_fn,
 };
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (session_disable_command, static) = {
+  .path = "session disable",
+  .short_help = "session disable",
+  .function_arg = 0,
+  .function = session_enable_disable_fn,
+};
+
+#if SESSION_DEBUG > 0
+static const char *session_evt_grp_str[] = {
+#define _(sym, str) str,
+  foreach_session_evt_grp
+#undef _
+};
+
+static void
+session_debug_show_groups (vlib_main_t *vm)
+{
+  session_dbg_main_t *sdm = &session_dbg_main;
+  int i = 0;
+
+  vlib_cli_output (vm, "%-10s%-30s%-10s", "Index", "Group", "Level");
+
+  for (i = 0; i < SESSION_EVT_N_GRP; i++)
+    vlib_cli_output (vm, "%-10d%-30s%-10d", i, session_evt_grp_str[i],
+		     sdm->grp_dbg_lvl[i]);
+}
+
+static clib_error_t *
+session_debug_fn (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  session_dbg_main_t *sdm = &session_dbg_main;
+  u32 group, level = ~0;
+  clib_error_t *error = 0;
+  u8 is_show = 0;
+  uword *bitmap = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "show | group <list> level <n>");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "show"))
+	is_show = 1;
+      else if (unformat (line_input, "group %U", unformat_bitmap_list,
+			 &bitmap))
+	;
+      else if (unformat (line_input, "level %d", &level))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (is_show)
+    {
+      session_debug_show_groups (vm);
+      goto done;
+    }
+  if (level == ~0)
+    {
+      error = clib_error_return (0, "level must be set");
+      goto done;
+    }
+
+  group = clib_bitmap_last_set (bitmap);
+  if (group == ~0)
+    {
+      error = clib_error_return (0, "group must be set");
+      goto done;
+    }
+  if (group >= SESSION_EVT_N_GRP)
+    {
+      error = clib_error_return (0, "group out of bounds");
+      goto done;
+    }
+  clib_bitmap_foreach (group, bitmap)
+    sdm->grp_dbg_lvl[group] = level;
+
+done:
+
+  unformat_free (line_input);
+  clib_bitmap_free (bitmap);
+  return error;
+}
+
+VLIB_CLI_COMMAND (session_debug_command, static) = {
+  .path = "session debug",
+  .short_help = "session debug {show | debug group <list> level <n>}",
+  .function = session_debug_fn,
+  .is_mp_safe = 1,
+};
+#endif /* SESSION_DEBUG */
 
 /*
  * fd.io coding-style-patch-verification: ON
