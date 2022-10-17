@@ -471,6 +471,15 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
 	      tail = current_queue->tail;
 	      head = current_queue->head;
 
+	      /* Skip this queue unless tail < head or head has overflowed
+	       * and tail has not. At the point where tail overflows (== 0),
+	       * the largest possible value of head is (queue size - 1).
+	       * Prior to that, the largest possible value of head is
+	       * (queue size - 2).
+	       */
+	      if ((tail > head) && (head >= CRYPTO_SW_SCHEDULER_QUEUE_MASK))
+		goto skip_queue;
+
 	      for (j = tail; j != head; j++)
 		{
 
@@ -488,6 +497,7 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
 		    }
 		}
 
+	    skip_queue:
 	      if (found || i == ptd->last_serve_lcore_id)
 		{
 		  CLIB_MEMORY_STORE_BARRIER ();
