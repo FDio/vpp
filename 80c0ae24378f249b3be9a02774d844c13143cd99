@@ -22,6 +22,30 @@
       },
       "revId": "80c0ae24378f249b3be9a02774d844c13143cd99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b3e395c5_351cbb76",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-10-17T08:57:34Z",
+      "side": 0,
+      "message": "Sure\n\nOct 14 21:55:50 pb1-2650l2-2204 vpp[675165]: vlib_worker_thread_barrier_sync_int: worker thread deadlock\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: received signal SIGABRT, PC 0x7fd91019ea7c\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #0  0x00007fd9105707e2 0x7fd9105707e2\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #1  0x00007fd91014a520 0x7fd91014a520\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #2  0x00007fd91019ea7c pthread_kill + 0x12c\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #3  0x00007fd91014a476 raise + 0x16\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #4  0x00007fd9101307f3 abort + 0xd3\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #5  0x0000556b3267f8a0 0x556b3267f8a0\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #6  0x00007fd910553b6d vlib_worker_thread_barrier_sync_int + 0x4ed\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #7  0x00007fd911facfa1 0x7fd911facfa1\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #8  0x00007fd911facc53 vl_mem_api_handle_msg_main + 0x63\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #9  0x00007fd911fb689e 0x7fd911fb689e\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #10 0x00007fd9105080f7 0x7fd9105080f7\nOct 14 21:55:50 pb1-2650l2-2204 vnet[675165]: #11 0x00007fd9104897d4 0x7fd9104897d4\n\n\ngdb) info threads\n  Id   Target Id                        Frame \n* 1    Thread 0x7f9a4a2a9c40 (LWP 1136) __pthread_kill_implementation (no_tid\u003d0, signo\u003d6, threadid\u003d140300645997632) at ./nptl/pthread_kill.c:44\n  2    Thread 0x7f99ff6a3640 (LWP 1142) vlib_worker_thread_barrier_check () at ../work/vpp/src/vlib/threads.h:388\n  3    Thread 0x7f9a002a6640 (LWP 1139) 0x00007f9a4a3d0fde in epoll_wait (epfd\u003d15, events\u003d0x7f9a002a5d30, maxevents\u003d1, timeout\u003d-1)\n    at ../sysdeps/unix/sysv/linux/epoll_wait.c:30\n  4    Thread 0x7f99ff8a4640 (LWP 1141) 0x00007f9a4a6a5b23 in vlib_worker_thread_barrier_check () at ../work/vpp/src/vlib/threads.h:388\n  5    Thread 0x7f99ffaa5640 (LWP 1140) crypto_sw_scheduler_dequeue (vm\u003dvm@entry\u003d0x7f9a0f55a380, nb_elts_processed\u003dnb_elts_processed@entry\u003d0x7f99ffaa4bec, \n    enqueue_thread_idx\u003denqueue_thread_idx@entry\u003d0x7f99ffaa4bfc) at ../work/vpp/src/plugins/crypto_sw_scheduler/main.c:474\n\t\n(gdb) p current_queue-\u003ehead\n$3 \u003d 80843\n(gdb) p j\n$4 \u003d 511256293\n(gdb) p current_queue-\u003etail\n$2 \u003d 80843\n\n\nMostly, it\u0027s happening when using ipsecmb backend(aes128-gcm16 at current point)",
+      "parentUuid": "ccb1a2c0_e466d793",
+      "range": {
+        "startLine": 474,
+        "startChar": 16,
+        "endLine": 474,
+        "endChar": 20
+      },
+      "revId": "80c0ae24378f249b3be9a02774d844c13143cd99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
