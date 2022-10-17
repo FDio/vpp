@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc0472b6_fa7d68e6",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 640,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-17T14:37:01Z",
+      "side": 1,
+      "message": "please use vpp memory allocator....",
+      "revId": "b7e4f58cc4ca4a1d48614cc78e01040b5daafa81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "946425bf_4e80f09f",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-17T14:37:01Z",
+      "side": 1,
+      "message": "Does linux kernel allows mask_len to be \u003c numa_max_node_num? If yes we can simply skip all this detection code and simply pass minimal number of uwords needed...",
+      "revId": "b7e4f58cc4ca4a1d48614cc78e01040b5daafa81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
