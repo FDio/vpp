@@ -117,12 +117,96 @@ session_debug_init (void)
       sdm->wrk[thread].start_time = session_dbg_time_now (thread);
     }
 }
+
+static const char *session_evt_grp_str[] = {
+#define _(sym, str) str,
+  foreach_session_evt_grp
+#undef _
+};
+
+static void
+session_debug_show_groups (vlib_main_t *vm)
+{
+  session_dbg_main_t *sdm = &session_dbg_main;
+  int i = 0;
+
+  vlib_cli_output (vm, "%-10s%-30s%-10s", "Index", "Group", "Level");
+
+  for (i = 0; i < SESSION_EVT_N_GRP; i++)
+    vlib_cli_output (vm, "%-10d%-30s%-10d", i, session_evt_grp_str[i],
+		     sdm->grp_dbg_lvl[i]);
+}
+
+static clib_error_t *
+session_debug_fn (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
+{
+  session_dbg_main_t *sdm = &session_dbg_main;
+  u32 group, level = ~0;
+  clib_error_t *error = 0;
+  u8 is_show = 0;
+  uword *bitmap = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "show"))
+	is_show = 1;
+      else if (unformat (input, "group %U", unformat_bitmap_list, &bitmap))
+	;
+      else if (unformat (input, "level %d", &level))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (is_show)
+    {
+      session_debug_show_groups (vm);
+      goto done;
+    }
+  if (level == ~0)
+    {
+      vlib_cli_output (vm, "level must be entered");
+      goto done;
+    }
+
+  group = clib_bitmap_last_set (bitmap);
+  if (group == ~0)
+    {
+      vlib_cli_output (vm, "group must be entered");
+      goto done;
+    }
+  if (group >= SESSION_EVT_N_GRP)
+    {
+      vlib_cli_output (vm, "group out of bounds");
+      goto done;
+    }
+  clib_bitmap_foreach (group, bitmap)
+    sdm->grp_dbg_lvl[group] = level;
+
+done:
+
+  clib_bitmap_free (bitmap);
+  return error;
+}
+
+VLIB_CLI_COMMAND (session_debug_command, static) = {
+  .path = "session debug",
+  .short_help = "session debug {show | debug group <list> level <n>}",
+  .function = session_debug_fn,
+  .is_mp_safe = 1,
+};
+
 #else
 void
 session_debug_init (void)
 {
 }
-#endif
+#endif /* SESSION_DEBUG */
 
 void
 dump_thread_0_event_queue (void)
