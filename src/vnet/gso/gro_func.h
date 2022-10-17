@@ -384,6 +384,7 @@ gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number, u8 is_l2)
 				       1 /* is_ip6 */ );
 
   vnet_buffer2 (b0)->gso_size = b0->current_length - gho0.hdr_sz;
+  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 
   if (gho0.gho_flags & GHO_F_IP4)
     {
@@ -412,6 +413,7 @@ gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number, u8 is_l2)
   tcp_header_t *tcp0 =
     (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
   vnet_buffer (b0)->l4_hdr_offset = (u8 *) tcp0 - b0->data;
+  vnet_buffer2 (b0)->gso_l4_hdr_sz = tcp_header_bytes (tcp0);
   tcp0->ack_number = ack_number;
   b0->flags &= ~VLIB_BUFFER_IS_TRACED;
 }
