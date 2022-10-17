@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "527bbbe7_bd189847",
+        "filename": "src/plugins/wireguard/wireguard_index_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-10-17T13:53:47Z",
+      "side": 1,
+      "message": "This will cause some performance penalty (hopefully not huge), have you tested the performance impact? Also - this read lock may be avoided, if the table adding/deleting will trigger a thread sync, have you thought about that?",
+      "revId": "2f12681d354d5d99fd25cde46614ff0e7f87e100",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
