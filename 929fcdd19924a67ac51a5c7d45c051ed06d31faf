@@ -67,6 +67,24 @@
       "message": "API is fine.",
       "revId": "929fcdd19924a67ac51a5c7d45c051ed06d31faf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b05eb84_218cc13f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-10-17T10:49:46Z",
+      "side": 1,
+      "message": "https://drive.google.com/file/d/18qJdfexqvjrPZZcUZQq6tVDfTTc-UB6m/view?usp\u003dsharing\n\nHere\u0027s the trace from one of the machines(both configured symmetrical)",
+      "parentUuid": "c28e97fb_95f1cf9d",
+      "revId": "929fcdd19924a67ac51a5c7d45c051ed06d31faf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
