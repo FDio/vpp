@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bbd88d1a_27cb7ae7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-17T14:23:21Z",
+      "side": 1,
+      "message": "Thanks for your review. You are right, I\u0027ll address that in the next patchset.",
+      "parentUuid": "4bc56f73_46de2166",
+      "revId": "2a6f35f24c6ab5aba63c0dfa21e865a8cd89f7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cfae4c61_850e73bb",
