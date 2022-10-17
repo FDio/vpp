@@ -226,16 +226,9 @@ always_inline u32
 udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
 {
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
-  if (uc->c_is_ip4)
-    vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, 1 /* csum offload */,
-				 0 /* is_df */, uc->c_dscp);
-  else
-    vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
-			  IP_PROTOCOL_UDP);
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = uc->sw_if_index;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  /* reuse tcp medatada */
+  vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
 
   return 0;
 }
@@ -505,11 +498,11 @@ udp_init (vlib_main_t * vm)
   pi->format_header = format_udp_header;
   pi->unformat_pg_edit = unformat_pg_udp_header;
 
-  /* Register as transport with URI */
+  /* Register as transport with session layer */
   transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
-			       FIB_PROTOCOL_IP4, ip4_lookup_node.index);
+			       FIB_PROTOCOL_IP4, udp4_output_node.index);
   transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
-			       FIB_PROTOCOL_IP6, ip6_lookup_node.index);
+			       FIB_PROTOCOL_IP6, udp6_output_node.index);
 
   /*
    * Initialize data structures

@@ -670,6 +670,7 @@ list(APPEND VNET_SOURCES
   udp/udp_encap.c
   udp/udp_decap.c
   udp/udp_api.c
+  udp/udp_output.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
