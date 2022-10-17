@@ -16,6 +16,24 @@
       "message": "I have to change this CLI to avoid parser coming into this routine when typing session blah.",
       "revId": "f284c14c7bd8731367ba3527cdfffa610a8c6de4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b967355e_fbcf8ba0",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2022-10-17T18:26:07Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "253e266e_e36a6f8f",
+      "revId": "f284c14c7bd8731367ba3527cdfffa610a8c6de4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
