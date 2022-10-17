@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b5e771b_a1caf236",
+        "filename": "src/vppinfra/crc32.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-17T09:37:06Z",
+      "side": 1,
+      "message": "it would be better for clib_crc32c() to call clib_crc32c_with_init(..., 0) to avoid maintaining 2 versions I think",
+      "revId": "9b0776055d8f0c3be7b2bc618d03a3fc8eb35a95",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
