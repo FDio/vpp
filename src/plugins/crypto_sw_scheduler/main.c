@@ -471,7 +471,7 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
 	      tail = current_queue->tail;
 	      head = current_queue->head;
 
-	      for (j = tail; j != head; j++)
+	      for (j = tail; j < head; j++)
 		{
 
 		  f = current_queue->jobs[j & CRYPTO_SW_SCHEDULER_QUEUE_MASK];
