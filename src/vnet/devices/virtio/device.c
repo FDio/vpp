@@ -309,12 +309,13 @@ set_checksum_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
 		      const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
-
+  i16 l4_hdr_offset =
+    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l2_hdr_offset;
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset; // 0x22;
+      hdr->csum_start = l4_hdr_offset; // 0x22;
 
       /*
        * virtio devices do not support IP4 checksum offload. So driver takes
@@ -347,7 +348,7 @@ set_checksum_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
     {
       ip6_header_t *ip6;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset; // 0x36;
+      hdr->csum_start = l4_hdr_offset; // 0x36;
       ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
 
       /*
@@ -376,17 +377,17 @@ set_gso_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
 		 const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  i16 l4_hdr_offset =
+    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l2_hdr_offset;
 
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
       hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
       hdr->gso_size = vnet_buffer2 (b)->gso_size;
-      hdr->hdr_len = vnet_buffer (b)->l4_hdr_offset -
-		     vnet_buffer (b)->l2_hdr_offset +
-		     vnet_buffer2 (b)->gso_l4_hdr_sz;
+      hdr->hdr_len = l4_hdr_offset + vnet_buffer2 (b)->gso_l4_hdr_sz;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset; // 0x22;
+      hdr->csum_start = l4_hdr_offset; // 0x22;
       hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
       ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
       /*
@@ -400,11 +401,9 @@ set_gso_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
     {
       hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
       hdr->gso_size = vnet_buffer2 (b)->gso_size;
-      hdr->hdr_len = vnet_buffer (b)->l4_hdr_offset -
-		     vnet_buffer (b)->l2_hdr_offset +
-		     vnet_buffer2 (b)->gso_l4_hdr_sz;
+      hdr->hdr_len = l4_hdr_offset + vnet_buffer2 (b)->gso_l4_hdr_sz;
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-      hdr->csum_start = vnet_buffer (b)->l4_hdr_offset; // 0x36;
+      hdr->csum_start = l4_hdr_offset; // 0x36;
       hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
     }
 }
