@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ccb1a2c0_e466d793",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-10-17T08:48:07Z",
+      "side": 0,
+      "message": "The reason we used \"j !\u003d head\" is because eventually head/tail will overflow and falls back to 0. Your modification made the condition check always false when head overflows but tail does not.\n\nThe fix, in my view, is not valid - but the problem you stated is more alarming. Can you provide backtrace when the problem happens instead?",
+      "range": {
+        "startLine": 474,
+        "startChar": 16,
+        "endLine": 474,
+        "endChar": 20
+      },
+      "revId": "80c0ae24378f249b3be9a02774d844c13143cd99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
