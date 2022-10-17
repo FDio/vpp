@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bc56f73_46de2166",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-17T13:59:08Z",
+      "side": 1,
+      "message": "This code doesn\u0027t look backward compatible with older ipsec-mb versions...",
+      "revId": "2a6f35f24c6ab5aba63c0dfa21e865a8cd89f7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfae4c61_850e73bb",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 813,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-17T13:59:08Z",
+      "side": 1,
+      "message": "clib_memset",
+      "revId": "2a6f35f24c6ab5aba63c0dfa21e865a8cd89f7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
