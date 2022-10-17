@@ -627,11 +627,11 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
     return ~0;
 
   /* *INDENT-OFF* */
-  vec_foreach (cm->next_nodes, nn)
-  {
-    if (nn->node_idx == pn->index)
-      return nn->next_idx;
-  }
+  vec_foreach (nn, cm->next_nodes)
+    {
+      if (nn->node_idx == pn->index)
+	return nn->next_idx;
+    }
   /* *INDENT-ON* */
 
   vec_validate (cm->next_nodes, index);
