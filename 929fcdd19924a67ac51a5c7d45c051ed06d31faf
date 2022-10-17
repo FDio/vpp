@@ -102,6 +102,23 @@
       "message": "Sorry, the api trace is useless, i forgot to launch both machines, so tunnels were not established. Will submit soon",
       "revId": "929fcdd19924a67ac51a5c7d45c051ed06d31faf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1d0db2a_900b5dc3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-10-17T14:20:51Z",
+      "side": 1,
+      "message": "New trace from both machines. Not it should be good\n\nhttps://drive.google.com/drive/folders/10XtOIgMjewZO8QKIczkOsL0vOlD0PNBN?usp\u003dsharing",
+      "revId": "929fcdd19924a67ac51a5c7d45c051ed06d31faf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
