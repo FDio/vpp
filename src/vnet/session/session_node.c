@@ -1552,7 +1552,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   *n_tx_packets += ctx->n_segs_per_evt;
 
   SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
-	       ctx->s->tx_fifo->has_event, wrk->last_vlib_time);
+	       ctx->s->tx_fifo->shr->has_event, wrk->last_vlib_time);
 
   ASSERT (ctx->left_to_snd == 0);
 
@@ -1790,7 +1790,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       clib_warning ("unhandled event type %d", e->event_type);
     }
 
-  SESSION_EVT (SESSION_IO_EVT_COUNTS, e->event_type, 1, wrk);
+  SESSION_EVT (SESSION_EVT_IO_EVT_COUNTS, e->event_type, 1, wrk);
 
   /* Regrab elements in case pool moved */
   elt = clib_llist_elt (wrk->event_elts, ei);
