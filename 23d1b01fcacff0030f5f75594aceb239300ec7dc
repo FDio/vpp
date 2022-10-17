@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80c1e644_f203a1c1",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-17T19:02:03Z",
+      "side": 1,
+      "message": "If we want to cleanup, just grab the session worker like above and work with it lower.",
+      "range": {
+        "startLine": 219,
+        "startChar": 2,
+        "endLine": 219,
+        "endChar": 36
+      },
+      "revId": "23d1b01fcacff0030f5f75594aceb239300ec7dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd305549_a95374f9",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-17T19:02:03Z",
+      "side": 1,
+      "message": "Any reason why not to move these under session_debug.c? We already have several clis there.",
+      "revId": "23d1b01fcacff0030f5f75594aceb239300ec7dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
