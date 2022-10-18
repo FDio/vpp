@@ -94,6 +94,30 @@
       },
       "revId": "80c0ae24378f249b3be9a02774d844c13143cd99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a773df1_59efcc22",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-10-18T19:19:17Z",
+      "side": 0,
+      "message": "The issue seems to be that the load/store of head and tail are being reordered so that head is retrieved before tail is and we end up with head \u003c tail periodically. I added a debug statement \u0026 broke the loop like this:\n\ndiff --git a/src/plugins/crypto_sw_scheduler/main.c b/src/plugins/crypto_sw_scheduler/main.c\nindex 47fa37d72..4434fe0f3 100644\n--- a/src/plugins/crypto_sw_scheduler/main.c\n+++ b/src/plugins/crypto_sw_scheduler/main.c\n@@ -474,6 +474,11 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,\n              for (j \u003d tail; j !\u003d head; j++)\n                {\n \n+                 if (j \u003e head)\n+                   {\n+                     clib_warning (\"thread %u i %u tail %u head %u\", vm-\u003ethread_index, i, tail, head);\n+                     break;\n+                   }\n                  f \u003d current_queue-\u003ejobs[j \u0026 CRYPTO_SW_SCHEDULER_QUEUE_MASK];\n \n                  if (!f)\n\nThe messages logged when traffic was sent through the tunnels look like this:\n\nOct 18 14:35:51 NG-6100-DUT-1 vnet[5440]: crypto_sw_scheduler_dequeue:479: thread 2 i 1 tail 82787 head 82785    \nOct 18 14:35:57 NG-6100-DUT-1 vnet[5440]: crypto_sw_scheduler_dequeue:479: thread 3 i 1 tail 307370 head 307366  \nOct 18 14:36:30 NG-6100-DUT-1 vnet[5440]: crypto_sw_scheduler_dequeue:479: thread 3 i 2 tail 592032 head 591921  \nOct 18 14:37:53 NG-6100-DUT-1 vnet[5440]: crypto_sw_scheduler_dequeue:479: thread 2 i 1 tail 1685293 head 1685288\n\nAs you can see, tail \u003e head and it is not due to head overflowing.\n\nI tried to put a call to CLIB_MEMORY_STORE_BARRIER() in between the assignment of tail and the assignment of head (in between lines 471 and 472 on current master branch). That seemed to prevent the deadlock/crash, but I have no idea what the performance implications are and I\u0027m not sure if that\u0027s the correct approach or if a different type of barrier should be used.\n\nIf that doesn\u0027t seem like the right thing to do, we could instead mask the value of head and tail and mask j after it is incremented. In that case, if tail \u003e head, j would end up being equal to head within 64 iterations.",
+      "parentUuid": "242a1968_445cbd0a",
+      "range": {
+        "startLine": 474,
+        "startChar": 16,
+        "endLine": 474,
+        "endChar": 20
+      },
+      "revId": "80c0ae24378f249b3be9a02774d844c13143cd99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
