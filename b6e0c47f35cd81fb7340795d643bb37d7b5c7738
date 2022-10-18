@@ -52,6 +52,24 @@
       "parentUuid": "24a7a924_25b95e63",
       "revId": "b6e0c47f35cd81fb7340795d643bb37d7b5c7738",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f370143b_7afa81e9",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1950,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-18T18:22:18Z",
+      "side": 1,
+      "message": "This is from on a release image:\nhttps://jenkins.fd.io/job/vpp-verify-master-ubuntu2204-x86_64/381/consoleFull#13553729547be1b593-44ad-45a7-8ca6-701783403621\n\nHere are debug image failures:\nhttps://jenkins.fd.io/job/vpp-debug-verify-master-ubuntu2204-x86_64/1067/consoleFull#17740301307be1b593-44ad-45a7-8ca6-701783403621\n\nhttps://jenkins.fd.io/job/vpp-debug-verify-master-ubuntu2204-x86_64/1065/consoleFull#16759540347be1b593-44ad-45a7-8ca6-701783403621\n\nhttps://jenkins.fd.io/job/vpp-debug-verify-master-ubuntu2204-x86_64/1046/consoleFull#-20239352087be1b593-44ad-45a7-8ca6-701783403621\n\nhttps://jenkins.fd.io/job/vpp-debug-verify-master-ubuntu2204-x86_64/1042/consoleFull#9702648527be1b593-44ad-45a7-8ca6-701783403621\n\nhttps://jenkins.fd.io/job/vpp-debug-verify-master-ubuntu2204-x86_64/986/consoleFull#714605227be1b593-44ad-45a7-8ca6-701783403621\n\nUnfortunately the debug verify job is not saving the testcase directory files. :(\nI\u0027m looking into why that is not happening, but there is a full set of testcase data in the release verify job failure.",
+      "parentUuid": "9c76edd5_d07dbb0f",
+      "revId": "b6e0c47f35cd81fb7340795d643bb37d7b5c7738",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
