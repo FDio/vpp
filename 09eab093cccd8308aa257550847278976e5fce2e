@@ -33,6 +33,23 @@
       "message": "perftest-3n-tsh mrrANDnic_*ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
       "revId": "09eab093cccd8308aa257550847278976e5fce2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afbb6b3c_b382d145",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-18T15:41:17Z",
+      "side": 1,
+      "message": "Restoring \u0027fd.io JJB\u0027 Verified +1 which was removed by perf test runs",
+      "revId": "09eab093cccd8308aa257550847278976e5fce2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
