@@ -69,6 +69,8 @@ sr_pt_add_iface (u32 iface, u16 id, u8 ingress_load, u8 egress_load,
   if (tts_template > SR_PT_TTS_TEMPLATE_MAX)
     return SR_PT_ERR_TTS_TEMPLATE_INVALID;
 
+  vnet_feature_enable_disable ("ip6-output", "pt", iface, 1, 0, 0);
+
   /* Create a new sr_pt_iface */
   pool_get_zero (sr_pt->sr_pt_iface, ls);
   ls->iface = iface;
@@ -101,6 +103,7 @@ sr_pt_del_iface (u32 iface)
     {
       /* Retrieve sr_pt_iface */
       ls = pool_elt_at_index (sr_pt->sr_pt_iface, p[0]);
+      vnet_feature_enable_disable ("ip6-output", "pt", iface, 0, 0, 0);
       /* Delete sr_pt_iface */
       pool_put (sr_pt->sr_pt_iface, ls);
       mhash_unset (&sr_pt->sr_pt_iface_index_hash, &iface, NULL);
