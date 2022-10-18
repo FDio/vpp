@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a1e0261_19e1301a",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-18T00:20:23Z",
+      "side": 1,
+      "message": "I guess this is no longer needed, no?",
+      "range": {
+        "startLine": 219,
+        "startChar": 0,
+        "endLine": 219,
+        "endChar": 36
+      },
+      "revId": "3cf800a619d0332b7989e31cf7ebfd3c327b137d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
