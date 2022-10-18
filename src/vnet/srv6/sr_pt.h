@@ -11,6 +11,8 @@
 #ifndef included_vnet_sr_pt_h
 #define included_vnet_sr_pt_h
 
+#define IP6_HBH_PT_TYPE 50
+
 /*SR PT error codes*/
 #define SR_PT_ERR_NOENT		       -1 /* No such entry*/
 #define SR_PT_ERR_EXIST		       -2 /* Entry exists */
@@ -37,6 +39,11 @@
 #define SR_PT_TTS_SHIFT_TEMPLATE_2 16
 #define SR_PT_TTS_SHIFT_TEMPLATE_3 20
 
+/*PT node behaviors*/
+#define PT_BEHAVIOR_SRC 0
+#define PT_BEHAVIOR_MID 1
+#define PT_BEHAVIOR_SNK 2
+
 typedef struct
 {
   u32 iface;	   /**< Interface */
@@ -45,6 +52,17 @@ typedef struct
   u8 egress_load;  /**< Interface Egress Load */
   u8 tts_template; /**< Interface TTS Template */
 } sr_pt_iface_t;
+
+typedef struct
+{
+  u16 oif_oil;
+  u8 tts;
+} __clib_packed sr_pt_cmd_t;
+
+typedef struct
+{
+  sr_pt_cmd_t cmd_stack[12];
+} __clib_packed ip6_hop_by_hop_option_pt_t;
 
 /**
  * @brief SR Path Tracing main datastructure
@@ -60,6 +78,7 @@ typedef struct
 } sr_pt_main_t;
 
 extern sr_pt_main_t sr_pt_main;
+extern vlib_node_registration_t sr_pt_node;
 extern int sr_pt_add_iface (u32 iface, u16 id, u8 ingress_load, u8 egress_load,
 			    u8 tts_template);
 extern int sr_pt_del_iface (u32 iface);
