@@ -819,6 +819,7 @@ list(APPEND VNET_SOURCES
   srv6/sr_steering.c
   srv6/sr_api.c
   srv6/sr_pt.c
+  srv6/sr_pt_node.c
 )
 
 list(APPEND VNET_HEADERS
