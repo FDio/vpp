@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81fcd28d_f8f73bfc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-19T10:57:52Z",
+      "side": 1,
+      "message": "I would like to suggest more descriptive subject line in Coverity fix messages.\nI.e. what really this patch fixes.\nWe can add Coverity: 277313 in commit msg body to record coverity number.",
+      "revId": "1ae318c317ab101e684e59c79f46b25a0a48ab40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

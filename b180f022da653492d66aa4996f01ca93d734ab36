@@ -87,6 +87,30 @@
       },
       "revId": "b180f022da653492d66aa4996f01ca93d734ab36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c384f90_e69fd645",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-10-19T10:57:52Z",
+      "side": 1,
+      "message": "This is kind of issues which i will just ignore in coverity as in reality this will never happen. If you want to pursue this, then i suggest panic instead of error, as vpp will die anyway if it is not able to get page size...",
+      "parentUuid": "55065ff0_9f95e1f6",
+      "range": {
+        "startLine": 117,
+        "startChar": 6,
+        "endLine": 117,
+        "endChar": 55
+      },
+      "revId": "b180f022da653492d66aa4996f01ca93d734ab36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
