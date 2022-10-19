@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4c7b080_f5196ec0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-10-19T10:09:54Z",
+      "side": 1,
+      "message": "Hi,\n\nThis patch adds back in the job API to ensure backward compatibility with previous versions of the ipsecmb library.\nCompatibility was broken in the recently merged patch: https://gerrit.fd.io/r/c/vpp/+/37358\n\nRegards,\nMarcel\n",
+      "revId": "f0d71c6b7feb0c6a3ba99f90588dbc6c5c62163f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
