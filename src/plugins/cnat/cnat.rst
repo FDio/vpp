@@ -75,8 +75,8 @@ To show existing translations and sessions you can use
 
 .. code-block:: console
 
-  cnat show session verbose
-  cant show translation
+  show cnat session verbose
+  show cnat translation
 
 
 SourceNATing outgoing traffic
@@ -94,9 +94,17 @@ address assigned to an interface)
 
 .. code-block:: console
 
-  cnat snat with 30.0.0.1
-  cnat snat exclude 20.0.0.0/24
+  set cnat snat-policy addr 30.0.0.1
+  set cnat snat-policy if-pfx
+  set cnat snat-policy if table include-v4 tap0
+  set cnat snat-policy prefix 20.0.0.0/24
   set interface feature tap0 cnat-snat-ip4 arc ip4-unicast
+
+To show the enforced snat policies:
+
+.. code-block:: console
+
+  show cnat snat-policy
 
 Other parameters
 ----------------
@@ -105,7 +113,7 @@ In vpp's startup file, you can also configure the bihash sizes for
 
 * the translation bihash ``(proto, port) -> translation``
 * the session bihash ``src_ip, src_port, dest_ip, dest_port, proto -> new_src_ip, new_src_port, new_dest_ip, new_dest_port``
-* the snat bihash for searching ``snat exclude`` prefixes
+* the snat bihash for searching ``snat-policy`` excluded prefixes
 
 .. code-block:: console
 
