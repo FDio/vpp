@@ -15,8 +15,8 @@
 #ifndef __VIRTIO_VHOST_USER_H__
 #define __VIRTIO_VHOST_USER_H__
 
-#include <vnet/devices/virtio/virtio_std.h>
-#include <vnet/devices/virtio/vhost_std.h>
+#include <vhost/virtio_std.h>
+#include <vhost/vhost_std.h>
 
 /* vhost-user data structures */
 

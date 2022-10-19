@@ -39,8 +39,8 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ip/ip_psh_cksum.h>
 
-#include <vnet/devices/virtio/vhost_user.h>
-#include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vhost/vhost_user.h>
+#include <vhost/vhost_user_inline.h>
 
 #include <vnet/gso/hdr_offset_parser.h>
 /*
