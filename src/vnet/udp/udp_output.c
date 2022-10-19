@@ -81,7 +81,7 @@ udp_output_push_ip (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc,
 {
   if (uc->c_is_ip4)
     vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, 1 /* csum offload */,
+				 IP_PROTOCOL_UDP, udp_csum_offload (uc),
 				 0 /* is_df */, uc->c_dscp);
   else
     vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,

@@ -115,6 +115,7 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
   uc->c_fib_index = listener->c_fib_index;
   uc->mss = listener->mss;
   uc->flags |= UDP_CONN_F_CONNECTED;
+  uc->cfg_flags = listener->cfg_flags;
 
   if (session_dgram_accept (&uc->connection, listener->c_s_index,
 			    listener->c_thread_index))
