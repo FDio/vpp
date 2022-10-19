@@ -115,9 +115,9 @@ F:	src/vnet/devices/tap/
 
 VNET Vhost User Driver
 I:	vhost
-Y:	src/vnet/devices/virtio/FEATURE.yaml
+Y:	src/plugins/vhost/FEATURE.yaml
 M:	Steven Luong <sluong@cisco.com>
-F:	src/vnet/devices/virtio/vhost_user*
+F:	src/plugins/vhost
 
 VNET Native Virtio Drivers
 I:	virtio

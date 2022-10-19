@@ -40,8 +40,8 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 
-#include <vnet/devices/virtio/vhost_user.h>
-#include <vnet/devices/virtio/vhost_user_inline.h>
+#include <vhost/vhost_user.h>
+#include <vhost/vhost_user_inline.h>
 
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
