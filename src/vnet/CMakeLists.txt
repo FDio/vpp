@@ -984,10 +984,6 @@ list(APPEND VNET_SOURCES
   devices/virtio/format.c
   devices/virtio/node.c
   devices/virtio/pci.c
-  devices/virtio/vhost_user.c
-  devices/virtio/vhost_user_input.c
-  devices/virtio/vhost_user_output.c
-  devices/virtio/vhost_user_api.c
   devices/virtio/virtio.c
   devices/virtio/virtio_api.c
   devices/virtio/virtio_pci_legacy.c
@@ -1004,20 +1000,16 @@ list(APPEND VNET_HEADERS
   devices/virtio/virtio_pci_legacy.h
   devices/virtio/virtio_pci_modern.h
   devices/virtio/vhost_std.h
-  devices/virtio/vhost_user.h
   devices/virtio/virtio_types_api.h
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
-  devices/virtio/vhost_user_input.c
-  devices/virtio/vhost_user_output.c
   devices/virtio/node.c
   devices/af_packet/node.c
   devices/virtio/device.c
 )
 
 list(APPEND VNET_API_FILES
-  devices/virtio/vhost_user.api
   devices/virtio/virtio.api
   devices/virtio/virtio_types.api
 )

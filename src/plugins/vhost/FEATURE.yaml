@@ -1,0 +1,13 @@
+---
+name: Vhost-user Device Driver
+maintainer: sluong@cisco.com
+features:
+  - Device mode to emulate vhost-user interface presented to VPP from the
+    guest VM.
+  - Support virtio 1.0 in virtio
+  - Support virtio 1.1 packed ring in virtio [experimental]
+  - Support multi-queue, GSO, checksum offload, indirect descriptor,
+    jumbo frame, and packed ring.
+description: "Vhost-user implementation"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
