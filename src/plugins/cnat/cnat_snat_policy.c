@@ -108,7 +108,7 @@ cnat_snat_policy_add_del_if_command_fn (vlib_main_t *vm,
   vnet_main_t *vnm = vnet_get_main ();
   int is_add = 1;
   u32 sw_if_index = ~0;
-  u32 table;
+  u32 table = 0;
   int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
