@@ -22,14 +22,13 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/devices/virtio/vhost_user.h>
+#include <vhost/vhost_user.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/ethernet_types_api.h>
-#include <vnet/devices/virtio/virtio_types_api.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/devices/virtio/vhost_user.api_enum.h>
-#include <vnet/devices/virtio/vhost_user.api_types.h>
+#include <vhost/vhost_user.api_enum.h>
+#include <vhost/vhost_user.api_types.h>
 
 #define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -261,6 +260,13 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 }
 
 static void
+vhost_user_features_encode (u64 features, u32 *first, u32 *last)
+{
+  *first = clib_net_to_host_u32 (features);
+  *last = clib_net_to_host_u32 (features >> 32);
+}
+
+static void
 send_sw_interface_vhost_user_details (vpe_api_main_t * am,
 				      vl_api_registration_t * reg,
 				      vhost_user_intf_details_t * vui,
@@ -274,8 +280,8 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
     ntohs (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
-  virtio_features_encode (vui->features, (u32 *) & mp->features_first_32,
-			  (u32 *) & mp->features_last_32);
+  vhost_user_features_encode (vui->features, (u32 *) &mp->features_first_32,
+			      (u32 *) &mp->features_last_32);
   mp->is_server = vui->is_server;
   mp->num_regions = ntohl (vui->num_regions);
   mp->sock_errno = ntohl (vui->sock_errno);
@@ -324,7 +330,7 @@ static void
   vec_free (ifaces);
 }
 
-#include <vnet/devices/virtio/vhost_user.api.c>
+#include <vhost/vhost_user.api.c>
 static clib_error_t *
 vhost_user_api_hookup (vlib_main_t * vm)
 {
