@@ -38,6 +38,33 @@ format_udp_connection_id (u8 * s, va_list * args)
   return s;
 }
 
+static const char *udp_cfg_flags_str[] = {
+#define _(sym, str) str,
+  foreach_udp_cfg_flag
+#undef _
+};
+
+static u8 *
+format_udp_cfg_flags (u8 *s, va_list *args)
+{
+  udp_connection_t *tc = va_arg (*args, udp_connection_t *);
+  int i, last = -1;
+
+  for (i = 0; i < UDP_CFG_N_FLAG_BITS; i++)
+    if (tc->cfg_flags & (1 << i))
+      last = i;
+  if (last >= 0)
+    s = format (s, " cfg: ");
+  for (i = 0; i < last; i++)
+    {
+      if (tc->cfg_flags & (1 << i))
+	s = format (s, "%s, ", udp_cfg_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", udp_cfg_flags_str[last]);
+  return s;
+}
+
 static const char *udp_connection_flags_str[] = {
 #define _(sym, str) str,
   foreach_udp_connection_flag
@@ -68,8 +95,8 @@ format_udp_vars (u8 * s, va_list * args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
 
-  s = format (s, " index %u flags: %U", uc->c_c_index,
-	      format_udp_connection_flags, uc);
+  s = format (s, " index %u%U flags: %U", uc->c_c_index, format_udp_cfg_flags,
+	      uc, format_udp_connection_flags, uc);
   if (!(uc->flags & UDP_CONN_F_LISTEN))
     s = format (s, " \n sw_if_index: %d, mss: %u\n", uc->sw_if_index, uc->mss);
 
@@ -106,6 +133,8 @@ udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	um->default_mtu = tmp;
       else if (unformat (input, "icmp-unreachable-disabled"))
 	um->icmp_send_unreachable_disabled = 1;
+      else if (unformat (input, "no-csum-offload"))
+	um->csum_offload = 0;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

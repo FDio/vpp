@@ -55,6 +55,24 @@ typedef enum udp_conn_flags_
 #undef _
 } udp_conn_flags_t;
 
+#define foreach_udp_cfg_flag _ (NO_CSUM_OFFLOAD, "no-csum-offload")
+
+typedef enum udp_cfg_flag_bits_
+{
+#define _(sym, str) UDP_CFG_F_##sym##_BIT,
+  foreach_udp_cfg_flag
+#undef _
+    UDP_CFG_N_FLAG_BITS
+} udp_cfg_flag_bits_e;
+
+typedef enum udp_cfg_flag_
+{
+#define _(sym, str) UDP_CFG_F_##sym = 1 << UDP_CFG_F_##sym##_BIT,
+  foreach_udp_cfg_flag
+#undef _
+    UDP_CFG_N_FLAGS
+} __clib_packed udp_cfg_flags_t;
+
 typedef struct
 {
   /** Required for pool_get_aligned */
@@ -62,11 +80,14 @@ typedef struct
   transport_connection_t connection;	/**< must be first */
   clib_spinlock_t rx_lock;		/**< rx fifo lock */
   u8 flags;				/**< connection flags */
+  udp_cfg_flags_t cfg_flags;		/**< configuration flags */
   u16 mss;				/**< connection mss */
   u32 sw_if_index;			/**< connection sw_if_index */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque; /**< Opaque to pass to next node */
 } udp_connection_t;
+
+#define udp_csum_offload(uc) (!((uc)->cfg_flags & UDP_CFG_F_NO_CSUM_OFFLOAD))
 
 typedef struct
 {
@@ -122,6 +143,7 @@ typedef struct
 
   u16 default_mtu;
   u16 msg_id_base;
+  u8 csum_offload;
 
   u8 icmp_send_unreachable_disabled;
 } udp_main_t;

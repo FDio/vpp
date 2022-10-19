@@ -194,6 +194,8 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   else
     listener->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
   clib_spinlock_init (&listener->rx_lock);
+  if (!um->csum_offload)
+    listener->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
 
   udp_connection_register_port (lcl_port_ho, lcl->is_ip4);
   return listener->c_c_index;
@@ -225,7 +227,8 @@ udp_session_get_listener (u32 listener_index)
 always_inline u32
 udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
 {
-  vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
+  vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port,
+			udp_csum_offload (uc));
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   /* reuse tcp medatada for now */
   vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
@@ -405,6 +408,8 @@ conn_alloc:
       clib_spinlock_init (&uc->rx_lock);
       uc->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
     }
+  if (!um->csum_offload)
+    uc->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
   uc->next_node_index = rmt->next_node_index;
   uc->next_node_opaque = rmt->next_node_opaque;
 
@@ -519,6 +524,7 @@ udp_init (vlib_main_t * vm)
     vlib_node_add_next (vm, udp6_local_node.index, udp6_input_node.index);
 
   um->default_mtu = 1500;
+  um->csum_offload = 1;
   return 0;
 }
 
