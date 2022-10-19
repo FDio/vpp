@@ -22,7 +22,8 @@ cnat_snat_policy_main_t cnat_snat_policy_main;
 uword
 unformat_cnat_snat_interface_map_type (unformat_input_t *input, va_list *args)
 {
-  u8 *a = va_arg (*args, u8 *);
+  cnat_snat_interface_map_type_t *a = va_arg (*args,
+        cnat_snat_interface_map_type_t*);
   if (unformat (input, "include-v4"))
     *a = CNAT_SNAT_IF_MAP_INCLUDE_V4;
   else if (unformat (input, "include-v6"))
