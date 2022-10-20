@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb5855f1_808bad98",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-10-20T13:20:12Z",
+      "side": 1,
+      "message": "Is it expected we use TX defines (incl the 2 other occurrences below) for rxq in case of V2?",
+      "revId": "4a59e25d3e0d4e39fa4141659628b22641eba060",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
