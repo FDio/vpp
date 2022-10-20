@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c20addb_591a8812",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-10-20T20:01:10Z",
+      "side": 1,
+      "message": "Filip, would you please give me specific feedback on whether the changes I made to the test framework fit into your original design? For example, how I added the option to set the hardware address.",
+      "revId": "7be9d575d55a5348472e505db50fd07ff3bb6c7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
