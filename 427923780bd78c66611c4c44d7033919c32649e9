@@ -34,6 +34,24 @@
       "parentUuid": "eff3e461_94f9c4b1",
       "revId": "427923780bd78c66611c4c44d7033919c32649e9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11290227_fdc32b06",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-10-20T15:21:19Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nI have study the VNET_SW_INTERFACE_ADD_DEL_FUNCTION and the relations among interface、policer、classify table、classify policer、classify session. It’s indeed needed to add VNET_SW_INTERFACE_ADD_DEL_FUNCTION to delete policer classify under the interface when delete interface. Furthermore, there are other some bugs or fixes about the relations among interface、policer、classify table、classify policer、classify session or themselves. I cloud fix them one by one in the future.\n\nThe scene and problem fixed by this patch is:\nstep 1: work thread 1 processes a packet in function nat44_worker_handoff_fn_inline, the policer classify used not yet deleted at the moment, the count or use about vnet_buffer2 (b[0])-\u003enat.arc_next \u003d arc_next0 will take into account node ip4-policer-classify.\nstep 2: the work thread 2 handoff processes the above packet in step 1, if at this very moment the policer classify used in step 1 has been deleted, ip4-policer-classify will use an invalid table_index0 which is ~0, and will raise crash at pool_elt_at_index (vcm-\u003etables, table_index0).\nThis patch fix the problem by isolating the policer classify delete state and table_index used by the packet. With this patch, under the above scene, the packet will be processed normally without any crash.\n\nIs this patch a proper fix? Hope to get any further ideas or suggestions from you.",
+      "parentUuid": "9371d0e8_42ff9d5b",
+      "revId": "427923780bd78c66611c4c44d7033919c32649e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
