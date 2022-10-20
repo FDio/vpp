@@ -633,6 +633,7 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      vec_set_len (vm_clone->pending_rpc_requests, 0);
+	      vm_clone->has_pending_rpc_requests = 0;
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
 	      clib_spinlock_init

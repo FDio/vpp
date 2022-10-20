@@ -1959,6 +1959,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   vec_validate (vm->pending_rpc_requests, 0);
   vec_set_len (vm->pending_rpc_requests, 0);
+  vm->has_pending_rpc_requests = 0;
   vec_validate (vm->processing_rpc_requests, 0);
   vec_set_len (vm->processing_rpc_requests, 0);
 

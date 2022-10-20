@@ -585,6 +585,8 @@ vl_api_send_pending_rpc_requests (vlib_main_t *vm)
   clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
   vec_append (vm_global->pending_rpc_requests, vm->pending_rpc_requests);
   vec_reset_length (vm->pending_rpc_requests);
+  vm_global->has_pending_rpc_requests = 1;
+  vm->has_pending_rpc_requests = 0;
   clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
 }
 
@@ -623,6 +625,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 *data, u32 data_length,
   if (vm == vm_global)
     clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
   vec_add1 (vm->pending_rpc_requests, (uword) mp);
+  vm->has_pending_rpc_requests = 1;
   if (vm == vm_global)
     clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
 }
