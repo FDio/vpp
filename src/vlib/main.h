@@ -250,6 +250,7 @@ typedef struct vlib_main_t
   volatile uword check_frame_queues;
 
   /* RPC requests, main thread only */
+  volatile u8 has_pending_rpc_requests;
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
