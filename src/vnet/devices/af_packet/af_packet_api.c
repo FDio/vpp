@@ -98,6 +98,7 @@ vl_api_af_packet_create_v3_t_handler (vl_api_af_packet_create_v3_t *mp)
 {
   af_packet_create_if_arg_t _arg, *arg = &_arg;
   vl_api_af_packet_create_v3_reply_t *rmp;
+  u32 flags = 0;
   int rv = 0;
 
   clib_memset (arg, 0, sizeof (*arg));
@@ -128,15 +129,24 @@ vl_api_af_packet_create_v3_t_handler (vl_api_af_packet_create_v3_t *mp)
       goto error;
     }
 
-  STATIC_ASSERT (((int) AF_PACKET_API_FLAG_QDISC_BYPASS ==
+  STATIC_ASSERT (((int) AF_PACKET_API_FLAG_DISABLE_QDISC_BYPASS ==
 		  (int) AF_PACKET_IF_FLAGS_QDISC_BYPASS),
 		 "af-packet qdisc-bypass api flag mismatch");
-  STATIC_ASSERT (
-    ((int) AF_PACKET_API_FLAG_CKSUM_GSO == (int) AF_PACKET_IF_FLAGS_CKSUM_GSO),
-    "af-packet checksum/gso offload api flag mismatch");
+  STATIC_ASSERT (((int) AF_PACKET_API_FLAG_DISABLE_CKSUM_GSO ==
+		  (int) AF_PACKET_IF_FLAGS_CKSUM_GSO),
+		 "af-packet checksum/gso offload api flag mismatch");
 
   // Default flags
-  arg->flags = clib_net_to_host_u32 (mp->flags);
+  arg->flags = AF_PACKET_IF_FLAGS_CKSUM_GSO | AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+  flags = clib_net_to_host_u32 (mp->flags);
+
+  if (flags & AF_PACKET_API_FLAG_DISABLE_QDISC_BYPASS)
+    arg->flags &= ~AF_PACKET_IF_FLAGS_QDISC_BYPASS;
+
+  if (flags & AF_PACKET_API_FLAG_DISABLE_CKSUM_GSO)
+    arg->flags &= ~AF_PACKET_IF_FLAGS_CKSUM_GSO;
+
+  arg->flags |= (flags & 0xFFFFFFFC);
 
   if (clib_net_to_host_u16 (mp->num_rx_queues) > 1)
     arg->num_rxqs = clib_net_to_host_u16 (mp->num_rx_queues);

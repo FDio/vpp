@@ -92,8 +92,8 @@ enum af_packet_mode {
 };
 
 enum af_packet_flags {
-  AF_PACKET_API_FLAG_QDISC_BYPASS = 1, /* enable the qdisc bypass */
-  AF_PACKET_API_FLAG_CKSUM_GSO = 2, /* enable checksum/gso */
+  AF_PACKET_API_FLAG_DISABLE_QDISC_BYPASS = 1, /* disable the qdisc bypass */
+  AF_PACKET_API_FLAG_DISABLE_CKSUM_GSO = 2, /* disable checksum/gso */
 };
 
 /** \brief Create host-interface
