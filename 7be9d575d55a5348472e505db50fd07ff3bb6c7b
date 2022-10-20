@@ -16,6 +16,52 @@
       "message": "Filip, would you please give me specific feedback on whether the changes I made to the test framework fit into your original design? For example, how I added the option to set the hardware address.",
       "revId": "7be9d575d55a5348472e505db50fd07ff3bb6c7b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4511b02c_71fc6412",
+        "filename": "src/vcl/vcl_sapi.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-20T20:27:18Z",
+      "side": 1,
+      "message": "Just a nit. We use c-style comments, i.e., /* */ and typically insert them on the line above",
+      "range": {
+        "startLine": 62,
+        "startChar": 26,
+        "endLine": 62,
+        "endChar": 79
+      },
+      "revId": "7be9d575d55a5348472e505db50fd07ff3bb6c7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7557861_adb3feac",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1313,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-20T20:27:18Z",
+      "side": 1,
+      "message": "Another nit: keep error handling under the if, but if the error results in returning from current function, don\u0027t add the remaining code under the else branch. That is, just remove the else and brackets",
+      "range": {
+        "startLine": 1312,
+        "startChar": 0,
+        "endLine": 1313,
+        "endChar": 2
+      },
+      "revId": "7be9d575d55a5348472e505db50fd07ff3bb6c7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
