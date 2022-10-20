@@ -31,7 +31,7 @@ virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
       if (clib_spinlock_trylock (&txq_vring->lockp))
 	{
 	  if (virtio_txq_is_scheduled (txq_vring))
-	    return 0;
+	    goto unlock;
 	  if (packet_coalesce)
 	    vnet_gro_flow_table_schedule_node_on_dispatcher (
 	      vm, txq, txq_vring->flow_table);
@@ -39,6 +39,7 @@ virtio_pre_input_inline (vlib_main_t *vm, vnet_virtio_vring_t *txq_vring,
 	    virtio_vring_buffering_schedule_node_on_dispatcher (
 	      vm, txq, txq_vring->buffering);
 	  virtio_txq_set_scheduled (txq_vring);
+	unlock:
 	  clib_spinlock_unlock (&txq_vring->lockp);
 	}
     }
