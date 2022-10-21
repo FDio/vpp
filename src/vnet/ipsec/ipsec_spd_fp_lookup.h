@@ -97,8 +97,8 @@ static_always_inline int
 single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
 {
 
-  u32 sa = clib_net_to_host_u32 (match->laddr.as_u32);
-  u32 da = clib_net_to_host_u32 (match->raddr.as_u32);
+  u32 da = clib_net_to_host_u32 (match->laddr.as_u32);
+  u32 sa = clib_net_to_host_u32 (match->raddr.as_u32);
 
   if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
     {
@@ -118,16 +118,16 @@ single_rule_in_match_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *match)
     }
   else
     {
-      if (da < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
+      if (sa < clib_net_to_host_u32 (policy->raddr.start.ip4.as_u32))
 	return (0);
 
-      if (da > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
+      if (sa > clib_net_to_host_u32 (policy->raddr.stop.ip4.as_u32))
 	return (0);
 
-      if (sa < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
+      if (da < clib_net_to_host_u32 (policy->laddr.start.ip4.as_u32))
 	return (0);
 
-      if (sa > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
+      if (da > clib_net_to_host_u32 (policy->laddr.stop.ip4.as_u32))
 	return (0);
     }
   return (1);
