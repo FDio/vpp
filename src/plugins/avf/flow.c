@@ -44,6 +44,8 @@
    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED) ||                          \
    (f->type == VNET_FLOW_TYPE_IP6_VXLAN))
 
+#define FLOW_IS_GENERIC_CLASS(f) (f->type == VNET_FLOW_TYPE_GENERIC)
+
 /* check if flow is L3 type */
 #define FLOW_IS_L3_TYPE(f)                                                    \
   ((f->type == VNET_FLOW_TYPE_IP4) || (f->type == VNET_FLOW_TYPE_IP6))
@@ -63,7 +65,7 @@
    (f->type == VNET_FLOW_TYPE_IP4_GTPU))
 
 int
-avf_fdir_vc_op_callback (void *vc_hdl, enum virthnl_adv_ops vc_op, void *in,
+avf_flow_vc_op_callback (void *vc_hdl, enum virthnl_adv_ops vc_op, void *in,
 			 u32 in_len, void *out, u32 out_len)
 {
   u32 dev_instance = *(u32 *) vc_hdl;
@@ -79,9 +81,11 @@ avf_fdir_vc_op_callback (void *vc_hdl, enum virthnl_adv_ops vc_op, void *in,
   switch (vc_op)
     {
     case VIRTCHNL_ADV_OP_ADD_FDIR_FILTER:
+    case VIRTCHNL_ADV_OP_ADD_RSS_CFG:
       is_add = 1;
       break;
     case VIRTCHNL_ADV_OP_DEL_FDIR_FILTER:
+    case VIRTCHNL_ADV_OP_DEL_RSS_CFG:
       is_add = 0;
       break;
     default:
@@ -90,16 +94,112 @@ avf_fdir_vc_op_callback (void *vc_hdl, enum virthnl_adv_ops vc_op, void *in,
       return -1;
     }
 
-  err = avf_program_flow (dev_instance, is_add, in, in_len, out, out_len);
+  err =
+    avf_program_flow (dev_instance, is_add, vc_op, in, in_len, out, out_len);
   if (err != 0)
     {
-      avf_log_err (ad, "avf fdir program failed: %U", format_clib_error, err);
+      avf_log_err (ad, "avf flow program failed: %U", format_clib_error, err);
       clib_error_free (err);
       return -1;
     }
 
-  avf_log_debug (ad, "avf fdir program success");
+  avf_log_debug (ad, "avf flow program success");
   return 0;
+}
+
+static inline enum avf_eth_hash_function
+avf_flow_convert_rss_func (vnet_rss_function_t func)
+{
+  enum avf_eth_hash_function rss_func;
+
+  switch (func)
+    {
+    case VNET_RSS_FUNC_DEFAULT:
+      rss_func = AVF_ETH_HASH_FUNCTION_DEFAULT;
+      break;
+    case VNET_RSS_FUNC_TOEPLITZ:
+      rss_func = AVF_ETH_HASH_FUNCTION_TOEPLITZ;
+      break;
+    case VNET_RSS_FUNC_SIMPLE_XOR:
+      rss_func = AVF_ETH_HASH_FUNCTION_SIMPLE_XOR;
+      break;
+    case VNET_RSS_FUNC_SYMMETRIC_TOEPLITZ:
+      rss_func = AVF_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ;
+      break;
+    default:
+      rss_func = AVF_ETH_HASH_FUNCTION_MAX;
+      break;
+    }
+
+  return rss_func;
+}
+
+/** Maximum number of queue indices in struct avf_flow_action_rss. */
+#define ACTION_RSS_QUEUE_NUM 128
+
+static inline void
+avf_flow_convert_rss_queues (u32 queue_index, u32 queue_num,
+			     struct avf_flow_action_rss *act_rss)
+{
+  u16 *queues = clib_mem_alloc (sizeof (*queues) * ACTION_RSS_QUEUE_NUM);
+  int i;
+
+  for (i = 0; i < queue_num; i++)
+    queues[i] = queue_index++;
+
+  act_rss->queue_num = queue_num;
+  act_rss->queue = queues;
+
+  return;
+}
+
+void
+avf_parse_generic_pattern (struct avf_flow_item *item, u8 *pkt_buf,
+			   u8 *msk_buf, u16 spec_len)
+{
+  u8 *raw_spec, *raw_mask;
+  u8 tmp_val = 0;
+  u8 tmp_c = 0;
+  int i, j;
+
+  raw_spec = (u8 *) item->spec;
+  raw_mask = (u8 *) item->mask;
+
+  /* convert string to int array */
+  for (i = 0, j = 0; i < spec_len; i += 2, j++)
+    {
+      tmp_c = raw_spec[i];
+      if (tmp_c >= 'a' && tmp_c <= 'f')
+	tmp_val = tmp_c - 'a' + 10;
+      if (tmp_c >= 'A' && tmp_c <= 'F')
+	tmp_val = tmp_c - 'A' + 10;
+      if (tmp_c >= '0' && tmp_c <= '9')
+	tmp_val = tmp_c - '0';
+
+      tmp_c = raw_spec[i + 1];
+      if (tmp_c >= 'a' && tmp_c <= 'f')
+	pkt_buf[j] = tmp_val * 16 + tmp_c - 'a' + 10;
+      if (tmp_c >= 'A' && tmp_c <= 'F')
+	pkt_buf[j] = tmp_val * 16 + tmp_c - 'A' + 10;
+      if (tmp_c >= '0' && tmp_c <= '9')
+	pkt_buf[j] = tmp_val * 16 + tmp_c - '0';
+
+      tmp_c = raw_mask[i];
+      if (tmp_c >= 'a' && tmp_c <= 'f')
+	tmp_val = tmp_c - 0x57;
+      if (tmp_c >= 'A' && tmp_c <= 'F')
+	tmp_val = tmp_c - 0x37;
+      if (tmp_c >= '0' && tmp_c <= '9')
+	tmp_val = tmp_c - '0';
+
+      tmp_c = raw_mask[i + 1];
+      if (tmp_c >= 'a' && tmp_c <= 'f')
+	msk_buf[j] = tmp_val * 16 + tmp_c - 'a' + 10;
+      if (tmp_c >= 'A' && tmp_c <= 'F')
+	msk_buf[j] = tmp_val * 16 + tmp_c - 'A' + 10;
+      if (tmp_c >= '0' && tmp_c <= '9')
+	msk_buf[j] = tmp_val * 16 + tmp_c - '0';
+    }
 }
 
 static int
@@ -112,13 +212,15 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
   u16 src_port_mask = 0, dst_port_mask = 0;
   u8 protocol = IP_PROTOCOL_RESERVED;
   bool fate = false;
+  bool is_fdir = true;
   struct avf_flow_error error;
 
   int layer = 0;
   int action_count = 0;
 
-  struct avf_fdir_vc_ctx vc_ctx;
+  struct avf_flow_vc_ctx vc_ctx;
   struct avf_fdir_conf *filter;
+  struct virtchnl_rss_cfg *rss_cfg;
   struct avf_flow_item avf_items[VIRTCHNL_MAX_NUM_PROTO_HDRS];
   struct avf_flow_action avf_actions[VIRTCHNL_MAX_NUM_ACTIONS];
 
@@ -133,6 +235,7 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
 
   struct avf_flow_action_queue act_q = {};
   struct avf_flow_action_mark act_msk = {};
+  struct avf_flow_action_rss act_rss = {};
 
   enum
   {
@@ -140,6 +243,7 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
     FLOW_ETHERNET_CLASS,
     FLOW_IPV4_CLASS,
     FLOW_IPV6_CLASS,
+    FLOW_GENERIC_CLASS,
   } flow_class = FLOW_UNKNOWN_CLASS;
 
   if (FLOW_IS_ETHERNET_CLASS (f))
@@ -148,6 +252,8 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
     flow_class = FLOW_IPV4_CLASS;
   else if (FLOW_IS_IPV6_CLASS (f))
     flow_class = FLOW_IPV6_CLASS;
+  else if (FLOW_IS_GENERIC_CLASS (f))
+    flow_class = FLOW_GENERIC_CLASS;
   else
     return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
@@ -158,12 +264,31 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       goto done;
     }
 
+  ret = avf_rss_cfg_create (&rss_cfg, 0);
+  if (ret)
+    {
+      rv = VNET_FLOW_ERROR_INTERNAL;
+      goto done;
+    }
+
   /* init a virtual channel context */
   vc_ctx.vc_hdl = &dev_instance;
-  vc_ctx.vc_op = avf_fdir_vc_op_callback;
+  vc_ctx.vc_op = avf_flow_vc_op_callback;
 
   clib_memset (avf_items, 0, sizeof (avf_actions));
   clib_memset (avf_actions, 0, sizeof (avf_actions));
+
+  /* Handle generic flow first */
+  if (flow_class == FLOW_GENERIC_CLASS)
+    {
+      avf_items[layer].is_generic = true;
+      avf_items[layer].spec = f->generic.pattern.spec;
+      avf_items[layer].mask = f->generic.pattern.mask;
+
+      layer++;
+
+      goto pattern_end;
+    }
 
   /* Ethernet Layer */
   avf_items[layer].type = VIRTCHNL_PROTO_HDR_ETH;
@@ -349,13 +474,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
 pattern_end:
   /* pattern end flag  */
   avf_items[layer].type = VIRTCHNL_PROTO_HDR_NONE;
-  ret = avf_fdir_parse_pattern (filter, avf_items, &error);
-  if (ret)
-    {
-      avf_log_err (ad, "avf fdir parse pattern failed: %s", error.message);
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
-      goto done;
-    }
 
   /* Action */
   /* Only one 'fate' can be assigned */
@@ -385,6 +503,37 @@ pattern_end:
       action_count++;
     }
 
+  if (f->actions & VNET_FLOW_ACTION_RSS)
+    {
+      avf_actions[action_count].type = VIRTCHNL_ACTION_RSS;
+      avf_actions[action_count].conf = &act_rss;
+      is_fdir = false;
+
+      if (f->queue_num)
+	{
+	  /* convert rss queues to array */
+	  avf_flow_convert_rss_queues (f->queue_index, f->queue_num, &act_rss);
+	  avf_actions[action_count].type = VIRTCHNL_ACTION_Q_REGION;
+	  is_fdir = true;
+	}
+
+      if ((act_rss.func = avf_flow_convert_rss_func (f->rss_fun)) ==
+	  AVF_ETH_HASH_FUNCTION_MAX)
+	{
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
+
+      if (fate == true)
+	{
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	fate = true;
+      action_count++;
+    }
+
   if (fate == false)
     {
       avf_actions[action_count].type = VIRTCHNL_ACTION_PASSTHRU;
@@ -406,14 +555,39 @@ pattern_end:
   /* action end flag */
   avf_actions[action_count].type = VIRTCHNL_ACTION_NONE;
 
-  /* parse action */
-  ret = avf_fdir_parse_action (avf_actions, filter, &error);
-  if (ret)
+  /* parse pattern and actions */
+  if (is_fdir)
     {
-      avf_log_err (ad, "avf fdir parse action failed: %s", error.message);
-      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
-      goto done;
-    }
+      if (flow_class == FLOW_GENERIC_CLASS)
+	{
+	  ret = avf_fdir_parse_generic_pattern (filter, avf_items, &error);
+	  if (ret)
+	    {
+	      avf_log_err (ad, "avf fdir parse generic pattern failed: %s",
+			   error.message);
+	      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	      goto done;
+	    }
+	}
+      else
+	{
+	  ret = avf_fdir_parse_pattern (filter, avf_items, &error);
+	  if (ret)
+	    {
+	      avf_log_err (ad, "avf fdir parse pattern failed: %s",
+			   error.message);
+	      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	      goto done;
+	    }
+	}
+
+      ret = avf_fdir_parse_action (avf_actions, filter, &error);
+      if (ret)
+	{
+	  avf_log_err (ad, "avf fdir parse action failed: %s", error.message);
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
 
   /* create flow rule, save rule */
   ret = avf_fdir_rule_create (&vc_ctx, filter);
@@ -428,7 +602,52 @@ pattern_end:
   else
     {
       fe->rcfg = filter;
+      fe->flow_type_flag = 1;
     }
+    }
+  else
+    {
+      if (flow_class == FLOW_GENERIC_CLASS)
+	{
+	  ret = avf_rss_parse_generic_pattern (rss_cfg, avf_items, &error);
+	  if (ret)
+	    {
+	      avf_log_err (ad, "avf rss parse generic pattern failed: %s",
+			   error.message);
+	      rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	      goto done;
+	    }
+	}
+      else
+	{
+	  avf_log_warn (ad, "avf rss is not supported except generic flow");
+	  goto done;
+	}
+
+      ret = avf_rss_parse_action (avf_actions, rss_cfg, &error);
+      if (ret)
+	{
+	  avf_log_err (ad, "avf rss parse action failed: %s", error.message);
+	  rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
+	  goto done;
+	}
+
+      /* create flow rule, save rule */
+      ret = avf_rss_rule_create (&vc_ctx, rss_cfg);
+
+      if (ret)
+	{
+	  avf_log_err (ad, "avf rss rule create failed");
+	  rv = VNET_FLOW_ERROR_INTERNAL;
+	  goto done;
+	}
+      else
+	{
+	  fe->rss_cfg = rss_cfg;
+	  fe->flow_type_flag = 0;
+	}
+    }
+
 done:
 
   return rv;
@@ -495,6 +714,7 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
 	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
 	case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
 	case VNET_FLOW_TYPE_IP4_IPSEC_AH:
+	case VNET_FLOW_TYPE_GENERIC:
 	  if ((rv = avf_flow_add (dev_instance, flow, fe)))
 	    goto done;
 	  break;
@@ -509,13 +729,22 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
     {
       fe = vec_elt_at_index (ad->flow_entries, *private_data);
 
-      struct avf_fdir_vc_ctx ctx;
+      struct avf_flow_vc_ctx ctx;
       ctx.vc_hdl = &dev_instance;
-      ctx.vc_op = avf_fdir_vc_op_callback;
+      ctx.vc_op = avf_flow_vc_op_callback;
 
-      rv = avf_fdir_rule_destroy (&ctx, fe->rcfg);
-      if (rv)
-	return VNET_FLOW_ERROR_INTERNAL;
+      if (fe->flow_type_flag)
+	{
+	  rv = avf_fdir_rule_destroy (&ctx, fe->rcfg);
+	  if (rv)
+	    return VNET_FLOW_ERROR_INTERNAL;
+	}
+      else
+	{
+	  rv = avf_rss_rule_destroy (&ctx, fe->rss_cfg);
+	  if (rv)
+	    return VNET_FLOW_ERROR_INTERNAL;
+	}
 
       if (fe->mark)
 	{
@@ -525,6 +754,7 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
 	}
 
       (void) avf_fdir_rcfg_destroy (fe->rcfg);
+      (void) avf_rss_rcfg_destroy (fe->rss_cfg);
       clib_memset (fe, 0, sizeof (*fe));
       pool_put (ad->flow_entries, fe);
       goto disable_rx_offload;

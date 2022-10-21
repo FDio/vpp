@@ -45,6 +45,7 @@
 #define AVF_ETHER_TYPE_IPV6 0x86DD /**< IPv6 Protocol. */
 
 #define VIRTCHNL_MAX_NUM_PROTO_HDRS 32
+#define VIRTCHNL_MAX_SIZE_GEN_PACKET 1024
 #define PROTO_HDR_SHIFT		    5
 #define PROTO_HDR_FIELD_START(proto_hdr_type)                                 \
   (proto_hdr_type << PROTO_HDR_SHIFT)
@@ -284,14 +285,26 @@ struct virtchnl_proto_hdrs
 {
   u8 tunnel_level;
   /**
-   * specify where protocol header start from.
-   * 0 - from the outer layer
-   * 1 - from the first inner layer
-   * 2 - from the second inner layer
+   * specify where protocol header start from. Must be 0 when sending a generic
+   * packet request. 0 - from the outer layer 1 - from the first inner layer 2
+   *- from the second inner layer
    * ....
    **/
-  int count; /* the proto layers must < VIRTCHNL_MAX_NUM_PROTO_HDRS */
-  struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
+  int count;
+  /**
+   * the proto layers must < VIRTCHNL_MAX_NUM_PROTO_HDRS.
+   * Must be 0 when sending a generic packet request.
+   **/
+  union
+  {
+    struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
+    struct
+    {
+      u16 pkt_len;
+      u8 spec[VIRTCHNL_MAX_SIZE_GEN_PACKET];
+      u8 mask[VIRTCHNL_MAX_SIZE_GEN_PACKET];
+    } raw;
+  };
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN (2312, virtchnl_proto_hdrs);
@@ -363,6 +376,7 @@ enum virtchnl_action
   VIRTCHNL_ACTION_PASSTHRU,
   VIRTCHNL_ACTION_QUEUE,
   VIRTCHNL_ACTION_Q_REGION,
+  VIRTCHNL_ACTION_RSS,
   VIRTCHNL_ACTION_MARK,
   VIRTCHNL_ACTION_COUNT,
   VIRTCHNL_ACTION_NONE,
@@ -765,6 +779,7 @@ struct avf_flow_item
   enum virtchnl_proto_hdr_type type; /**< Item type. */
   const void *spec; /**< Pointer to item specification structure. */
   const void *mask; /**< Bit-mask applied to spec and last. */
+  int is_generic;   /* indicate if this item is for a generic flow pattern. */
 };
 
 struct avf_fdir_conf
@@ -783,18 +798,20 @@ enum virthnl_adv_ops
   VIRTCHNL_ADV_OP_ADD_FDIR_FILTER = 0,
   VIRTCHNL_ADV_OP_DEL_FDIR_FILTER,
   VIRTCHNL_ADV_OP_QUERY_FDIR_FILTER,
+  VIRTCHNL_ADV_OP_ADD_RSS_CFG,
+  VIRTCHNL_ADV_OP_DEL_RSS_CFG,
   VIRTCHNL_ADV_OP_MAX
 };
 
 /* virtual channel op handler */
-typedef int (*avf_fdir_vc_op_t) (void *vc_hdl, enum virthnl_adv_ops vc_op,
+typedef int (*avf_flow_vc_op_t) (void *vc_hdl, enum virthnl_adv_ops vc_op,
 				 void *in, u32 in_len, void *out, u32 out_len);
 
 /* virtual channel context object */
-struct avf_fdir_vc_ctx
+struct avf_flow_vc_ctx
 {
   void *vc_hdl; /* virtual channel handler */
-  avf_fdir_vc_op_t vc_op;
+  avf_flow_vc_op_t vc_op;
 };
 
 /**
@@ -955,7 +972,7 @@ int avf_fdir_rcfg_act_mark (struct avf_fdir_conf *rcfg, const u32 mark,
  * 	0 = successful.
  * 	< 0 = failure.
  */
-int avf_fdir_rcfg_validate (struct avf_fdir_vc_ctx *ctx,
+int avf_fdir_rcfg_validate (struct avf_flow_vc_ctx *ctx,
 			    struct avf_fdir_conf *rcfg);
 
 /**
@@ -971,7 +988,7 @@ int avf_fdir_rcfg_validate (struct avf_fdir_vc_ctx *ctx,
  * 	0 = successfule.
  * 	< 0 = failure.
  */
-int avf_fdir_rule_create (struct avf_fdir_vc_ctx *ctx,
+int avf_fdir_rule_create (struct avf_flow_vc_ctx *ctx,
 			  struct avf_fdir_conf *rcfg);
 
 /**
@@ -986,7 +1003,7 @@ int avf_fdir_rule_create (struct avf_fdir_vc_ctx *ctx,
  * 	0 = successfule.
  * 	< 0 = failure.
  */
-int avf_fdir_rule_destroy (struct avf_fdir_vc_ctx *ctx,
+int avf_fdir_rule_destroy (struct avf_flow_vc_ctx *ctx,
 			   struct avf_fdir_conf *rcfg);
 
 /*
@@ -1008,6 +1025,24 @@ int avf_fdir_parse_pattern (struct avf_fdir_conf *rcfg,
 			    struct avf_flow_error *error);
 
 /*
+ * Parse avf patterns for generic flow and set pattern fields.
+ *
+ * @param rcfg
+ * 	flow config
+ * @param avf_items
+ * 	pattern items
+ * @param error
+ * 	save error cause
+ *
+ * @return
+ *	0 = successful.
+ *	< 0 = failure
+ */
+int avf_fdir_parse_generic_pattern (struct avf_fdir_conf *rcfg,
+				    struct avf_flow_item avf_items[],
+				    struct avf_flow_error *error);
+
+/*
  * Parse flow actions, set actions.
  *
  * @param actions
@@ -1024,6 +1059,107 @@ int avf_fdir_parse_pattern (struct avf_fdir_conf *rcfg,
 int avf_fdir_parse_action (const struct avf_flow_action actions[],
 			   struct avf_fdir_conf *rcfg,
 			   struct avf_flow_error *error);
+
+/*
+ * Parse avf patterns and set pattern fields for RSS generic flow.
+ *
+ * @param rss_cfg
+ * 	flow config
+ * @param avf_items
+ * 	pattern items
+ * @param error
+ * 	save error cause
+ *
+ * @return
+ *	0 = successful.
+ *	< 0 = failure
+ */
+int avf_rss_parse_generic_pattern (struct virtchnl_rss_cfg *rss_cfg,
+				   struct avf_flow_item avf_items[],
+				   struct avf_flow_error *error);
+
+/*
+ * Parse RSS flow actions, set actions.
+ *
+ * @param actions
+ * 	flow actions
+ * @param rss_cfg
+ * 	flow config
+ * @param error
+ * 	save error cause
+ *
+ * @return
+ *  0 = successful.
+ *  < 0 = failure
+ */
+int avf_rss_parse_action (const struct avf_flow_action actions[],
+			  struct virtchnl_rss_cfg *rss_cfg,
+			  struct avf_flow_error *error);
+
+/**
+ * Create a RSS rule cfg object.
+ *
+ * @param rss_cfg
+ * 	created rule cfg object.
+ * @param tunnel
+ * 	tunnel level where protocol header start from
+ * 	0 from moster outer layer.
+ * 	1 from first inner layer.
+ * 	2 form second inner layer.
+ *  Must be 0 for generic flow.
+ *
+ * @return
+ * 	0 = successful.
+ * 	< 0 = failure.
+ */
+int avf_rss_cfg_create (struct virtchnl_rss_cfg **rss_cfg, int tunnel_level);
+
+int avf_rss_rcfg_destroy (struct virtchnl_rss_cfg *rss_cfg);
+
+/**
+ * Create a RSS flow rule
+ *
+ * @param ctx
+ *	 virtual channel context
+ * @param rss_cfg
+ * 	rule cfg object.
+ *
+ * @return
+ * 	0 = successfule.
+ * 	< 0 = failure.
+ */
+int avf_rss_rule_create (struct avf_flow_vc_ctx *ctx,
+			 struct virtchnl_rss_cfg *rss_cfg);
+
+/**
+ * Destroy a RSS flow rule
+ *
+ * @param ctx
+ *	 virtual channel context
+ * @param rss_cfg
+ * 	rule cfg object.
+ *
+ * @return
+ * 	0 = successfule.
+ * 	< 0 = failure.
+ */
+int avf_rss_rule_destroy (struct avf_flow_vc_ctx *ctx,
+			  struct virtchnl_rss_cfg *rss_cfg);
+
+/**
+ * Parse generic flow pattern to get spec and mask
+ *
+ * @param item
+ *	flow item
+ * @param pkt_buf
+ * 	spec buffer.
+ * @param msk_buf
+ * 	mask buffer .
+ * @param spec_len
+ * 	length of spec.
+ */
+void avf_parse_generic_pattern (struct avf_flow_item *item, u8 *pkt_buf,
+				u8 *msk_buf, u16 spec_len);
 
 /**
  * Initialize flow error structure.
