@@ -1241,16 +1241,32 @@ error:
 
 clib_error_t *
 avf_op_program_flow (vlib_main_t *vm, avf_device_t *ad, int is_create,
-		     u8 *rule, u32 rule_len, u8 *program_status,
-		     u32 status_len)
+		     enum virthnl_adv_ops vc_op, u8 *rule, u32 rule_len,
+		     u8 *program_status, u32 status_len)
 {
+  virtchnl_ops_t op;
+
   avf_log_debug (ad, "avf_op_program_flow: vsi_id %u is_create %u", ad->vsi_id,
 		 is_create);
 
-  return avf_send_to_pf (vm, ad,
-			 is_create ? VIRTCHNL_OP_ADD_FDIR_FILTER :
-				     VIRTCHNL_OP_DEL_FDIR_FILTER,
-			 rule, rule_len, program_status, status_len);
+  switch (vc_op)
+    {
+    case VIRTCHNL_ADV_OP_ADD_FDIR_FILTER:
+    case VIRTCHNL_ADV_OP_DEL_FDIR_FILTER:
+      op =
+	is_create ? VIRTCHNL_OP_ADD_FDIR_FILTER : VIRTCHNL_OP_DEL_FDIR_FILTER;
+      break;
+    case VIRTCHNL_ADV_OP_ADD_RSS_CFG:
+    case VIRTCHNL_ADV_OP_DEL_RSS_CFG:
+      op = is_create ? VIRTCHNL_OP_ADD_RSS_CFG : VIRTCHNL_OP_DEL_RSS_CFG;
+      break;
+    default:
+      return clib_error_return (0, "invalid virtchnl opcode");
+      ;
+    }
+
+  return avf_send_to_pf (vm, ad, op, rule, rule_len, program_status,
+			 status_len);
 }
 
 static void
@@ -1264,9 +1280,9 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
   else if (req->type == AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE)
     req->error = avf_op_config_promisc_mode (vm, ad, req->is_enable);
   else if (req->type == AVF_PROCESS_REQ_PROGRAM_FLOW)
-    req->error =
-      avf_op_program_flow (vm, ad, req->is_add, req->rule, req->rule_len,
-			   req->program_status, req->status_len);
+    req->error = avf_op_program_flow (vm, ad, req->is_add, req->vc_op,
+				      req->rule, req->rule_len,
+				      req->program_status, req->status_len);
   else
     clib_panic ("BUG: unknown avf proceess request type");
 
@@ -1894,8 +1910,8 @@ avf_clear_hw_interface_counters (u32 instance)
 }
 
 clib_error_t *
-avf_program_flow (u32 dev_instance, int is_add, u8 *rule, u32 rule_len,
-		  u8 *program_status, u32 status_len)
+avf_program_flow (u32 dev_instance, int is_add, enum virthnl_adv_ops vc_op,
+		  u8 *rule, u32 rule_len, u8 *program_status, u32 status_len)
 {
   vlib_main_t *vm = vlib_get_main ();
   avf_process_req_t req;
@@ -1903,6 +1919,7 @@ avf_program_flow (u32 dev_instance, int is_add, u8 *rule, u32 rule_len,
   req.dev_instance = dev_instance;
   req.type = AVF_PROCESS_REQ_PROGRAM_FLOW;
   req.is_add = is_add;
+  req.vc_op = vc_op;
   req.rule = rule;
   req.rule_len = rule_len;
   req.program_status = program_status;
