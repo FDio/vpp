@@ -19,6 +19,7 @@
 #define _AVF_H_
 
 #include <avf/virtchnl.h>
+#include <avf/avf_advanced_flow.h>
 
 #include <vppinfra/types.h>
 #include <vppinfra/error_bootstrap.h>
@@ -37,6 +38,7 @@
 
 #define AVF_AQ_ENQ_SUSPEND_TIME		50e-6
 #define AVF_AQ_ENQ_MAX_WAIT_TIME	250e-3
+#define AVF_AQ_BUF_SIZE			4096
 
 #define AVF_RESET_SUSPEND_TIME		20e-3
 #define AVF_RESET_MAX_WAIT_TIME		1
@@ -202,7 +204,9 @@ typedef struct
 {
   u32 flow_index;
   u32 mark;
+  u8 flow_type_flag;
   struct avf_fdir_conf *rcfg;
+  struct virtchnl_rss_cfg *rss_cfg;
 } avf_flow_entry_t;
 
 typedef struct
@@ -291,6 +295,7 @@ typedef struct
   u32 calling_process_index;
   u8 eth_addr[6];
   int is_add, is_enable;
+  enum virthnl_adv_ops vc_op;
 
   /* below parameters are used for 'program flow' event */
   u8 *rule;
@@ -349,7 +354,8 @@ extern vlib_node_registration_t avf_input_node;
 extern vlib_node_registration_t avf_process_node;
 extern vnet_device_class_t avf_device_class;
 
-clib_error_t *avf_program_flow (u32 dev_instance, int is_add, u8 *rule,
+clib_error_t *avf_program_flow (u32 dev_instance, int is_add,
+				enum virthnl_adv_ops vc_op, u8 *rule,
 				u32 rule_len, u8 *program_status,
 				u32 status_len);
 

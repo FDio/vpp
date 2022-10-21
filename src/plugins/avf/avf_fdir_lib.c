@@ -591,7 +591,7 @@ avf_fdir_rcfg_act_mark (struct avf_fdir_conf *rcfg, const u32 mark,
 }
 
 int
-avf_fdir_rcfg_validate (struct avf_fdir_vc_ctx *ctx,
+avf_fdir_rcfg_validate (struct avf_flow_vc_ctx *ctx,
 			struct avf_fdir_conf *rcfg)
 {
   int ret;
@@ -617,7 +617,7 @@ avf_fdir_rcfg_validate (struct avf_fdir_vc_ctx *ctx,
 }
 
 int
-avf_fdir_rule_create (struct avf_fdir_vc_ctx *ctx, struct avf_fdir_conf *rcfg)
+avf_fdir_rule_create (struct avf_flow_vc_ctx *ctx, struct avf_fdir_conf *rcfg)
 {
   int ret;
   rcfg->add_fltr.vsi_id = rcfg->vsi;
@@ -644,7 +644,7 @@ avf_fdir_rule_create (struct avf_fdir_vc_ctx *ctx, struct avf_fdir_conf *rcfg)
 }
 
 int
-avf_fdir_rule_destroy (struct avf_fdir_vc_ctx *ctx, struct avf_fdir_conf *rcfg)
+avf_fdir_rule_destroy (struct avf_flow_vc_ctx *ctx, struct avf_fdir_conf *rcfg)
 {
   int ret;
   struct virtchnl_fdir_del fdir_ret;
@@ -783,6 +783,36 @@ avf_fdir_parse_action (const struct avf_flow_action actions[],
     }
 
   return ret;
+}
+
+int
+avf_fdir_parse_generic_pattern (struct avf_fdir_conf *rcfg,
+				struct avf_flow_item avf_items[],
+				struct avf_flow_error *error)
+{
+  struct avf_flow_item *item = avf_items;
+  u8 *pkt_buf, *msk_buf;
+  u16 spec_len, pkt_len;
+
+  spec_len = clib_strnlen (item->spec, VIRTCHNL_MAX_SIZE_GEN_PACKET);
+  pkt_len = spec_len / 2;
+
+  pkt_buf = clib_mem_alloc (pkt_len);
+  msk_buf = clib_mem_alloc (pkt_len);
+
+  avf_parse_generic_pattern (item, pkt_buf, msk_buf, spec_len);
+
+  clib_memcpy (rcfg->add_fltr.rule_cfg.proto_hdrs.raw.spec, pkt_buf, pkt_len);
+  clib_memcpy (rcfg->add_fltr.rule_cfg.proto_hdrs.raw.mask, msk_buf, pkt_len);
+
+  rcfg->add_fltr.rule_cfg.proto_hdrs.count = 0;
+  rcfg->add_fltr.rule_cfg.proto_hdrs.tunnel_level = 0;
+  rcfg->add_fltr.rule_cfg.proto_hdrs.raw.pkt_len = pkt_len;
+
+  clib_mem_free (pkt_buf);
+  clib_mem_free (msk_buf);
+
+  return 0;
 }
 
 int
