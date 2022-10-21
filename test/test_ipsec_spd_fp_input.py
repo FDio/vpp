@@ -118,7 +118,10 @@ class IPSec4SpdTestCaseBypass(SpdFastPathInbound):
 
         # create input rules
         # bypass rule should take precedence over discard rule,
-        # even though it's lower priority
+        # even though it's lower priority, because for input policies
+        # matching PROTECT policies precedes matching BYPASS policies
+        # which preceeds matching for DISCARD policies.
+        # Any hit stops the process.
         policy_0 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
             self.pg1,
@@ -128,10 +131,10 @@ class IPSec4SpdTestCaseBypass(SpdFastPathInbound):
             priority=10,
             policy_type="bypass",
             ip_range=True,
-            local_ip_start=self.pg0.remote_ip4,
-            local_ip_stop=self.pg0.remote_ip4,
-            remote_ip_start=self.pg1.remote_ip4,
-            remote_ip_stop=self.pg1.remote_ip4,
+            local_ip_start=self.pg1.remote_ip4,
+            local_ip_stop=self.pg1.remote_ip4,
+            remote_ip_start=self.pg0.remote_ip4,
+            remote_ip_stop=self.pg0.remote_ip4,
         )
         policy_1 = self.spd_add_rem_policy(  # inbound, priority 15
             1,
@@ -142,10 +145,10 @@ class IPSec4SpdTestCaseBypass(SpdFastPathInbound):
             priority=15,
             policy_type="discard",
             ip_range=True,
-            local_ip_start=self.pg0.remote_ip4,
-            local_ip_stop=self.pg0.remote_ip4,
-            remote_ip_start=self.pg1.remote_ip4,
-            remote_ip_stop=self.pg1.remote_ip4,
+            local_ip_start=self.pg1.remote_ip4,
+            local_ip_stop=self.pg1.remote_ip4,
+            remote_ip_start=self.pg0.remote_ip4,
+            remote_ip_stop=self.pg0.remote_ip4,
         )
 
         # create output rule so we can capture forwarded packets
@@ -204,8 +207,8 @@ class IPSec4SpdTestCaseDiscard(SpdFastPathInbound):
         # even though it's lower priority
         policy_0 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -215,8 +218,8 @@ class IPSec4SpdTestCaseDiscard(SpdFastPathInbound):
         # create output rule so we can capture forwarded packets
         policy_1 = self.spd_add_rem_policy(  # outbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=1,
             priority=10,
@@ -268,8 +271,8 @@ class IPSec4SpdTestCaseProtect(SpdFastPathInboundProtect):
             p,
             p.scapy_tra_sa,
             self.tra_if,
-            src=self.tra_if.local_ip4,
-            dst=self.tra_if.remote_ip4,
+            src=self.tra_if.remote_ip4,
+            dst=self.tra_if.local_ip4,
             count=pkt_count,
             payload_size=payload_size,
         )
@@ -326,10 +329,10 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathInbound):
             priority=10,
             policy_type="bypass",
             ip_range=True,
-            local_ip_start=s_ip_s0,
-            local_ip_stop=s_ip_e0,
-            remote_ip_start=d_ip_s0,
-            remote_ip_stop=d_ip_e0,
+            local_ip_start=d_ip_s0,
+            local_ip_stop=d_ip_e0,
+            remote_ip_start=s_ip_s0,
+            remote_ip_stop=s_ip_e0,
         )
         policy_1 = self.spd_add_rem_policy(  # outbound, priority 5
             1,
@@ -478,8 +481,8 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         self.spd_create_and_intf_add(1, [self.pg0, self.pg1])
         policy_0 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -487,8 +490,8 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         )
         policy_1 = self.spd_add_rem_policy(  # inbound, priority 5
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=5,
@@ -533,8 +536,8 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         # now remove the bypass rule
         self.spd_add_rem_policy(  # outbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -579,8 +582,8 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         self.spd_create_and_intf_add(1, [self.pg0, self.pg1])
         policy_0 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -588,8 +591,8 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         )
         policy_1 = self.spd_add_rem_policy(  # inbound, priority 5
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=5,
@@ -633,8 +636,8 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         # remove the bypass rule, leaving only the discard rule
         self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -659,8 +662,8 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         # now readd the bypass rule
         policy_0 = self.spd_add_rem_policy(  # outbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -712,8 +715,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         # add rules on all interfaces
         policy_01 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -721,8 +724,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         )
         policy_02 = self.spd_add_rem_policy(  # inbound, priority 5
             1,
-            self.pg0,
             self.pg1,
+            self.pg0,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=5,
@@ -731,8 +734,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
 
         policy_11 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg1,
             self.pg2,
+            self.pg1,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -740,8 +743,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         )
         policy_12 = self.spd_add_rem_policy(  # inbound, priority 5
             1,
-            self.pg1,
             self.pg2,
+            self.pg1,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=5,
@@ -750,8 +753,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
 
         policy_21 = self.spd_add_rem_policy(  # inbound, priority 5
             1,
-            self.pg2,
             self.pg0,
+            self.pg2,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=5,
@@ -759,8 +762,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         )
         policy_22 = self.spd_add_rem_policy(  # inbound, priority 10
             1,
-            self.pg2,
             self.pg0,
+            self.pg2,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -852,8 +855,8 @@ class IPSec6SpdTestCaseProtect(SpdFastPathIPv6InboundProtect):
             p,
             p.scapy_tra_sa,
             self.tra_if,
-            src=self.tra_if.local_ip6,
-            dst=self.tra_if.remote_ip6,
+            src=self.tra_if.remote_ip6,
+            dst=self.tra_if.local_ip6,
             count=pkt_count,
             payload_size=payload_size,
         )

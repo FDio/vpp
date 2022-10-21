@@ -153,24 +153,24 @@ ipsec4_input_spd_find_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
 }
 
 always_inline void
-ipsec_fp_in_5tuple_from_ip4_range (ipsec_fp_5tuple_t *tuple, u32 la, u32 ra,
+ipsec_fp_in_5tuple_from_ip4_range (ipsec_fp_5tuple_t *tuple, u32 sa, u32 da,
 				   u32 spi, u8 action)
 {
   clib_memset (tuple->l3_zero_pad, 0, sizeof (tuple->l3_zero_pad));
-  tuple->laddr.as_u32 = la;
-  tuple->raddr.as_u32 = ra;
+  tuple->laddr.as_u32 = da;
+  tuple->raddr.as_u32 = sa;
   tuple->spi = spi;
   tuple->action = action;
   tuple->is_ipv6 = 0;
 }
 
 always_inline void
-ipsec_fp_in_5tuple_from_ip6_range (ipsec_fp_5tuple_t *tuple, ip6_address_t *la,
-				   ip6_address_t *ra, u32 spi, u8 action)
+ipsec_fp_in_5tuple_from_ip6_range (ipsec_fp_5tuple_t *tuple, ip6_address_t *sa,
+				   ip6_address_t *da, u32 spi, u8 action)
 
 {
-  clib_memcpy (&tuple->ip6_laddr, la, sizeof (ip6_address_t));
-  clib_memcpy (&tuple->ip6_raddr, ra, sizeof (ip6_address_t));
+  clib_memcpy (&tuple->ip6_laddr, da, sizeof (ip6_address_t));
+  clib_memcpy (&tuple->ip6_raddr, sa, sizeof (ip6_address_t));
 
   tuple->spi = spi;
   tuple->action = action;
