@@ -16,6 +16,7 @@ Core Features
     ipfix_doc
     span_doc
     mtu
+    gso
     sylog_doc
     eventviewer
     stats
