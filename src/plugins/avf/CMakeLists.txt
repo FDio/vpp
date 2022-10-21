@@ -23,6 +23,7 @@ add_vpp_plugin(avf
   avf_api.c
   flow.c
   avf_fdir_lib.c
+  avf_rss_lib.c
 
   MULTIARCH_SOURCES
   input.c

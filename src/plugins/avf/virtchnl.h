@@ -97,6 +97,8 @@ enum
   _ (31, DISABLE_CHANNELS)                                                    \
   _ (32, ADD_CLOUD_FILTER)                                                    \
   _ (33, DEL_CLOUD_FILTER)                                                    \
+  _ (45, ADD_RSS_CFG)                                                         \
+  _ (46, DEL_RSS_CFG)                                                         \
   _ (47, ADD_FDIR_FILTER)                                                     \
   _ (48, DEL_FDIR_FILTER)                                                     \
   _ (49, QUERY_FDIR_FILTER)                                                   \
