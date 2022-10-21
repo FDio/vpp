@@ -123,8 +123,9 @@ always_inline uword
 hash_is_user (void *v, uword i)
 {
   hash_t *h = hash_header (v);
-  uword i0 = i / BITS (h->is_user[0]);
-  uword i1 = i % BITS (h->is_user[0]);
+  uword bits = BITS (h->is_user[0]);
+  uword i0 = i / bits;
+  uword i1 = i % bits;
   return (h->is_user[i0] & ((uword) 1 << i1)) != 0;
 }
 
