@@ -111,6 +111,30 @@
       },
       "revId": "b180f022da653492d66aa4996f01ca93d734ab36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3999287f_ebe8d1b6",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-10-21T13:56:58Z",
+      "side": 1,
+      "message": "It probably won\u0027t happen but if it does, having a error message to grep for might save a couple of minutes of a developer time, so in the choice between muting the coverity or adding a two-liner error message I would argue the latter is a more productive use of time.\n\nI changed it to use clib_panic. Thanks for the review!",
+      "parentUuid": "3c384f90_e69fd645",
+      "range": {
+        "startLine": 117,
+        "startChar": 6,
+        "endLine": 117,
+        "endChar": 55
+      },
+      "revId": "b180f022da653492d66aa4996f01ca93d734ab36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
