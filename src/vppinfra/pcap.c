@@ -137,7 +137,7 @@ pcap_write (pcap_main_t * pm)
 
   while (vec_len (pm->pcap_data) > pm->n_pcap_data_written)
     {
-      int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
+      i64 n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
 
       n = write (pm->file_descriptor,
 		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written),
