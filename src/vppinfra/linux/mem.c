@@ -629,7 +629,7 @@ clib_mem_set_numa_affinity (u8 numa_node, int force)
   bmp = clib_bitmap_set (bmp, numa_node, 1);
 
   rv = syscall (__NR_set_mempolicy, force ? MPOL_BIND : MPOL_PREFERRED, bmp,
-		vec_len (bmp) * sizeof (bmp[0] * 8) + 1);
+		vec_len (bmp) * sizeof (bmp[0]) * 8 + 1);
 
   clib_bitmap_free (bmp);
   vec_reset_length (mm->error);
