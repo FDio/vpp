@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "961b4f6d_966bf3c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-10-24T16:24:31Z",
+      "side": 1,
+      "message": "since it is docs only, no JJB here…",
+      "revId": "92ab02e8c0f31da37a3844d62f298c2cc0eeff3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
