@@ -135,6 +135,23 @@
       "message": "\u003e\u003e ethip4ipsec40tnlsw-ip4base-int-aes256gcm\n\n\u003e vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/3/ : FAILURE (skipped)\n\nThe only test with visible difference is this one. I guess the observed 1-2% regression corresponds to the edits in esp_encrypt.c file.\nIf the edits are needed, it is fine, but if they are not needed they should be removed.",
       "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c5bfc21_e5e9c6e1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 24
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-10-24T16:16:05Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "aeeec5721ae059b9ad7b170810a69a4db5c2bec6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
