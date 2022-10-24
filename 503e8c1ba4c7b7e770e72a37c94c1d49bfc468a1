@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "503e8c1ba4c7b7e770e72a37c94c1d49bfc468a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "daf0144a_1d738712",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2022-10-24T12:58:57Z",
+      "side": 1,
+      "message": "Hello! Could you please review this patch? Thanks!",
+      "revId": "503e8c1ba4c7b7e770e72a37c94c1d49bfc468a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
