@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc60601c_cb5f5d27",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-10-24T09:34:02Z",
+      "side": 1,
+      "message": "Adding a bit more detail in the comment (line 121) would be nice. Other than that I have no objection to the patch.",
+      "revId": "ffc37699380082085d59ec413578ee026d6facb5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
