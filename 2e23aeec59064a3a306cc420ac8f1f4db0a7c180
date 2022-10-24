@@ -34,6 +34,24 @@
       "parentUuid": "372add3d_f4d9aacc",
       "revId": "2e23aeec59064a3a306cc420ac8f1f4db0a7c180",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34902e18_4300fc08",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-10-24T17:30:46Z",
+      "side": 1,
+      "message": "I guess we can use `cnat_snat_interface_map_type_t table \u003d CNAT_SNAT_IF_MAP_INCLUDE_V4;` instead of `u32 table;`",
+      "parentUuid": "ee437161_5cb59913",
+      "revId": "2e23aeec59064a3a306cc420ac8f1f4db0a7c180",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
