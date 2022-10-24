@@ -19,7 +19,7 @@
 #include <vnet/plugin/plugin.h>
 #include <nsh/nsh.h>
 #include <vnet/gre/gre.h>
-#include <vnet/vxlan/vxlan.h>
+#include <vxlan/vxlan.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/adj/adj.h>
@@ -188,6 +188,7 @@ nsh_init (vlib_main_t * vm)
   nsh_main_t *nm = &nsh_main;
   clib_error_t *error = 0;
   uword next_node;
+  vlib_node_registration_t *vxlan4_input, *vxlan6_input;
 
   /* Init the main structures from VPP */
   nm->vlib_main = vm;
@@ -250,8 +251,17 @@ nsh_init (vlib_main_t * vm)
 		      nsh_aware_vnf_proxy_node.index);
 
   /* Add NSH-Proxy support */
-  vlib_node_add_next (vm, vxlan4_input_node.index, nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, vxlan6_input_node.index, nm->nsh_proxy_node_index);
+  vxlan4_input =
+    vlib_get_plugin_symbol ("vxlan_plugin.so", "vxlan4_input_node");
+  vxlan6_input =
+    vlib_get_plugin_symbol ("vxlan_plugin.so", "vxlan6_input_node");
+  if (vxlan4_input == 0 || vxlan6_input == 0)
+    {
+      error = clib_error_return (0, "vxlan_plugin.so is not loaded");
+      return error;
+    }
+  vlib_node_add_next (vm, vxlan4_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, vxlan6_input->index, nm->nsh_proxy_node_index);
 
   /* Add NSH-Classifier support */
   vlib_node_add_next (vm, ip4_classify_node.index,
