@@ -52,6 +52,24 @@
       "parentUuid": "ee437161_5cb59913",
       "revId": "2e23aeec59064a3a306cc420ac8f1f4db0a7c180",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b301e9b_dcc15b12",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2877
+      },
+      "writtenOn": "2022-10-24T17:41:06Z",
+      "side": 1,
+      "message": "Sorry I\u0027ve misread your previous comment. I see the reason now, it should be initialized to zero to avoid the indeterminate value (if the u32 is kept). I\u0027ve adjusted this in the last patch set.\nLet me know if this is fine as is or if your prefer that I go to the cnat_snat_interface_map_type_t route.",
+      "parentUuid": "34902e18_4300fc08",
+      "revId": "2e23aeec59064a3a306cc420ac8f1f4db0a7c180",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
