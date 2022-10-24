@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8073fa9d_870a44b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-10-24T15:17:16Z",
+      "side": 1,
+      "message": "Hi,\nThanks Miguel for taking the time to patch the documentation !\nCheers",
+      "revId": "7665fd67a806454abdd5b66d094c822cceeff320",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
