@@ -16,6 +16,24 @@
       "message": "since it is docs only, no JJB here…",
       "revId": "92ab02e8c0f31da37a3844d62f298c2cc0eeff3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01a3d8f4_12fc3bc6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-24T17:12:22Z",
+      "side": 1,
+      "message": "Normally that it the case, but for some reason docs in plugins source directories are triggering the normal CI jobs.  I will investigate...",
+      "parentUuid": "961b4f6d_966bf3c7",
+      "revId": "92ab02e8c0f31da37a3844d62f298c2cc0eeff3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
