@@ -626,7 +626,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	     d->device_class == PCI_CLASS_PROCESSOR_CO &&
 	     (d->device_id == 0x0443 || d->device_id == 0x18a1 ||
 	      d->device_id == 0x19e3 || d->device_id == 0x37c9 ||
-	      d->device_id == 0x6f55 || d->device_id == 0x4941))
+	      d->device_id == 0x6f55 || d->device_id == 0x18ef ||
+	      d->device_id == 0x4941))
       ;
     /* Cisco VIC */
     else if (d->vendor_id == 0x1137 &&
