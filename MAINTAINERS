@@ -283,9 +283,10 @@ F:	src/vnet/udp
 
 VNET VXLAN
 I:	vxlan
+Y:	src/plugins/vxlan/FEATURE.yaml
 M:	John Lo <lojultra2020@outlook.com>
 M:	Steven Luong <sluong@cisco.com>
-F:	src/vnet/vxlan/
+F:	src/plugins/vxlan/
 
 VNET VXLAN-GPE
 I:	vxlan-gpe

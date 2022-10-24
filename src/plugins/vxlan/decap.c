@@ -16,7 +16,7 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/vxlan/vxlan.h>
+#include <vxlan/vxlan.h>
 #include <vnet/udp/udp_local.h>
 
 #ifndef CLIB_MARCH_VARIANT
@@ -408,7 +408,7 @@ VLIB_NODE_FN (vxlan6_input_node) (vlib_main_t * vm,
 
 static char *vxlan_error_strings[] = {
 #define vxlan_error(n,s) s,
-#include <vnet/vxlan/vxlan_error.def>
+#include <vxlan/vxlan_error.def>
 #undef vxlan_error
 };
 

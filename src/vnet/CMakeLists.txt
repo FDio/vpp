@@ -297,30 +297,6 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
-# Layer 2 / vxlan
-##############################################################################
-list(APPEND VNET_SOURCES
-  vxlan/vxlan.c
-  vxlan/encap.c
-  vxlan/decap.c
-  vxlan/vxlan_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  vxlan/encap.c
-)
-
-list(APPEND VNET_HEADERS
-  vxlan/vxlan.h
-  vxlan/vxlan_packet.h
-  vxlan/vxlan_error.def
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES vxlan/decap.c)
-
-list(APPEND VNET_API_FILES vxlan/vxlan.api)
-
-##############################################################################
 # Layer 2 / Bonding
 ##############################################################################
 list(APPEND VNET_SOURCES

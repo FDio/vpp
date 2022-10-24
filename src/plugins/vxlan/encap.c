@@ -19,7 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface_output.h>
-#include <vnet/vxlan/vxlan.h>
+#include <vxlan/vxlan.h>
 #include <vnet/qos/qos_types.h>
 #include <vnet/adj/rewrite.h>
 

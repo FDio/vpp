@@ -26,7 +26,7 @@
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan/vxlan_packet.h>
+#include <vxlan/vxlan_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
@@ -152,7 +152,7 @@ typedef enum
 typedef enum
 {
 #define vxlan_error(n,s) VXLAN_ERROR_##n,
-#include <vnet/vxlan/vxlan_error.def>
+#include <vxlan/vxlan_error.def>
 #undef vxlan_error
   VXLAN_N_ERROR,
 } vxlan_input_error_t;
