@@ -8,6 +8,7 @@ features:
   - NSH Proxy
   - NSH OAM
   - NSH Metadata
+  - Requires vxlan_plugin.so to run
 
 description: "NSH for SFC"
 state: production
