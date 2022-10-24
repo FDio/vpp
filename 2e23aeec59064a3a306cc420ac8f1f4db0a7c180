@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "372add3d_f4d9aacc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-10-24T15:50:06Z",
+      "side": 1,
+      "message": "Hi Miguel,\nGood catch, the issue is probably more an initialization of `u32 table` to zero at `cnat_snat_policy.c:111`. In your patch we rely on the fact that the enum is promoted to a u32.\nCheers",
+      "revId": "2e23aeec59064a3a306cc420ac8f1f4db0a7c180",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
