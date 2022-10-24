@@ -23,7 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
-#include <vnet/vxlan/vxlan.h>
+#include <vxlan/vxlan.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/udp/udp_local.h>
