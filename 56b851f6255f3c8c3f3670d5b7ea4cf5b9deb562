@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff3a6728_0a4e6ed9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-10-24T09:27:12Z",
+      "side": 1,
+      "message": "Hi Gabriel, can you provide more detail about when and how segfault happens?\n",
+      "revId": "56b851f6255f3c8c3f3670d5b7ea4cf5b9deb562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
