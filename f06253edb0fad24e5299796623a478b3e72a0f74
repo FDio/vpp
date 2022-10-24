@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd16346a_2ce4b847",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-10-24T14:03:24Z",
+      "side": 1,
+      "message": "since the original commit went into 22.10 stable, I cherry picked this fix of a fix as well..",
+      "revId": "f06253edb0fad24e5299796623a478b3e72a0f74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
