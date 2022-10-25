@@ -104,6 +104,24 @@
       "message": "Hi Xiaoming, could you check if this solves your issue? https://gerrit.fd.io/r/c/vpp/+/37512",
       "revId": "132e401a8dff0692a2d4af99b55ba8ac779ca33b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c5f6792_1982a546",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-10-25T02:58:15Z",
+      "side": 1,
+      "message": "your patch can fix my issue. thanks!",
+      "parentUuid": "1b6147f9_755e6ab0",
+      "revId": "132e401a8dff0692a2d4af99b55ba8ac779ca33b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
