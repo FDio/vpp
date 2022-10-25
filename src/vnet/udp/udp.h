@@ -117,6 +117,11 @@ typedef enum
   N_UDP_AF,
 } udp_af_t;
 
+typedef struct udp_worker_
+{
+  u32 *pending_cleanups;
+} udp_worker_t;
+
 typedef struct
 {
   udp_dst_port_info_t *dst_port_infos[N_UDP_AF];
@@ -138,7 +143,9 @@ typedef struct
   /*
    * Per-worker thread udp connection pools used with session layer
    */
+
   udp_connection_t **connections;
+  udp_worker_t *wrk;
   udp_connection_t *listener_pool;
 
   u16 default_mtu;
@@ -183,6 +190,12 @@ always_inline udp_connection_t *
 udp_connection_from_transport (transport_connection_t * tc)
 {
   return ((udp_connection_t *) tc);
+}
+
+always_inline udp_worker_t *
+udp_worker_get (u32 thread_index)
+{
+  return vec_elt_at_index (udp_main.wrk, thread_index);
 }
 
 void udp_connection_free (udp_connection_t * uc);
