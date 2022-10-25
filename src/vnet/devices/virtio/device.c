@@ -309,8 +309,7 @@ set_checksum_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
 		      const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
-  i16 l4_hdr_offset =
-    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l2_hdr_offset;
+  i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset - b->current_data;
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
@@ -377,8 +376,7 @@ set_gso_offsets (vlib_buffer_t *b, vnet_virtio_net_hdr_v1_t *hdr,
 		 const int is_l2)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
-  i16 l4_hdr_offset =
-    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l2_hdr_offset;
+  i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset - b->current_data;
 
   if (b->flags & VNET_BUFFER_F_IS_IP4)
     {
