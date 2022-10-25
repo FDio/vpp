@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5f3072a_dd288a95",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-25T22:28:06Z",
+      "side": 1,
+      "message": "Also please consider updating copyright year to 2022.",
+      "revId": "05c3c4038524e09366c0aaa8e8dbf20ac2dbb5be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96fb4d20_42ed47ba",
+        "filename": "src/plugins/ip_session_redirect/ip_session_redirect_doc.md",
+        "patchSetId": 23
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-10-25T22:28:06Z",
+      "side": 1,
+      "message": "Please convert this document to ReStructuredText format, add a reference to the plugins index.rst [0] and add soft link to it in the same directory.\n\n[0] https://github.com/FDio/vpp/blob/master/docs/developer/plugins/index.rst",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 48
+      },
+      "revId": "05c3c4038524e09366c0aaa8e8dbf20ac2dbb5be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
