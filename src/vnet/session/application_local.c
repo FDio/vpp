@@ -363,7 +363,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
   ss = session_get (ss_index, thread_index);
   cs->session_type = ss->session_type;
   cs->listener_handle = SESSION_INVALID_HANDLE;
-  cs->session_state = SESSION_STATE_CONNECTING;
+  session_set_session_state (cs, SESSION_STATE_CONNECTING);
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;
   cct->c_s_index = cs->session_index;
@@ -379,7 +379,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
       goto connect_error;
     }
 
-  cs->session_state = SESSION_STATE_CONNECTING;
+  session_set_session_state (cs, SESSION_STATE_CONNECTING);
 
   if (app_worker_connect_notify (client_wrk, cs, 0, opaque))
     {
@@ -390,7 +390,7 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
     }
 
   cs = session_get (cct->c_s_index, cct->c_thread_index);
-  cs->session_state = SESSION_STATE_READY;
+  session_set_session_state (cs, SESSION_STATE_READY);
 
   return 0;
 
@@ -701,7 +701,7 @@ ct_accept_one (u32 thread_index, u32 ho_index)
 						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
   ss->listener_handle = listen_session_get_handle (ll);
-  ss->session_state = SESSION_STATE_CREATED;
+  session_set_session_state (ss, SESSION_STATE_CREATED);
 
   server_wrk = application_listener_select_worker (ll);
   ss->app_wrk_index = server_wrk->wrk_index;
@@ -726,7 +726,7 @@ ct_accept_one (u32 thread_index, u32 ho_index)
   cct->client_tx_fifo->refcnt++;
   cct->segment_handle = sct->segment_handle;
 
-  ss->session_state = SESSION_STATE_ACCEPTING;
+  session_set_session_state (ss, SESSION_STATE_ACCEPTING);
   if (app_worker_accept_notify (server_wrk, ss))
     {
       ct_session_connect_notify (ss, SESSION_E_REFUSED);

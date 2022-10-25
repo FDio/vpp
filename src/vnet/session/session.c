@@ -299,7 +299,7 @@ session_cleanup_half_open (session_handle_t ho_handle)
        * session should be removed. */
       if (ho->connection_index == ~0)
 	{
-	  ho->session_state = SESSION_STATE_CLOSED;
+	  session_set_session_state (ho, SESSION_STATE_CLOSED);
 	  return;
 	}
       /* Migrated transports are no longer half-opens */
@@ -386,7 +386,7 @@ session_alloc_for_connection (transport_connection_t * tc)
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
-  s->session_state = SESSION_STATE_CLOSED;
+  session_set_session_state (s, SESSION_STATE_CLOSED);
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
@@ -894,7 +894,7 @@ session_stream_connect_notify (transport_connection_t * tc,
     return app_worker_connect_notify (app_wrk, s, err, opaque);
 
   s = session_alloc_for_connection (tc);
-  s->session_state = SESSION_STATE_CONNECTING;
+  session_set_session_state (s, SESSION_STATE_CONNECTING);
   s->app_wrk_index = app_wrk->wrk_index;
   new_si = s->session_index;
   new_ti = s->thread_index;
@@ -907,7 +907,7 @@ session_stream_connect_notify (transport_connection_t * tc,
     }
 
   s = session_get (new_si, new_ti);
-  s->session_state = SESSION_STATE_READY;
+  session_set_session_state (s, SESSION_STATE_READY);
   session_lookup_add_connection (tc, session_handle (s));
 
   if (app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque))
@@ -1037,7 +1037,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
    */
   new_s = session_clone_safe (tc->s_index, old_thread_index);
   new_s->connection_index = tc->c_index;
-  new_s->session_state = SESSION_STATE_READY;
+  session_set_session_state (new_s, SESSION_STATE_READY);
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
@@ -1091,11 +1091,11 @@ session_transport_closing_notify (transport_connection_t * tc)
    * accept might be rejected */
   if (s->session_state == SESSION_STATE_ACCEPTING)
     {
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
+      session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSING);
       return;
     }
 
-  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
+  session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSING);
   app_wrk = app_worker_get (s->app_wrk_index);
   app_worker_close_notify (app_wrk, s);
 }
@@ -1136,7 +1136,7 @@ session_transport_delete_notify (transport_connection_t * tc)
        * because transport will soon be closed and closed sessions
        * are assumed to have been removed from the lookup table */
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_set_session_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       break;
@@ -1147,7 +1147,7 @@ session_transport_delete_notify (transport_connection_t * tc)
        * session is just removed because both transport and app have
        * confirmed the close*/
       session_lookup_del_session (s);
-      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_set_session_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
       session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
@@ -1191,17 +1191,15 @@ session_transport_closed_notify (transport_connection_t * tc)
     {
       session_transport_closing_notify (tc);
       svm_fifo_dequeue_drop_all (s->tx_fifo);
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+      session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSED);
     }
   /* If app close has not been received or has not yet resulted in
    * a transport close, only mark the session transport as closed */
   else if (s->session_state <= SESSION_STATE_CLOSING)
-    {
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
-    }
+    session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSED);
   /* If app also closed, switch to closed */
   else if (s->session_state == SESSION_STATE_APP_CLOSED)
-    s->session_state = SESSION_STATE_CLOSED;
+    session_set_session_state (s, SESSION_STATE_CLOSED);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
@@ -1223,10 +1221,10 @@ session_transport_reset_notify (transport_connection_t * tc)
     return;
   if (s->session_state == SESSION_STATE_ACCEPTING)
     {
-      s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
+      session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSING);
       return;
     }
-  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
+  session_set_session_state (s, SESSION_STATE_TRANSPORT_CLOSING);
   app_wrk = app_worker_get (s->app_wrk_index);
   app_worker_reset_notify (app_wrk, s);
 }
@@ -1243,12 +1241,12 @@ session_stream_accept_notify (transport_connection_t * tc)
     return -1;
   if (s->session_state != SESSION_STATE_CREATED)
     return 0;
-  s->session_state = SESSION_STATE_ACCEPTING;
+  session_set_session_state (s, SESSION_STATE_ACCEPTING);
   if (app_worker_accept_notify (app_wrk, s))
     {
       /* On transport delete, no notifications should be sent. Unless, the
        * accept is retried and successful. */
-      s->session_state = SESSION_STATE_CREATED;
+      session_set_session_state (s, SESSION_STATE_CREATED);
       return -1;
     }
   return 0;
@@ -1266,7 +1264,7 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 
   s = session_alloc_for_connection (tc);
   s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
-  s->session_state = SESSION_STATE_CREATED;
+  session_set_session_state (s, SESSION_STATE_CREATED);
 
   if ((rv = app_worker_init_accepted (s)))
     {
@@ -1310,7 +1308,7 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
     }
 
   session_lookup_add_connection (tc, session_handle (s));
-  s->session_state = SESSION_STATE_ACCEPTING;
+  session_set_session_state (s, SESSION_STATE_ACCEPTING);
 
   app_wrk = app_worker_get (s->app_wrk_index);
   if ((rv = app_worker_accept_notify (app_wrk, s)))
@@ -1348,7 +1346,7 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   app_wrk = app_worker_get (rmt->app_wrk_index);
   s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
-  s->session_state = SESSION_STATE_OPENED;
+  session_set_session_state (s, SESSION_STATE_OPENED);
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
@@ -1543,7 +1541,7 @@ session_close (session_t * s)
 
   /* App closed so stop propagating dequeue notifications */
   svm_fifo_clear_deq_ntf (s->tx_fifo);
-  s->session_state = SESSION_STATE_CLOSING;
+  session_set_session_state (s, SESSION_STATE_CLOSING);
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
 }
 
@@ -1557,7 +1555,7 @@ session_reset (session_t * s)
     return;
   /* Drop all outstanding tx data */
   svm_fifo_dequeue_drop_all (s->tx_fifo);
-  s->session_state = SESSION_STATE_CLOSING;
+  session_set_session_state (s, SESSION_STATE_CLOSING);
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
 
@@ -1592,7 +1590,7 @@ session_transport_close (session_t * s)
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
-	s->session_state = SESSION_STATE_CLOSED;
+        session_set_session_state (s, SESSION_STATE_CLOSED);
       /* If transport is already deleted, just free the session */
       else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
 	session_free_w_fifos (s);
@@ -1605,7 +1603,7 @@ session_transport_close (session_t * s)
    * delete notify. This will finally lead to the complete cleanup of the
    * session.
    */
-  s->session_state = SESSION_STATE_APP_CLOSED;
+  session_set_session_state (s, SESSION_STATE_APP_CLOSED);
 
   transport_close (session_get_transport_proto (s), s->connection_index,
 		   s->thread_index);
@@ -1620,13 +1618,13 @@ session_transport_reset (session_t * s)
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
-	s->session_state = SESSION_STATE_CLOSED;
+	session_set_session_state (s, SESSION_STATE_CLOSED);
       else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
 	session_free_w_fifos (s);
       return;
     }
 
-  s->session_state = SESSION_STATE_APP_CLOSED;
+  session_set_session_state (s, SESSION_STATE_APP_CLOSED);
   transport_reset (session_get_transport_proto (s), s->connection_index,
 		   s->thread_index);
 }
