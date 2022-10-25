@@ -132,6 +132,38 @@ udp_connection_delete (udp_connection_t * uc)
   udp_connection_cleanup (uc);
 }
 
+static void
+udp_handle_cleanups (void *args)
+{
+  u32 thread_index = (u32) pointer_to_uword (args);
+  udp_connection_t *uc;
+  udp_worker_t *wrk;
+  u32 *uc_index;
+
+  wrk = udp_worker_get (thread_index);
+  vec_foreach (uc_index, wrk->pending_cleanups)
+    {
+      uc = udp_connection_get (*uc_index, thread_index);
+      udp_connection_delete (uc);
+    }
+  vec_reset_length (wrk->pending_cleanups);
+}
+
+static void
+udp_connection_program_cleanup (udp_connection_t *uc)
+{
+  uword thread_index = uc->c_thread_index;
+  udp_worker_t *wrk;
+
+  wrk = udp_worker_get (uc->c_thread_index);
+  vec_add1 (wrk->pending_cleanups, uc->c_c_index);
+
+  if (vec_len (wrk->pending_cleanups) == 1)
+    session_send_rpc_evt_to_thread_force (
+      thread_index, udp_handle_cleanups,
+      uword_to_pointer (thread_index, void *));
+}
+
 static u8
 udp_connection_port_used_extern (u16 lcl_port, u8 is_ip4)
 {
@@ -269,7 +301,7 @@ udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
   if (PREDICT_FALSE (uc->flags & UDP_CONN_F_CLOSING))
     {
       if (!transport_max_tx_dequeue (&uc->connection))
-	udp_connection_delete (uc);
+	udp_connection_program_cleanup (uc);
     }
 
   return 0;
@@ -295,7 +327,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
     return;
 
   if (!transport_max_tx_dequeue (&uc->connection))
-    udp_connection_delete (uc);
+    udp_connection_program_cleanup (uc);
   else
     uc->flags |= UDP_CONN_F_CLOSING;
 }
@@ -517,6 +549,7 @@ udp_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + tm->n_threads;
   vec_validate (um->connections, num_threads - 1);
+  vec_validate (um->wrk, num_threads - 1);
 
   um->local_to_input_edge[UDP_IP4] =
     vlib_node_add_next (vm, udp4_local_node.index, udp4_input_node.index);
