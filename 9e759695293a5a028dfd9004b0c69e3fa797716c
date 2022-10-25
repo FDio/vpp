@@ -16,6 +16,24 @@
       "message": "wrk is not mutlthread safe, there maybe need a lock",
       "revId": "9e759695293a5a028dfd9004b0c69e3fa797716c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50e7174a_f374f9bc",
+        "filename": "src/vnet/udp/udp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-10-25T15:34:40Z",
+      "side": 1,
+      "message": "Closes come to workers that own the udp connections and they enqueue those cleanups to themselves, so they don\u0027t need to be thread safe.",
+      "parentUuid": "7f45f641_2a5488d9",
+      "revId": "9e759695293a5a028dfd9004b0c69e3fa797716c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
