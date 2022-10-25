@@ -92,14 +92,13 @@ udp_connection_share_port (u16 lcl_port, u8 is_ip4)
 udp_connection_t *
 udp_connection_alloc (u32 thread_index)
 {
-  udp_main_t *um = &udp_main;
+  udp_worker_t *wrk = udp_worker_get (thread_index);
   udp_connection_t *uc;
 
-  pool_get_aligned_safe (um->connections[thread_index], uc,
-			 CLIB_CACHE_LINE_BYTES);
+  pool_get_aligned_safe (wrk->connections, uc, CLIB_CACHE_LINE_BYTES);
 
   clib_memset (uc, 0, sizeof (*uc));
-  uc->c_c_index = uc - um->connections[thread_index];
+  uc->c_c_index = uc - wrk->connections;
   uc->c_thread_index = thread_index;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   return uc;
@@ -108,11 +107,12 @@ udp_connection_alloc (u32 thread_index)
 void
 udp_connection_free (udp_connection_t * uc)
 {
-  u32 thread_index = uc->c_thread_index;
+  udp_worker_t *wrk = udp_worker_get (uc->c_thread_index);
+
   clib_spinlock_free (&uc->rx_lock);
   if (CLIB_DEBUG)
     clib_memset (uc, 0xFA, sizeof (*uc));
-  pool_put (udp_main.connections[thread_index], uc);
+  pool_put (wrk->connections, uc);
 }
 
 static void
@@ -548,7 +548,6 @@ udp_init (vlib_main_t * vm)
    */
 
   num_threads = 1 /* main thread */  + tm->n_threads;
-  vec_validate (um->connections, num_threads - 1);
   vec_validate (um->wrk, num_threads - 1);
 
   um->local_to_input_edge[UDP_IP4] =

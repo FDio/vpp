@@ -119,6 +119,7 @@ typedef enum
 
 typedef struct udp_worker_
 {
+  udp_connection_t *connections;
   u32 *pending_cleanups;
 } udp_worker_t;
 
@@ -141,10 +142,9 @@ typedef struct
   u32 local_to_input_edge[N_UDP_AF];
 
   /*
-   * Per-worker thread udp connection pools used with session layer
+   * UDP transport layer per-thread context
    */
 
-  udp_connection_t **connections;
   udp_worker_t *wrk;
   udp_connection_t *listener_pool;
 
@@ -166,12 +166,20 @@ extern vlib_node_registration_t udp6_output_node;
 void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);
 
+always_inline udp_worker_t *
+udp_worker_get (u32 thread_index)
+{
+  return vec_elt_at_index (udp_main.wrk, thread_index);
+}
+
 always_inline udp_connection_t *
 udp_connection_get (u32 conn_index, u32 thread_index)
 {
-  if (pool_is_free_index (udp_main.connections[thread_index], conn_index))
+  udp_worker_t *wrk = udp_worker_get (thread_index);
+
+  if (pool_is_free_index (wrk->connections, conn_index))
     return 0;
-  return pool_elt_at_index (udp_main.connections[thread_index], conn_index);
+  return pool_elt_at_index (wrk->connections, conn_index);
 }
 
 always_inline udp_connection_t *
@@ -192,12 +200,6 @@ udp_connection_from_transport (transport_connection_t * tc)
   return ((udp_connection_t *) tc);
 }
 
-always_inline udp_worker_t *
-udp_worker_get (u32 thread_index)
-{
-  return vec_elt_at_index (udp_main.wrk, thread_index);
-}
-
 void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
 
@@ -210,7 +212,7 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
   new_c = udp_connection_alloc (current_thread_index);
   new_index = new_c->c_c_index;
   /* Connection pool always realloced with barrier */
-  old_c = udp_main.connections[thread_index] + connection_index;
+  old_c = udp_main.wrk[thread_index].connections + connection_index;
   clib_memcpy_fast (new_c, old_c, sizeof (*new_c));
   old_c->flags |= UDP_CONN_F_MIGRATED;
   new_c->c_thread_index = current_thread_index;
