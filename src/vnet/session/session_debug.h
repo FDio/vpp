@@ -28,6 +28,7 @@
   _ (DISPATCH_START, CLOCKS_EVT_DBG, 1, "dispatch start")                     \
   _ (DISPATCH_END, CLOCKS_EVT_DBG, 1, "dispatch end")                         \
   _ (DSP_CNTRS, CLOCKS_EVT_DBG, 1, "dispatch counters")                       \
+  _ (STATE_CHANGE, SM, 1, "session state change")                             \
   _ (FREE, SM, 1, "session free")                                             \
   _ (IO_EVT_COUNTS, COUNTS_EVT_DBG, 1, "io evt counts")                       \
   _ (COUNTS, COUNTS_EVT_DBG, 1, "ctrl evt counts")
@@ -165,6 +166,32 @@ extern session_dbg_main_t session_dbg_main;
   ed = ELOG_DATA (&vlib_global_main.elog_main, _e)
 
 #if SESSION_SM
+#define SESSION_EVT_STATE_CHANGE_HANDLER(_s)                                  \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {						      \
+      .format = "%s: idx %u",                                                 \
+      .format_args = "t4i4",                                                  \
+      .n_enum_strings = 12,					     	      \
+      .enum_strings = {                                           	      \
+		       "created",					      \
+		       "listening",					      \
+		       "connecting",					      \
+		       "accepting",					      \
+		       "ready",						      \
+		       "opened",					      \
+		       "transport closing",				      \
+		       "closing",					      \
+		       "app closed",					      \
+		       "transport closed",				      \
+		       "closed",					      \
+		       "transport deleted",				      \
+		       },						      \
+    };                                   \
+    DEC_SESSION_ETD (_s, _e, 2);                                              \
+    ed->data[0] = _s->session_state;                                          \
+    ed->data[1] = _s->session_index;                                          \
+  }
+
 #define SESSION_EVT_FREE_HANDLER(_s)                                          \
   {                                                                           \
     ELOG_TYPE_DECLARE (_e) = {                                                \
@@ -175,6 +202,7 @@ extern session_dbg_main_t session_dbg_main;
     ed->data[0] = _s->session_index;                                          \
   }
 #else
+#define SESSION_EVT_STATE_CHANGE_HANDLER(_s)
 #define SESSION_EVT_FREE_HANDLER(_s)
 #endif
 

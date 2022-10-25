@@ -486,13 +486,13 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
   /* Special handling for cut-through sessions */
   if (!session_has_transport (s))
     {
-      s->session_state = SESSION_STATE_READY;
+      session_set_session_state (s, SESSION_STATE_READY);
       ct_session_connect_notify (s, SESSION_E_NONE);
       return;
     }
 
   old_state = s->session_state;
-  s->session_state = SESSION_STATE_READY;
+  session_set_session_state (s, SESSION_STATE_READY);
 
   if (!svm_fifo_is_empty_prod (s->rx_fifo))
     app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
@@ -501,7 +501,7 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
   if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
     {
       app_worker_close_notify (app_wrk, s);
-      s->session_state = old_state;
+      session_set_session_state (s, old_state);
       return;
     }
 }
