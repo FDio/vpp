@@ -527,6 +527,13 @@ int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 
+always_inline void
+session_set_state (session_t *s, session_state_t session_state)
+{
+  s->session_state = session_state;
+  SESSION_EVT (SESSION_EVT_STATE_CHANGE, s);
+}
+
 always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
