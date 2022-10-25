@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86625597_3fc2f380",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2022-10-25T02:09:05Z",
+      "side": 1,
+      "message": "csit-3n-icx-perftest nic_intel-xxv710AND64bAND1cANDwireguardANDndrpdrANDdrv_vfio_pci",
+      "revId": "43d4a93ed038074d6323a16a2f53dce9102189fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
