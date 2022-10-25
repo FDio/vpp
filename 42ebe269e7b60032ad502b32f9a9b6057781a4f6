@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8fb0607_d7125d66",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-10-25T12:52:57Z",
+      "side": 1,
+      "message": "This has fixed the checksum offload issue for me. Although I am not familiar enough with the offsets to be certain that such change is correct. What do you think?\n\nFor now, I\u0027ll continue looking into it, to understand why the offset was calculated the way it was.",
+      "revId": "42ebe269e7b60032ad502b32f9a9b6057781a4f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
