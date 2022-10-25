@@ -28,6 +28,17 @@
   _ (DISPATCH_START, CLOCKS_EVT_DBG, 1, "dispatch start")                     \
   _ (DISPATCH_END, CLOCKS_EVT_DBG, 1, "dispatch end")                         \
   _ (DSP_CNTRS, CLOCKS_EVT_DBG, 1, "dispatch counters")                       \
+  _ (CONNECTING, SM, 1, "session connecting")                                 \
+  _ (READY, SM, 1, "session ready")                                           \
+  _ (CREATED, SM, 1, "session created")                                       \
+  _ (ACCEPTING, SM, 1, "session accepting")                                   \
+  _ (OPENED, SM, 1, "session opened")                                         \
+  _ (TRANSPORT_CLOSING, SM, 1, "session transport closing")                   \
+  _ (TRANSPORT_CLOSED, SM, 1, "session transport closed")                     \
+  _ (CLOSING, SM, 1, "session closing")                                       \
+  _ (APP_CLOSED, SM, 1, "session app closed")                                 \
+  _ (CLOSED, SM, 1, "session closed")                                         \
+  _ (TRANSPORT_DELETED, SM, 1, "session transport deleted")                   \
   _ (FREE, SM, 1, "session free")                                             \
   _ (IO_EVT_COUNTS, COUNTS_EVT_DBG, 1, "io evt counts")                       \
   _ (COUNTS, COUNTS_EVT_DBG, 1, "ctrl evt counts")
@@ -165,6 +176,105 @@ extern session_dbg_main_t session_dbg_main;
   ed = ELOG_DATA (&vlib_global_main.elog_main, _e)
 
 #if SESSION_SM
+#define SESSION_EVT_CONNECTING_HANDLER(_s)                                    \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "connecting: idx %u",                                         \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_READY_HANDLER(_s)                                         \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "ready: idx %u",                                              \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_CREATED_HANDLER(_s)                                       \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "created: idx %u",                                            \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_ACCEPTING_HANDLER(_s)                                     \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "accepting: idx %u",                                          \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_OPENED_HANDLER(_s)                                        \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "opened: idx %u",                                             \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_TRANSPORT_CLOSING_HANDLER(_s)                             \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "transport closing: idx %u",                                  \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_TRANSPORT_CLOSED_HANDLER(_s)                              \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "transport closed: idx %u",                                   \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_CLOSING_HANDLER(_s)                                       \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "closing: idx %u",                                            \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_APP_CLOSED_HANDLER(_s)                                    \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "app closed: idx %u",                                         \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_CLOSED_HANDLER(_s)                                        \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "closed: idx %u",                                             \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
+#define SESSION_EVT_TRANSPORT_DELETED_HANDLER(_s)                             \
+  {                                                                           \
+    ELOG_TYPE_DECLARE (_e) = {                                                \
+      .format = "transport deleted: idx %u",                                  \
+      .format_args = "i4",                                                    \
+    };                                                                        \
+    DEC_SESSION_ETD (_s, _e, 1);                                              \
+    ed->data[0] = _s->session_index;                                          \
+  }
 #define SESSION_EVT_FREE_HANDLER(_s)                                          \
   {                                                                           \
     ELOG_TYPE_DECLARE (_e) = {                                                \
@@ -175,6 +285,17 @@ extern session_dbg_main_t session_dbg_main;
     ed->data[0] = _s->session_index;                                          \
   }
 #else
+#define SESSION_EVT_CONNECTING_HANDLER(_s)
+#define SESSION_EVT_READY_HANDLER(_s)
+#define SESSION_EVT_CREATED_HANDLER(_s)
+#define SESSION_EVT_ACCEPTING_HANDLER(_s)
+#define SESSION_EVT_OPENED_HANDLER(_s)
+#define SESSION_EVT_TRANSPORT_CLOSING_HANDLER(_s)
+#define SESSION_EVT_TRANSPORT_CLOSED_HANDLER(_s)
+#define SESSION_EVT_CLOSING_HANDLER(_s)
+#define SESSION_EVT_APP_CLOSED_HANDLER(_s)
+#define SESSION_EVT_CLOSED_HANDLER(_s)
+#define SESSION_EVT_TRANSPORT_DELETED_HANDLER(_s)
 #define SESSION_EVT_FREE_HANDLER(_s)
 #endif
 

@@ -484,6 +484,7 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
     }
 
   /* Special handling for cut-through sessions */
+  SESSION_EVT (SESSION_EVT_READY, s);
   if (!session_has_transport (s))
     {
       s->session_state = SESSION_STATE_READY;
