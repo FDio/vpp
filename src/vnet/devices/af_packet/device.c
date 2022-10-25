@@ -291,8 +291,7 @@ static_always_inline void
 fill_gso_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
-  i16 l4_hdr_offset =
-    vnet_buffer (b0)->l4_hdr_offset - vnet_buffer (b0)->l2_hdr_offset;
+  i16 l4_hdr_offset = vnet_buffer (b0)->l4_hdr_offset - b0->current_data;
   if (b0->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
@@ -329,8 +328,7 @@ static_always_inline void
 fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b0)->oflags;
-  i16 l4_hdr_offset =
-    vnet_buffer (b0)->l4_hdr_offset - vnet_buffer (b0)->l2_hdr_offset;
+  i16 l4_hdr_offset = vnet_buffer (b0)->l4_hdr_offset - b0->current_data;
   if (b0->flags & VNET_BUFFER_F_IS_IP4)
     {
       ip4_header_t *ip4;
