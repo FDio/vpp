@@ -555,6 +555,26 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* wg-output-process-ops */
       wg_output_process_ops (vm, node, ptd->crypto_ops, sync_bufs, nexts,
 			     drop_next);
+
+      int bogus = 0;
+      int n_left_from_sync_bufs = n_sync;
+      while (n_left_from_sync_bufs > 0)
+	{
+	  n_left_from_sync_bufs--;
+	  vlib_buffer_t *b0 = sync_bufs[n_left_from_sync_bufs];
+	  u8 ip_ver_out = (*((u8 *) vlib_buffer_get_current (b0)) >> 4);
+
+	  /* IPv6 UDP checksum is mandatory */
+	  if (ip_ver_out == 6)
+	    {
+	      ip6_header_t *ip6_0 =
+		(ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0));
+	      udp_header_t *udp0 = ip6_next_header (ip6_0);
+	      udp0->checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0, &bogus);
+	    }
+	}
+
       vlib_buffer_enqueue_to_next (vm, node, sync_bi, nexts, n_sync);
     }
   if (n_async)
@@ -602,6 +622,7 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
+  int bogus = 0;
 
   index_t peeri = ~0;
 
@@ -626,6 +647,21 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
       next[1] = (wg_post_data (b[1]))->next_index;
       next[2] = (wg_post_data (b[2]))->next_index;
       next[3] = (wg_post_data (b[3]))->next_index;
+
+      int i;
+      for (i = 0; i < 4; i++)
+	{
+	  u8 ip_ver_out = (*((u8 *) vlib_buffer_get_current (b[i])) >> 4);
+	  /* IPv6 UDP checksum is mandatory */
+	  if (ip_ver_out == 6)
+	    {
+	      ip6_header_t *ip6_0 =
+		(ip6_header_t *) ((u8 *) vlib_buffer_get_current (b[i]));
+	      udp_header_t *udp0 = ip6_next_header (ip6_0);
+	      udp0->checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b[i], ip6_0, &bogus);
+	    }
+	}
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
@@ -671,6 +707,18 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left > 0)
     {
+
+      u8 ip_ver_out = (*((u8 *) vlib_buffer_get_current (b[0])) >> 4);
+      /* IPv6 UDP checksum is mandatory */
+      if (ip_ver_out == 6)
+	{
+	  ip6_header_t *ip6_0 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b[0]));
+	  udp_header_t *udp0 = ip6_next_header (ip6_0);
+	  udp0->checksum =
+	    ip6_tcp_udp_icmp_compute_checksum (vm, b[0], ip6_0, &bogus);
+	}
+
       next[0] = (wg_post_data (b[0]))->next_index;
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
