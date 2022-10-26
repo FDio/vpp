@@ -23,6 +23,5 @@ RUN     chmod +x /root/init_docker1.sh
 RUN     chmod +x /root/init_docker2.sh
 RUN     chmod +x /root/init.sh
 RUN     chmod +x /root/run_vpp.sh
-COPY    / /root/vpp_sswan
 
 RUN     ./init.sh
