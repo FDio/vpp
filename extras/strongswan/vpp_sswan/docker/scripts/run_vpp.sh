@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd /root/vpp/
-make run-release STARTUP_CONF=/root/vpp_sswan/docker/configs/startup.conf &
+make run-release STARTUP_CONF=/root/vpp/extras/strongswan/vpp_sswan/docker/configs/startup.conf &
 
 sleep 5
 
