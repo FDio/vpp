@@ -241,7 +241,7 @@ dpdk_lib_init (dpdk_main_t * dm)
     }
 
   if_num_fmt =
-    dm->conf->interface_name_format_decimal ? "%d/%d/%d" : "%x/%x/%x";
+    dm->conf->interface_name_format_decimal ? "%d/%d/%d/%d" : "%x/%x/%x/%x";
 
   /* device config defaults */
   dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
@@ -351,8 +351,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if (dr && dr->interface_number_from_port_id)
 	    xd->name = format (xd->name, "%u", port_id);
 	  else if ((pci_dev = dpdk_get_pci_device (&di)))
-	    xd->name = format (xd->name, if_num_fmt, pci_dev->addr.bus,
-			       pci_dev->addr.devid, pci_dev->addr.function);
+	    xd->name = format (xd->name, if_num_fmt, pci_dev->addr.domain,
+			       pci_dev->addr.bus, pci_dev->addr.devid,
+			       pci_dev->addr.function);
 	  else
 	    xd->name = format (xd->name, "%u", port_id);
 	}
