@@ -90,11 +90,31 @@ clb_format_srv6_t_m_gtp4_dt (u8 * s, va_list * args)
   return s;
 }
 
+void
+alloc_param_srv6_t_m_gtp4_dt (void **plugin_mem_p, const u32 fib_index,
+			      const u32 local_fib_index, const u8 type)
+{
+  srv6_t_gtp4_dt_param_t *ls_mem;
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->fib4_index = fib_table_find (FIB_PROTOCOL_IP4, fib_index);
+  ls_mem->fib6_index = fib_table_find (FIB_PROTOCOL_IP6, fib_index);
+
+  if (type == SRV6_GTP4_DT6 || type == SRV6_GTP4_DT46)
+    {
+      ls_mem->local_fib_index =
+	fib_table_find (FIB_PROTOCOL_IP6, local_fib_index);
+    }
+
+  ls_mem->type = type;
+}
+
 static uword
 clb_unformat_srv6_t_m_gtp4_dt (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_t_gtp4_dt_param_t *ls_mem;
   u32 fib_index = 0;
   u32 local_fib_index = 0;
   u32 type;
@@ -118,20 +138,8 @@ clb_unformat_srv6_t_m_gtp4_dt (unformat_input_t * input, va_list * args)
       return 0;
     }
 
-  ls_mem = clib_mem_alloc (sizeof *ls_mem);
-  clib_memset (ls_mem, 0, sizeof *ls_mem);
-  *plugin_mem_p = ls_mem;
-
-  ls_mem->fib4_index = fib_table_find (FIB_PROTOCOL_IP4, fib_index);
-  ls_mem->fib6_index = fib_table_find (FIB_PROTOCOL_IP6, fib_index);
-
-  if (type == SRV6_GTP4_DT6 || type == SRV6_GTP4_DT46)
-    {
-      ls_mem->local_fib_index =
-	fib_table_find (FIB_PROTOCOL_IP6, local_fib_index);
-    }
-
-  ls_mem->type = type;
+  alloc_param_srv6_t_m_gtp4_dt (plugin_mem_p, fib_index, local_fib_index,
+				type);
 
   return 1;
 }
