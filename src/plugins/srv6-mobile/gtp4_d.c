@@ -105,11 +105,33 @@ clb_format_srv6_t_m_gtp4_d (u8 * s, va_list * args)
   return s;
 }
 
+void
+alloc_param_srv6_t_m_gtp4_d (void **plugin_mem_p, const void *v6src_prefix,
+			     const u32 v6src_prefixlen, const void *sr_prefix,
+			     const u32 sr_prefixlen, const u32 fib_index,
+			     const u8 nhtype, const bool drop_in)
+{
+  srv6_end_gtp4_d_param_t *ls_mem;
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->v6src_prefixlen = v6src_prefixlen;
+  memcpy (&ls_mem->v6src_prefix, v6src_prefix, sizeof (ip6_address_t));
+  ls_mem->sr_prefixlen = sr_prefixlen;
+  memcpy (&ls_mem->sr_prefix, sr_prefix, sizeof (ip6_address_t));
+
+  ls_mem->nhtype = nhtype;
+  ls_mem->drop_in = drop_in;
+  ls_mem->fib_table = fib_index;
+  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_index);
+  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_index);
+}
+
 static uword
 clb_unformat_srv6_t_m_gtp4_d (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp4_d_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u32 sr_prefixlen;
   ip6_address_t v6src_prefix;
@@ -172,23 +194,9 @@ clb_unformat_srv6_t_m_gtp4_d (unformat_input_t * input, va_list * args)
       return 0;
     }
 
-  ls_mem = clib_mem_alloc (sizeof *ls_mem);
-  clib_memset (ls_mem, 0, sizeof *ls_mem);
-  *plugin_mem_p = ls_mem;
-
-  ls_mem->sr_prefix = sr_prefix;
-  ls_mem->sr_prefixlen = sr_prefixlen;
-
-  ls_mem->v6src_prefix = v6src_prefix;
-  ls_mem->v6src_prefixlen = v6src_prefixlen;
-
-  ls_mem->nhtype = nhtype;
-
-  ls_mem->drop_in = drop_in;
-
-  ls_mem->fib_table = fib_table;
-  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_table);
-  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_table);
+  alloc_param_srv6_t_m_gtp4_d (plugin_mem_p, &v6src_prefix, v6src_prefixlen,
+			       &sr_prefix, sr_prefixlen, fib_table, nhtype,
+			       drop_in);
 
   return 1;
 }
