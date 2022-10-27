@@ -80,11 +80,26 @@ clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
   return s;
 }
 
+void
+alloc_param_srv6_end_m_gtp4_e (void **plugin_mem_p, const void *v4src_addr,
+			       const u32 v4src_position, const u32 fib_table)
+{
+  srv6_end_gtp4_e_param_t *ls_mem;
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+  ls_mem->v4src_position = v4src_position;
+  memcpy (&ls_mem->v4src_addr, v4src_addr, sizeof (ip4_address_t));
+
+  ls_mem->fib_table = fib_table;
+  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_table);
+  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_table);
+}
+
 static uword
 clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp4_e_param_t *ls_mem;
   ip4_address_t v4src_addr;
   u32 v4src_position = 0;
   u32 fib_table;
@@ -113,16 +128,8 @@ clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
   if (!config)
     return 0;
 
-  ls_mem = clib_mem_alloc (sizeof *ls_mem);
-  clib_memset (ls_mem, 0, sizeof *ls_mem);
-  *plugin_mem_p = ls_mem;
-
-  ls_mem->v4src_position = v4src_position;
-  memcpy (&ls_mem->v4src_addr, &v4src_addr, sizeof (ip4_address_t));
-
-  ls_mem->fib_table = fib_table;
-  ls_mem->fib4_index = ip4_fib_index_from_table_id (fib_table);
-  ls_mem->fib6_index = ip6_fib_index_from_table_id (fib_table);
+  alloc_param_srv6_end_m_gtp4_e (plugin_mem_p, &v4src_addr, v4src_position,
+				 fib_table);
 
   return 1;
 }
