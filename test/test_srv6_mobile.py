@@ -3,6 +3,14 @@
 from framework import VppTestCase
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
+
+from vpp_srv6_mobile import (
+    SRv6MobileNhtype,
+    VppSRv6MobilePolicy,
+    VppSRv6MobileLocalSID,
+)
+
 from scapy.contrib.gtp import *
 from scapy.all import *
 
@@ -68,10 +76,19 @@ class TestSRv6EndMGTP4E(VppTestCase):
         """test_srv6_mobile"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli(
-            "sr localsid address {} behavior end.m.gtp4.e ".format(pkts[0]["IPv6"].dst)
-            + "v4src_position 64 fib-table 0"
+        # "sr localsid address {} behavior end.m.gtp4.e v4src_position 64 fib-table 0"
+        # ".format(pkts[0]["IPv6"].dst)
+        localsid = VppSRv6MobileLocalSID(
+            self,
+            # address params case is length 0
+            localsid_prefix="{}/{}".format(pkts[0]["IPv6"].dst, 0),
+            behavior="end.m.gtp4.e",
+            v4src_position=64,
+            fib_table=0,
         )
+        localsid.add_vpp_config()
+
+        # log the localsids
         self.logger.info(self.vapi.cli("show sr localsid"))
 
         self.vapi.cli("clear errors")
@@ -152,13 +169,28 @@ class TestSRv6TMGTP4D(VppTestCase):
 
         self.vapi.cli("set sr encaps source addr A1::1")
         self.vapi.cli("sr policy add bsid D4:: next D2:: next D3::")
-        self.vapi.cli(
-            "sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 "
-            + "v6src_prefix C1::/64 nhtype ipv6 fib-table 0 drop-in"
-        )
-        self.vapi.cli("sr steer l3 {}/32 via bsid D5::".format(self.ip4_dst))
-        self.vapi.cli("ip route add D2::/32 via {}".format(self.ip6_dst))
 
+        # sr policy add bsid D5:: behavior t.m.gtp4.d D4::/32 v6src_prefix C1::/64 nhtype ipv6 fib-table 0 drop-in
+        policy = VppSRv6MobilePolicy(
+            self,
+            bsid_addr="D5::",
+            behavior="t.m.gtp4.d",
+            sr_prefix="{}/{}".format("D4::", 32),
+            v6src_prefix="{}/{}".format("C1::", 64),
+            nhtype=SRv6MobileNhtype.SRV6_NHTYPE_API_IPV6,
+            fib_table=0,
+            drop_in=1,
+        )
+        policy.add_vpp_config()
+
+        self.vapi.cli("sr steer l3 {}/32 via bsid D5::".format(self.ip4_dst))
+
+        # "ip route add D2::/32 via {}".format(self.ip6_dst)
+        route = VppIpRoute(
+            self, "D2::", 32, [VppRoutePath(self.ip6_dst, self.pg1.sw_if_index)]
+        )
+        route.add_vpp_config()
+        self.logger.info(self.vapi.cli("show ip6 fib"))
         self.logger.info(self.vapi.cli("show sr steer"))
         self.logger.info(self.vapi.cli("show sr policies"))
 
@@ -241,12 +273,21 @@ class TestSRv6EndMGTP6E(VppTestCase):
         """test_srv6_mobile"""
         pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
 
-        self.vapi.cli(
-            "sr localsid prefix {}/64 behavior end.m.gtp6.e fib-table 0".format(
-                pkts[0]["IPv6"].dst
-            )
+        # "sr localsid prefix {}/64 behavior end.m.gtp6.e fib-table 0"
+        # .format(pkts[0]["IPv6"].dst)
+        localsid = VppSRv6MobileLocalSID(
+            self,
+            localsid_prefix="{}/{}".format(pkts[0]["IPv6"].dst, 64),
+            behavior="end.m.gtp6.e",
+            fib_table=0,
         )
-        self.vapi.cli("ip route add a1::/64 via {}".format(self.ip6_nhop))
+        localsid.add_vpp_config()
+
+        # "ip route add a1::/64 via {}".format(self.ip6_nhop)
+        route = VppIpRoute(
+            self, "a1::", 64, [VppRoutePath(self.ip6_nhop, self.pg1.sw_if_index)]
+        )
+        route.add_vpp_config()
         self.logger.info(self.vapi.cli("show sr localsid"))
 
         self.vapi.cli("clear errors")
@@ -324,12 +365,25 @@ class TestSRv6EndMGTP6D(VppTestCase):
 
         self.vapi.cli("set sr encaps source addr A1::1")
         self.vapi.cli("sr policy add bsid D4:: next D2:: next D3::")
-        self.vapi.cli(
-            "sr localsid prefix 2001::/64 behavior end.m.gtp6.d "
-            + "D4::/64 fib-table 0 drop-in"
-        )
-        self.vapi.cli("ip route add D2::/64 via {}".format(self.ip6_nhop))
 
+        # "sr localsid prefix 2001::/64 behavior end.m.gtp6.d 4::/64 fib-table 0 drop-in"
+        # .format(self.ip6_nhop)
+        localsid = VppSRv6MobileLocalSID(
+            self,
+            localsid_prefix="{}/{}".format("2001::", 64),
+            behavior="end.m.gtp6.d",
+            fib_table=0,
+            drop_in=1,
+            sr_prefix="{}/{}".format("D4::", 64),
+        )
+        localsid.add_vpp_config()
+
+        # "ip route add D2::/64 via {}"
+        # .format(self.ip6_nhop))
+        route = VppIpRoute(
+            self, "D2::", 64, [VppRoutePath(self.ip6_nhop, self.pg1.sw_if_index)]
+        )
+        route.add_vpp_config()
         self.logger.info(self.vapi.cli("show sr policies"))
         self.logger.info(self.vapi.cli("show sr localsid"))
 
