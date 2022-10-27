@@ -20,6 +20,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <srv6-mobile/mobile.h>
+#include <srv6-mobile/sr_mobile_api.h>
 
 srv6_end_main_v6_decap_di_t srv6_end_main_v6_decap_di;
 
@@ -91,11 +92,24 @@ clb_format_srv6_end_m_gtp6_d_di (u8 * s, va_list * args)
   return s;
 }
 
+void
+alloc_param_srv6_end_m_gtp6_di (void **plugin_mem_p, const void *sr_prefix,
+				const u32 sr_prefixlen, const u8 nhtype)
+{
+  srv6_end_gtp6_d_param_t *ls_mem;
+  ls_mem = clib_mem_alloc (sizeof *ls_mem);
+  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  *plugin_mem_p = ls_mem;
+
+  ls_mem->sr_prefixlen = sr_prefixlen;
+  memcpy (&ls_mem->sr_prefix, sr_prefix, sizeof (ip6_address_t));
+  ls_mem->nhtype = nhtype;
+}
+
 static uword
 clb_unformat_srv6_end_m_gtp6_d_di (unformat_input_t * input, va_list * args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
-  srv6_end_gtp6_d_param_t *ls_mem;
   ip6_address_t sr_prefix;
   u32 sr_prefixlen = 0;
   u8 nhtype;
@@ -125,13 +139,8 @@ clb_unformat_srv6_end_m_gtp6_d_di (unformat_input_t * input, va_list * args)
       return 0;
     }
 
-  ls_mem = clib_mem_alloc (sizeof *ls_mem);
-  clib_memset (ls_mem, 0, sizeof *ls_mem);
-  *plugin_mem_p = ls_mem;
-
-  ls_mem->sr_prefix = sr_prefix;
-  ls_mem->sr_prefixlen = sr_prefixlen;
-  ls_mem->nhtype = nhtype;
+  alloc_param_srv6_end_m_gtp6_di (plugin_mem_p, &sr_prefix, sr_prefixlen,
+				  nhtype);
 
   return 1;
 }
