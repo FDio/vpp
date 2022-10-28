@@ -535,6 +535,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
+  u8 add_del = 1; // 0-delete; 1-add/update
   u32 del_index = INDEX_INVALID;
   ip_protocol_t proto = IP_PROTOCOL_TCP;
   cnat_endpoint_t vip;
@@ -553,7 +554,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
       if (unformat (line_input, "add"))
 	del_index = INDEX_INVALID;
       else if (unformat (line_input, "del %d", &del_index))
-	;
+	add_del = 0;
       else
 	if (unformat (line_input, "proto %U", unformat_ip_protocol, &proto))
 	;
@@ -576,11 +577,19 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	}
     }
 
-  if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags, lb_type);
+  if (add_del)
+    {
+      cnat_translation_update (&vip, proto, paths, flags, lb_type);
+    }
   else
-    cnat_translation_delete (del_index);
-
+    {
+      if (INDEX_INVALID == del_index)
+	{
+	  e = clib_error_return (0, "invalid del index '%d'", del_index);
+	  goto done;
+	}
+      cnat_translation_delete (del_index);
+    }
 done:
   vec_free (paths);
   unformat_free (line_input);
