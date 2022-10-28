@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2cdd31a_c9e55d33",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2877
+      },
+      "writtenOn": "2022-10-28T10:47:30Z",
+      "side": 1,
+      "message": "Hey nathan,\nSorry to bother again :)\nAnother issue I\u0027ve found while playing with the cnat plugin. This time while trying to delete translation rules\nCheers",
+      "revId": "9434407300944b9433eea6434183c4b73b379f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
