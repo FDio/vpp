@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d265534a_8d446f61",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2457
+      },
+      "writtenOn": "2022-10-28T03:09:58Z",
+      "side": 1,
+      "message": "CSIT resources/templates/vm/vppl2xc_2vhostvr1024.exec\n\nset interface state GigabitEthernet0/6/0 up\nset interface state GigabitEthernet0/7/0 up\n\nCSIT VPP device testing VM cases have hard code interface name as above, so the device tests failed.",
+      "revId": "8e190e04d0a4c1789f6acf520b84685caaab4887",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
