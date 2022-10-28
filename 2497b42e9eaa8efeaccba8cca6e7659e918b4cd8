@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8b2cae5e_b3745a49",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-10-28T08:44:15Z",
+      "side": 1,
+      "message": "Hi Miguel\nThanks for the update, I think we\u0027re fine with just setting it to 0 as you did.\nCheers",
+      "revId": "2497b42e9eaa8efeaccba8cca6e7659e918b4cd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
