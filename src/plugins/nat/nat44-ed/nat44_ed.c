@@ -286,8 +286,10 @@ nat44_ed_resolve_nat_addr_len (snat_address_t *ap,
 	{
 	  ap->addr_len = ia->address_length;
 	  ap->sw_if_index = i->sw_if_index;
-	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-			   << (32 - ap->addr_len);
+	  u32 host_order =
+	    (clib_host_to_net_u32 (ap->addr.as_u32) >> (32 - ap->addr_len))
+	    << (32 - ap->addr_len);
+	  ap->net.as_u32 = clib_host_to_net_u32 (host_order);
 
 	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
 			 format_ip4_address, &ap->addr, ap->sw_if_index,
@@ -334,8 +336,10 @@ nat44_ed_bind_if_addr_to_nat_addr (u32 sw_if_index)
 	{
 	  ap->addr_len = ia->address_length;
 	  ap->sw_if_index = sw_if_index;
-	  ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-			   << (32 - ap->addr_len);
+	  u32 host_order =
+	    (clib_host_to_net_u32 (ap->addr.as_u32) >> (32 - ap->addr_len))
+	    << (32 - ap->addr_len);
+	  ap->net.as_u32 = clib_host_to_net_u32 (host_order);
 
 	  nat_log_debug ("pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
 			 format_ip4_address, &ap->addr, ap->sw_if_index,
@@ -3434,8 +3438,11 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 		    {
 		      ap->addr_len = address_length;
 		      ap->sw_if_index = sw_if_index;
-		      ap->net.as_u32 = (ap->addr.as_u32 >> (32 - ap->addr_len))
-				       << (32 - ap->addr_len);
+		      u32 host_order =
+		        (clib_host_to_net_u32 (ap->addr.as_u32) >>
+		         (32 - ap->addr_len))
+		        << (32 - ap->addr_len);
+		      ap->net.as_u32 = clib_host_to_net_u32 (host_order);
 
 		      nat_log_debug (
 			"pool addr %U binds to -> sw_if_idx: %u net: %U/%u",
