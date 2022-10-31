@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9ab66a2_f5202614",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-10-31T13:21:05Z",
+      "side": 1,
+      "message": "Use ip4_main.fib_masks table as match address logic does.",
+      "revId": "b9e2426b1d4c46ffba422884784d1f54a3007eff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4073fb88_03f92945",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-10-31T13:21:05Z",
+      "side": 1,
+      "message": "I would suggest using the same logic as on the address matching side of this logic. What I mean is using the fib_masks table:\n\nap-\u003enet.as_u32 \u003d ap-\u003eaddr.as_u32 \u0026 ip4_main.fib_masks[ap-\u003eaddr_len];",
+      "revId": "b9e2426b1d4c46ffba422884784d1f54a3007eff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
