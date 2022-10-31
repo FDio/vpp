@@ -51,6 +51,24 @@
       "parentUuid": "4073fb88_03f92945",
       "revId": "b9e2426b1d4c46ffba422884784d1f54a3007eff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d28c1fd_5e1b6b53",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-10-31T14:33:29Z",
+      "side": 1,
+      "message": "Ok, I got it, it\u0027s indeed the better fix, thanks for your suggestion. I just tested and verified the latest fix, it works very well.",
+      "parentUuid": "411fc860_54381636",
+      "revId": "b9e2426b1d4c46ffba422884784d1f54a3007eff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
