@@ -480,13 +480,6 @@ u32 nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 u32 nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 				      u32 rx_fib_index, u8 is_output);
 
-/* Return worker thread index for given packet */
-/* NAT address and port allocation function */
-typedef int (nat_alloc_out_addr_and_port_function_t) (
-  snat_address_t *addresses, u32 fib_index, u32 thread_index,
-  ip_protocol_t proto, ip4_address_t *addr, u16 *port, u16 port_per_thread,
-  u32 snat_thread_index);
-
 typedef struct nat_fib_s
 {
   u32 fib_index;
