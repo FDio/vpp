@@ -979,6 +979,8 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	.tx_ring_sz = 256,
 	.host_if_name = host_if_name,
 	.host_namespace = 0,
+	.rv = 0,
+	.error = NULL,
       };
       ethernet_interface_t *ei;
       u32 host_sw_mtu_size;
@@ -1017,6 +1019,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 	{
 	  LCP_ITF_PAIR_ERR ("pair_create: could not create tap, retval:%d",
 			    args.rv);
+	  clib_error_free (args.error);
 	  return args.rv;
 	}
 
