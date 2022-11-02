@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33c89145_f04777f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "Many thanks Julian. Overall looks good. I left you few comments below.  ",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c564efe_ef71a6c7",
+        "filename": "src/vnet/srv6/sr_pt.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "does not need to be packed. Leave it as it was before \n sr_pt_iface_t;",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dd520e5_e6a766d5",
+        "filename": "src/vnet/srv6/sr_pt.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "Please use __clib_packed instead of __attribute__ ((packed))\n\n} __clib_packed sr_pt_cmd_t;",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0fe1129_080d1c20",
+        "filename": "src/vnet/srv6/sr_pt.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "use  __clib_packed \n\n} __clib_packed ip6_hop_by_hop_option_pt_t;",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bb5589b4_5fa8df96",
+        "filename": "src/vnet/srv6/sr_pt.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "These two lines are not need anymore. Please remove.",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29e5c3e5_6c2a0593",
+        "filename": "src/vnet/srv6/sr_pt_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2022-11-02T10:44:15Z",
+      "side": 1,
+      "message": "please use SPD-X license header. Here below\n\n/* SPDX-License-Identifier: Apache-2.0\n * Copyright(c) 2022 Cisco Systems, Inc.\n */",
+      "revId": "4acf14ce65e882ad8dc6be2cb641ef3ece4e0b8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
