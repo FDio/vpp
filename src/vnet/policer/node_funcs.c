@@ -24,7 +24,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_input.h>
-
+#include <vnet/l2/l2_output.h>
 
 /* Dispatch functions meant to be instantiated elsewhere */
 
@@ -395,10 +395,9 @@ static char *policer_classify_error_strings[] = {
 };
 
 static inline uword
-policer_classify_inline (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * frame,
-			 policer_classify_table_id_t tid)
+policer_classify_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *frame, policer_classify_table_id_t tid,
+			 u32 is_output)
 {
   u32 n_left_from, *from, *to_next;
   policer_classify_next_index_t next_index;
@@ -410,6 +409,7 @@ policer_classify_inline (vlib_main_t * vm,
   u32 chain_hits = 0;
   u32 n_next_nodes;
   u64 time_in_policer_periods;
+  vlib_rx_or_tx_t way = (is_output) ? VLIB_TX : VLIB_RX;
 
   time_in_policer_periods =
     clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
@@ -450,13 +450,13 @@ policer_classify_inline (vlib_main_t * vm,
       b1 = vlib_get_buffer (vm, bi1);
       h1 = b1->data;
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[way];
       table_index0 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+	pcm->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index0];
 
-      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+      sw_if_index1 = vnet_buffer (b1)->sw_if_index[way];
       table_index1 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index1];
+	pcm->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index1];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
 
@@ -493,9 +493,9 @@ policer_classify_inline (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       h0 = b0->data;
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[way];
       table_index0 =
-	pcm->classify_table_index_by_sw_if_index[tid][sw_if_index0];
+	pcm->classify_table_index_by_sw_if_index[is_output][tid][sw_if_index0];
 
       t0 = pool_elt_at_index (vcm->tables, table_index0);
       vnet_buffer (b0)->l2_classify.hash =
@@ -566,11 +566,12 @@ policer_classify_inline (vlib_main_t * vm,
 	  if (tid == POLICER_CLASSIFY_TABLE_L2)
 	    {
 	      /* Feature bitmap update and determine the next node */
-	      next0 = vnet_l2_feature_next (b0, pcm->feat_next_node_index,
-					    L2INPUT_FEAT_POLICER_CLAS);
+	      next0 =
+		vnet_l2_feature_next (b0, pcm->feat_next_node_index[is_output],
+				      L2INPUT_FEAT_POLICER_CLAS);
 	    }
 	  else
-	    vnet_get_config_data (pcm->vnet_config_main[tid],
+	    vnet_get_config_data (pcm->vnet_config_main[is_output][tid],
 				  &b0->current_config_index, &next0,
 				  /* # bytes of config data */ 0);
 
@@ -637,7 +638,7 @@ policer_classify_inline (vlib_main_t * vm,
 	    {
 	      policer_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[way];
 	      t->next_index = next0;
 	      t->table_index = t0 ? t0 - vcm->tables : ~0;
 	      t->offset = (e0 && t0) ? vnet_classify_get_offset (t0, e0) : ~0;
@@ -662,17 +663,15 @@ policer_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_policer_classify_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_input_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_classify_inline (vm, node, frame,
-				  POLICER_CLASSIFY_TABLE_IP4);
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP4,
+				  0);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
-  .name = "ip4-policer-classify",
+VLIB_REGISTER_NODE (ip4_input_policer_classify_node) = {
+  .name = "ip4-input-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
   .n_errors = ARRAY_LEN(policer_classify_error_strings),
@@ -682,19 +681,16 @@ VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ip6_policer_classify_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_output_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_classify_inline (vm, node, frame,
-				  POLICER_CLASSIFY_TABLE_IP6);
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP4,
+				  1);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
-  .name = "ip6-policer-classify",
+VLIB_REGISTER_NODE (ip4_output_policer_classify_node) = {
+  .name = "ip4-output-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
   .n_errors = ARRAY_LEN(policer_classify_error_strings),
@@ -704,18 +700,54 @@ VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (l2_policer_classify_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_input_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP6,
+				  0);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_policer_classify_node) = {
-  .name = "l2-policer-classify",
+VLIB_REGISTER_NODE (ip6_input_policer_classify_node) = {
+  .name = "ip6-input-policer-classify",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_classify_trace,
+  .n_errors = ARRAY_LEN(policer_classify_error_strings),
+  .error_strings = policer_classify_error_strings,
+  .n_next_nodes = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
+  .next_nodes = {
+    [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (ip6_output_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_IP6,
+				  1);
+}
+
+VLIB_REGISTER_NODE (ip6_output_policer_classify_node) = {
+  .name = "ip6-output-policer-classify",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_classify_trace,
+  .n_errors = ARRAY_LEN(policer_classify_error_strings),
+  .error_strings = policer_classify_error_strings,
+  .n_next_nodes = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
+  .next_nodes = {
+    [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (l2_input_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2,
+				  0);
+}
+
+VLIB_REGISTER_NODE (l2_input_policer_classify_node) = {
+  .name = "l2-input-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
   .n_errors = ARRAY_LEN (policer_classify_error_strings),
@@ -725,7 +757,25 @@ VLIB_REGISTER_NODE (l2_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
+
+VLIB_NODE_FN (l2_output_policer_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2,
+				  1);
+}
+
+VLIB_REGISTER_NODE (l2_output_policer_classify_node) = {
+  .name = "l2-output-policer-classify",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_classify_trace,
+  .n_errors = ARRAY_LEN (policer_classify_error_strings),
+  .error_strings = policer_classify_error_strings,
+  .n_next_nodes = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
+  .next_nodes = {
+    [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
+  },
+};
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
@@ -738,11 +788,15 @@ policer_classify_init (vlib_main_t * vm)
   pcm->vnet_classify_main = &vnet_classify_main;
 
   /* Initialize L2 feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_policer_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       pcm->feat_next_node_index);
+  feat_bitmap_init_next_nodes (
+    vm, l2_input_policer_classify_node.index, L2INPUT_N_FEAT,
+    l2input_get_feat_names (),
+    pcm->feat_next_node_index[POLICER_CLASSIFY_INPUT_TABLE_GROUP]);
+
+  feat_bitmap_init_next_nodes (
+    vm, l2_output_policer_classify_node.index, L2OUTPUT_N_FEAT,
+    l2output_get_feat_names (),
+    pcm->feat_next_node_index[POLICER_CLASSIFY_OUTPUT_TABLE_GROUP]);
 
   return 0;
 }
