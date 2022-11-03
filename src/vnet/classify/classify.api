@@ -153,6 +153,30 @@ autoreply define policer_classify_set_interface
   bool is_add;
 };
 
+/** \brief Set/unset policer classify interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset policer classify
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set if non-zero, else unset
+    @param is_output - Set if feature is set in output path.
+    Note: User is recommended to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+autoreply define policer_classify_set_interface_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+  u32 l2_table_index;
+  bool is_add;
+  bool is_output;
+};
+
 enum policer_classify_table : u8
 {
   POLICER_CLASSIFY_API_TABLE_IP4,
@@ -175,6 +199,20 @@ define policer_classify_dump
   vl_api_interface_index_t sw_if_index;
 };
 
+/** \brief Get list of policer classify interfaces and tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param type - classify table type
+    @param sw_if_index - filter on sw_if_index
+*/
+define policer_classify_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_policer_classify_table_t type;
+  vl_api_interface_index_t sw_if_index;
+};
+
 /** \brief Policer classify operational state response.
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software interface index
@@ -185,6 +223,21 @@ define policer_classify_details
   u32 context;
   vl_api_interface_index_t sw_if_index;
   u32 table_index;
+  bool output;
+};
+
+/** \brief Policer classify operational state response.
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index
+    @param table_index - classify table index
+    @param output - table is used in output feature
+*/
+define policer_classify_v2_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 table_index;
+  bool output;
 };
 
 /** \brief Classify get table IDs request
