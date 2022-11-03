@@ -935,24 +935,21 @@ VNET_FEATURE_INIT (ip4_flow_classify, static) =
   .runs_before = VNET_FEATURES ("ip4-inacl"),
 };
 
-VNET_FEATURE_INIT (ip4_inacl, static) =
-{
+VNET_FEATURE_INIT (ip4_inacl, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-inacl",
-  .runs_before = VNET_FEATURES ("ip4-policer-classify"),
+  .runs_before = VNET_FEATURES ("ip4-input-policer-classify"),
 };
 
-VNET_FEATURE_INIT (ip4_source_and_port_range_check_rx, static) =
-{
+VNET_FEATURE_INIT (ip4_source_and_port_range_check_rx, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-source-and-port-range-check-rx",
-  .runs_before = VNET_FEATURES ("ip4-policer-classify"),
+  .runs_before = VNET_FEATURES ("ip4-input-policer-classify"),
 };
 
-VNET_FEATURE_INIT (ip4_policer_classify, static) =
-{
+VNET_FEATURE_INIT (ip4_input_policer_classify, static) = {
   .arc_name = "ip4-unicast",
-  .node_name = "ip4-policer-classify",
+  .node_name = "ip4-input-policer-classify",
   .runs_before = VNET_FEATURES ("ipsec4-input-feature"),
 };
 
@@ -1037,10 +1034,15 @@ VNET_FEATURE_INIT (ip4_source_and_port_range_check_tx, static) =
   .runs_before = VNET_FEATURES ("ip4-outacl"),
 };
 
-VNET_FEATURE_INIT (ip4_outacl, static) =
-{
+VNET_FEATURE_INIT (ip4_outacl, static) = {
   .arc_name = "ip4-output",
   .node_name = "ip4-outacl",
+  .runs_before = VNET_FEATURES ("ip4-output-policer-classify"),
+};
+
+VNET_FEATURE_INIT (ip4_output_policer_classify, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "ip4-output-policer-classify",
   .runs_before = VNET_FEATURES ("ipsec4-output-feature"),
 };
 

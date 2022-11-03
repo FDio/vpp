@@ -459,7 +459,7 @@ static void
 
   rv = vnet_set_policer_classify_intfc (vm, sw_if_index, ip4_table_index,
 					ip6_table_index, l2_table_index,
-					mp->is_add);
+					mp->is_add, 0);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -467,9 +467,33 @@ static void
 }
 
 static void
-send_policer_classify_details (u32 sw_if_index,
-			       u32 table_index, vl_api_registration_t * reg,
-			       u32 context)
+vl_api_policer_classify_set_interface_v2_t_handler (
+  vl_api_policer_classify_set_interface_v2_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_policer_classify_set_interface_v2_reply_t *rmp;
+  int rv;
+  u32 sw_if_index, ip4_table_index, ip6_table_index, l2_table_index;
+
+  ip4_table_index = ntohl (mp->ip4_table_index);
+  ip6_table_index = ntohl (mp->ip6_table_index);
+  l2_table_index = ntohl (mp->l2_table_index);
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = vnet_set_policer_classify_intfc (vm, sw_if_index, ip4_table_index,
+					ip6_table_index, l2_table_index,
+					mp->is_add, mp->is_output);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_POLICER_CLASSIFY_SET_INTERFACE_V2_REPLY);
+}
+
+static void
+send_policer_classify_details (u32 sw_if_index, u32 table_index,
+			       vl_api_registration_t *reg, u32 context)
 {
   vl_api_policer_classify_details_t *mp;
 
@@ -484,11 +508,29 @@ send_policer_classify_details (u32 sw_if_index,
 }
 
 static void
+send_policer_classify_v2_details (u32 sw_if_index, u32 table_index,
+				  bool is_output, vl_api_registration_t *reg,
+				  u32 context)
+{
+  vl_api_policer_classify_v2_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id =
+    ntohs (REPLY_MSG_ID_BASE + VL_API_POLICER_CLASSIFY_V2_DETAILS);
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->table_index = htonl (table_index);
+  mp->output = is_output;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
 vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 {
   vl_api_registration_t *reg;
   policer_classify_main_t *pcm = &policer_classify_main;
-  u32 *vec_tbl;
+  u32 *vec_tbl_input;
   int i;
   u32 filter_sw_if_index;
 
@@ -502,20 +544,87 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
     return;
 
   if (filter_sw_if_index != ~0)
-    vec_tbl =
-      &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
-  else
-    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
-
-  if (vec_len (vec_tbl))
     {
-      for (i = 0; i < vec_len (vec_tbl); i++)
+      vec_tbl_input =
+	&pcm->classify_table_index_by_sw_if_index
+	   [POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type][filter_sw_if_index];
+    }
+  else
+    {
+      vec_tbl_input = pcm->classify_table_index_by_sw_if_index
+			[POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type];
+    }
+
+  if (vec_len (vec_tbl_input))
+    {
+      for (i = 0; i < vec_len (vec_tbl_input); i++)
 	{
-	  if (vec_elt (vec_tbl, i) == ~0)
+	  if (vec_elt (vec_tbl_input, i) == ~0)
 	    continue;
 
-	  send_policer_classify_details (i, vec_elt (vec_tbl, i), reg,
+	  send_policer_classify_details (i, vec_elt (vec_tbl_input, i), reg,
 					 mp->context);
+	}
+    }
+}
+
+static void
+vl_api_policer_classify_v2_dump_t_handler (
+  vl_api_policer_classify_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  policer_classify_main_t *pcm = &policer_classify_main;
+  u32 *vec_tbl_input;
+  u32 *vec_tbl_output;
+  int i;
+  u32 filter_sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  filter_sw_if_index = ntohl (mp->sw_if_index);
+  if (filter_sw_if_index >=
+      vec_len (pcm->classify_table_index_by_sw_if_index[mp->type]))
+    return;
+
+  if (filter_sw_if_index != ~0)
+    {
+      vec_tbl_input =
+	&pcm->classify_table_index_by_sw_if_index
+	   [POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type][filter_sw_if_index];
+      vec_tbl_output =
+	&pcm->classify_table_index_by_sw_if_index
+	   [POLICER_CLASSIFY_OUTPUT_TABLE_GROUP][mp->type][filter_sw_if_index];
+    }
+  else
+    {
+      vec_tbl_input = pcm->classify_table_index_by_sw_if_index
+			[POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type];
+      vec_tbl_output = pcm->classify_table_index_by_sw_if_index
+			 [POLICER_CLASSIFY_OUTPUT_TABLE_GROUP][mp->type];
+    }
+
+  if (vec_len (vec_tbl_input))
+    {
+      for (i = 0; i < vec_len (vec_tbl_input); i++)
+	{
+	  if (vec_elt (vec_tbl_input, i) == ~0)
+	    continue;
+
+	  send_policer_classify_v2_details (i, vec_elt (vec_tbl_input, i), 0,
+					    reg, mp->context);
+	}
+    }
+  if (vec_len (vec_tbl_output))
+    {
+      for (i = 0; i < vec_len (vec_tbl_output); i++)
+	{
+	  if (vec_elt (vec_tbl_output, i) == ~0)
+	    continue;
+
+	  send_policer_classify_v2_details (i, vec_elt (vec_tbl_output, i), 1,
+					    reg, mp->context);
 	}
     }
 }
