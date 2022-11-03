@@ -14,20 +14,26 @@
  */
 #include <vnet/classify/policer_classify.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
 
 policer_classify_main_t policer_classify_main;
 
 static void
-vnet_policer_classify_feature_enable (vlib_main_t * vnm,
-				      policer_classify_main_t * pcm,
+vnet_policer_classify_feature_enable (vlib_main_t *vnm,
+				      policer_classify_main_t *pcm,
 				      u32 sw_if_index,
 				      policer_classify_table_id_t tid,
-				      int feature_enable)
+				      int feature_enable, int is_output)
 {
+  const char *arc_name, *feature_name;
   if (tid == POLICER_CLASSIFY_TABLE_L2)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_POLICER_CLAS,
-				  feature_enable);
+      if (is_output)
+	l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_POLICER_CLAS,
+				     feature_enable);
+      else
+	l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_POLICER_CLAS,
+				    feature_enable);
     }
   else
     {
@@ -36,27 +42,33 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
 
       if (tid == POLICER_CLASSIFY_TABLE_IP4)
 	{
-	  vnet_feature_enable_disable ("ip4-unicast", "ip4-policer-classify",
-				       sw_if_index, feature_enable, 0, 0);
-	  arc = vnet_get_feature_arc_index ("ip4-unicast");
+	  arc_name = is_output ? "ip4-output" : "ip4-unicast";
+	  feature_name = is_output ? "ip4-output-policer-classify" :
+				     "ip4-input-policer-classify";
+	  vnet_feature_enable_disable (arc_name, feature_name, sw_if_index,
+				       feature_enable, 0, 0);
+	  arc = vnet_get_feature_arc_index (arc_name);
 	}
 
       else
 	{
-	  vnet_feature_enable_disable ("ip6-unicast", "ip6-policer-classify",
-				       sw_if_index, feature_enable, 0, 0);
-	  arc = vnet_get_feature_arc_index ("ip6-unicast");
+	  arc_name = is_output ? "ip6-output" : "ip6-unicast";
+	  feature_name = is_output ? "ip6-output-policer-classify" :
+				     "ip6-input-policer-classify";
+	  vnet_feature_enable_disable (feature_name, arc_name, sw_if_index,
+				       feature_enable, 0, 0);
+	  arc = vnet_get_feature_arc_index (feature_name);
 	}
 
       fcm = vnet_get_feature_arc_config_main (arc);
-      pcm->vnet_config_main[tid] = &fcm->config_main;
+      pcm->vnet_config_main[is_output][tid] = &fcm->config_main;
     }
 }
 
 int
-vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
+vnet_set_policer_classify_intfc (vlib_main_t *vm, u32 sw_if_index,
 				 u32 ip4_table_index, u32 ip6_table_index,
-				 u32 l2_table_index, u32 is_add)
+				 u32 l2_table_index, u32 is_add, u32 is_output)
 {
   policer_classify_main_t *pcm = &policer_classify_main;
   vnet_classify_main_t *vcm = pcm->vnet_classify_main;
@@ -75,13 +87,14 @@ vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
       if (pool_is_free_index (vcm->tables, pct[ti]))
 	return VNET_API_ERROR_NO_SUCH_TABLE;
 
-      vec_validate_init_empty
-	(pcm->classify_table_index_by_sw_if_index[ti], sw_if_index, ~0);
+      vec_validate_init_empty (
+	pcm->classify_table_index_by_sw_if_index[is_output][ti], sw_if_index,
+	~0);
 
       /* Reject any DEL operation with wrong sw_if_index */
       if (!is_add &&
-	  (pct[ti] !=
-	   pcm->classify_table_index_by_sw_if_index[ti][sw_if_index]))
+	  (pct[ti] != pcm->classify_table_index_by_sw_if_index[is_output][ti]
+							      [sw_if_index]))
 	{
 	  clib_warning
 	    ("Non-existent intf_idx=%d with table_index=%d for delete",
@@ -91,15 +104,19 @@ vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
       /* Return ok on ADD operaton if feature is already enabled */
       if (is_add &&
-	  pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] != ~0)
+	  pcm->classify_table_index_by_sw_if_index[is_output][ti]
+						  [sw_if_index] != ~0)
 	return 0;
 
-      vnet_policer_classify_feature_enable (vm, pcm, sw_if_index, ti, is_add);
+      vnet_policer_classify_feature_enable (vm, pcm, sw_if_index, ti, is_add,
+					    is_output);
 
       if (is_add)
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = pct[ti];
+	pcm->classify_table_index_by_sw_if_index[is_output][ti][sw_if_index] =
+	  pct[ti];
       else
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
+	pcm->classify_table_index_by_sw_if_index[is_output][ti][sw_if_index] =
+	  ~0;
     }
 
 
@@ -117,6 +134,7 @@ set_policer_classify_command_fn (vlib_main_t * vm,
   u32 ip6_table_index = ~0;
   u32 l2_table_index = ~0;
   u32 is_add = 1;
+  u32 is_output = 0;
   u32 idx_cnt = 0;
   int rv;
 
@@ -133,6 +151,8 @@ set_policer_classify_command_fn (vlib_main_t * vm,
 	idx_cnt++;
       else if (unformat (input, "del"))
 	is_add = 0;
+      else if (unformat (input, "output"))
+	is_output = 1;
       else
 	break;
     }
@@ -148,7 +168,7 @@ set_policer_classify_command_fn (vlib_main_t * vm,
 
   rv = vnet_set_policer_classify_intfc (vm, sw_if_index, ip4_table_index,
 					ip6_table_index, l2_table_index,
-					is_add);
+					is_add, is_output);
 
   switch (rv)
     {
@@ -166,11 +186,10 @@ set_policer_classify_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_policer_classify_command, static) = {
-    .path = "set policer classify",
-    .short_help =
-    "set policer classify interface <int> [ip4-table <index>]\n"
-    "  [ip6-table <index>] [l2-table <index>] [del]",
-    .function = set_policer_classify_command_fn,
+  .path = "set policer classify",
+  .short_help = "set policer classify interface <int> [ip4-table <index>]\n"
+		"  [ip6-table <index>] [l2-table <index>] [del] [output]",
+  .function = set_policer_classify_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -201,17 +220,20 @@ show_policer_classify_command_fn (vlib_main_t * vm,
   policer_classify_main_t *pcm = &policer_classify_main;
   u32 type = POLICER_CLASSIFY_N_TABLES;
   u32 *vec_tbl;
+  u32 is_output = 0;
   int i;
 
   if (unformat (input, "type %U", unformat_table_type, &type))
     ;
+  else if (unformat (input, "output"))
+    is_output = 1;
   else
     return clib_error_return (0, "Type must be specified.");;
 
   if (type == POLICER_CLASSIFY_N_TABLES)
     return clib_error_return (0, "Invalid table type.");
 
-  vec_tbl = pcm->classify_table_index_by_sw_if_index[type];
+  vec_tbl = pcm->classify_table_index_by_sw_if_index[is_output][type];
 
   if (vec_len (vec_tbl))
     vlib_cli_output (vm, "%10s%20s\t\t%s", "Intfc idx", "Classify table",

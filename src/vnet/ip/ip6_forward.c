@@ -574,17 +574,15 @@ VNET_FEATURE_INIT (ip6_flow_classify, static) =
   .runs_before = VNET_FEATURES ("ip6-inacl"),
 };
 
-VNET_FEATURE_INIT (ip6_inacl, static) =
-{
+VNET_FEATURE_INIT (ip6_inacl, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-inacl",
-  .runs_before = VNET_FEATURES ("ip6-policer-classify"),
+  .runs_before = VNET_FEATURES ("ip6-input-policer-classify"),
 };
 
-VNET_FEATURE_INIT (ip6_policer_classify, static) =
-{
+VNET_FEATURE_INIT (ip6_input_policer_classify, static) = {
   .arc_name = "ip6-unicast",
-  .node_name = "ip6-policer-classify",
+  .node_name = "ip6-input-policer-classify",
   .runs_before = VNET_FEATURES ("ipsec6-input-feature"),
 };
 
@@ -669,6 +667,12 @@ VNET_FEATURE_ARC_INIT (ip6_output, static) =
 VNET_FEATURE_INIT (ip6_outacl, static) = {
   .arc_name = "ip6-output",
   .node_name = "ip6-outacl",
+  .runs_before = VNET_FEATURES ("ip6-output-policer-classify"),
+};
+
+VNET_FEATURE_INIT (ip6_output_policer_classify, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "ip6-output-policer-classify",
   .runs_before = VNET_FEATURES ("ipsec6-output-feature"),
 };
 
