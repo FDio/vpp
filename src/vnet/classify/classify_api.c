@@ -459,7 +459,7 @@ static void
 
   rv = vnet_set_policer_classify_intfc (vm, sw_if_index, ip4_table_index,
 					ip6_table_index, l2_table_index,
-					mp->is_add);
+					mp->is_add, mp->is_output);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -467,8 +467,8 @@ static void
 }
 
 static void
-send_policer_classify_details (u32 sw_if_index,
-			       u32 table_index, vl_api_registration_t * reg,
+send_policer_classify_details (u32 sw_if_index, u32 table_index,
+			       bool is_output, vl_api_registration_t *reg,
 			       u32 context)
 {
   vl_api_policer_classify_details_t *mp;
@@ -488,7 +488,8 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 {
   vl_api_registration_t *reg;
   policer_classify_main_t *pcm = &policer_classify_main;
-  u32 *vec_tbl;
+  u32 *vec_tbl_input;
+  u32 *vec_tbl_output;
   int i;
   u32 filter_sw_if_index;
 
@@ -502,20 +503,42 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
     return;
 
   if (filter_sw_if_index != ~0)
-    vec_tbl =
-      &pcm->classify_table_index_by_sw_if_index[mp->type][filter_sw_if_index];
-  else
-    vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
-
-  if (vec_len (vec_tbl))
     {
-      for (i = 0; i < vec_len (vec_tbl); i++)
+      vec_tbl_input =
+	&pcm->classify_table_index_by_sw_if_index
+	   [POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type][filter_sw_if_index];
+      vec_tbl_output =
+	&pcm->classify_table_index_by_sw_if_index
+	   [POLICER_CLASSIFY_OUTPUT_TABLE_GROUP][mp->type][filter_sw_if_index];
+    }
+  else
+    {
+      vec_tbl_input = pcm->classify_table_index_by_sw_if_index
+			[POLICER_CLASSIFY_INPUT_TABLE_GROUP][mp->type];
+      vec_tbl_output = pcm->classify_table_index_by_sw_if_index
+			 [POLICER_CLASSIFY_OUTPUT_TABLE_GROUP][mp->type];
+    }
+
+  if (vec_len (vec_tbl_input))
+    {
+      for (i = 0; i < vec_len (vec_tbl_input); i++)
 	{
-	  if (vec_elt (vec_tbl, i) == ~0)
+	  if (vec_elt (vec_tbl_input, i) == ~0)
 	    continue;
 
-	  send_policer_classify_details (i, vec_elt (vec_tbl, i), reg,
+	  send_policer_classify_details (i, vec_elt (vec_tbl_input, i), 0, reg,
 					 mp->context);
+	}
+    }
+  if (vec_len (vec_tbl_output))
+    {
+      for (i = 0; i < vec_len (vec_tbl_output); i++)
+	{
+	  if (vec_elt (vec_tbl_output, i) == ~0)
+	    continue;
+
+	  send_policer_classify_details (i, vec_elt (vec_tbl_output, i), 1,
+					 reg, mp->context);
 	}
     }
 }
