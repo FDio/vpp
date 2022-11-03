@@ -555,7 +555,6 @@ mbedtls_app_close (tls_ctx_t * ctx)
 {
   tls_disconnect_transport (ctx);
   session_transport_delete_notify (&ctx->connection);
-  mbedtls_ctx_free (ctx);
   return 0;
 }
 
