@@ -139,6 +139,7 @@ autoreply define classify_add_del_session
     @param ip6_table_index - ip6 classify table index (~0 for skip)
     @param l2_table_index  -  l2 classify table index (~0 for skip)
     @param is_add - Set if non-zero, else unset
+    @param is_output - Set if feature is set in output path.
     Note: User is recommended to use just one valid table_index per call.
           (ip4_table_index, ip6_table_index, or l2_table_index)
 */
@@ -151,6 +152,7 @@ autoreply define policer_classify_set_interface
   u32 ip6_table_index;
   u32 l2_table_index;
   bool is_add;
+  bool is_output;
 };
 
 enum policer_classify_table : u8
@@ -166,6 +168,7 @@ enum policer_classify_table : u8
     @param context - sender context, to match reply w/ request
     @param type - classify table type
     @param sw_if_index - filter on sw_if_index
+    @param output - filter on input or output table index
 */
 define policer_classify_dump
 {
@@ -185,6 +188,7 @@ define policer_classify_details
   u32 context;
   vl_api_interface_index_t sw_if_index;
   u32 table_index;
+  bool output;
 };
 
 /** \brief Classify get table IDs request
