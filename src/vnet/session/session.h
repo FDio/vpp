@@ -681,7 +681,8 @@ ho_session_alloc (void)
   if (CLIB_DEBUG)
     {
       session_t *sp = session_main.wrk[0].sessions;
-      clib_bitmap_validate (pool_header (sp)->free_bitmap, s->session_index);
+      clib_bitmap_validate (pool_header (sp)->free_bitmap,
+                            s->session_index + 1);
     }
   return s;
 }
