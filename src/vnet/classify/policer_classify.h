@@ -34,26 +34,36 @@ typedef enum
   POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
 } policer_classify_next_index_t;
 
+typedef enum
+{
+  POLICER_CLASSIFY_INPUT_TABLE_GROUP,
+  POLICER_CLASSIFY_OUTPUT_TABLE_GROUP,
+  POLICER_CLASSIFY_N_TABLE_GROUPS
+} policer_classify_table_group_id_t;
+
 typedef struct
 {
   /* Classifier table vectors */
-  u32 *classify_table_index_by_sw_if_index[POLICER_CLASSIFY_N_TABLES];
+  u32 *classify_table_index_by_sw_if_index[POLICER_CLASSIFY_N_TABLE_GROUPS]
+					  [POLICER_CLASSIFY_N_TABLES];
 
   /* L2 next nodes for each feature */
-  u32 feat_next_node_index[32];
+  u32 feat_next_node_index[POLICER_CLASSIFY_N_TABLE_GROUPS][32];
 
   /* Convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   vnet_classify_main_t *vnet_classify_main;
-  vnet_config_main_t *vnet_config_main[POLICER_CLASSIFY_N_TABLES];
+  vnet_config_main_t *vnet_config_main[POLICER_CLASSIFY_N_TABLE_GROUPS]
+				      [POLICER_CLASSIFY_N_TABLES];
 } policer_classify_main_t;
 
 extern policer_classify_main_t policer_classify_main;
 
-int vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
+int vnet_set_policer_classify_intfc (vlib_main_t *vm, u32 sw_if_index,
 				     u32 ip4_table_index, u32 ip6_table_index,
-				     u32 l2_table_index, u32 is_add);
+				     u32 l2_table_index, u32 is_add,
+				     u32 is_output);
 
 #endif /* __included_vnet_policer_classify_h__ */
 
