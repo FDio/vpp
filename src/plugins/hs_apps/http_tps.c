@@ -507,6 +507,7 @@ hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri,
   u8 need_crypto;
   hts_session_t *hls;
   session_t *ls;
+  u32 thread_index = 0;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -532,12 +533,16 @@ hts_start_listen (hts_main_t *htm, session_endpoint_cfg_t *sep, u8 *uri,
   if (rv)
     return rv;
 
-  hls = hts_session_alloc (0);
+  hls = hts_session_alloc (thread_index);
   hls->uri = vec_dup (uri);
   hls->close_rate = (f64) 1 / rnd_close;
   ls = listen_session_get_from_handle (a->handle);
   hls->vpp_session_index = ls->session_index;
   hash_set_mem (htm->uri_to_handle, hls->uri, hls->session_index);
+
+  /* opaque holds index of hls, which is used in `hts_ts_accept_callback`
+   * to get back the pointer to hls */
+  ls->opaque = hls - htm->sessions[thread_index];
 
   return 0;
 }
