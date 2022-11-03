@@ -1539,8 +1539,11 @@ session_close (session_t * s)
       return;
     }
 
-  /* App closed so stop propagating dequeue notifications */
-  svm_fifo_clear_deq_ntf (s->tx_fifo);
+  /* App closed so stop propagating dequeue notifications.
+   * App might disconnect session before connected, in this case,
+   * tx_fifo may not be setup yet, so clear only it's inited. */
+  if (s->tx_fifo)
+    svm_fifo_clear_deq_ntf (s->tx_fifo);
   session_set_state (s, SESSION_STATE_CLOSING);
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
 }
@@ -1553,8 +1556,11 @@ session_reset (session_t * s)
 {
   if (s->session_state >= SESSION_STATE_CLOSING)
     return;
-  /* Drop all outstanding tx data */
-  svm_fifo_dequeue_drop_all (s->tx_fifo);
+  /* Drop all outstanding tx data
+   * App might disconnect session before connected, in this case,
+   * tx_fifo may not be setup yet, so clear only it's inited. */
+  if (s->tx_fifo)
+    svm_fifo_dequeue_drop_all (s->tx_fifo);
   session_set_state (s, SESSION_STATE_CLOSING);
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
