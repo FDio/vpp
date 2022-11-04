@@ -870,7 +870,7 @@ ec_connect_rpc (void *args)
 
   vlib_worker_thread_barrier_release (vm);
 
-  if (ci < ecm->expected_connections)
+  if (ci < ecm->expected_connections && ecm->run_test != EC_EXITING)
     ec_program_connects ();
 
   return 0;
