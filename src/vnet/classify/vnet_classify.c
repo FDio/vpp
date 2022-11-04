@@ -777,8 +777,10 @@ vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
       else			/* update */
 	{
 	  vnet_classify_main_t *cm = &vnet_classify_main;
-	  t = pool_elt_at_index (cm->tables, *table_index);
+	  if (pool_is_free_index (cm->tables, *table_index))
+	    return VNET_API_ERROR_CLASSIFY_TABLE_NOT_FOUND;
 
+	  t = pool_elt_at_index (cm->tables, *table_index);
 	  t->next_table_index = next_table_index;
 	}
       return 0;
