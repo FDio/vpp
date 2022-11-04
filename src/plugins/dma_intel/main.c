@@ -13,8 +13,9 @@
 #include <vppinfra/linux/sysfs.h>
 #include <dma_intel/dsa_intel.h>
 
-VLIB_REGISTER_LOG_CLASS (intel_dsa_log, static) = {
-  .class_name = "intel_dsa",
+VLIB_REGISTER_LOG_CLASS (intel_dsa_log) = {
+  .class_name = "intel_dma",
+  .subclass_name = "dsa",
 };
 
 intel_dsa_main_t intel_dsa_main;
@@ -51,8 +52,9 @@ intel_dsa_assign_channels (vlib_main_t *vm)
       ch = *vec_elt_at_index (chv, i / n_threads);
       idm->dsa_threads[i].ch = ch;
       ch->n_threads = n_threads;
-      dsa_log_debug ("Assigning channel %u/%u to thread %u (numa %u)", ch->did,
-		     ch->qid, i, tvm->numa_node);
+      dsa_log_debug ("Assigning channel %U/%u/%u to thread %u (numa %u)",
+		     format_vlib_pci_addr, &ch->addr, ch->did, ch->qid, i,
+		     tvm->numa_node);
     }
 
 done:
@@ -90,8 +92,12 @@ static clib_error_t *
 intel_dsa_get_info (intel_dsa_channel_t *ch, clib_error_t **error)
 {
   clib_error_t *err;
+  unformat_input_t input;
   u8 *tmpstr;
-  u8 *dev_dir_name = 0, *wq_dir_name = 0;
+  u8 *dev_dir_name = 0, *wq_dir_name = 0, *abs_path = 0;
+  u32 domain = 0, bus;
+
+  vec_alloc (abs_path, PATH_MAX);
 
   u8 *f = 0;
   dev_dir_name = format (0, "%s/dsa%d", SYS_DSA_PATH, ch->did);
@@ -104,6 +110,22 @@ intel_dsa_get_info (intel_dsa_channel_t *ch, clib_error_t **error)
   ch->numa = atoi ((char *) tmpstr);
 
   wq_dir_name = format (0, "%s/%U", SYS_DSA_PATH, format_intel_dsa_addr, ch);
+  if (!realpath ((char *) wq_dir_name, (char *) abs_path))
+    {
+      err = clib_error_return_unix (0, "failed to resolve %s", wq_dir_name);
+      goto error;
+    }
+
+  unformat_init_string (&input, (char *) abs_path,
+			clib_strnlen ((char *) abs_path, PATH_MAX));
+
+  if (!unformat (&input, SYSFS_DEVICES_PCI "%x:%x/%U/%s", &domain, &bus,
+		 unformat_vlib_pci_addr, &ch->addr, abs_path))
+    {
+      err = clib_error_return (0, "unknown input '%U'", format_unformat_error,
+			       input);
+      goto error;
+    }
 
   vec_reset_length (f);
   f = format (f, "%v/max_transfer_size%c", wq_dir_name, 0);
@@ -187,12 +209,14 @@ intel_dsa_get_info (intel_dsa_channel_t *ch, clib_error_t **error)
     }
 
   vec_free (f);
+  vec_free (abs_path);
   vec_free (dev_dir_name);
   vec_free (wq_dir_name);
   return NULL;
 
 error:
   vec_free (f);
+  vec_free (abs_path);
   vec_free (dev_dir_name);
   vec_free (wq_dir_name);
 
@@ -223,15 +247,16 @@ dsa_config (vlib_main_t *vm, unformat_input_t *input)
   clib_error_t *error = 0;
   intel_dsa_channel_t *ch;
   u32 did, qid;
+  vlib_pci_addr_t addr;
 
   if (intel_dsa_main.lock == 0)
     clib_spinlock_init (&(intel_dsa_main.lock));
 
-  if ((error = vlib_dma_register_backend (vm, &intel_dsa_backend)))
-    goto done;
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
+      if ((error = vlib_dma_register_backend (vm, &intel_dsa_backend)))
+	goto done;
+
       if (unformat (input, "dev wq%d.%d", &did, &qid))
 	{
 	  ch = clib_mem_alloc_aligned (sizeof (*ch), CLIB_CACHE_LINE_BYTES);
@@ -239,6 +264,14 @@ dsa_config (vlib_main_t *vm, unformat_input_t *input)
 	  ch->did = did;
 	  ch->qid = qid;
 	  if (intel_dsa_add_channel (vm, ch))
+	    clib_mem_free (ch);
+	}
+      else if (unformat (input, "dev %U", unformat_vlib_pci_addr, &addr))
+	{
+	  ch = clib_mem_alloc_aligned (sizeof (*ch), CLIB_CACHE_LINE_BYTES);
+	  clib_memset (ch, 0, sizeof (*ch));
+	  clib_memcpy_fast (&ch->addr, &addr, sizeof (vlib_pci_addr_t));
+	  if (intel_dsa_add_pci_channel (vm, ch))
 	    clib_mem_free (ch);
 	}
       else if (unformat_skip_white_space (input))

@@ -5,6 +5,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
 #include <vlib/dma/dma.h>
 #include <vppinfra/heap.h>
 #include <vppinfra/atomics.h>
@@ -13,11 +14,6 @@
 #include <dma_intel/dsa_intel.h>
 
 extern vlib_node_registration_t intel_dsa_node;
-
-VLIB_REGISTER_LOG_CLASS (intel_dsa_log, static) = {
-  .class_name = "intel_dsa",
-  .subclass_name = "dsa",
-};
 
 static void
 intel_dsa_channel_lock (intel_dsa_channel_t *ch)
@@ -67,6 +63,9 @@ intel_dsa_batch_new (vlib_main_t *vm, struct vlib_dma_config_data *cd)
       ASSERT (b != NULL);
       *b = idc->batch_template;
       b->max_transfers = idc->max_transfers;
+
+      if (!b->ch->block_on_fault || b->ch->ats_disable)
+	vlib_pci_map_dma (vm, b->ch->pci_handle, b);
 
       u32 def_flags = (INTEL_DSA_OP_MEMMOVE << INTEL_DSA_OP_SHIFT) |
 		      INTEL_DSA_FLAG_CACHE_CONTROL;
@@ -243,8 +242,9 @@ intel_dsa_config_add_fn (vlib_main_t *vm, vlib_dma_config_data_t *cd)
       if (intel_dsa_check_channel (idb->ch, cd))
 	return 0;
 
-      dsa_log_debug ("config %d in thread %d using channel %u/%u",
-		     cd->config_index, thread, idb->ch->did, idb->ch->qid);
+      dsa_log_debug ("config %d in thread %d using channel %U/%u/%u",
+		     cd->config_index, thread, format_vlib_pci_addr,
+		     &idb->ch->addr, idb->ch->did, idb->ch->qid);
       idb->config_heap_index = index + thread;
       idb->config_index = cd->config_index;
       idb->batch.callback_fn = cd->cfg.callback_fn;

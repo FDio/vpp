@@ -4,6 +4,7 @@
 add_vpp_plugin(dma_intel
   SOURCES
   dsa.c
+  dsa_pci.c
   format.c
   main.c
 )
