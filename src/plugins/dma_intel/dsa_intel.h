@@ -8,6 +8,7 @@
 #include <vlib/vlib.h>
 #include <vlib/dma/dma.h>
 #include <vlib/pci/pci.h>
+#include <vlib/log.h>
 #include <vppinfra/format.h>
 typedef struct
 {
@@ -30,6 +31,10 @@ STATIC_ASSERT_SIZEOF (intel_dsa_desc_t, 64);
 
 #define DSA_DEV_PATH "/dev/dsa"
 #define SYS_DSA_PATH "/sys/bus/dsa/devices"
+#define SYSFS_DEVICES_PCI "/sys/devices/pci"
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 typedef enum
 {
@@ -82,6 +87,9 @@ typedef struct
   u8 size; /* size of work queue */
   u8 did;  /* dsa device id */
   u8 qid;  /* work queue id */
+  void *pci_common; /* pci device common structure */
+  vlib_pci_dev_handle_t pci_handle;
+  vlib_pci_addr_t addr;
 } intel_dsa_channel_t;
 
 typedef struct intel_dsa_batch
@@ -143,7 +151,11 @@ typedef struct
 
 extern intel_dsa_main_t intel_dsa_main;
 extern vlib_dma_backend_t intel_dsa_backend;
+clib_error_t *intel_dsa_add_pci_channel (vlib_main_t *vm,
+					 intel_dsa_channel_t *ch);
 format_function_t format_intel_dsa_addr;
+
+extern vlib_log_class_registration_t intel_dsa_log;
 
 #define dsa_log_debug(f, ...)                                                 \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, intel_dsa_log.class, "%s: " f, __func__,    \

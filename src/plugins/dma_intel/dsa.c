@@ -14,11 +14,6 @@
 
 extern vlib_node_registration_t intel_dsa_node;
 
-VLIB_REGISTER_LOG_CLASS (intel_dsa_log, static) = {
-  .class_name = "intel_dsa",
-  .subclass_name = "dsa",
-};
-
 static void
 intel_dsa_channel_lock (intel_dsa_channel_t *ch)
 {
@@ -243,8 +238,9 @@ intel_dsa_config_add_fn (vlib_main_t *vm, vlib_dma_config_data_t *cd)
       if (intel_dsa_check_channel (idb->ch, cd))
 	return 0;
 
-      dsa_log_debug ("config %d in thread %d using channel %u/%u",
-		     cd->config_index, thread, idb->ch->did, idb->ch->qid);
+      dsa_log_debug ("config %d in thread %d using channel %U/%u/%u",
+		     cd->config_index, thread, format_vlib_pci_addr,
+		     &idb->ch->addr, idb->ch->did, idb->ch->qid);
       idb->config_heap_index = index + thread;
       idb->config_index = cd->config_index;
       idb->batch.callback_fn = cd->cfg.callback_fn;
