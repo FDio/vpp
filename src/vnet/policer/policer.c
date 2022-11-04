@@ -779,7 +779,7 @@ show_policer_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_command, static) = {
     .path = "show policer",
-    .short_help = "show policer [name]",
+    .short_help = "show policer [name <name>]",
     .function = show_policer_command_fn,
 };
 /* *INDENT-ON* */
