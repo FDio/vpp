@@ -50,8 +50,22 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
 
   if (clib_bitmap_get (lvm->physmem_pages_mapped, page_index))
     {
-      vlib_log_debug (lvm->log_default, "map DMA va:%p page:%u already "
-		      "mapped", addr, page_index);
+      {
+	ELOG_TYPE_DECLARE (e) = {
+	  .format = "thread-%d DMA page:%d already mapped",
+	  .format_args = "i4i4",
+	};
+
+	struct
+	{
+	  u32 thread_index;
+	  u32 page_index;
+	} * ed;
+
+	ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	ed->thread_index = vm->thread_index;
+	ed->page_index = page_index;
+      }
       return 0;
     }
 
@@ -60,19 +74,111 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
   dm.vaddr = physmem_start + (page_index << log2_page_size);
   dm.size = 1ULL << log2_page_size;
   dm.iova = dm.vaddr;
-  vlib_log_debug (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
-		  "size:0x%lx", page_index, dm.vaddr, dm.iova, dm.size);
 
   if (ioctl (lvm->container_fd, VFIO_IOMMU_MAP_DMA, &dm) == -1)
     {
-      vlib_log_err (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
-		    "size:0x%lx failed, error %s (errno %d)", page_index,
-		    dm.vaddr, dm.iova, dm.size, strerror (errno), errno);
+      {
+	ELOG_TYPE_DECLARE (e) = {
+	  .format = "thread-%d DMA map page:%d failed",
+	  .format_args = "i4i4",
+	};
+
+	struct
+	{
+	  u32 thread_index;
+	  u32 page_index;
+	} * ed;
+
+	ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	ed->thread_index = vm->thread_index;
+	ed->page_index = page_index;
+      }
       return clib_error_return_unix (0, "physmem DMA map failed");
     }
 
   lvm->physmem_pages_mapped = clib_bitmap_set (lvm->physmem_pages_mapped,
 					       page_index, 1);
+  return 0;
+}
+
+clib_error_t *
+vfio_map_extended_mem (vlib_main_t *vm, u64 iova, u64 size, u64 page_size)
+{
+  linux_vfio_main_t *lvm = &vfio_main;
+  struct vfio_iommu_type1_dma_map dm = { 0 };
+
+  if (lvm->container_fd == -1)
+    return clib_error_return (0, "No container fd");
+
+  if (!size || (size | iova) & (page_size - 1))
+    return clib_error_return (0, "Invalid DMA map region");
+
+  dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
+  dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+  dm.vaddr = iova;
+  dm.size = size;
+  dm.iova = iova;
+
+  {
+    ELOG_TYPE_DECLARE (e) = {
+      .format = "thread-%d map extended DMA at va:%lx size:%lx",
+      .format_args = "i4i8i8",
+    };
+
+    struct
+    {
+      u32 thread_index;
+      u64 iova;
+      u64 size;
+    } __clib_packed *ed;
+
+    ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+    ed->thread_index = vm->thread_index;
+    ed->iova = (u64) iova;
+    ed->size = (u64) size;
+  }
+
+  if (ioctl (lvm->container_fd, VFIO_IOMMU_MAP_DMA, &dm) == -1)
+    return clib_error_return_unix (0, "extended DMA map failed");
+
+  return 0;
+}
+
+clib_error_t *
+vfio_unmap_extended_mem (vlib_main_t *vm, u64 iova, u64 size)
+{
+  linux_vfio_main_t *lvm = &vfio_main;
+  struct vfio_iommu_type1_dma_unmap dm = { 0 };
+
+  if (lvm->container_fd == -1)
+    return clib_error_return (0, "No container fd");
+
+  dm.argsz = sizeof (struct vfio_iommu_type1_dma_unmap);
+  dm.size = size;
+  dm.iova = iova;
+
+  {
+    ELOG_TYPE_DECLARE (e) = {
+      .format = "thread-%d unmap extended DMA at va:%lx size:%lx",
+      .format_args = "i4i8i8",
+    };
+
+    struct
+    {
+      u32 thread_index;
+      u64 iova;
+      u64 size;
+    } __clib_packed *ed;
+
+    ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+    ed->thread_index = vm->thread_index;
+    ed->iova = (u64) iova;
+    ed->size = (u64) size;
+  }
+
+  if (ioctl (lvm->container_fd, VFIO_IOMMU_UNMAP_DMA, &dm) == -1)
+    return clib_error_return_unix (0, "extended DMA unmap failed");
+
   return 0;
 }
 
