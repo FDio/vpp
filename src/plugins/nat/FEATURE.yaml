@@ -2,7 +2,7 @@
 name: Network Address Translation
 maintainer:
   - Ole Troan <ot@cisco.com>
-  - Filip Varga <fivarga@cisco.com>
+  - Filip Varga <filipvarga89@gmail.com>
 features:
   - NAT44-EI - IPv4 Endpoint Independent NAT
       - 1:1 NAT
