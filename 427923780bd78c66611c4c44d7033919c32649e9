@@ -52,6 +52,23 @@
       "parentUuid": "9371d0e8_42ff9d5b",
       "revId": "427923780bd78c66611c4c44d7033919c32649e9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b29d18a_74104b28",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2022-11-05T11:44:37Z",
+      "side": 1,
+      "message": "Please consider using a vppinfra bitmap to solve this problem: \n\n/** Sets the ith bit of a bitmap to new_value\n    Removes trailing zeros from the bitmap\n    @param ai - pointer to the bitmap\n    @param i - the bit position to interrogate\n    @param value - new value for the bit\n    @returns the (possibly reallocated) bitmap object pointer\n*/\nalways_inline uword *\nclib_bitmap_set (uword * ai, uword i, uword value)\n\nand\n\n/** Gets the ith bit value from a bitmap\n    @param ai - pointer to the bitmap\n    @param i - the bit position to interrogate\n    @returns the indicated bit value\n*/\nalways_inline uword\nclib_bitmap_get (uword * ai, uword i)\n\n",
+      "revId": "427923780bd78c66611c4c44d7033919c32649e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
