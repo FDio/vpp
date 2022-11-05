@@ -204,6 +204,16 @@ ip6_ra_get_itf (u32 sw_if_index)
   return (NULL);
 }
 
+u8
+ip6_ra_adv_enabled (u32 sw_if_index)
+{
+  ip6_ra_t *ra;
+
+  ra = ip6_ra_get_itf (sw_if_index);
+
+  return ((ra != NULL) && (ra->send_radv != 0));
+}
+
 /* for "syslogging" - use elog for now */
 #define foreach_log_level	     \
   _ (DEBUG, "DEBUG")                 \

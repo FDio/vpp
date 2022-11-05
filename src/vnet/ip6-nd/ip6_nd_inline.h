@@ -23,6 +23,7 @@
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
+#include <vnet/ip6-nd/ip6_ra.h>
 
 typedef enum
 {
@@ -70,6 +71,13 @@ icmp6_send_neighbor_advertisement (
   icmp6_nsa->advertisement_flags =
     clib_host_to_net_u32 (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
 			  ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+
+  /* if sending RAs is enabled, the "router" flag should be set,
+   * otherwise, neighbors may believe we have changed from a router
+   * to a host - RFC 4861 section 4.4 */
+  if (ip6_ra_adv_enabled (sw_if_index0))
+    icmp6_nsa->advertisement_flags |=
+      clib_host_to_net_u32 (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER);
 
   icmp6_nsa->icmp.checksum = 0;
   icmp6_nsa->icmp.checksum =
