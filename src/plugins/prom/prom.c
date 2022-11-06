@@ -177,6 +177,7 @@ retry:
 	}
     }
   stat_segment_data_free (res);
+  vec_free (stats);
 
   return s;
 }
