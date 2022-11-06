@@ -58,6 +58,7 @@ vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 ip4_table_index, u32 ip6_table_index,
 				 u32 l2_table_index, u32 is_add)
 {
+  vnet_classify_table_t *t;
   policer_classify_main_t *pcm = &policer_classify_main;
   vnet_classify_main_t *vcm = pcm->vnet_classify_main;
   u32 pct[POLICER_CLASSIFY_N_TABLES] = { ip4_table_index, ip6_table_index,
@@ -95,11 +96,20 @@ vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 	return 0;
 
       vnet_policer_classify_feature_enable (vm, pcm, sw_if_index, ti, is_add);
+      t = pool_elt_at_index (vcm->tables, pct[ti]);
 
       if (is_add)
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = pct[ti];
+	{
+	  pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = pct[ti];
+	  t->classify_table_on_sw_if_index =
+	    clib_bitmap_set (t->classify_table_on_sw_if_index, sw_if_index, 1);
+	}
       else
-	pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
+	{
+	  pcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
+	  t->classify_table_on_sw_if_index =
+	    clib_bitmap_set (t->classify_table_on_sw_if_index, sw_if_index, 0);
+	}
     }
 
 

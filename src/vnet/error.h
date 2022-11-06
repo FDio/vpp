@@ -156,7 +156,8 @@
   _ (EAGAIN, -165, "Retry stream call with cursor")                           \
   _ (INVALID_VALUE_4, -166, "Invalid value #4")                               \
   _ (BUSY, -167, "Busy")                                                      \
-  _ (BUG, -168, "Bug")
+  _ (BUG, -168, "Bug")                                                        \
+  _ (CLASSIFY_TABLE_IN_USE, -169, "Classify table in use")
 
 typedef enum
 {
