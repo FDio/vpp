@@ -202,6 +202,8 @@ typedef struct
     u32 mask_u32[32];
   };
 
+  /* bitmaps 1=sw_if_index has classify table set */
+  uword *classify_table_on_sw_if_index;
 } vnet_classify_table_t;
 
 /**
@@ -596,8 +598,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 				 u32 miss_next_index, u32 *table_index,
 				 u8 current_data_flag, i16 current_data_offset,
 				 int is_add, int del_chain);
-void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
-				       u32 table_index, int del_chain);
+int vnet_classify_delete_table_index (vnet_classify_main_t *cm,
+				      u32 table_index, int del_chain);
 
 unformat_function_t unformat_ip4_mask;
 unformat_function_t unformat_ip6_mask;
