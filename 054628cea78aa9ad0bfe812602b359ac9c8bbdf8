@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f272b711_59a3cb9a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2022-11-06T12:23:08Z",
+      "side": 1,
+      "message": "I\u0027ll give this a quick test in my own ipv6 deployment and merge thereafter. It may explain some long-standing weird behavior...",
+      "revId": "054628cea78aa9ad0bfe812602b359ac9c8bbdf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
