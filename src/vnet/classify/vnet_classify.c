@@ -161,7 +161,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
   return (t);
 }
 
-void
+int
 vnet_classify_delete_table_index (vnet_classify_main_t * cm,
 				  u32 table_index, int del_chain)
 {
@@ -169,9 +169,12 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
 
   /* Tolerate multiple frees, up to a point */
   if (pool_is_free_index (cm->tables, table_index))
-    return;
+    return 0;
 
   t = pool_elt_at_index (cm->tables, table_index);
+  if (0 < t->ref_counts)
+    return VNET_API_ERROR_CLASSIFY_TABLE_IN_USE;
+
   if (del_chain && t->next_table_index != ~0)
     /* Recursively delete the entire chain */
     vnet_classify_delete_table_index (cm, t->next_table_index, del_chain);
@@ -179,6 +182,7 @@ vnet_classify_delete_table_index (vnet_classify_main_t * cm,
   vec_free (t->buckets);
   clib_mem_destroy_heap (t->mheap);
   pool_put (cm->tables, t);
+  return 0;
 }
 
 static vnet_classify_entry_t *
@@ -786,8 +790,7 @@ vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
       return 0;
     }
 
-  vnet_classify_delete_table_index (cm, *table_index, del_chain);
-  return 0;
+  return vnet_classify_delete_table_index (cm, *table_index, del_chain);
 }
 
 #define foreach_tcp_proto_field                 \
@@ -1632,8 +1635,8 @@ classify_table_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return (0, "vnet_classify_add_del_table returned %d",
-				rv);
+      return clib_error_return (0, "vnet_classify_add_del_table returned %d:%U",
+				rv, format_vnet_api_errno, rv);
     }
   return 0;
 }
