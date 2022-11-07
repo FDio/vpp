@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a807d9f_3f033628",
+        "filename": "src/plugins/avf/avf_fdir_lib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 797,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-11-07T00:30:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "257b1c1f_def30403",
+      "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cd57f89f_57041510",
@@ -31,6 +49,24 @@
       "writtenOn": "2022-11-01T18:14:39Z",
       "side": 1,
       "message": "Convention is to not check return value from clib_mem_alloc since VPP calls abort when memory cannot be allocated.",
+      "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "703f2036_36ebd5dc",
+        "filename": "src/plugins/avf/avf_fdir_lib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 805,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-11-07T00:30:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cd57f89f_57041510",
       "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30996d32_aa91f1f1",
+        "filename": "src/plugins/avf/avf_rss_lib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-11-07T00:30:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1b34eaa1_0e372ffc",
+      "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "34d963e0_87a96d15",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "76db4756_9029c982",
+        "filename": "src/plugins/avf/avf_rss_lib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-11-07T00:30:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34d963e0_87a96d15",
+      "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "07012723_15c1d973",
@@ -82,6 +154,24 @@
       "writtenOn": "2022-11-01T18:14:39Z",
       "side": 1,
       "message": "Convention is to not check return value from clib_mem_alloc since VPP calls abort when memory cannot be allocated.",
+      "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f09dbd11_a75a1fb6",
+        "filename": "src/plugins/avf/avf_rss_lib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2022-11-07T00:30:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07012723_15c1d973",
       "revId": "5e2a189d8c3f4894c138f48e0945a15afc8eb836",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
