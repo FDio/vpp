@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e0a6c35_5b12aa63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-11-08T16:20:22Z",
+      "side": 1,
+      "message": "\u003e FAILURE\n\nRebase to a newer parent is needed.",
+      "revId": "9243d511bb70313a698f6a3fedf428e3fa175bed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
