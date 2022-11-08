@@ -821,6 +821,7 @@ list(APPEND VNET_SOURCES
   srv6/sr_api.c
   srv6/sr_pt.c
   srv6/sr_pt_node.c
+  srv6/sr_pt_api.c
 )
 
 list(APPEND VNET_HEADERS
@@ -832,6 +833,7 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES
   srv6/sr.api
   srv6/sr_types.api
+  srv6/sr_pt.api
 )
 
 ##############################################################################
