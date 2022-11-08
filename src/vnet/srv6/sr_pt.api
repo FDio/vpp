@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2022 Cisco Systems, Inc.
+ */
+
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+
+/** \brief SR PT iface dump request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sr_pt_iface_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sr_pt_iface_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u16 id;
+  u8 ingress_load;
+  u8 egress_load;
+  u8 tts_template;
+};
+
+/** \brief SR PT iface add request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to add to SR PT
+    @param id - SR PT interface id
+    @param ingress_load - incoming interface load
+    @param egress_load - outgoing interface load
+    @param tts_template - truncated timestamp template to use
+*/
+autoreply define sr_pt_iface_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u16 id;
+  u8 ingress_load;
+  u8 egress_load;
+  u8 tts_template;
+};
+
+/** \brief SR PT iface del request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to delete from SR PT
+*/
+autoreply define sr_pt_iface_del
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
