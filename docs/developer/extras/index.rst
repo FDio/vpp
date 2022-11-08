@@ -15,3 +15,4 @@ VPP extra tools
     vpp_stats_fs
     vpptop
     vcl_ldpreload
+    hs_test
