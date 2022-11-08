@@ -75,6 +75,8 @@ typedef struct
   /* Hash table for sr_pt_iface parameters */
   mhash_t sr_pt_iface_index_hash;
 
+  /* convenience */
+  u16 msg_id_base;
 } sr_pt_main_t;
 
 extern sr_pt_main_t sr_pt_main;
