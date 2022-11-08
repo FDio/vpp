@@ -1,9 +1,0 @@
-Host stack test framework
--------------------------
-
-For building docker image run `make` first and `./test` to run all the tests.
-`./test` script is basically a wrapper for `go test` and accepts its parameters,
-for example following runs a specific test: `./test -run Veth/EchoBuilt`.
-
-Root privileges is required to run tests as it uses linux `ip` command for
-configuring topology.
