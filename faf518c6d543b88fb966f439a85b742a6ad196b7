@@ -51,6 +51,24 @@
       "parentUuid": "9f7c54d7_7aac3461",
       "revId": "faf518c6d543b88fb966f439a85b742a6ad196b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aba3cf07_e7cf8218",
+        "filename": "src/vnet/ip/ip_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-09T13:07:07Z",
+      "side": 1,
+      "message": "Not really, maybe vat can\u0027t depend upon vnet?",
+      "parentUuid": "94dbe36f_87e3fe0d",
+      "revId": "faf518c6d543b88fb966f439a85b742a6ad196b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
