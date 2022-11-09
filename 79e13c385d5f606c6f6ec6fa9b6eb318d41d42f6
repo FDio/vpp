@@ -22,6 +22,30 @@
       },
       "revId": "79e13c385d5f606c6f6ec6fa9b6eb318d41d42f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c47a62d_d18a0135",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 923,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-09T12:11:22Z",
+      "side": 1,
+      "message": "I don\u0027t see any problems for wait_app and wait_method, send/receive_more could be tricky to do. I would like to to this in different patch",
+      "parentUuid": "f0a0908c_ba415e55",
+      "range": {
+        "startLine": 923,
+        "startChar": 4,
+        "endLine": 923,
+        "endChar": 17
+      },
+      "revId": "79e13c385d5f606c6f6ec6fa9b6eb318d41d42f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
