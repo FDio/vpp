@@ -16,6 +16,24 @@
       "message": "this overwrites the target memory even in case of failure unless I\u0027m mistaken?",
       "revId": "faf518c6d543b88fb966f439a85b742a6ad196b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94dbe36f_87e3fe0d",
+        "filename": "src/vnet/ip/ip_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-11-09T10:43:58Z",
+      "side": 1,
+      "message": "oh i completely missed that there is a second parallel implementation there, thanks for the catch ! why is vat not using the code in vnet, do you know ?",
+      "parentUuid": "9f7c54d7_7aac3461",
+      "revId": "faf518c6d543b88fb966f439a85b742a6ad196b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
