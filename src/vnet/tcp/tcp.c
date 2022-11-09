@@ -240,8 +240,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
   /* Cleanup local endpoint if this was an active connect */
   if (!(tc->cfg_flags & TCP_CFG_F_NO_ENDPOINT))
-    transport_endpoint_cleanup (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
-				tc->c_lcl_port);
+    transport_release_local_endpoint (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
+				      tc->c_lcl_port);
 
   /* Check if connection is not yet fully established */
   if (tc->state == TCP_STATE_SYN_SENT)
