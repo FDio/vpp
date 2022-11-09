@@ -118,8 +118,8 @@ udp_connection_free (udp_connection_t * uc)
 static void
 udp_connection_cleanup (udp_connection_t * uc)
 {
-  transport_endpoint_cleanup (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
-			      uc->c_lcl_port);
+  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
+				    uc->c_lcl_port);
   udp_connection_unregister_port (clib_net_to_host_u16 (uc->c_lcl_port),
 				  uc->c_is_ip4);
   udp_connection_free (uc);

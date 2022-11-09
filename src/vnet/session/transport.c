@@ -25,6 +25,7 @@ transport_proto_vft_t *tp_vfts;
 typedef struct local_endpoint_
 {
   transport_endpoint_t ep;
+  transport_proto_t proto;
   int refcnt;
 } local_endpoint_t;
 
@@ -32,7 +33,9 @@ typedef struct transport_main_
 {
   transport_endpoint_table_t local_endpoints_table;
   local_endpoint_t *local_endpoints;
+  u32 *lcl_endpts_freelist;
   u32 port_allocator_seed;
+  u8 lcl_endpts_cleanup_pending;
   clib_spinlock_t local_endpoints_lock;
 } transport_main_t;
 
@@ -427,34 +430,88 @@ transport_endpoint_alloc (void)
   local_endpoint_t *lep;
 
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+
   pool_get_aligned_safe (tm->local_endpoints, lep, 0);
   return lep;
 }
 
+static void
+transport_cleanup_freelist (void)
+{
+  transport_main_t *tm = &tp_main;
+  local_endpoint_t *lep;
+  u32 *lep_indexp;
+
+  clib_spinlock_lock (&tm->local_endpoints_lock);
+
+  vec_foreach (lep_indexp, tm->lcl_endpts_freelist)
+    {
+      lep = pool_elt_at_index (tm->local_endpoints, *lep_indexp);
+
+      /* Port re-shared after attempt to cleanup */
+      if (lep->refcnt > 0)
+	continue;
+
+      transport_endpoint_table_del (&tm->local_endpoints_table, lep->proto,
+				    &lep->ep);
+      transport_endpoint_free (*lep_indexp);
+    }
+
+  vec_reset_length (tm->lcl_endpts_freelist);
+
+  tm->lcl_endpts_cleanup_pending = 0;
+
+  clib_spinlock_unlock (&tm->local_endpoints_lock);
+}
+
 void
-transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
+transport_program_endpoint_cleanup (u32 lepi)
+{
+  transport_main_t *tm = &tp_main;
+  u8 flush_fl = 0;
+
+  /* All workers can free connections. Synchronize access to freelist */
+  clib_spinlock_lock (&tm->local_endpoints_lock);
+
+  vec_add1 (tm->lcl_endpts_freelist, lepi);
+
+  /* Avoid accumulating lots of endpoints for cleanup */
+  if (!tm->lcl_endpts_cleanup_pending &&
+      vec_len (tm->lcl_endpts_freelist) > 32)
+    {
+      tm->lcl_endpts_cleanup_pending = 1;
+      flush_fl = 1;
+    }
+
+  clib_spinlock_unlock (&tm->local_endpoints_lock);
+
+  if (flush_fl)
+    session_send_rpc_evt_to_thread_force (0, transport_cleanup_freelist, 0);
+}
+
+int
+transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip, u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
   u32 lepi;
 
-  /* Cleanup local endpoint if this was an active connect */
   lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
 				    clib_net_to_host_u16 (port));
   if (lepi == ENDPOINT_INVALID_INDEX)
-    return;
+    return -1;
 
   lep = pool_elt_at_index (tm->local_endpoints, lepi);
+
+  /* Local endpoint no longer in use, program cleanup */
   if (!clib_atomic_sub_fetch (&lep->refcnt, 1))
     {
-      transport_endpoint_table_del (&tm->local_endpoints_table, proto,
-				    &lep->ep);
-
-      /* All workers can free connections. Synchronize access to pool */
-      clib_spinlock_lock (&tm->local_endpoints_lock);
-      transport_endpoint_free (lepi);
-      clib_spinlock_unlock (&tm->local_endpoints_lock);
+      transport_program_endpoint_cleanup (lepi);
+      return 0;
     }
+
+  /* Not an error, just in idication that endpoint was not cleaned up */
+  return -1;
 }
 
 static int
@@ -475,6 +532,7 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
   lep = transport_endpoint_alloc ();
   clib_memcpy_fast (&lep->ep.ip, ip, sizeof (*ip));
   lep->ep.port = port;
+  lep->proto = proto;
   lep->refcnt = 1;
 
   transport_endpoint_table_add (&tm->local_endpoints_table, proto, &lep->ep,
@@ -490,6 +548,9 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
   local_endpoint_t *lep;
   u32 lepi;
 
+  /* Active opens should call this only from a control thread, which are also
+   * used to allocate and free ports. So, pool has only one writer and
+   * potentially many readers. Listeners are allocated with barrier */
   lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
 				    clib_net_to_host_u16 (port));
   if (lepi != ENDPOINT_INVALID_INDEX)
@@ -507,12 +568,17 @@ int
 transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 {
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
+  transport_main_t *tm = &tp_main;
   int tries, limit;
 
   limit = max - min;
 
   /* Only support active opens from one of ctrl threads */
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+
+  /* Cleanup freelist if need be */
+  if (vec_len (tm->lcl_endpts_freelist))
+    transport_cleanup_freelist ();
 
   /* Search for first free slot */
   for (tries = 0; tries < limit; tries++)
@@ -522,7 +588,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
       /* Find a port in the specified range */
       while (1)
 	{
-	  port = random_u32 (&tp_main.port_allocator_seed) & PORT_MASK;
+	  port = random_u32 (&tm->port_allocator_seed) & PORT_MASK;
 	  if (PREDICT_TRUE (port >= min && port < max))
 	    break;
 	}
