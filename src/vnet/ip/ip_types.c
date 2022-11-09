@@ -42,15 +42,14 @@ unformat_ip_address (unformat_input_t * input, va_list * args)
 {
   ip_address_t *a = va_arg (*args, ip_address_t *);
 
-  if (unformat_user (input, unformat_ip46_address, &ip_addr_46 (a),
-		     IP46_TYPE_ANY))
-    {
-      ip_addr_version (a) =
-	ip46_address_is_ip4 (&ip_addr_46 (a)) ? AF_IP4 : AF_IP6;
-      return 1;
-    }
-
-  return 0;
+  clib_memset (a, 0, sizeof (*a));
+  if (unformat (input, "%U", unformat_ip4_address, &ip_addr_v4 (a)))
+    ip_addr_version (a) = AF_IP4;
+  else if (unformat_user (input, unformat_ip6_address, &ip_addr_v6 (a)))
+    ip_addr_version (a) = AF_IP6;
+  else
+    return 0;
+  return 1;
 }
 
 u8 *
