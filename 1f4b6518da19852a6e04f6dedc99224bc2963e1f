@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f60c0df7_836933ed",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-09T02:35:03Z",
+      "side": 0,
+      "message": "why remove this? Note the memcpy above so we need to set it.",
+      "revId": "1f4b6518da19852a6e04f6dedc99224bc2963e1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
