@@ -821,8 +821,7 @@ pool_program_safe_realloc_rpc (void *args)
     {
       max_elts = _vec_max_len (*pra->pool, pra->elt_size);
       n_alloc = clib_max (2 * max_elts, POOL_REALLOC_SAFE_ELT_THRESH);
-      _pool_alloc (pra->pool, free_elts + n_alloc, pra->align, 0,
-		   pra->elt_size);
+      _pool_alloc (pra->pool, n_alloc, pra->align, 0, pra->elt_size);
     }
   pool_realloc_flag (*pra->pool) = 0;
   clib_mem_free (args);
