@@ -324,6 +324,7 @@ class JsonParser(object):
         self.services = {}
         self.messages = {}
         self.enums = {}
+        self.enumflags = {}
         self.unions = {}
         self.aliases = {}
         self.types = {
@@ -390,6 +391,14 @@ class JsonParser(object):
                 enum = self.enum_class(name, value_pairs, enumtype)
                 self.enums[enum.name] = enum
                 self.logger.debug("Parsed enum: %s" % enum)
+                self.enums_by_json[path].append(enum)
+            for e in j["enumflags"]:
+                name = e[0]
+                value_pairs = e[1:-1]
+                enumtype = self.types[e[-1]["enumtype"]]
+                enum = self.enum_class(name, value_pairs, enumtype)
+                self.enums[enum.name] = enum
+                self.logger.debug("Parsed enumflag: %s" % enum)
                 self.enums_by_json[path].append(enum)
             exceptions = []
             progress = 0
@@ -485,6 +494,8 @@ class JsonParser(object):
             return self.types[name]
         elif name in self.enums:
             return self.enums[name]
+        elif name in self.enumflags:
+            return self.enumflags[name]
         elif name in self.unions:
             return self.unions[name]
         elif name in self.aliases:
@@ -493,6 +504,8 @@ class JsonParser(object):
             return self.types[mundane_name]
         elif mundane_name in self.enums:
             return self.enums[mundane_name]
+        elif mundane_name in self.enumflags:
+            return self.enumflags[mundane_name]
         elif mundane_name in self.unions:
             return self.unions[mundane_name]
         elif mundane_name in self.aliases:
