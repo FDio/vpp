@@ -1,0 +1,9 @@
+Code-Review+2: Damjan Marion <dmarion@0xa5.net>
+Code-Review+1: Pablo Camarillo <pcamaril@cisco.com>
+Code-Review+1: Francois Clad <fclad@cisco.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Submitted-by: Damjan Marion <dmarion@0xa5.net>
+Submitted-at: Wed, 09 Nov 2022 15:56:48 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/37298
+Project: vpp
+Branch: refs/heads/master
