@@ -928,7 +928,7 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 #endif
 	if (clib_cpu_supports_avx512f ())
 	  init_mb_mgr_avx512 (ptd->mgr);
-        else if (clib_cpu_supports_avx2 ())
+	else if (clib_cpu_supports_avx2 () && clib_cpu_supports_bmi2 ())
 	  init_mb_mgr_avx2 (ptd->mgr);
 	else
 	  init_mb_mgr_sse (ptd->mgr);

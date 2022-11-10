@@ -123,6 +123,7 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (avx, 1, ecx, 28)                                                         \
   _ (rdrand, 1, ecx, 30)                                                      \
   _ (avx2, 7, ebx, 5)                                                         \
+  _ (bmi2, 7, ebx, 8)                                                         \
   _ (rtm, 7, ebx, 11)                                                         \
   _ (pqm, 7, ebx, 12)                                                         \
   _ (pqe, 7, ebx, 15)                                                         \
