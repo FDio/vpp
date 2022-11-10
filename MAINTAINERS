@@ -823,6 +823,13 @@ M:	Fan Zhang <roy.fan.zhang@intel.com>
 M:	Gabriel Oginski <gabrielx.oginski@intel.com>
 F:	extras/strongswan/vpp_sswan
 
+Host stack test framework
+I:	hs-test
+M:	Florin Coras <fcoras@cisco.com>
+M:	Filip Tehlar <ftehlar@cisco.com>
+M:	Maros Ondrejicka <maros.ondrejicka@pantheon.tech>
+F:	extras/hs-test
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>

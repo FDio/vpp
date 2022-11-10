@@ -46,6 +46,7 @@ plugins {
     plugin dpdk_plugin.so { disable }
     plugin crypto_aesni_plugin.so { enable }
     plugin quic_plugin.so { enable }
+    plugin crypto_ipsecmb_plugin.so { disable }
 }
 
 `
