@@ -31,6 +31,8 @@ func RegisterActions() {
 	reg("2veths", Configure2Veths)
 	reg("vcl-test-server", RunVclEchoServer)
 	reg("vcl-test-client", RunVclEchoClient)
+	reg("http-cli-srv", RunHttpCliSrv)
+	reg("http-cli-cln", RunHttpCliCln)
 }
 
 func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
@@ -49,6 +51,17 @@ func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
 		}
 		return nil
 	}
+}
+
+func RunHttpCliSrv(args []string) *ActionResult {
+	cmd := fmt.Sprintf("http cli server")
+	return ApiCliInband("/tmp/2veths", cmd)
+}
+
+func RunHttpCliCln(args []string) *ActionResult {
+	cmd := fmt.Sprintf("http cli client uri http://10.10.10.1/80 query %s", getArgs())
+	fmt.Println(cmd)
+	return ApiCliInband("/tmp/2veths", cmd)
 }
 
 func ConfigureVppProxy(args []string) *ActionResult {
