@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "679bc24e_a59720ad",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-10T13:53:17Z",
+      "side": 1,
+      "message": "Hi. I\u0027m not sure who should review this kind of change. Would you please take a look?",
+      "revId": "1c197c87f9044ec445751219077b1c6b4f79e910",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
