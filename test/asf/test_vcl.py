@@ -594,6 +594,28 @@ class VCLThruHostStackTLS(VCLTestCase):
         self.logger.debug(self.vapi.cli("show app mq"))
 
 
+class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
+    """VCL Thru Host Stack Echo interrupt mode"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session_startup = ["use-private-rx-mqs", "use-app-socket-api"]
+        super(VCLThruHostStackEcho, cls).setUpClass()
+
+    def test_vcl_thru_host_stack_echo(self):
+        """run VCL IPv4 thru host stack echo test interrupt mode"""
+
+        self.sapi_server_sock = "1"
+        self.sapi_client_sock = "2"
+
+        self.thru_host_stack_test(
+            "vcl_test_server",
+            self.server_args,
+            "vcl_test_client",
+            self.client_echo_test_args,
+        )
+
+
 class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
     """VCL Thru Host Stack TLS interrupt mode"""
 
