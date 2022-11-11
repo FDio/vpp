@@ -87,6 +87,7 @@ func (s *Veths2Suite) testVclEcho(proto string) {
 }
 
 func (s *Veths2Suite) TestVclRetryAttach() {
+	s.T().Skip()
 	s.testRetryAttach("tcp")
 }
 
