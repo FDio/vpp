@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "30e14a71_69dab5dc",
+        "filename": "extras/hs-test/README.rst",
+        "patchSetId": 9
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-11T11:43:07Z",
+      "side": 1,
+      "message": "test case name not valid anymore, use for example TestNs/TestHttpTps",
+      "range": {
+        "startLine": 25,
+        "startChar": 152,
+        "endLine": 25,
+        "endChar": 166
+      },
+      "revId": "edfd10309e69a76aee443ab8660a0f0b916c3b54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
