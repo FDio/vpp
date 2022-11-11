@@ -26,27 +26,12 @@ static void
 udp_connection_register_port (u16 lcl_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
-  udp_dst_port_info_t *pi;
   u16 *n;
 
-  pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
-  if (!pi)
-    {
-      udp_add_dst_port (um, lcl_port, 0, is_ip4);
-      pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
-      pi->n_connections = 1;
-    }
-  else
-    {
-      pi->n_connections += 1;
-      /* Do not return. The fact that the pi is valid does not mean
-       * it's up to date */
-    }
+  /* Setup udp protocol -> next index sparse vector mapping. Do not setup
+   * udp_dst_port_info_t as that is used to distinguish between external
+   * and transport consumed ports */
 
-  pi->node_index = is_ip4 ? udp4_input_node.index : udp6_input_node.index;
-  pi->next_index = um->local_to_input_edge[is_ip4];
-
-  /* Setup udp protocol -> next index sparse vector mapping. */
   if (is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port4,
 			     clib_host_to_net_u16 (lcl_port));
@@ -54,39 +39,21 @@ udp_connection_register_port (u16 lcl_port, u8 is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port6,
 			     clib_host_to_net_u16 (lcl_port));
 
-  n[0] = pi->next_index;
+  n[0] = um->local_to_input_edge[is_ip4];
 }
 
 static void
 udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
-  udp_dst_port_info_t *pi;
+  u16 *n;
 
-  pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
-  if (!pi)
-    return;
+  if (is_ip4)
+    n = sparse_vec_validate (um->next_by_dst_port4, lcl_port);
+  else
+    n = sparse_vec_validate (um->next_by_dst_port6, lcl_port);
 
-  if (!pi->n_connections)
-    {
-      clib_warning ("no connections using port %u", lcl_port);
-      return;
-    }
-
-  if (!clib_atomic_sub_fetch (&pi->n_connections, 1))
-    udp_unregister_dst_port (0, lcl_port, is_ip4);
-}
-
-void
-udp_connection_share_port (u16 lcl_port, u8 is_ip4)
-{
-  udp_main_t *um = &udp_main;
-  udp_dst_port_info_t *pi;
-
-  /* Done without a lock but the operation is atomic. Writers to pi hash
-   * table and vector should be guarded by a barrier sync */
-  pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
-  clib_atomic_fetch_add_rel (&pi->n_connections, 1);
+  n[0] = UDP_NO_NODE_SET;
 }
 
 udp_connection_t *
@@ -118,9 +85,10 @@ udp_connection_free (udp_connection_t * uc)
 static void
 udp_connection_cleanup (udp_connection_t * uc)
 {
-  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
-				    uc->c_lcl_port);
-  udp_connection_unregister_port (uc->c_lcl_port, uc->c_is_ip4);
+  /* Unregister port from udp_local only if refcount went to zero */
+  if (!transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
+                                         uc->c_lcl_port))
+    udp_connection_unregister_port (uc->c_lcl_port, uc->c_is_ip4);
   udp_connection_free (uc);
 }
 
@@ -170,8 +138,7 @@ udp_connection_port_used_extern (u16 lcl_port, u8 is_ip4)
   udp_dst_port_info_t *pi;
 
   pi = udp_get_dst_port_info (um, lcl_port, is_ip4);
-  return (pi && !pi->n_connections
-	  && udp_is_valid_dst_port (lcl_port, is_ip4));
+  return (pi && udp_is_valid_dst_port (lcl_port, is_ip4));
 }
 
 static u16
@@ -239,8 +206,7 @@ udp_session_unbind (u32 listener_index)
   udp_connection_t *listener;
 
   listener = udp_listener_get (listener_index);
-  udp_connection_unregister_port (clib_net_to_host_u16 (listener->c_lcl_port),
-				  listener->c_is_ip4);
+  udp_connection_unregister_port (listener->c_lcl_port, listener->c_is_ip4);
   clib_spinlock_free (&listener->rx_lock);
   pool_put (um->listener_pool, listener);
   return 0;
@@ -523,7 +489,7 @@ udp_realloc_ports_sv (u16 **ports_nh_svp)
   vec_resize (ports_nh_sv, 65535);
 
   for (port = 1; port < 65535; port++)
-    ports_nh_sv[port] = ~0;
+    ports_nh_sv[port] = UDP_NO_NODE_SET;
 
   for (i = 0; i < vec_len (ports); i++)
     ports_nh_sv[ports[i]] = nh[i];
