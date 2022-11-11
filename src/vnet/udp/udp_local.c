@@ -42,8 +42,6 @@ static vlib_error_desc_t udp_error_counters[] = {
 #undef udp_error
 };
 
-#define UDP_NO_NODE_SET ((u16) ~0)
-
 #ifndef CLIB_MARCH_VARIANT
 u8 *
 format_udp_rx_trace (u8 * s, va_list * args)
