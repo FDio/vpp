@@ -25,6 +25,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/session/transport.h>
 
+#define UDP_NO_NODE_SET ((u16) ~0)
+
 typedef enum
 {
 #define udp_error(f, n, s, d) UDP_ERROR_##f,
@@ -102,9 +104,6 @@ typedef struct
 
   /* Next index for this type. */
   u32 next_index;
-
-  /* UDP sessions refcount (not tunnels) */
-  u32 n_connections;
 
   /* Parser for packet generator edits for this protocol */
   unformat_function_t *unformat_pg_edit;
@@ -235,8 +234,6 @@ format_function_t format_udp_rx_trace;
 format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 unformat_function_t unformat_udp_port;
-
-void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
