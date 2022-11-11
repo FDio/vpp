@@ -123,8 +123,10 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
       udp_connection_free (uc);
       return 0;
     }
-  udp_connection_share_port (clib_net_to_host_u16
-			     (uc->c_lcl_port), uc->c_is_ip4);
+  transport_share_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
+				  uc->c_lcl_port);
+  //   udp_connection_share_port (clib_net_to_host_u16
+  // 			     (uc->c_lcl_port), uc->c_is_ip4);
   return uc;
 }
 
