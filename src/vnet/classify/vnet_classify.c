@@ -2900,7 +2900,8 @@ classify_session_command_fn (vlib_main_t * vm,
 			    &opaque_index))
 		goto found_opaque;
 	    }
-	  break;
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
 	}
     found_opaque:
       ;
