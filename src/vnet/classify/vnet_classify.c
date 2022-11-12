@@ -2842,8 +2842,9 @@ classify_session_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_classify_main_t *cm = &vnet_classify_main;
-  int is_add = 1;
+  int is_add = 1, hit_next = 0;
   u32 table_index = ~0;
   u32 hit_next_index = ~0;
   u64 opaque_index = ~0;
@@ -2852,65 +2853,110 @@ classify_session_command_fn (vlib_main_t * vm,
   u32 action = 0;
   u32 metadata = 0;
   int i, rv;
+  clib_error_t *e = NULL;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return NULL;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "del"))
+      if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (input, "hit-next %U", unformat_ip_next_index,
+      else if (unformat (line_input, "hit-next %U", unformat_ip_next_index,
 			 &hit_next_index))
-	;
-      else
-	if (unformat
-	    (input, "l2-input-hit-next %U", unformat_l2_input_next_index,
-	     &hit_next_index))
-	;
-      else
-	if (unformat
-	    (input, "l2-output-hit-next %U", unformat_l2_output_next_index,
-	     &hit_next_index))
-	;
-      else if (unformat (input, "acl-hit-next %U", unformat_acl_next_index,
-			 &hit_next_index))
-	;
-      else if (unformat (input, "policer-hit-next %U",
+	{
+	  hit_next++;
+	  if (1 < hit_next)
+	    {
+	      e = clib_error_return (0, "More than one hit-next input");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "l2-input-hit-next %U",
+			 unformat_l2_input_next_index, &hit_next_index))
+	{
+	  hit_next++;
+	  if (1 < hit_next)
+	    {
+	      e = clib_error_return (0, "More than one hit-next input");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "l2-output-hit-next %U",
+			 unformat_l2_output_next_index, &hit_next_index))
+	{
+	  hit_next++;
+	  if (1 < hit_next)
+	    {
+	      e = clib_error_return (0, "More than one hit-next input");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "acl-hit-next %U",
+			 unformat_acl_next_index, &hit_next_index))
+	{
+	  hit_next++;
+	  if (1 < hit_next)
+	    {
+	      e = clib_error_return (0, "More than one hit-next input");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "policer-hit-next %U",
 			 unformat_policer_next_index, &hit_next_index))
+	{
+	  hit_next++;
+	  if (1 < hit_next)
+	    {
+	      e = clib_error_return (0, "More than one hit-next input");
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "opaque-index %lld", &opaque_index))
 	;
-      else if (unformat (input, "opaque-index %lld", &opaque_index))
+      else if (unformat (line_input, "match %U", unformat_classify_match, cm,
+			 &match, table_index))
 	;
-      else if (unformat (input, "match %U", unformat_classify_match,
-			 cm, &match, table_index))
+      else if (unformat (line_input, "advance %d", &advance))
 	;
-      else if (unformat (input, "advance %d", &advance))
+      else if (unformat (line_input, "table-index %d", &table_index))
 	;
-      else if (unformat (input, "table-index %d", &table_index))
-	;
-      else if (unformat (input, "action set-ip4-fib-id %d", &metadata))
+      else if (unformat (line_input, "action set-ip4-fib-id %d", &metadata))
 	action = 1;
-      else if (unformat (input, "action set-ip6-fib-id %d", &metadata))
+      else if (unformat (line_input, "action set-ip6-fib-id %d", &metadata))
 	action = 2;
-      else if (unformat (input, "action set-sr-policy-index %d", &metadata))
+      else if (unformat (line_input, "action set-sr-policy-index %d",
+			 &metadata))
 	action = 3;
       else
 	{
 	  /* Try registered opaque-index unformat fns */
 	  for (i = 0; i < vec_len (cm->unformat_opaque_index_fns); i++)
 	    {
-	      if (unformat (input, "%U", cm->unformat_opaque_index_fns[i],
+	      if (unformat (line_input, "%U", cm->unformat_opaque_index_fns[i],
 			    &opaque_index))
 		goto found_opaque;
 	    }
-	  break;
+	  e = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, line_input);
+	  goto done;
 	}
     found_opaque:
       ;
     }
 
   if (table_index == ~0)
-    return clib_error_return (0, "Table index required");
+    {
+      e = clib_error_return (0, "Table index required");
+      goto done;
+    }
 
   if (is_add && match == 0)
-    return clib_error_return (0, "Match value required");
+    {
+      e = clib_error_return (0, "Match value required");
+      goto done;
+    }
 
   rv = vnet_classify_add_del_session (cm, table_index, match,
 				      hit_next_index,
@@ -2923,12 +2969,14 @@ classify_session_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return (0,
-				"vnet_classify_add_del_session returned %d",
-				rv);
+      e =
+	clib_error_return (0, "vnet_classify_add_del_session returned %d", rv);
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return e;
 }
 
 /* *INDENT-OFF* */
