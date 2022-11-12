@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5df6c47e_a072aee0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-12T23:26:50Z",
+      "side": 1,
+      "message": "Typically we try to keep the summary short. Maybe rephrase to:\nping: mark ipv6 packets as locally originated \n\nAnd then in description mention why you want to do that.",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 73
+      },
+      "revId": "23d5182b63352048a2c6fedf89c3504a7b9d74bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d57a0e83_4a615c19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-12T23:26:50Z",
+      "side": 1,
+      "message": "Just a quick comment",
+      "revId": "23d5182b63352048a2c6fedf89c3504a7b9d74bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
