@@ -105,6 +105,24 @@
       "parentUuid": "8497ed31_e64f42bd",
       "revId": "427923780bd78c66611c4c44d7033919c32649e9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d715b27_58a2f1a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-11-13T11:48:16Z",
+      "side": 1,
+      "message": "should i add VNET_SW_INTERFACE_ADD_DEL_FUNCTION fix at this patch?",
+      "parentUuid": "11290227_fdc32b06",
+      "revId": "427923780bd78c66611c4c44d7033919c32649e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
