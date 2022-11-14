@@ -318,7 +318,7 @@ ip4_icmp_error (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  vlib_buffer_copy_trace_flag (vm, p0, pi0);
+	  vlib_buffer_copy_trace_flag (vm, org_p0, pi0);
 
 	  /* Add IP header and ICMPv4 header including a 4 byte data field */
 	  vlib_buffer_advance (p0,
