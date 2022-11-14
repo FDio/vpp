@@ -219,8 +219,8 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   const int shared_queue = tf->shared_queue;
   af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, tf->queue_id);
   u32 *from;
-  u32 n, n_tx;
-  int i;
+  u32 n = 0, n_tx;
+  int i, tmp;
 
   from = vlib_frame_vector_args (frame);
   n_tx = frame->n_vectors;
@@ -228,26 +228,24 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (shared_queue)
     clib_spinlock_lock (&txq->lock);
 
-  for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+  while (n < n_tx)
     {
-      u32 n_enq;
-      af_xdp_device_output_free (vm, node, txq);
-      n_enq =
-	af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
-      n += n_enq;
-    }
+      tmp = 0;
+      for (i = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+        {
+          u32 n_enq;
+          af_xdp_device_output_free (vm, node, txq);
+          n_enq =
+            af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
+          n += n_enq;
+          tmp += n_enq;
+        }
 
-  af_xdp_device_output_tx_db (vm, node, ad, txq, n);
+      af_xdp_device_output_tx_db (vm, node, ad, txq, tmp);
+    }
 
   if (shared_queue)
     clib_spinlock_unlock (&txq->lock);
-
-  if (PREDICT_FALSE (n != n_tx))
-    {
-      vlib_buffer_free (vm, from + n, n_tx - n);
-      vlib_error_count (vm, node->node_index,
-			AF_XDP_TX_ERROR_NO_FREE_SLOTS, n_tx - n);
-    }
 
   return n;
 }
