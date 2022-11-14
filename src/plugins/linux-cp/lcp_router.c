@@ -1229,6 +1229,16 @@ lcp_router_route_add (struct rtnl_route *rr)
 	  else
 	    {
 	      fib_source_t fib_src;
+	      const fib_route_path_t *rpath;
+
+	      vec_foreach (rpath, np.paths)
+		{
+		  if (fib_route_path_is_attached (rpath))
+		    {
+		      entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
+		      break;
+		    }
+		}
 
 	      fib_src = lcp_router_proto_fib_source (rproto);
 
