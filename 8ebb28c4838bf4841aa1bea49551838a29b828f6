@@ -51,6 +51,24 @@
       "parentUuid": "096ee3e6_9de9e86e",
       "revId": "8ebb28c4838bf4841aa1bea49551838a29b828f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f3efead_f8966fa5",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-11-14T13:50:40Z",
+      "side": 1,
+      "message": "See here: https://wiki.fd.io/view/VPP/ApiChangeProcess",
+      "parentUuid": "50fcfaf5_4580253c",
+      "revId": "8ebb28c4838bf4841aa1bea49551838a29b828f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
