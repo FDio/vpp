@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27229437_3c5e7de0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-11-14T13:27:52Z",
+      "side": 1,
+      "message": "Also I would strongly suggest not adding additional API just because of this. This way the the API gets bloughted and it is nightmare to support backwards something that is not core or necessary. In this case there is undergoing complete refactor and update of address matching algorithm for ED NAT these parts will be changed.",
+      "revId": "c04317d18e39abee62256f312f5d4713a778930a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
