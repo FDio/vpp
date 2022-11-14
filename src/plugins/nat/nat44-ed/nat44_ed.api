@@ -394,6 +394,8 @@ define nat44_address_details {
   vl_api_ip4_address_t ip_address;
   vl_api_nat_config_flags_t flags;
   u32 vrf_id;
+  bool synced_with_interface_address;
+  vl_api_ip4_address_with_prefix_t net_prefix;
 };
 
 /** \brief Enable/disable NAT44 feature on the interface

@@ -625,7 +625,16 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
         vlib_cli_output (vm, "  tenant VRF independent");
 
       if (ap->addr_len != ~0)
-	vlib_cli_output (vm, "  synced with interface address");
+	{
+	  vlib_cli_output (vm, "  synced with interface address");
+	  vlib_cli_output (vm, "  net:");
+	  vlib_cli_output (vm, "    %U/%d", format_ip4_address,
+			   &(ap->net), ap->addr_len);
+	}
+      else
+	{
+	  vlib_cli_output (vm, "  unsynced with interface address");
+	}
     }
   vlib_cli_output (vm, "NAT44 twice-nat pool addresses:");
   vec_foreach (ap, sm->twice_nat_addresses)
@@ -638,7 +647,16 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
         vlib_cli_output (vm, "  tenant VRF independent");
 
       if (ap->addr_len != ~0)
-	vlib_cli_output (vm, "  synced with interface address");
+	{
+	  vlib_cli_output (vm, "  synced with interface address");
+	  vlib_cli_output (vm, "  net:");
+	  vlib_cli_output (vm, "    %U/%d", format_ip4_address, ap->net,
+			   ap->addr_len);
+	}
+      else
+	{
+	  vlib_cli_output (vm, "  unsynced with interface address");
+	}
     }
   return 0;
 }

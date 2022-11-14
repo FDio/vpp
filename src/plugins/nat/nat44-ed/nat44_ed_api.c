@@ -302,6 +302,15 @@ send_nat44_address_details (snat_address_t * a,
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT44_ADDRESS_DETAILS + sm->msg_id_base);
   clib_memcpy (rmp->ip_address, &(a->addr), 4);
+  if (a->addr_len != ~0)
+    {
+      rmp->synced_with_interface_address = true;
+      ip4_address_encode(&(a->net), rmp->net_prefix.address);
+      rmp->net_prefix.len = (u8) (a->addr_len);
+    }
+  else
+    rmp->synced_with_interface_address = false;
+
   if (a->fib_index != ~0)
     {
       fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP4);
