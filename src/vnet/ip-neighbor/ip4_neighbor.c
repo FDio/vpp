@@ -188,6 +188,34 @@ ip4_arp_inline (vlib_main_t * vm,
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
 	      resolve0 = ip0->dst_address;
 	      src0 = adj0->sub_type.glean.rx_pfx.fp_addr.ip4;
+
+	      ip_interface_address_t *ia = 0;
+	      ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+	      ip4_address_t *tmp;
+	      int match = 0;
+
+	      foreach_ip_interface_address (
+		lm4, ia, sw_if_index0, 1, ({
+		  if (ia->flags & IP_INTERFACE_ADDRESS_FLAG_STALE)
+		    continue;
+		  tmp = ip_interface_address_get_address (lm4, ia);
+		  if (tmp->as_u32 == src0.as_u32)
+		    {
+		      match = 1;
+		      break;
+		    }
+		}));
+
+	      /* if src0 matches a configured address - take it,
+		    else select best fit from the interface */
+	      if (!match &&
+		  !ip4_sas_by_sw_if_index (sw_if_index0, &resolve0, &src0))
+		{
+		  /* No source address available */
+		  p0->error =
+		    node->errors[IP4_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS];
+		  continue;
+		}
 	    }
 	  else
 	    {
