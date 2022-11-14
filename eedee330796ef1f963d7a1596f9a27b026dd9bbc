@@ -16,6 +16,23 @@
       "message": "Adding Marcel who recently did the ipsec-mb 1.3 bump.",
       "revId": "eedee330796ef1f963d7a1596f9a27b026dd9bbc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f06f16ac_27164dc7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2600
+      },
+      "writtenOn": "2022-11-14T13:49:41Z",
+      "side": 1,
+      "message": "This looks OK to me.\n\nAnother potential solution could be to let the ipsecmb library chose the best architecture using the init_mb_mgr_auto() API:\nhttps://github.com/intel/intel-ipsec-mb/blob/ea5e82c7886ebdc6aa76c197731b612875a8d9cc/lib/intel-ipsec-mb.h#L1532\nThat logic could then be removed from the plugin.\n\nThat API was added in ipsecmb v0.55.",
+      "revId": "eedee330796ef1f963d7a1596f9a27b026dd9bbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
