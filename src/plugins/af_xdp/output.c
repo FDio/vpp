@@ -6,8 +6,6 @@
 #include <vnet/devices/devices.h>
 #include <af_xdp/af_xdp.h>
 
-#define AF_XDP_TX_RETRIES 5
-
 static_always_inline void
 af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
 			   af_xdp_txq_t * txq)
@@ -219,8 +217,8 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   const int shared_queue = tf->shared_queue;
   af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, tf->queue_id);
   u32 *from;
-  u32 n, n_tx;
-  int i;
+  u32 n = 0, n_tx;
+  f64 start;
 
   from = vlib_frame_vector_args (frame);
   n_tx = frame->n_vectors;
@@ -228,13 +226,22 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (shared_queue)
     clib_spinlock_lock (&txq->lock);
 
-  for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+  start = vlib_time_now (vm);
+  while (n < n_tx)
     {
       u32 n_enq;
+      f64 now;
+
+      /* try to send packets */
       af_xdp_device_output_free (vm, node, txq);
       n_enq =
 	af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
       n += n_enq;
+
+      /* make sure we do not block for longer than 10ms */
+      now = vlib_time_now (vm);
+      if (PREDICT_FALSE (now - start > 0.01))
+	break;
     }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
