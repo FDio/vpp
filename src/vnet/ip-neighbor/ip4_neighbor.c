@@ -187,7 +187,13 @@ ip4_arp_inline (vlib_main_t * vm,
 	      /* resolve the packet's destination */
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
 	      resolve0 = ip0->dst_address;
-	      src0 = adj0->sub_type.glean.rx_pfx.fp_addr.ip4;
+	      if (!ip4_sas_by_sw_if_index (sw_if_index0, &resolve0, &src0))
+		{
+		  /* No source address available */
+		  p0->error =
+		    node->errors[IP4_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS];
+		  continue;
+		}
 	    }
 	  else
 	    {
