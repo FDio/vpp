@@ -69,6 +69,24 @@
       "parentUuid": "50fcfaf5_4580253c",
       "revId": "8ebb28c4838bf4841aa1bea49551838a29b828f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad8f5473_23c7eefe",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-11-14T14:09:30Z",
+      "side": 1,
+      "message": "Thanks, I\u0027ve finished reading the ApiChangeProcess. I have no intention to break the API promise.\n\nNow I think the best choice is to abandon this patch.",
+      "parentUuid": "6f3efead_f8966fa5",
+      "revId": "8ebb28c4838bf4841aa1bea49551838a29b828f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
