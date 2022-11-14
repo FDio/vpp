@@ -6,8 +6,6 @@
 #include <vnet/devices/devices.h>
 #include <af_xdp/af_xdp.h>
 
-#define AF_XDP_TX_RETRIES 5
-
 static_always_inline void
 af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
 			   af_xdp_txq_t * txq)
@@ -131,10 +129,8 @@ af_xdp_device_output_tx_try (vlib_main_t * vm,
 
   ASSERT (mask == txq->cq.mask);
 
-  n_tx = xsk_ring_prod__reserve (&txq->tx, n_tx, &idx);
-
-  /* if ring is full, do nothing */
-  if (PREDICT_FALSE (0 == n_tx))
+  /* if ring does not have enough space, do nothing */
+  if (PREDICT_FALSE (xsk_ring_prod__reserve (&txq->tx, n_tx, &idx) < n_tx))
     return 0;
 
   vlib_get_buffers (vm, bi, bufs, n_tx);
@@ -219,8 +215,9 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   const int shared_queue = tf->shared_queue;
   af_xdp_txq_t *txq = vec_elt_at_index (ad->txqs, tf->queue_id);
   u32 *from;
-  u32 n, n_tx;
-  int i;
+  u32 n = 0, n_tx;
+  f64 start;
+  bool use_time = false;
 
   from = vlib_frame_vector_args (frame);
   n_tx = frame->n_vectors;
@@ -228,13 +225,29 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (shared_queue)
     clib_spinlock_lock (&txq->lock);
 
-  for (i = 0, n = 0; i < AF_XDP_TX_RETRIES && n < n_tx; i++)
+  while (n < n_tx)
     {
-      u32 n_enq;
+      f64 now;
+
+      /* try to send packets */
       af_xdp_device_output_free (vm, node, txq);
-      n_enq =
-	af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx - n, from + n);
-      n += n_enq;
+      n = af_xdp_device_output_tx_try (vm, node, ad, txq, n_tx, from);
+      if (n == n_tx)
+	break;
+
+      /* slow path, prevent kernel hang  */
+      if (!use_time)
+	{
+	  start = vlib_time_now (vm);
+	  use_time = true;
+	}
+
+      af_xdp_device_output_tx_db (vm, node, ad, txq, n);
+
+      /* make sure we do not block for longer than 10ms */
+      now = vlib_time_now (vm);
+      if (PREDICT_FALSE (now - start > 0.01))
+	break;
     }
 
   af_xdp_device_output_tx_db (vm, node, ad, txq, n);
