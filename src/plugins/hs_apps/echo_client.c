@@ -127,6 +127,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
       else
 	{
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
+	  bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
 	  rv = app_send_dgram (&es->data, test_data + test_buf_offset,
 			       bytes_this_chunk, 0);
 	}
@@ -828,6 +829,7 @@ ec_connect_rpc (void *args)
   n_clients = ecm->n_clients;
   needs_crypto = ec_transport_needs_crypto (ecm->transport_proto);
   clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  a->sep_ext.transport_flags |= TRANSPORT_CFG_F_CONNECTED;
   a->app_index = ecm->app_index;
 
   ci = ecm->connect_conn_index;
