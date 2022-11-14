@@ -25,21 +25,24 @@ static ec_main_t ec_main;
   clib_warning (_fmt, ##_args)
 
 static void
-signal_evt_to_cli_i (int *code)
+signal_evt_to_cli_i (void *codep)
 {
   ec_main_t *ecm = &ec_main;
+  int code;
+
   ASSERT (vlib_get_thread_index () == 0);
-  vlib_process_signal_event (ecm->vlib_main, ecm->cli_node_index, *code, 0);
+  code = pointer_to_uword (codep);
+  vlib_process_signal_event (ecm->vlib_main, ecm->cli_node_index, code, 0);
 }
 
 static void
 signal_evt_to_cli (int code)
 {
   if (vlib_get_thread_index () != 0)
-    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) & code,
-				 sizeof (code));
+    session_send_rpc_evt_to_thread_force (
+      0, signal_evt_to_cli_i, uword_to_pointer ((uword) code, void *));
   else
-    signal_evt_to_cli_i (&code);
+    signal_evt_to_cli_i (uword_to_pointer ((uword) code, void *));
 }
 
 static inline ec_worker_t *
@@ -127,6 +130,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
       else
 	{
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
+	  bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
 	  rv = app_send_dgram (&es->data, test_data + test_buf_offset,
 			       bytes_this_chunk, 0);
 	}
@@ -829,6 +833,7 @@ ec_connect_rpc (void *args)
   n_clients = ecm->n_clients;
   needs_crypto = ec_transport_needs_crypto (ecm->transport_proto);
   clib_memcpy (&a->sep_ext, &ecm->connect_sep, sizeof (ecm->connect_sep));
+  a->sep_ext.transport_flags |= TRANSPORT_CFG_F_CONNECTED;
   a->app_index = ecm->app_index;
 
   ci = ecm->connect_conn_index;
@@ -1052,8 +1057,8 @@ parse_config:
   switch (event_type)
     {
     case ~0:
-      ec_cli ("Timeout with %d sessions still active...",
-	      ecm->ready_connections);
+      ec_cli ("Timeout at %.6f with %d sessions still active...",
+	      vlib_time_now (ecm->vlib_main), ecm->ready_connections);
       error = clib_error_return (0, "failed: timeout with %d sessions",
 				 ecm->ready_connections);
       goto cleanup;
