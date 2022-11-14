@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd6d795d_02e38e33",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-11-14T04:03:02Z",
+      "side": 1,
+      "message": "does this remove the old key?",
+      "revId": "0f95995f1b3d4ba42542fb836cd82519443a1acd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e87e8ce4_f3fcebcd",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-11-14T04:03:02Z",
+      "side": 1,
+      "message": "if the addresses can\u0027t be changed, should the SA really be removed?",
+      "revId": "0f95995f1b3d4ba42542fb836cd82519443a1acd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
