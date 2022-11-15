@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cebd3400_a1c1da6a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-15T14:38:01Z",
+      "side": 1,
+      "message": "Thanks for the report and the patch.\nThat said, I\u0027m not sure it\u0027s the right way to do it: classifier tables are used for other things such as filtering traces or ACLs.\nSo right now it is just a matter of your control plane to enforce that as long as a classifier table is in use, you should not remove it.\nNow, if this becomes too complex, I guess the right way should be to add a refcount and to update all the subsystem using the classifier to inc/dec this refcount, and refuse to remove the table as long as the refcount is not 0.",
+      "revId": "baf51b4ff3cd60d0f24fad5887176c75b6ae4d12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
