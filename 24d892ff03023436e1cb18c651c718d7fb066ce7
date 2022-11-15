@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9516af4_8d7d4d7b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-11-15T16:37:21Z",
+      "side": 1,
+      "message": "VPP 22.10 Release is complete and features are not allowed to be merged into release branches -- only bug fixes.\n\nSee RC1 comment in the VPP 22.10 Release Plan:\nhttps://wiki.fd.io/view/Projects/vpp/Release_Plans/Release_Plan_22.10\n",
+      "revId": "24d892ff03023436e1cb18c651c718d7fb066ce7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
