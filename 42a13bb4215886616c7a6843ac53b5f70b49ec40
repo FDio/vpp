@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd0d93cc_8d552839",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-15T11:02:49Z",
+      "side": 1,
+      "message": "Can you rebase your change? Gerrit reports a conflict.",
+      "revId": "42a13bb4215886616c7a6843ac53b5f70b49ec40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
