@@ -2844,6 +2844,7 @@ acl_set_aclplugin_interface_fn (vlib_main_t * vm,
 	break;
     }
 
+  unformat_free (line_input);
   if (~0 == sw_if_index)
     return (clib_error_return (0, "invalid interface"));
   if (~0 == acl_index)
@@ -2851,7 +2852,6 @@ acl_set_aclplugin_interface_fn (vlib_main_t * vm,
 
   acl_interface_add_del_inout_acl (sw_if_index, is_add, is_input, acl_index);
 
-  unformat_free (line_input);
   return (NULL);
 }
 
@@ -2984,6 +2984,7 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
   vec_free (rules);
   vec_free (tag);
 
+  unformat_free (line_input);
   if (rv)
     return (clib_error_return (0, "failed"));
 
