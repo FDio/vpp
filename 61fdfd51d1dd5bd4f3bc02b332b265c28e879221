@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "788c7a16_4ca5aedb",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2246,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-11-15T18:05:05Z",
+      "side": 0,
+      "message": "does taking this out for the generic tunnel encap case and adding it only to the IPIP specific case, did we reak other tunnel types, like GRE.\n\nUT tests are required :)",
+      "revId": "61fdfd51d1dd5bd4f3bc02b332b265c28e879221",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
