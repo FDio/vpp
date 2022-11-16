@@ -34,6 +34,24 @@
       "parentUuid": "cebd3400_a1c1da6a",
       "revId": "baf51b4ff3cd60d0f24fad5887176c75b6ae4d12",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "95947ce5_6b7872eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-16T13:53:41Z",
+      "side": 1,
+      "message": "Then I think you should use a refcount and provide a classify_table_lock()/unlock() pair as is done for fib for example and make sure those are call where classify tables are used.\nNot all classify tables are linked to interfaces.",
+      "parentUuid": "23a3d23b_9b2485c6",
+      "revId": "baf51b4ff3cd60d0f24fad5887176c75b6ae4d12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
