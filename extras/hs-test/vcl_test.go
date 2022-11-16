@@ -187,3 +187,47 @@ func (s *Veths2Suite) testRetryAttach(proto string) {
 	}
 	fmt.Println("Done.")
 }
+
+func (s *Veths2Suite) TestTcpWithLoss() {
+	serverContainer, err := s.NewContainer("server")
+	s.AssertIsNotBlank(serverContainer, "creating container failed", err)
+	err = serverContainer.start()
+	s.AssertIsBlank(err, "starting container failed", err)
+
+	serverVpp := NewVpp(serverContainer)
+	s.Assert().NotNil(serverVpp)
+	serverVpp.setCliSocket("/var/run/vpp/cli.sock")
+	serverVpp.setServer()
+	err = serverVpp.start()
+	s.AssertIsBlank(err, "starting VPP failed", err)
+
+	_, err = serverVpp.vppctl("test echo server uri tcp://10.10.10.1/20022")
+	s.AssertIsBlank(err, "starting echo server failed", err)
+
+	clientContainer, err := s.NewContainer("client")
+	s.AssertIsNotBlank(clientContainer, "creating container failed", err)
+	err = clientContainer.start()
+	s.AssertIsBlank(err, "starting container failed", err)
+
+	clientVpp := NewVpp(clientContainer)
+	s.Assert().NotNil(clientVpp)
+	clientVpp.setCliSocket("/var/run/vpp/cli.sock")
+	clientVpp.setClient()
+	err = clientVpp.start()
+	s.AssertIsBlank(err, "starting VPP failed", err)
+
+	_, err = serverVpp.vppctl("ping 10.10.10.2")
+	s.AssertIsBlank(err, "ping failed", err)
+
+	_, err = clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit packet-size 1400 packets-per-drop 1000")
+	s.AssertIsBlank(err, "configuring NSIM failed", err)
+
+	_, err = clientVpp.vppctl("nsim output-feature enable-disable host-vppcln")
+	s.AssertIsBlank(err, "enabling NSIM failed", err)
+
+	output, err := clientVpp.vppctl("test echo client uri tcp://10.10.10.1/20022 mbytes 50")
+	s.Assert().NoError(err)
+	s.Assert().Equal(true, len(output) != 0)
+	s.Assert().NotContains(output, "failed: timeout")
+	fmt.Println(output)
+}
