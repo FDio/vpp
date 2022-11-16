@@ -254,8 +254,10 @@ esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = drop_next;
+	  esp_encrypt_set_next_index (b[bi], node, vm->thread_index,
+				      ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
+				      bi, nexts, drop_next,
+				      vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -282,8 +284,10 @@ esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = drop_next;
+	  esp_encrypt_set_next_index (b[bi], node, vm->thread_index,
+				      ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
+				      bi, nexts, drop_next,
+				      vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -659,8 +663,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (PREDICT_FALSE (INDEX_INVALID == sa_index0))
 	    {
 	      err = ESP_ENCRYPT_ERROR_NO_PROTECTION;
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  drop_next);
+	      noop_nexts[n_noop] = drop_next;
+	      b[0]->error = node->errors[err];
 	      goto trace;
 	    }
 	}
@@ -670,10 +674,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (sa_index0 != current_sa_index)
 	{
 	  if (current_sa_packets)
-	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_packets,
-					     current_sa_bytes);
+	    vlib_increment_combined_counter (
+	      &ipsec_sa_counters, thread_index, current_sa_index,
+	      current_sa_packets, current_sa_bytes);
 	  current_sa_packets = current_sa_bytes = 0;
 
 	  sa0 = ipsec_sa_get (sa_index0);
@@ -683,14 +686,18 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			     !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa0)))
 	    {
 	      err = ESP_ENCRYPT_ERROR_NO_ENCRYPTION;
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  drop_next);
+	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
+					  n_noop, noop_nexts, drop_next,
+					  sa_index0);
 	      goto trace;
 	    }
+	  current_sa_index = sa_index0;
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
+					  current_sa_index);
+
 	  /* fetch the second cacheline ASAP */
 	  clib_prefetch_load (sa0->cacheline1);
 
-	  current_sa_index = sa_index0;
 	  spi = clib_net_to_host_u32 (sa0->spi);
 	  esp_align = sa0->esp_block_align;
 	  icv_sz = sa0->integ_icv_size;
@@ -711,8 +718,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
 	  err = ESP_ENCRYPT_ERROR_HANDOFF;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      handoff_next);
+	  esp_encrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, handoff_next,
+				      current_sa_index);
 	  goto trace;
 	}
 
@@ -721,7 +729,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (n_bufs == 0)
 	{
 	  err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts, drop_next);
+	  esp_encrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, drop_next, current_sa_index);
 	  goto trace;
 	}
 
@@ -735,7 +744,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	{
 	  err = ESP_ENCRYPT_ERROR_SEQ_CYCLED;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts, drop_next);
+	  esp_encrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, drop_next, current_sa_index);
 	  goto trace;
 	}
 
@@ -751,8 +761,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (!next_hdr_ptr)
 	    {
 	      err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  drop_next);
+	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
+					  n_noop, noop_nexts, drop_next,
+					  current_sa_index);
 	      goto trace;
 	    }
 	  b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -873,8 +884,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if ((old_ip_hdr - ip_len) < &b[0]->pre_data[0])
 	    {
 	      err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  drop_next);
+	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
+					  n_noop, noop_nexts, drop_next,
+					  current_sa_index);
 	      goto trace;
 	    }
 
@@ -886,8 +898,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (!next_hdr_ptr)
 	    {
 	      err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  drop_next);
+	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
+					  n_noop, noop_nexts, drop_next,
+					  current_sa_index);
 	      goto trace;
 	    }
 
@@ -1076,7 +1089,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      n_noop += esp_async_recycle_failed_submit (
 		vm, *async_frame, node, ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
-		n_noop, noop_bi, noop_nexts, drop_next);
+		IPSEC_SA_ERROR_CRYPTO_ENGINE_ERROR, n_noop, noop_bi,
+		noop_nexts, drop_next);
 	      vnet_crypto_async_reset_frame (*async_frame);
 	      vnet_crypto_async_free_frame (vm, *async_frame);
 	    }
