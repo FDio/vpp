@@ -81,8 +81,10 @@ ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[AH_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR];
-	  nexts[bi] = AH_ENCRYPT_NEXT_DROP;
+	  ah_encrypt_set_next_index (b[bi], node, vm->thread_index,
+				     AH_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR, bi,
+				     nexts, AH_ENCRYPT_NEXT_DROP,
+				     vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -152,14 +154,25 @@ ah_encrypt_inline (vlib_main_t * vm,
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
 	  if (current_sa_index != ~0)
-	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_pkts,
-					     current_sa_bytes);
+	    {
+	      vlib_increment_combined_counter (
+		&ipsec_sa_counters, thread_index, current_sa_index,
+		current_sa_pkts, current_sa_bytes);
+	      vlib_increment_simple_counter (
+		&ipsec_sa_err_counters[IPSEC_SA_NODE_AH_ENCRYPT]
+				      [AH_ENCRYPT_ERROR_RX_PKTS],
+		thread_index, current_sa_index, current_sa_pkts);
+	    }
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  current_sa_bytes = current_sa_pkts = 0;
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
+					  current_sa_index);
+	  vlib_prefetch_simple_counter (
+	    &ipsec_sa_err_counters[IPSEC_SA_NODE_AH_ENCRYPT]
+				  [AH_ENCRYPT_ERROR_RX_PKTS],
+	    thread_index, current_sa_index);
 	}
 
       pd->sa_index = current_sa_index;
@@ -183,7 +196,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	{
-	  b[0]->error = node->errors[AH_ENCRYPT_ERROR_SEQ_CYCLED];
+	  ah_encrypt_set_next_index (b[0], node, vm->thread_index,
+				     AH_ENCRYPT_ERROR_SEQ_CYCLED, 0, next,
+				     AH_ENCRYPT_NEXT_DROP, current_sa_index);
 	  pd->skip = 1;
 	  goto next;
 	}
@@ -394,6 +409,9 @@ ah_encrypt_inline (vlib_main_t * vm,
   vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
+  vlib_increment_simple_counter (
+    &ipsec_sa_err_counters[IPSEC_SA_NODE_AH_ENCRYPT][AH_ENCRYPT_ERROR_RX_PKTS],
+    thread_index, current_sa_index, current_sa_pkts);
 
   ah_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
 
