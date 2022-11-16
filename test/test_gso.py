@@ -847,8 +847,8 @@ class TestGSO(VppTestCase):
 
         self.tun_sa_in_v4 = VppIpsecSA(
             self,
-            self.ipv4_params.vpp_tun_sa_id,
-            self.ipv4_params.vpp_tun_spi,
+            self.ipv4_params.scapy_tun_sa_id,
+            self.ipv4_params.scapy_tun_spi,
             self.ipv4_params.auth_algo_vpp_id,
             self.ipv4_params.auth_key,
             self.ipv4_params.crypt_algo_vpp_id,
@@ -859,8 +859,8 @@ class TestGSO(VppTestCase):
 
         self.tun_sa_out_v4 = VppIpsecSA(
             self,
-            self.ipv4_params.scapy_tun_sa_id,
-            self.ipv4_params.scapy_tun_spi,
+            self.ipv4_params.vpp_tun_sa_id,
+            self.ipv4_params.vpp_tun_spi,
             self.ipv4_params.auth_algo_vpp_id,
             self.ipv4_params.auth_key,
             self.ipv4_params.crypt_algo_vpp_id,
@@ -897,7 +897,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[IP].proto, 50)  # ESP
-            self.assertEqual(rx[ESP].spi, self.ipv4_params.scapy_tun_spi)
+            self.assertEqual(rx[ESP].spi, self.ipv4_params.vpp_tun_spi)
             inner = self.ipv4_params.vpp_tun_sa.decrypt(rx[IP])
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.10.3")
@@ -935,7 +935,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IP].src, self.pg0.local_ip4)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
             self.assertEqual(rx[IP].proto, 50)  # ESP
-            self.assertEqual(rx[ESP].spi, self.ipv4_params.scapy_tun_spi)
+            self.assertEqual(rx[ESP].spi, self.ipv4_params.vpp_tun_spi)
             inner = self.ipv4_params.vpp_tun_sa.decrypt(rx[IP])
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:10::3")
@@ -986,8 +986,8 @@ class TestGSO(VppTestCase):
         config_tun_params(self.ipv6_params, self.encryption_type, self.ipip6)
         self.tun_sa_in_v6 = VppIpsecSA(
             self,
-            self.ipv6_params.vpp_tun_sa_id,
-            self.ipv6_params.vpp_tun_spi,
+            self.ipv6_params.scapy_tun_sa_id,
+            self.ipv6_params.scapy_tun_spi,
             self.ipv6_params.auth_algo_vpp_id,
             self.ipv6_params.auth_key,
             self.ipv6_params.crypt_algo_vpp_id,
@@ -998,8 +998,8 @@ class TestGSO(VppTestCase):
 
         self.tun_sa_out_v6 = VppIpsecSA(
             self,
-            self.ipv6_params.scapy_tun_sa_id,
-            self.ipv6_params.scapy_tun_spi,
+            self.ipv6_params.vpp_tun_sa_id,
+            self.ipv6_params.vpp_tun_spi,
             self.ipv6_params.auth_algo_vpp_id,
             self.ipv6_params.auth_key,
             self.ipv6_params.crypt_algo_vpp_id,
@@ -1032,7 +1032,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IPv6].src, self.pg0.local_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
             self.assertEqual(ipv6nh[rx[IPv6].nh], "ESP Header")
-            self.assertEqual(rx[ESP].spi, self.ipv6_params.scapy_tun_spi)
+            self.assertEqual(rx[ESP].spi, self.ipv6_params.vpp_tun_spi)
             inner = self.ipv6_params.vpp_tun_sa.decrypt(rx[IPv6])
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.10.3")
@@ -1071,7 +1071,7 @@ class TestGSO(VppTestCase):
             self.assertEqual(rx[IPv6].src, self.pg0.local_ip6)
             self.assertEqual(rx[IPv6].dst, self.pg0.remote_ip6)
             self.assertEqual(ipv6nh[rx[IPv6].nh], "ESP Header")
-            self.assertEqual(rx[ESP].spi, self.ipv6_params.scapy_tun_spi)
+            self.assertEqual(rx[ESP].spi, self.ipv6_params.vpp_tun_spi)
             inner = self.ipv6_params.vpp_tun_sa.decrypt(rx[IPv6])
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:10::3")

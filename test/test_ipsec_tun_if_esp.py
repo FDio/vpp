@@ -70,7 +70,7 @@ def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
 
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.vpp_tun_spi,
+        spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -81,7 +81,7 @@ def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
     )
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.scapy_tun_spi,
+        spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -114,7 +114,7 @@ def config_tra_params(p, encryption_type, tun_if):
 
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.vpp_tun_spi,
+        spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -124,7 +124,7 @@ def config_tra_params(p, encryption_type, tun_if):
     )
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.scapy_tun_spi,
+        spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -147,8 +147,8 @@ class TemplateIpsec4TunProtect(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -160,8 +160,8 @@ class TemplateIpsec4TunProtect(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -176,8 +176,8 @@ class TemplateIpsec4TunProtect(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -191,8 +191,8 @@ class TemplateIpsec4TunProtect(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -322,8 +322,8 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect, TemplateIpsec):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -337,8 +337,8 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect, TemplateIpsec):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -462,8 +462,8 @@ class TemplateIpsec6TunProtect(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -474,8 +474,8 @@ class TemplateIpsec6TunProtect(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -489,8 +489,8 @@ class TemplateIpsec6TunProtect(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -503,8 +503,8 @@ class TemplateIpsec6TunProtect(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -626,8 +626,8 @@ class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -641,8 +641,8 @@ class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1006,8 +1006,8 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1018,8 +1018,8 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun4):
         )
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1312,8 +1312,8 @@ class TestIpsecGreTebIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1326,8 +1326,8 @@ class TestIpsecGreTebIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1447,8 +1447,8 @@ class TestIpsecGreTebVlanIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1461,8 +1461,8 @@ class TestIpsecGreTebVlanIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1571,8 +1571,8 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1583,8 +1583,8 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1695,8 +1695,8 @@ class TestIpsecGreTebUdpIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1710,8 +1710,8 @@ class TestIpsecGreTebUdpIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1819,8 +1819,8 @@ class TestIpsecGreIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1833,8 +1833,8 @@ class TestIpsecGreIfEsp(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1938,8 +1938,8 @@ class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -1950,8 +1950,8 @@ class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -2056,8 +2056,8 @@ class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -2068,8 +2068,8 @@ class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -2195,8 +2195,8 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
             p.vpp_tra_spi = p.vpp_tra_spi + ii
             p.tun_sa_out = VppIpsecSA(
                 self,
-                p.scapy_tun_sa_id,
-                p.scapy_tun_spi,
+                p.vpp_tun_sa_id,
+                p.vpp_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
@@ -2207,8 +2207,8 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
 
             p.tun_sa_in = VppIpsecSA(
                 self,
-                p.vpp_tun_sa_id,
-                p.vpp_tun_spi,
+                p.scapy_tun_sa_id,
+                p.scapy_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
@@ -2352,8 +2352,8 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
             p.vpp_tra_spi = p.vpp_tra_spi + ii
             p.tun_sa_out = VppIpsecSA(
                 self,
-                p.scapy_tun_sa_id,
-                p.scapy_tun_spi,
+                p.vpp_tun_sa_id,
+                p.vpp_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
@@ -2364,8 +2364,8 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
 
             p.tun_sa_in = VppIpsecSA(
                 self,
-                p.vpp_tun_sa_id,
-                p.vpp_tun_spi,
+                p.scapy_tun_sa_id,
+                p.scapy_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
@@ -2953,8 +2953,8 @@ class TemplateIpsecItf4(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -2968,8 +2968,8 @@ class TemplateIpsecItf4(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -3298,8 +3298,8 @@ class TemplateIpsecItf6(object):
 
         p.tun_sa_out = VppIpsecSA(
             self,
-            p.scapy_tun_sa_id,
-            p.scapy_tun_spi,
+            p.vpp_tun_sa_id,
+            p.vpp_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -3315,8 +3315,8 @@ class TemplateIpsecItf6(object):
 
         p.tun_sa_in = VppIpsecSA(
             self,
-            p.vpp_tun_sa_id,
-            p.vpp_tun_spi,
+            p.scapy_tun_sa_id,
+            p.scapy_tun_spi,
             p.auth_algo_vpp_id,
             p.auth_key,
             p.crypt_algo_vpp_id,
@@ -3610,8 +3610,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
             p.hop_limit = ii + 10
             p.tun_sa_out = VppIpsecSA(
                 self,
-                p.scapy_tun_sa_id,
-                p.scapy_tun_spi,
+                p.vpp_tun_sa_id,
+                p.vpp_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
@@ -3626,8 +3626,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
 
             p.tun_sa_in = VppIpsecSA(
                 self,
-                p.vpp_tun_sa_id,
-                p.vpp_tun_spi,
+                p.scapy_tun_sa_id,
+                p.scapy_tun_spi,
                 p.auth_algo_vpp_id,
                 p.auth_key,
                 p.crypt_algo_vpp_id,
