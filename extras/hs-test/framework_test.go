@@ -3,9 +3,52 @@ package main
 import (
 	"testing"
 	"time"
+	"fmt"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"github.com/edwarnicke/exechelper"
 )
+
+type HstSuite struct {
+	suite.Suite
+	containers []string
+	volumes []string
+}
+
+func (s *HstSuite) hstFail() {
+	s.T().FailNow()
+}
+
+func (s *HstSuite) assertNil(object interface{}, msgAndArgs ...interface{}) {
+	if !assert.Nil(s.T(), object, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) NewContainer(name string) (*Container, error) {
+	if name == "" {
+		return nil, fmt.Errorf("creating container failed: name must not be blank")
+	}
+
+	s.containers = append(s.containers, name)
+
+	container := new(Container)
+	container.name = name
+	return container, nil
+}
+
+func (s *HstSuite) StopContainers() {
+	for _, containerName := range s.containers {
+		exechelper.Run("docker stop " + containerName)
+	}
+}
+
+func (s *HstSuite) RemoveVolumes() {
+	for _, volumeName := range s.volumes {
+		exechelper.Run("docker volume rm " + volumeName)
+	}
+}
 
 type TapSuite struct {
 	suite.Suite
@@ -22,7 +65,7 @@ func (s *TapSuite) TearDownSuite() {
 }
 
 type Veths2Suite struct {
-	suite.Suite
+	HstSuite
 	teardownSuite func()
 }
 
@@ -33,6 +76,8 @@ func (s *Veths2Suite) SetupSuite() {
 
 func (s *Veths2Suite) TearDownSuite() {
 	s.teardownSuite()
+	s.StopContainers()
+	s.RemoveVolumes()
 }
 
 type NsSuite struct {
