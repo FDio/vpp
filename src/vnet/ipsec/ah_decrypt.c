@@ -104,8 +104,9 @@ ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
-	  b[bi]->error = node->errors[AH_DECRYPT_ERROR_INTEG_ERROR];
-	  nexts[bi] = AH_DECRYPT_NEXT_DROP;
+	  ah_decrypt_set_next_index (
+	    b[bi], node, vm->thread_index, AH_DECRYPT_ERROR_INTEG_ERROR, bi,
+	    nexts, AH_DECRYPT_NEXT_DROP, vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -144,16 +145,25 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
 	  if (current_sa_index != ~0)
-	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_pkts,
-					     current_sa_bytes);
+	    {
+	      vlib_increment_combined_counter (
+		&ipsec_sa_counters, thread_index, current_sa_index,
+		current_sa_pkts, current_sa_bytes);
+	      vlib_increment_simple_counter (
+		&ipsec_sa_err_counters[IPSEC_SA_NODE_AH_DECRYPT]
+				      [AH_DECRYPT_ERROR_RX_PKTS],
+		thread_index, current_sa_index, current_sa_pkts);
+	    }
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
 					  thread_index, current_sa_index);
+	  vlib_prefetch_simple_counter (
+	    &ipsec_sa_err_counters[IPSEC_SA_NODE_AH_DECRYPT]
+				  [AH_DECRYPT_ERROR_RX_PKTS],
+	    thread_index, current_sa_index);
 	}
 
       if (PREDICT_FALSE (~0 == sa0->thread_index))
@@ -190,8 +200,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 	{
 	  if (ip4_is_fragment (ih4))
 	    {
-	      b[0]->error = node->errors[AH_DECRYPT_ERROR_DROP_FRAGMENTS];
-	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      ah_decrypt_set_next_index (
+		b[0], node, vm->thread_index, AH_DECRYPT_ERROR_DROP_FRAGMENTS,
+		0, next, AH_DECRYPT_NEXT_DROP, current_sa_index);
 	      goto next;
 	    }
 	  pd->ip_hdr_size = ip4_header_bytes (ih4);
@@ -204,8 +215,9 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, ~0, false,
 					       &pd->seq_hi))
 	{
-	  b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
-	  next[0] = AH_DECRYPT_NEXT_DROP;
+	  ah_decrypt_set_next_index (b[0], node, vm->thread_index,
+				     AH_DECRYPT_ERROR_REPLAY, 0, next,
+				     AH_DECRYPT_NEXT_DROP, current_sa_index);
 	  goto next;
 	}
 
@@ -220,8 +232,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 			     pd->current_data + b[0]->current_length
 			     + sizeof (u32) > buffer_data_size))
 	    {
-	      b[0]->error = node->errors[AH_DECRYPT_ERROR_NO_TAIL_SPACE];
-	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      ah_decrypt_set_next_index (
+		b[0], node, vm->thread_index, AH_DECRYPT_ERROR_NO_TAIL_SPACE,
+		0, next, AH_DECRYPT_NEXT_DROP, current_sa_index);
 	      goto next;
 	    }
 
@@ -287,6 +300,9 @@ ah_decrypt_inline (vlib_main_t * vm,
   vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
+  vlib_increment_simple_counter (
+    &ipsec_sa_err_counters[IPSEC_SA_NODE_AH_DECRYPT][AH_DECRYPT_ERROR_RX_PKTS],
+    thread_index, current_sa_index, current_sa_pkts);
 
   ah_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
 
@@ -307,8 +323,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, pd->seq_hi,
 						   true, NULL))
 	    {
-	      b[0]->error = node->errors[AH_DECRYPT_ERROR_REPLAY];
-	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      ah_decrypt_set_next_index (b[0], node, vm->thread_index,
+					 AH_DECRYPT_ERROR_REPLAY, 0, next,
+					 AH_DECRYPT_NEXT_DROP, pd->sa_index);
 	      goto trace;
 	    }
 	  n_lost = ipsec_sa_anti_replay_advance (sa0, thread_index, pd->seq,
@@ -330,8 +347,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    next[0] = AH_DECRYPT_NEXT_IP6_INPUT;
 	  else
 	    {
-	      b[0]->error = node->errors[AH_DECRYPT_ERROR_DECRYPTION_FAILED];
-	      next[0] = AH_DECRYPT_NEXT_DROP;
+	      ah_decrypt_set_next_index (b[0], node, vm->thread_index,
+					 AH_DECRYPT_ERROR_DECRYPTION_FAILED, 0,
+					 next, AH_DECRYPT_NEXT_DROP,
+					 pd->sa_index);
 	      goto trace;
 	    }
 	}

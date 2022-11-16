@@ -347,6 +347,22 @@ ipsec_spinlock_unlock (i32 *lock)
   clib_atomic_release (lock);
 }
 
+/* Special case to drop or hand off packets for sync/async modes.
+ *
+ * Different than sync mode, async mode only enqueue drop or hand-off packets
+ * to next nodes.
+ */
+always_inline void
+ipsec_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+		      u32 thread_index, u32 ipsec_node_index, u32 err,
+		      u16 index, u16 *nexts, u16 drop_next, u32 sa_index)
+{
+  nexts[index] = drop_next;
+  b->error = node->errors[err];
+  vlib_increment_simple_counter (&ipsec_sa_err_counters[ipsec_node_index][err],
+				 thread_index, sa_index, 1);
+}
+
 u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
 			       const char *name,
 			       const char *ah4_encrypt_node_name,

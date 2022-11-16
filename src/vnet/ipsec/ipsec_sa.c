@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 
 /**
  * @brief
@@ -32,6 +33,9 @@ vlib_simple_counter_main_t ipsec_sa_lost_counters = {
   .name = "SA-lost",
   .stat_segment_name = "/net/ipsec/sa/lost",
 };
+/* Counters structure in heap. */
+vlib_error_desc_t **ipsec_sa_errors_heap;
+vlib_simple_counter_main_t **ipsec_sa_err_counters;
 
 ipsec_sa_t *ipsec_sa_pool;
 
@@ -200,6 +204,15 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   vlib_zero_combined_counter (&ipsec_sa_counters, sa_index);
   vlib_validate_simple_counter (&ipsec_sa_lost_counters, sa_index);
   vlib_zero_simple_counter (&ipsec_sa_lost_counters, sa_index);
+  for (int i = 0; i < IPSEC_SA_N_NODE; i++)
+    {
+      for (int j = 0; j < vec_len (ipsec_sa_err_counters[i]); j++)
+	{
+	  vlib_validate_simple_counter (&ipsec_sa_err_counters[i][j],
+					sa_index);
+	  vlib_zero_simple_counter (&ipsec_sa_err_counters[i][j], sa_index);
+	}
+    }
 
   tunnel_copy (tun, &sa->tunnel);
   sa->id = id;
@@ -432,6 +445,13 @@ ipsec_sa_clear (index_t sai)
 {
   vlib_zero_combined_counter (&ipsec_sa_counters, sai);
   vlib_zero_simple_counter (&ipsec_sa_lost_counters, sai);
+  for (int i = 0; i < IPSEC_SA_N_NODE; i++)
+    {
+      for (int j = 0; j < vec_len (ipsec_sa_err_counters[i]); j++)
+	{
+	  vlib_zero_simple_counter (&ipsec_sa_err_counters[i][j], sai);
+	}
+    }
 }
 
 void
@@ -504,16 +524,32 @@ const static fib_node_vft_t ipsec_sa_vft = {
   .fnv_back_walk = ipsec_sa_back_walk,
 };
 
-/* force inclusion from application's main.c */
+/* Init per-SA error counters and node type */
 clib_error_t *
-ipsec_sa_interface_init (vlib_main_t * vm)
+ipsec_sa_init (vlib_main_t *vm)
 {
   fib_node_register_type (FIB_NODE_TYPE_IPSEC_SA, &ipsec_sa_vft);
 
-  return 0;
+  vec_validate (ipsec_sa_errors_heap, IPSEC_SA_N_NODE);
+  vec_validate (ipsec_sa_err_counters, IPSEC_SA_N_NODE);
+#define _(index, val, node)                                                   \
+  ipsec_sa_errors_heap[index] = node##_error_counters;                        \
+  vec_validate (ipsec_sa_err_counters[index], val##_N_ERROR - 1);             \
+  for (int i = 0; i < vec_len (ipsec_sa_err_counters[index]); i++)            \
+    {                                                                         \
+      ipsec_sa_err_counters[index][i].name = (char *) format (                \
+	0, "SA-" #node "-%s%c", ipsec_sa_errors_heap[index][i].name, 0);      \
+      ipsec_sa_err_counters[index][i].stat_segment_name =                     \
+	(char *) format (0, "/net/ipsec/sa/err/" #node "/%s%c",               \
+			 ipsec_sa_errors_heap[index][i].name, 0);             \
+      ipsec_sa_err_counters[index][i].counters = 0;                           \
+    }
+  foreach_ipsec_sa_node
+#undef _
+    return 0;
 }
 
-VLIB_INIT_FUNCTION (ipsec_sa_interface_init);
+VLIB_INIT_FUNCTION (ipsec_sa_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
