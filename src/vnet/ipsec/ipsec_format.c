@@ -444,7 +444,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   u32 sai = va_arg (*args, u32);
   ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
   vlib_counter_t counts;
-  counter_t lost;
+  counter_t lost, errors;
   ipsec_sa_t *sa;
 
   if (pool_is_free_index (ipsec_sa_pool, sai))
@@ -488,9 +488,20 @@ format_ipsec_sa (u8 * s, va_list * args)
   lost = vlib_get_simple_counter (&ipsec_sa_lost_counters, sai);
   s = format (s, "\n   tx/rx:[packets:%Ld bytes:%Ld], lost:[packets:%Ld]",
 	      counts.packets, counts.bytes, lost);
+#define _(index, val, node)                                                   \
+  s = format (s, "\n   " #node " errors:");                                   \
+  for (int i = 0; i < vec_len (ipsec_sa_err_counters[index]); i++)            \
+    {                                                                         \
+      errors =                                                                \
+	vlib_get_simple_counter (&ipsec_sa_err_counters[index][i], sai);      \
+      s = format (s, "\n   %s:[packets:%Ld]",                                 \
+		  ipsec_sa_errors_heap[index][i].desc, errors);               \
+    }
+  foreach_ipsec_sa_node
+#undef _
 
-  if (ipsec_sa_is_set_IS_TUNNEL (sa))
-    s = format (s, "\n%U", format_tunnel, &sa->tunnel, 3);
+    if (ipsec_sa_is_set_IS_TUNNEL (sa)) s =
+      format (s, "\n%U", format_tunnel, &sa->tunnel, 3);
 
 done:
   return (s);
