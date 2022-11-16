@@ -25,7 +25,7 @@ func newVppContext() (context.Context, context.CancelFunc) {
 	return ctx, cancel
 }
 
-func Vppcli(runDir, command string) (string, error) {
+func Vppcli(runDir, command string) (string, error) { // TODO what to do about this function and the duplicate I added?
 	cmd := exec.Command("vppctl", "-s", fmt.Sprintf("%s/var/run/vpp/cli.sock", runDir), command)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
