@@ -20,7 +20,7 @@ const configTemplate = `unix {
   nodaemon
   log %[1]s/var/log/vpp/vpp.log
   full-coredump
-  cli-listen %[1]s/var/run/vpp/cli.sock
+  cli-listen %[1]s%[2]s
   runtime-dir %[1]s/var/run
   gid vpp
 }
@@ -42,11 +42,11 @@ statseg {
 }
 
 plugins {
-	plugin unittest_plugin.so { enable }
-    plugin dpdk_plugin.so { disable }
-    plugin crypto_aesni_plugin.so { enable }
-    plugin quic_plugin.so { enable }
-    plugin crypto_ipsecmb_plugin.so { disable }
+  plugin unittest_plugin.so { enable }
+  plugin dpdk_plugin.so { disable }
+  plugin crypto_aesni_plugin.so { enable }
+  plugin quic_plugin.so { enable }
+  plugin crypto_ipsecmb_plugin.so { disable }
 }
 
 `
@@ -204,6 +204,16 @@ func assertFileSize(f1, f2 string) error {
 func dockerExec(cmd string, instance string) ([]byte, error) {
 	c := "docker exec -d " + instance + " " + cmd
 	return exechelper.CombinedOutput(c)
+}
+
+func vppctl(t *testing.T, containerName string, socket string, command string) (string) {
+	dockerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
+		containerName, socket, command)
+	output, err := exechelper.CombinedOutput(dockerExecCommand)
+	if err != nil {
+		t.Errorf("vppctl %s failed: %v", command, err)
+	}
+	return string(output)
 }
 
 func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
