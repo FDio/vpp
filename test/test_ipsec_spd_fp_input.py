@@ -293,8 +293,8 @@ class IPSec4SpdTestCaseProtect(SpdFastPathInboundProtect):
             pkt_count,
             "incorrect SA out counts: expected %d != %d" % (pkt_count, pkts),
         )
-        self.assertEqual(p.tra_sa_out.get_lost(), 0)
-        self.assertEqual(p.tra_sa_in.get_lost(), 0)
+        self.assertEqual(p.tra_sa_out.get_err("lost"), 0)
+        self.assertEqual(p.tra_sa_in.get_err("lost"), 0)
 
 
 class IPSec4SpdTestCaseAddIPRange(SpdFastPathInbound):
@@ -876,8 +876,8 @@ class IPSec6SpdTestCaseProtect(SpdFastPathIPv6InboundProtect):
             pkt_count,
             "incorrect SA out counts: expected %d != %d" % (pkt_count, pkts),
         )
-        self.assertEqual(p.tra_sa_out.get_lost(), 0)
-        self.assertEqual(p.tra_sa_in.get_lost(), 0)
+        self.assertEqual(p.tra_sa_out.get_err("lost"), 0)
+        self.assertEqual(p.tra_sa_in.get_err("lost"), 0)
 
 
 if __name__ == "__main__":
