@@ -187,3 +187,47 @@ func (s *Veths2Suite) testRetryAttach(proto string) {
 	}
 	fmt.Println("Done.")
 }
+
+func (s *Veths2Suite) TestTcpWithLoss() {
+	serverContainer, err := s.NewContainer("server")
+	s.assertNil(err, "creating container failed")
+	err = serverContainer.start()
+	s.assertNil(err)
+
+	serverVpp := NewVpp(serverContainer)
+	s.Assert().NotNil(serverVpp)
+	serverVpp.setCliSocket("/var/run/vpp/cli.sock")
+	serverVpp.setServer()
+	err = serverVpp.start()
+	s.assertNil(err, "starting VPP failed")
+
+	_, err = serverVpp.vppctl("test echo server uri tcp://10.10.10.1/20022")
+	s.assertNil(err, "starting echo server failed")
+
+	clientContainer, err := s.NewContainer("client")
+	s.assertNil(err, "creating container failed")
+	err = clientContainer.start()
+	s.assertNil(err, "starting container failed")
+
+	clientVpp := NewVpp(clientContainer)
+	s.Assert().NotNil(clientVpp)
+	clientVpp.setCliSocket("/var/run/vpp/cli.sock")
+	clientVpp.setClient()
+	err = clientVpp.start()
+	s.assertNil(err, "starting VPP failed")
+
+	_, err = serverVpp.vppctl("ping 10.10.10.2")
+	s.assertNil(err, "ping failed")
+
+	_, err = clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit packet-size 1400 packets-per-drop 1000")
+	s.assertNil(err, "configuring NSIM failed")
+
+	_, err = clientVpp.vppctl("nsim output-feature enable-disable host-vppcln")
+	s.assertNil(err, "enabling NSIM failed")
+
+	output, err := clientVpp.vppctl("test echo client uri tcp://10.10.10.1/20022 mbytes 50")
+	s.Assert().NoError(err)
+	s.Assert().Equal(true, len(output) != 0)
+	s.Assert().NotContains(output, "failed: timeout")
+	fmt.Println(output)
+}
