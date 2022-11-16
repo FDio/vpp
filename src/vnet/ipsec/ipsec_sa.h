@@ -118,6 +118,20 @@ typedef enum ipsec_sad_flags_t_
 
 STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 2, "IPSEC SA flags != 2 byte");
 
+#define foreach_ipsec_sa_node                                                 \
+  _ (0, ESP_ENCRYPT, esp_encrypt)                                             \
+  _ (1, ESP_DECRYPT, esp_decrypt)                                             \
+  _ (2, AH_ENCRYPT, ah_encrypt)                                               \
+  _ (3, AH_DECRYPT, ah_decrypt)
+
+typedef enum
+{
+#define _(v, f, s) IPSEC_SA_NODE_##f = v,
+  foreach_ipsec_sa_node
+#undef _
+    IPSEC_SA_N_NODE,
+} __clib_packed ipsec_sa_node_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -267,6 +281,8 @@ foreach_ipsec_sa_flags
  */
 extern vlib_combined_counter_main_t ipsec_sa_counters;
 extern vlib_simple_counter_main_t ipsec_sa_lost_counters;
+extern vlib_error_desc_t **ipsec_sa_errors_heap;
+extern vlib_simple_counter_main_t **ipsec_sa_err_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 
