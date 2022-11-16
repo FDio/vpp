@@ -145,8 +145,8 @@ class ConfigIpsecESP(TemplateIpsec):
             crypt_algo_vpp_id,
             crypt_key,
             self.vpp_esp_protocol,
-            self.tun_if.local_addr[addr_type],
             self.tun_if.remote_addr[addr_type],
+            self.tun_if.local_addr[addr_type],
             tun_flags=tun_flags,
             dscp=params.dscp,
             flags=flags,
@@ -162,8 +162,8 @@ class ConfigIpsecESP(TemplateIpsec):
             crypt_algo_vpp_id,
             crypt_key,
             self.vpp_esp_protocol,
-            self.tun_if.remote_addr[addr_type],
             self.tun_if.local_addr[addr_type],
+            self.tun_if.remote_addr[addr_type],
             tun_flags=tun_flags,
             dscp=params.dscp,
             flags=flags,
@@ -201,7 +201,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tun_spd,
-                vpp_tun_sa_id,
+                scapy_tun_sa_id,
                 remote_tun_if_host,
                 remote_tun_if_host,
                 self.pg1.remote_addr[addr_type],
@@ -216,7 +216,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tun_spd,
-                scapy_tun_sa_id,
+                vpp_tun_sa_id,
                 self.pg1.remote_addr[addr_type],
                 self.pg1.remote_addr[addr_type],
                 remote_tun_if_host,
@@ -230,7 +230,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tun_spd,
-                vpp_tun_sa_id,
+                scapy_tun_sa_id,
                 remote_tun_if_host,
                 remote_tun_if_host,
                 self.pg0.local_addr[addr_type],
@@ -245,7 +245,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tun_spd,
-                scapy_tun_sa_id,
+                vpp_tun_sa_id,
                 self.pg0.local_addr[addr_type],
                 self.pg0.local_addr[addr_type],
                 remote_tun_if_host,
@@ -332,7 +332,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tra_spd,
-                vpp_tra_sa_id,
+                scapy_tra_sa_id,
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.remote_addr[addr_type],
@@ -347,7 +347,7 @@ class ConfigIpsecESP(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tra_spd,
-                scapy_tra_sa_id,
+                vpp_tra_sa_id,
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.remote_addr[addr_type],
@@ -447,7 +447,7 @@ class TestIpsecEsp1(
         VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            p6.scapy_tun_sa_id,
+            p6.vpp_tun_sa_id,
             self.pg1.remote_addr[p4.addr_type],
             self.pg1.remote_addr[p4.addr_type],
             p6.remote_tun_if_host4,
@@ -482,7 +482,7 @@ class TestIpsecEsp1(
         VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            p4.scapy_tun_sa_id,
+            p4.vpp_tun_sa_id,
             self.pg1.remote_addr[p6.addr_type],
             self.pg1.remote_addr[p6.addr_type],
             p4.remote_tun_if_host6,
@@ -746,10 +746,10 @@ class TestIpsecEspAsync(TemplateIpsecEsp):
         self.assertEqual(len(rxs), len(pkts))
 
         for rx in rxs:
-            if rx[ESP].spi == p.scapy_tun_spi:
+            if rx[ESP].spi == p.vpp_tun_spi:
                 decrypted = p.vpp_tun_sa.decrypt(rx[IP])
             elif rx[ESP].spi == self.p_sync.vpp_tun_spi:
-                decrypted = self.p_sync.scapy_tun_sa.decrypt(rx[IP])
+                decrypted = self.p_sync.vpp_tun_sa.decrypt(rx[IP])
             else:
                 rx.show()
                 self.assertTrue(False)
@@ -807,12 +807,12 @@ class TestIpsecEspAsync(TemplateIpsecEsp):
         self.assertEqual(len(rxs), len(pkts))
 
         for rx in rxs:
-            if rx[ESP].spi == p.scapy_tun_spi:
+            if rx[ESP].spi == p.vpp_tun_spi:
                 decrypted = p.vpp_tun_sa.decrypt(rx[IP])
             elif rx[ESP].spi == self.p_sync.vpp_tun_spi:
-                decrypted = self.p_sync.scapy_tun_sa.decrypt(rx[IP])
+                decrypted = self.p_sync.vpp_tun_sa.decrypt(rx[IP])
             elif rx[ESP].spi == self.p_async.vpp_tun_spi:
-                decrypted = self.p_async.scapy_tun_sa.decrypt(rx[IP])
+                decrypted = self.p_async.vpp_tun_sa.decrypt(rx[IP])
             else:
                 rx.show()
                 self.assertTrue(False)
