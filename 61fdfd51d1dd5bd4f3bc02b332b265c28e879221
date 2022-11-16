@@ -34,6 +34,24 @@
       "parentUuid": "788c7a16_4ca5aedb",
       "revId": "61fdfd51d1dd5bd4f3bc02b332b265c28e879221",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b2468d2_7446ec9d",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2246,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-11-16T03:16:10Z",
+      "side": 0,
+      "message": "\u003e No, It is not because of the IPIP tunnel reason. All the checksums (except ipv4 incremental) will be computed either in interface_output node or in the NIC. vlib_buffer_t contains correct metadata of header offsets and checksum offload flags which will be used to compute checksum.\n\u003e \n\u003e test_gso and test_offload contains tests for GSO offload and checksum offload.\n\nthere\u0027s no GRE tunnel in those tests. where is outer_l3_hdr_offset set when it\u0027s GRE encap?",
+      "parentUuid": "ffe6118e_2ebf66cb",
+      "revId": "61fdfd51d1dd5bd4f3bc02b332b265c28e879221",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
