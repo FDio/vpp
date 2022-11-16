@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vnet/crypto/crypto.h>
+#include <vnet/ipsec/esp.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 
 typedef enum
 {
@@ -98,14 +100,25 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      u32 i;
+	      u32 i, err;
 	      for (i = 0; i < cf->n_elts; i++)
 		{
 		  if (cf->elts[i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 		    {
+		      vlib_buffer_t *b =
+			vlib_get_buffer (vm, cf->buffer_indices[i]);
 		      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 		      vlib_node_increment_counter (vm, node->node_index,
 						   cf->elts[i].status, 1);
+		      if (cf->elts[i].status ==
+			  VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+			err = ESP_DECRYPT_ERROR_INTEG_ERROR;
+		      else
+			err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+		      vlib_increment_simple_counter (
+			&ipsec_sa_err_counters[IPSEC_SA_NODE_ESP_DECRYPT][err],
+			vm->thread_index,
+			(esp_post_data (b))->decrypt_data.sa_index, 1);
 		    }
 		  else
 		    ct->nexts[i + n_cache] = cf->next_node_index[i];
