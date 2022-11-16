@@ -154,8 +154,8 @@ class ConfigIpsecAH(TemplateIpsec):
             crypt_algo_vpp_id,
             crypt_key,
             self.vpp_ah_protocol,
-            self.tun_if.local_addr[addr_type],
             self.tun_if.remote_addr[addr_type],
+            self.tun_if.local_addr[addr_type],
             tun_flags=tun_flags,
             flags=flags,
             dscp=params.dscp,
@@ -170,8 +170,8 @@ class ConfigIpsecAH(TemplateIpsec):
             crypt_algo_vpp_id,
             crypt_key,
             self.vpp_ah_protocol,
-            self.tun_if.remote_addr[addr_type],
             self.tun_if.local_addr[addr_type],
+            self.tun_if.remote_addr[addr_type],
             tun_flags=tun_flags,
             flags=flags,
             dscp=params.dscp,
@@ -208,7 +208,7 @@ class ConfigIpsecAH(TemplateIpsec):
         e1 = VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            vpp_tun_sa_id,
+            scapy_tun_sa_id,
             remote_tun_if_host,
             remote_tun_if_host,
             self.pg1.remote_addr[addr_type],
@@ -221,7 +221,7 @@ class ConfigIpsecAH(TemplateIpsec):
         e2 = VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            scapy_tun_sa_id,
+            vpp_tun_sa_id,
             self.pg1.remote_addr[addr_type],
             self.pg1.remote_addr[addr_type],
             remote_tun_if_host,
@@ -233,7 +233,7 @@ class ConfigIpsecAH(TemplateIpsec):
         e3 = VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            vpp_tun_sa_id,
+            scapy_tun_sa_id,
             remote_tun_if_host,
             remote_tun_if_host,
             self.pg0.local_addr[addr_type],
@@ -246,7 +246,7 @@ class ConfigIpsecAH(TemplateIpsec):
         e4 = VppIpsecSpdEntry(
             self,
             self.tun_spd,
-            scapy_tun_sa_id,
+            vpp_tun_sa_id,
             self.pg0.local_addr[addr_type],
             self.pg0.local_addr[addr_type],
             remote_tun_if_host,
@@ -336,7 +336,7 @@ class ConfigIpsecAH(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tra_spd,
-                vpp_tra_sa_id,
+                scapy_tra_sa_id,
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.remote_addr[addr_type],
@@ -351,7 +351,7 @@ class ConfigIpsecAH(TemplateIpsec):
             VppIpsecSpdEntry(
                 self,
                 self.tra_spd,
-                scapy_tra_sa_id,
+                vpp_tra_sa_id,
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.local_addr[addr_type],
                 self.tra_if.remote_addr[addr_type],

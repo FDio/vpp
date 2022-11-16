@@ -138,7 +138,7 @@ def config_tun_params(p, encryption_type, tun_if):
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.vpp_tun_spi,
+        spi=p.scapy_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -149,7 +149,7 @@ def config_tun_params(p, encryption_type, tun_if):
     )
     p.vpp_tun_sa = SecurityAssociation(
         encryption_type,
-        spi=p.scapy_tun_spi,
+        spi=p.vpp_tun_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -167,7 +167,7 @@ def config_tra_params(p, encryption_type):
     crypt_key = mk_scapy_crypt_key(p)
     p.scapy_tra_sa = SecurityAssociation(
         encryption_type,
-        spi=p.vpp_tra_spi,
+        spi=p.scapy_tra_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -177,7 +177,7 @@ def config_tra_params(p, encryption_type):
     )
     p.vpp_tra_sa = SecurityAssociation(
         encryption_type,
-        spi=p.scapy_tra_spi,
+        spi=p.vpp_tra_spi,
         crypt_algo=p.crypt_algo,
         crypt_key=crypt_key,
         auth_algo=p.auth_algo,
@@ -708,7 +708,7 @@ class IpsecTra4(object):
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(
             self.encryption_type,
-            p.vpp_tra_spi,
+            p.scapy_tra_spi,
             crypt_algo=p.crypt_algo,
             crypt_key=mk_scapy_crypt_key(p)[::-1],
             auth_algo=p.auth_algo,
@@ -728,7 +728,7 @@ class IpsecTra4(object):
         # a malformed 'runt' packet
         #  created by a mis-constructed SA
         if ESP == self.encryption_type and p.crypt_algo != "NULL":
-            bogus_sa = SecurityAssociation(self.encryption_type, p.vpp_tra_spi)
+            bogus_sa = SecurityAssociation(self.encryption_type, p.scapy_tra_spi)
             pkt = Ether(
                 src=self.tra_if.remote_mac, dst=self.tra_if.local_mac
             ) / bogus_sa.encrypt(
@@ -788,7 +788,7 @@ class IpsecTra4(object):
         # causes the TX seq number to wrap; unless we're using extened sequence
         # numbers.
         #
-        self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.scapy_tra_sa_id)
+        self.vapi.cli("test ipsec sa %d seq 0xffffffff" % p.vpp_tra_sa_id)
         self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
         self.logger.info(self.vapi.ppcli("show ipsec sa 1"))
 
@@ -924,7 +924,7 @@ class IpsecTra4(object):
         ]
         self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-        self.assertEqual(p.tra_sa_out.get_lost(), 0)
+        self.assertEqual(p.tra_sa_in.get_lost(), 0)
 
         # skip a sequence number
         pkts = [
@@ -939,7 +939,7 @@ class IpsecTra4(object):
         ]
         self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-        self.assertEqual(p.tra_sa_out.get_lost(), 0)
+        self.assertEqual(p.tra_sa_in.get_lost(), 0)
 
         # the lost packet are counted untill we get up past the first
         # sizeof(replay_window) packets
@@ -955,7 +955,7 @@ class IpsecTra4(object):
         ]
         self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-        self.assertEqual(p.tra_sa_out.get_lost(), 1)
+        self.assertEqual(p.tra_sa_in.get_lost(), 1)
 
         # lost of holes in the sequence
         pkts = [
@@ -982,7 +982,7 @@ class IpsecTra4(object):
         ]
         self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-        self.assertEqual(p.tra_sa_out.get_lost(), 51)
+        self.assertEqual(p.tra_sa_in.get_lost(), 51)
 
         # a big hole in the seq number space
         pkts = [
@@ -997,7 +997,7 @@ class IpsecTra4(object):
         ]
         self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
-        self.assertEqual(p.tra_sa_out.get_lost(), 151)
+        self.assertEqual(p.tra_sa_in.get_lost(), 151)
 
     def verify_tra_basic4(self, count=1, payload_size=54):
         """ipsec v4 transport basic test"""
