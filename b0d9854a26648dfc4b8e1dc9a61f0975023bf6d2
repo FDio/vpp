@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "32d0b3a3_c3f4b5e6",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-16T23:14:16Z",
+      "side": 1,
+      "message": "Okay. I\u0027ll make a PoC of that and will discuss it with Filip.",
+      "parentUuid": "e104589a_84e5ea4c",
+      "range": {
+        "startLine": 209,
+        "startChar": 26,
+        "endLine": 209,
+        "endChar": 62
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4f01f5d8_5b146b3f",
         "filename": "extras/hs-test/vcl_test.go",
         "patchSetId": 2
@@ -37,6 +61,30 @@
       "writtenOn": "2022-11-16T21:45:27Z",
       "side": 1,
       "message": "What exactly happens here? If we try to configure nsim too early we end up aborting? We might need to investigate that",
+      "range": {
+        "startLine": 232,
+        "startChar": 4,
+        "endLine": 232,
+        "endChar": 56
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59ee30d8_297fa808",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-16T23:14:16Z",
+      "side": 1,
+      "message": "Assertion for checking number of tx queues in af_packet device fails. I don\u0027t fully understand why yet. I\u0027ll continue looking into it.",
+      "parentUuid": "4f01f5d8_5b146b3f",
       "range": {
         "startLine": 232,
         "startChar": 4,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "349000ee_b8e0244c",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-16T23:14:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c5de4fad_d2076830",
+      "range": {
+        "startLine": 240,
+        "startChar": 95,
+        "endLine": 240,
+        "endChar": 99
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9cb3efe5_c32b2212",
@@ -83,6 +155,30 @@
       "writtenOn": "2022-11-16T21:45:27Z",
       "side": 1,
       "message": "50 or something like that to make sure it covers several fifos worth of data (default fifo size is 4MB)",
+      "range": {
+        "startLine": 252,
+        "startChar": 54,
+        "endLine": 252,
+        "endChar": 55
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8bb0cea5_bce6cd71",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-16T23:14:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9cb3efe5_c32b2212",
       "range": {
         "startLine": 252,
         "startChar": 54,
