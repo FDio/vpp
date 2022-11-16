@@ -38,7 +38,6 @@ typedef struct
 typedef struct
 {
   clib_spinlock_t lock;
-  uword enabled;
 
   mheap_trace_t *traces;
 
@@ -52,22 +51,24 @@ typedef struct
   uword *trace_index_by_offset;
 
   /* So we can easily shut off current segment trace, if any */
-  void *current_traced_mheap;
+  const clib_mem_heap_t *current_traced_mheap;
 
 } mheap_trace_main_t;
 
 mheap_trace_main_t mheap_trace_main;
 
-void
-mheap_get_trace (uword offset, uword size)
+static __thread int mheap_trace_thread_disable;
+
+static void
+mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
+			  uword size)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
   mheap_trace_t *t;
   uword i, n_callers, trace_index, *p;
   mheap_trace_t trace;
-  uword save_enabled;
 
-  if (tm->enabled == 0 || (clib_mem_get_heap () != tm->current_traced_mheap))
+  if (heap != tm->current_traced_mheap || mheap_trace_thread_disable)
     return;
 
   /* Spurious Coverity warnings be gone. */
@@ -75,9 +76,12 @@ mheap_get_trace (uword offset, uword size)
 
   clib_spinlock_lock (&tm->lock);
 
-  /* Turn off tracing to avoid embarrassment... */
-  save_enabled = tm->enabled;
-  tm->enabled = 0;
+  /* heap could have changed while we were waiting on the lock */
+  if (heap != tm->current_traced_mheap)
+    goto out;
+
+  /* Turn off tracing for this thread to avoid embarrassment... */
+  mheap_trace_thread_disable = 1;
 
   /* Skip our frame and mspace_get_aligned's frame */
   n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers), 2);
@@ -138,34 +142,33 @@ mheap_get_trace (uword offset, uword size)
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
 
 out:
-  tm->enabled = save_enabled;
+  mheap_trace_thread_disable = 0;
   clib_spinlock_unlock (&tm->lock);
 }
 
-void
-mheap_put_trace (uword offset, uword size)
+static void
+mheap_put_trace_internal (const clib_mem_heap_t *heap, uword offset,
+			  uword size)
 {
   mheap_trace_t *t;
   uword trace_index, *p;
   mheap_trace_main_t *tm = &mheap_trace_main;
-  uword save_enabled;
 
-  if (tm->enabled == 0)
+  if (heap != tm->current_traced_mheap || mheap_trace_thread_disable)
     return;
 
   clib_spinlock_lock (&tm->lock);
 
-  /* Turn off tracing for a moment */
-  save_enabled = tm->enabled;
-  tm->enabled = 0;
+  /* heap could have changed while we were waiting on the lock */
+  if (heap != tm->current_traced_mheap)
+    goto out;
+
+  /* Turn off tracing for this thread for a moment */
+  mheap_trace_thread_disable = 1;
 
   p = hash_get (tm->trace_index_by_offset, offset);
   if (!p)
-    {
-      tm->enabled = save_enabled;
-      clib_spinlock_unlock (&tm->lock);
-      return;
-    }
+    goto out;
 
   trace_index = p[0];
   hash_unset (tm->trace_index_by_offset, offset);
@@ -182,17 +185,34 @@ mheap_put_trace (uword offset, uword size)
       vec_add1 (tm->trace_free_list, trace_index);
       clib_memset (t, 0, sizeof (t[0]));
     }
-  tm->enabled = save_enabled;
+
+out:
+  mheap_trace_thread_disable = 0;
   clib_spinlock_unlock (&tm->lock);
+}
+
+void
+mheap_get_trace (uword offset, uword size)
+{
+  mheap_get_trace_internal (clib_mem_get_heap (), offset, size);
+}
+
+void
+mheap_put_trace (uword offset, uword size)
+{
+  mheap_put_trace_internal (clib_mem_get_heap (), offset, size);
 }
 
 always_inline void
 mheap_trace_main_free (mheap_trace_main_t * tm)
 {
+  CLIB_SPINLOCK_ASSERT_LOCKED (&tm->lock);
+  tm->current_traced_mheap = 0;
   vec_free (tm->traces);
   vec_free (tm->trace_free_list);
   hash_free (tm->trace_by_callers);
   hash_free (tm->trace_index_by_offset);
+  mheap_trace_thread_disable = 0;
 }
 
 static clib_mem_heap_t *
@@ -256,7 +276,14 @@ clib_mem_init_internal (void *base, uword size,
   clib_mem_set_heap (h);
 
   if (mheap_trace_main.lock == 0)
-    clib_spinlock_init (&mheap_trace_main.lock);
+    {
+      /* clib_spinlock_init() dynamically allocates the spinlock in the current
+       * per-cpu heap, but it is used for all traces accross all heaps and
+       * hence we can't really allocate it in the current per-cpu heap as it
+       * could be destroyed later */
+      static struct clib_spinlock_s mheap_trace_main_lock = {};
+      mheap_trace_main.lock = &mheap_trace_main_lock;
+    }
 
   return h;
 }
@@ -288,8 +315,8 @@ clib_mem_destroy (void)
   mheap_trace_main_t *tm = &mheap_trace_main;
   clib_mem_heap_t *heap = clib_mem_get_heap ();
 
-  if (tm->enabled && heap->mspace == tm->current_traced_mheap)
-    tm->enabled = 0;
+  if (heap->mspace == tm->current_traced_mheap)
+    mheap_trace (heap, 0);
 
   destroy_mspace (heap->mspace);
   clib_mem_vm_unmap (heap);
@@ -491,28 +518,36 @@ uword clib_mem_validate_serial = 0;
 __clib_export void
 mheap_trace (clib_mem_heap_t * h, int enable)
 {
-  if (enable)
-    h->flags |= CLIB_MEM_HEAP_F_TRACED;
-  else
-    h->flags &= ~CLIB_MEM_HEAP_F_TRACED;
+  mheap_trace_main_t *tm = &mheap_trace_main;
 
-  if (enable == 0)
-    mheap_trace_main_free (&mheap_trace_main);
+  clib_spinlock_lock (&tm->lock);
+
+  if (tm->current_traced_mheap != 0 && tm->current_traced_mheap != h)
+    {
+      clib_warning ("tracing already enabled for another heap, ignoring");
+      goto out;
+    }
+
+  if (enable)
+    {
+      h->flags |= CLIB_MEM_HEAP_F_TRACED;
+      tm->current_traced_mheap = h;
+    }
+  else
+    {
+      h->flags &= ~CLIB_MEM_HEAP_F_TRACED;
+      mheap_trace_main_free (&mheap_trace_main);
+    }
+
+out:
+  clib_spinlock_unlock (&tm->lock);
 }
 
 __clib_export void
 clib_mem_trace (int enable)
 {
-  mheap_trace_main_t *tm = &mheap_trace_main;
   void *current_heap = clib_mem_get_heap ();
-
-  tm->enabled = enable;
   mheap_trace (current_heap, enable);
-
-  if (enable)
-    tm->current_traced_mheap = current_heap;
-  else
-    tm->current_traced_mheap = 0;
 }
 
 int
@@ -525,11 +560,8 @@ clib_mem_is_traced (void)
 __clib_export uword
 clib_mem_trace_enable_disable (uword enable)
 {
-  uword rv;
-  mheap_trace_main_t *tm = &mheap_trace_main;
-
-  rv = tm->enabled;
-  tm->enabled = enable;
+  uword rv = !mheap_trace_thread_disable;
+  mheap_trace_thread_disable = !enable;
   return rv;
 }
 
@@ -568,8 +600,8 @@ clib_mem_destroy_heap (clib_mem_heap_t * h)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
 
-  if (tm->enabled && h->mspace == tm->current_traced_mheap)
-    tm->enabled = 0;
+  if (h->mspace == tm->current_traced_mheap)
+    mheap_trace (h, 0);
 
   destroy_mspace (h->mspace);
   if (h->flags & CLIB_MEM_HEAP_F_UNMAP_ON_DESTROY)
@@ -615,7 +647,7 @@ clib_mem_heap_alloc_inline (void *heap, uword size, uword align,
     }
 
   if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
-    mheap_get_trace (pointer_to_uword (p), clib_mem_size (p));
+    mheap_get_trace_internal (h, pointer_to_uword (p), clib_mem_size (p));
 
   clib_mem_unpoison (p, size);
   return p;
@@ -700,8 +732,9 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
       clib_mem_unpoison (p, new_size);
       if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
 	{
-	  mheap_put_trace (pointer_to_uword (p), old_alloc_size);
-	  mheap_get_trace (pointer_to_uword (p), clib_mem_size (p));
+	  mheap_put_trace_internal (h, pointer_to_uword (p), old_alloc_size);
+	  mheap_get_trace_internal (h, pointer_to_uword (p),
+				    clib_mem_size (p));
 	}
     }
   else
@@ -762,7 +795,7 @@ clib_mem_heap_free (void *heap, void *p)
   ASSERT (clib_mem_heap_is_heap_object (h, p));
 
   if (PREDICT_FALSE (h->flags & CLIB_MEM_HEAP_F_TRACED))
-    mheap_put_trace (pointer_to_uword (p), size);
+    mheap_put_trace_internal (h, pointer_to_uword (p), size);
   clib_mem_poison (p, clib_mem_size (p));
 
   mspace_free (h->mspace, p);
