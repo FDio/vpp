@@ -141,23 +141,29 @@ esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa,
     }
 }
 
-/* Special case to drop or hand off packets for sync/async modes.
- *
- * Different than sync mode, async mode only enqueue drop or hand-off packets
- * to next nodes.
- */
 always_inline void
-esp_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node, u32 err,
-		    u16 index, u16 *nexts, u16 drop_next)
+esp_encrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			    u32 thread_index, u32 err, u16 index, u16 *nexts,
+			    u16 drop_next)
 {
-  nexts[index] = drop_next;
-  b->error = node->errors[err];
+  ipsec_set_next_index (b, node, thread_index, IPSEC_SA_NODE_ESP_ENCRYPT, err,
+			index, nexts, drop_next);
+}
+
+always_inline void
+esp_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			    u32 thread_index, u32 err, u16 index, u16 *nexts,
+			    u16 drop_next)
+{
+  ipsec_set_next_index (b, node, thread_index, IPSEC_SA_NODE_ESP_DECRYPT, err,
+			index, nexts, drop_next);
 }
 
 /* when submitting a frame is failed, drop all buffers in the frame */
 always_inline u32
 esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-				 vlib_node_runtime_t *node, u32 err, u16 index,
+				 vlib_node_runtime_t *node,
+				 u32 ipsec_node_index, u32 err, u16 index,
 				 u32 *from, u16 *nexts, u16 drop_next_index)
 {
   u32 n_drop = f->n_elts;
@@ -166,8 +172,9 @@ esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   while (n_drop--)
     {
       from[index] = bi[0];
-      esp_set_next_index (vlib_get_buffer (vm, bi[0]), node, err, index, nexts,
-			  drop_next_index);
+      ipsec_set_next_index (vlib_get_buffer (vm, bi[0]), node,
+			    vm->thread_index, ipsec_node_index, err, index,
+			    nexts, drop_next_index);
       bi++;
       index++;
     }

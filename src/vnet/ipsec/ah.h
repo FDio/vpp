@@ -43,6 +43,24 @@ typedef CLIB_PACKED (struct {
 }) ip6_and_ah_header_t;
 /* *INDENT-ON* */
 
+always_inline void
+ah_encrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			   u32 thread_index, u32 err, u16 index, u16 *nexts,
+			   u16 drop_next)
+{
+  ipsec_set_next_index (b, node, thread_index, IPSEC_SA_NODE_AH_ENCRYPT, err,
+			index, nexts, drop_next);
+}
+
+always_inline void
+ah_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			   u32 thread_index, u32 err, u16 index, u16 *nexts,
+			   u16 drop_next)
+{
+  ipsec_set_next_index (b, node, thread_index, IPSEC_SA_NODE_AH_DECRYPT, err,
+			index, nexts, drop_next);
+}
+
 always_inline u8
 ah_calc_icv_padding_len (u8 icv_size, int is_ipv6)
 {
