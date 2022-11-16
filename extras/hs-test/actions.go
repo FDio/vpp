@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"encoding/json"
 
 	"git.fd.io/govpp.git/api"
 	"github.com/edwarnicke/exechelper"
@@ -247,20 +248,29 @@ func Configure2Veths(args []string) *ActionResult {
 
 	ctx, cancel := newVppContext()
 	defer cancel()
+
+	var vppConfigInput VppConfig
+	err := json.Unmarshal([]byte(args[2]), &vppConfigInput)
+	if err != nil {
+		return NewActionResult(err, ActionResultWithDesc("parsing configuration failed"))
+	}
+
+	vppConfig := fmt.Sprintf(configTemplate, "%[1]s", vppConfigInput.CliSocketFilePath)
+
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
-		vpphelper.WithVppConfig(configTemplate+startup.ToString()),
+		vpphelper.WithVppConfig(vppConfig+startup.ToString()),
 		vpphelper.WithRootDir(fmt.Sprintf("/tmp/%s", args[1])))
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	var fn func(context.Context, api.Connection) error
-	if args[2] == "srv" {
+	if vppConfigInput.Variant == "srv" {
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1)
-	} else if args[2] == "srv-with-preset-hw-addr" {
+	} else if vppConfigInput.Variant == "srv-with-preset-hw-addr" {
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1, "00:00:5e:00:53:01")
 	} else {
 		fn = configure2vethsTopo("vppcln", "10.10.10.2/24", "2", 2)
 	}
-	err := fn(ctx, con)
+	err = fn(ctx, con)
 	if err != nil {
 		return NewActionResult(err, ActionResultWithDesc("configuration failed"))
 	}
