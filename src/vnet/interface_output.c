@@ -85,9 +85,8 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
       else
 	{
 	  si = vnet_get_sw_interface (vnm, t->sw_if_index);
-	  s =
-	    format (s, "%U ", format_vnet_sw_interface_name, vnm, si,
-		    t->flags);
+	  s = format (s, "%U flags 0x%08x", format_vnet_sw_interface_name, vnm,
+		      si, t->flags);
 	}
       s =
 	format (s, "\n%U%U", format_white_space, indent,
