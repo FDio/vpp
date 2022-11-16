@@ -206,6 +206,16 @@ func dockerExec(cmd string, instance string) ([]byte, error) {
 	return exechelper.CombinedOutput(c)
 }
 
+func vppctl(t *testing.T, containerName string, socket string, command string) (string) {
+	dockerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
+		containerName, socket, command)
+	output, err := exechelper.CombinedOutput(dockerExecCommand)
+	if err != nil {
+		t.Errorf("vppctl %s failed: %v", command, err)
+	}
+	return string(output)
+}
+
 func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
 	errCh := make(chan error)
 	wd, err := os.Getwd()

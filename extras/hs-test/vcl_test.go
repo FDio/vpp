@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/edwarnicke/exechelper"
 )
@@ -186,4 +187,74 @@ func (s *Veths2Suite) testRetryAttach(proto string) {
 		t.Errorf("vcl test client: %v", err)
 	}
 	fmt.Println("Done.")
+}
+
+func (s *Veths2Suite) TestTcpWithLoss() {
+	t := s.T()
+
+	exechelper.Run("docker volume create --name=echo-srv-vol")
+	exechelper.Run("docker volume create --name=echo-cln-vol")
+
+	srvContainerName := "vpp-echo-srv"
+	clnContainerName := "vpp-echo-cln"
+
+	err := dockerRun(srvContainerName, "-v echo-srv-vol:/tmp/2veths")
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	defer func() { exechelper.Run("docker stop " + srvContainerName) }()
+
+	err = dockerRun(clnContainerName, "-v echo-cln-vol:/tmp/2veths")
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	defer func() { exechelper.Run("docker stop " + clnContainerName) }()
+
+	_, err = hstExec("2veths srv", srvContainerName)
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+
+	_, err = hstExec("2veths cln", clnContainerName)
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+
+	socketPath := "/tmp/2veths/var/run/vpp/cli.sock"
+
+	// Start built-in echo server in server-vpp container
+	output := vppctl(t, srvContainerName, socketPath, "test echo server uri tcp://10.10.10.1/20022");
+
+	// Ensure that VPP doesn't abort itself with NSIM enabled
+	// Warning: Removing this ping will make the test fail!
+	vppctl(t, srvContainerName, socketPath, "ping 10.10.10.2")
+
+	// Add loss of packets with Network Delay Simulator
+	vppctl(
+		t,
+		clnContainerName,
+		socketPath,
+		"set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit packet-size 1400 packets-per-drop 1000")
+	vppctl(
+		t,
+		clnContainerName,
+		socketPath,
+		"nsim output-feature enable-disable host-vppcln")
+
+	// Do echo test from client-vpp container
+	output = vppctl(
+		t,
+		clnContainerName,
+		socketPath,
+		"test echo client uri tcp://10.10.10.1/20022 mbytes 50")
+	if len(output) == 0 {
+		t.Errorf("echo test failed: output is empty")
+	} else if strings.Contains(output, "failed: timeout") {
+		t.Errorf("echo test failed: session timed out")
+	}
+	fmt.Println(output)
 }
