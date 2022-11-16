@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e104589a_84e5ea4c",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-16T21:45:27Z",
+      "side": 1,
+      "message": "Maybe make these a struct and get that struct from hstExec, or whenever we run the container? It\u0027s okay if we push that to another patch, but would like to simplify this.\n\nWonder if we can get away with including t in it as well.",
+      "range": {
+        "startLine": 209,
+        "startChar": 26,
+        "endLine": 209,
+        "endChar": 62
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f01f5d8_5b146b3f",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-16T21:45:27Z",
+      "side": 1,
+      "message": "What exactly happens here? If we try to configure nsim too early we end up aborting? We might need to investigate that",
+      "range": {
+        "startLine": 232,
+        "startChar": 4,
+        "endLine": 232,
+        "endChar": 56
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5de4fad_d2076830",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-16T21:45:27Z",
+      "side": 1,
+      "message": "this is 1 in 100 packets dropped, let\u0027s make it 1000",
+      "range": {
+        "startLine": 240,
+        "startChar": 95,
+        "endLine": 240,
+        "endChar": 99
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9cb3efe5_c32b2212",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-16T21:45:27Z",
+      "side": 1,
+      "message": "50 or something like that to make sure it covers several fifos worth of data (default fifo size is 4MB)",
+      "range": {
+        "startLine": 252,
+        "startChar": 54,
+        "endLine": 252,
+        "endChar": 55
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
