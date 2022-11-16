@@ -17,6 +17,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec.api_enum.h>
 
 typedef struct
 {
@@ -42,6 +43,58 @@ typedef CLIB_PACKED (struct {
   ah_header_t ah;
 }) ip6_and_ah_header_t;
 /* *INDENT-ON* */
+
+always_inline u32
+ah_encrypt_err_to_sa_err (u32 err)
+{
+  switch (err)
+    {
+    case AH_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR:
+      return IPSEC_SA_ERROR_CRYPTO_ENGINE_ERROR;
+    case AH_ENCRYPT_ERROR_SEQ_CYCLED:
+      return IPSEC_SA_ERROR_SEQ_CYCLED;
+    }
+  return ~0;
+}
+
+always_inline u32
+ah_decrypt_err_to_sa_err (u32 err)
+{
+  switch (err)
+    {
+    case AH_DECRYPT_ERROR_DECRYPTION_FAILED:
+      return IPSEC_SA_ERROR_DECRYPTION_FAILED;
+    case AH_DECRYPT_ERROR_INTEG_ERROR:
+      return IPSEC_SA_ERROR_INTEG_ERROR;
+    case AH_DECRYPT_ERROR_NO_TAIL_SPACE:
+      return IPSEC_SA_ERROR_NO_TAIL_SPACE;
+    case AH_DECRYPT_ERROR_DROP_FRAGMENTS:
+      return IPSEC_SA_ERROR_DROP_FRAGMENTS;
+    case AH_DECRYPT_ERROR_REPLAY:
+      return IPSEC_SA_ERROR_REPLAY;
+    }
+  return ~0;
+}
+
+always_inline void
+ah_encrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			   u32 thread_index, u32 err, u16 index, u16 *nexts,
+			   u16 drop_next, u32 sa_index)
+{
+  ipsec_set_next_index (b, node, thread_index, err,
+			ah_encrypt_err_to_sa_err (err), index, nexts,
+			drop_next, sa_index);
+}
+
+always_inline void
+ah_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
+			   u32 thread_index, u32 err, u16 index, u16 *nexts,
+			   u16 drop_next, u32 sa_index)
+{
+  ipsec_set_next_index (b, node, thread_index, err,
+			ah_decrypt_err_to_sa_err (err), index, nexts,
+			drop_next, sa_index);
+}
 
 always_inline u8
 ah_calc_icv_padding_len (u8 icv_size, int is_ipv6)

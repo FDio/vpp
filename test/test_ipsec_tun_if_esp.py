@@ -1990,6 +1990,8 @@ class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
         self.send_and_assert_no_replies(self.tun_if, tx)
         node_name = "/err/%s/unsup_payload" % self.tun4_decrypt_node_name[0]
         self.assertEqual(1, self.statistics.get_err_counter(node_name))
+        err = p.tun_sa_in.get_err("unsup_payload")
+        self.assertEqual(err, 1)
 
 
 class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):

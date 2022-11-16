@@ -118,6 +118,35 @@ typedef enum ipsec_sad_flags_t_
 
 STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 2, "IPSEC SA flags != 2 byte");
 
+#define foreach_ipsec_sa_err                                                  \
+  _ (0, LOST, lost, "packets lost")                                           \
+  _ (1, HANDOFF, handoff, "hand-off")                                         \
+  _ (2, INTEG_ERROR, integ_error, "Integrity check failed")                   \
+  _ (3, DECRYPTION_FAILED, decryption_failed, "Decryption failed")            \
+  _ (4, CRYPTO_ENGINE_ERROR, crypto_engine_error,                             \
+     "crypto engine error (dropped)")                                         \
+  _ (5, REPLAY, replay, "SA replayed packet")                                 \
+  _ (6, RUNT, runt, "undersized packet")                                      \
+  _ (7, NO_BUFFERS, no_buffers, "no buffers (dropped)")                       \
+  _ (8, OVERSIZED_HEADER, oversized_header,                                   \
+     "buffer with oversized header (dropped)")                                \
+  _ (9, NO_TAIL_SPACE, no_tail_space,                                         \
+     "no enough buffer tail space (dropped)")                                 \
+  _ (10, TUN_NO_PROTO, tun_no_proto, "no tunnel protocol")                    \
+  _ (11, UNSUP_PAYLOAD, unsup_payload, "unsupported payload")                 \
+  _ (12, SEQ_CYCLED, seq_cycled, "sequence number cycled (dropped)")          \
+  _ (13, CRYPTO_QUEUE_FULL, crypto_queue_full, "crypto queue full (dropped)") \
+  _ (14, NO_ENCRYPTION, no_encryption, "no Encrypting SA (dropped)")          \
+  _ (15, DROP_FRAGMENTS, drop_fragments, "IP fragments drop")
+
+typedef enum
+{
+#define _(v, f, s, d) IPSEC_SA_ERROR_##f = v,
+  foreach_ipsec_sa_err
+#undef _
+    IPSEC_SA_N_ERRORS,
+} __clib_packed ipsec_sa_err_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -266,7 +295,7 @@ foreach_ipsec_sa_flags
  * SA packet & bytes counters
  */
 extern vlib_combined_counter_main_t ipsec_sa_counters;
-extern vlib_simple_counter_main_t ipsec_sa_lost_counters;
+extern vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 

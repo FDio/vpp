@@ -23,7 +23,6 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/ipsec_tun.h>
-#include <vnet/ipsec/ipsec.api_enum.h>
 
 #include <vnet/gre/packet.h>
 
@@ -114,8 +113,9 @@ esp_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    err = e;
 	  else
 	    err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
-	  b[bi]->error = node->errors[err];
-	  nexts[bi] = ESP_DECRYPT_NEXT_DROP;
+	  esp_decrypt_set_next_index (b[bi], node, vm->thread_index, err, bi,
+				      nexts, ESP_DECRYPT_NEXT_DROP,
+				      vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -146,8 +146,9 @@ esp_process_chained_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    err = e;
 	  else
 	    err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
-	  b[bi]->error = node->errors[err];
-	  nexts[bi] = ESP_DECRYPT_NEXT_DROP;
+	  esp_decrypt_set_next_index (b[bi], node, vm->thread_index, err, bi,
+				      nexts, ESP_DECRYPT_NEXT_DROP,
+				      vnet_buffer (b[bi])->ipsec.sad_index);
 	  n_fail--;
 	}
       op++;
@@ -525,8 +526,9 @@ esp_decrypt_prepare_sync_op (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       payload, pd->current_length,
 				       &op->digest, &op->n_chunks, 0) < 0)
 	    {
-	      b->error = node->errors[ESP_DECRYPT_ERROR_NO_BUFFERS];
-	      next[0] = ESP_DECRYPT_NEXT_DROP;
+	      esp_decrypt_set_next_index (
+		b, node, vm->thread_index, ESP_DECRYPT_ERROR_NO_BUFFERS, 0,
+		next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 	      return;
 	    }
 	}
@@ -721,7 +723,7 @@ out:
 }
 
 static_always_inline void
-esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
+esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 			 const u16 *next_by_next_header,
 			 const esp_decrypt_packet_data_t *pd,
 			 const esp_decrypt_packet_data2_t *pd2,
@@ -760,16 +762,17 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
   if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, pd->seq_hi, true,
 					   NULL))
     {
-      b->error = node->errors[ESP_DECRYPT_ERROR_REPLAY];
-      next[0] = ESP_DECRYPT_NEXT_DROP;
+      esp_decrypt_set_next_index (b, node, vm->thread_index,
+				  ESP_DECRYPT_ERROR_REPLAY, 0, next,
+				  ESP_DECRYPT_NEXT_DROP, pd->sa_index);
       return;
     }
 
   u64 n_lost =
     ipsec_sa_anti_replay_advance (sa0, vm->thread_index, pd->seq, pd->seq_hi);
 
-  vlib_prefetch_simple_counter (&ipsec_sa_lost_counters, vm->thread_index,
-				pd->sa_index);
+  vlib_prefetch_simple_counter (&ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST],
+				vm->thread_index, pd->sa_index);
 
   if (pd->is_chain)
     {
@@ -918,8 +921,9 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
 	      next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	      break;
 	    default:
-	      b->error = node->errors[ESP_DECRYPT_ERROR_UNSUP_PAYLOAD];
-	      next[0] = ESP_DECRYPT_NEXT_DROP;
+	      esp_decrypt_set_next_index (
+		b, node, vm->thread_index, ESP_DECRYPT_ERROR_UNSUP_PAYLOAD, 0,
+		next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 	      break;
 	    }
 	}
@@ -932,8 +936,9 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
 	}
       else
 	{
-	  next[0] = ESP_DECRYPT_NEXT_DROP;
-	  b->error = node->errors[ESP_DECRYPT_ERROR_UNSUP_PAYLOAD];
+	  esp_decrypt_set_next_index (b, node, vm->thread_index,
+				      ESP_DECRYPT_ERROR_UNSUP_PAYLOAD, 0, next,
+				      ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 	  return;
 	}
 
@@ -973,8 +978,10 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
 		      !ip46_address_is_equal_v4 (&itp->itp_tun.dst,
 						 &ip4->src_address))
 		    {
-		      next[0] = ESP_DECRYPT_NEXT_DROP;
-		      b->error = node->errors[ESP_DECRYPT_ERROR_TUN_NO_PROTO];
+		      esp_decrypt_set_next_index (
+			b, node, vm->thread_index,
+			ESP_DECRYPT_ERROR_TUN_NO_PROTO, 0, next,
+			ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 		    }
 		}
 	      else if (next_header == IP_PROTOCOL_IPV6)
@@ -988,8 +995,10 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
 		      !ip46_address_is_equal_v6 (&itp->itp_tun.dst,
 						 &ip6->src_address))
 		    {
-		      next[0] = ESP_DECRYPT_NEXT_DROP;
-		      b->error = node->errors[ESP_DECRYPT_ERROR_TUN_NO_PROTO];
+		      esp_decrypt_set_next_index (
+			b, node, vm->thread_index,
+			ESP_DECRYPT_ERROR_TUN_NO_PROTO, 0, next,
+			ESP_DECRYPT_NEXT_DROP, pd->sa_index);
 		    }
 		}
 	    }
@@ -997,8 +1006,8 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
     }
 
   if (PREDICT_FALSE (n_lost))
-    vlib_increment_simple_counter (&ipsec_sa_lost_counters, vm->thread_index,
-				   pd->sa_index, n_lost);
+    vlib_increment_simple_counter (&ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST],
+				   vm->thread_index, pd->sa_index, n_lost);
 }
 
 always_inline uword
@@ -1066,8 +1075,9 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (n_bufs == 0)
 	{
 	  err = ESP_DECRYPT_ERROR_NO_BUFFERS;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      ESP_DECRYPT_NEXT_DROP);
+	  esp_decrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, ESP_DECRYPT_NEXT_DROP,
+				      vnet_buffer (b[0])->ipsec.sad_index);
 	  goto next;
 	}
 
@@ -1075,12 +1085,13 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  if (current_sa_pkts)
 	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_pkts,
+					     current_sa_index, current_sa_pkts,
 					     current_sa_bytes);
 	  current_sa_bytes = current_sa_pkts = 0;
 
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
+					  current_sa_index);
 	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  /* fetch the second cacheline ASAP */
@@ -1105,8 +1116,9 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
 	  err = ESP_DECRYPT_ERROR_HANDOFF;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      ESP_DECRYPT_NEXT_HANDOFF);
+	  esp_decrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, ESP_DECRYPT_NEXT_HANDOFF,
+				      current_sa_index);
 	  goto next;
 	}
 
@@ -1144,16 +1156,18 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					       &pd->seq_hi))
 	{
 	  err = ESP_DECRYPT_ERROR_REPLAY;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      ESP_DECRYPT_NEXT_DROP);
+	  esp_decrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, ESP_DECRYPT_NEXT_DROP,
+				      current_sa_index);
 	  goto next;
 	}
 
       if (pd->current_length < cpd.icv_sz + esp_sz + cpd.iv_sz)
 	{
 	  err = ESP_DECRYPT_ERROR_RUNT;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      ESP_DECRYPT_NEXT_DROP);
+	  esp_decrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, ESP_DECRYPT_NEXT_DROP,
+				      current_sa_index);
 	  goto next;
 	}
 
@@ -1182,8 +1196,9 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    async_next_node);
 	  if (ESP_DECRYPT_ERROR_RX_PKTS != err)
 	    {
-	      esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-				  ESP_DECRYPT_NEXT_DROP);
+	      esp_decrypt_set_next_index (
+		b[0], node, thread_index, err, n_noop, noop_nexts,
+		ESP_DECRYPT_NEXT_DROP, current_sa_index);
 	    }
 	}
       else
@@ -1233,7 +1248,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  n_noop += esp_async_recycle_failed_submit (
 	    vm, *async_frame, node, ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR,
-	    n_noop, noop_bi, noop_nexts, ESP_DECRYPT_NEXT_DROP);
+	    IPSEC_SA_ERROR_CRYPTO_ENGINE_ERROR, n_noop, noop_bi, noop_nexts,
+	    ESP_DECRYPT_NEXT_DROP);
 	  vnet_crypto_async_reset_frame (*async_frame);
 	  vnet_crypto_async_free_frame (vm, *async_frame);
 	}

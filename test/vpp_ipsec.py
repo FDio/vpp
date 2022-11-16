@@ -358,8 +358,8 @@ class VppIpsecSA(VppObject):
             # +1 to skip main thread
             return c[worker + 1][self.stat_index]
 
-    def get_lost(self, worker=None):
-        c = self.test.statistics.get_counter("/net/ipsec/sa/lost")
+    def get_err(self, name, worker=None):
+        c = self.test.statistics.get_counter("/net/ipsec/sa/err/" + name)
         if worker is None:
             total = 0
             for t in c:
