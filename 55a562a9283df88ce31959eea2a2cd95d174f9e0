@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "571ba4bb_2dbf78c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-11-17T11:15:22Z",
+      "side": 1,
+      "message": "Thanks for doing great work.\nJust small nitpicks (mostly changes between patch set 8 to current patch set):",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "297eca66_03f3959e",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-11-17T11:15:22Z",
+      "side": 1,
+      "message": "af_packet_create_v2 api is deprecated! Please remove use_v2_api code from the test case.",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f9ef011_efd61eb7",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-11-17T11:15:22Z",
+      "side": 1,
+      "message": "Please remove this code too.",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "41261f73_87ad77bc",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-11-17T11:15:22Z",
+      "side": 1,
+      "message": "feature_gso_enable_disable enables software GSO chunking when interface doesn\u0027t support GSO offload. So, above if condition should be:\n     if enable_gso \u003d\u003d 0:",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9bbb693_15ca4a6c",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-11-17T11:15:22Z",
+      "side": 1,
+      "message": "Please also fix this. We should not enable software gso chunking when interface does support GSO offload.",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
