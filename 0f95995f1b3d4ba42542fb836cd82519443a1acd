@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b5ef03b_4cd3022e",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-11-17T15:44:24Z",
+      "side": 1,
+      "message": "nope, you\u0027re right, I forgot that the key was changed in the process.\nUpdated!",
+      "parentUuid": "dd6d795d_02e38e33",
+      "revId": "0f95995f1b3d4ba42542fb836cd82519443a1acd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e87e8ce4_f3fcebcd",
@@ -31,6 +49,24 @@
       "writtenOn": "2022-11-14T04:03:02Z",
       "side": 1,
       "message": "if the addresses can\u0027t be changed, should the SA really be removed?",
+      "revId": "0f95995f1b3d4ba42542fb836cd82519443a1acd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8321742b_a6d4bced",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2022-11-17T15:44:24Z",
+      "side": 1,
+      "message": "Well, as we have copied the new tunnel in the SA structured, if we don\u0027t delete the SA, it will remain in an incorrect state. \nThe only way tunnel_resolve can fail is if the table ID in the tunnel of the new SA doesn\u0027t exist. I think we don\u0027t want to keep an SA in that state.\n\nAnother option could be to reset the SA as it was. Unfortunately, we have overwritten the old SA parameters at this state, so to do that we\u0027d need to cache the old SA and try to create it back in case of failure. But I am not sure we want to make VPP that \"smart\". If you think that it should be the expected behavior, I could make the change.",
+      "parentUuid": "e87e8ce4_f3fcebcd",
       "revId": "0f95995f1b3d4ba42542fb836cd82519443a1acd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
