@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "47f23bea_069a81af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-17T13:03:33Z",
+      "side": 1,
+      "message": "I just stumble on this while looking at a possible IPsec perf regression (which may or may not be related to this change), but I agree with Florin, I think this should be reverted.\nThis could hide real bugs (it\u0027s used by IPsec, policer, reassembly...) in addition to hide the NAT bugs.",
+      "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d64790b3_edddc8b0",
         "filename": "src/vlib/buffer_funcs.c",
         "patchSetId": 2
