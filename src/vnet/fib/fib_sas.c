@@ -84,8 +84,9 @@ fib_sas4_get (u32 sw_if_index,
     /*
      * get the source address from the glean adjacency
      */
+    clib_spinlock_lock (&vnet_get_main()->ip4_neighbor_lock);
     s_tmp = adj_glean_get_src (FIB_PROTOCOL_IP4, sw_if_index, d_tmpp);
-
+    clib_spinlock_unlock (&vnet_get_main()->ip4_neighbor_lock);
     if (NULL != s_tmp)
     {
         src->as_u32 = s_tmp->ip4.as_u32;

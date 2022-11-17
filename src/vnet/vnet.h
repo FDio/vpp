@@ -100,6 +100,8 @@ typedef struct vnet_main_t
     _vnet_ip_table_function_list_elt_t
     * ip_table_add_del_functions[VNET_ITF_FUNC_N_PRIO];
 
+    clib_spinlock_t ip4_neighbor_lock;
+
     /* pcap rx / tx tracing */
     vnet_pcap_t pcap;
 
@@ -110,6 +112,7 @@ typedef struct vnet_main_t
     vnet_api_error_t api_errno;
 
     vlib_main_t *vlib_main;
+
 } vnet_main_t;
 
 extern vnet_main_t vnet_main;
