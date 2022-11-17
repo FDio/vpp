@@ -785,6 +785,10 @@ af_packet_delete_if (u8 *host_if_name)
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
+  if (apif->mode != AF_PACKET_IF_MODE_IP)
+    ethernet_delete_interface (vnm, apif->hw_if_index);
+  else
+    vnet_delete_hw_interface (vnm, apif->hw_if_index);
 
   /* clean up */
   vec_foreach (rx_queue, apif->rx_queues)
@@ -806,11 +810,6 @@ af_packet_delete_if (u8 *host_if_name)
   apif->host_if_index = -1;
 
   mhash_unset (&apm->if_index_by_host_if_name, host_if_name, p);
-
-  if (apif->mode != AF_PACKET_IF_MODE_IP)
-    ethernet_delete_interface (vnm, apif->hw_if_index);
-  else
-    vnet_delete_hw_interface (vnm, apif->hw_if_index);
 
   memset (apif, 0, sizeof (*apif));
   pool_put (apm->interfaces, apif);
