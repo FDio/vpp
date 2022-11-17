@@ -70,6 +70,24 @@
       "parentUuid": "9c76edd5_d07dbb0f",
       "revId": "b6e0c47f35cd81fb7340795d643bb37d7b5c7738",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44de79ee_79d66802",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1950,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-11-17T16:45:36Z",
+      "side": 1,
+      "message": "Fixed upload of failed testcase data for debug verify job:\n\nhttps://gerrit.fd.io/r/c/ci-management/+/37639",
+      "parentUuid": "f370143b_7afa81e9",
+      "revId": "b6e0c47f35cd81fb7340795d643bb37d7b5c7738",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
