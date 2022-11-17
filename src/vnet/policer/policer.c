@@ -694,13 +694,13 @@ done:
 
 VLIB_CLI_COMMAND (configure_policer_command, static) = {
   .path = "configure policer",
-  .short_help = "configure policer name <name> <params> ",
+  .short_help = "configure policer name <name> [type 1r2c | 1r3c | 2r3c-2698 | 2r3c-4115] [color-aware] [cir <cir>] [cb <cb>] [eir <eir>] [eb <eb>] [rate kbps | pps] [round closest | up | down] [conform-action drop | transmit | mark-and-transmit <dscp>] [exceed-action drop | transmit | mark-and-transmit <dscp>] [violate-action drop | transmit | mark-and-transmit <dscp>]",
   .function = policer_add_command_fn,
 };
 
 VLIB_CLI_COMMAND (policer_add_command, static) = {
   .path = "policer add",
-  .short_help = "policer name <name> <params> ",
+  .short_help = "policer name <name> [type 1r2c | 1r3c | 2r3c-2698 | 2r3c-4115] [color-aware] [cir <cir>] [cb <cb>] [eir <eir>] [eb <eb>] [rate kbps | pps] [round closest | up | down] [conform-action drop | transmit | mark-and-transmit <dscp>] [exceed-action drop | transmit | mark-and-transmit <dscp>] [violate-action drop | transmit | mark-and-transmit <dscp>]",
   .function = policer_add_command_fn,
 };
 
@@ -718,14 +718,14 @@ VLIB_CLI_COMMAND (policer_bind_command, static) = {
 
 VLIB_CLI_COMMAND (policer_input_command, static) = {
   .path = "policer input",
-  .short_help = "policer input [unapply] name <name> <interfac>",
+  .short_help = "policer input [unapply] name <name> <interface>",
   .function = policer_input_command_fn,
   .function_arg = VLIB_RX,
 };
 
 VLIB_CLI_COMMAND (policer_output_command, static) = {
   .path = "policer output",
-  .short_help = "policer output [unapply] name <name> <interfac>",
+  .short_help = "policer output [unapply] name <name> <interface>",
   .function = policer_input_command_fn,
   .function_arg = VLIB_TX,
 };

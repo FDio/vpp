@@ -20,3 +20,4 @@ Core Features
     eventviewer
     stats
     selinux_doc
+    policer
