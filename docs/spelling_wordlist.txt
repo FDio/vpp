@@ -113,6 +113,7 @@ buildingrst
 builtin
 builtinurl
 Builtinurl
+burstiness
 busybox
 BV
 bvi
@@ -843,6 +844,8 @@ Pnat
 PoC
 podSubnet
 policer
+Policer
+policers
 Policers
 Pollable
 portranges
