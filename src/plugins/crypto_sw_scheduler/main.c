@@ -260,17 +260,22 @@ process_ops (vlib_main_t * vm, vnet_crypto_async_frame_t * f,
 
   n_fail = n_ops - vnet_crypto_process_ops (vm, op, n_ops);
 
-  while (n_fail)
+  /*
+   * If we had a failure in the ops then we need to walk all the ops
+   * and set the status in the corresponding frame. This status is
+   * not set in the case with no failures, as in that case the overall
+   * frame status is success.
+   */
+  if (n_fail)
     {
-      ASSERT (op - ops < n_ops);
-
-      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+      for (int i = 0; i < n_ops; i++)
 	{
+	  ASSERT (op - ops < n_ops);
+
 	  f->elts[op->user_data].status = op->status;
-	  *state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
-	  n_fail--;
+	  op++;
 	}
-      op++;
+      *state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
     }
 }
 
@@ -287,17 +292,22 @@ process_chained_ops (vlib_main_t * vm, vnet_crypto_async_frame_t * f,
 
   n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
 
-  while (n_fail)
+  /*
+   * If we had a failure in the ops then we need to walk all the ops
+   * and set the status in the corresponding frame. This status is
+   * not set in the case with no failures, as in that case the overall
+   * frame status is success.
+   */
+  if (n_fail)
     {
-      ASSERT (op - ops < n_ops);
-
-      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+      for (int i = 0; i < n_ops; i++)
 	{
+	  ASSERT (op - ops < n_ops);
+
 	  f->elts[op->user_data].status = op->status;
-	  *state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
-	  n_fail--;
+	  op++;
 	}
-      op++;
+      *state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
     }
 }
 
