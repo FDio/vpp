@@ -1189,7 +1189,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	esp_decrypt_prepare_sync_op (
 	  vm, node, ptd, &crypto_ops, &integ_ops, op, sa0, payload, len,
-	  cpd.icv_sz, cpd.iv_sz, pd, pd2, b[0], sync_next, b - bufs);
+	  cpd.icv_sz, cpd.iv_sz, pd, pd2, b[0], sync_next, n_sync);
       /* next */
     next:
       if (ESP_DECRYPT_ERROR_RX_PKTS != err)

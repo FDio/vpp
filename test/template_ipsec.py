@@ -432,6 +432,34 @@ class IpsecTra4(object):
         ]
         recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
+        # a replayed packet, then an out of window, then a legit
+        # tests that a early failure on the batch doesn't affect subsequent packets.
+        pkts = [
+            (
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=203,
+                )
+            ),
+            (
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=81,
+                )
+            ),
+            (
+                Ether(src=self.tra_if.remote_mac, dst=self.tra_if.local_mac)
+                / p.scapy_tra_sa.encrypt(
+                    IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
+                    seq_num=204,
+                )
+            ),
+        ]
+        n_rx = 1 if ar_on else 3
+        recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if, n_rx=n_rx)
+
         # move the window over half way to a wrap
         pkts = [
             (
