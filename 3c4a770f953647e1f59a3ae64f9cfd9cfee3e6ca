@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b1b21d1_ac40d52e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-11-18T00:09:33Z",
+      "side": 1,
+      "message": "Resolves a seg fault issue when deleting af_packet interfaces ",
+      "revId": "3c4a770f953647e1f59a3ae64f9cfd9cfee3e6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
