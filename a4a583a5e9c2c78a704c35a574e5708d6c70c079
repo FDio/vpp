@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b72ade7_a36bf74f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-18T13:11:59Z",
+      "side": 1,
+      "message": "Looks great, just a minor comment",
+      "revId": "a4a583a5e9c2c78a704c35a574e5708d6c70c079",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c32d643c_9e6468d9",
+        "filename": "src/vnet/policer/policer.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-18T13:11:59Z",
+      "side": 1,
+      "message": "Looks like a copy/paste error? (same text as previous paragraph)",
+      "revId": "a4a583a5e9c2c78a704c35a574e5708d6c70c079",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
