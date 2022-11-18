@@ -197,7 +197,12 @@ ptls_vpp_crypto_aead_encrypt_final (ptls_aead_context_t * _ctx, void *_output)
 static void
 ptls_vpp_crypto_aead_dispose_crypto (ptls_aead_context_t * _ctx)
 {
-  /* Do nothing */
+  vlib_main_t *vm = vlib_get_main ();
+  struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
+
+  clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
+  vnet_crypto_key_del (vm, ctx->key_index);
+  clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 }
 
 static int
