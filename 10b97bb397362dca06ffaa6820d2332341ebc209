@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10de311e_0e0f4443",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-18T10:04:22Z",
+      "side": 1,
+      "message": "Can you add 2 test cases with good and bad checksum for the change?",
+      "revId": "10b97bb397362dca06ffaa6820d2332341ebc209",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
