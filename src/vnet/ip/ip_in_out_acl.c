@@ -327,8 +327,9 @@ ip_in_out_acl_inline_trace (
 	    {
 	      while (1)
 		{
-		  if (PREDICT_TRUE (t[0]->next_table_index != ~0))
-		    t[0] = pool_elt_at_index (tables, t[0]->next_table_index);
+		  table_index[0] = t[0]->next_table_index;
+		  if (PREDICT_TRUE (table_index[0] != ~0))
+		    t[0] = pool_elt_at_index (tables, table_index[0]);
 		  else
 		    {
 		      _next[0] = (t[0]->miss_next_index < n_next_nodes) ?
@@ -434,8 +435,9 @@ ip_in_out_acl_inline_trace (
 	    {
 	      while (1)
 		{
-		  if (PREDICT_TRUE (t[1]->next_table_index != ~0))
-		    t[1] = pool_elt_at_index (tables, t[1]->next_table_index);
+		  table_index[1] = t[1]->next_table_index;
+		  if (PREDICT_TRUE (table_index[1] != ~0))
+		    t[1] = pool_elt_at_index (tables, table_index[1]);
 		  else
 		    {
 		      _next[1] = (t[1]->miss_next_index < n_next_nodes) ?
@@ -636,8 +638,9 @@ ip_in_out_acl_inline_trace (
 	    {
 	      while (1)
 		{
-		  if (PREDICT_TRUE (t0->next_table_index != ~0))
-		    t0 = pool_elt_at_index (tables, t0->next_table_index);
+		  table_index0 = t0->next_table_index;
+		  if (PREDICT_TRUE (table_index0 != ~0))
+		    t0 = pool_elt_at_index (tables, table_index0);
 		  else
 		    {
 		      next0 = (t0->miss_next_index < n_next_nodes) ?
