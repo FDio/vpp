@@ -501,8 +501,87 @@ format_udp_listener_session (u8 * s, va_list * args)
   return format (s, "%U", format_udp_connection, uc, verbose);
 }
 
-/* *INDENT-OFF* */
+static void
+udp_realloc_ports_sv (u16 **ports_nh_svp)
+{
+  u16 port, port_no, *ports_nh_sv, *mc;
+  u32 *ports = 0, *nh = 0, msum, i;
+  sparse_vec_header_t *h;
+  uword sv_index, *mb;
+
+  ports_nh_sv = *ports_nh_svp;
+
+  for (port = 1; port < 65535; port++)
+    {
+      port_no = clib_host_to_net_u16 (port);
+
+      sv_index = sparse_vec_index (ports_nh_sv, port_no);
+      if (sv_index != SPARSE_VEC_INVALID_INDEX)
+	{
+	  vec_add1 (ports, port_no);
+	  vec_add1 (nh, ports_nh_sv[sv_index]);
+	}
+    }
+
+  sparse_vec_free (ports_nh_sv);
+
+  ports_nh_sv =
+    sparse_vec_new (/* elt bytes */ sizeof (ports_nh_sv[0]),
+		    /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+
+  vec_resize (ports_nh_sv, 65535);
+
+  for (port = 1; port < 65535; port++)
+    ports_nh_sv[port] = ~0;
+
+  for (i = 0; i < vec_len (ports); i++)
+    ports_nh_sv[ports[i]] = nh[i];
+
+  h = sparse_vec_header (ports_nh_sv);
+  vec_foreach (mb, h->is_member_bitmap)
+    *mb = (uword) ~0;
+
+  msum = 0;
+  vec_foreach (mc, h->member_counts)
+    {
+      *mc = msum;
+      msum += msum == 0 ? 63 : 64;
+    }
+
+  vec_free (ports);
+  vec_free (nh);
+
+  *ports_nh_svp = ports_nh_sv;
+}
+
+static clib_error_t *
+udp_enable_disable (vlib_main_t *vm, u8 is_en)
+{
+  udp_main_t *um = &udp_main;
+
+  /* Not ideal. The sparse vector used to map ports to next nodes assumes
+   * only a few ports are ever used. When udp transport is enabled this does
+   * not hold and, to make matters worse, ports are consumed in a random
+   * order.
+   *
+   * This can lead to a lot of slow updates to internal data structures
+   * which in turn can slow udp connection allocations until all ports are
+   * eventually consumed.
+   *
+   * Consequently, reallocate sparse vector, preallocate all ports and have
+   * them point to UDP_NO_NODE_SET. We could consider switching the sparse
+   * vector to a preallocated vector but that would increase memory
+   * consumption for vpp deployments that do not rely on host stack.
+   */
+
+  udp_realloc_ports_sv (&um->next_by_dst_port4);
+  udp_realloc_ports_sv (&um->next_by_dst_port6);
+
+  return 0;
+}
+
 static const transport_proto_vft_t udp_proto = {
+	.enable = udp_enable_disable,
   .start_listen = udp_session_bind,
   .connect = udp_open_connection,
   .stop_listen = udp_session_unbind,
@@ -523,7 +602,6 @@ static const transport_proto_vft_t udp_proto = {
     .service_type = TRANSPORT_SERVICE_CL,
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 udp_init (vlib_main_t * vm)
