@@ -152,6 +152,9 @@ typedef struct
   u16 msg_id_base;
   u8 csum_offload;
 
+  u32 udp4_input_frame_queue_index;
+  u32 udp6_input_frame_queue_index;
+
   u8 icmp_send_unreachable_disabled;
 } udp_main_t;
 

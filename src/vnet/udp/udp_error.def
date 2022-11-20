@@ -16,6 +16,8 @@
  */
 
 udp_error (NONE, none, INFO, "No error")
+udp_error (SESSION_HANDOFF, none, INFO, "Handoff to session")
+udp_error (SESSION_HANDOFF_FAILD, none, ERROR, "Handoff to session faild")
 udp_error (NO_LISTENER, no_listener, ERROR, "No listener for dst port")
 udp_error (LENGTH_ERROR, length_error, ERROR, "Packets with length errors")
 udp_error (PUNT, punt, ERROR, "No listener punt")
