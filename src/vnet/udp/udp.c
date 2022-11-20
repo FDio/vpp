@@ -555,6 +555,11 @@ udp_init (vlib_main_t * vm)
   um->local_to_input_edge[UDP_IP6] =
     vlib_node_add_next (vm, udp6_local_node.index, udp6_input_node.index);
 
+  um->udp4_input_frame_queue_index =
+    vlib_frame_queue_main_init (udp4_input_node.index, 0);
+  um->udp6_input_frame_queue_index =
+    vlib_frame_queue_main_init (udp6_input_node.index, 0);
+
   um->default_mtu = 1500;
   um->csum_offload = 1;
   return 0;
