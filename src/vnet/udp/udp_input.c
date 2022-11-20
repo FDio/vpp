@@ -129,9 +129,9 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
 }
 
 static void
-udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
-			session_dgram_hdr_t * hdr0, u32 thread_index,
-			vlib_buffer_t * b, u8 queue_event, u32 * error0)
+udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
+			session_dgram_hdr_t *hdr0, vlib_buffer_t *b,
+			u8 queue_event, u32 *error0)
 {
   int wrote0;
 
@@ -145,22 +145,8 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
       goto unlock_rx_lock;
     }
 
-  /* If session is owned by another thread and rx event needed,
-   * enqueue event now while we still have the peeker lock */
-  if (s0->thread_index != thread_index)
-    {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 /* queue event */ 0);
-      if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
-	session_enqueue_notify (s0);
-    }
-  else
-    {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 queue_event);
-    }
+  wrote0 = session_enqueue_dgram_connection (s0, hdr0, b, TRANSPORT_PROTO_UDP,
+					     queue_event);
   ASSERT (wrote0 > 0);
 
 unlock_rx_lock:
@@ -227,12 +213,16 @@ always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, u8 is_ip4)
 {
-  u32 n_left_from, *from, errors, *first_buffer;
+  u32 n_left_from, *from, errors, *first_buffer, *free_bi;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[UDP_N_ERROR] = { 0 };
   u32 thread_index = vm->thread_index;
 
-  from = first_buffer = vlib_frame_vector_args (frame);
+  u32 handof_bi[VLIB_FRAME_SIZE];
+  u16 target_thread[VLIB_FRAME_SIZE];
+  u32 handoff_n = 0;
+
+  free_bi = from = first_buffer = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
@@ -244,6 +234,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       session_dgram_hdr_t hdr0;
       udp_connection_t *uc0;
       session_t *s0;
+      u8 need_handoff = 0;
 
       s0 = udp_parse_and_lookup_buffer (b[0], &hdr0, is_ip4);
       if (PREDICT_FALSE (!s0))
@@ -279,14 +270,20 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		s0->session_state = SESSION_STATE_READY;
 	    }
-	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0],
-				  queue_event, &error0);
+	  udp_connection_enqueue (uc0, s0, &hdr0, b[0], queue_event, &error0);
 	}
       else if (s0->session_state == SESSION_STATE_READY)
 	{
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
-	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0], 1,
-				  &error0);
+	  if (s0->thread_index != thread_index)
+	    {
+	      need_handoff = 1;
+	      handof_bi[handoff_n] = from[0];
+	      target_thread[handoff_n] = s0->thread_index;
+	      error0 = UDP_ERROR_SESSION_HANDOFF;
+	      goto done;
+	    }
+	  udp_connection_enqueue (uc0, s0, &hdr0, b[0], 1, &error0);
 	}
       else if (s0->session_state == SESSION_STATE_LISTENING)
 	{
@@ -303,8 +300,15 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	      error0 = UDP_ERROR_ACCEPT;
 	    }
-	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0], 1,
-				  &error0);
+	  if (s0->thread_index != thread_index)
+	    {
+	      need_handoff = 1;
+	      handof_bi[handoff_n] = from[0];
+	      target_thread[handoff_n] = s0->thread_index;
+	      error0 = UDP_ERROR_SESSION_HANDOFF;
+	      goto done;
+	    }
+	  udp_connection_enqueue (uc0, s0, &hdr0, b[0], 1, &error0);
 	}
       else
 	{
@@ -315,18 +319,46 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	udp_trace_buffer (vm, node, b[0], s0, error0);
 
+      if (need_handoff)
+	{
+	  handoff_n++;
+	}
+      else
+	{
+	  *free_bi++ = from[0];
+	}
+
       b += 1;
       n_left_from -= 1;
+      from++;
 
       udp_inc_err_counter (err_counters, error0, 1);
     }
 
-  vlib_buffer_free (vm, first_buffer, frame->n_vectors);
+  if (PREDICT_FALSE (handoff_n > 0))
+    {
+      udp_main_t *um = vnet_get_udp_main ();
+      u32 enq = vlib_buffer_enqueue_to_thread (
+	vm, node,
+	is_ip4 ? um->udp4_input_frame_queue_index :
+		       um->udp6_input_frame_queue_index,
+	handof_bi, target_thread, handoff_n, 1 /* wait on congestion */);
+      if (enq < handoff_n)
+	{
+	  udp_inc_err_counter (err_counters, UDP_ERROR_SESSION_HANDOFF_FAILD,
+			       handoff_n - enq);
+	}
+    }
+
+  if (PREDICT_TRUE (frame->n_vectors > handoff_n))
+    {
+      vlib_buffer_free (vm, first_buffer, frame->n_vectors - handoff_n);
+    }
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
 					      thread_index);
   err_counters[UDP_ERROR_MQ_FULL] = errors;
   udp_store_err_counters (vm, is_ip4, err_counters);
-  return frame->n_vectors;
+  return frame->n_vectors - handoff_n;
 }
 
 static uword
