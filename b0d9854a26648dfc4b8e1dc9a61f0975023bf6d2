@@ -50,6 +50,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bcc32b69_7eca5133",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-21T14:51:48Z",
+      "side": 1,
+      "message": "We agreed on following approach.\nAs-is: Test executes actions and then would have to retrieve info afterwards.\nTo-be: We compartmentalize the data and functions into an object which will keep the container context. The test will set the container name, socket name (and whatever else in the future) first and then execute the actions on each object.",
+      "parentUuid": "32d0b3a3_c3f4b5e6",
+      "range": {
+        "startLine": 209,
+        "startChar": 26,
+        "endLine": 209,
+        "endChar": 62
+      },
+      "revId": "b0d9854a26648dfc4b8e1dc9a61f0975023bf6d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4f01f5d8_5b146b3f",
         "filename": "extras/hs-test/vcl_test.go",
         "patchSetId": 2
