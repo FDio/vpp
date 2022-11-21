@@ -147,7 +147,8 @@ VLIB_PLUGIN_REGISTER () = {
     .description = "Network Address Translation (NAT)",
 };
 
-static void nat44_ed_db_init (u32 translations, u32 translation_buckets);
+static void nat44_ed_db_init ();
+static void nat44_ed_db_free ();
 static void nat44_ed_worker_db_free (snat_main_per_thread_data_t *tsm);
 
 static int nat44_ed_add_static_mapping_internal (
@@ -2452,7 +2453,7 @@ nat44_plugin_enable (nat44_config_t c)
   sm->outside_fib_index = fib_table_find_or_create_and_lock (
     FIB_PROTOCOL_IP4, c.outside_vrf, sm->fib_src_hi);
 
-  nat44_ed_db_init (sm->max_translations_per_thread, sm->translation_buckets);
+  nat44_ed_db_init ();
 
   nat_affinity_enable ();
 
@@ -2618,7 +2619,6 @@ nat44_ed_del_static_mappings ()
 int
 nat44_plugin_disable ()
 {
-  snat_main_per_thread_data_t *tsm;
   snat_main_t *sm = &snat_main;
   int rc, error = 0;
 
@@ -2645,12 +2645,7 @@ nat44_plugin_disable ()
   vec_free (sm->max_translations_per_fib);
   sm->max_translations_per_fib = 0;
 
-  clib_bihash_free_16_8 (&sm->flow_hash);
-
-  vec_foreach (tsm, sm->per_thread_data)
-    {
-      nat44_ed_worker_db_free (tsm);
-    }
+  nat44_ed_db_free ();
 
   clib_memset (&sm->rconfig, 0, sizeof (sm->rconfig));
 
@@ -3227,11 +3222,11 @@ nat44_update_session_limit (u32 session_limit, u32 vrf_id)
 }
 
 static void
-nat44_ed_worker_db_init (snat_main_per_thread_data_t *tsm, u32 translations,
-			 u32 translation_buckets)
+nat44_ed_worker_db_init (snat_main_per_thread_data_t *tsm, u32 translations)
 {
   dlist_elt_t *head;
 
+  pool_alloc (tsm->per_vrf_sessions_pool, translations);
   pool_alloc (tsm->sessions, translations);
   pool_alloc (tsm->lru_pool, translations);
 
@@ -3257,7 +3252,7 @@ nat44_ed_worker_db_init (snat_main_per_thread_data_t *tsm, u32 translations,
 }
 
 static void
-reinit_ed_flow_hash ()
+nat44_ed_flow_hash_init ()
 {
   snat_main_t *sm = &snat_main;
   // we expect 2 flows per session, so multiply translation_buckets by 2
@@ -3268,17 +3263,16 @@ reinit_ed_flow_hash ()
 }
 
 static void
-nat44_ed_db_init (u32 translations, u32 translation_buckets)
+nat44_ed_db_init ()
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
 
-  reinit_ed_flow_hash ();
+  nat44_ed_flow_hash_init ();
 
   vec_foreach (tsm, sm->per_thread_data)
     {
-      nat44_ed_worker_db_init (tsm, sm->max_translations_per_thread,
-			       sm->translation_buckets);
+      nat44_ed_worker_db_init (tsm, sm->max_translations_per_thread);
     }
 }
 
@@ -3290,20 +3284,35 @@ nat44_ed_worker_db_free (snat_main_per_thread_data_t *tsm)
   pool_free (tsm->per_vrf_sessions_pool);
 }
 
-void
-nat44_ed_sessions_clear ()
+static void
+nat44_ed_flow_hash_free ()
+{
+  snat_main_t *sm = &snat_main;
+
+  clib_bihash_free_16_8 (&sm->flow_hash);
+}
+
+static void
+nat44_ed_db_free ()
 {
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
 
-  reinit_ed_flow_hash ();
-
   vec_foreach (tsm, sm->per_thread_data)
     {
       nat44_ed_worker_db_free (tsm);
-      nat44_ed_worker_db_init (tsm, sm->max_translations_per_thread,
-			       sm->translation_buckets);
     }
+
+  nat44_ed_flow_hash_free ();
+}
+
+void
+nat44_ed_sessions_clear ()
+{
+  snat_main_t *sm = &snat_main;
+
+  nat44_ed_db_free ();
+  nat44_ed_db_init ();
   vlib_zero_simple_counter (&sm->total_sessions, 0);
 }
 
