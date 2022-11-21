@@ -16,6 +16,24 @@
       "message": "We already have support for software rss in interface handoff. Isn\u0027t that enough? ",
       "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85ec8392_60509f9d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-21T01:11:37Z",
+      "side": 1,
+      "message": "software rss maybe not enough. the fragmented udp/tcp packets maybe hash to different threads.",
+      "parentUuid": "a5913945_e31b61ad",
+      "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
