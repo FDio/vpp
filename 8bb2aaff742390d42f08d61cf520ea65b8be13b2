@@ -22,6 +22,30 @@
       },
       "revId": "8bb2aaff742390d42f08d61cf520ea65b8be13b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3be4f7b_429b2f4a",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-21T12:10:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d4fcda5f_6e449fab",
+      "range": {
+        "startLine": 602,
+        "startChar": 51,
+        "endLine": 602,
+        "endChar": 52
+      },
+      "revId": "8bb2aaff742390d42f08d61cf520ea65b8be13b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
