@@ -3261,6 +3261,7 @@ reinit_ed_flow_hash ()
 {
   snat_main_t *sm = &snat_main;
   // we expect 2 flows per session, so multiply translation_buckets by 2
+  clib_bihash_free_16_8 (&sm->flow_hash);
   clib_bihash_init_16_8 (
     &sm->flow_hash, "ed-flow-hash",
     clib_max (1, sm->num_workers) * 2 * sm->translation_buckets, 0);
