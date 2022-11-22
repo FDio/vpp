@@ -13,9 +13,33 @@
  * limitations under the License.
  */
 
-option version = "2.0.1";
+option version = "2.1.0";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+
+enum gtpu_forwarding_type
+{
+  GTPU_API_FORWARDING_NONE = 0,
+  GTPU_API_FORWARDING_BAD_HEADER = 1,
+  GTPU_API_FORWARDING_UNKNOWN_TEID = 2,
+  GTPU_API_FORWARDING_UNKNOWN_TYPE = 4,
+};
+
+enum gtpu_decap_next_type
+{
+  GTPU_API_DECAP_NEXT_DROP = 0,
+  GTPU_API_DECAP_NEXT_L2 = 1,
+  GTPU_API_DECAP_NEXT_IP4 = 2,
+  GTPU_API_DECAP_NEXT_IP6 = 3,
+};
+
+typedef sw_if_counters
+{
+  u64 packets_rx;
+  u64 packets_tx;
+  u64 bytes_rx;
+  u64 bytes_tx;
+};
 
 /** \brief Create or delete a GTPU tunnel
     @param client_index - opaque cookie to identify the sender
@@ -54,6 +78,53 @@ define gtpu_add_del_tunnel_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Create or delete a GTPU tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param src_address - GTPU tunnel's source address.
+    @param dst_address - GTPU tunnel's destination address.
+    @param mcast_sw_if_index - version, O-bit and C-bit (see nsh_packet.h)
+    @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
+    @param decap_next_index - the index of the next node if success
+    @param teid - Local (rx) Tunnel Endpoint Identifier
+    @param tteid - Remote (tx) Tunnel Endpoint Identifier
+    @param pdu_extension - add PDU session container extension to each packet
+    @param qfi - the QFI to set in the PDU session container, 6 bits only
+*/
+define gtpu_add_del_tunnel_v2
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  vl_api_gtpu_decap_next_type_t decap_next_index;
+  u32 teid;
+  u32 tteid;
+  bool pdu_extension;
+  u8 qfi;
+  option vat_help = "src <ip-addr> {dst <ip-addr> | group <mcast-ip-addr> {<intfc> | mcast_sw_if_index <nn>}} teid <nn> [tteid <nn>] [encap-vrf-id <nn>] [decap-next <l2|nn>] [qfi <nn>] [del]";
+  option in_progress;
+};
+
+/** \brief reply for set or delete an GTPU tunnel
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index of the interface
+    @param counters - Number of packets/bytes that is sent/received via this tunnel. Inaccurate (with in flight packets), sum for the entire set of per-thread counters. Zero for new tunnels.
+*/
+define gtpu_add_del_tunnel_v2_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_sw_if_counters_t counters;
+  option in_progress;
 };
 
 /** \brief Update GTPU tunnel TX TEID
@@ -112,6 +183,56 @@ define gtpu_tunnel_details
   u32 tteid;
 };
 
+
+/** \brief Dump GTPU tunnel
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define gtpu_tunnel_v2_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  option vat_help = "[<intfc> | sw_if_index <nn>]";
+  option in_progress;
+};
+
+/** \brief dump details of an GTPU tunnel
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param src_address - GTPU tunnel's source address.
+    @param dst_address - GTPU tunnel's destination address.
+    @param mcast_sw_if_index - version, O-bit and C-bit (see nsh_packet.h)
+    @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
+    @param decap_next_index - the index of the next node if success
+    @param teid - Local (rx) Tunnel Endpoint Identifier
+    @param tteid - Remote (tx) Tunnel Endpoint Identifier
+    @param pdu_extension - add PDU session container extension to each packet
+    @param qfi - the QFI to set in the PDU session container, 6 bits only
+    @param is_forwarding - tunnel used for forwarding packets
+    @param forwarding_type - the type of packets forwarded
+    @param counters - Number of packets/bytes that is sent/received via this tunnel. Inaccurate (with in flight packets), sum for the entire set of per-thread counters.
+*/
+define gtpu_tunnel_v2_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  vl_api_gtpu_decap_next_type_t decap_next_index;
+  u32 teid;
+  u32 tteid;
+  bool pdu_extension;
+  u8 qfi;
+  bool is_forwarding;
+  vl_api_gtpu_forwarding_type_t forwarding_type;
+  vl_api_sw_if_counters_t counters;
+  option in_progress;
+};
+
 /** \brief Interface set gtpu-bypass request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -144,6 +265,79 @@ autoreply define gtpu_offload_rx
   u32 sw_if_index;
   u8 enable;
   option vat_help = "hw <intfc> rx <tunnel-name> [del]";
+};
+
+/** \brief Set gtpu-forward request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add address if non-zero, else delete
+    @param forwarding_type - forward filter (unknown teid, unknown message type or unknown header)
+    @param dst_address - forward destination address.
+    @param encap_vrf_id - fib identifier used for outgoing packets
+    @param decap_next_index - the index of the next node if success
+*/
+define gtpu_add_del_forward
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_address_t dst_address;
+  vl_api_gtpu_forwarding_type_t forwarding_type;
+  u32 encap_vrf_id;
+  vl_api_gtpu_decap_next_type_t decap_next_index;
+  option vat_help = "dst <ip-addr> {bad-header|unknown-teid|unknown-type} [decap-next <l2|nn>] [del]";
+  option in_progress;
+};
+
+/** \brief reply for set or delete GTPU forwarding
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index of the interface
+*/
+define gtpu_add_del_forward_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+  option in_progress;
+};
+
+/** \brief Get list of metrics, use for bulk transfer.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index_start - software index of the first interface to return data on.
+    @param capacity - max number of interfaces returned.
+*/
+define gtpu_get_transfer_counts
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index_start;
+  u32 capacity;
+  //option vat_help = "start_index <sw_if_index> count <nn>";
+  option in_progress;
+};
+
+/** \brief reply for set or delete GTPU forwarding
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param count - number of tunnel counters returned, sequential starting at sw_if_index_start.
+    @param tunnels - Number of packets/bytes that is sent/received via this tunnel. Inaccurate (with in flight packets), sum for the entire set of per-thread counters.
+*/
+typedef tunnel_metrics
+{
+   vl_api_interface_index_t sw_if_index;
+   u32 reserved;
+   vl_api_sw_if_counters_t counters;
+};
+
+define gtpu_get_transfer_counts_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_tunnel_metrics_t tunnels[count];
+  option in_progress;
 };
 
 /*
