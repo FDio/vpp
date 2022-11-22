@@ -56,8 +56,13 @@ u8 * format_gtpu_encap_trace (u8 * s, va_list * args)
   gtpu_encap_trace_t * t
       = va_arg (*args, gtpu_encap_trace_t *);
 
-  s = format (s, "GTPU encap to gtpu_tunnel%d tteid %d",
-	      t->tunnel_index, t->tteid);
+  s = format (s, "GTPU encap to gtpu_tunnel%d tteid %u ", t->tunnel_index,
+	      t->tteid);
+
+  if (t->pdu_extension)
+    s = format (s, "pdu-extension qfi %d ", t->qfi);
+  else
+    s = format (s, "no-pdu-extension ");
   return s;
 }
 
@@ -95,15 +100,36 @@ format_gtpu_tunnel (u8 * s, va_list * args)
     is_ipv6 ? im6->fibs[t->encap_fib_index].ft_table_id :
     im4->fibs[t->encap_fib_index].ft_table_id;
 
-  s = format (s, "[%d] src %U dst %U teid %d tteid %d "
+  s = format (s,
+	      "[%d] src %U dst %U teid %u tteid %u "
 	      "encap-vrf-id %d sw-if-idx %d ",
-	      t - ngm->tunnels,
-	      format_ip46_address, &t->src, IP46_TYPE_ANY,
-	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->teid, t->tteid, encap_vrf_id, t->sw_if_index);
+	      t - ngm->tunnels, format_ip46_address, &t->src, IP46_TYPE_ANY,
+	      format_ip46_address, &t->dst, IP46_TYPE_ANY, t->teid, t->tteid,
+	      encap_vrf_id, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
   s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
+
+  if (t->is_forwarding)
+    {
+      switch (t->forwarding_type)
+	{
+	case GTPU_FORWARD_BAD_HEADER:
+	  s = format (s, "forwarding bad-header ");
+	  break;
+	case GTPU_FORWARD_UNKNOWN_TEID:
+	  s = format (s, "forwarding unknown-teid ");
+	  break;
+	case GTPU_FORWARD_UNKNOWN_TYPE:
+	  s = format (s, "forwarding unknown-type ");
+	  break;
+	}
+      return s;
+    }
+  if (t->pdu_extension != 0)
+    s = format (s, "pdu-enabled qfi %d ", t->qfi);
+  else
+    s = format (s, "pdu-disabled ");
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
@@ -224,15 +250,18 @@ const static fib_node_vft_t gtpu_vft = {
   .fnv_back_walk = gtpu_tunnel_back_walk,
 };
 
-
-#define foreach_copy_field                      \
-_(teid)                                         \
-_(tteid)                                        \
-_(mcast_sw_if_index)                            \
-_(encap_fib_index)                              \
-_(decap_next_index)                             \
-_(src)                                          \
-_(dst)
+#define foreach_copy_field                                                    \
+  _ (teid)                                                                    \
+  _ (tteid)                                                                   \
+  _ (mcast_sw_if_index)                                                       \
+  _ (encap_fib_index)                                                         \
+  _ (decap_next_index)                                                        \
+  _ (src)                                                                     \
+  _ (dst)                                                                     \
+  _ (pdu_extension)                                                           \
+  _ (qfi)                                                                     \
+  _ (is_forwarding)                                                           \
+  _ (forwarding_type)
 
 static void
 ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
@@ -251,12 +280,15 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
 
   udp_header_t *udp;
   gtpu_header_t *gtpu;
+  gtpu_ext_with_pdu_session_header_t *gtpu_ext_pdu;
+  i64 length_adjustment = 0;
   /* Fixed portion of the (outer) ip header */
   if (!is_ip6)
     {
       ip4_header_t *ip = &r.h4->ip4;
       udp = &r.h4->udp;
       gtpu = &r.h4->gtpu;
+      gtpu_ext_pdu = &r.h4->gtpu_ext;
       ip->ip_version_and_header_length = 0x45;
       ip->ttl = 254;
       ip->protocol = IP_PROTOCOL_UDP;
@@ -272,6 +304,7 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
       ip6_header_t *ip = &r.h6->ip6;
       udp = &r.h6->udp;
       gtpu = &r.h6->gtpu;
+      gtpu_ext_pdu = &r.h6->gtpu_ext;
       ip->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (6 << 28);
       ip->hop_limit = 255;
@@ -290,9 +323,27 @@ ip_udp_gtpu_rewrite (gtpu_tunnel_t * t, bool is_ip6)
   gtpu->type = GTPU_TYPE_GTPU;
   gtpu->teid = clib_host_to_net_u32 (t->tteid);
 
+  if (t->pdu_extension)
+    {
+      gtpu->ver_flags = GTPU_V1_VER | GTPU_PT_GTP | GTPU_E_BIT;
+      gtpu->next_ext_type = GTPU_EXT_HDR_PDU_SESSION_CONTAINER;
+      gtpu_ext_pdu->len = 1;
+      gtpu_ext_pdu->pdu.oct0 = GTPU_PDU_DL_SESSION_TYPE;
+      gtpu_ext_pdu->pdu.oct1 = t->qfi;
+      gtpu_ext_pdu->next_header = 0;
+    }
+  else
+    {
+      // Remove the size of the PDU session header and the optional fields
+      length_adjustment = -sizeof (gtpu_ext_with_pdu_session_header_t) - 4;
+    }
+
   t->rewrite = r.rw;
-  /* Now only support 8-byte gtpu header. TBD */
-  vec_set_len (t->rewrite, sizeof (ip4_gtpu_header_t) - 4);
+  /* Now only support 8-byte gtpu header or 12+4-byte header. TBD */
+  if (!is_ip6)
+    vec_set_len (t->rewrite, sizeof (ip4_gtpu_header_t) + length_adjustment);
+  else
+    vec_set_len (t->rewrite, sizeof (ip6_gtpu_header_t) + length_adjustment);
 
   return;
 }
@@ -347,6 +398,139 @@ mcast_shared_remove (ip46_address_t * dst)
   mfib_table_entry_delete_index (ep.mfib_entry_index, MFIB_SOURCE_GTPU);
 
   hash_unset_mem_free (&gtpu_main.mcast_shared, dst);
+}
+
+int
+vnet_gtpu_add_del_forwarding (vnet_gtpu_add_mod_del_tunnel_args_t *a,
+			      u32 *sw_if_indexp)
+{
+  gtpu_main_t *gtm = &gtpu_main;
+  bool is_add;
+  u32 current_index_value, current_index_value_ipv6;
+  u32 address_tabel_ipv4;
+  ip6_address_t address_tabel_ipv6;
+  u32 sw_if_index = ~0;
+  bool is_ip6 = !ip46_address_is_ip4 (&a->dst);
+  int rv;
+  /* Check for errors */
+  if (!a->is_forwarding)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  switch (a->opn)
+    {
+    case GTPU_ADD_TUNNEL:
+      is_add = 1;
+      break;
+    case GTPU_DEL_TUNNEL:
+      is_add = 0;
+      break;
+    default:
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  /* Check if the operation is valid, and get the current state if it is.
+   * Handling multiple flags at once is not supported yet. */
+  switch (a->forwarding_type)
+    {
+    case GTPU_FORWARD_BAD_HEADER:
+      current_index_value = gtm->bad_header_forward_tunnel_index_ipv4;
+      current_index_value_ipv6 = gtm->bad_header_forward_tunnel_index_ipv6;
+      address_tabel_ipv4 = GTPU_FORWARD_BAD_HEADER_ADDRESS_IPV4;
+      /* ipv6 is TBD */
+      ip6_address_t address_tabel_ipv6_ = GTPU_FORWARD_BAD_HEADER_ADDRESS_IPV6;
+      address_tabel_ipv6 = address_tabel_ipv6_;
+      break;
+    case GTPU_FORWARD_UNKNOWN_TEID:
+      current_index_value = gtm->unknown_teid_forward_tunnel_index_ipv4;
+      current_index_value_ipv6 = gtm->unknown_teid_forward_tunnel_index_ipv6;
+      address_tabel_ipv4 = GTPU_FORWARD_UNKNOWN_TEID_ADDRESS_IPV4;
+      ip6_address_t address_tabel_ipv6__ =
+	GTPU_FORWARD_UNKNOWN_TEID_ADDRESS_IPV6;
+      address_tabel_ipv6 = address_tabel_ipv6__;
+      break;
+    case GTPU_FORWARD_UNKNOWN_TYPE:
+      current_index_value = gtm->unknown_type_forward_tunnel_index_ipv4;
+      current_index_value_ipv6 = gtm->unknown_type_forward_tunnel_index_ipv6;
+      address_tabel_ipv4 = GTPU_FORWARD_UNKNOWN_TYPE_ADDRESS_IPV4;
+      ip6_address_t address_tabel_ipv6___ =
+	GTPU_FORWARD_UNKNOWN_TYPE_ADDRESS_IPV6;
+      address_tabel_ipv6 = address_tabel_ipv6___;
+      break;
+    default:
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  if (is_ip6)
+    current_index_value = current_index_value_ipv6;
+
+  /* Check if the existing forwarding rule state conflicts with this operation
+   */
+  if ((is_add) && (current_index_value != ~0))
+    {
+      return VNET_API_ERROR_TUNNEL_EXIST;
+    }
+  if (!is_add)
+    {
+      if (current_index_value == ~0)
+	return VNET_API_ERROR_NO_SUCH_ENTRY;
+      /* Clear the tunnel index before deleting the tunnel itself */
+      switch (a->forwarding_type)
+	{
+	case GTPU_FORWARD_BAD_HEADER:
+	  gtm->bad_header_forward_tunnel_index_ipv4 = ~0;
+	  break;
+	case GTPU_FORWARD_UNKNOWN_TEID:
+	  gtm->unknown_teid_forward_tunnel_index_ipv4 = ~0;
+	  break;
+	case GTPU_FORWARD_UNKNOWN_TYPE:
+	  gtm->unknown_type_forward_tunnel_index_ipv4 = ~0;
+	  break;
+	}
+    }
+
+  /* src is the tunnel lookup key, so it is fixed.
+   * dst is used for the new target */
+  a->src = a->dst;
+  if (is_ip6)
+    a->dst.ip6 = address_tabel_ipv6;
+  else
+    a->dst.ip4.as_u32 = address_tabel_ipv4;
+  rv = vnet_gtpu_add_mod_del_tunnel (a, &sw_if_index);
+
+  // Forward only if not nil
+  if (sw_if_indexp)
+    *sw_if_indexp = sw_if_index;
+
+  if (rv != 0)
+    return rv;
+
+  /* Update the forwarding tunnel index */
+  u32 tunnel_index = is_add ? vnet_gtpu_get_tunnel_index (sw_if_index) : ~0;
+  switch (a->forwarding_type)
+    {
+    case GTPU_FORWARD_BAD_HEADER:
+      if (is_ip6)
+	gtm->bad_header_forward_tunnel_index_ipv6 = tunnel_index;
+      else
+	gtm->bad_header_forward_tunnel_index_ipv4 = tunnel_index;
+
+      break;
+    case GTPU_FORWARD_UNKNOWN_TEID:
+      if (is_ip6)
+	gtm->unknown_teid_forward_tunnel_index_ipv6 = tunnel_index;
+      else
+	gtm->unknown_teid_forward_tunnel_index_ipv4 = tunnel_index;
+      break;
+    case GTPU_FORWARD_UNKNOWN_TYPE:
+      if (is_ip6)
+	gtm->unknown_type_forward_tunnel_index_ipv6 = tunnel_index;
+      else
+	gtm->unknown_type_forward_tunnel_index_ipv4 = tunnel_index;
+      break;
+    }
+  return 0;
 }
 
 int vnet_gtpu_add_mod_del_tunnel
@@ -635,6 +819,22 @@ int vnet_gtpu_add_mod_del_tunnel
   return 0;
 }
 
+int
+get_combined_counters (u32 sw_if_index, vlib_counter_t *result_rx,
+		       vlib_counter_t *result_tx)
+{
+  gtpu_main_t *gtm = &gtpu_main;
+  vnet_main_t *vnm = gtm->vnet_main;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vlib_get_combined_counter (im->combined_sw_if_counters +
+			       VNET_INTERFACE_COUNTER_RX,
+			     sw_if_index, result_rx);
+  vlib_get_combined_counter (im->combined_sw_if_counters +
+			       VNET_INTERFACE_COUNTER_TX,
+			     sw_if_index, result_tx);
+  return 0;
+}
+
 static uword
 get_decap_next_for_node (u32 node_index, u32 ipv4_set)
 {
@@ -690,6 +890,11 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 decap_next_index = GTPU_INPUT_NEXT_L2_INPUT;
   u32 teid = 0, tteid = 0;
   u32 tmp;
+  /* PDU is disabled by default */
+  u8 pdu_extension = 0;
+  u32 qfi = ~0;
+  u8 is_forwarding = 0;
+  u8 forwarding_type = 0;
   int rv;
   vnet_gtpu_add_mod_del_tunnel_args_t _a, *a = &_a;
   u32 tunnel_sw_if_index;
@@ -768,6 +973,8 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "upd-tteid %d", &tteid))
 	opn = GTPU_UPD_TTEID;
+      else if (unformat (line_input, "qfi %d", &qfi))
+	pdu_extension = 1;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -829,7 +1036,11 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "next node not found");
       goto done;
     }
-
+  if (pdu_extension == 1 && qfi > 31)
+    {
+      error = clib_error_return (0, "qfi max value is 31");
+      goto done;
+    }
   clib_memset (a, 0, sizeof (*a));
 
   a->opn = opn;
@@ -899,10 +1110,10 @@ done:
 VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
   .path = "create gtpu tunnel",
   .short_help =
-  "create gtpu tunnel src <local-tep-addr>"
-  " {dst <remote-tep-addr>|group <mcast-addr> <intf-name>}"
-  " teid <nn> [tteid <nn>] [encap-vrf-id <nn>]"
-  " [decap-next [l2|ip4|ip6|node <name>]] [del | upd-tteid <nn>]",
+    "create gtpu tunnel src <local-tep-addr>"
+    " {dst <remote-tep-addr>|group <mcast-addr> <intf-name>}"
+    " teid <nn> [tteid <nn>] [encap-vrf-id <nn>]"
+    " [decap-next [l2|ip4|ip6|node <name>]] [qfi <nn>] [del | upd-tteid <nn>]",
   .function = gtpu_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */
@@ -932,7 +1143,8 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the GTPU Tunnel entries:
  * @cliexstart{show gtpu tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 teid 13 tx-teid 55 encap_fib_index 0 sw_if_index 5 decap_next l2
+ * [0] src 10.0.3.1 dst 10.0.3.3 teid 13 tx-teid 55 encap_fib_index 0
+ sw_if_index 5 decap_next l2 pdu-disabled
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
@@ -1242,6 +1454,139 @@ VLIB_CLI_COMMAND (gtpu_offload_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+gtpu_forward_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  u32 tunnel_sw_if_index;
+  clib_error_t *error = NULL;
+
+  u32 decap_next_index = GTPU_INPUT_NEXT_L2_INPUT;
+
+  int is_add = 1;
+  u8 dst_set = 0;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
+  ip46_address_t src, dst;
+  u32 encap_fib_index = 0;
+  u32 mcast_sw_if_index = ~0;
+  u32 teid = 0, tteid = 0;
+  u32 tmp;
+  /* PDU is disabled by default */
+  u8 pdu_extension = 0;
+  u32 qfi = ~0;
+  u8 is_forwarding = 1;
+  u8 forwarding_type = 0;
+  int rv;
+  vnet_gtpu_add_mod_del_tunnel_args_t _a, *a = &_a;
+
+  /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
+  clib_memset (&src, 0, sizeof src);
+  clib_memset (&dst, 0, sizeof dst);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
+	{
+	  dst_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
+	{
+	  dst_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "decap-next %U", unformat_decap_next,
+			 &decap_next_index, ipv4_set))
+	;
+      else if (unformat (line_input, "encap-vrf-id %d", &tmp))
+	{
+	  encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), tmp);
+	  if (encap_fib_index == ~0)
+	    {
+	      error =
+		clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
+	      goto done;
+	    }
+	}
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "bad-header"))
+	forwarding_type |= GTPU_FORWARD_BAD_HEADER;
+      else if (unformat (line_input, "unknown-teid"))
+	forwarding_type |= GTPU_FORWARD_UNKNOWN_TEID;
+      else if (unformat (line_input, "unknown-type"))
+	forwarding_type |= GTPU_FORWARD_UNKNOWN_TYPE;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!dst_set)
+    {
+      error = clib_error_return (0, "dst must be set to a valid IP address");
+      goto done;
+    }
+
+  a->opn = is_add ? GTPU_ADD_TUNNEL : GTPU_DEL_TUNNEL;
+#define _(x) a->x = x;
+  foreach_copy_field;
+#undef _
+
+  rv = vnet_gtpu_add_del_forwarding (a, &tunnel_sw_if_index);
+
+  switch (rv)
+    {
+    case 0:
+      if (is_add)
+	vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
+			 vnet_get_main (), tunnel_sw_if_index);
+      break;
+
+    case VNET_API_ERROR_TUNNEL_EXIST:
+      error = clib_error_return (0, "tunnel already exists...");
+      goto done;
+
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
+
+    case VNET_API_ERROR_INVALID_ARGUMENT:
+      error =
+	clib_error_return (0, "one and only one of unknown-teid, unknown-type "
+			      "or bad-header must be specified");
+      goto done;
+
+    default:
+      error =
+	clib_error_return (0, "vnet_gtpu_add_del_tunnel returned %d", rv);
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (gtpu_forward_command, static) = {
+  .path = "create gtpu forward",
+  .short_help =
+    "create gtpu forward dst <local-tep-addr> "
+    "{unknown-teid|unknown-type|bad-header} "
+    "[decap-next [l2|ip4|ip6|node <name>]] [encap-vrf-id <nn>] [del]",
+  .function = gtpu_forward_command_fn,
+};
+
 clib_error_t *
 gtpu_init (vlib_main_t * vm)
 {
@@ -1263,6 +1608,14 @@ gtpu_init (vlib_main_t * vm)
 				       sizeof (mcast_shared_t));
 
   gtm->fib_node_type = fib_node_register_new_type ("gtpu", &gtpu_vft);
+
+  /* Clear forward tunnels */
+  gtm->bad_header_forward_tunnel_index_ipv4 = ~0;
+  gtm->unknown_teid_forward_tunnel_index_ipv4 = ~0;
+  gtm->unknown_type_forward_tunnel_index_ipv4 = ~0;
+  gtm->bad_header_forward_tunnel_index_ipv6 = ~0;
+  gtm->unknown_teid_forward_tunnel_index_ipv6 = ~0;
+  gtm->unknown_type_forward_tunnel_index_ipv6 = ~0;
 
   return 0;
 }
