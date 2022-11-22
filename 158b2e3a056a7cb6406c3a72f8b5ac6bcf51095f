@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05707b18_a4002601",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1770
+      },
+      "writtenOn": "2022-11-22T15:34:51Z",
+      "side": 1,
+      "message": "This change is being abandoned, but has the problem been RCAd, it seems like one of those really hard to figure out bugs. Perhaps abort()ing rather than infinite looping would be better?",
+      "revId": "158b2e3a056a7cb6406c3a72f8b5ac6bcf51095f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
