@@ -24,25 +24,25 @@ func (s *Veths2Suite) TestEchoBuiltin() {
 	}
 	defer func() { exechelper.Run("docker stop " + clnInstance) }()
 
-	_, err = hstExec("2veths srv", srvInstance)
+	_, err = hstExec("Configure2Veths srv", srvInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
 
-	_, err = hstExec("2veths cln", clnInstance)
+	_, err = hstExec("Configure2Veths cln", clnInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
 
-	_, err = hstExec("echo-srv-internal private-segment-size 1g fifo-size 4 no-echo", srvInstance)
+	_, err = hstExec("RunEchoSrvInternal private-segment-size 1g fifo-size 4 no-echo", srvInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
 
-	o, err := hstExec("echo-cln-internal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4", clnInstance)
+	o, err := hstExec("RunEchoClnInternal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4", clnInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return

@@ -47,13 +47,13 @@ func (s *Veths2Suite) TestLDPreloadIperfVpp() {
 	}
 	defer func() { exechelper.Run("docker stop " + clnInstance) }()
 
-	_, err = hstExec("2veths srv", srvInstance)
+	_, err = hstExec("Configure2Veths srv", srvInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
 
-	_, err = hstExec("2veths cln", clnInstance)
+	_, err = hstExec("Configure2Veths cln", clnInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
@@ -66,7 +66,7 @@ func (s *Veths2Suite) TestLDPreloadIperfVpp() {
 		Append("app-scope-local").
 		Append("app-scope-global").
 		Append("use-mq-eventfd").
-		Append(fmt.Sprintf("app-socket-api /tmp/%s/2veths/var/run/app_ns_sockets/2", clnInstance)).Close().
+		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/2", clnInstance)).Close().
 		SaveToFile(clnVcl)
 	if err != nil {
 		t.Errorf("%v", err)
@@ -80,7 +80,7 @@ func (s *Veths2Suite) TestLDPreloadIperfVpp() {
 		Append("app-scope-local").
 		Append("app-scope-global").
 		Append("use-mq-eventfd").
-		Append(fmt.Sprintf("app-socket-api /tmp/%s/2veths/var/run/app_ns_sockets/1", srvInstance)).Close().
+		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/1", srvInstance)).Close().
 		SaveToFile(srvVcl)
 	if err != nil {
 		t.Errorf("%v", err)
