@@ -124,6 +124,10 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
     .decap_next_index = ntohl (mp->decap_next_index),
     .teid = ntohl (mp->teid),
     .tteid = ntohl (mp->tteid),
+    .pdu_extension = mp->pdu_extension ? 1 : 0,
+    .qfi = mp->qfi,
+    .is_forwarding = 0,
+    .forwarding_type = 0,
   };
   ip_address_decode (&mp->dst_address, &a.dst);
   ip_address_decode (&mp->src_address, &a.src);
@@ -218,6 +222,10 @@ static void send_gtpu_tunnel_details
   rmp->decap_next_index = htonl (t->decap_next_index);
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
+  rmp->pdu_extension = t->pdu_extension;
+  rmp->qfi = t->qfi;
+  rmp->is_forwarding = t->is_forwarding;
+  rmp->forwarding_type = htonl (t->forwarding_type);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -255,6 +263,53 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
       t = &gtm->tunnels[gtm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_gtpu_tunnel_details (t, reg, mp->context);
     }
+}
+
+static void
+vl_api_gtpu_add_del_forward_t_handler (vl_api_gtpu_add_del_forward_t *mp)
+{
+  vl_api_gtpu_add_del_forward_reply_t *rmp;
+  int rv = 0;
+  gtpu_main_t *gtm = &gtpu_main;
+
+  vnet_gtpu_add_mod_del_tunnel_args_t a = {
+    .opn = mp->is_add ? GTPU_ADD_TUNNEL : GTPU_DEL_TUNNEL,
+    .mcast_sw_if_index = 0,
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .teid = 0,
+    .tteid = 0,
+    .pdu_extension = 0,
+    .qfi = 0,
+    .is_forwarding = 1,
+    .forwarding_type = ntohl (mp->forwarding_type),
+  };
+  ip_address_decode (&mp->dst_address, &a.dst);
+  /* Will be overwritten later */
+  ip_address_decode (&mp->dst_address, &a.src);
+
+  u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
+
+  if (a.encap_fib_index == ~0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
+
+  if (ip46_address_is_multicast (&a.dst) &&
+      !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  u32 sw_if_index = ~0;
+  rv = vnet_gtpu_add_del_forwarding (&a, &sw_if_index);
+
+out:
+  REPLY_MACRO2 (VL_API_GTPU_ADD_DEL_FORWARD_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
 #include <gtpu/gtpu.api.c>
