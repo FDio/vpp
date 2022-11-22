@@ -78,5 +78,4 @@ func TestNs(t *testing.T) {
 func TestVeths2(t *testing.T) {
 	var m Veths2Suite
 	suite.Run(t, &m)
-
 }

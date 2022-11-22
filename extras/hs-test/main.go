@@ -7,15 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-
-	"git.fd.io/govpp.git/api"
+	"reflect"
 )
 
-type CfgTable map[string]func([]string) *ActionResult
-
-var cfgTable CfgTable
-
-type ConfFn func(context.Context, api.Connection) error
+var actions Actions
 
 func newVppContext() (context.Context, context.CancelFunc) {
 	ctx, cancel := signal.NotifyContext(
@@ -116,15 +111,19 @@ func OkResult() *ActionResult {
 	return NewActionResult(nil)
 }
 
-func reg(key string, fn func([]string) *ActionResult) {
-	cfgTable[key] = fn
-}
-
 func processArgs() *ActionResult {
-	fn := cfgTable[os.Args[1]]
-	if fn == nil {
-		return NewActionResult(fmt.Errorf("internal: no config found for %s", os.Args[1]))
+	nArgs := len(os.Args) - 1 // skip program name
+	if nArgs < 1 {
+		return NewActionResult(fmt.Errorf("internal: no action specified!"))
 	}
+	action := os.Args[1]
+	methodValue := reflect.ValueOf(&actions).MethodByName(action)
+	if !methodValue.IsValid() {
+		return NewActionResult(fmt.Errorf("internal unknown action %s!", action))
+	}
+	methodIface := methodValue.Interface()
+	fn := methodIface.(func([]string) *ActionResult)
+	fmt.Println("args ", os.Args[2:])
 	return fn(os.Args)
 }
 
@@ -143,8 +142,6 @@ func main() {
 		topology.Unconfigure()
 		os.Exit(0)
 	}
-
-	RegisterActions()
 
 	var err error
 	res := processArgs()
