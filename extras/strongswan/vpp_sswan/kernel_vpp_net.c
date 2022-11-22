@@ -563,8 +563,8 @@ update_addrs (private_kernel_vpp_net_t *this, iface_t *entry)
   tmp = (vl_api_ip_address_details_t *) out;
   for (i = 0; i < num; i++)
     {
-      tmp += i;
       rmp = tmp;
+      tmp += 1;
       host = host_create_from_chunk (
 	AF_INET, chunk_create (rmp->prefix.address.un.ip4, 4), 0);
       addrs->insert_last (addrs, host);
@@ -582,8 +582,8 @@ update_addrs (private_kernel_vpp_net_t *this, iface_t *entry)
   tmp = (vl_api_ip_address_details_t *) out;
   for (i = 0; i < num; i++)
     {
-      tmp += i;
       rmp = tmp;
+      tmp += 1;
       host = host_create_from_chunk (
 	AF_INET6, chunk_create (rmp->prefix.address.un.ip6, 16), 0);
       addrs->insert_last (addrs, host);
