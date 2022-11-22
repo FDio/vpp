@@ -19,20 +19,9 @@ import (
 	"github.com/edwarnicke/vpphelper"
 )
 
-func RegisterActions() {
-	cfgTable = make(map[string]func([]string) *ActionResult)
-	reg("echo-srv-internal", Configure2Veths)
-	reg("echo-cln-internal", Configure2Veths)
-	reg("echo-client", RunEchoClient)
-	reg("echo-server", RunEchoServer)
-	reg("vpp-proxy", ConfigureVppProxy)
-	reg("vpp-envoy", ConfigureEnvoyProxy)
-	reg("http-tps", ConfigureHttpTps)
-	reg("2veths", Configure2Veths)
-	reg("vcl-test-server", RunVclEchoServer)
-	reg("vcl-test-client", RunVclEchoClient)
-	reg("http-cli-srv", RunHttpCliSrv)
-	reg("http-cli-cln", RunHttpCliCln)
+type ConfFn func(context.Context, api.Connection) error
+
+type Actions struct {
 }
 
 func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
@@ -53,18 +42,18 @@ func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
 	}
 }
 
-func RunHttpCliSrv(args []string) *ActionResult {
+func (a *Actions) RunHttpCliSrv(args []string) *ActionResult {
 	cmd := fmt.Sprintf("http cli server")
-	return ApiCliInband("/tmp/2veths", cmd)
+	return ApiCliInband("/tmp/Configure2Veths", cmd)
 }
 
-func RunHttpCliCln(args []string) *ActionResult {
+func (a *Actions) RunHttpCliCln(args []string) *ActionResult {
 	cmd := fmt.Sprintf("http cli client uri http://10.10.10.1/80 query %s", getArgs())
 	fmt.Println(cmd)
-	return ApiCliInband("/tmp/2veths", cmd)
+	return ApiCliInband("/tmp/Configure2Veths", cmd)
 }
 
-func ConfigureVppProxy(args []string) *ActionResult {
+func (a *Actions) ConfigureVppProxy(args []string) *ActionResult {
 	ctx, cancel := newVppContext()
 	defer cancel()
 
@@ -81,7 +70,7 @@ func ConfigureVppProxy(args []string) *ActionResult {
 	return nil
 }
 
-func ConfigureEnvoyProxy(args []string) *ActionResult {
+func (a *Actions) ConfigureEnvoyProxy(args []string) *ActionResult {
 	var startup Stanza
 	startup.
 		NewStanza("session").
@@ -127,7 +116,7 @@ func ApiCliInband(root, cmd string) *ActionResult {
 	return NewActionResult(err, ActionResultWithStdout(cliInbandReply.Reply))
 }
 
-func RunEchoClient(args []string) *ActionResult {
+func (a *Actions) RunEchoClient(args []string) *ActionResult {
 	outBuff := bytes.NewBuffer([]byte{})
 	errBuff := bytes.NewBuffer([]byte{})
 
@@ -140,7 +129,7 @@ func RunEchoClient(args []string) *ActionResult {
 		ActionResultWithStderr(string(errBuff.String())))
 }
 
-func RunEchoServer(args []string) *ActionResult {
+func (a *Actions) RunEchoServer(args []string) *ActionResult {
 	cmd := fmt.Sprintf("vpp_echo server TX=RX socket-name /tmp/echo-srv/var/run/app_ns_sockets/1 use-app-socket-api uri %s://10.10.10.1/12344", args[2])
 	errCh := exechelper.Start(cmd)
 	select {
@@ -152,17 +141,17 @@ func RunEchoServer(args []string) *ActionResult {
 	return nil
 }
 
-func RunEchoSrvInternal() *ActionResult {
+func (a *Actions) RunEchoSrvInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo server %s uri tcp://10.10.10.1/1234", getArgs())
-	return ApiCliInband("/tmp/2veths", cmd)
+	return ApiCliInband("/tmp/Configure2Veths", cmd)
 }
 
-func RunEchoClnInternal() *ActionResult {
+func (a *Actions) RunEchoClnInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo client %s uri tcp://10.10.10.1/1234", getArgs())
-	return ApiCliInband("/tmp/2veths", cmd)
+	return ApiCliInband("/tmp/Configure2Veths", cmd)
 }
 
-func RunVclEchoServer(args []string) *ActionResult {
+func (a *Actions) RunVclEchoServer(args []string) *ActionResult {
 	f, err := os.Create("vcl_1.conf")
 	if err != nil {
 		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
@@ -182,7 +171,7 @@ func RunVclEchoServer(args []string) *ActionResult {
 	return nil
 }
 
-func RunVclEchoClient(args []string) *ActionResult {
+func (a *Actions) RunVclEchoClient(args []string) *ActionResult {
 	outBuff := bytes.NewBuffer([]byte{})
 	errBuff := bytes.NewBuffer([]byte{})
 
@@ -238,7 +227,7 @@ func configure2vethsTopo(ifName, interfaceAddress, namespaceId string, secret ui
 	}
 }
 
-func Configure2Veths(args []string) *ActionResult {
+func (a *Actions) Configure2Veths(args []string) *ActionResult {
 	var startup Stanza
 	startup.
 		NewStanza("session").
@@ -317,7 +306,7 @@ func configureAfPacket(ctx context.Context, vppCon api.Connection,
 	return afPacketCreateRsp.SwIfIndex, nil
 }
 
-func ConfigureHttpTps(args []string) *ActionResult {
+func (a *Actions) ConfigureHttpTps(args []string) *ActionResult {
 	ctx, cancel := newVppContext()
 	defer cancel()
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,

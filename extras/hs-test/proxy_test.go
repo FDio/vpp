@@ -9,7 +9,7 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func testProxyHttpTcp(t *testing.T, dockerInstance string, proxySetup func() error) error {
+func testProxyHttpTcp(t *testing.T, dockerInstance, action string, proxySetup func() error) error {
 	const outputFile = "test.data"
 	const srcFile = "10M"
 	stopServer := make(chan struct{}, 1)
@@ -23,7 +23,7 @@ func testProxyHttpTcp(t *testing.T, dockerInstance string, proxySetup func() err
 	defer func() { exechelper.Run("docker stop " + dockerInstance) }()
 
 	// start & configure vpp in the container
-	_, err = hstExec(dockerInstance, dockerInstance)
+	_, err = hstExec(action, dockerInstance)
 	if err != nil {
 		return fmt.Errorf("error starting vpp in container: %v", err)
 	}
@@ -72,7 +72,7 @@ func testProxyHttpTcp(t *testing.T, dockerInstance string, proxySetup func() err
 func (s *NsSuite) TestVppProxyHttpTcp() {
 	t := s.T()
 	dockerInstance := "vpp-proxy"
-	err := testProxyHttpTcp(t, dockerInstance, configureVppProxy)
+	err := testProxyHttpTcp(t, dockerInstance, "ConfigureVppProxy", configureVppProxy)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -88,7 +88,7 @@ func (s *NsSuite) TestEnvoyProxyHttpTcp() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dockerInstance := "vpp-envoy"
-	err := testProxyHttpTcp(t, dockerInstance, func() error {
+	err := testProxyHttpTcp(t, dockerInstance, "ConfigureEnvoyProxy", func() error {
 		return setupEnvoy(t, ctx, dockerInstance)
 	})
 	if err != nil {
