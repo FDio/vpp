@@ -23,7 +23,7 @@ func (s *NsSuite) TestHttpTps() {
 	defer func() { exechelper.Run("docker stop " + dockerInstance) }()
 
 	// start & configure vpp in the container
-	_, err = hstExec(dockerInstance, dockerInstance)
+	_, err = hstExec("ConfigureHttpTps", dockerInstance)
 	if err != nil {
 		t.Errorf("%v", err)
 		return

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"reflect"
 
 	"git.fd.io/govpp.git/api"
 )
@@ -14,6 +15,8 @@ import (
 type CfgTable map[string]func([]string) *ActionResult
 
 var cfgTable CfgTable
+
+var actions Actions
 
 type ConfFn func(context.Context, api.Connection) error
 
@@ -120,12 +123,22 @@ func reg(key string, fn func([]string) *ActionResult) {
 	cfgTable[key] = fn
 }
 
-func processArgs() *ActionResult {
-	fn := cfgTable[os.Args[1]]
-	if fn == nil {
-		return NewActionResult(fmt.Errorf("internal: no config found for %s", os.Args[1]))
+func invoke(any interface{}, name string, args ...interface{}) []reflect.Value {
+	inputs := make([]reflect.Value, len(args))
+	for i, _ := range args {
+		inputs[i] = reflect.ValueOf(args[i])
 	}
-	return fn(os.Args)
+	return reflect.ValueOf(any).MethodByName(name).Call(inputs)
+}
+
+func processArgs() *ActionResult {
+	nArgs := len(os.Args) - 1 // skip program name
+	if nArgs < 1 {
+		return NewActionResult(fmt.Errorf("internal: no action specified!"))
+	}
+	action := os.Args[1]
+	out := invoke(&actions, action, os.Args[2:])
+	return (*ActionResult)(reflect.ValueOf(out).Index(0).UnsafePointer())
 }
 
 func main() {

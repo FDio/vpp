@@ -19,6 +19,9 @@ import (
 	"github.com/edwarnicke/vpphelper"
 )
 
+type Actions struct {
+}
+
 func RegisterActions() {
 	cfgTable = make(map[string]func([]string) *ActionResult)
 	reg("echo-srv-internal", Configure2Veths)
@@ -27,7 +30,6 @@ func RegisterActions() {
 	reg("echo-server", RunEchoServer)
 	reg("vpp-proxy", ConfigureVppProxy)
 	reg("vpp-envoy", ConfigureEnvoyProxy)
-	reg("http-tps", ConfigureHttpTps)
 	reg("2veths", Configure2Veths)
 	reg("vcl-test-server", RunVclEchoServer)
 	reg("vcl-test-client", RunVclEchoClient)
@@ -317,7 +319,7 @@ func configureAfPacket(ctx context.Context, vppCon api.Connection,
 	return afPacketCreateRsp.SwIfIndex, nil
 }
 
-func ConfigureHttpTps(args []string) *ActionResult {
+func (a *Actions) ConfigureHttpTps(args []string) *ActionResult {
 	ctx, cancel := newVppContext()
 	defer cancel()
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
