@@ -124,6 +124,10 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
     .decap_next_index = ntohl (mp->decap_next_index),
     .teid = ntohl (mp->teid),
     .tteid = ntohl (mp->tteid),
+    .pdu_extension = 0,
+    .qfi = 0,
+    .is_forwarding = 0,
+    .forwarding_type = 0,
   };
   ip_address_decode (&mp->dst_address, &a.dst);
   ip_address_decode (&mp->src_address, &a.src);
@@ -154,12 +158,70 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
   rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_GTPU_ADD_DEL_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
+}
+
+static void
+vl_api_gtpu_add_del_tunnel_v2_t_handler (vl_api_gtpu_add_del_tunnel_v2_t *mp)
+{
+  vl_api_gtpu_add_del_tunnel_v2_reply_t *rmp;
+  int rv = 0;
+  vlib_counter_t result_rx;
+  vlib_counter_t result_tx;
+  gtpu_main_t *gtm = &gtpu_main;
+
+  vnet_gtpu_add_mod_del_tunnel_args_t a = {
+    .opn = mp->is_add ? GTPU_ADD_TUNNEL : GTPU_DEL_TUNNEL,
+    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .teid = ntohl (mp->teid),
+    .tteid = ntohl (mp->tteid),
+    .pdu_extension = mp->pdu_extension ? 1 : 0,
+    .qfi = mp->qfi,
+    .is_forwarding = 0,
+    .forwarding_type = 0,
+  };
+  ip_address_decode (&mp->dst_address, &a.dst);
+  ip_address_decode (&mp->src_address, &a.src);
+
+  u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
+  if (a.encap_fib_index == ~0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
+
+  /* Check src & dst are different */
+  if (ip46_address_cmp (&a.dst, &a.src) == 0)
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+  if (ip46_address_is_multicast (&a.dst) &&
+      !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  u32 sw_if_index = ~0;
+  rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
+  get_combined_counters (sw_if_index, &result_rx, &result_tx);
+
+out:
+  REPLY_MACRO2 (
+    VL_API_GTPU_ADD_DEL_TUNNEL_V2_REPLY, ({
+      rmp->sw_if_index = ntohl (sw_if_index);
+      rmp->counters.packets_rx = clib_net_to_host_u64 (result_rx.packets);
+      rmp->counters.packets_tx = clib_net_to_host_u64 (result_tx.packets);
+      rmp->counters.bytes_rx = clib_net_to_host_u64 (result_rx.bytes);
+      rmp->counters.bytes_tx = clib_net_to_host_u64 (result_tx.bytes);
+    }));
 }
 
 static void vl_api_gtpu_tunnel_update_tteid_t_handler
@@ -242,7 +304,7 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
       pool_foreach (t, gtm->tunnels)
        {
         send_gtpu_tunnel_details(t, reg, mp->context);
-      }
+       }
       /* *INDENT-ON* */
     }
   else
@@ -255,6 +317,184 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
       t = &gtm->tunnels[gtm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_gtpu_tunnel_details (t, reg, mp->context);
     }
+}
+
+static void
+send_gtpu_tunnel_details_v2 (gtpu_tunnel_t *t, vl_api_registration_t *reg,
+			     u32 context)
+{
+  vl_api_gtpu_tunnel_v2_details_t *rmp;
+  vlib_counter_t result_rx;
+  vlib_counter_t result_tx;
+  gtpu_main_t *gtm = &gtpu_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
+  u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_GTPU_TUNNEL_V2_DETAILS + gtm->msg_id_base);
+
+  ip_address_encode (&t->src, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->src_address);
+  ip_address_encode (&t->dst, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+		     &rmp->dst_address);
+
+  rmp->encap_vrf_id = is_ipv6 ?
+			      htonl (im6->fibs[t->encap_fib_index].ft_table_id) :
+			      htonl (im4->fibs[t->encap_fib_index].ft_table_id);
+  rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
+  rmp->teid = htonl (t->teid);
+  rmp->tteid = htonl (t->tteid);
+  rmp->decap_next_index = htonl (t->decap_next_index);
+  rmp->sw_if_index = htonl (t->sw_if_index);
+  rmp->context = context;
+  rmp->pdu_extension = t->pdu_extension;
+  rmp->qfi = t->qfi;
+  rmp->is_forwarding = t->is_forwarding;
+  rmp->forwarding_type = htonl (t->forwarding_type);
+
+  get_combined_counters (t->sw_if_index, &result_rx, &result_tx);
+  rmp->counters.packets_rx = clib_net_to_host_u64 (result_rx.packets);
+  rmp->counters.packets_tx = clib_net_to_host_u64 (result_tx.packets);
+  rmp->counters.bytes_rx = clib_net_to_host_u64 (result_rx.bytes);
+  rmp->counters.bytes_tx = clib_net_to_host_u64 (result_tx.bytes);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_gtpu_tunnel_v2_dump_t_handler (vl_api_gtpu_tunnel_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  gtpu_main_t *gtm = &gtpu_main;
+  gtpu_tunnel_t *t;
+  u32 sw_if_index;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (~0 == sw_if_index)
+    {
+      pool_foreach (t, gtm->tunnels)
+	{
+	  send_gtpu_tunnel_details_v2 (t, reg, mp->context);
+	}
+    }
+  else
+    {
+      if ((sw_if_index >= vec_len (gtm->tunnel_index_by_sw_if_index)) ||
+	  (~0 == gtm->tunnel_index_by_sw_if_index[sw_if_index]))
+	{
+	  return;
+	}
+      t = &gtm->tunnels[gtm->tunnel_index_by_sw_if_index[sw_if_index]];
+      send_gtpu_tunnel_details_v2 (t, reg, mp->context);
+    }
+}
+
+static void
+vl_api_gtpu_add_del_forward_t_handler (vl_api_gtpu_add_del_forward_t *mp)
+{
+  vl_api_gtpu_add_del_forward_reply_t *rmp;
+  int rv = 0;
+  gtpu_main_t *gtm = &gtpu_main;
+
+  vnet_gtpu_add_mod_del_tunnel_args_t a = {
+    .opn = mp->is_add ? GTPU_ADD_TUNNEL : GTPU_DEL_TUNNEL,
+    .mcast_sw_if_index = 0,
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .teid = 0,
+    .tteid = 0,
+    .pdu_extension = 0,
+    .qfi = 0,
+    .is_forwarding = 1,
+    .forwarding_type = ntohl (mp->forwarding_type),
+  };
+  ip_address_decode (&mp->dst_address, &a.dst);
+  /* Will be overwritten later */
+  ip_address_decode (&mp->dst_address, &a.src);
+
+  u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
+
+  if (a.encap_fib_index == ~0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
+
+  if (ip46_address_is_multicast (&a.dst) &&
+      !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  u32 sw_if_index = ~0;
+  rv = vnet_gtpu_add_del_forwarding (&a, &sw_if_index);
+
+out:
+  REPLY_MACRO2 (VL_API_GTPU_ADD_DEL_FORWARD_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
+}
+
+static void
+vl_api_gtpu_get_transfer_counts_t_handler (
+  vl_api_gtpu_get_transfer_counts_t *mp)
+{
+  vl_api_gtpu_get_transfer_counts_reply_t *rmp;
+  int rv = 0;
+  vlib_counter_t result_rx;
+  vlib_counter_t result_tx;
+  gtpu_main_t *gtm = &gtpu_main;
+  u32 count = 0;
+  u32 sw_if_index;
+  u32 capacity = ntohl (mp->capacity);
+  u32 sw_if_index_start = ntohl (mp->sw_if_index_start);
+  int extra_size = sizeof (rmp->tunnels[0]) * capacity;
+
+  if (sw_if_index_start >= vec_len (gtm->tunnel_index_by_sw_if_index))
+    {
+      capacity = 0;
+      extra_size = 0;
+    }
+  sw_if_index = sw_if_index_start;
+
+  REPLY_MACRO4 (
+    VL_API_GTPU_GET_TRANSFER_COUNTS_REPLY, extra_size, ({
+      for (; count < capacity; sw_if_index++)
+	{
+	  if (sw_if_index >= vec_len (gtm->tunnel_index_by_sw_if_index))
+	    {
+	      // No more tunnels
+	      break;
+	    }
+	  if (~0 == gtm->tunnel_index_by_sw_if_index[sw_if_index])
+	    {
+	      // Skip inactive/deleted tunnel
+	      continue;
+	    }
+	  rmp->tunnels[count].sw_if_index = htonl (sw_if_index);
+	  rmp->tunnels[count].reserved = 0;
+
+	  get_combined_counters (sw_if_index, &result_rx, &result_tx);
+	  rmp->tunnels[count].counters.packets_rx =
+	    clib_net_to_host_u64 (result_rx.packets);
+	  rmp->tunnels[count].counters.packets_tx =
+	    clib_net_to_host_u64 (result_tx.packets);
+	  rmp->tunnels[count].counters.bytes_rx =
+	    clib_net_to_host_u64 (result_rx.bytes);
+	  rmp->tunnels[count].counters.bytes_tx =
+	    clib_net_to_host_u64 (result_tx.bytes);
+	  count++;
+	}
+      rmp->count = htonl (count);
+    }));
 }
 
 #include <gtpu/gtpu.api.c>
