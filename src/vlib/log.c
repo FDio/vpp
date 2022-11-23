@@ -226,13 +226,13 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 
       if (lm->add_to_elog)
 	{
-          /* *INDENT-OFF* */
-          ELOG_TYPE_DECLARE(ee) =
+	  ELOG_TYPE_DECLARE(ee) =
             {
              .format = "log-%s: %s",
              .format_args = "t4T4",
-             .n_enum_strings = 9,
+             .n_enum_strings = VLIB_LOG_N_LEVELS,
              .enum_strings = {
+                "unknown",
                 "emerg",
                 "alert",
                 "crit",
@@ -244,11 +244,11 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
                 "disabled",
                 },
             };
-          struct {
-            u32 log_level;
-            u32 string_index;
-          } *ed;
-          /* *INDENT-ON* */
+	  struct
+	  {
+	    u32 log_level;
+	    u32 string_index;
+	  } * ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
 	  ed->log_level = level;
 	  ed->string_index =
