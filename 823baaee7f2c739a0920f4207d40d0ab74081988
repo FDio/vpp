@@ -16,6 +16,57 @@
       "message": "Could you review this patch?",
       "revId": "823baaee7f2c739a0920f4207d40d0ab74081988",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "611ce2e3_8270e0b8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2022-11-23T05:51:27Z",
+      "side": 1,
+      "message": "Good work!",
+      "revId": "823baaee7f2c739a0920f4207d40d0ab74081988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99fbad71_f2367167",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2022-11-23T05:51:27Z",
+      "side": 1,
+      "message": "Does it not include ports for hash?",
+      "revId": "823baaee7f2c739a0920f4207d40d0ab74081988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c6ae592_6d74d35a",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2022-11-23T05:51:27Z",
+      "side": 1,
+      "message": "Does need to include ports for hash here?",
+      "revId": "823baaee7f2c739a0920f4207d40d0ab74081988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
