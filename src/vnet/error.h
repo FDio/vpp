@@ -156,7 +156,9 @@
   _ (EAGAIN, -165, "Retry stream call with cursor")                           \
   _ (INVALID_VALUE_4, -166, "Invalid value #4")                               \
   _ (BUSY, -167, "Busy")                                                      \
-  _ (BUG, -168, "Bug")
+  _ (BUG, -168, "Bug")                                                        \
+  _ (FEATURE_ALREADY_DISABLED, -169, "Feature already disabled")              \
+  _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")
 
 typedef enum
 {

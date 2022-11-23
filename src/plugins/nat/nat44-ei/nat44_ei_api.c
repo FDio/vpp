@@ -173,7 +173,9 @@ vl_api_nat44_ei_plugin_enable_disable_t_handler (
       rv = nat44_ei_plugin_enable (c);
     }
   else
-    rv = nat44_ei_plugin_disable ();
+    {
+      rv = nat44_ei_plugin_disable ();
+    }
 
   REPLY_MACRO (VL_API_NAT44_EI_PLUGIN_ENABLE_DISABLE_REPLY);
 }

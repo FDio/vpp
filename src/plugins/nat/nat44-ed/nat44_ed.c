@@ -59,7 +59,7 @@ static_always_inline void nat_validate_interface_counters (snat_main_t *sm,
       if (PREDICT_FALSE (sm->enabled))                                        \
 	{                                                                     \
 	  nat_log_err ("plugin enabled");                                     \
-	  return 1;                                                           \
+	  return VNET_API_ERROR_FEATURE_ALREADY_ENABLED;                      \
 	}                                                                     \
     }                                                                         \
   while (0)
@@ -71,7 +71,7 @@ static_always_inline void nat_validate_interface_counters (snat_main_t *sm,
       if (PREDICT_FALSE (!sm->enabled))                                       \
 	{                                                                     \
 	  nat_log_err ("plugin disabled");                                    \
-	  return 1;                                                           \
+	  return VNET_API_ERROR_FEATURE_ALREADY_DISABLED;                     \
 	}                                                                     \
     }                                                                         \
   while (0)
@@ -2626,19 +2626,19 @@ nat44_plugin_disable ()
 
   rc = nat44_ed_del_static_mappings ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ed_del_addresses ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ed_del_interfaces ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ed_del_output_interfaces ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   nat44_ed_del_vrf_tables ();
 
