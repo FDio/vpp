@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7e88ffa9_49cca18d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2888
+      },
+      "writtenOn": "2022-11-23T14:09:02Z",
+      "side": 1,
+      "message": "Hello Gabriel, please take a look at my patch with fixes a segfault in the vpp-swan plugin.",
+      "revId": "581bce8c720999131d30c1ed257ec31d52893d58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
