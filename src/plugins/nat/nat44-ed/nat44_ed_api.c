@@ -60,12 +60,18 @@ vl_api_nat44_ed_plugin_enable_disable_t_handler (
 	  c.inside_vrf = ntohl (mp->inside_vrf);
 	  c.outside_vrf = ntohl (mp->outside_vrf);
 
-	  rv = nat44_plugin_enable (c);
+	  if (nat44_plugin_enable (c))
+            {
+              rv = VNET_API_ERROR_UNSUPPORTED;
+            }
 	}
     }
   else
     {
-      rv = nat44_plugin_disable ();
+      if (nat44_plugin_disable ())
+        {
+          rv = VNET_API_ERROR_FEATURE_DISABLED;
+        }
     }
 
   REPLY_MACRO (VL_API_NAT44_ED_PLUGIN_ENABLE_DISABLE_REPLY);
