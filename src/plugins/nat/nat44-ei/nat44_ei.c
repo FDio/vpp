@@ -61,7 +61,7 @@ extern vlib_node_registration_t
       if (PREDICT_FALSE (nm->enabled))                                        \
 	{                                                                     \
 	  nat44_ei_log_err ("plugin enabled");                                \
-	  return 1;                                                           \
+	  return VNET_API_ERROR_FEATURE_ALREADY_ENABLED;                      \
 	}                                                                     \
     }                                                                         \
   while (0)
@@ -73,7 +73,7 @@ extern vlib_node_registration_t
       if (PREDICT_FALSE (!nm->enabled))                                       \
 	{                                                                     \
 	  nat44_ei_log_err ("plugin disabled");                               \
-	  return 1;                                                           \
+	  return VNET_API_ERROR_FEATURE_ALREADY_DISABLED;                     \
 	}                                                                     \
     }                                                                         \
   while (0)
@@ -1221,23 +1221,25 @@ nat44_ei_plugin_disable ()
   nat44_ei_main_per_thread_data_t *tnm;
   int rc, error = 0;
 
+  fail_if_disabled ();
+
   nat_ha_disable ();
 
   rc = nat44_ei_del_static_mappings ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ei_del_addresses ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ei_del_interfaces ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   rc = nat44_ei_del_output_interfaces ();
   if (rc)
-    error = 1;
+    error = VNET_API_ERROR_BUG;
 
   if (nm->pat)
     {
