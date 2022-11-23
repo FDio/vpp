@@ -16,6 +16,23 @@
       "message": "Rebased \u0026 made some small styling changes (quoting, spell check validation mostly)",
       "revId": "e507eb2c4e6d0f95c5e3dde7a902b2638ccc590a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b8870a7_bf2503ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2022-11-23T17:32:50Z",
+      "side": 1,
+      "message": "lgtm if JJB approves",
+      "revId": "e507eb2c4e6d0f95c5e3dde7a902b2638ccc590a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
