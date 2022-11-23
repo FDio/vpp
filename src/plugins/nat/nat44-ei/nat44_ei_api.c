@@ -170,10 +170,18 @@ vl_api_nat44_ei_plugin_enable_disable_t_handler (
 
       c.user_sessions = ntohl (mp->user_sessions);
 
-      rv = nat44_ei_plugin_enable (c);
+      if (nat44_ei_plugin_enable (c))
+        {
+          rv = VNET_API_ERROR_UNSUPPORTED;
+        }
     }
   else
-    rv = nat44_ei_plugin_disable ();
+    {
+      if (nat44_ei_plugin_disable ())
+        {
+          rv = VNET_API_ERROR_FEATURE_DISABLED;
+        }
+    }
 
   REPLY_MACRO (VL_API_NAT44_EI_PLUGIN_ENABLE_DISABLE_REPLY);
 }
