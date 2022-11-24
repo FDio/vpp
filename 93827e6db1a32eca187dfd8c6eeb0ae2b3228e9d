@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8feff44_c1bb4d1d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2829
+      },
+      "writtenOn": "2022-11-24T03:47:34Z",
+      "side": 1,
+      "message": "Could you please review and merge this patch if it looks good?\nOr could you suggest appropriate maintainers?\n\nHongjun, thank you for your quick review.",
+      "revId": "93827e6db1a32eca187dfd8c6eeb0ae2b3228e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
