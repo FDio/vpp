@@ -4,8 +4,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+type HstSuite struct {
+	suite.Suite
+}
+
+func (s *HstSuite) hstFail() {
+	s.T().FailNow()
+}
+
+func (s *HstSuite) assertNil(object interface{}, msgAndArgs ...interface{}) {
+	if !assert.Nil(s.T(), object, msgAndArgs...) {
+		s.hstFail()
+	}
+}
 
 type TapSuite struct {
 	suite.Suite
@@ -22,7 +37,7 @@ func (s *TapSuite) TearDownSuite() {
 }
 
 type Veths2Suite struct {
-	suite.Suite
+	HstSuite
 	teardownSuite func()
 }
 
