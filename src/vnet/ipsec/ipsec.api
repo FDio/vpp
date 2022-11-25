@@ -96,6 +96,7 @@ define ipsec_spd_entry_add_del_v2
 */
 define ipsec_spd_entry_add_del_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   u32 stat_index;
