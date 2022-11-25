@@ -63,6 +63,24 @@ extern "C"
     VPPCOM_IS_IP4,
   } vppcom_is_ip4_t;
 
+
+#define VCL_UDP_SEGMENT	103	/* Set GSO segmentation size.  */
+
+  typedef struct vppcom_endpt_tlv_t_
+  {
+    uint32_t data_type;
+    uint32_t data_len;
+    union 
+    {
+      /* data */
+      uint64_t value;
+      uint32_t as_u32[2];
+      uint16_t as_u16[4];
+      uint8_t as_u8[8];
+    };
+    
+  }vppcom_endpt_tlv_t;
+
   typedef struct vppcom_endpt_t_
   {
     uint8_t is_cut_thru;
@@ -70,6 +88,8 @@ extern "C"
     uint8_t *ip;
     uint16_t port;
     uint64_t parent_handle;
+    vppcom_endpt_tlv_t user_data;
+
   } vppcom_endpt_t;
 
 typedef uint32_t vcl_session_handle_t;
@@ -141,6 +161,8 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
+  VPPCOM_ATTR_GET_UDP_USER_MSS,
+  VPPCOM_ATTR_SET_UDP_USER_MSS,
   VPPCOM_ATTR_SET_CONNECTED,
   VPPCOM_ATTR_SET_CKPAIR,
   VPPCOM_ATTR_SET_VRF,

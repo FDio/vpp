@@ -1539,12 +1539,20 @@ __recv_chk (int fd, void *buf, size_t n, size_t buflen, int flags)
   return recv (fd, buf, n, flags);
 }
 
-static int
-ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n, int flags,
-	       __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
+#define ldp_vls_sendo(vlsh, buf, n, flags, addr, addr_len) \
+  ldp_vls_sendo_ext(vlsh, buf, n, NULL, 0, flags, addr, addr_len)
+
+static inline int
+ldp_vls_sendo_ext (vls_handle_t vlsh, const void *buf, size_t n,
+                    void *param_buf, size_t param_len,int flags,
+	                __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
 {
   vppcom_endpt_t *ep = 0;
   vppcom_endpt_t _ep;
+
+  if(param_buf && (param_len == sizeof(vppcom_endpt_tlv_t) )){
+      _ep.user_data =  *(vppcom_endpt_tlv_t*)param_buf;
+  }
 
   if (addr)
     {
@@ -1661,10 +1669,27 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
 {
   vls_handle_t vlsh;
   ssize_t size;
+  struct cmsghdr  *cmsg;
+  uint16_t        *valp;
+  vppcom_endpt_tlv_t _user_data;
+  size_t buf_len = 0;
+  vppcom_endpt_tlv_t *p_user_data = NULL;
 
   ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
+
+  cmsg = CMSG_FIRSTHDR(msg); 
+  if(cmsg && cmsg->cmsg_type == VCL_UDP_SEGMENT) 
+  {
+    p_user_data = &_user_data;
+    valp = (void *) CMSG_DATA(cmsg);
+    p_user_data->data_type  = cmsg->cmsg_type;
+    p_user_data->data_len   = sizeof(*valp);
+    p_user_data->value      = *valp;
+    buf_len = sizeof(_user_data);
+  }
+
   if (vlsh != VLS_INVALID_HANDLE)
     {
       struct iovec *iov = msg->msg_iov;
@@ -1673,7 +1698,8 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
-	  rv = ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, flags,
+	  rv = ldp_vls_sendo_ext (vlsh, iov[i].iov_base, iov[i].iov_len, 
+          p_user_data, buf_len, flags,
 			      msg->msg_name, msg->msg_namelen);
 	  if (rv < 0)
 	    break;

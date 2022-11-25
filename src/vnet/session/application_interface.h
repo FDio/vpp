@@ -641,14 +641,16 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
     }
 }
 
+#define app_send_dgram_raw(f, at, vpp_evt_q, data, len, evt_type, do_evt, noblock) \
+          app_send_dgram_raw_gso(f, at, vpp_evt_q, data, len, 0, evt_type, do_evt, noblock)
+
 always_inline int
-app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
-		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 evt_type,
-		    u8 do_evt, u8 noblock)
+app_send_dgram_raw_gso (svm_fifo_t * f, app_session_transport_t * at,
+		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u16 gso_size,
+        u8 evt_type, u8 do_evt, u8 noblock)
 {
   session_dgram_hdr_t hdr;
   int rv;
-
   if (svm_fifo_max_enqueue_prod (f) < (sizeof (session_dgram_hdr_t) + len))
     return 0;
 
@@ -659,7 +661,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   hdr.rmt_port = at->rmt_port;
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
-
+  hdr.gso_size = gso_size;
   /* *INDENT-OFF* */
   svm_fifo_seg_t segs[2] = {{ (u8 *) &hdr, sizeof (hdr) }, { data, len }};
   /* *INDENT-ON* */

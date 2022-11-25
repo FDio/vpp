@@ -318,6 +318,58 @@ udp_session_cleanup (u32 connection_index, u32 thread_index)
 }
 
 static int
+udp_set_attribute (udp_connection_t *uc, transport_endpt_attr_t *attr)
+{
+  int rv = 0;
+  // u64 non;
+  // clib_warning("lib:attr->type:%d",attr->type);
+
+  switch (attr->type)
+      {
+        case TRANSPORT_ENDPT_ATTR_MSS:
+        // clib_warning ("TRANSPORT_ENDPT_ATTR_MSS %d,value:%d", TRANSPORT_ENDPT_ATTR_MSS,attr->mss);
+        uc->mss = attr->mss;
+        rv = 0;
+        break;
+
+        default:
+        rv = -1;
+        break;
+      }
+
+    return rv;
+}
+
+static int
+udp_get_attribute (udp_connection_t *uc, transport_endpt_attr_t *attr)
+{
+  int rv = 0;
+
+  return rv;
+}
+
+static int
+udp_session_attribute (u32 conn_index, u32 thread_index, u8 is_get,
+		       transport_endpt_attr_t *attr)
+{
+  // clib_warning("lib:udp_session_attributeis_get:%d,conn_index:%d",is_get,conn_index);
+// udp_connection_t *uc = udp_connection_get (conn_index, thread_index);
+  udp_connection_t *uc = udp_listener_get (conn_index);
+
+ 
+  if (PREDICT_FALSE (!uc))
+    return -1;
+    
+  //  clib_warning("found connection!");
+  if (is_get)
+    return udp_get_attribute (uc, attr);
+  else
+    return udp_set_attribute (uc, attr);
+
+   
+}
+
+static int
 udp_session_send_params (transport_connection_t * tconn,
 			 transport_send_params_t * sp)
 {
@@ -464,6 +516,7 @@ format_udp_listener_session (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 static const transport_proto_vft_t udp_proto = {
   .start_listen = udp_session_bind,
+  .attribute = udp_session_attribute,
   .connect = udp_open_connection,
   .stop_listen = udp_session_unbind,
   .push_header = udp_push_header,
