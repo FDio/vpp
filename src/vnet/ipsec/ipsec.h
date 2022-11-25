@@ -137,7 +137,7 @@ typedef struct
   vnet_crypto_op_t *chained_crypto_ops;
   vnet_crypto_op_t *chained_integ_ops;
   vnet_crypto_op_chunk_t *chunks;
-  vnet_crypto_async_frame_t **async_frames;
+  u32 *async_frames;
 } ipsec_per_thread_data_t;
 
 typedef struct

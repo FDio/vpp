@@ -31,7 +31,7 @@ typedef struct wg_per_thread_data_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_t *crypto_ops;
-  vnet_crypto_async_frame_t **async_frames;
+  u32 *async_frames;
   u8 data[WG_DEFAULT_DATA_SIZE];
 } wg_per_thread_data_t;
 typedef struct

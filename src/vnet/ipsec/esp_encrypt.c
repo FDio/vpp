@@ -560,7 +560,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
-  vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
+  u32 async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   int is_async = im->async_mode;
   vnet_crypto_async_op_id_t async_op = ~0;
   u16 drop_next =
@@ -587,7 +587,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vec_reset_length (ptd->chained_integ_ops);
   vec_reset_length (ptd->async_frames);
   vec_reset_length (ptd->chunks);
-  clib_memset (async_frames, 0, sizeof (async_frames));
+  clib_memset (async_frames, -1, sizeof (async_frames));
 
   while (n_left > 0)
     {
@@ -947,8 +947,9 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  /* get a frame for this op if we don't yet have one or it's full
 	   */
-	  if (NULL == async_frames[async_op] ||
-	      vnet_crypto_async_frame_is_full (async_frames[async_op]))
+	  if (async_frames[async_op] == -1 ||
+	      vnet_crypto_async_frame_is_full (
+		vnet_crypto_async_frame (vm, async_frames[async_op])))
 	    {
 	      async_frames[async_op] =
 		vnet_crypto_async_get_frame (vm, async_op);
@@ -956,10 +957,10 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vec_add1 (ptd->async_frames, async_frames[async_op]);
 	    }
 
-	  esp_prepare_async_frame (vm, ptd, async_frames[async_op], sa0, b[0],
-				   esp, payload, payload_len, iv_sz, icv_sz,
-				   from[b - bufs], sync_next[0], hdr_len,
-				   async_next_node, lb);
+	  esp_prepare_async_frame (
+	    vm, ptd, vnet_crypto_async_frame (vm, async_frames[async_op]), sa0,
+	    b[0], esp, payload, payload_len, iv_sz, icv_sz, from[b - bufs],
+	    sync_next[0], hdr_len, async_next_node, lb);
 	}
       else
 	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, sa0, sa0->seq_hi,
@@ -1032,17 +1033,20 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_async)
     {
       /* submit all of the open frames */
-      vnet_crypto_async_frame_t **async_frame;
+      u32 *async_frame_idx;
 
-      vec_foreach (async_frame, ptd->async_frames)
+      vec_foreach (async_frame_idx, ptd->async_frames)
 	{
-	  if (vnet_crypto_async_submit_open_frame (vm, *async_frame) < 0)
+	  vnet_crypto_async_frame_t *async_frame =
+	    vnet_crypto_async_frame (vm, *async_frame_idx);
+
+	  if (vnet_crypto_async_submit_open_frame (vm, async_frame) < 0)
 	    {
 	      n_noop += esp_async_recycle_failed_submit (
-		vm, *async_frame, node, ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
+		vm, async_frame, node, ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR,
 		n_noop, noop_bi, noop_nexts, drop_next);
-	      vnet_crypto_async_reset_frame (*async_frame);
-	      vnet_crypto_async_free_frame (vm, *async_frame);
+	      vnet_crypto_async_reset_frame (async_frame);
+	      vnet_crypto_async_free_frame (vm, async_frame);
 	    }
 	}
     }
