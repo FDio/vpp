@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3b144ca_76159bd3",
+        "filename": "extras/hs-test/container.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-25T11:09:40Z",
+      "side": 1,
+      "message": "let\u0027s keep it simple here: remove this function and export name field in the struct",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 1
+      },
+      "revId": "b4eff9fbbcf63efc54cec52f3de5621d762259dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c928a166_cf07ff31",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-25T11:09:40Z",
+      "side": 1,
+      "message": "Maybe have a list of actual container/volume structs instead of names? we can do this in separate patch, not so important now",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 17
+      },
+      "revId": "b4eff9fbbcf63efc54cec52f3de5621d762259dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c834c890_3505d9c1",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-25T11:09:40Z",
+      "side": 1,
+      "message": "here I would stick to one style of writing asserts(). If this is better than our custom defined s.assert*, then we can use this.",
+      "range": {
+        "startLine": 232,
+        "startChar": 1,
+        "endLine": 234,
+        "endChar": 50
+      },
+      "revId": "b4eff9fbbcf63efc54cec52f3de5621d762259dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d16f9d3b_74cd13e7",
+        "filename": "extras/hs-test/vpp.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2022-11-25T11:09:40Z",
+      "side": 1,
+      "message": "not needed as the field is public anyway",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 56,
+        "endChar": 1
+      },
+      "revId": "b4eff9fbbcf63efc54cec52f3de5621d762259dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
