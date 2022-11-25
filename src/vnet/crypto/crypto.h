@@ -563,7 +563,16 @@ vnet_crypto_set_handler (char *alg_name, char *engine)
 /** async crypto inline functions **/
 
 static_always_inline vnet_crypto_async_frame_t *
-vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
+vnet_crypto_async_frame (vlib_main_t *vm, u32 index)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
+
+  return pool_elt_at_index (ct->frame_pool, index);
+}
+
+static_always_inline u32
+vnet_crypto_async_get_frame (vlib_main_t *vm, vnet_crypto_async_op_id_t opt)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
@@ -576,7 +585,7 @@ vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
   f->op = opt;
   f->n_elts = 0;
 
-  return f;
+  return f - ct->frame_pool;
 }
 
 static_always_inline void

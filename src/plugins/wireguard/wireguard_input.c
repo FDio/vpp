@@ -485,11 +485,10 @@ wg_input_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
 
 static_always_inline enum noise_state_crypt
 wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-		  vnet_crypto_op_t **crypto_ops,
-		  vnet_crypto_async_frame_t **async_frame, vlib_buffer_t *b,
-		  u32 buf_idx, noise_remote_t *r, uint32_t r_idx,
-		  uint64_t nonce, uint8_t *src, size_t srclen, uint8_t *dst,
-		  u32 from_idx, u8 *iv, f64 time, u8 is_async,
+		  vnet_crypto_op_t **crypto_ops, u32 *async_frame,
+		  vlib_buffer_t *b, u32 buf_idx, noise_remote_t *r,
+		  uint32_t r_idx, uint64_t nonce, uint8_t *src, size_t srclen,
+		  uint8_t *dst, u32 from_idx, u8 *iv, f64 time, u8 is_async,
 		  u16 async_next_node)
 {
   noise_keypair_t *kp;
@@ -518,8 +517,8 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
   if (is_async)
     {
-      if (NULL == *async_frame ||
-	  vnet_crypto_async_frame_is_full (*async_frame))
+      if (*async_frame == -1 || vnet_crypto_async_frame_is_full (
+				  vnet_crypto_async_frame (vm, *async_frame)))
 	{
 	  *async_frame = vnet_crypto_async_get_frame (
 	    vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_DEC);
@@ -527,9 +526,10 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 	  vec_add1 (ptd->async_frames, *async_frame);
 	}
 
-      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen,
-			     src - b->data, buf_idx, async_next_node, iv,
-			     src + srclen, VNET_CRYPTO_OP_FLAG_HMAC_CHECK);
+      wg_input_add_to_frame (vm, vnet_crypto_async_frame (vm, *async_frame),
+			     kp->kp_recv_index, srclen, kp->kp_recv_index,
+			     srclen, src - b->data, buf_idx, async_next_node,
+			     iv, src + srclen, VNET_CRYPTO_OP_FLAG_HMAC_CHECK);
     }
   else
     {
@@ -618,7 +618,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 data_nexts[VLIB_FRAME_SIZE], *data_next = data_nexts, n_data = 0;
   u16 n_async = 0;
   const u8 is_async = wg_op_mode_is_set_ASYNC ();
-  vnet_crypto_async_frame_t *async_frame = NULL;
+  u32 async_frame = -1;
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   vec_reset_length (ptd->crypto_ops);
@@ -871,14 +871,18 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_async)
     {
       /* submit all of the open frames */
-      vnet_crypto_async_frame_t **async_frame;
-      vec_foreach (async_frame, ptd->async_frames)
+      u32 *async_frame_idx;
+
+      vec_foreach (async_frame_idx, ptd->async_frames)
 	{
+	  vnet_crypto_async_frame_t *async_frame =
+	    vnet_crypto_async_frame (vm, *async_frame_idx);
+
 	  if (PREDICT_FALSE (
-		vnet_crypto_async_submit_open_frame (vm, *async_frame) < 0))
+		vnet_crypto_async_submit_open_frame (vm, async_frame) < 0))
 	    {
-	      u32 n_drop = (*async_frame)->n_elts;
-	      u32 *bi = (*async_frame)->buffer_indices;
+	      u32 n_drop = async_frame->n_elts;
+	      u32 *bi = async_frame->buffer_indices;
 	      u16 index = n_other;
 	      while (n_drop--)
 		{
@@ -889,10 +893,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  bi++;
 		  index++;
 		}
-	      n_other += (*async_frame)->n_elts;
+	      n_other += async_frame->n_elts;
 
-	      vnet_crypto_async_reset_frame (*async_frame);
-	      vnet_crypto_async_free_frame (vm, *async_frame);
+	      vnet_crypto_async_reset_frame (async_frame);
+	      vnet_crypto_async_free_frame (vm, async_frame);
 	    }
 	}
     }
