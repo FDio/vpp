@@ -681,51 +681,56 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
   /* verify that all ip4 packets have l3_ok flag set and convert packet
      length from network to host byte order */
   int skip_ip4_cksum = 1;
-  int n_left = 0;
+  int n_left = n_rx_packets;
 
 #if defined CLIB_HAVE_VEC256
-  if (n_rx_packets >= 16)
+  if (n_left >= 16)
     {
       u16x16 mask16 = u16x16_splat (mask);
       u16x16 match16 = u16x16_splat (match);
       u16x16 r16 = {};
 
-      n_left = n_rx_packets % 16;
+      for (int i = 0; i < n_rx_packets / 16; i++, n_left -= 16)
+	{
+	  r16 |= (ptd->cqe_flags16[i] & mask16) != match16;
 
-      for (int i = 0; i < n_rx_packets / 16; i++)
-	r16 |= (ptd->cqe_flags16[i] & mask16) != match16;
+	  *(u32x8 *) (bc + i * 16) =
+	    u32x8_byte_swap (*(u32x8 *) (bc + i * 16));
+	  *(u32x8 *) (bc + i * 16 + 8) =
+	    u32x8_byte_swap (*(u32x8 *) (bc + i * 16 + 8));
+	}
 
       if (!u16x16_is_all_zero (r16))
 	skip_ip4_cksum = 0;
-
-      for (int i = 0; i < (n_rx_packets - n_left); i += 8)
-	*(u32x8 *) (bc + i) = u32x8_byte_swap (*(u32x8 *) (bc + i));
     }
 #elif defined CLIB_HAVE_VEC128
-  if (n_rx_packets >= 8)
+  if (n_left >= 8)
     {
       u16x8 mask8 = u16x8_splat (mask);
       u16x8 match8 = u16x8_splat (match);
       u16x8 r8 = {};
 
-      n_left = n_rx_packets % 8;
+      for (int i = 0; i < n_rx_packets / 8; i++, n_left -= 8)
+	{
+	  r8 |= (ptd->cqe_flags8[i] & mask8) != match8;
 
-      for (int i = 0; i < n_rx_packets / 8; i++)
-	r8 |= (ptd->cqe_flags8[i] & mask8) != match8;
+	  *(u32x4 *) (bc + i * 8) = u32x4_byte_swap (*(u32x4 *) (bc + i * 8));
+	  *(u32x4 *) (bc + i * 8 + 4) =
+	    u32x4_byte_swap (*(u32x4 *) (bc + i * 8 + 4));
+	}
 
       if (!u16x8_is_all_zero (r8))
 	skip_ip4_cksum = 0;
-
-      for (int i = 0; i < (n_rx_packets - n_left); i += 4)
-	*(u32x4 *) (bc + i) = u32x4_byte_swap (*(u32x4 *) (bc + i));
     }
 #endif
-  for (int i = (n_rx_packets - n_left); i < n_rx_packets; i++)
-    if ((ptd->cqe_flags[i] & mask) != match)
-      skip_ip4_cksum = 0;
 
   for (int i = (n_rx_packets - n_left); i < n_rx_packets; i++)
-    bc[i] = clib_net_to_host_u32 (bc[i]);
+    {
+      if ((ptd->cqe_flags[i] & mask) != match)
+	skip_ip4_cksum = 0;
+
+      bc[i] = clib_net_to_host_u32 (bc[i]);
+    }
 
   return skip_ip4_cksum;
 }
