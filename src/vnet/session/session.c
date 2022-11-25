@@ -1837,8 +1837,11 @@ int
 session_transport_attribute (session_t *s, u8 is_get,
 			     transport_endpt_attr_t *attr)
 {
-  if (s->session_state < SESSION_STATE_READY)
-    return -1;
+  if (session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
+    {
+      if (s->session_state < SESSION_STATE_READY)
+	return -1;
+    }
 
   return transport_connection_attribute (session_get_transport_proto (s),
 					 s->connection_index, s->thread_index,
