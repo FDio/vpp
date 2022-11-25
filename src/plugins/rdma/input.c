@@ -681,7 +681,7 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
   /* verify that all ip4 packets have l3_ok flag set and convert packet
      length from network to host byte order */
   int skip_ip4_cksum = 1;
-  int n_left = 0;
+  int n_left = n_rx_packets;
 
 #if defined CLIB_HAVE_VEC256
   if (n_rx_packets >= 16)
