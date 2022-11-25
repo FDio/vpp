@@ -142,6 +142,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b3ff3e8_1e29627c",
+        "filename": "extras/hs-test/vcl_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-11-25T14:24:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "22e5932d_c1f0fa35",
+      "range": {
+        "startLine": 232,
+        "startChar": 1,
+        "endLine": 234,
+        "endChar": 50
+      },
+      "revId": "b4eff9fbbcf63efc54cec52f3de5621d762259dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d16f9d3b_74cd13e7",
