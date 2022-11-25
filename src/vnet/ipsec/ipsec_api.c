@@ -327,7 +327,7 @@ vl_api_ipsec_spd_entry_add_del_v2_t_handler (
     goto out;
 
 out:
-  REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY,
+  REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_V2_REPLY,
 		({ rmp->stat_index = ntohl (stat_index); }));
 }
 
