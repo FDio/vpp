@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a441a2a2_e223d702",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-11-25T16:55:30Z",
+      "side": 1,
+      "message": "I discovered this issue when working on https://gerrit.fd.io/r/c/csit/+/37722\nUsing that CSIT code, I manually triggered https://jenkins.fd.io/view/vpp/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/6/\nThe console output shows this is a fix indeed (only the parent build triggers a complaint about ipsec_spd_entry_add_del_reply).",
+      "revId": "6c5358bdc1d1a55d2fb50baa0182433f5488c7d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
