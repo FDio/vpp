@@ -142,6 +142,24 @@
       "parentUuid": "cb79c8d0_548b6198",
       "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42d36408_52ed6b00",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-26T04:57:58Z",
+      "side": 1,
+      "message": "Well, that is unfortunate, and probably suggests that ipv4-udp should be kept off.\n\nHowever, if rss in this situation is to ever be properly supported, I\u0027d recommend a feature like [1], on the ip local not input arc, which I gave up on in favor of interface handoff. That way, the problem is solved for both udp and tcp at once and can selectively be turned on only for those cases where it\u0027s known to be needed. Which as far as I can tell it\u0027s just this scenario, i.e., nic that does not support rss for ip fragments. \n\n[1] https://gerrit.fd.io/r/c/vpp/+/34211",
+      "parentUuid": "35b924ae_d95e43d8",
+      "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
