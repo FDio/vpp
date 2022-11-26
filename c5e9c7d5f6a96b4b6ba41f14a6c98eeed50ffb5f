@@ -124,6 +124,24 @@
       "parentUuid": "1d779598_289b214d",
       "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35b924ae_d95e43d8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-26T03:43:14Z",
+      "side": 1,
+      "message": "In my test cases, I found the 82599es nic will rss udp fragments by ipv4, event the packet has udp header. \nIn 82599-datasheet-v3-4.pdf page.314, it says only parse non-fragmented IPv4, TCP/DUP/SCTP l4 header for rss function like:ipv4-udp/ipv4-tcp. You can check it.",
+      "parentUuid": "cb79c8d0_548b6198",
+      "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
