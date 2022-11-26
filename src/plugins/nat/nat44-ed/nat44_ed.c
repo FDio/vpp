@@ -3188,12 +3188,15 @@ nat44_get_max_session_limit ()
   return max_limit;
 }
 
-int
+vnet_api_error_t
 nat44_set_session_limit (u32 session_limit, u32 vrf_id)
 {
   snat_main_t *sm = &snat_main;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
   u32 len = vec_len (sm->max_translations_per_fib);
+
+  if (fib_index == ~0)
+    return VNET_API_ERROR_NO_SUCH_FIB;
 
   if (len <= fib_index)
     {
@@ -3207,13 +3210,16 @@ nat44_set_session_limit (u32 session_limit, u32 vrf_id)
   return 0;
 }
 
-int
+vnet_api_error_t
 nat44_update_session_limit (u32 session_limit, u32 vrf_id)
 {
   snat_main_t *sm = &snat_main;
+  vnet_api_error_t rv;
 
-  if (nat44_set_session_limit (session_limit, vrf_id))
-    return 1;
+  rv = nat44_set_session_limit (session_limit, vrf_id);
+  if (rv)
+    return rv;
+
   sm->max_translations_per_thread = nat44_get_max_session_limit ();
 
   vlib_stats_set_gauge (sm->max_cfg_sessions_gauge,

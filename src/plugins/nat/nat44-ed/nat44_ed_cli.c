@@ -1613,6 +1613,7 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
+  vnet_api_error_t rv;
 
   u32 session_limit = 0, vrf_id = 0;
 
@@ -1634,9 +1635,15 @@ nat44_set_session_limit_command_fn (vlib_main_t * vm,
     }
 
   if (!session_limit)
-    error = clib_error_return (0, "missing value of session limit");
-  else if (nat44_update_session_limit (session_limit, vrf_id))
-    error = clib_error_return (0, "nat44_set_session_limit failed");
+    {
+      error = clib_error_return (0, "missing value of session limit");
+      goto done;
+    }
+
+  rv = nat44_update_session_limit (session_limit, vrf_id);
+  if (rv)
+    error = clib_error_return (0, "nat44_set_session_limit failed, rv=%d:%U%",
+			       (int) rv, format_vnet_api_errno, rv);
 
 done:
   unformat_free (line_input);
