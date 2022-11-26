@@ -898,7 +898,7 @@ void nat44_ed_free_session_data (snat_main_t *sm, snat_session_t *s,
  * @param vrf_id        VRF id
  * @return 0 on success, non-zero value otherwise
  */
-int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
+vnet_api_error_t nat44_set_session_limit (u32 session_limit, u32 vrf_id);
 
 /**
  * @brief Update NAT44 session limit flushing all data (session limit, vrf id)
@@ -907,7 +907,7 @@ int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
  * @param vrf_id        VRF id
  * @return 0 on success, non-zero value otherwise
  */
-int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
+vnet_api_error_t nat44_update_session_limit (u32 session_limit, u32 vrf_id);
 
 void expire_per_vrf_sessions (u32 fib_index);
 
