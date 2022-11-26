@@ -16,6 +16,23 @@
       "message": "filvarga",
       "revId": "8dec4832a6e3658f448fb8aace3921c806c8c38d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e35eb63_1621a0e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-11-26T17:53:05Z",
+      "side": 1,
+      "message": "Please if such a bug exist either create a ticket with details in public FD.io jira or include details in the commit messages. Also please supply python unit test testing for the specific bug. Thank you.",
+      "revId": "8dec4832a6e3658f448fb8aace3921c806c8c38d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
