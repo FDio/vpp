@@ -106,6 +106,24 @@
       "parentUuid": "d5a2bd2b_1b73bfc5",
       "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cb79c8d0_548b6198",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-11-26T02:26:21Z",
+      "side": 1,
+      "message": "The first packet in a chain of fragments, i.e., the one that has the udp header, should hit the ipv4-udp rule in the nic. If it does not, it sounds like a bug. The subsequent fragments, i.e., those without the udp header, will hit whatever other rules in place. Reassembly should then use the thread of the first packet as the thread of the reassembled packet.",
+      "parentUuid": "1d779598_289b214d",
+      "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
