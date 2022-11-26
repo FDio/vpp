@@ -88,6 +88,24 @@
       "parentUuid": "05158b30_622a75c7",
       "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d779598_289b214d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-26T02:05:40Z",
+      "side": 1,
+      "message": "It\u0027s no reassembly issue. For udp packet less then mtu, 82599es will rss by ipv4-udp rule in nic, but for udp pacet more then mtu, all the fragments will rss by ipv4 rule in nic, the worker threads above two cases may be different.",
+      "parentUuid": "d5a2bd2b_1b73bfc5",
+      "revId": "c5e9c7d5f6a96b4b6ba41f14a6c98eeed50ffb5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
