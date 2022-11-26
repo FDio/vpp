@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "faa5940b_e5c6d059",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-11-26T17:59:55Z",
+      "side": 1,
+      "message": "Please change the location of free so it gets called only on free operations. Other than that +1.",
+      "revId": "2887c766acda19dad29c04242820ffdcbb4f60c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50672775_e04bb6aa",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3264,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-11-26T17:59:55Z",
+      "side": 1,
+      "message": "It would be better choicse here to rename reinit_ed_flow_hash to flow_hash_init and handle free separately operation separately so it goes with init/free naming convention. Also if we free in reinit_ed_flow_hash. nat44_ed_db_init will be calling on every enable free of init hash.",
+      "revId": "2887c766acda19dad29c04242820ffdcbb4f60c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
