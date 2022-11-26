@@ -169,10 +169,22 @@ vl_api_nat44_set_session_limit_t_handler (vl_api_nat44_set_session_limit_t *
   snat_main_t *sm = &snat_main;
   vl_api_nat44_set_session_limit_reply_t *rmp;
   int rv = 0;
+  u32 session_limit, vrf_id;
 
-  rv = nat44_set_session_limit
-    (ntohl (mp->session_limit), ntohl (mp->vrf_id));
+  session_limit = ntohl (mp->session_limit);
+  if (!session_limit)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto send_reply;
+    }
 
+  vrf_id = ntohl (mp->vrf_id);
+  if (vrf_id == ~0)
+    vrf_id = 0;
+
+  rv = nat44_update_session_limit (session_limit, vrf_id);
+
+send_reply:
   REPLY_MACRO (VL_API_NAT44_SET_SESSION_LIMIT_REPLY);
 }
 
