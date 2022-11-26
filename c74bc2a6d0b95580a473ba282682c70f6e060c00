@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5fc91911_3d1c3d6d",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3198,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-11-26T17:22:59Z",
+      "side": 1,
+      "message": "Please look into rest of nat44-ed code base how non existent vrf is handled. We are non table dependent all over NAT - fib_table_find_or_create_and_lock is used if we are creating any new nat object dependent on fib.",
+      "revId": "c74bc2a6d0b95580a473ba282682c70f6e060c00",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
