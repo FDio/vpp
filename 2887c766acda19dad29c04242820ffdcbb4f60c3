@@ -33,6 +33,24 @@
       "message": "It would be better choicse here to rename reinit_ed_flow_hash to flow_hash_init and handle free separately operation separately so it goes with init/free naming convention. Also if we free in reinit_ed_flow_hash. nat44_ed_db_init will be calling on every enable free of init hash.",
       "revId": "2887c766acda19dad29c04242820ffdcbb4f60c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc558d9c_9c805a72",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3264,
+      "author": {
+        "id": 2841
+      },
+      "writtenOn": "2022-11-27T03:53:51Z",
+      "side": 1,
+      "message": "A revision was completed, and simultaneously make a refactor to nat44-ed db init/free. Please have a review again.",
+      "parentUuid": "50672775_e04bb6aa",
+      "revId": "2887c766acda19dad29c04242820ffdcbb4f60c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
