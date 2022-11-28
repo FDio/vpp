@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7da3cf67_f1f29b0c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2022-11-28T19:49:22Z",
+      "side": 1,
+      "message": "Hi, Filip, seems there\u0027s another pr for the same casee https://gerrit.fd.io/r/c/vpp/+/37726, maybe the both approaches can be merged?\n",
+      "revId": "717b4528aae5eb8590aae6f0dee97335de28c0d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
