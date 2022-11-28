@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e100c2ce_f42a9b1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 906
+      },
+      "writtenOn": "2022-11-28T07:41:27Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_core\nperftest-2n-zn2 mrrANDnic_mellanox-cx556aANDdrv_rdma_core\n",
+      "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
