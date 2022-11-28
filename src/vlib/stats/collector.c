@@ -169,6 +169,8 @@ stat_segment_collector_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	}
     }
 
+  sm->directory_vector[STAT_COUNTER_BOOTTIME].value = unix_time_now();
+
   while (1)
     {
       do_stat_segment_updates (vm, sm);
