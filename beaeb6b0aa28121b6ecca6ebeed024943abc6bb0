@@ -16,6 +16,74 @@
       "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_core\nperftest-2n-zn2 mrrANDnic_mellanox-cx556aANDdrv_rdma_core\n",
       "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6c16400_aa37c880",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-28T18:13:38Z",
+      "side": 1,
+      "message": "Thanks a lot for chasing it down! I have a few comments regarding the loops, I think the way they are written is confusing and that may have lead to the bug in the 1st place...",
+      "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ebc948eb_deecbe2c",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 693,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-28T18:13:38Z",
+      "side": 1,
+      "message": "maybe it would be less confusing to write it like this:\n  \n  while (n_left \u003e\u003d 16)\n    {\n      ...\n      cqe_flags +\u003d 16;\n      bc +\u003d 16;\n      n_left -\u003d 16;\n    }\n\nAt least it would keep it consistent with other part of VPP",
+      "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a12d219_d11b40a2",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 713,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-28T18:13:38Z",
+      "side": 1,
+      "message": "same, while (nleft \u003e\u003d 8) would be better I think",
+      "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6206ad17_2bae9f1d",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 727,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-28T18:13:38Z",
+      "side": 1,
+      "message": "same, while (n_left \u003e\u003d 1) would be better I think",
+      "revId": "beaeb6b0aa28121b6ecca6ebeed024943abc6bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
