@@ -21,12 +21,14 @@ typedef enum
 {
   STAT_COUNTER_HEARTBEAT = 0,
   STAT_COUNTER_LAST_STATS_CLEAR,
+  STAT_COUNTER_BOOTTIME,
   STAT_COUNTERS
 } stat_segment_counter_t;
 
 #define foreach_stat_segment_counter_name                                     \
   _ (LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, "/sys")                \
-  _ (HEARTBEAT, SCALAR_INDEX, heartbeat, "/sys")
+  _ (HEARTBEAT, SCALAR_INDEX, heartbeat, "/sys")                              \
+  _ (BOOTTIME, SCALAR_INDEX, boottime, "/sys")
 
 typedef struct
 {
