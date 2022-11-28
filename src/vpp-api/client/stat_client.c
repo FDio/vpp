@@ -287,6 +287,8 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
       {
 	vlib_stats_entry_t *ep2;
 	ep2 = vec_elt_at_index (sm->directory_vector, ep->index1);
+	/* We do not intend to return the "result", avoid a leak */
+	free (result.name);
 	return copy_data (ep2, ep->index2, ep->name, sm);
       }
 
