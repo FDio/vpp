@@ -305,11 +305,11 @@ class VLAList(Packer):
                 )
             )
 
-        # u8 array
-        if self.packer.size == 1:
-            if isinstance(lst, list):
-                return b"".join(lst)
-            return bytes(lst)
+        # # u8 array
+        # if self.packer.size == 1:
+        #     if isinstance(lst, list):
+        #         return b"".join(lst)
+        #     return bytes(lst)
 
         b = bytearray()
         for e in lst:
