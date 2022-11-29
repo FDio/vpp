@@ -67,6 +67,24 @@
       "message": "recheck",
       "revId": "70a33f942cd7b2ab19f13b292efa17b8e0b853a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f37e15d_2a2af389",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2022-11-29T09:54:38Z",
+      "side": 1,
+      "message": "The failure is here because it looks to me that CSIT will compare performance between VPP built with this patch[0] and VPP without this patch[1]. Apprantly VPP built without this patch wouldn\u0027t pass the test.\nSure Ben, let\u0027s wait for Viliam to check.\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/18/csit_current/0/log.html.gz\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/18/csit_parent/0/log.html.gz",
+      "parentUuid": "4585470f_f1f6db70",
+      "revId": "70a33f942cd7b2ab19f13b292efa17b8e0b853a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
