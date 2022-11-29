@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 #include <netinet/tcp.h>
+#include <linux/udp.h>
 
 #include <vcl/ldp_socket_wrapper.h>
 #include <vcl/ldp.h>
@@ -1539,12 +1540,18 @@ __recv_chk (int fd, void *buf, size_t n, size_t buflen, int flags)
   return recv (fd, buf, n, flags);
 }
 
-static int
-ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n, int flags,
+static inline int
+ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n,
+	       vppcom_endpt_tlv_t *ep_tlv, int flags,
 	       __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
 {
   vppcom_endpt_t *ep = 0;
   vppcom_endpt_t _ep;
+
+  if (ep_tlv)
+    {
+      _ep.app_data = *ep_tlv;
+    }
 
   if (addr)
     {
@@ -1614,7 +1621,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      size = ldp_vls_sendo (vlsh, buf, n, flags, addr, addr_len);
+      size = ldp_vls_sendo (vlsh, buf, n, NULL, flags, addr, addr_len);
       if (size < 0)
 	{
 	  errno = -size;
@@ -1670,11 +1677,28 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
       struct iovec *iov = msg->msg_iov;
       ssize_t total = 0;
       int i, rv = 0;
+      struct cmsghdr *cmsg;
+      uint16_t *valp;
+      vppcom_endpt_tlv_t _app_data;
+      size_t _app_data_len = 0;
+      vppcom_endpt_tlv_t *p_app_data = NULL;
+
+      cmsg = CMSG_FIRSTHDR (msg);
+      if (cmsg && cmsg->cmsg_type == UDP_SEGMENT)
+	{
+	  p_app_data = &_app_data;
+	  _app_data_len = sizeof (_app_data);
+	  valp = (void *) CMSG_DATA (cmsg);
+	  p_app_data->data_type = VCL_UDP_SEGMENT;
+	  p_app_data->data_len = sizeof (*valp);
+	  p_app_data->value = *valp;
+	}
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
-	  rv = ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, flags,
-			      msg->msg_name, msg->msg_namelen);
+	  rv =
+	    ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, p_app_data,
+			   flags, msg->msg_name, msg->msg_namelen);
 	  if (rv < 0)
 	    break;
 	  else

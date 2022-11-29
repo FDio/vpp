@@ -675,6 +675,7 @@ quic_send_datagram (session_t *udp_session, struct iovec *packet,
   hdr.is_ip4 = tc->is_ip4;
   clib_memcpy (&hdr.lcl_ip, &tc->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = tc->lcl_port;
+  hdr.gso_size = 0;
 
   /*  Read dest address from quicly-provided sockaddr */
   if (hdr.is_ip4)
