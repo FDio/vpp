@@ -124,6 +124,24 @@
       "parentUuid": "f3f73a0d_9cbdfe39",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "725a5c28_f5920870",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-29T11:23:09Z",
+      "side": 1,
+      "message": "Currently ct-\u003eframe_pool just inited with 1024 element and vpp just not cached more then 1024 frames, e.g: cryptodev max 1024, sw_scheduler max 64, so probability ct-\u003eframe_pool expended is very low. But the memory issue just existed.\nMy engine cached more then 1024 frames, so ct-\u003eframe_pool may be expended if crypto egine in high pressure.",
+      "parentUuid": "fddd2ac5_71137fdf",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
