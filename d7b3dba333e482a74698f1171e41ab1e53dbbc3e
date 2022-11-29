@@ -142,6 +142,24 @@
       "parentUuid": "fddd2ac5_71137fdf",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e40f7f5a_e6d63792",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-29T11:28:39Z",
+      "side": 1,
+      "message": "Ok. I see. So the design and implementation in in-tree vpp should work with no problem but it doesn\u0027t favor your self-maintained engine and/or crypto algs, and you want to change it.\n\nI will loop more people to discuss this one then.",
+      "parentUuid": "725a5c28_f5920870",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
