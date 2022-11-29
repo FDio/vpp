@@ -85,6 +85,24 @@
       "parentUuid": "4585470f_f1f6db70",
       "revId": "70a33f942cd7b2ab19f13b292efa17b8e0b853a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e02dc5c_0cb5b886",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 906
+      },
+      "writtenOn": "2022-11-29T09:58:00Z",
+      "side": 1,
+      "message": "Jieqiang is right, csit_current tests with the fix, csit_parent tests without the fix so it\u0027s failing. You can proceed.",
+      "parentUuid": "6f37e15d_2a2af389",
+      "revId": "70a33f942cd7b2ab19f13b292efa17b8e0b853a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
