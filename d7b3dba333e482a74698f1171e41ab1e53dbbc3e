@@ -106,6 +106,24 @@
       "parentUuid": "fcb5c9b0_0e68800f",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fddd2ac5_71137fdf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-29T11:08:15Z",
+      "side": 1,
+      "message": "The async_frames[async_op] saved the frame* addr alloc by vnet_crypto_async_get_frame, there is a time when async_op not 0 and cf-\u003eframe_pool \n size will be expended by pool_get_aligned, the frames address saved in async_frames[async_op] will invalid due to cf-\u003eframe_pool address changed.\nIn my engine, I save the frame index calculated by (frmae - ct-\u003eframe_pool) when enqueuing to my engine for dequeue using, i find the index may be very large and index is out of cf-\u003eframe_pool.",
+      "parentUuid": "f3f73a0d_9cbdfe39",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
