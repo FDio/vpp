@@ -33,6 +33,23 @@
       "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_coreAND1cAND64bANDeth-l2bdbasemaclrn-eth-2memif-1dcr",
       "revId": "7d2f9c5a99abcf21d90686050ce218d39ab3d77a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81ac17f5_178cc70c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2022-11-29T05:40:48Z",
+      "side": 1,
+      "message": "Hi Ben, \nThanks for your comments! \nI made a new patchset based on your suggestions and ran two tests like before. It looks like new patchset passes the two tests. So can you help review the patch again? ",
+      "revId": "7d2f9c5a99abcf21d90686050ce218d39ab3d77a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
