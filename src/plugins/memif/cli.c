@@ -209,6 +209,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.is_master = 0;
       else if (unformat (line_input, "no-zero-copy"))
 	args.is_zero_copy = 0;
+      else if (unformat (line_input, "use-dma"))
+	args.use_dma = 1;
       else if (unformat (line_input, "mode ip"))
 	args.mode = MEMIF_INTERFACE_MODE_IP;
       else if (unformat (line_input, "hw-addr %U",

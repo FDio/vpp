@@ -16,6 +16,7 @@
  */
 
 #include <vppinfra/lock.h>
+#include <vlib/dma/dma.h>
 #include <vlib/log.h>
 
 #define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
@@ -120,6 +121,14 @@ typedef struct
   int fd;
 } memif_msg_fifo_elt_t;
 
+#define MEMIF_DMA_DATA_SIZE 256
+
+#define DMA_DATA_STATE_CLEAR	 0
+#define DMA_DATA_STATE_SUBMITTED 1 << 1
+#define DMA_DATA_STATE_COMPLETED 1 << 2
+
+struct memif_dma_data;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -135,6 +144,16 @@ typedef struct
   u32 *buffers;
   u8 buffer_pool_index;
 
+  /* dma data */
+  u16 dma_head;
+  u16 dma_tail;
+  struct memif_dma_data *dma_data;
+  u16 dma_data_head;
+  u16 dma_data_tail;
+  u16 dma_data_size;
+  u8 dma_data_full;
+  u16 debug;
+
   /* interrupts */
   int int_fd;
   uword int_clib_file_index;
@@ -145,14 +164,15 @@ typedef struct
   u32 queue_index;
 } memif_queue_t;
 
-#define foreach_memif_if_flag \
-  _(0, ADMIN_UP, "admin-up")		\
-  _(1, IS_SLAVE, "slave")		\
-  _(2, CONNECTING, "connecting")	\
-  _(3, CONNECTED, "connected")		\
-  _(4, DELETING, "deleting")		\
-  _(5, ZERO_COPY, "zero-copy")		\
-  _(6, ERROR, "error")
+#define foreach_memif_if_flag                                                 \
+  _ (0, ADMIN_UP, "admin-up")                                                 \
+  _ (1, IS_SLAVE, "slave")                                                    \
+  _ (2, CONNECTING, "connecting")                                             \
+  _ (3, CONNECTED, "connected")                                               \
+  _ (4, DELETING, "deleting")                                                 \
+  _ (5, ZERO_COPY, "zero-copy")                                               \
+  _ (6, ERROR, "error")                                                       \
+  _ (7, USE_DMA, "use_dma")
 
 typedef enum
 {
@@ -207,6 +227,10 @@ typedef struct
   /* disconnect strings */
   u8 *local_disc_string;
   u8 *remote_disc_string;
+
+  /* dma config index */
+  int dma_input_config;
+  int dma_tx_config;
 } memif_if_t;
 
 typedef struct
@@ -268,7 +292,19 @@ typedef struct
 
   /* buffer template */
   vlib_buffer_t buffer_template;
+
 } memif_per_thread_data_t;
+
+typedef struct memif_dma_data
+{
+  /* per thread data */
+  memif_interface_mode_t mode;
+  vlib_node_runtime_t *node;
+  u32 dma_head;
+  u32 dma_tail;
+  u8 state;
+  memif_per_thread_data_t data;
+} memif_dma_data_t;
 
 typedef struct
 {
@@ -309,6 +345,7 @@ typedef struct
   u8 *secret;
   u8 is_master;
   u8 is_zero_copy;
+  u8 use_dma;
   memif_interface_mode_t mode:8;
   memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
@@ -353,7 +390,8 @@ clib_error_t *memif_slave_conn_fd_error (clib_file_t * uf);
 clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
 					 clib_error_t * err);
 u8 *format_memif_device_name (u8 * s, va_list * args);
-
+void memif_dma_completion_cb (vlib_main_t *vm, vlib_dma_batch_t *b);
+void memif_tx_dma_completion_cb (vlib_main_t *vm, vlib_dma_batch_t *b);
 
 /*
  * fd.io coding-style-patch-verification: ON
