@@ -63,6 +63,25 @@ extern "C"
     VPPCOM_IS_IP4,
   } vppcom_is_ip4_t;
 
+#define VCL_TRANSPORT_OPS_BASE (1 << 16)
+#define VCL_UDP_SEGMENT                                                       \
+  (VCL_TRANSPORT_OPS_BASE + 0) /* Set GSO segmentation size.  */
+
+  typedef struct vppcom_endpt_tlv_t_
+  {
+    uint32_t data_type;
+    uint32_t data_len;
+    union
+    {
+      /* data */
+      uint64_t value;
+      uint32_t as_u32[2];
+      uint16_t as_u16[4];
+      uint8_t as_u8[8];
+    };
+
+  } vppcom_endpt_tlv_t;
+
   typedef struct vppcom_endpt_t_
   {
     uint8_t is_cut_thru;
@@ -70,6 +89,8 @@ extern "C"
     uint8_t *ip;
     uint16_t port;
     uint64_t parent_handle;
+    vppcom_endpt_tlv_t user_data;
+
   } vppcom_endpt_t;
 
 typedef uint32_t vcl_session_handle_t;
