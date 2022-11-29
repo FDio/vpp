@@ -1247,6 +1247,11 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
 	  len = ctx->hdr.data_length - ctx->hdr.data_offset;
 
+	  if (ctx->hdr.gso_size)
+	    {
+	      ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, ctx->hdr.gso_size);
+	    }
+
 	  /* Process multiple dgrams if smaller than min (buf_space, mss).
 	   * This avoids handling multiple dgrams if they require buffer
 	   * chains */
