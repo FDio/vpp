@@ -88,6 +88,24 @@
       "parentUuid": "10321323_26c89e76",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3f73a0d_9cbdfe39",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-29T10:52:47Z",
+      "side": 1,
+      "message": "What is your rx/tx descriptor settings?",
+      "parentUuid": "fcb5c9b0_0e68800f",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
