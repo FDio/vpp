@@ -16,6 +16,24 @@
       "message": "We had this problem before but it is long gone - as of now both async crypto engines work fine even with really high traffic rate. Can you explain when and how you notice the crash?\n\nAlso as the patch itself I don\u0027t think simply replacing the frame elt pointer to index will resolve the issue.",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "984ef259_ea2097a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-29T10:17:52Z",
+      "side": 1,
+      "message": "You are wrong. We have also tested the ipsec async routine, we found if the \n vnet buffer\u0027s num extend to 165536, ipsec will very likely crash due to frame invalid when using if pool expended.\nWe register our self sm3/sm4 async enqueue/dequeue handle and use the fpga which made by my company to speed up sm3/sm4 throughput and the total throughput can be 20gbps.\nWe have tested the async crypto engine and got the crash.\nWith this patch, the issue is fixed\n\nEvent without the crash, if reviewing the async code, you will find there are possibility to crash.\n\nov 22 14:40:09 localhost vpp[891]: received signal SIGSEGV, PC 0x7fc9a0e1a817, faulting address 0x7ff930954134\nNov 22 14:40:09 localhost vpp[891]: #0  0x00007fc9a1412484 unix_signal_handler + 0x124\nNov 22 14:40:09 localhost vpp[891]: #1  0x00007fc99fc515e0 0x7fc99fc515e0\nNov 22 14:40:09 localhost vpp[891]: #2  0x00007fc9a0e1a817 ipsec4_input_node_fn_skx + 0x477\nNov 22 14:40:09 localhost vpp[891]: #3  0x00007fc9a13bfcf5 dispatch_pending_node + 0x135\nNov 22 14:40:09 localhost vpp[891]: #4  0x00007fc9a13c17df vlib_worker_loop + 0x5ef\nNov 22 14:40:09 localhost vpp[891]: #5  0x00007fc9a13f4d5d vlib_worker_thread_fn + 0xcd\nNov 22 14:40:09 localhost clixon_backend[31649]: [utils.c:1422 exec_vpp_command] exec: security policy create name ssfff action drop priority 1",
+      "parentUuid": "a1eed959_a089c87d",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
