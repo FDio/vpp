@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c124dbfc_04fadbe7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-29T08:14:09Z",
+      "side": 1,
+      "message": "Thanks so much, I think it\u0027s mure more readable! I still have a few comments",
+      "revId": "1eef6aec267e66b396ed73a150fe40b096686a5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "784eed37_13f0a585",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 696,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-29T08:14:09Z",
+      "side": 1,
+      "message": "I think this should use *(u16x16 *)cqe_flags instead of ptd-\u003ecqe_flags16[0]",
+      "revId": "1eef6aec267e66b396ed73a150fe40b096686a5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94595495_7d6406eb",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 718,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-11-29T08:14:09Z",
+      "side": 1,
+      "message": "I think this should use *(u16x8 *)cqe_flags instead of ptd-\u003ecqe_flags8[0]",
+      "revId": "1eef6aec267e66b396ed73a150fe40b096686a5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
