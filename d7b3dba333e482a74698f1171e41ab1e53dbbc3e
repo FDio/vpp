@@ -70,6 +70,24 @@
       "parentUuid": "984ef259_ea2097a5",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcb5c9b0_0e68800f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-29T10:51:38Z",
+      "side": 1,
+      "message": "Sorry I made a mistake, it is 380MB per numa, not per thread.",
+      "parentUuid": "10321323_26c89e76",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
