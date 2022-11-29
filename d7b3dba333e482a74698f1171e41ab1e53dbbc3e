@@ -52,6 +52,24 @@
       "parentUuid": "984ef259_ea2097a5",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10321323_26c89e76",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-29T10:46:53Z",
+      "side": 1,
+      "message": "I doubt the patch is a fix as you only add two steps - getting the offset of pool elt from pool head, and using the offset the get the pool elt. The way pool is allocated and freed, and the elt get/put ops remain the same.\n\nAlso\n\n- SM3/4 are not officially supported in vpp crypto infra (yet), so as your FPGA based engine. Your statement might be true that the patch addressed your problem, but this also may indicate there are some problems in your implementation, yet I cannot judge as I have no visibility to it.\n\n- vlib buffer pool of 160k is a huge number, that means your vlib buffer alone takes about 380MB per thread (with default 2KB data room). I can only imagine your FPGA engine latency is extremely high, otherwise I don\u0027t understand why you need such a huge pool size (as your thread will return the buffers back to pool when TX is done). I have never seen such an extreme requirement before - in normal cases 512 is enough.\n\nIf 160K is really necessary, what is the performance you can get with 80K/40k/20k.../512 buffer size?",
+      "parentUuid": "984ef259_ea2097a5",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
