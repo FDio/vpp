@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3841e66_1b366308",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "Do you need to include this header file?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26035652_a872649f",
+        "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "Do you need to include this header file?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "272c1298_7544824e",
+        "filename": "src/plugins/srv6-mobile/gtp6_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "do you need to include this header file?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6515fec1_98ccbfe7",
+        "filename": "src/plugins/srv6-mobile/sr_mobile.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "How to delete the sr_mobile_policy?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3dd337b9_4833ecb2",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "It is good to support to delete the policy,",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f648de5_5aa572bd",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "Why do you need to include this here?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c132a8b2_f4729e53",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-29T23:22:32Z",
+      "side": 1,
+      "message": "it is good to change the function name. This is defined in srv6_mobile plugin. Hence, the above function is not suitable.",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
