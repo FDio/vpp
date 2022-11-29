@@ -160,6 +160,24 @@
       "parentUuid": "725a5c28_f5920870",
       "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3994c6e_8b04fd0e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2022-11-29T11:30:53Z",
+      "side": 1,
+      "message": "By the way, frame addr referenced in crypto engine: cryptodev and sw_scheduler may also have the memory issue.\nI have got the crash with sw_scheduler some times.",
+      "parentUuid": "725a5c28_f5920870",
+      "revId": "d7b3dba333e482a74698f1171e41ab1e53dbbc3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
