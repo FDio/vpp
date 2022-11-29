@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8236f7ae_2d58a382",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-11-29T10:59:37Z",
+      "side": 1,
+      "message": "Instead of using a for loop - can you use the same unrolling coding way as above?",
+      "revId": "9e9beba721a16265b84fb4fed9457b2be4e4f235",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
