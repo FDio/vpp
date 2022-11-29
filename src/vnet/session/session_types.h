@@ -461,12 +461,12 @@ typedef struct session_dgram_header_
   u16 rmt_port;
   u16 lcl_port;
   u8 is_ip4;
+  u16 gso_size;
 } __clib_packed session_dgram_hdr_t;
 
 #define SESSION_CONN_ID_LEN 37
-#define SESSION_CONN_HDR_LEN 45
-
-STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
+#define SESSION_CONN_HDR_LEN 47
+STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
 	       "session conn id wrong length");
 
 #define foreach_session_error                                                 \
