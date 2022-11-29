@@ -16,6 +16,23 @@
       "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_coreAND1cAND64bANDethip4-ip4base",
       "revId": "7d2f9c5a99abcf21d90686050ce218d39ab3d77a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4de215b7_b4dd6cf3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2022-11-29T04:27:45Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_coreAND1cAND64bANDeth-l2bdbasemaclrn-eth-2memif-1dcr",
+      "revId": "7d2f9c5a99abcf21d90686050ce218d39ab3d77a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
