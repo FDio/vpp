@@ -432,6 +432,8 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
 
   fprintf (stderr, "Epoch changed while reading, invalid results\n");
   // TODO increase counter
+  if (res)
+    stat_segment_data_free(res);
   return 0;
 }
 
