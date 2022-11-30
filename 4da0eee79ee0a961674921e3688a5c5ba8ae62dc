@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b2200c57_a09b0af5",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-30T17:33:43Z",
+      "side": 1,
+      "message": "I don\u0027t understand what you mentioned. Looks like this file does not have any dependencies on sr_mobile_api.h...",
+      "parentUuid": "b589e442_adede19d",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "26035652_a872649f",
         "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
         "patchSetId": 3
@@ -141,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "100c6800_34f243c0",
+        "filename": "src/plugins/srv6-mobile/sr_mobile.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-30T17:33:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1bd81d2a_e87eb931",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3dd337b9_4833ecb2",
@@ -172,6 +208,24 @@
       "side": 1,
       "message": "Is it wrong to use sr api by delete?",
       "parentUuid": "3dd337b9_4833ecb2",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "696d7e66_c8b5ec91",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-30T17:33:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d0514185_bb48336a",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -211,6 +265,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "337c2e28_04952924",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-30T17:33:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5c3162bf_e6cef455",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c132a8b2_f4729e53",
@@ -242,6 +314,24 @@
       "side": 1,
       "message": "What doesn\u0027t seem right? Is it a defined name?\nPlease tell me if you don\u0027t mind.",
       "parentUuid": "c132a8b2_f4729e53",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "797289ce_daa42c0c",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-11-30T17:33:43Z",
+      "side": 1,
+      "message": "clib_xxx is a part of api provided by vppinfra. So, it is good not to use clib_xxx without the specific plugin name.",
+      "parentUuid": "1026b474_7c8ffb5c",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
