@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b589e442_adede19d",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "Yes, it is.\nThis is because the function that assigns parameters to the structure is shared with the sr_mobile_api.",
+      "parentUuid": "e3841e66_1b366308",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "26035652_a872649f",
         "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2022-11-29T23:22:32Z",
       "side": 1,
       "message": "Do you need to include this header file?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60906e77_0f95b18a",
+        "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "Ditto",
+      "parentUuid": "26035652_a872649f",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -54,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b924dd83_a847c711",
+        "filename": "src/plugins/srv6-mobile/gtp6_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "Ditto",
+      "parentUuid": "272c1298_7544824e",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6515fec1_98ccbfe7",
         "filename": "src/plugins/srv6-mobile/sr_mobile.api",
         "patchSetId": 3
@@ -65,6 +119,24 @@
       "writtenOn": "2022-11-29T23:22:32Z",
       "side": 1,
       "message": "How to delete the sr_mobile_policy?",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1bd81d2a_e87eb931",
+        "filename": "src/plugins/srv6-mobile/sr_mobile.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "Delete using sr api policy delete.",
+      "parentUuid": "6515fec1_98ccbfe7",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +160,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d0514185_bb48336a",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "Is it wrong to use sr api by delete?",
+      "parentUuid": "3dd337b9_4833ecb2",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6f648de5_5aa572bd",
         "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
         "patchSetId": 3
@@ -105,6 +195,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5c3162bf_e6cef455",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "The vpp api module should define and generate a schema.\nI need to include the files generated at that time to implement the API code\n\nFor example, SRv6API includes the same\ncf. https://github.com/FDio/vpp/blob/master/src/vnet/srv6/sr_api.c#L506",
+      "parentUuid": "6f648de5_5aa572bd",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c132a8b2_f4729e53",
         "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
         "patchSetId": 3
@@ -116,6 +224,24 @@
       "writtenOn": "2022-11-29T23:22:32Z",
       "side": 1,
       "message": "it is good to change the function name. This is defined in srv6_mobile plugin. Hence, the above function is not suitable.",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1026b474_7c8ffb5c",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-11-30T02:25:11Z",
+      "side": 1,
+      "message": "What doesn\u0027t seem right? Is it a defined name?\nPlease tell me if you don\u0027t mind.",
+      "parentUuid": "c132a8b2_f4729e53",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
