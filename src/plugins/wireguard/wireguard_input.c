@@ -22,6 +22,8 @@
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard_if.h>
 
+#define MAX_COUNT_COOKIE 1024
+
 #define foreach_wg_input_error                                                \
   _ (NONE, "No error")                                                        \
   _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
@@ -133,7 +135,8 @@ is_ip4_header (u8 *data)
 
 static wg_input_error_t
 wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
-		      u32 node_idx, u8 is_ip4)
+		      u32 node_idx, u8 is_ip4, u32 inflight, bool *is_cookie,
+		      f64 max_handshake_cookie)
 {
   ASSERT (vm->thread_index == 0);
 
@@ -202,7 +205,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
       if (NULL == wg_if)
 	continue;
 
-      under_load = wg_if_is_under_load (vm, wg_if);
+      under_load =
+	wg_if_is_under_load (vm, wg_if, inflight, max_handshake_cookie);
       mac_state = cookie_checker_validate_macs (
 	vm, &wg_if->cookie_checker, macs, current_b_data, len, under_load,
 	&src_ip, udp_src_port);
@@ -236,6 +240,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 
 	if (packet_needs_cookie)
 	  {
+	    *is_cookie = true;
 
 	    if (!wg_send_handshake_cookie (vm, message->sender_index,
 					   &wg_if->cookie_checker, macs,
@@ -278,6 +283,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 
 	if (packet_needs_cookie)
 	  {
+	    *is_cookie = true;
+
 	    if (!wg_send_handshake_cookie (vm, resp->sender_index,
 					   &wg_if->cookie_checker, macs,
 					   &ip_addr_46 (&wg_if->src_ip),
@@ -636,6 +643,11 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 *peer_idx = NULL;
   index_t peeri = INDEX_INVALID;
 
+  static f64 max_handshake_cookie = 100.0; /* magic number for init value */
+  u32 num_threads =
+    vec_len (wmp->per_thread_data) - 1; /* how many threads VPP has */
+  u32 inflight_handshake;
+
   while (n_left_from > 0)
     {
       if (n_left_from > 2)
@@ -765,8 +777,55 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto next;
 	    }
 
-	  wg_input_error_t ret =
-	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4);
+	  /* if VPP has only one thread then handoff process for handshake
+	   * message won't be executed
+	   */
+	  if (PREDICT_TRUE (num_threads > 1))
+	    inflight_handshake =
+	      __atomic_fetch_sub (&wmp->inflight, 1, __ATOMIC_SEQ_CST);
+	  else
+	    inflight_handshake = 1;
+
+	  bool is_cookie = false;
+
+	  f64 now = vlib_time_now (vm);
+	  wg_input_error_t ret = wg_handshake_process (
+	    vm, wmp, b[0], node->node_index, is_ip4, inflight_handshake,
+	    &is_cookie, max_handshake_cookie);
+	  f64 end = vlib_time_now (vm);
+
+	  f64 time = end - now;
+	  f64 max = 1.0 / time;
+
+	  if (is_cookie == true)
+	    {
+	      static f64 avg_cookie[MAX_COUNT_COOKIE] = { 0.0 };
+	      static u32 idx_cookie = 0;
+	      static bool is_max_cookie = false;
+	      static u32 count_max_cookie = 0;
+
+	      avg_cookie[idx_cookie] = max;
+	      idx_cookie++;
+	      idx_cookie = (idx_cookie % MAX_COUNT_COOKIE);
+
+	      if (idx_cookie == 0)
+		is_max_cookie = true;
+
+	      if (is_max_cookie == true)
+		count_max_cookie = MAX_COUNT_COOKIE;
+	      else
+		count_max_cookie = idx_cookie;
+
+	      u32 i;
+	      f64 max_avg = 0.0;
+	      for (i = 0; i < count_max_cookie; i++)
+		{
+		  max_avg += avg_cookie[i] / count_max_cookie;
+		}
+	      if (max_avg > 0.0)
+		max_handshake_cookie = max_avg;
+	    }
+
 	  if (ret != WG_INPUT_ERROR_NONE)
 	    {
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
