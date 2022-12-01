@@ -34,7 +34,7 @@
  * 4 - timer events
  **/
 
-#define QUIC_DEBUG               0
+#define QUIC_DEBUG		  3
 #define QUIC_TSTAMP_RESOLUTION  0.001	/* QUIC tick resolution (1ms) */
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
 #define QUIC_SESSION_INVALID ((u32) ~0 - 1)
