@@ -37,7 +37,7 @@ func (s *NsSuite) TestHttpTps() {
 	}
 }
 
-func (s *Veths2Suite) TestHttpCli() {
+func (s *VethsSuite) TestHttpCli() {
 	t := s.T()
 
 	srvInstance := "http-cli-srv"
