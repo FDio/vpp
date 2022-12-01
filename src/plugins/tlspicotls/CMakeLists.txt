@@ -5,7 +5,7 @@ include (CheckFunctionExists)
 # it's reasonable to make this check to avoid breaking
 # existing builds when upgrading the quicly/picotls
 # versions
-set(EXPECTED_QUICLY_VERSION "0.1.3-vpp")
+set(EXPECTED_QUICLY_VERSION "0.1.4-vpp")
 
 
 vpp_find_path(QUICLY_INCLUDE_DIR NAMES quicly.h)
