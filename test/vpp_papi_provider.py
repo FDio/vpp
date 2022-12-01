@@ -238,7 +238,7 @@ class VppPapiProvider(object):
 
         # install_dir is a class attribute. We need to set it before
         # calling the constructor.
-        VPPApiClient.apidir = config.vpp_install_dir
+        VPPApiClient.apidir = config.extern_apidir + [config.vpp_install_dir]
 
         self.vpp = VPPApiClient(
             logger=test_class.logger,
