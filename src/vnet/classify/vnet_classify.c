@@ -2785,9 +2785,9 @@ unformat_classify_match (unformat_input_t * input, va_list * args)
 
 int
 vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
-			       const u8 *match, u32 hit_next_index,
+			       const u8 *match, u16 hit_next_index,
 			       u32 opaque_index, i32 advance, u8 action,
-			       u16 metadata, int is_add)
+			       u32 metadata, int is_add)
 {
   vnet_classify_table_t *t;
   vnet_classify_entry_5_t _max_e __attribute__ ((aligned (16)));
