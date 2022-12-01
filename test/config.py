@@ -302,6 +302,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--extern-apidir",
+    action="append",
+    type=directory,
+    default=[],
+    help="directory to look for API JSON files",
+)
+
+parser.add_argument(
     "--coredump-size",
     action="store",
     default="unlimited",

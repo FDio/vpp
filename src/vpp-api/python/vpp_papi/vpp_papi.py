@@ -449,7 +449,12 @@ class VPPApiClient:
         if not apifiles:
             # Pick up API definitions from default directory
             try:
-                apifiles = VPPApiJSONFiles.find_api_files(self.apidir)
+                if isinstance(self.apidir, list):
+                    apifiles = []
+                    for d in self.apidir:
+                        apifiles += VPPApiJSONFiles.find_api_files(d)
+                else:
+                    apifiles = VPPApiJSONFiles.find_api_files(self.apidir)
             except (RuntimeError, VPPApiError):
                 # In test mode we don't care that we can't find the API files
                 if testmode:
