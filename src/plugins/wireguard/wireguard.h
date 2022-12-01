@@ -55,6 +55,9 @@ typedef struct
 
   /* operation mode flags (e.g. async) */
   u8 op_mode_flags;
+
+  /* inflight for hanshake process */
+  u32 inflight;
 } wg_main_t;
 
 typedef struct
