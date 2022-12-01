@@ -16,6 +16,7 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
+// TODO remove `configTemplate` once its usage has been replaced everywhere with VppConfig
 const configTemplate = `unix {
   nodaemon
   log %[1]s/var/log/vpp/vpp.log

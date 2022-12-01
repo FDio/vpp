@@ -6,46 +6,26 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func (s *Veths2Suite) TestEchoBuiltin() {
-	t := s.T()
+func (s *VethsSuite) TestEchoBuiltin() {
 	srvInstance := "echo-srv-internal"
 	clnInstance := "echo-cln-internal"
-	err := dockerRun(srvInstance, "")
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+
+	s.assertNil(dockerRun(srvInstance, ""), "failed to start docker (srv)")
 	defer func() { exechelper.Run("docker stop " + srvInstance) }()
 
-	err = dockerRun(clnInstance, "")
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(clnInstance, ""), "failed to start docker (cln)")
 	defer func() { exechelper.Run("docker stop " + clnInstance) }()
 
-	_, err = hstExec("Configure2Veths srv", srvInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	_, err := hstExec("Configure2Veths srv", srvInstance)
+	s.assertNil(err)
 
 	_, err = hstExec("Configure2Veths cln", clnInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
 	_, err = hstExec("RunEchoSrvInternal private-segment-size 1g fifo-size 4 no-echo", srvInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
 	o, err := hstExec("RunEchoClnInternal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4", clnInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 	fmt.Println(o)
 }

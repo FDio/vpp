@@ -7,21 +7,21 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func (s *Veths2Suite) TestVclEchoQuic() {
+func (s *VethsSuite) TestVclEchoQuic() {
 	s.T().Skip("quic test skipping..")
 	s.testVclEcho("quic")
 }
 
-func (s *Veths2Suite) TestVclEchoUdp() {
+func (s *VethsSuite) TestVclEchoUdp() {
 	s.T().Skip("udp echo currently broken in vpp, skipping..")
 	s.testVclEcho("udp")
 }
 
-func (s *Veths2Suite) TestVclEchoTcp() {
+func (s *VethsSuite) TestVclEchoTcp() {
 	s.testVclEcho("tcp")
 }
 
-func (s *Veths2Suite) testVclEcho(proto string) {
+func (s *VethsSuite) testVclEcho(proto string) {
 	t := s.T()
 
 	exechelper.Run("docker volume create --name=echo-srv-vol")
@@ -86,12 +86,12 @@ func (s *Veths2Suite) testVclEcho(proto string) {
 	fmt.Println(o)
 }
 
-func (s *Veths2Suite) TestVclRetryAttach() {
+func (s *VethsSuite) TestVclRetryAttach() {
 	s.T().Skip()
 	s.testRetryAttach("tcp")
 }
 
-func (s *Veths2Suite) testRetryAttach(proto string) {
+func (s *VethsSuite) testRetryAttach(proto string) {
 	t := s.T()
 
 	exechelper.Run("docker volume create --name=echo-srv-vol")

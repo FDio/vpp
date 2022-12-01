@@ -45,10 +45,11 @@ For adding a new suite, please see `Modifying the framework`_ below.
 #. Implement test behaviour inside the test method. This typically includes the following:
 
   #. Start docker container(s) as needed. Function ``dockerRun(instance, args string)``
-     from ``utils.go`` serves this purpose. Alternatively use suite struct's ``NewContainer(name string)`` method
+     from ``utils.go`` serves this purpose. Alternatively use suite struct's ``NewContainer(name string)`` method to create
+     an object representing a container and start it with ``run()`` method
   #. Execute *hs-test* action(s) inside any of the running containers.
      Function ``hstExec`` from ``utils.go`` does this by using ``docker exec`` command to run ``hs-test`` executable.
-     For starting an VPP instance inside a container, the ``Vpp`` struct can be used as a forward-looking alternative
+     For starting an VPP instance inside a container, the ``VppInstance`` struct can be used as a forward-looking alternative
   #. Run arbitrary commands inside the containers with ``dockerExec(cmd string, instance string)``
   #. Run other external tool with one of the preexisting functions in the ``utils.go`` file.
      For example, use ``wget`` with ``startWget(..)`` function
@@ -124,14 +125,13 @@ Modifying the framework
 
 #. Adding a new suite takes place in ``framework_test.go``
 
-#. Make a ``struct`` with at least ``HstSuite`` struct and a ``teardownSuite`` function as its members.
+#. Make a ``struct`` with at least ``HstSuite`` struct as its member.
    HstSuite provides functionality that can be shared for all suites, like starting containers
 
         ::
 
                 type MySuite struct {
                         HstSuite
-                        teardownSuite func()
                 }
 
 #. Implement SetupSuite method which testify runs before running the tests.
@@ -145,17 +145,6 @@ Modifying the framework
                         // Add custom setup code here
 
                         s.teardownSuite = setupSuite(&s.Suite, "myTopology")
-                }
-
-#. Implement TearDownSuite method which testify runs after the tests, to clean-up.
-   It's good idea to add at least the suite's own ``teardownSuite()``
-   and HstSuite upper suite's ``stopContainers()`` methods
-
-        ::
-
-                func (s *MySuite) TearDownSuite() {
-                        s.teardownSuite()
-                        s.StopContainers()
                 }
 
 #. In order for ``go test`` to run this suite, we need to create a normal test function and pass our suite to ``suite.Run``
