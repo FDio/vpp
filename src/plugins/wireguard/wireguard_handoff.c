@@ -121,6 +121,9 @@ wg_handoff (vlib_main_t * vm,
   n_enq = vlib_buffer_enqueue_to_thread (vm, node, fq_index, from,
 					 thread_indices, frame->n_vectors, 1);
 
+  if (PREDICT_FALSE (mode == WG_HANDOFF_HANDSHAKE))
+    __atomic_fetch_add (&wmp->inflight, n_enq, __ATOMIC_SEQ_CST);
+
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,
 				 WG_HANDOFF_ERROR_CONGESTION_DROP,
