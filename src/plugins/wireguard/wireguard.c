@@ -88,6 +88,7 @@ wg_init (vlib_main_t * vm)
   wg_timer_wheel_init ();
   wireguard_register_post_node (vm);
   wmp->op_mode_flags = 0;
+  wmp->inflight = 0;
 
   return (NULL);
 }
