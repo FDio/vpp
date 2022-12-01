@@ -306,6 +306,7 @@ ptls_cipher_algorithm_t ptls_vpp_crypto_aes256ctr = {
   ptls_vpp_crypto_aes256ctr_setup_crypto
 };
 
+#define PTLS_X86_CACHE_LINE_ALIGN_BITS  6
 ptls_aead_algorithm_t ptls_vpp_crypto_aes128gcm = {
   "AES128-GCM",
   PTLS_AESGCM_CONFIDENTIALITY_LIMIT,
@@ -315,6 +316,9 @@ ptls_aead_algorithm_t ptls_vpp_crypto_aes128gcm = {
   PTLS_AES128_KEY_SIZE,
   PTLS_AESGCM_IV_SIZE,
   PTLS_AESGCM_TAG_SIZE,
+  { PTLS_TLS12_AESGCM_FIXED_IV_SIZE, PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
+  1,
+  PTLS_X86_CACHE_LINE_ALIGN_BITS,
   sizeof (struct vpp_aead_context_t),
   ptls_vpp_crypto_aead_aes128gcm_setup_crypto
 };
@@ -328,6 +332,9 @@ ptls_aead_algorithm_t ptls_vpp_crypto_aes256gcm = {
   PTLS_AES256_KEY_SIZE,
   PTLS_AESGCM_IV_SIZE,
   PTLS_AESGCM_TAG_SIZE,
+  { PTLS_TLS12_AESGCM_FIXED_IV_SIZE, PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
+  1,
+  PTLS_X86_CACHE_LINE_ALIGN_BITS,
   sizeof (struct vpp_aead_context_t),
   ptls_vpp_crypto_aead_aes256gcm_setup_crypto
 };
