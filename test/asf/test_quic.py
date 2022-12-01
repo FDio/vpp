@@ -6,7 +6,7 @@ import os
 import subprocess
 import signal
 from config import config
-from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
@@ -52,7 +52,6 @@ class QUICAppWorker(Worker):
         return False
 
 
-@tag_fixme_ubuntu2204
 class QUICTestCase(VppTestCase):
     """QUIC Test Case"""
 
