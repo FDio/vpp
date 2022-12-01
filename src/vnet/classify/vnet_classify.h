@@ -89,14 +89,16 @@ typedef struct _vnet_classify_entry
   /* last heard time */
   f64 last_heard;
 
+  u32 metadata;
+
+  /* Graph node next index */
+  u16 next_index;
+
+  vnet_classify_action_t action;
+
   /* Really only need 1 bit */
   u8 flags;
 #define VNET_CLASSIFY_ENTRY_FREE	(1<<0)
-
-  vnet_classify_action_t action;
-  u16 metadata;
-  /* Graph node next index */
-  u32 next_index;
 
   /* Must be aligned to a 16-octet boundary */
   u32x4 key[0];
@@ -586,9 +588,9 @@ vnet_classify_table_t *vnet_classify_new_table (vnet_classify_main_t *cm,
 						u32 match_n_vectors);
 
 int vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
-				   const u8 *match, u32 hit_next_index,
+				   const u8 *match, u16 hit_next_index,
 				   u32 opaque_index, i32 advance, u8 action,
-				   u16 metadata, int is_add);
+				   u32 metadata, int is_add);
 
 int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 				 u32 nbuckets, u32 memory_size, u32 skip,
