@@ -1,15 +1,82 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/edwarnicke/exechelper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
-type TapSuite struct {
+type HstSuite struct {
 	suite.Suite
 	teardownSuite func()
+	containers    []string
+	volumes       []string
+}
+
+func (s *HstSuite) TearDownSuite() {
+	s.teardownSuite()
+	s.StopContainers()
+	s.RemoveVolumes()
+}
+
+func (s *HstSuite) hstFail() {
+	s.T().FailNow()
+}
+
+func (s *HstSuite) assertNil(object interface{}, msgAndArgs ...interface{}) {
+	if !assert.Nil(s.T(), object, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) assertNotNil(object interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotNil(s.T(), object, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) assertEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
+	if !assert.Equal(s.T(), expected, actual, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotContains(s.T(), testString, contains, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) NewContainer(name string) (*Container, error) {
+	if name == "" {
+		return nil, fmt.Errorf("creating container failed: name must not be blank")
+	}
+
+	s.containers = append(s.containers, name)
+
+	container := new(Container)
+	container.name = name
+	return container, nil
+}
+
+func (s *HstSuite) StopContainers() {
+	for _, containerName := range s.containers {
+		exechelper.Run("docker stop " + containerName)
+	}
+}
+
+func (s *HstSuite) RemoveVolumes() {
+	for _, volumeName := range s.volumes {
+		exechelper.Run("docker volume rm " + volumeName)
+	}
+}
+
+type TapSuite struct {
+	HstSuite
 }
 
 func (s *TapSuite) SetupSuite() {
@@ -17,35 +84,21 @@ func (s *TapSuite) SetupSuite() {
 	s.teardownSuite = setupSuite(&s.Suite, "tap")
 }
 
-func (s *TapSuite) TearDownSuite() {
-	s.teardownSuite()
+type VethsSuite struct {
+	HstSuite
 }
 
-type Veths2Suite struct {
-	suite.Suite
-	teardownSuite func()
-}
-
-func (s *Veths2Suite) SetupSuite() {
+func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.teardownSuite = setupSuite(&s.Suite, "2peerVeth")
 }
 
-func (s *Veths2Suite) TearDownSuite() {
-	s.teardownSuite()
-}
-
 type NsSuite struct {
-	suite.Suite
-	teardownSuite func()
+	HstSuite
 }
 
 func (s *NsSuite) SetupSuite() {
 	s.teardownSuite = setupSuite(&s.Suite, "ns")
-}
-
-func (s *NsSuite) TearDownSuite() {
-	s.teardownSuite()
 }
 
 func setupSuite(s *suite.Suite, topologyName string) func() {
@@ -75,7 +128,7 @@ func TestNs(t *testing.T) {
 	suite.Run(t, &m)
 }
 
-func TestVeths2(t *testing.T) {
-	var m Veths2Suite
+func TestVeths(t *testing.T) {
+	var m VethsSuite
 	suite.Run(t, &m)
 }

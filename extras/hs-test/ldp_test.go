@@ -8,7 +8,7 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func (s *Veths2Suite) TestLDPreloadIperfVpp() {
+func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	t := s.T()
 	var clnVclConf, srvVclConf Stanza
 
