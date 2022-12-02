@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30422466_b65e7452",
+        "filename": "extras/hs-test/container.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-02T20:05:10Z",
+      "side": 1,
+      "message": "Yup, that\u0027s the plan. I suppose it should be named `run` instead, so I changed it just now.\nExample can be seen here - https://gerrit.fd.io/r/c/vpp/+/37669/11/extras/hs-test/vcl_test.go.",
+      "parentUuid": "2128aec2_934dfd29",
+      "range": {
+        "startLine": 13,
+        "startChar": 20,
+        "endLine": 13,
+        "endChar": 25
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "af3bd780_11e73629",
@@ -64,6 +88,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb5b18c7_b35624d4",
+        "filename": "extras/hs-test/vpp.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-02T20:05:10Z",
+      "side": 1,
+      "message": "Sounds good.",
+      "parentUuid": "af3bd780_11e73629",
+      "range": {
+        "startLine": 43,
+        "startChar": 5,
+        "endLine": 43,
+        "endChar": 8
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dd029d7b_76367138",
@@ -77,6 +125,30 @@
       "writtenOn": "2022-12-02T18:51:31Z",
       "side": 1,
       "message": "NewVppInstance if we go with the suggestion above",
+      "range": {
+        "startLine": 108,
+        "startChar": 5,
+        "endLine": 108,
+        "endChar": 11
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e606fbf_1ad59157",
+        "filename": "extras/hs-test/vpp.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-02T20:05:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dd029d7b_76367138",
       "range": {
         "startLine": 108,
         "startChar": 5,
