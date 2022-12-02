@@ -310,7 +310,7 @@ nat_ed_ses_o2i_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
 }
 
 always_inline void
-nat_ed_session_delete (snat_main_t *sm, snat_session_t *ses, u32 thread_index,
+nat_ed_session_delete (snat_main_t *sm, snat_session_t **ses, u32 thread_index,
 		       int lru_delete
 		       /* delete from global LRU list */)
 {
@@ -319,14 +319,15 @@ nat_ed_session_delete (snat_main_t *sm, snat_session_t *ses, u32 thread_index,
 
   if (lru_delete)
     {
-      clib_dlist_remove (tsm->lru_pool, ses->lru_index);
+      clib_dlist_remove (tsm->lru_pool, (*ses)->lru_index);
     }
-  pool_put_index (tsm->lru_pool, ses->lru_index);
-  if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, ses, 0))
+  pool_put_index (tsm->lru_pool, (*ses)->lru_index);
+  if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, *ses, 0))
     nat_elog_warn (sm, "flow hash del failed");
-  if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, ses, 0))
+  if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, *ses, 0))
     nat_elog_warn (sm, "flow hash del failed");
-  pool_put (tsm->sessions, ses);
+  pool_put (tsm->sessions, *ses);
+  *ses = 0;
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
 }
@@ -351,7 +352,7 @@ nat_lru_free_one_with_head (snat_main_t *sm, int thread_index, f64 now,
       if (now >= sess_timeout_time)
 	{
 	  nat44_ed_free_session_data (sm, s, thread_index, 0);
-	  nat_ed_session_delete (sm, s, thread_index, 0);
+	  nat_ed_session_delete (sm, &s, thread_index, 0);
 	  return 1;
 	}
       else

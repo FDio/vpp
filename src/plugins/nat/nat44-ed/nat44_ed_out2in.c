@@ -260,8 +260,7 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 out:
   if (NAT_NEXT_DROP == next && s)
     {
-      nat_ed_session_delete (sm, s, thread_index, 1);
-      s = 0;
+      nat_ed_session_delete (sm, &s, thread_index, 1);
     }
   *s_p = s;
   return next;
@@ -422,7 +421,7 @@ create_session_for_static_mapping_ed (
   if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 1))
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_HASH_ADD_FAILED];
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       nat_elog_warn (sm, "out2in flow hash add failed");
       return 0;
     }
@@ -466,7 +465,7 @@ create_session_for_static_mapping_ed (
       if (rc)
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_OUT_OF_PORTS];
-	  nat_ed_session_delete (sm, s, thread_index, 1);
+	  nat_ed_session_delete (sm, &s, thread_index, 1);
 	  return 0;
 	}
 
@@ -537,7 +536,7 @@ create_session_for_static_mapping_ed (
 	{
 	  nat_elog_warn (sm, "out2in flow hash del failed");
 	}
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       return 0;
     }
     }
@@ -640,7 +639,7 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
       if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, s, 1))
 	{
 	  nat_elog_notice (sm, "in2out flow add failed");
-	  nat_ed_session_delete (sm, s, thread_index, 1);
+	  nat_ed_session_delete (sm, &s, thread_index, 1);
 	  return;
 	}
 
@@ -708,7 +707,7 @@ nat44_ed_out2in_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
   if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, s, 1))
     {
       nat_elog_notice (sm, "in2out key add failed");
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       return NULL;
     }
 
@@ -719,7 +718,7 @@ nat44_ed_out2in_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
   if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 1))
     {
       nat_elog_notice (sm, "out2in flow hash add failed");
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       return NULL;
     }
 
@@ -880,7 +879,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	{
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  slow_path_reason = NAT_ED_SP_REASON_VRF_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
@@ -894,7 +893,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	{
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  slow_path_reason = NAT_ED_SP_SESS_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
@@ -942,7 +941,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 		  //                       thread_index);
 		  translation_error = NAT_ED_TRNSL_ERR_FLOW_MISMATCH;
 		  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-		  nat_ed_session_delete (sm, s0, thread_index, 1);
+		  nat_ed_session_delete (sm, &s0, thread_index, 1);
 		  next[0] = NAT_NEXT_DROP;
 		  b0->error = node->errors[NAT_OUT2IN_ED_ERROR_TRNSL_FAILED];
 		  goto trace0;
