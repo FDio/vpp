@@ -16,6 +16,75 @@
       "message": "recheck",
       "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2128aec2_934dfd29",
+        "filename": "extras/hs-test/container.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-02T18:51:31Z",
+      "side": 1,
+      "message": "Do we plan to start removing dockerRun calls and use this instead?",
+      "range": {
+        "startLine": 13,
+        "startChar": 20,
+        "endLine": 13,
+        "endChar": 25
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af3bd780_11e73629",
+        "filename": "extras/hs-test/vpp.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-02T18:51:31Z",
+      "side": 1,
+      "message": "VppInstance, just to avoid using something too generic?",
+      "range": {
+        "startLine": 43,
+        "startChar": 5,
+        "endLine": 43,
+        "endChar": 8
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd029d7b_76367138",
+        "filename": "extras/hs-test/vpp.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-02T18:51:31Z",
+      "side": 1,
+      "message": "NewVppInstance if we go with the suggestion above",
+      "range": {
+        "startLine": 108,
+        "startChar": 5,
+        "endLine": 108,
+        "endChar": 11
+      },
+      "revId": "9f7e574a0d98b152934c79cc0eab178952b98c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
