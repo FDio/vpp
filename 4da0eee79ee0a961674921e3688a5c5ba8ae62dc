@@ -90,6 +90,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b29d79f0_ba39f8c7",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T19:20:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "48dfad28_268e83cf",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "26035652_a872649f",
@@ -125,6 +143,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c470941_f1c94192",
+        "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T19:20:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "60906e77_0f95b18a",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "272c1298_7544824e",
@@ -156,6 +192,24 @@
       "side": 1,
       "message": "Ditto",
       "parentUuid": "272c1298_7544824e",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb564257_a315e542",
+        "filename": "src/plugins/srv6-mobile/gtp6_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T19:20:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b924dd83_a847c711",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -404,6 +458,24 @@
       "side": 1,
       "message": "If you define this func under srv6_mobile plugin, it might be good to have plugin specific word as the function name.",
       "parentUuid": "14973598_c5204234",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b781305f_f481c373",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T19:20:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "422b189b_da45705f",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
