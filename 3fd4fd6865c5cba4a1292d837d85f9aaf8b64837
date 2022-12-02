@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "894cef02_d106fe79",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2022-12-02T13:38:15Z",
+      "side": 1,
+      "message": "Isn\u0027t this a wrong place to solve the problem? Instead of bloating dataplane with such functionality control plane should take care for this....",
+      "revId": "3fd4fd6865c5cba4a1292d837d85f9aaf8b64837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
