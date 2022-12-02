@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e3132fb0_4d519058",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-12-02T06:12:55Z",
+      "side": 1,
+      "message": "For example, alloc_param_srv6_end_m_gtp4_e is proto type define from sr_mobile_api.h. \nBut actually the implementation of alloc_param_srv6_end_m_gtp4_e is in gtp4_e.c.\nAnd call alloc_param_srv6_end_m_gtp4_e in sr_mobile_api.c.\nIn other words, there are three places for implementation, definition and caller defined",
+      "parentUuid": "b2200c57_a09b0af5",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "26035652_a872649f",
         "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
         "patchSetId": 3
@@ -332,6 +350,24 @@
       "side": 1,
       "message": "clib_xxx is a part of api provided by vppinfra. So, it is good not to use clib_xxx without the specific plugin name.",
       "parentUuid": "1026b474_7c8ffb5c",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14973598_c5204234",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-12-02T06:12:55Z",
+      "side": 1,
+      "message": "i see! How about removing the clib and name it strcmp_with_size?",
+      "parentUuid": "797289ce_daa42c0c",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
