@@ -45,13 +45,6 @@ typedef enum
   VAPI_MODE_NONBLOCKING = 2, /**< operations never block */
 } vapi_mode_e;
 
-typedef enum
-{
-  VAPI_WAIT_FOR_READ,	     /**< wait until some message is readable */
-  VAPI_WAIT_FOR_WRITE,	     /**< wait until a message can be written */
-  VAPI_WAIT_FOR_READ_WRITE,  /**< wait until a read or write can be done */
-} vapi_wait_mode_e;
-
 typedef unsigned int vapi_msg_id_t;
 
 #define VAPI_INVALID_MSG_ID ((vapi_msg_id_t)(~0))
