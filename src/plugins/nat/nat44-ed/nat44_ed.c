@@ -597,7 +597,7 @@ nat44_ed_del_address (ip4_address_t addr, u8 twice_nat)
       vec_foreach (ses_index, ses_to_be_removed)
 	{
 	  ses = pool_elt_at_index (tsm->sessions, ses_index[0]);
-	  nat_ed_session_delete (sm, ses, tsm - sm->per_thread_data, 1);
+	  nat_ed_session_delete (sm, &ses, tsm - sm->per_thread_data, 1);
 	}
       vec_free (ses_to_be_removed);
     }
@@ -804,7 +804,7 @@ nat_ed_static_mapping_del_sessions (snat_main_t * sm,
   vec_foreach (ses_index, indexes_to_free)
   {
     s = pool_elt_at_index (tsm->sessions, *ses_index);
-    nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+    nat_ed_session_delete (sm, &s, tsm - sm->per_thread_data, 1);
   }
   vec_free (indexes_to_free);
 }
@@ -1456,7 +1456,7 @@ nat44_ed_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	    continue;
 
 	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+	  nat_ed_session_delete (sm, &s, tsm - sm->per_thread_data, 1);
 	}
     }
 
@@ -1583,7 +1583,7 @@ nat44_ed_add_del_lb_static_mapping_local (ip4_address_t e_addr, u16 e_port,
 	    continue;
 
 	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+	  nat_ed_session_delete (sm, &s, tsm - sm->per_thread_data, 1);
       }
 
       pool_put (m->locals, match_local);
@@ -2691,7 +2691,7 @@ nat44_ed_forwarding_enable_disable (u8 is_enable)
 	{
 	  s = pool_elt_at_index (tsm->sessions, ses_index[0]);
 	  nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-	  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+	  nat_ed_session_delete (sm, &s, tsm - sm->per_thread_data, 1);
 	}
 
       vec_free (ses_to_be_removed);
@@ -3584,7 +3584,7 @@ nat44_ed_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
     return VNET_API_ERROR_UNSPECIFIED;
   s = pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
   nat44_ed_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
-  nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
+  nat_ed_session_delete (sm, &s, tsm - sm->per_thread_data, 1);
   return 0;
 }
 

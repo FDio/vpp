@@ -522,7 +522,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	{
 	  nat_elog_notice (sm, "addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
-	  nat_ed_session_delete (sm, s, thread_index, 1);
+	  nat_ed_session_delete (sm, &s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
       s->out2in.addr = outside_addr;
@@ -610,9 +610,9 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 error:
   if (s)
     {
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
     }
-  *sessionp = s = NULL;
+  *sessionp = NULL;
   return NAT_NEXT_DROP;
 }
 
@@ -1003,14 +1003,14 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
   if (nat_ed_ses_i2o_flow_hash_add_del (sm, thread_index, s, 1))
     {
       nat_elog_notice (sm, "in2out flow hash add failed");
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       return NULL;
     }
 
   if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 1))
     {
       nat_elog_notice (sm, "out2in flow hash add failed");
-      nat_ed_session_delete (sm, s, thread_index, 1);
+      nat_ed_session_delete (sm, &s, thread_index, 1);
       return NULL;
     }
 
@@ -1193,7 +1193,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  next[0] = def_slow;
 	  goto trace0;
 	}
@@ -1205,7 +1205,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
       if (now >= sess_timeout_time)
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  // session is closed, go slow path
 	  next[0] = def_slow;
 	  goto trace0;
@@ -1226,7 +1226,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  translation_error = NAT_ED_TRNSL_ERR_FLOW_MISMATCH;
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
@@ -1237,7 +1237,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	     vm, sm, b0, ip0, f, proto0, is_output_feature)))
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
@@ -1394,7 +1394,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 		   vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
 	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      nat_ed_session_delete (sm, &s0, thread_index, 1);
 	      next[0] = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
@@ -1417,7 +1417,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 		   vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	    {
 	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      nat_ed_session_delete (sm, &s0, thread_index, 1);
 	      next[0] = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
@@ -1495,7 +1495,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	     vm, sm, b0, ip0, &s0->i2o, proto0, is_output_feature)))
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
-	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  nat_ed_session_delete (sm, &s0, thread_index, 1);
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
