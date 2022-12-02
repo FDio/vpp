@@ -16,6 +16,24 @@
       "message": "Isn\u0027t this a wrong place to solve the problem? Instead of bloating dataplane with such functionality control plane should take care for this....",
       "revId": "3fd4fd6865c5cba4a1292d837d85f9aaf8b64837",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec5ef4b5_07a5fe33",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2022-12-02T14:50:08Z",
+      "side": 1,
+      "message": "This plugin has two goals:\n\n1) in a \"small\" environment (like, for example, running VPP as your home CPE), it is very convenient to use this scheme to run some small miscellaneous services that are tied to VPP (e.g. a DHCP server using a punt socket).\n\n2) Some of the services are implemented within VPP (e.g. src/plugins/prom) - it is useful to be able to substitute them for the external process, while keeping the \"single entity\" abstraction.\n\nSo, arguably, keeping the bloat out of the dataplane and within the control plane is exactly the purpose of this plugin. What is different though with this approach makes the VPP process the control point. This allows simpler administration in practice.",
+      "parentUuid": "894cef02_d106fe79",
+      "revId": "3fd4fd6865c5cba4a1292d837d85f9aaf8b64837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
