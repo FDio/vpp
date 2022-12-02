@@ -261,10 +261,7 @@ vlib_get_frame_queue_elt (vlib_frame_queue_main_t *fqm, u32 index,
   vlib_frame_queue_t *fq;
   u64 nelts, tail, new_tail;
 
-  if (index >= vec_len (fqm->vlib_frame_queues))
-    return 0;
-
-  fq = fqm->vlib_frame_queues[index];
+  fq = vec_elt (fqm->vlib_frame_queues, index);
   ASSERT (fq);
   nelts = fq->nelts;
 
