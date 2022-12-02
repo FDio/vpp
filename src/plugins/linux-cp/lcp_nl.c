@@ -353,7 +353,7 @@ nl_route_process_msgs (void)
   if (n_msgs)
     vec_delete (nm->nl_msg_queue, n_msgs, 0);
 
-  NL_INFO ("Processed %u messages", n_msgs);
+  NL_DBG ("Processed %u messages", n_msgs);
 
   return n_msgs;
 }
