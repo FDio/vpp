@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "48dfad28_268e83cf",
+        "filename": "src/plugins/srv6-mobile/gtp4_e.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T16:29:04Z",
+      "side": 1,
+      "message": "I know. The alloc function is defined here and used.The function is defined in the same file. So, the header file is not needed. In fact, you don\u0027t include the header file on other files like gtp4.d, etc.",
+      "parentUuid": "e3132fb0_4d519058",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "26035652_a872649f",
         "filename": "src/plugins/srv6-mobile/gtp6_d_di.c",
         "patchSetId": 3
@@ -368,6 +386,24 @@
       "side": 1,
       "message": "i see! How about removing the clib and name it strcmp_with_size?",
       "parentUuid": "797289ce_daa42c0c",
+      "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "422b189b_da45705f",
+        "filename": "src/plugins/srv6-mobile/sr_mobile_api.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2022-12-02T16:29:04Z",
+      "side": 1,
+      "message": "If you define this func under srv6_mobile plugin, it might be good to have plugin specific word as the function name.",
+      "parentUuid": "14973598_c5204234",
       "revId": "4da0eee79ee0a961674921e3688a5c5ba8ae62dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
