@@ -411,6 +411,15 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
   if (stat_segment_access_start (&sa, sm))
     return 0;
 
+  /* preallocate the elements.
+   * This takes care of a special case where
+   * the vec_len(stats) == 0,
+   * such that we return a vector of
+   * length 0, rather than a null pointer
+   * (since null pointer is an error)
+   */
+  vec_alloc (res, vec_len (stats));
+
   for (i = 0; i < vec_len (stats); i++)
     {
       /* Collect counter */
