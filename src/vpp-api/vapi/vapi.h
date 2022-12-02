@@ -175,7 +175,7 @@ vapi_error_e vapi_send (vapi_ctx_t ctx, void *msg);
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2);
+vapi_error_e vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2);
 
 /**
  * @brief low-level api for reading messages from vpp
@@ -191,18 +191,17 @@ vapi_error_e vapi_send (vapi_ctx_t ctx, void *msg);
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
-			  svm_q_conditional_wait_t cond, u32 time);
+vapi_error_e vapi_recv (vapi_ctx_t ctx, void **msg, size_t *msg_size,
+			svm_q_conditional_wait_t cond, u32 time);
 
 /**
- * @brief wait for connection to become readable or writable
+ * @brief wait for connection to become readable
  *
  * @param ctx opaque vapi context
- * @param mode type of property to wait for - readability, writability or both
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode);
+vapi_error_e vapi_wait (vapi_ctx_t ctx);
 
 /**
  * @brief pick next message sent by vpp and call the appropriate callback

@@ -989,9 +989,13 @@ again:
 }
 
 vapi_error_e
-vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode)
+vapi_wait (vapi_ctx_t ctx)
 {
-  return VAPI_ENOTSUP;
+  svm_queue_lock (ctx->vl_input_queue);
+  svm_queue_wait (ctx->vl_input_queue);
+  svm_queue_unlock (ctx->vl_input_queue);
+
+  return VAPI_OK;
 }
 
 static vapi_error_e
