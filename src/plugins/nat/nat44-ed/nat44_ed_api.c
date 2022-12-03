@@ -590,7 +590,7 @@ static void
     }
 
   sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
-  if (sw_if_index)
+  if (sw_if_index != ~0)
     {
       flags |= NAT_SM_FLAG_SWITCH_ADDRESS;
     }
