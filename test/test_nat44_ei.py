@@ -9,7 +9,7 @@ from io import BytesIO
 
 import scapy.compat
 from framework import tag_fixme_debian11, is_distro_debian11
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppLoInterface
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import (
     bind_layers,
@@ -4060,6 +4060,59 @@ class TestNAT44EI(MethodHolder):
         nat44_ei_config = self.vapi.nat44_ei_show_running_config()
         # a nonzero default should be reported for user_sessions
         self.assertNotEqual(nat44_ei_config.user_sessions, 0)
+
+    def test_delete_interface(self):
+        """NAT44EI delete nat interface"""
+
+        self.nat44_add_address(self.nat_addr)
+
+        interfaces = self.create_loopback_interfaces(4)
+
+        self.vapi.nat44_ei_interface_add_del_feature(
+            sw_if_index=interfaces[0].sw_if_index, is_add=1
+        )
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
+            sw_if_index=interfaces[1].sw_if_index, flags=flags, is_add=1
+        )
+        flags |= self.config_flags.NAT44_EI_IF_OUTSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
+            sw_if_index=interfaces[2].sw_if_index, flags=flags, is_add=1
+        )
+        self.vapi.nat44_ei_add_del_output_interface(
+            sw_if_index=interfaces[3].sw_if_index, is_add=1
+        )
+
+        nat_sw_if_indices = [
+            i.sw_if_index
+            for i in self.vapi.nat44_ei_interface_dump()
+            + list(self.vapi.vpp.details_iter(self.vapi.nat44_ei_output_interface_get))
+        ]
+        self.assertEqual(len(nat_sw_if_indices), len(interfaces))
+
+        loopbacks = []
+        for i in interfaces:
+            # delete nat-enabled interface
+            self.assertIn(i.sw_if_index, nat_sw_if_indices)
+            i.remove_vpp_config()
+
+            # create interface with the same index
+            lo = VppLoInterface(self)
+            loopbacks.append(lo)
+            self.assertEqual(lo.sw_if_index, i.sw_if_index)
+
+            # check interface is not nat-enabled
+            nat_sw_if_indices = [
+                i.sw_if_index
+                for i in self.vapi.nat44_ei_interface_dump()
+                + list(
+                    self.vapi.vpp.details_iter(self.vapi.nat44_ei_output_interface_get)
+                )
+            ]
+            self.assertNotIn(lo.sw_if_index, nat_sw_if_indices)
+
+        for i in loopbacks:
+            i.remove_vpp_config()
 
 
 class TestNAT44Out2InDPO(MethodHolder):

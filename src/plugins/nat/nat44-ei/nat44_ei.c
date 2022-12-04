@@ -1183,6 +1183,55 @@ nat44_ei_del_output_interfaces ()
   return error;
 }
 
+static clib_error_t *
+nat44_ei_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  nat44_ei_main_t *nm = &nat44_ei_main;
+  nat44_ei_interface_t *i;
+  int error = 0;
+
+  if (is_add)
+    return 0;
+
+  if (!nm->enabled)
+    return 0;
+
+  i = nat44_ei_get_interface (nm->interfaces, sw_if_index);
+  if (i)
+    {
+      bool is_inside = nat44_ei_interface_is_inside (i);
+      bool is_outside = nat44_ei_interface_is_outside (i);
+
+      if (is_inside)
+	{
+	  error |= nat44_ei_del_interface (sw_if_index, 1);
+	}
+      if (is_outside)
+	{
+	  error |= nat44_ei_del_interface (sw_if_index, 0);
+	}
+
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing interface");
+	}
+    }
+
+  i = nat44_ei_get_interface (nm->output_feature_interfaces, sw_if_index);
+  if (i)
+    {
+      error = nat44_ei_del_output_interface (sw_if_index);
+      if (error)
+	{
+	  nat44_ei_log_err ("error occurred while removing output interface");
+	}
+    }
+
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (nat44_ei_sw_interface_add_del);
+
 int
 nat44_ei_del_static_mappings ()
 {

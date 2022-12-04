@@ -6,7 +6,7 @@ from random import randint, choice
 
 import scapy.compat
 from framework import tag_fixme_ubuntu2204, is_distro_ubuntu2204
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppLoInterface
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -2551,6 +2551,51 @@ class TestNAT44ED(VppTestCase):
         finally:
             in_if.unconfig()
             out_if.unconfig()
+
+    def test_delete_interface(self):
+        """NAT44ED delete nat interface"""
+
+        self.nat_add_address(self.nat_addr)
+
+        interfaces = self.create_loopback_interfaces(4)
+        self.nat_add_outside_interface(interfaces[0])
+        self.nat_add_inside_interface(interfaces[1])
+        self.nat_add_outside_interface(interfaces[2])
+        self.nat_add_inside_interface(interfaces[2])
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=interfaces[3].sw_if_index, is_add=1
+        )
+
+        nat_sw_if_indices = [
+            i.sw_if_index
+            for i in self.vapi.nat44_interface_dump()
+            + list(self.vapi.vpp.details_iter(self.vapi.nat44_ed_output_interface_get))
+        ]
+        self.assertEqual(len(nat_sw_if_indices), len(interfaces))
+
+        loopbacks = []
+        for i in interfaces:
+            # delete nat-enabled interface
+            self.assertIn(i.sw_if_index, nat_sw_if_indices)
+            i.remove_vpp_config()
+
+            # create interface with the same index
+            lo = VppLoInterface(self)
+            loopbacks.append(lo)
+            self.assertEqual(lo.sw_if_index, i.sw_if_index)
+
+            # check interface is not nat-enabled
+            nat_sw_if_indices = [
+                i.sw_if_index
+                for i in self.vapi.nat44_interface_dump()
+                + list(
+                    self.vapi.vpp.details_iter(self.vapi.nat44_ed_output_interface_get)
+                )
+            ]
+            self.assertNotIn(lo.sw_if_index, nat_sw_if_indices)
+
+        for i in loopbacks:
+            i.remove_vpp_config()
 
 
 @tag_fixme_ubuntu2204
