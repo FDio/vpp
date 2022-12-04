@@ -1,0 +1,297 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55d68859_03f8b285",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "I\u0027d use session and vcl here instead of gso since it affects those layers not the gso layer within vpp",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 3
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8b4fc159_1fd05c2a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Thanks for the patch, Chao! Overall the idea and code look good to me, we just need a bit of cleanup. ",
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d22493b6_bcdb5ea3",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1546,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "This is internal, can\u0027t we just extend it and fix all calls to it?",
+      "range": {
+        "startLine": 1546,
+        "startChar": 0,
+        "endLine": 1546,
+        "endChar": 17
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfd6303e_386472e2",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1684,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Test against UDP_SEGMENT here.",
+      "range": {
+        "startLine": 1684,
+        "startChar": 33,
+        "endLine": 1684,
+        "endChar": 48
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74125004_025230ca",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1684,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Add this as a separate ldp internal function that parses CMSG headers and only call if if vlsh is valid lower.",
+      "range": {
+        "startLine": 1683,
+        "startChar": 0,
+        "endLine": 1684,
+        "endChar": 49
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "06af1df8_ec2e6075",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1688,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "use VCL_UDP_SEGMENT here",
+      "range": {
+        "startLine": 1688,
+        "startChar": 31,
+        "endLine": 1688,
+        "endChar": 46
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe28e8b1_83383648",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2190,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "This is an internal function, we should be able to add another param to the list.",
+      "range": {
+        "startLine": 2190,
+        "startChar": 0,
+        "endLine": 2190,
+        "endChar": 31
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8817eb8_2c2adb69",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2265,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Move this to the caller and pass gso_size as a param.",
+      "range": {
+        "startLine": 2255,
+        "startChar": 0,
+        "endLine": 2265,
+        "endChar": 5
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3385f4c9_c0de2470",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "I think we can get away with our own numbering scheme here. So let\u0027s come up with one. For instance, we could do something like upper 16 bits is the transport (as defined above) and lower bits are the custom transport specific options. So VCL_UDP_SEGMENT would need to be 1 \u003c\u003c 16 | 0 \u003d 0x10000 \u003d 65536",
+      "range": {
+        "startLine": 66,
+        "startChar": 24,
+        "endLine": 66,
+        "endChar": 28
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e7aaf66_26c5ae2c",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Hm, let\u0027s rename the tcp ones above and to remove tcp. To maintain compatibility with existing consumers add a define after this enum with the current attributes, e.g.,:\n#define VPPCOM_ATTR_GET_TCP_USER_MSS VPPCOM_ATTR_GET_USER_MSS",
+      "range": {
+        "startLine": 163,
+        "startChar": 0,
+        "endLine": 164,
+        "endChar": 31
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29fb3e8a_14bd1287",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1840,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Let\u0027s test if session is connectionless, i.e., session_transport_service_type (s) !\u003d TRANSPORT_SERVICE_CL",
+      "range": {
+        "startLine": 1840,
+        "startChar": 6,
+        "endLine": 1840,
+        "endChar": 60
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2be0d768_e4be667a",
+        "filename": "src/vnet/session/session_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 464,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "This feels like it should be under data_offset. Not great to change an existing struct in a non-compatible way but ...",
+      "range": {
+        "startLine": 464,
+        "startChar": 2,
+        "endLine": 464,
+        "endChar": 15
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "967800ec_88c7948e",
+        "filename": "src/vnet/udp/udp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-04T23:30:56Z",
+      "side": 1,
+      "message": "Let\u0027s make the udp attribute improvements a separate patch",
+      "range": {
+        "startLine": 321,
+        "startChar": 0,
+        "endLine": 321,
+        "endChar": 17
+      },
+      "revId": "a0305a7139f6b88b6e6c0ba6dc20b7f7f6ef7058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
