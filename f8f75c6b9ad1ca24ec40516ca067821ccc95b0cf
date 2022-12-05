@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e747580d_102fdc86",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2022-12-05T21:06:39Z",
+      "side": 1,
+      "message": "Hi Dmitry,\nCould you please take a loot at this tiny fix?",
+      "revId": "f8f75c6b9ad1ca24ec40516ca067821ccc95b0cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
