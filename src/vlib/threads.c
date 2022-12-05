@@ -920,6 +920,7 @@ vlib_worker_thread_node_refork (void)
 	{
 	  vlib_frame_t *f = nf->frame;
 	  nf->frame = NULL;
+	  nf->flags &= ~VLIB_FRAME_IS_ALLOCATED;
 	  vlib_frame_free (vm_clone, f);
 	}
     }
