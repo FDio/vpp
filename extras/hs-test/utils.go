@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
@@ -247,32 +246,6 @@ func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
 		<-ctx.Done()
 	}(errCh)
 	return errCh
-}
-
-func setupEnvoy(t *testing.T, ctx context.Context, dockerInstance string) error {
-	errCh := startEnvoy(ctx, dockerInstance)
-	select {
-	case err := <-errCh:
-		return err
-	default:
-	}
-
-	go func(ctx context.Context, errCh <-chan error) {
-		for {
-			select {
-			// handle cancel() call from outside to gracefully stop the routine
-			case <-ctx.Done():
-				return
-			default:
-				select {
-				case err := <-errCh:
-					fmt.Printf("error while running envoy: %v", err)
-				default:
-				}
-			}
-		}
-	}(ctx, errCh)
-	return nil
 }
 
 func configureVppProxy() error {

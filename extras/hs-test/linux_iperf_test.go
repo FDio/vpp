@@ -11,16 +11,11 @@ func (s *TapSuite) TestLinuxIperf() {
 
 	go StartServerApp(srvCh, stopServerCh, nil)
 	err := <-srvCh
-	if err != nil {
-		t.Errorf("%v", err)
-		t.FailNow()
-	}
+	s.assertNil(err)
 	t.Log("server running")
 	go StartClientApp(nil, clnCh)
 	t.Log("client running")
 	err = <-clnCh
-	if err != nil {
-		s.Failf("client", "%v", err)
-	}
+	s.assertNil(err)
 	t.Log("Test completed")
 }
