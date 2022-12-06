@@ -31,25 +31,25 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	serverVppContainer, err := s.NewContainer(srvInstance)
 	s.assertNil(err)
 	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
-	serverVppContainer.run()
+	s.assertNil(serverVppContainer.run())
 
 	clnInstance := "vpp-vcl-test-cln"
 	clientVppContainer, err := s.NewContainer(clnInstance)
 	s.assertNil(err)
 	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
-	clientVppContainer.run();
+	s.assertNil(clientVppContainer.run())
 
 	echoSrv := "echo-srv"
 	serverEchoContainer, err := s.NewContainer(echoSrv)
 	s.assertNil(err)
 	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
-	serverEchoContainer.run()
+	s.assertNil(serverEchoContainer.run())
 
 	echoCln := "echo-cln"
 	clientEchoContainer, err := s.NewContainer(echoCln)
 	s.assertNil(err)
 	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
-	clientEchoContainer.run()
+	s.assertNil(clientEchoContainer.run())
 
 	_, err = hstExec("Configure2Veths srv", srvInstance)
 	s.assertNil(err)
@@ -63,6 +63,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 
 	o, err := hstExec("RunEchoClient "+proto, echoCln)
 	s.assertNil(err)
+
 	fmt.Println(o)
 }
 
@@ -82,25 +83,25 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	serverVppContainer, err := s.NewContainer(srvInstance)
 	s.assertNil(err)
 	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
-	serverVppContainer.run()
+	s.assertNil(serverVppContainer.run())
 
 	clnInstance := "vpp-vcl-test-cln"
 	clientVppContainer, err := s.NewContainer(clnInstance)
 	s.assertNil(err)
 	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
-	clientVppContainer.run();
+	s.assertNil(clientVppContainer.run())
 
 	echoSrv := "echo-srv"
 	serverEchoContainer, err := s.NewContainer(echoSrv)
 	s.assertNil(err)
 	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
-	serverEchoContainer.run()
+	s.assertNil(serverEchoContainer.run())
 
 	echoCln := "echo-cln"
 	clientEchoContainer, err := s.NewContainer(echoCln)
 	s.assertNil(err)
 	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
-	clientEchoContainer.run()
+	s.assertNil(clientEchoContainer.run())
 
 	_, err = hstExec("Configure2Veths srv-with-preset-hw-addr", srvInstance)
 	s.assertNil(err)

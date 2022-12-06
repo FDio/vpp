@@ -9,7 +9,6 @@ import (
 )
 
 func (s *VethsSuite) TestLDPreloadIperfVpp() {
-	t := s.T()
 	var clnVclConf, srvVclConf Stanza
 
 	srvInstance := "vpp-ldp-srv"
@@ -23,7 +22,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	exechelper.Run("mkdir " + clnPath)
 
 	ldpreload := os.Getenv("HST_LDPRELOAD")
-	s.Assert().NotEqual("", ldpreload)
+	s.assertNotEqual("", ldpreload)
 
 	ldpreload = "LD_PRELOAD=" + ldpreload
 
@@ -33,31 +32,17 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	fmt.Println("starting VPPs")
 
-	err := dockerRun(srvInstance, fmt.Sprintf("-v /tmp/%s:/tmp", srvInstance))
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(srvInstance, fmt.Sprintf("-v /tmp/%s:/tmp", srvInstance)), "failed to start docker (srv)")
 	defer func() { exechelper.Run("docker stop " + srvInstance) }()
 
-	err = dockerRun(clnInstance, fmt.Sprintf("-v /tmp/%s:/tmp", clnInstance))
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(clnInstance, fmt.Sprintf("-v /tmp/%s:/tmp", clnInstance)), "failed to start docker (cln)")
 	defer func() { exechelper.Run("docker stop " + clnInstance) }()
 
-	_, err = hstExec("Configure2Veths srv", srvInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	_, err := hstExec("Configure2Veths srv", srvInstance)
+	s.assertNil(err)
 
 	_, err = hstExec("Configure2Veths cln", clnInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
 	err = clnVclConf.
 		NewStanza("vcl").
@@ -68,10 +53,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		Append("use-mq-eventfd").
 		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/2", clnInstance)).Close().
 		SaveToFile(clnVcl)
-	if err != nil {
-		t.Errorf("%v", err)
-		t.FailNow()
-	}
+	s.assertNil(err)
 
 	err = srvVclConf.
 		NewStanza("vcl").
@@ -82,10 +64,8 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		Append("use-mq-eventfd").
 		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/1", srvInstance)).Close().
 		SaveToFile(srvVcl)
-	if err != nil {
-		t.Errorf("%v", err)
-		t.FailNow()
-	}
+	s.assertNil(err)
+
 	fmt.Printf("attaching server to vpp")
 
 	// FIXME
@@ -95,9 +75,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	go StartServerApp(srvCh, stopServerCh, srvEnv)
 
 	err = <-srvCh
-	if err != nil {
-		s.FailNow("vcl server", "%v", err)
-	}
+	s.assertNil(err)
 
 	fmt.Println("attaching client to vpp")
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clnVcl)
@@ -105,9 +83,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	// wait for client's result
 	err = <-clnCh
-	if err != nil {
-		s.Failf("client", "%v", err)
-	}
+	s.assertNil(err)
 
 	// stop server
 	stopServerCh <- struct{}{}

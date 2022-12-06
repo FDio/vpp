@@ -45,6 +45,18 @@ func (s *HstSuite) assertEqual(expected, actual interface{}, msgAndArgs ...inter
 	}
 }
 
+func (s *HstSuite) assertNotEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotEqual(s.T(), expected, actual, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
+func (s *HstSuite) assertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
+	if !assert.Contains(s.T(), testString, contains, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
 func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
 	if !assert.NotContains(s.T(), testString, contains, msgAndArgs...) {
 		s.hstFail()
