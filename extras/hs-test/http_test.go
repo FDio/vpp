@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-
 	"github.com/edwarnicke/exechelper"
 )
 
@@ -15,26 +13,17 @@ func (s *NsSuite) TestHttpTps() {
 
 	t.Log("starting vpp..")
 
-	err := dockerRun(dockerInstance, "")
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(dockerInstance, ""), "failed to start docker")
 	defer func() { exechelper.Run("docker stop " + dockerInstance) }()
 
 	// start & configure vpp in the container
-	_, err = hstExec("ConfigureHttpTps", dockerInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	_, err := hstExec("ConfigureHttpTps", dockerInstance)
+	s.assertNil(err)
 
 	go startWget(finished, server_ip, port, "client")
 	// wait for client
 	err = <-finished
-	if err != nil {
-		t.Errorf("%v", err)
-	}
+	s.assertNil(err)
 }
 
 func (s *VethsSuite) TestHttpCli() {
@@ -42,49 +31,27 @@ func (s *VethsSuite) TestHttpCli() {
 
 	srvInstance := "http-cli-srv"
 	clnInstance := "http-cli-cln"
-	err := dockerRun(srvInstance, "")
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(srvInstance, ""), "failed to start docker (srv)")
 	defer func() { exechelper.Run("docker stop " + srvInstance) }()
 
-	err = dockerRun(clnInstance, "")
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(dockerRun(clnInstance, ""), "failed to start docker (cln)")
 	defer func() { exechelper.Run("docker stop " + clnInstance) }()
 
-	_, err = hstExec("Configure2Veths srv", srvInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	_, err := hstExec("Configure2Veths srv", srvInstance)
+	s.assertNil(err)
 
 	_, err = hstExec("Configure2Veths cln", clnInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
 	t.Log("configured IPs...")
 
 	_, err = hstExec("RunHttpCliSrv", srvInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
 	t.Log("configured http server")
 
 	o, err := hstExec("RunHttpCliCln /show/version", clnInstance)
-	if err != nil {
-		t.Errorf("%v", err)
-		return
-	}
+	s.assertNil(err)
 
-	if strings.Index(o, "<html>") < 0 {
-		t.Error("<html> not found in the result!")
-	}
+	s.assertContains(o, "<html>", "<html> not found in the result!")
 }
