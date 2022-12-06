@@ -530,6 +530,12 @@ class VPPApiClient:
 
         return f
 
+    def make_pack_function(self, msg, i, multipart):
+        def f(**kwargs):
+            return self._call_vpp_pack(i, msg, **kwargs)
+        f.msg = msg
+        return f
+
     def _register_functions(self, do_async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
@@ -544,7 +550,9 @@ class VPPApiClient:
                 # Create function for client side messages.
                 if name in self.services:
                     f = self.make_function(msg, i, self.services[name], do_async)
+                    f_pack = self.make_pack_function(msg, i, self.services[name])
                     setattr(self._api, name, FuncWrapper(f))
+                    setattr(self._api, name+'_pack', FuncWrapper(f_pack))
             else:
                 self.logger.debug("No such message type or failed CRC checksum: %s", n)
 
@@ -835,6 +843,13 @@ class VPPApiClient:
 
         self.transport.write(b)
         return context
+
+    def _call_vpp_pack(self, i, msg, **kwargs):
+        """Given a message, return the binary representation."""
+        kwargs["_vl_msg_id"] = i
+        kwargs["client_index"] = 0
+        kwargs["context"] = 0
+        return msg.pack(kwargs)
 
     def read_blocking(self, no_type_conversion=False, timeout=None):
         """Get next received message from transport within timeout, decoded.
