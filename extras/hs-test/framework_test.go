@@ -13,7 +13,7 @@ import (
 type HstSuite struct {
 	suite.Suite
 	teardownSuite func()
-	containers    []string
+	containers    []*Container
 	volumes       []string
 }
 
@@ -56,17 +56,28 @@ func (s *HstSuite) NewContainer(name string) (*Container, error) {
 		return nil, fmt.Errorf("creating container failed: name must not be blank")
 	}
 
-	s.containers = append(s.containers, name)
-
 	container := new(Container)
 	container.name = name
+
+	s.containers = append(s.containers, container)
+
 	return container, nil
 }
 
 func (s *HstSuite) StopContainers() {
-	for _, containerName := range s.containers {
-		exechelper.Run("docker stop " + containerName)
+	for _, container := range s.containers {
+		container.stop()
 	}
+}
+
+func (s *HstSuite) NewVolume(name string) error {
+	err := exechelper.Run(fmt.Sprintf("docker volume create --name=%s", name))
+	if err != nil {
+		return err
+	}
+
+	s.volumes = append(s.volumes, name)
+	return nil
 }
 
 func (s *HstSuite) RemoveVolumes() {

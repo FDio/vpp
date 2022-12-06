@@ -6,8 +6,14 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-type Container struct {
+type Volume struct {
 	name string
+	path string
+}
+
+type Container struct {
+	name    string
+	volumes []*Volume
 }
 
 func (c *Container) run() error {
@@ -19,6 +25,7 @@ func (c *Container) run() error {
 	syncPath := fmt.Sprintf("-v /tmp/%s/sync:/tmp/sync", c.name)
 	cmd := "docker run --cap-add=all -d --privileged --network host --rm "
 	cmd += syncPath
+	cmd += c.getVolumes() 
 	cmd += " --name " + c.name + " hs-test/vpp"
 	fmt.Println(cmd)
 	err := exechelper.Run(cmd)
@@ -29,3 +36,22 @@ func (c *Container) run() error {
 	return nil
 }
 
+func (c *Container) addVolume(name string, containerPath string) {
+	c.volumes = append(c.volumes, &Volume{name, containerPath})
+}
+
+func (c *Container) getVolumes() string {
+	dockerOption := ""
+
+	if len(c.volumes) > 0 {
+		for _, volume := range c.volumes {
+			dockerOption += fmt.Sprintf(" -v %s:%s", volume.name, volume.path)
+		}
+	}
+
+	return dockerOption
+}
+
+func (c *Container) stop() error {
+	return exechelper.Run("docker stop " + c.name)
+}
