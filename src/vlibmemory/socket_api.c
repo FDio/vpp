@@ -220,6 +220,12 @@ static void
 socket_cleanup_pending_remove_registration_cb (u32 *preg_index)
 {
   vl_api_registration_t *rp = vl_socket_get_registration (*preg_index);
+  if (!rp)
+    {
+      /* Might already have gone */
+      return;
+    }
+
   clib_file_main_t *fm = &file_main;
   u32 pending_remove_file_index = vl_api_registration_file_index (rp);
 
@@ -402,7 +408,7 @@ vl_socket_write_ready (clib_file_t * uf)
   while (remaining_bytes > 0)
     {
       bytes_to_send = remaining_bytes > 4096 ? 4096 : remaining_bytes;
-      n = write (uf->file_descriptor, p, bytes_to_send);
+      n = send (uf->file_descriptor, p, bytes_to_send, MSG_NOSIGNAL);
       if (n < 0)
 	{
 	  if (errno == EAGAIN)
