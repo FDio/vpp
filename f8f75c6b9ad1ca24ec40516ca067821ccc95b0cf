@@ -16,6 +16,24 @@
       "message": "Hi Dmitry,\nCould you please take a loot at this tiny fix?",
       "revId": "f8f75c6b9ad1ca24ec40516ca067821ccc95b0cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39fa78fe_9a7384a2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2022-12-06T12:33:33Z",
+      "side": 1,
+      "message": "Hi, Stanislav,\nThis seem to be reasonable as a fix, however I don\u0027t get how that can cause your issue.\nNext frames for the worker should be freed on the very next line after the loop, so I believe the only ways NULL frame can be accessed at this point are data race read/copy from another thread and use-after-free, both of which are so bad I doubt we can meaningfully protect from them here.",
+      "parentUuid": "e747580d_102fdc86",
+      "revId": "f8f75c6b9ad1ca24ec40516ca067821ccc95b0cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
