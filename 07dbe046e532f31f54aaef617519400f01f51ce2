@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63f8daa7_a0841332",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2877
+      },
+      "writtenOn": "2022-12-06T10:41:38Z",
+      "side": 1,
+      "message": "Hey @Nathan,\nAny chance you can review my merge request? It has been a while and the change is quite simple.\nBest regards",
+      "revId": "07dbe046e532f31f54aaef617519400f01f51ce2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
