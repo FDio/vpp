@@ -42,7 +42,7 @@ class VppTransport:
         while True:
             try:
                 rlist, _, _ = select.select([self.socket, self.sque._reader], [], [])
-            except socket.error:
+            except (socket.error, ValueError):
                 # Terminate thread
                 logging.error("select failed")
                 self.q.put(None)
@@ -65,14 +65,14 @@ class VppTransport:
                         return
                     # Put either to local queue or if context == 0
                     # callback queue
-                    if self.parent.has_context(msg):
+                    if not self.do_async and self.parent.has_context(msg):
                         self.q.put(msg)
                     else:
                         self.parent.msg_handler_async(msg)
                 else:
                     raise VppTransportSocketIOError(2, "Unknown response from select")
 
-    def connect(self, name, pfx, msg_handler, rx_qlen):
+    def connect(self, name, pfx, msg_handler, rx_qlen, do_async=False):
         # TODO: Reorder the actions and add "roll-backs",
         # to restore clean disconnect state when failure happens durng connect.
 
@@ -125,6 +125,7 @@ class VppTransport:
             self.message_table[n] = m.index
 
         self.message_thread.daemon = True
+        self.do_async = do_async
         self.message_thread.start()
 
         return 0

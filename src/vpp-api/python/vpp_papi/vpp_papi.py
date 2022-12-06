@@ -551,7 +551,7 @@ class VPPApiClient:
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen, do_async):
         pfx = chroot_prefix.encode("utf-8") if chroot_prefix else None
 
-        rv = self.transport.connect(name, pfx, msg_handler, rx_qlen)
+        rv = self.transport.connect(name, pfx, msg_handler, rx_qlen, do_async)
         if rv != 0:
             raise VPPIOError(2, "Connect failed")
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
