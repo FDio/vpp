@@ -41,7 +41,7 @@ hss_session_alloc (u32 thread_index)
   return hs;
 }
 
-static hss_session_t *
+__clib_export hss_session_t *
 hss_session_get (u32 thread_index, u32 hs_index)
 {
   hss_main_t *hsm = &hss_main;
@@ -261,7 +261,6 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
 
   redirect =
     format (0,
-	    "HTTP/1.1 301 Moved Permanently\r\n"
 	    "Location: http%s://%U%s%s\r\n\r\n",
 	    proto == TRANSPORT_PROTO_TLS ? "s" : "", format_ip46_address,
 	    &endpt.ip, endpt.is_ip4, print_port ? port_str : (u8 *) "", path);
@@ -275,7 +274,7 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
   hs->data_len = vec_len (redirect);
   hs->free_data = 1;
 
-  return HTTP_STATUS_OK;
+  return HTTP_STATUS_MOVED;
 }
 
 static int
@@ -686,6 +685,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hsm->private_segment_size = 0;
   hsm->fifo_size = 0;
   hsm->cache_size = 10 << 20;
+  hsm->use_ptr_thresh = 1 << 31; /* default: don't enqueue pointers */
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))

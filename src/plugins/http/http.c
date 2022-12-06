@@ -324,10 +324,12 @@ static const char *http_error_template = "HTTP/1.1 %s\r\n"
 					 "Pragma: no-cache\r\n"
 					 "Content-Length: 0\r\n\r\n";
 
+static const char *http_redirect_template = "HTTP/1.1 %s\r\n";
+
 /**
  * http response boilerplate
  */
-static const char *http_response_template = "HTTP/1.1 200 OK\r\n"
+static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
 					    "Expires: %U GMT\r\n"
 					    "Server: VPP Static\r\n"
@@ -541,9 +543,14 @@ state_srv_wait_app (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  if (msg.code != HTTP_STATUS_OK)
+  ec = msg.code;
+
+  switch (msg.code)
     {
-      ec = msg.code;
+    case HTTP_STATUS_OK:
+    case HTTP_STATUS_MOVED:
+      break;
+    default:
       goto error;
     }
 
@@ -558,15 +565,29 @@ state_srv_wait_app (http_conn_t *hc, transport_send_params_t *sp)
    * - data length
    */
   now = clib_timebase_now (&hm->timebase);
-  header = format (0, http_response_template,
-		   /* Date */
-		   format_clib_timebase_time, now,
-		   /* Expires */
-		   format_clib_timebase_time, now + 600.0,
-		   /* Content type */
-		   http_content_type_str[msg.content_type],
-		   /* Length */
-		   msg.data.len);
+
+  switch (msg.code)
+    {
+    case HTTP_STATUS_OK:
+      header =
+	format (0, http_response_template, http_status_code_str[msg.code],
+		/* Date */
+		format_clib_timebase_time, now,
+		/* Expires */
+		format_clib_timebase_time, now + 600.0,
+		/* Content type */
+		http_content_type_str[msg.content_type],
+		/* Length */
+		msg.data.len);
+      break;
+    case HTTP_STATUS_MOVED:
+      header =
+	format (0, http_redirect_template, http_status_code_str[msg.code]);
+      /* Location: http(s)://new-place already queued up as data */
+      break;
+    default:
+      goto error;
+    }
 
   offset = send_data (hc, header, vec_len (header), 0);
   if (offset != vec_len (header))
