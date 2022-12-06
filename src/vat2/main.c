@@ -30,6 +30,8 @@
 #include <limits.h>
 #include "vat2.h"
 
+bool vat2_debug;
+
 /*
  * Filter these messages as they are used to manage the API connection to VPP
  */
@@ -60,9 +62,8 @@ filter_message (char *msgname)
 uword *function_by_name;
 bool debug = false;
 
-char *vat2_plugin_path;
-static void
-vat2_find_plugin_path ()
+static u8 *
+vat2_find_plugin_path (void)
 {
   char *p, path[PATH_MAX];
   int rv;
@@ -70,44 +71,56 @@ vat2_find_plugin_path ()
 
   /* find executable path */
   if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
-    return;
+    return 0;
 
   /* readlink doesn't provide null termination */
   path[rv] = 0;
 
   /* strip filename */
   if ((p = strrchr (path, '/')) == 0)
-    return;
+    return 0;
   *p = 0;
 
   /* strip bin/ */
   if ((p = strrchr (path, '/')) == 0)
-    return;
+    return 0;
   *p = 0;
 
   s = format (0, "%s/" CLIB_LIB_DIR "/vat2_plugins", path, path);
   vec_add1 (s, 0);
-  vat2_plugin_path = (char *) s;
+  return s;
 }
 
 void
 vac_callback (unsigned char *data, int len)
 {
-  u16 result_msg_id = ntohs(*((u16 *)data));
-  DBG("Received something async: %d\n", result_msg_id);
+  u16 result_msg_id = ntohs (*((u16 *) data));
+  DBG ("Received something async: %d\n", result_msg_id);
 }
 
-int vat2_load_plugins (char *path, char *filter, int *loaded);
+int vat2_load_plugins (u8 *path, char *filter, int *loaded);
 
 static int
-register_function (void)
+register_function (char *pluginpath)
 {
   int loaded;
+  u8 *vat2_plugin_path = 0;
 
-  vat2_find_plugin_path();
-  DBG("Plugin Path %s\n", vat2_plugin_path);
-  int rv = vat2_load_plugins(vat2_plugin_path, 0, &loaded);
-  DBG("Loaded %u plugins\n", loaded);
+  if (pluginpath == 0)
+    {
+      vat2_plugin_path = vat2_find_plugin_path ();
+    }
+  else
+    {
+      vat2_plugin_path = format (0, "%s", pluginpath);
+      vec_add1 (vat2_plugin_path, 0);
+    }
+  DBG ("Plugin Path %s\n", vat2_plugin_path);
+  int rv = vat2_load_plugins (vat2_plugin_path, 0, &loaded);
+  DBG ("Loaded %u plugins\n", loaded);
+
+  vec_free (vat2_plugin_path);
+
   return rv;
 }
 
@@ -248,29 +261,31 @@ print_help (void)
     " message\n"
     "--dump-apis                    List all APIs available in VAT2 (might "
     "not reflect running VPP)\n"
+    "--plugin-path                  Pluing path"
     "\n";
   printf ("%s", help_string);
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);
-  char *filename = 0, *prefix = 0, *template = 0;
+  char *filename = 0, *prefix = 0, *template = 0, *pluginpath = 0;
   int index;
   int c;
   opterr = 0;
   cJSON *o = 0;
   int option_index = 0;
   bool dump_api = false;
-  bool debug = false;
   char *msgname = 0;
   static struct option long_options[] = {
     { "debug", no_argument, 0, 'd' },
-    { "prefix", required_argument, 0, 'p' },
+    { "prefix", required_argument, 0, 's' },
     { "file", required_argument, 0, 'f' },
     { "dump-apis", no_argument, 0, 0 },
     { "template", required_argument, 0, 't' },
+    { "plugin-path", required_argument, 0, 'p' },
     { 0, 0, 0, 0 }
   };
 
@@ -284,16 +299,19 @@ int main (int argc, char **argv)
 	    dump_api = true;
 	  break;
 	case 'd':
-	  debug = true;
+	  vat2_debug = true;
 	  break;
 	case 't':
 	  template = optarg;
 	  break;
-	case 'p':
+	case 's':
 	  prefix = optarg;
 	  break;
 	case 'f':
 	  filename = optarg;
+	  break;
+	case 'p':
+	  pluginpath = optarg;
 	  break;
 	case '?':
 	  print_help ();
@@ -303,7 +321,7 @@ int main (int argc, char **argv)
 	}
     }
   DBG ("debug = %d, filename = %s, template = %s, shared memory prefix: %s\n",
-       debug, filename, template, prefix);
+       vat2_debug, filename, template, prefix);
 
   for (index = optind; index < argc; index++)
     DBG ("Non-option argument %s\n", argv[index]);
@@ -318,11 +336,12 @@ int main (int argc, char **argv)
 
   /* Load plugins */
   function_by_name = hash_create_string (0, sizeof (uword));
-  int res = register_function();
-  if (res < 0) {
-    fprintf(stderr, "%s: loading plugins failed\n", argv[0]);
-    exit(-1);
-  }
+  int res = register_function (pluginpath);
+  if (res < 0)
+    {
+      fprintf (stderr, "%s: loading plugins failed\n", argv[0]);
+      exit (-1);
+    }
 
   if (template)
     {
@@ -341,13 +360,16 @@ int main (int argc, char **argv)
     {
       msgname = argv[index];
     }
-  if (argc == (index + 2)) {
-    o = cJSON_Parse(argv[index+1]);
-    if (!o) {
-      fprintf(stderr, "%s: Failed parsing JSON input: %s\n", argv[0], cJSON_GetErrorPtr());
-      exit(-1);
+  if (argc == (index + 2))
+    {
+      o = cJSON_Parse (argv[index + 1]);
+      if (!o)
+	{
+	  fprintf (stderr, "%s: Failed parsing JSON input: %s\n", argv[0],
+		   cJSON_GetErrorPtr ());
+	  exit (-1);
+	}
     }
-  }
 
   if (!msgname && !filename)
     {
@@ -356,7 +378,8 @@ int main (int argc, char **argv)
     }
 
   /* Read message from file */
-  if (filename) {
+  if (filename)
+    {
       if (argc > index)
 	{
 	  fprintf (stderr, "%s: Superfluous arguments when filename given\n",
@@ -364,37 +387,41 @@ int main (int argc, char **argv)
 	  exit (-1);
 	}
 
-    FILE *f = fopen(filename, "r");
-    size_t chunksize, bufsize;
-    size_t n_read = 0;
-    size_t n;
+      FILE *f = fopen (filename, "r");
+      size_t chunksize, bufsize;
+      size_t n_read = 0;
+      size_t n;
 
-    if (!f) {
-      fprintf(stderr, "%s: can't open file: %s\n", argv[0], filename);
-      exit(-1);
-    }
+      if (!f)
+	{
+	  fprintf (stderr, "%s: can't open file: %s\n", argv[0], filename);
+	  exit (-1);
+	}
 
-    chunksize = bufsize = 1024;
-    char *buf = malloc(bufsize);
-    while ((n = fread (buf + n_read, 1, chunksize, f)))
-      {
-	n_read += n;
-	if (n == chunksize)
-	  {
-	    bufsize += chunksize;
-	    buf = realloc (buf, bufsize);
-	  }
-      }
-    fclose(f);
-    if (n_read) {
-      o = cJSON_Parse(buf);
-      if (!o) {
-        fprintf(stderr, "%s: Failed parsing JSON input: %s\n", argv[0], cJSON_GetErrorPtr());
-        exit(-1);
-      }
+      chunksize = bufsize = 1024;
+      char *buf = malloc (bufsize);
+      while ((n = fread (buf + n_read, 1, chunksize, f)))
+	{
+	  n_read += n;
+	  if (n == chunksize)
+	    {
+	      bufsize += chunksize;
+	      buf = realloc (buf, bufsize);
+	    }
+	}
+      fclose (f);
+      if (n_read)
+	{
+	  o = cJSON_Parse (buf);
+	  if (!o)
+	    {
+	      fprintf (stderr, "%s: Failed parsing JSON input: %s\n", argv[0],
+		       cJSON_GetErrorPtr ());
+	      exit (-1);
+	    }
+	}
+      free (buf);
     }
-    free (buf);
-  }
 
   if (!o)
     {
@@ -422,7 +449,6 @@ int main (int argc, char **argv)
 	}
     }
   cJSON_Delete (o);
-  vac_disconnect();
+  vac_disconnect ();
   exit (0);
-
 }
