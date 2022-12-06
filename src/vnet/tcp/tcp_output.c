@@ -1749,7 +1749,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       && tc->rxt_head != tc->snd_una
       && tcp_retransmit_should_retry_head (tc, sb))
     {
-      max_bytes = clib_min (tc->snd_mss, tc->snd_congestion - tc->snd_una);
+      max_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
       n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, max_bytes, &b);
       if (!n_written)
 	{
