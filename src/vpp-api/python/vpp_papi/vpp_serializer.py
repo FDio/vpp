@@ -304,9 +304,8 @@ class VLAList(Packer):
                     len(lst), kwargs[self.length_field]
                 )
             )
-
         # u8 array
-        if self.packer.size == 1:
+        if self.packer.size == 1 and self.field_type == 'u8':
             if isinstance(lst, list):
                 return b"".join(lst)
             return bytes(lst)
@@ -321,11 +320,12 @@ class VLAList(Packer):
         total = 0
 
         # u8 array
-        if self.packer.size == 1:
+        if self.packer.size == 1 and self.field_type == 'u8':
             if result[self.index] == 0:
                 return b"", 0
             p = BaseTypes("u8", result[self.index])
             return p.unpack(data, offset, ntc=ntc)
+
 
         r = []
         for e in range(result[self.index]):
@@ -618,7 +618,6 @@ class VPPType(Packer):
 
                 self.packers.append(p)
                 size += p.size
-
         self.size = size
         self.tuple = collections.namedtuple(name, self.fields, rename=True)
         types[name] = self
