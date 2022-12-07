@@ -305,12 +305,6 @@ class VLAList(Packer):
                 )
             )
 
-        # u8 array
-        if self.packer.size == 1:
-            if isinstance(lst, list):
-                return b"".join(lst)
-            return bytes(lst)
-
         b = bytearray()
         for e in lst:
             b += self.packer.pack(e)
@@ -319,13 +313,6 @@ class VLAList(Packer):
     def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
         total = 0
-
-        # u8 array
-        if self.packer.size == 1:
-            if result[self.index] == 0:
-                return b"", 0
-            p = BaseTypes("u8", result[self.index])
-            return p.unpack(data, offset, ntc=ntc)
 
         r = []
         for e in range(result[self.index]):
