@@ -641,15 +641,13 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
     }
 }
 
-#define app_send_dgram_raw(f, at, vpp_evt_q, data, len, evt_type, do_evt,     \
-			   noblock)                                           \
-  app_send_dgram_raw_gso (f, at, vpp_evt_q, data, len, 0, evt_type, do_evt,   \
-			  noblock)
+#define app_send_dgram_raw(f, at, vpp_evt_q, data, len, evt_type, do_evt, noblock) \
+          app_send_dgram_raw_gso(f, at, vpp_evt_q, data, len, 0, evt_type, do_evt, noblock)
 
 always_inline int
-app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
-			svm_msg_q_t *vpp_evt_q, u8 *data, u32 len,
-			u16 gso_size, u8 evt_type, u8 do_evt, u8 noblock)
+app_send_dgram_raw_gso (svm_fifo_t * f, app_session_transport_t * at,
+		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u16 gso_size,
+        u8 evt_type, u8 do_evt, u8 noblock)
 {
   session_dgram_hdr_t hdr;
   int rv;
@@ -747,7 +745,12 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
       && len >= ph.data_length)
     return 0;
 
+#if RASI_GSO_SIZE_NEXT_TO_DATA_OFFSET
+  svm_fifo_peek (f, sizeof (ph)+sizeof(u16)/*gso_size */, sizeof (*at), (u8 *) at);
+#else
   svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
+#endif
+
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
