@@ -452,6 +452,25 @@ typedef struct session_dgram_pre_hdr_
   u32 data_offset;
 } session_dgram_pre_hdr_t;
 
+#define RASI_GSO_SIZE_NEXT_TO_DATA_OFFSET (1)
+
+#if RASI_GSO_SIZE_NEXT_TO_DATA_OFFSET
+
+typedef struct session_dgram_header_
+{
+  u32 data_length;
+  u32 data_offset;
+  u16 gso_size; /* be aware of 'app_recv_dgram_raw' don't know there are added
+		   field between 'ph' and 'at' @see line 749 svm_fifo_peek  */
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+  u8 is_ip4;
+} __clib_packed session_dgram_hdr_t;
+
+#else
+
 typedef struct session_dgram_header_
 {
   u32 data_length;
@@ -463,6 +482,8 @@ typedef struct session_dgram_header_
   u8 is_ip4;
   u16 gso_size;
 } __clib_packed session_dgram_hdr_t;
+
+#endif
 
 #define SESSION_CONN_ID_LEN 37
 #define SESSION_CONN_HDR_LEN 47

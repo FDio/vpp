@@ -747,7 +747,13 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
       && len >= ph.data_length)
     return 0;
 
+#if RASI_GSO_SIZE_NEXT_TO_DATA_OFFSET
+  svm_fifo_peek (f, sizeof (ph) + sizeof (u16) /*gso_size */, sizeof (*at),
+		 (u8 *) at);
+#else
   svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
+#endif
+
   len = clib_min (len, ph.data_length - ph.data_offset);
   rv = svm_fifo_peek (f, ph.data_offset + SESSION_CONN_HDR_LEN, len, buf);
   if (peek)
