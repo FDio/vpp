@@ -21,16 +21,17 @@ picotls_build_dir := $(B)/build-picotls
 
 define  quicly_build_cmds
 	@cd $(quicly_build_dir) && \
+		rm -f $(quicly_build_log) && \
 		$(CMAKE) -DWITH_DTRACE=OFF \
 		         -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
-		$(quicly_src_dir) > $(quicly_build_log)
-	@$(MAKE) quicly $(MAKE_ARGS) -C $(quicly_build_dir) > $(quicly_build_log)
+		$(quicly_src_dir) >> $(quicly_build_log)
+	@$(MAKE) quicly $(MAKE_ARGS) -C $(quicly_build_dir) >> $(quicly_build_log)
 
 	@mkdir -p $(picotls_build_dir)
 	@cd $(picotls_build_dir) && \
 		$(CMAKE) -DWITH_DTRACE=OFF -DCMAKE_INSTALL_PREFIX:PATH=$(quicly_install_dir) \
-		$(quicly_src_dir)/deps/picotls > $(quicly_build_log)
-	@$(MAKE) picotls-core picotls-openssl $(MAKE_ARGS) -C $(picotls_build_dir) > $(quicly_build_log)
+		$(quicly_src_dir)/deps/picotls >> $(quicly_build_log)
+	@$(MAKE) picotls-core picotls-openssl $(MAKE_ARGS) -C $(picotls_build_dir) >> $(quicly_build_log)
 endef
 
 define  quicly_config_cmds
@@ -38,8 +39,9 @@ define  quicly_config_cmds
 endef
 
 define  quicly_install_cmds
-	@$(MAKE) $(MAKE_ARGS) -C $(quicly_build_dir) install > $(quicly_install_log)
-	@$(MAKE) $(MAKE_ARGS) -C $(picotls_build_dir) install > $(quicly_install_log)
+	@rm -f $(quicly_install_log)
+	@$(MAKE) $(MAKE_ARGS) -C $(quicly_build_dir) install >> $(quicly_install_log)
+	@$(MAKE) $(MAKE_ARGS) -C $(picotls_build_dir) install >> $(quicly_install_log)
 endef
 
 
