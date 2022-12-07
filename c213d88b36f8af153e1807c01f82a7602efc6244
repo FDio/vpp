@@ -33,6 +33,57 @@
       "message": "recheck",
       "revId": "c213d88b36f8af153e1807c01f82a7602efc6244",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9dd3f415_650f7658",
+        "filename": "src/plugins/wireguard/wireguard_if.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-12-07T14:32:22Z",
+      "side": 1,
+      "message": "inflight_handshake_counting_end is not initialized. This is not the problem as float number are initialized a 0 - however, this means branch may always hit.",
+      "revId": "c213d88b36f8af153e1807c01f82a7602efc6244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b053793f_0e9a1f63",
+        "filename": "src/plugins/wireguard/wireguard_if.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-12-07T14:32:22Z",
+      "side": 1,
+      "message": "40 looks like magic number to me, any reason behind it?",
+      "revId": "c213d88b36f8af153e1807c01f82a7602efc6244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "929d38c3_98d2d0df",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-12-07T14:32:22Z",
+      "side": 1,
+      "message": "This branch and the following branch can be combined.",
+      "revId": "c213d88b36f8af153e1807c01f82a7602efc6244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
