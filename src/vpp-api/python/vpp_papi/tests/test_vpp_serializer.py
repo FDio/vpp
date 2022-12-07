@@ -426,6 +426,32 @@ class TestAddType(unittest.TestCase):
         nt, size = s.unpack(b)
         self.assertEqual(len(b), size)
 
+        # Try same with VLA u8
+        byte_array = [b"\0"] * (10)
+        vla_u8 = VPPType("vla_u8", [["u8", "length"], ["u8", "data", 0, "length"]])
+        b = vla_u8.pack({"length": len(byte_array), "data": byte_array})
+        nt, size = vla_u8.unpack(b)
+
+        # VLA Array of fixed length strings
+        fixed_string = VPPType("fixed_string", [["string", "data", 32]])
+        s = VPPType(
+            "string_vla", [["u32", "length"], ["fixed_string", "services", 0, "length"]]
+        )
+
+        string_list = [{"data": "foobar1"}, {"data": "foobar2"}]
+        b = s.pack({"length": 2, "services": string_list})
+        nt, size = s.unpack(b)
+
+        # Try same with u8
+        fixed_u8 = VPPType("fixed_u8", [["u8", "data", 32]])
+        s = VPPType(
+            "u8_vla", [["u32", "length"], ["fixed_string", "services", 0, "length"]]
+        )
+
+        u8_list = [{"data": "foobar1"}, {"data": "foobar2"}]
+        b = s.pack({"length": 2, "services": u8_list})
+        nt, size = s.unpack(b)
+
     def test_message(self):
         foo = VPPMessage(
             "foo",
