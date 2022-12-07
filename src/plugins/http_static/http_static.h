@@ -145,7 +145,7 @@ typedef struct
   /** The bind URI, defaults to tcp://0.0.0.0/80 */
   u8 *uri;
   /** Threshold for switching to ptr data in http msgs */
-  u32 use_ptr_thresh;
+  u64 use_ptr_thresh;
   /** Enable the use of builtinurls */
   u8 enable_url_handlers;
   /** Max cache size before LRU occurs */

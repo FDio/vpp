@@ -384,6 +384,8 @@ hss_ts_rx_callback (session_t *ts)
       vec_validate (request, msg.data.len - 1);
       rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, request);
       ASSERT (rv == msg.data.len);
+      /* request must be a proper C-string in addition to a vector */
+      vec_add1 (request, 0);
     }
 
   /* Find and send data */
