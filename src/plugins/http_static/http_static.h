@@ -50,6 +50,8 @@ typedef struct
   int free_data;
   /** File cache pool index */
   u32 cache_pool_index;
+  /** Content type, e.g. text, text/javascript, etc. */
+  http_content_type_t content_type;
 } hss_session_t;
 
 typedef struct hss_session_handle_
@@ -150,6 +152,9 @@ typedef struct
   u8 enable_url_handlers;
   /** Max cache size before LRU occurs */
   u64 cache_size;
+
+  /** hash table of file extensions to mime types string indices */
+  uword *mime_type_indices_by_file_extensions;
 } hss_main_t;
 
 extern hss_main_t hss_main;

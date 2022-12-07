@@ -80,15 +80,89 @@ typedef enum http_msg_type_
 } http_msg_type_t;
 
 #define foreach_http_content_type                                             \
-  _ (TEXT_HTML, "text/html")                                                  \
-  _ (TEXT_CSS, "text/css")                                                    \
-  _ (TEXT_JS, "text/javascript")                                              \
-  _ (APP_JSON, "application/json")                                            \
-  _ (APP_OCTET_STREAM, "application/octet-stream")
+  _ (APP_7Z, .7z, application / x - 7z - compressed)                          \
+  _ (APP_DOC, .doc, application / msword)                                     \
+  _ (APP_DOCX, .docx,                                                         \
+     application / vnd.openxmlformats -                                       \
+       officedocument.wordprocessingml.document)                              \
+  _ (APP_EPUB, .epub, application / epub + zip)                               \
+  _ (APP_FONT, .eot, application / vnd.ms - fontobject)                       \
+  _ (APP_JAR, .jar, application / java - archive)                             \
+  _ (APP_JSON, .json, application / json)                                     \
+  _ (APP_JSON_LD, .jsonld, application / ld + json)                           \
+  _ (APP_MPKG, .mpkg, application / vnd.apple.installer + xml)                \
+  _ (APP_ODP, .odp, application / vnd.oasis.opendocument.presentation)        \
+  _ (APP_ODS, .ods, application / vnd.oasis.opendocument.spreadsheet)         \
+  _ (APP_ODT, .odt, application / vnd.oasis.opendocument.text)                \
+  _ (APP_OGX, .ogx, application / ogg)                                        \
+  _ (APP_PDF, .pdf, application / pdf)                                        \
+  _ (APP_PHP, .php, application / x - httpd - php)                            \
+  _ (APP_PPT, .ppt, application / vnd.ms - powerpoint)                        \
+  _ (APP_PPTX, .pptx, application / vnd.ms - powerpoint)                      \
+  _ (APP_RAR, .rar, application / vnd.rar)                                    \
+  _ (APP_RTF, .rtf, application / rtf)                                        \
+  _ (APP_SH, .sh, application / x - sh)                                       \
+  _ (APP_TAR, .tar, application / x - tar)                                    \
+  _ (APP_VSD, .vsd, application / vnd.visio)                                  \
+  _ (APP_XHTML, .xhtml, application / xhtml + xml)                            \
+  _ (APP_XLS, .xls, application / vnd.ms - excel)                             \
+  _ (APP_XML, .xml, application / xml)                                        \
+  _ (APP_XSLX, .xlsx,                                                         \
+     application / vnd.openxmlformats - officedocument.spreadsheetml.sheet)   \
+  _ (APP_XUL, .xul, application / vnd.mozilla.xul + xml)                      \
+  _ (APP_ZIP, .zip, application / zip)                                        \
+  _ (AUDIO_AAC, .aac, audio / aac)                                            \
+  _ (AUDIO_CD, .cda, application / x - cdf)                                   \
+  _ (AUDIO_WAV, .wav, audio / wav)                                            \
+  _ (AUDIO_WEBA, .weba, audio / webm)                                         \
+  _ (AUDO_MIDI, .midi, audio / midi)                                          \
+  _ (AUDO_MID, .mid, audo / midi)                                             \
+  _ (AUDO_MP3, .mp3, audio / mpeg)                                            \
+  _ (AUDO_OGA, .oga, audio / ogg)                                             \
+  _ (AUDO_OPUS, .opus, audio / opus)                                          \
+  _ (APP_OCTET_STREAM, .bin, application / octet - stream)                    \
+  _ (BZIP2, .bz2, application / x - bzip2)                                    \
+  _ (BZIP, .bz, application / x - bzip)                                       \
+  _ (FONT_OTF, .otf, font / otf)                                              \
+  _ (FONT_TTF, .ttf, font / ttf)                                              \
+  _ (FONT_WOFF2, .woff2, font / woff2)                                        \
+  _ (FONT_WOFF, .woff, font / woff)                                           \
+  _ (GZIP, .gz, application / gzip)                                           \
+  _ (IMAGE_AVIF, .avif, image / avif)                                         \
+  _ (IMAGE_BMP, .bmp, image / bmp)                                            \
+  _ (IMAGE_GIF, .gif, image / gif)                                            \
+  _ (IMAGE_ICON, .ico, image / vnd.microsoft.icon)                            \
+  _ (IMAGE_JPEG, .jpeg, image / jpeg)                                         \
+  _ (IMAGE_JPG, .jpg, image / jpeg)                                           \
+  _ (IMAGE_PNG, .png, image / png)                                            \
+  _ (IMAGE_SVG, .svg, image / svg + xml)                                      \
+  _ (IMAGE_TIFF, .tiff, image / tiff)                                         \
+  _ (IMAGE_TIF, .tif, image / tiff)                                           \
+  _ (IMAGE_WEBP, .webp, image / webp)                                         \
+  _ (SCRIPT_CSH, .csh, application / x - csh)                                 \
+  _ (TEXT_ABIWORD, .abw, application / x - abiword)                           \
+  _ (TEXT_ARCHIVE, .arc, application / x - freearc)                           \
+  _ (TEXT_AZW, .azw, application / vnd.amazon.ebook)                          \
+  _ (TEXT_CALENDAR, .ics, text / calendar)                                    \
+  _ (TEXT_CSS, .css, text / css)                                              \
+  _ (TEXT_CSV, .csv, text / csv)                                              \
+  _ (TEXT_HTM, .htm, text / html)                                             \
+  _ (TEXT_HTML, .html, text / html)                                           \
+  _ (TEXT_JS, .js, text / javascript)                                         \
+  _ (TEXT_MJS, .mjs, text / javascript)                                       \
+  _ (TEXT_PLAIN, .txt, text / plain)                                          \
+  _ (VIDEO_3GP2, .3g2, video / 3gpp2)                                         \
+  _ (VIDEO_3GP, .3gp, video / 3gpp)                                           \
+  _ (VIDEO_AVI, .avi, video / x - msvideo)                                    \
+  _ (VIDEO_MP4, .mp4, video / mp4)                                            \
+  _ (VIDEO_MPEG, .mpeg, video / mpeg)                                         \
+  _ (VIDEO_OGG, .ogv, video / ogg)                                            \
+  _ (VIDEO_TS, .ts, video / mp2t)                                             \
+  _ (VIDEO_WEBM, .webm, video / webm)
 
 typedef enum http_content_type_
 {
-#define _(s, str) HTTP_CONTENT_##s,
+#define _(s, ext, str) HTTP_CONTENT_##s,
   foreach_http_content_type
 #undef _
 } http_content_type_t;
