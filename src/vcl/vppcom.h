@@ -63,7 +63,9 @@ extern "C"
     VPPCOM_IS_IP4,
   } vppcom_is_ip4_t;
 
-#define VCL_UDP_SEGMENT 103 /* Set GSO segmentation size.  */
+#define VCL_TRANSPORT_OPS_BASE (1 << 16)
+#define VCL_UDP_SEGMENT                                                       \
+  (VCL_TRANSPORT_OPS_BASE + 0) /* Set GSO segmentation size.  */
 
   typedef struct vppcom_endpt_tlv_t_
   {
@@ -160,8 +162,6 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
-  VPPCOM_ATTR_GET_UDP_USER_MSS,
-  VPPCOM_ATTR_SET_UDP_USER_MSS,
   VPPCOM_ATTR_SET_CONNECTED,
   VPPCOM_ATTR_SET_CKPAIR,
   VPPCOM_ATTR_SET_VRF,
