@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "060d560e_a10f8e6f",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-07T20:21:17Z",
+      "side": 1,
+      "message": "Any particular reason why you didn\u0027t want to keep these as strings? They at least format nicer in IDEs and gerrit (see left side in this diff)?",
+      "range": {
+        "startLine": 83,
+        "startChar": 17,
+        "endLine": 83,
+        "endChar": 51
+      },
+      "revId": "1ed9e4f3a9172d002696ab5e9746ec39c0bca7e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
