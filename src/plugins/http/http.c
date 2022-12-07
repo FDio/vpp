@@ -37,7 +37,7 @@ const char *http_status_code_str[] = {
 };
 
 const char *http_content_type_str[] = {
-#define _(s, str) str,
+#define _(s, ext, str) str,
   foreach_http_content_type
 #undef _
 };

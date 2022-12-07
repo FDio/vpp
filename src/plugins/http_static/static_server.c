@@ -89,7 +89,7 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.content_type = HTTP_CONTENT_TEXT_HTML;
+  msg.content_type = hs->content_type;
   msg.data.len = hs->data_len;
 
   if (hs->data_len > hss_main.use_ptr_thresh)
@@ -145,6 +145,33 @@ hss_session_send_data (hss_url_handler_args_t *args)
   start_send_data (hs, args->sc);
 }
 
+static http_content_type_t
+content_type_from_request (u8 *request)
+{
+  u8 *ext;
+  uword *p;
+  /* default to text/html */
+  http_content_type_t rv = HTTP_CONTENT_TEXT_HTML;
+
+  ASSERT (vec_len (request) > 0);
+
+  ext = request + vec_len (request) - 1;
+
+  while (ext > request && ext[0] != '.')
+    ext--;
+
+  if (ext == request)
+    return rv;
+
+  p = hash_get_mem (hss_main.mime_type_indices_by_file_extensions, ext);
+
+  if (p == 0)
+    return rv;
+
+  rv = p[0];
+  return rv;
+}
+
 static int
 try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 		 u8 *request)
@@ -152,10 +179,13 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_status_code_t sc = HTTP_STATUS_OK;
   hss_url_handler_args_t args = {};
   uword *p, *url_table;
+  http_content_type_t type;
   int rv;
 
   if (!hsm->enable_url_handlers || !request)
     return -1;
+
+  type = content_type_from_request (request);
 
   /* Look for built-in GET / POST handlers */
   url_table =
@@ -193,6 +223,7 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   hs->data = args.data;
   hs->data_len = args.data_len;
   hs->free_data = args.free_vec_data;
+  hs->content_type = type;
 
   start_send_data (hs, sc);
 
@@ -284,10 +315,13 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_status_code_t sc = HTTP_STATUS_OK;
   u8 *path;
   u32 ce_index;
+  http_content_type_t type;
 
   /* Feature not enabled */
   if (!hsm->www_root)
     return -1;
+
+  type = content_type_from_request (request);
 
   /*
    * Construct the file to open
@@ -331,6 +365,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
 done:
 
+  hs->content_type = type;
   start_send_data (hs, sc);
   if (!hs->data)
     hss_session_disconnect_transport (hs);
@@ -907,6 +942,16 @@ hss_main_init (vlib_main_t *vm)
 
   hsm->app_index = ~0;
   hsm->vlib_main = vm;
+
+  /* Set up file extension to mime type index map */
+  hsm->mime_type_indices_by_file_extensions =
+    hash_create_string (0, sizeof (uword));
+
+#define _(def, ext, str)                                                      \
+  hash_set_mem (hsm->mime_type_indices_by_file_extensions, ext,               \
+		HTTP_CONTENT_##def);
+  foreach_http_content_type;
+#undef _
 
   return 0;
 }
