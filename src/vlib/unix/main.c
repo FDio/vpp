@@ -273,98 +273,25 @@ startup_config_process (vlib_main_t * vm,
 			vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   unix_main_t *um = &unix_main;
-  u8 *buf = 0;
-  uword l, n = 1;
+  unformat_input_t in;
 
   vlib_process_suspend (vm, 2.0);
 
   while (um->unix_config_complete == 0)
     vlib_process_suspend (vm, 0.1);
 
-  if (um->startup_config_filename)
+  if (!um->startup_config_filename)
     {
-      unformat_input_t sub_input;
-      int fd;
-      struct stat s;
-      char *fn = (char *) um->startup_config_filename;
-
-      fd = open (fn, O_RDONLY);
-      if (fd < 0)
-	{
-	  clib_warning ("failed to open `%s'", fn);
-	  return 0;
-	}
-
-      if (fstat (fd, &s) < 0)
-	{
-	  clib_warning ("failed to stat `%s'", fn);
-	bail:
-	  close (fd);
-	  return 0;
-	}
-
-      if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
-	{
-	  clib_warning ("not a regular file: `%s'", fn);
-	  goto bail;
-	}
-
-      while (n > 0)
-	{
-	  l = vec_len (buf);
-	  vec_resize (buf, 4096);
-	  n = read (fd, buf + l, 4096);
-	  if (n > 0)
-	    {
-	      vec_set_len (buf, l + n);
-	      if (n < 4096)
-		break;
-	    }
-	  else
-	    break;
-	}
-      if (um->log_fd && vec_len (buf))
-	{
-	  u8 *lv = 0;
-	  lv = format (lv, "%U: ***** Startup Config *****\n%v",
-		       format_timeval, NULL /* current bat-format */,
-		       0 /* current bat-time */, buf);
-	  {
-	    int rv __attribute__ ((unused)) =
-	      write (um->log_fd, lv, vec_len (lv));
-	  }
-	  vec_reset_length (lv);
-	  lv =
-	    format (lv, "%U: ***** End Startup Config *****\n", format_timeval,
-		    NULL /* current bat-format */, 0 /* current bat-time */);
-	  {
-	    int rv __attribute__ ((unused)) =
-	      write (um->log_fd, lv, vec_len (lv));
-	  }
-	  vec_free (lv);
-	}
-
-      if (vec_len (buf))
-	{
-	  unformat_input_t in;
-	  unformat_init_vector (&sub_input, buf);
-
-	  while (unformat_user (&sub_input, unformat_vlib_cli_line, &in))
-	    {
-	      if (vlib_cli_input (vm, &in, 0, 0) != 0)
-		{
-		  /* cli failed - stop */
-		  unformat_free (&in);
-		  break;
-		}
-	      unformat_free (&in);
-	    }
-
-	  /* frees buf for us */
-	  unformat_free (&sub_input);
-	}
-      close (fd);
+      return 0;
     }
+
+  unformat_init_vector (&in,
+			format (0, "exec %s", um->startup_config_filename));
+
+  vlib_cli_input (vm, &in, 0, 0);
+
+  unformat_free (&in);
+
   return 0;
 }
 
