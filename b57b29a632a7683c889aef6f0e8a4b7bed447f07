@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "75b2b648_c68aa5d4",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2022-12-08T14:47:17Z",
+      "side": 1,
+      "message": "this value should be small 100.0 or big 1000.0 ?",
+      "range": {
+        "startLine": 646,
+        "startChar": 36,
+        "endLine": 646,
+        "endChar": 42
+      },
+      "revId": "b57b29a632a7683c889aef6f0e8a4b7bed447f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
