@@ -12,7 +12,7 @@ COPY vpp-data/lib/vpp_plugins/ /usr/lib/x86_64-linux-gnu/vpp_plugins/
 COPY vpp-data/bin/* /usr/bin/
 COPY vpp-data/lib/* /usr/lib/
 
-COPY hs-test /hs-test
+COPY hs-test /usr/local/bin/hs-test
 
 RUN addgroup vpp
 

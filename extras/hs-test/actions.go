@@ -19,6 +19,10 @@ import (
 	"github.com/edwarnicke/vpphelper"
 )
 
+var (
+	workDir, _ = os.Getwd()
+)
+
 type ConfFn func(context.Context, api.Connection) error
 
 type Actions struct {
@@ -244,7 +248,7 @@ func (a *Actions) Configure2Veths(args []string) *ActionResult {
 
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
 		vpphelper.WithVppConfig(vppConfig.getTemplate()+startup.ToString()),
-		vpphelper.WithRootDir(fmt.Sprintf("/tmp/%s", args[1])))
+		vpphelper.WithRootDir(workDir))
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	var fn func(context.Context, api.Connection) error

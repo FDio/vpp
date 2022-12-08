@@ -30,38 +30,38 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	srvInstance := "vpp-vcl-test-srv"
 	serverVppContainer, err := s.NewContainer(srvInstance)
 	s.assertNil(err)
-	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
+	serverVppContainer.setVolume(serverVolume)
 	s.assertNil(serverVppContainer.run())
 
 	clnInstance := "vpp-vcl-test-cln"
 	clientVppContainer, err := s.NewContainer(clnInstance)
 	s.assertNil(err)
-	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
+	clientVppContainer.setVolume(clientVolume)
 	s.assertNil(clientVppContainer.run())
 
 	echoSrv := "echo-srv"
 	serverEchoContainer, err := s.NewContainer(echoSrv)
 	s.assertNil(err)
-	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
+	serverEchoContainer.setVolume(serverVolume)
 	s.assertNil(serverEchoContainer.run())
 
 	echoCln := "echo-cln"
 	clientEchoContainer, err := s.NewContainer(echoCln)
 	s.assertNil(err)
-	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
+	clientEchoContainer.setVolume(clientVolume)
 	s.assertNil(clientEchoContainer.run())
 
-	_, err = hstExec("Configure2Veths srv", srvInstance)
+	_, err = serverVppContainer.hstExec("Configure2Veths srv")
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	_, err = clientVppContainer.hstExec("Configure2Veths cln")
 	s.assertNil(err)
 
 	// run server app
-	_, err = hstExec("RunEchoServer "+proto, echoSrv)
+	_, err = serverEchoContainer.hstExec("RunEchoServer "+proto)
 	s.assertNil(err)
 
-	o, err := hstExec("RunEchoClient "+proto, echoCln)
+	o, err := clientEchoContainer.hstExec("RunEchoClient "+proto)
 	s.assertNil(err)
 
 	fmt.Println(o)
@@ -82,39 +82,39 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	srvInstance := "vpp-vcl-test-srv"
 	serverVppContainer, err := s.NewContainer(srvInstance)
 	s.assertNil(err)
-	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
+	serverVppContainer.setVolume(serverVolume)
 	s.assertNil(serverVppContainer.run())
 
 	clnInstance := "vpp-vcl-test-cln"
 	clientVppContainer, err := s.NewContainer(clnInstance)
 	s.assertNil(err)
-	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
+	clientVppContainer.setVolume(clientVolume)
 	s.assertNil(clientVppContainer.run())
 
 	echoSrv := "echo-srv"
 	serverEchoContainer, err := s.NewContainer(echoSrv)
 	s.assertNil(err)
-	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
+	serverEchoContainer.setVolume(serverVolume)
 	s.assertNil(serverEchoContainer.run())
 
 	echoCln := "echo-cln"
 	clientEchoContainer, err := s.NewContainer(echoCln)
 	s.assertNil(err)
-	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
+	clientEchoContainer.setVolume(clientVolume)
 	s.assertNil(clientEchoContainer.run())
 
-	_, err = hstExec("Configure2Veths srv-with-preset-hw-addr", srvInstance)
+	_, err = serverVppContainer.hstExec("Configure2Veths srv-with-preset-hw-addr")
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	_, err = clientVppContainer.hstExec("Configure2Veths cln")
 	s.assertNil(err)
 
-	_, err = hstExec("RunVclEchoServer "+proto, echoSrv)
+	_, err = serverEchoContainer.hstExec("RunVclEchoServer "+proto)
 	s.assertNil(err)
 
 	fmt.Println("This whole test case can take around 3 minutes to run. Please be patient.")
 	fmt.Println("... Running first echo client test, before disconnect.")
-	_, err = hstExec("RunVclEchoClient "+proto, echoCln)
+	_, err = clientEchoContainer.hstExec("RunVclEchoClient "+proto)
 	s.assertNil(err)
 	fmt.Println("... First test ended. Stopping VPP server now.")
 
@@ -126,14 +126,14 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	stopVppCommand = "/bin/bash -c 'ps -C hs-test -o pid= | xargs kill -9'"
 	_, err = dockerExec(stopVppCommand, srvInstance)
 	s.assertNil(err)
-	_, err = hstExec("Configure2Veths srv-with-preset-hw-addr", srvInstance)
+	_, err = serverVppContainer.hstExec("Configure2Veths srv-with-preset-hw-addr")
 	s.assertNil(err)
 
 	fmt.Println("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
 	fmt.Println("... Running second echo client test, after disconnect and re-attachment.")
-	_, err = hstExec("RunVclEchoClient "+proto, echoCln)
+	_, err = clientEchoContainer.hstExec("RunVclEchoClient "+proto)
 	s.assertNil(err)
 	fmt.Println("Done.")
 }
