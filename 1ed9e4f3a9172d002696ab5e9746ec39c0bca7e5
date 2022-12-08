@@ -22,6 +22,30 @@
       },
       "revId": "1ed9e4f3a9172d002696ab5e9746ec39c0bca7e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb01965b_56b4663e",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2022-12-08T12:55:55Z",
+      "side": 1,
+      "message": "I created the three column list using a mixture of cut and paste and an emacs keyboard macro.\n\nOne semi-smart-ass answer: “which would you rather type? One # character, or 160 double quotes?\n\nAt this point, I can easily switch to your favorite plan. Will do, along with publishing the patch…",
+      "parentUuid": "060d560e_a10f8e6f",
+      "range": {
+        "startLine": 83,
+        "startChar": 17,
+        "endLine": 83,
+        "endChar": 51
+      },
+      "revId": "1ed9e4f3a9172d002696ab5e9746ec39c0bca7e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
