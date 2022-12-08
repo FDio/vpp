@@ -52,7 +52,7 @@ update_node_counters (vlib_stats_segment_t *sm)
   vec_validate (node_data, n_nodes - 1);
 
   for (i = 0; i < n_nodes; i++)
-    if (vec_is_equal (node_data[i].name, node_dups[0][i]) == 0)
+    if (vec_is_equal (node_data[i].name, node_dups[0][i]->name) == 0)
       bmp = clib_bitmap_set (bmp, i, 1);
 
   if (bmp)
