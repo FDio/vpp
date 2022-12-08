@@ -321,6 +321,17 @@ svm_msg_q_is_full (svm_msg_q_t * mq)
   return (svm_msg_q_size (mq) == mq->q.shr->maxsize);
 }
 
+/**
+ * Check length of message queue ring
+*/
+static inline u32
+svm_msg_q_ring_size (svm_msg_q_t *mq, u32 ring_index)
+{
+  svm_msg_q_ring_t *ring = vec_elt_at_index (mq->rings, ring_index);
+
+  return clib_atomic_load_relax_n (&ring->shr->cursize);
+}
+
 static inline u8
 svm_msg_q_ring_is_full (svm_msg_q_t * mq, u32 ring_index)
 {
@@ -332,6 +343,13 @@ static inline u8
 svm_msg_q_or_ring_is_full (svm_msg_q_t *mq, u32 ring_index)
 {
   return (svm_msg_q_is_full (mq) || svm_msg_q_ring_is_full (mq, ring_index));
+}
+
+static inline u8
+svm_msg_q_and_ring_have_space (svm_msg_q_t *mq, u32 ring_index, u32 n_elts)
+{
+  return (svm_msg_q_size (mq) > n_elts
+          && svm_msg_q_ring_size (mq, ring_index) > n_elts);
 }
 
 /**

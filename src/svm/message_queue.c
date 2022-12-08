@@ -260,6 +260,70 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
   return 0;
 }
 
+int
+svm_msg_q_reserve_msg_batch (svm_msg_q_t * mq, u32 ring_index, void ** msg_data, u32 n_msgs)
+{
+  svm_msg_q_shared_queue_t *sq = mq->q.shr;
+  svm_msg_q_ring_shared_t *sr;
+  svm_msg_q_ring_t *ring;
+  svm_msg_q_msg_t *msg;
+  u32 i, tail, rtail;
+  i8 *tailp, *rtailp;
+
+  ring = svm_msg_q_ring_inline (mq, ring_index);
+  sr = ring->shr;
+
+  ASSERT (ring->nitems - sr->cursize >= n_msgs);
+
+  tail = sq->tail;
+  tailp = (i8 *)(&sq->data[0] + sq->elsize * tail);
+
+  rtail = sr->tail;
+  rtailp = (i8 *)(&sr->data[0] + sr->elsize * rtail);
+
+  for (i = 0; i < n_msgs; i++)
+    {
+      msg = (svm_msg_q_msg_t *)tailp;
+      msg[i].ring_index = ring_index;
+      msg[i].elt_index = tail;
+      tail = (tail + 1) % sq->maxsize;
+      tailp = (i8 *)(&sq->data[0] + sq->elsize * tail);
+ 
+      msg_data[i] = (void *) rtailp;
+      rtail = (rtail + 1) % ring->nitems;
+      rtailp = (i8 *)(&sr->data[0] + sr->elsize * rtail);
+    }
+
+  clib_atomic_fetch_add_rel (&sr->cursize, n_msgs);
+  
+  return 0;
+}
+
+int
+svm_msg_q_lock_and_reserve_msg_batch (svm_msg_q_t *mq, u32 ring_index,
+                                           u8 noblock, void **msgs, u32 n_msgs)
+{
+  if (noblock)
+    {
+      if (svm_msg_q_try_lock (mq))
+	return -1;
+      if (PREDICT_FALSE (!svm_msg_q_and_ring_have_space (mq, ring_index, n_msgs)))
+	{
+	  svm_msg_q_unlock (mq);
+	  return -2;
+	}
+    	svm_msg_q_reserve_msg_batch (mq, ring_index, msgs, n_msgs);
+    }
+  else
+    {
+      svm_msg_q_lock (mq);
+      while (svm_msg_q_and_ring_have_space (mq, ring_index, n_msgs))
+	svm_msg_q_or_ring_wait_prod (mq, ring_index);
+      svm_msg_q_reserve_msg_batch (mq, ring_index, msgs, n_msgs);
+    }
+  return 0;
+}
+
 svm_msg_q_msg_t
 svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
 {
@@ -357,6 +421,36 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
     svm_msg_q_send_signal (mq, 0 /* is consumer */);
 }
 
+// static void
+// svm_msg_q_add_raw_batch (svm_msg_q_t * mq, svm_msg_q_msg_t *msgs, u32 n_msgs)
+// {
+//   svm_msg_q_shared_queue_t *sq = mq->q.shr;
+//   u32 sz, to_enq;
+//   i8 *tailp;
+
+//   sz = svm_msg_q_size (mq);
+//   to_enq = clib_min (sz, n_msgs);
+//   tailp = (i8 *)(&sq->data[0] + sq->elsize * sq->tail);
+
+//   if (sq->tail + to_enq < sq->maxsize)
+//     {
+//       clib_memcpy_fast (tailp, msgs, sq->elsize * to_enq);
+//       sq->tail += to_enq;
+//     }
+//   else
+//     {
+//       u32 first_batch = sq->maxsize - sq->tail;
+//       clib_memcpy_fast (tailp, msgs, sq->elsize * first_batch);
+//       clib_memcpy_fast (sq->data, msgs + first_batch,
+//                         sq->elsize * (to_enq - first_batch));
+//       sq->tail = (sq->tail + to_enq) % sq->maxsize;
+//     }
+
+//   sz = clib_atomic_fetch_add_rel (&sq->cursize, to_enq);
+//   if (!sz)
+//     svm_msg_q_send_signal (mq, 0 /* is consumer */);
+// }
+
 int
 svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
 {
@@ -393,6 +487,19 @@ svm_msg_q_add_and_unlock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   ASSERT (svm_msq_q_msg_is_valid (mq, msg));
   svm_msg_q_add_raw (mq, (u8 *) msg);
+  svm_msg_q_unlock (mq);
+}
+
+void
+svm_msg_q_commit_and_unlock (svm_msg_q_t * mq, u32 n_msgs)
+{
+  svm_msg_q_shared_queue_t *sq = mq->q.shr;
+  u32 sz;
+
+  sz = clib_atomic_fetch_add_rel (&sq->cursize, n_msgs);
+  if (!sz)
+    svm_msg_q_send_signal (mq, 0 /* is consumer */);
+
   svm_msg_q_unlock (mq);
 }
 
