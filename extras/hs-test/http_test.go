@@ -29,28 +29,23 @@ func (s *NsSuite) TestHttpTps() {
 func (s *VethsSuite) TestHttpCli() {
 	t := s.T()
 
-	srvInstance := "http-cli-srv"
-	clnInstance := "http-cli-cln"
-	s.assertNil(dockerRun(srvInstance, ""), "failed to start docker (srv)")
-	defer func() { exechelper.Run("docker stop " + srvInstance) }()
+	srvInstance := s.GetContainers()[0]
+	clnInstance := s.GetContainers()[1]
 
-	s.assertNil(dockerRun(clnInstance, ""), "failed to start docker (cln)")
-	defer func() { exechelper.Run("docker stop " + clnInstance) }()
-
-	_, err := hstExec("Configure2Veths srv", srvInstance)
+	_, err := hstExec("Configure2Veths srv", srvInstance.name)
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	_, err = hstExec("Configure2Veths cln", clnInstance.name)
 	s.assertNil(err)
 
 	t.Log("configured IPs...")
 
-	_, err = hstExec("RunHttpCliSrv", srvInstance)
+	_, err = hstExec("RunHttpCliSrv", srvInstance.name)
 	s.assertNil(err)
 
 	t.Log("configured http server")
 
-	o, err := hstExec("RunHttpCliCln /show/version", clnInstance)
+	o, err := hstExec("RunHttpCliCln /show/version", clnInstance.name)
 	s.assertNil(err)
 
 	s.assertContains(o, "<html>", "<html> not found in the result!")

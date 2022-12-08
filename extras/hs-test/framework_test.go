@@ -19,6 +19,9 @@ type HstSuite struct {
 
 func (s *HstSuite) TearDownSuite() {
 	s.teardownSuite()
+}
+
+func (s *HstSuite) TearDownTest() {
 	s.StopContainers()
 	s.RemoveVolumes()
 }
@@ -76,10 +79,16 @@ func (s *HstSuite) NewContainer(name string) (*Container, error) {
 	return container, nil
 }
 
+func (s *HstSuite) GetContainers() []*Container {
+	return s.containers
+}
+
 func (s *HstSuite) StopContainers() {
 	for _, container := range s.containers {
 		container.stop()
+		container = nil
 	}
+	s.containers = nil
 }
 
 func (s *HstSuite) NewVolume(name string) error {
@@ -114,6 +123,38 @@ type VethsSuite struct {
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.teardownSuite = setupSuite(&s.Suite, "2peerVeth")
+}
+
+func (s *VethsSuite) SetupTest() {
+	serverVolume := "echo-srv-vol"
+	s.NewVolume(serverVolume)
+
+	clientVolume := "echo-cln-vol"
+	s.NewVolume(clientVolume)
+
+	srvInstance := "vpp-vcl-test-srv"
+	serverVppContainer, err := s.NewContainer(srvInstance)
+	s.assertNil(err)
+	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
+	s.assertNil(serverVppContainer.run())
+
+	clnInstance := "vpp-vcl-test-cln"
+	clientVppContainer, err := s.NewContainer(clnInstance)
+	s.assertNil(err)
+	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
+	s.assertNil(clientVppContainer.run())
+
+	echoSrv := "echo-srv"
+	serverEchoContainer, err := s.NewContainer(echoSrv)
+	s.assertNil(err)
+	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
+	s.assertNil(serverEchoContainer.run())
+
+	echoCln := "echo-cln"
+	clientEchoContainer, err := s.NewContainer(echoCln)
+	s.assertNil(err)
+	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
+	s.assertNil(clientEchoContainer.run())
 }
 
 type NsSuite struct {
