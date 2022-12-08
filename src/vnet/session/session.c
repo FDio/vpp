@@ -533,6 +533,24 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
     }
 }
 
+void
+session_program_rx_event (session_t *s)
+{
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+  session_event_t *evt;
+
+  s->flags |= SESSION_F_RX_EVT;
+  vec_add2 (wrk->session_to_enqueue[s->app_wrk_index], evt);
+
+  evt->session_index = s->session_index;
+  evt->event_type = SESSION_IO_EVT_RX;
+  evt->postponed = 0;
+
+  wrk->n_pending_enq_events += 1;
+  if (wrk->n_pending_enq_events == 1)
+    vlib_node_set_interrupt_pending (wrk->vm, session_input_node.index);
+}
+
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
@@ -585,16 +603,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (queue_event)
     {
-      /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
-      session_worker_t *wrk;
-
-      wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[tc->proto], s->session_index);
-	}
+	session_program_rx_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -657,10 +667,7 @@ session_enqueue_dgram_connection (session_t * s,
 
       wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
-	}
+	session_program_app_wrk_rx_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -830,9 +837,8 @@ session_dequeue_notify (session_t * s)
  *         failures due to API queue being full.
  */
 int
-session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
+session_main_flush_enqueue_events (session_worker_t *wrk)
 {
-  session_worker_t *wrk = session_main_get_worker (thread_index);
   session_t *s;
   int i, errors = 0;
   u32 *indices;
@@ -870,6 +876,68 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
     errors += session_main_flush_enqueue_events (transport_proto, i);
   return errors;
 }
+
+static inline int
+session_wrk_flush_app_wrk_events (session_worker_t *wrk)
+{
+  app_worker_t *app_wrk;
+  u32 session_index;
+  u8 n_subscribers;
+
+  session_index = s->session_index;
+  n_subscribers = svm_fifo_n_subscribers (s->rx_fifo);
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (PREDICT_FALSE (!app_wrk))
+    {
+      SESSION_DBG ("invalid s->app_index = %d", s->app_wrk_index);
+      return 0;
+    }
+
+  SESSION_EVT (SESSION_EVT_ENQ, s, svm_fifo_max_dequeue_prod (s->rx_fifo));
+
+  s->flags &= ~SESSION_F_RX_EVT;
+
+  /* Application didn't confirm accept yet */
+  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING))
+    return 0;
+
+  if (PREDICT_FALSE (
+	app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX)))
+    return -1;
+
+  if (PREDICT_FALSE (n_subscribers))
+    {
+      s = session_get (session_index, vlib_get_thread_index ());
+      return session_notify_subscribers (app_wrk->app_index, s, s->rx_fifo,
+					 SESSION_IO_EVT_RX);
+    }
+
+  return 0;
+}
+
+static inline int
+session_wrk_flush_events (session_worker_t *wrk)
+{
+}
+
+VLIB_NODE_FN (session_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 thread_index = vm->thread_index;
+  session_worker_t *wrk;
+
+  wrk = session_main_get_worker (thread_index);
+  session_wrk_flush_events (wrk);
+
+  return 0;
+}
+
+VLIB_REGISTER_NODE (session_input_node) = {
+  .name = "session-input",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_DISABLED,
+};
 
 int
 session_stream_connect_notify (transport_connection_t * tc,
@@ -1803,11 +1871,12 @@ session_add_transport_proto (void)
 
   smm->last_transport_proto_type += 1;
 
-  for (thread = 0; thread < vec_len (smm->wrk); thread++)
-    {
-      wrk = session_main_get_worker (thread);
-      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
-    }
+  //   for (thread = 0; thread < vec_len (smm->wrk); thread++)
+  //     {
+  //       wrk = session_main_get_worker (thread);
+  //       vec_validate (wrk->session_to_enqueue,
+  //       smm->last_transport_proto_type);
+  //     }
 
   return smm->last_transport_proto_type;
 }
@@ -1934,7 +2003,8 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
-      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
+      //       vec_validate (wrk->session_to_enqueue,
+      //       smm->last_transport_proto_type);
 
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);
@@ -2107,6 +2177,7 @@ session_node_enable_disable (u8 is_en)
 	    continue;
 	}
       vlib_node_set_state (vm, session_queue_node.index, state);
+      vlib_node_set_state (vm, session_input_node.index, mstate);
     }
 
   if (sm->use_private_rx_mqs)

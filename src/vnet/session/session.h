@@ -113,7 +113,9 @@ typedef struct session_worker_
   vlib_main_t *vm;
 
   /** Per-proto vector of sessions to enqueue */
-  u32 **session_to_enqueue;
+  session_event_t **session_to_enqueue;
+
+  uword *app_wrks_pending_ntf;
 
   /** Timerfd used to periodically signal wrk session queue node */
   int timerfd;
