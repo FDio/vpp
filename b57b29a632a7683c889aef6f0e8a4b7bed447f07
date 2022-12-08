@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b002b88f_09d159de",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-12-08T17:41:18Z",
+      "side": 1,
+      "message": "commit message update: \n\nwireguard: under-load state determination update \n\nIn the current implementation, the wireguard determinate the under-load state based on an individual interface instead of total number of handshakes across over all interfaces. In the case of a large number of handshake requests associate with different interfaces, the wireguard won\u0027t switch to under-load state and the system become unstable. \n\n\nThe fix added inflight counter and handshake cookie threshold to determinate under-load state in wireguard. A cookie message will be responded if under-load mode is on. ",
+      "revId": "b57b29a632a7683c889aef6f0e8a4b7bed447f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "75b2b648_c68aa5d4",
@@ -14,6 +31,30 @@
       "writtenOn": "2022-12-08T14:47:17Z",
       "side": 1,
       "message": "this value should be small 100.0 or big 1000.0 ?",
+      "range": {
+        "startLine": 646,
+        "startChar": 36,
+        "endLine": 646,
+        "endChar": 42
+      },
+      "revId": "b57b29a632a7683c889aef6f0e8a4b7bed447f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d92fb834_c202302d",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-12-08T17:41:18Z",
+      "side": 1,
+      "message": "this param will be update itself in the later stage when is_cookie is ture,  I would recommand starting with a bigger number ? we have MAX_COUNT_COOKIE 1024 predefined, is that make sense to pre-set this to 1024 ?",
+      "parentUuid": "75b2b648_c68aa5d4",
       "range": {
         "startLine": 646,
         "startChar": 36,
