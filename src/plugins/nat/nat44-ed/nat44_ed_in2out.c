@@ -105,6 +105,9 @@ nat_ed_alloc_addr_and_port_with_snat_address (
   const u16 port_thread_offset =
     (port_per_thread * snat_thread_index) + ED_USER_PORT_OFFSET;
 
+  /* Backup original match in case of failure */
+  const nat_6t_t match = s->o2i.match;
+
   s->o2i.match.daddr = a->addr;
   /* first try port suggested by caller */
   u16 port = clib_net_to_host_u16 (*outside_port);
@@ -136,6 +139,9 @@ nat_ed_alloc_addr_and_port_with_snat_address (
       --attempts;
     }
   while (attempts > 0);
+
+  /* Revert match */
+  s->o2i.match = match;
   return 1;
 }
 
