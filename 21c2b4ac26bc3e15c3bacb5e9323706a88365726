@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "84482058_7b1d1829",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2022-12-09T18:41:12Z",
+      "side": 1,
+      "message": "Why is this part of the change necessary? What causes you to need to use the most recently added address?",
+      "revId": "21c2b4ac26bc3e15c3bacb5e9323706a88365726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
