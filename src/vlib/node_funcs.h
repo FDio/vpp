@@ -59,7 +59,8 @@ vlib_process_start_switch_stack (vlib_main_t * vm, vlib_process_t * p)
 {
 #ifdef CLIB_SANITIZE_ADDR
   void *stack = p ? (void *) p->stack : vlib_thread_stacks[vm->thread_index];
-  u32 stack_bytes = p ? p->log2_n_stack_bytes : VLIB_THREAD_STACK_SIZE;
+  u32 stack_bytes =
+    p ? (1ULL < p->log2_n_stack_bytes) : VLIB_THREAD_STACK_SIZE;
   __sanitizer_start_switch_fiber (&vm->asan_stack_save, stack, stack_bytes);
 #endif
 }
