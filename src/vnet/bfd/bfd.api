@@ -359,64 +359,6 @@ autoreply define bfd_udp_auth_deactivate
   bool is_delayed;
 };
 
-counters bfd_udp {
-  none {
-    severity info;
-    type counter64;
-    units "packets";
-    description "OK";
-  };
-  no_session {
-    severity error;
-    type counter64;
-    units "packets";
-    description "no-session";
-  };
-  bad {
-    severity error;
-    type counter64;
-    units "packets";
-    description "bad packet";
-  };
-  length {
-    severity error;
-    type counter64;
-    units "packets";
-    description "too short";
-  };
-  failed_verification {
-    severity error;
-    type counter64;
-    units "packets";
-    description "failed-verification";
-  };
-  src_mismatch {
-    severity error;
-    type counter64;
-    units "packets";
-    description "src-mismatch";
-  };
-  dst_mismatch {
-    severity error;
-    type counter64;
-    units "packets";
-    description "dst-mismatch";
-  };
-  ttl {
-    severity error;
-    type counter64;
-    units "packets";
-    description "ttl";
-  };
-};
-
-paths {
-  "/err/bfd-udp4-input" "bfd";
-  "/err/bfd-udp6-input" "bfd";
-  "/err/bfd-udp4-echo-input" "bfd";
-  "/err/bfd-udp6-echo-input" "bfd";
-};
-
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
