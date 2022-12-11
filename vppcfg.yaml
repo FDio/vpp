@@ -1,0 +1,54 @@
+bondethernets: {}
+bridgedomains: {}
+interfaces:
+  HundredGigabitEthernet14/0/0:
+    description: ''
+    mtu: 2026
+    l2xc: HundredGigabitEthernet14/0/1
+  HundredGigabitEthernet14/0/1:
+    description: ''
+    mtu: 2026
+    l2xc: HundredGigabitEthernet14/0/0
+
+  HundredGigabitEthernet12/0/0:
+    description: ''
+    mtu: 2026
+    sub-interfaces:
+      11:
+        l2xc: HundredGigabitEthernet12/0/1.10
+        mtu: 2026
+      13:
+        l2xc: HundredGigabitEthernet12/0/1.12
+        mtu: 2026
+      15:
+        l2xc: HundredGigabitEthernet12/0/1.14
+        mtu: 2026
+      17:
+        l2xc: HundredGigabitEthernet12/0/1.16
+        mtu: 2026
+      19:
+        l2xc: HundredGigabitEthernet12/0/1.18
+        mtu: 2026
+  HundredGigabitEthernet12/0/1:
+    description: ''
+    mtu: 2026
+    sub-interfaces:
+      10:
+        l2xc: HundredGigabitEthernet12/0/0.11
+        mtu: 2026
+      12:
+        l2xc: HundredGigabitEthernet12/0/0.13
+        mtu: 2026
+      14:
+        l2xc: HundredGigabitEthernet12/0/0.15
+        mtu: 2026
+      16:
+        l2xc: HundredGigabitEthernet12/0/0.17
+        mtu: 2026
+      18:
+        l2xc: HundredGigabitEthernet12/0/0.19
+        mtu: 2026
+loopbacks: {}
+taps: {}
+vxlan_tunnels: {}
+

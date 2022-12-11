@@ -1,0 +1,99 @@
+comment { vppcfg prune: 42 CLI statement(s) follow }
+set interface state HundredGigabitEthernet14/0/0.11 down
+set interface state HundredGigabitEthernet14/0/0.13 down
+set interface state HundredGigabitEthernet14/0/0.15 down
+set interface state HundredGigabitEthernet14/0/0.17 down
+set interface state HundredGigabitEthernet14/0/0.19 down
+set interface state HundredGigabitEthernet14/0/1.10 down
+set interface state HundredGigabitEthernet14/0/1.12 down
+set interface state HundredGigabitEthernet14/0/1.14 down
+set interface state HundredGigabitEthernet14/0/1.16 down
+set interface state HundredGigabitEthernet14/0/1.18 down
+set interface l3 HundredGigabitEthernet12/0/0
+set interface l3 HundredGigabitEthernet12/0/1
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0.11 disable
+set interface l3 HundredGigabitEthernet14/0/0.11
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0.13 disable
+set interface l3 HundredGigabitEthernet14/0/0.13
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0.15 disable
+set interface l3 HundredGigabitEthernet14/0/0.15
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0.17 disable
+set interface l3 HundredGigabitEthernet14/0/0.17
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0.19 disable
+set interface l3 HundredGigabitEthernet14/0/0.19
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1.10 disable
+set interface l3 HundredGigabitEthernet14/0/1.10
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1.12 disable
+set interface l3 HundredGigabitEthernet14/0/1.12
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1.14 disable
+set interface l3 HundredGigabitEthernet14/0/1.14
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1.16 disable
+set interface l3 HundredGigabitEthernet14/0/1.16
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1.18 disable
+set interface l3 HundredGigabitEthernet14/0/1.18
+delete sub HundredGigabitEthernet14/0/0.11
+delete sub HundredGigabitEthernet14/0/0.13
+delete sub HundredGigabitEthernet14/0/0.15
+delete sub HundredGigabitEthernet14/0/0.17
+delete sub HundredGigabitEthernet14/0/0.19
+delete sub HundredGigabitEthernet14/0/1.10
+delete sub HundredGigabitEthernet14/0/1.12
+delete sub HundredGigabitEthernet14/0/1.14
+delete sub HundredGigabitEthernet14/0/1.16
+delete sub HundredGigabitEthernet14/0/1.18
+comment { vppcfg create: 10 CLI statement(s) follow }
+create sub HundredGigabitEthernet12/0/0 11 dot1q 11 exact-match
+create sub HundredGigabitEthernet12/0/0 13 dot1q 13 exact-match
+create sub HundredGigabitEthernet12/0/0 15 dot1q 15 exact-match
+create sub HundredGigabitEthernet12/0/0 17 dot1q 17 exact-match
+create sub HundredGigabitEthernet12/0/0 19 dot1q 19 exact-match
+create sub HundredGigabitEthernet12/0/1 10 dot1q 10 exact-match
+create sub HundredGigabitEthernet12/0/1 12 dot1q 12 exact-match
+create sub HundredGigabitEthernet12/0/1 14 dot1q 14 exact-match
+create sub HundredGigabitEthernet12/0/1 16 dot1q 16 exact-match
+create sub HundredGigabitEthernet12/0/1 18 dot1q 18 exact-match
+comment { vppcfg sync: 44 CLI statement(s) follow }
+set interface l2 xconnect HundredGigabitEthernet14/0/0 HundredGigabitEthernet14/0/1
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/0 disable
+set interface l2 xconnect HundredGigabitEthernet14/0/1 HundredGigabitEthernet14/0/0
+set interface l2 tag-rewrite HundredGigabitEthernet14/0/1 disable
+set interface l2 xconnect HundredGigabitEthernet12/0/0.11 HundredGigabitEthernet12/0/1.10
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/0.11 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/0.13 HundredGigabitEthernet12/0/1.12
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/0.13 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/0.15 HundredGigabitEthernet12/0/1.14
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/0.15 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/0.17 HundredGigabitEthernet12/0/1.16
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/0.17 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/0.19 HundredGigabitEthernet12/0/1.18
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/0.19 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/1.10 HundredGigabitEthernet12/0/0.11
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/1.10 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/1.12 HundredGigabitEthernet12/0/0.13
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/1.12 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/1.14 HundredGigabitEthernet12/0/0.15
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/1.14 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/1.16 HundredGigabitEthernet12/0/0.17
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/1.16 pop 1
+set interface l2 xconnect HundredGigabitEthernet12/0/1.18 HundredGigabitEthernet12/0/0.19
+set interface l2 tag-rewrite HundredGigabitEthernet12/0/1.18 pop 1
+set interface mtu packet 2026 HundredGigabitEthernet12/0/0.11
+set interface mtu packet 2026 HundredGigabitEthernet12/0/0.13
+set interface mtu packet 2026 HundredGigabitEthernet12/0/0.15
+set interface mtu packet 2026 HundredGigabitEthernet12/0/0.17
+set interface mtu packet 2026 HundredGigabitEthernet12/0/0.19
+set interface mtu packet 2026 HundredGigabitEthernet12/0/1.10
+set interface mtu packet 2026 HundredGigabitEthernet12/0/1.12
+set interface mtu packet 2026 HundredGigabitEthernet12/0/1.14
+set interface mtu packet 2026 HundredGigabitEthernet12/0/1.16
+set interface mtu packet 2026 HundredGigabitEthernet12/0/1.18
+set interface state HundredGigabitEthernet12/0/0.11 up
+set interface state HundredGigabitEthernet12/0/0.13 up
+set interface state HundredGigabitEthernet12/0/0.15 up
+set interface state HundredGigabitEthernet12/0/0.17 up
+set interface state HundredGigabitEthernet12/0/0.19 up
+set interface state HundredGigabitEthernet12/0/1.10 up
+set interface state HundredGigabitEthernet12/0/1.12 up
+set interface state HundredGigabitEthernet12/0/1.14 up
+set interface state HundredGigabitEthernet12/0/1.16 up
+set interface state HundredGigabitEthernet12/0/1.18 up
