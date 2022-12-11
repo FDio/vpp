@@ -40,7 +40,6 @@
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
 #include <vnet/bfd/bfd_api.h>
-#include <vnet/bfd/bfd.api_enum.h>
 
 typedef struct
 {
@@ -926,6 +925,28 @@ typedef enum
   BFD_UDP_INPUT_N_NEXT,
 } bfd_udp_input_next_t;
 
+/* Packet counters - BFD control frames */
+#define foreach_bfd_udp_error(F)                                              \
+  F (NO_SESSION, "no-session")                                                \
+  F (FAILED_VERIFICATION, "failed-verification")                              \
+  F (SRC_MISMATCH, "src-mismatch")                                            \
+  F (DST_MISMATCH, "dst-mismatch")                                            \
+  F (TTL, "ttl")
+
+static char *bfd_udp_error_strings[] = {
+#define F(sym, string) string,
+  foreach_bfd_error (F) foreach_bfd_udp_error (F)
+#undef F
+};
+
+typedef enum
+{
+#define F(sym, str) BFD_UDP_ERROR_##sym,
+  foreach_bfd_error (F) foreach_bfd_udp_error (F)
+#undef F
+    BFD_UDP_N_ERROR,
+} bfd_udp_error_t;
+
 typedef enum
 {
   BFD_UDP_ECHO_INPUT_NEXT_NORMAL,
@@ -934,11 +955,30 @@ typedef enum
   BFD_UDP_ECHO_INPUT_N_NEXT,
 } bfd_udp_echo_input_next_t;
 
-static_always_inline vl_counter_bfd_udp_enum_t
+/* Packet counters - BFD ECHO packets */
+#define foreach_bfd_udp_echo_error(F)           \
+  F (NONE, "good bfd echo packets (processed)") \
+  F (BAD, "invalid bfd echo packets")
+
+static char *bfd_udp_echo_error_strings[] = {
+#define F(sym, string) string,
+  foreach_bfd_udp_echo_error (F)
+#undef F
+};
+
+typedef enum
+{
+#define F(sym, str) BFD_UDP_ECHO_ERROR_##sym,
+  foreach_bfd_udp_echo_error (F)
+#undef F
+    BFD_UDP_ECHO_N_ERROR,
+} bfd_udp_echo_error_t;
+
+static_always_inline bfd_udp_error_t
 bfd_error_to_udp (bfd_error_t e)
 {
   /* The UDP error is a super set of the proto independent errors */
-  return ((vl_counter_bfd_udp_enum_t) e);
+  return ((bfd_udp_error_t) e);
 }
 
 static void
@@ -965,9 +1005,9 @@ bfd_udp4_find_headers (vlib_buffer_t * b, ip4_header_t ** ip4,
   *udp = (udp_header_t *) ((*ip4) + 1);
 }
 
-static vl_counter_bfd_udp_enum_t
-bfd_udp4_verify_transport (const ip4_header_t *ip4, const udp_header_t *udp,
-			   const bfd_session_t *bs)
+static bfd_udp_error_t
+bfd_udp4_verify_transport (const ip4_header_t * ip4,
+			   const udp_header_t * udp, const bfd_session_t * bs)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -1018,7 +1058,7 @@ bfd_rpc_update_session (vlib_main_t *vm, u32 bs_idx, const bfd_pkt_t *pkt)
   return err;
 }
 
-static vl_counter_bfd_udp_enum_t
+static bfd_udp_error_t
 bfd_udp4_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 {
   const bfd_pkt_t *pkt = vlib_buffer_get_current (b);
@@ -1045,7 +1085,7 @@ bfd_udp4_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 	 pkt->head.length, udp_payload_length);
       return BFD_UDP_ERROR_LENGTH;
     }
-  vl_counter_bfd_udp_enum_t err;
+  bfd_udp_error_t err;
   if (BFD_UDP_ERROR_NONE !=
       (err = bfd_error_to_udp (bfd_verify_pkt_common (pkt))))
     {
@@ -1123,9 +1163,9 @@ bfd_udp6_find_headers (vlib_buffer_t * b, ip6_header_t ** ip6,
   *udp = (udp_header_t *) ((*ip6) + 1);
 }
 
-static vl_counter_bfd_udp_enum_t
-bfd_udp6_verify_transport (const ip6_header_t *ip6, const udp_header_t *udp,
-			   const bfd_session_t *bs)
+static bfd_udp_error_t
+bfd_udp6_verify_transport (const ip6_header_t * ip6,
+			   const udp_header_t * udp, const bfd_session_t * bs)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -1160,7 +1200,7 @@ bfd_udp6_verify_transport (const ip6_header_t *ip6, const udp_header_t *udp,
   return BFD_UDP_ERROR_NONE;
 }
 
-static vl_counter_bfd_udp_enum_t
+static bfd_udp_error_t
 bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 {
   const bfd_pkt_t *pkt = vlib_buffer_get_current (b);
@@ -1187,7 +1227,7 @@ bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t **bs_out)
 	 pkt->head.length, udp_payload_length);
       return BFD_UDP_ERROR_BAD;
     }
-  vl_counter_bfd_udp_enum_t err;
+  bfd_udp_error_t err;
   if (BFD_UDP_ERROR_NONE !=
       (err = bfd_error_to_udp (bfd_verify_pkt_common (pkt))))
     {
@@ -1357,7 +1397,7 @@ VLIB_REGISTER_NODE (bfd_udp4_input_node, static) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = BFD_UDP_N_ERROR,
-  .error_counters = bfd_udp_error_counters,
+  .error_strings = bfd_udp_error_strings,
 
   .format_trace = bfd_input_format_trace,
 
@@ -1386,7 +1426,7 @@ VLIB_REGISTER_NODE (bfd_udp6_input_node, static) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = BFD_UDP_N_ERROR,
-  .error_counters = bfd_udp_error_counters,
+  .error_strings = bfd_udp_error_strings,
 
   .format_trace = bfd_input_format_trace,
 
@@ -1511,8 +1551,8 @@ VLIB_REGISTER_NODE (bfd_udp_echo4_input_node, static) = {
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = BFD_UDP_N_ERROR,
-  .error_counters = bfd_udp_error_counters,
+  .n_errors = BFD_UDP_ECHO_N_ERROR,
+  .error_strings = bfd_udp_error_strings,
 
   .format_trace = bfd_echo_input_format_trace,
 
@@ -1540,8 +1580,8 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = BFD_UDP_N_ERROR,
-  .error_counters = bfd_udp_error_counters,
+  .n_errors = BFD_UDP_ECHO_N_ERROR,
+  .error_strings = bfd_udp_echo_error_strings,
 
   .format_trace = bfd_echo_input_format_trace,
 
