@@ -359,6 +359,7 @@ autoreply define bfd_udp_auth_deactivate
   bool is_delayed;
 };
 
+/* must be compatible with bfd_error_t */
 counters bfd_udp {
   none {
     severity info;
@@ -366,23 +367,65 @@ counters bfd_udp {
     units "packets";
     description "OK";
   };
-  no_session {
-    severity error;
-    type counter64;
-    units "packets";
-    description "no-session";
-  };
   bad {
     severity error;
     type counter64;
     units "packets";
     description "bad packet";
   };
+  disabled {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bfd packets received on disabled interfaces";
+  };
+  version {
+    severity error;
+    type counter64;
+    units "packets";
+    description "version";
+  };
   length {
     severity error;
     type counter64;
     units "packets";
     description "too short";
+  };
+  detect_multi {
+    severity error;
+    type counter64;
+    units "packets";
+    description "detect-multi";
+  };
+  multi_point {
+    severity error;
+    type counter64;
+    units "packets";
+    description "multi-point";
+  };
+  my_disc {
+    severity error;
+    type counter64;
+    units "packets";
+    description "my-disc";
+  };
+  your_disc {
+    severity error;
+    type counter64;
+    units "packets";
+    description "your-disc";
+  };
+  admin_down {
+    severity error;
+    type counter64;
+    units "packets";
+    description "session admin-down";
+  };
+  no_session {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no-session";
   };
   failed_verification {
     severity error;
