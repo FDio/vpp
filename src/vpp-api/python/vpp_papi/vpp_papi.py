@@ -154,7 +154,7 @@ class VPPValueError(ValueError):
 
 class VPPApiJSONFiles:
     @classmethod
-    def find_api_dir(cls, dirs):
+    def find_api_dir(cls, dirs=[]):
         """Attempt to find the best directory in which API definition
         files may reside. If the value VPP_API_DIR exists in the environment
         then it is first on the search list. If we're inside a recognized
@@ -169,6 +169,9 @@ class VPPApiJSONFiles:
         # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
         # in which case, plot a course to likely places in the src tree
         import __main__ as main
+
+        if os.getenv("VPP_API_DIR"):
+            dirs.append(os.getenv("VPP_API_DIR"))
 
         if hasattr(main, "__file__"):
             # get the path of the calling script
