@@ -94,3 +94,13 @@ command:
 ::
 
    set sr encaps hop-limit N
+
+
+SRv6 also has the concept of Arguments. This is a parameter added after Locator and function in IPv6 Address 128 bit.
+In working this, I have prepared a mechanism to define Src/Dst IP of the SRv6 Packet at the time of Encap.
+user might use the following command:
+
+::
+
+   sr sid encoder rule 1 flavor flaxible A1::/24 B1::
+   sr policy add bsid 2001::1 encap sid_encoder 1

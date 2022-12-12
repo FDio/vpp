@@ -160,6 +160,26 @@ typedef struct
 typedef int (sr_plugin_callback_t) (ip6_sr_localsid_t * localsid);
 
 /**
+ * @brief SR Encap SID Encoder
+ */
+typedef struct
+{
+  u32 rule_id;
+
+  u16 sr_sid_encoder_flavor_number;
+
+  ip6_address_t v6src_addr;
+  ip6_address_t v6dst_addr;
+
+  void *plugin_mem;
+} ip6_sr_sid_encoder_t;
+
+typedef int (sr_sid_encoder_callback_t) (ip6_sr_sid_encoder_t *encoder);
+typedef void (sr_sid_encoder_builder_t) (void *mem_p,
+					 ip6_address_t *v6src_addr,
+					 ip6_address_t *v6dst_addr);
+
+/**
  * @brief SR LocalSID behavior registration
  */
 typedef struct
@@ -214,6 +234,30 @@ typedef struct
 
   sr_p_plugin_callback_t *removal;			/**< Function within plugin that will be called before localsid removal */
 } sr_policy_fn_registration_t;
+
+/**
+ * @brief SR Encap SID Encoder registration
+ */
+typedef struct
+{
+  u16 sr_sid_encoder_flavor_number; /**< SR Encap SID Encoder plugin function
+				       ID */
+
+  u8 *keyword_str; /**< Encoder keyword */
+
+  u8 *def_str; /**< Encoder definition */
+
+  u8 *params_str; /**< Encoder parameters */
+
+  format_function_t *ls_format; /**< SID Encoder format function */
+
+  unformat_function_t *ls_unformat; /**< SID Encoder unformat function */
+
+  sr_sid_encoder_callback_t *removal; /**< Function within plugin that will be
+					 called before encoder removal */
+
+  sr_sid_encoder_builder_t *builder; /**< Build IPv6 Address */
+} sr_sid_encoder_flavor_fn_registration_t;
 
 /**
  * @brief Steering db key
@@ -282,6 +326,9 @@ typedef struct
   /* Hash table mapping steering rules to SR steer instance */
   mhash_t sr_steer_policies_hash;
 
+  /* Pool of SR sid encoder instances */
+  ip6_sr_sid_encoder_t *encoder_rules;
+
   /* L2 steering ifaces - sr_policies */
   u32 *sw_iface_sr_policies;
 
@@ -299,6 +346,12 @@ typedef struct
 
   /* Find plugin function by name */
   uword *policy_plugin_functions_by_key;
+
+  /* Plugin functions for SID Encoder*/
+  sr_sid_encoder_flavor_fn_registration_t *sid_encoder_flavor_plugin_functions;
+
+  /* Find plugin function by name */
+  uword *sid_encoder_flavor_plugin_functions_by_key;
 
   /* Counters */
   vlib_combined_counter_main_t sr_ls_valid_counters;
@@ -345,12 +398,23 @@ sr_policy_register_function (vlib_main_t * vm, u8 * fn_name,
 			     sr_p_plugin_callback_t * removal_fn);
 
 extern int sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
-			  u32 weight, u8 type, u32 fib_table, u8 is_encap,
-			  u16 plugin, void *plugin_mem);
-extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-			  u8 operation, ip6_address_t * segments,
-			  u32 sl_index, u32 weight);
+			  ip6_address_t *encap_src_v6addr, u32 weight, u8 type,
+			  u32 fib_table, u8 is_encap, u16 plugin,
+			  void *plugin_mem);
+extern int sr_policy_mod (ip6_address_t *bsid, u32 index, u32 fib_table,
+			  u8 operation, ip6_address_t *segments,
+			  ip6_address_t *encap_src_v6addr, u32 sl_index,
+			  u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
+
+extern int sr_sid_encoder_flavor_register_function (
+  vlib_main_t *vm, u8 *keyword_str, u8 *def_str, u8 *params_str,
+  format_function_t *ls_format, unformat_function_t *ls_unformat,
+  sr_sid_encoder_callback_t *removal_fn, sr_sid_encoder_builder_t *builder_fn);
+
+extern void
+sr_sid_encoder_policy (int is_del, uint32_t rule_id, void *ls_mem,
+		       sr_sid_encoder_flavor_fn_registration_t *flavor);
 
 extern int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,

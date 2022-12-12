@@ -311,6 +311,7 @@ emacs
 emerg
 emphasise
 enablement
+encoder
 encap
 encap
 encaps
@@ -998,6 +999,7 @@ setUp
 setUpClass
 sfr
 sha
+sid
 Shamir
 sharepoint
 shg
