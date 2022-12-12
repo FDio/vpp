@@ -51,6 +51,41 @@
       "parentUuid": "149f74cf_9db797db",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71e052e0_23d7d02f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-12-12T16:20:06Z",
+      "side": 1,
+      "message": "Ah. The job above is set as non-voting (as it is not reliable without human supervision). The \"voting\" flag is part of job configuration on Jenkins side, not easily visible from Gerrit side, so Gerrit guesses it may be voting and clears the previous vote. The workaround (I forgot to apply) is triggering the usual voting jobs again:\n\nrecheck",
+      "parentUuid": "e21796b9_c859d75f",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5cf115f_8ca4e858",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-12-12T16:20:06Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
