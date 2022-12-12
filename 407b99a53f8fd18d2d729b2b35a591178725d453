@@ -16,6 +16,24 @@
       "message": "can you fix the problem rather than revert the change?",
       "revId": "407b99a53f8fd18d2d729b2b35a591178725d453",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "145b7e04_7ddaddb0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2022-12-12T11:48:20Z",
+      "side": 1,
+      "message": "It is a bit ugly, but that should do the job and prevent the similar issues that particular place.\nhttps://gerrit.fd.io/r/c/vpp/+/37795",
+      "parentUuid": "3397d2b4_f962db3b",
+      "revId": "407b99a53f8fd18d2d729b2b35a591178725d453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
