@@ -350,8 +350,13 @@ vapi_memclnt_create_v2_reply_t_handler (vapi_ctx_t ctx,
   int i;
   u8 *name_and_crc;
   u32 msg_index;
+  api_main_t *am = vlibapi_get_main ();
 
   ctx->my_client_index = mp->index;
+
+  // Save the client index also in the api_main_t,
+  // as it will be used to disconnect
+  am->my_client_index = mp->index;
 
   /* Clean out any previous hash table (unlikely) */
   vapi_api_name_and_crc_free (ctx);
