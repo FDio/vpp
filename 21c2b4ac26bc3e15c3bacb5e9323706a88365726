@@ -16,6 +16,24 @@
       "message": "Why is this part of the change necessary? What causes you to need to use the most recently added address?",
       "revId": "21c2b4ac26bc3e15c3bacb5e9323706a88365726",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "128338b1_79cf019d",
+        "filename": "src/vnet/ip/ip_sas.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2022-12-12T16:14:28Z",
+      "side": 1,
+      "message": "Without this change the \"Multi Connecteds\" test\nfrom the test_neighbor test set starts failing\nin this part (after self.pg1 is configured with \"10.0.1.1\"):\n\n# add a local address in the same subnet\n#  the source addresses are equivalent. VPP happens to\n#  choose the last one that was added\nconn3 \u003d VppIpInterfaceAddress(self, self.pg1, \"10.0.1.2\", 24).add_vpp_config()\n\nrxs \u003d self.send_and_expect(self.pg0, [p2], self.pg1)\nfor rx in rxs: \n    self.verify_arp_req(rx, self.pg1.local_mac, \"10.0.1.2\", \"10.0.1.128\")\n\nCurrently, with two local addresses set on the intf, if one issues\n        vpp# ping 10.0.1.128\nthen the ARP request is checked to have the source address set to 10.0.1.2\nBut icmp packets would be still sourced with 10.0.1.1.\n\nSo indeed, maybe I should keep ip4_sas_by_sw_if_index() unchanged,\nhave the source address for ARP packet selected with it,\nand modify the \"Multi Connecteds\" test instead, to reflect code changes.",
+      "parentUuid": "84482058_7b1d1829",
+      "revId": "21c2b4ac26bc3e15c3bacb5e9323706a88365726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
