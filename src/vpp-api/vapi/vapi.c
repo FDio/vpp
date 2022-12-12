@@ -386,7 +386,7 @@ vapi_memclnt_delete_reply_t_handler (vapi_ctx_t ctx,
   ctx->vl_input_queue = 0;
 }
 
-int
+static int
 vapi_client_connect (vapi_ctx_t ctx, const char *name, int ctx_quota,
 		     int input_queue_size, bool keepalive)
 {
@@ -460,6 +460,76 @@ vapi_client_connect (vapi_ctx_t ctx, const char *name, int ctx_quota,
       break;
     }
   return (rv);
+}
+
+static void
+vapi_client_send_disconnect (vapi_ctx_t ctx, u8 do_cleanup)
+{
+  vl_api_memclnt_delete_t *mp;
+  vl_shmem_hdr_t *shmem_hdr;
+  api_main_t *am = vlibapi_get_main ();
+
+  ASSERT (am->vlib_rp);
+  shmem_hdr = am->shmem_hdr;
+  ASSERT (shmem_hdr && shmem_hdr->vl_input_queue);
+
+  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_delete_t));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE);
+  mp->index = ctx->my_client_index;
+  mp->do_cleanup = do_cleanup;
+
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) &mp);
+}
+
+static int
+vapi_client_disconnect (vapi_ctx_t ctx)
+{
+  vl_api_memclnt_delete_reply_t *rp;
+  svm_queue_t *vl_input_queue;
+  time_t begin;
+  msgbuf_t *msgbuf;
+
+  vl_input_queue = ctx->vl_input_queue;
+  vapi_client_send_disconnect (ctx, 0 /* wait for reply */);
+
+  /*
+   * Have to be careful here, in case the client is disconnecting
+   * because e.g. the vlib process died, or is unresponsive.
+   */
+  begin = time (0);
+  while (1)
+    {
+      time_t now;
+
+      now = time (0);
+
+      if (now >= (begin + 2))
+	{
+	  clib_warning ("peer unresponsive, give up");
+	  ctx->my_client_index = ~0;
+	  return -1;
+	}
+      if (svm_queue_sub (vl_input_queue, (u8 *) &rp, SVM_Q_NOWAIT, 0) < 0)
+	continue;
+
+      VL_MSG_API_UNPOISON (rp);
+
+      /* drain the queue */
+      if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)
+	{
+	  clib_warning ("queue drain: %d", ntohs (rp->_vl_msg_id));
+	  msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+	  vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
+	  continue;
+	}
+      msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
+      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
+      break;
+    }
+
+  vapi_api_name_and_crc_free (ctx);
+  return 0;
 }
 
 u32
@@ -592,7 +662,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name, const char *chroot_prefix,
     }
   return VAPI_OK;
 fail:
-  vl_client_disconnect ();
+  vapi_client_disconnect (ctx);
   vl_client_api_unmap ();
   return rv;
 }
@@ -689,7 +759,7 @@ vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
     }
   return VAPI_OK;
 fail:
-  vl_client_disconnect ();
+  vapi_client_disconnect (ctx);
   return rv;
 }
 
@@ -704,7 +774,7 @@ vapi_disconnect_from_vpp (vapi_ctx_t ctx)
   svm_queue_t *vl_input_queue;
   time_t begin;
   vl_input_queue = ctx->vl_input_queue;
-  vl_client_send_disconnect (0 /* wait for reply */);
+  vapi_client_send_disconnect (ctx, 0 /* wait for reply */);
 
   /*
    * Have to be careful here, in case the client is disconnecting
@@ -760,7 +830,7 @@ vapi_disconnect (vapi_ctx_t ctx)
   svm_queue_t *vl_input_queue;
   time_t begin;
   vl_input_queue = ctx->vl_input_queue;
-  vl_client_send_disconnect (0 /* wait for reply */);
+  vapi_client_send_disconnect (ctx, 0 /* wait for reply */);
 
   /*
    * Have to be careful here, in case the client is disconnecting
