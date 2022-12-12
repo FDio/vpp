@@ -20,6 +20,7 @@ add_vpp_plugin(srv6mobile
   gtp6_d.c
   gtp6_d_di.c
   gtp6_dt.c
+  encoder_mup.c
   node.c
 
   INSTALL_HEADERS

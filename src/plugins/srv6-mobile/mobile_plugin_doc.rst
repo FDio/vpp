@@ -38,11 +38,19 @@ network programming. “T” means transit function, “End” means end
 function, “M” means Mobility specific function. The suffix “D” and “E”
 mean that “decapsulation” and “encapsulation” respectively.
 
+Implemented functionality to extend srv6 policy encap for some cases of SRv6 Mobile User Plane.
+It use the sid encoder flavor called ``mup``. You can perform encoding according to the Mobile User Plane when performing Encap.
+user might use the following command:
+
+::
+
+   sr sid encoder rule 1 flavor mup 2001:db8::/64 172.0.2.1 D4::/64 172.0.1.1 1 0 0 87
+
 Implementation
 --------------
 
 All SRv6 mobile functions are implemented as VPP plugin modules. The
-plugin modules leverage the sr_policy and sr_localsid mechanisms.
+plugin modules leverage the sr_policy and sr_localsid and sr_sid_encoder mechanisms.
 
 Configurations
 --------------

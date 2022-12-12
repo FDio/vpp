@@ -822,6 +822,7 @@ list(APPEND VNET_SOURCES
   srv6/sr_pt.c
   srv6/sr_pt_node.c
   srv6/sr_pt_api.c
+  srv6/sr_sid_encoder.c
 )
 
 list(APPEND VNET_HEADERS
