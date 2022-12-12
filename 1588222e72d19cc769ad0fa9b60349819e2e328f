@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "380bc405_0339c5cd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2022-12-12T00:12:34Z",
+      "side": 1,
+      "message": "make good on an old promise of environment VPP_API_DIR. \n\nPTAL",
+      "revId": "1588222e72d19cc769ad0fa9b60349819e2e328f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
