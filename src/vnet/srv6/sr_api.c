@@ -90,6 +90,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
   int rv = 0;
   rv = sr_policy_add (&bsid_addr,
 		      segments,
+          NULL, // TODO FIX
 		      ntohl (mp->sids.weight),
 		      mp->is_spray, ntohl (mp->fib_table), mp->is_encap, 0,
 		      NULL);
@@ -125,7 +126,9 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
 		      ntohl (mp->sr_policy_index),
 		      ntohl (mp->fib_table),
 		      mp->operation,
-		      segments, ntohl (mp->sl_index),
+		      segments, 
+          NULL, // TODO FIX
+          ntohl (mp->sl_index),
 		      ntohl (mp->sids.weight));
   vec_free (segments);
 

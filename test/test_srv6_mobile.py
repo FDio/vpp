@@ -356,3 +356,94 @@ class TestSRv6EndMGTP6D(VppTestCase):
             self.assertEqual(
                 str(pkt[IPv6ExtHdrSegmentRouting].addresses[1]), "d4::c800:0"
             )
+
+
+class TestSRv6SIDEncoderFlavorMUP(VppTestCase):
+    """SRv6 SID Encoder flavor MUP rule (IPv4 -> SRv6 with MUP encoded)"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSRv6SIDEncoderFlavorMUP, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.pg_if_i = cls.pg_interfaces[0]
+            cls.pg_if_o = cls.pg_interfaces[1]
+
+            cls.pg_if_i.config_ip4()
+            cls.pg_if_i.config_ip6()
+            cls.pg_if_o.config_ip4()
+            cls.pg_if_o.config_ip6()
+
+            cls.ip4_dst = "1.1.1.1"
+            cls.ip4_src = "2.2.2.2"
+
+            cls.ip6_dst = cls.pg_if_o.remote_ip6
+
+            for pg_if in cls.pg_interfaces:
+                pg_if.admin_up()
+                pg_if.resolve_arp()
+                pg_if.resolve_ndp(timeout=5)
+
+        except Exception:
+            super(TestSRv6SIDEncoderFlavorMUP, cls).tearDownClass()
+            raise
+
+    def create_packets(self, inner):
+
+        ip4_dst = IPv4Address(str(self.ip4_dst))
+
+        ip4_src = IPv4Address(str(self.ip4_src))
+
+        self.logger.info("ip4 dst: {}".format(ip4_dst))
+        self.logger.info("ip4 src: {}".format(ip4_src))
+
+        pkts = list()
+        for d, s in inner:
+            pkt = (
+                Ether()
+                / IP(dst=str(ip4_dst), src=str(ip4_src))
+                / UDP(sport=1000, dport=23)
+            )
+            self.logger.info(pkt.show2(dump=True))
+            pkts.append(pkt)
+
+        return pkts
+
+    def test_srv6_mobile(self):
+        """test_srv6_mobile"""
+        pkts = self.create_packets([("A::1", "B::1"), ("C::1", "D::1")])
+        self.vapi.cli("set sr encaps source addr A1::1")
+        self.vapi.cli("sr sid encoder rule 1 flavor mup "+
+                    "C1::/64 172.0.100.111 D4::/32 172.0.200.111 123 1 1 300")
+        self.vapi.cli("sr policy add bsid D4:: next D2:: next D3:: encap sid_encoder 1")
+        self.vapi.cli("sr steer l3 {}/32 via bsid D4::".format(self.ip4_dst))
+        self.vapi.cli("ip route add D2::/32 via {}".format(self.ip6_dst))
+
+        self.logger.info(self.vapi.cli("show sr steer"))
+        self.logger.info(self.vapi.cli("show sr policies"))
+        self.logger.info(self.vapi.cli("show sr sid encoders"))
+
+        self.vapi.cli("clear errors")
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.logger.info(self.vapi.cli("show errors"))
+        self.logger.info(self.vapi.cli("show int address"))
+
+        capture = self.pg1.get_capture(len(pkts))
+
+        for pkt in capture:
+            self.logger.info(pkt.show2(dump=True))
+            self.logger.info(
+                "SidEncoderMup SrcAddress={}, DstAddress={}".format(
+                    str(pkt[IPv6].src),
+                    str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]),
+                )
+            )
+            self.assertEqual(
+                str(pkt[IPv6].src), "c1::ac00:646f:0:0"
+            )
+            self.assertEqual(
+                str(pkt[IPv6ExtHdrSegmentRouting].addresses[0]), "d4:0:ac00:c86f:ef2c:100::"
+            )

@@ -192,11 +192,12 @@ VLIB_CLI_COMMAND (set_sr_hop_limit_command, static) = {
  * @brief SR rewrite string computation for IPv6 encapsulation (inline)
  *
  * @param sl is a vector of IPv6 addresses composing the Segment List
+ * @param src_v6addr is a encaps IPv6 source addr
  *
  * @return precomputed rewrite string for encapsulation
  */
 static inline u8 *
-compute_rewrite_encaps (ip6_address_t *sl, u8 type)
+compute_rewrite_encaps (ip6_address_t *sl, ip6_address_t *src_v6addr ,u8 type)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
@@ -224,8 +225,8 @@ compute_rewrite_encaps (ip6_address_t *sl, u8 type)
   iph = (ip6_header_t *) rs;
   iph->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0 | ((6 & 0xF) << 28));
-  iph->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
-  iph->src_address.as_u64[1] = sr_pr_encaps_src.as_u64[1];
+  iph->src_address.as_u64[0] = src_v6addr->as_u64[0];
+  iph->src_address.as_u64[1] = src_v6addr->as_u64[1];
   iph->payload_length = header_length - IPv6_DEFAULT_HEADER_LENGTH;
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = sr_pr_encaps_hop_limit;
@@ -369,18 +370,20 @@ compute_rewrite_bsid (ip6_address_t * sl)
  *
  * @param sr_policy is the SR policy where the SL will be added
  * @param sl is a vector of IPv6 addresses composing the Segment List
+ * @param encap_src_v6addr is a encaps IPv6 source addr
  * @param weight is the weight of the SegmentList (for load-balancing purposes)
  * @param is_encap represents the mode (SRH insertion vs Encapsulation)
  *
  * @return pointer to the just created segment list
  */
 static inline ip6_sr_sl_t *
-create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
+create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, ip6_address_t *encap_src_v6addr, u32 weight,
 	   u8 is_encap)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
   sr_policy_fn_registration_t *plugin = 0;
+  ip6_address_t encap_srcv6 = sr_pr_encaps_src;
 
   pool_get (sm->sid_lists, segment_list);
   clib_memset (segment_list, 0, sizeof (*segment_list));
@@ -399,7 +402,11 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
 
   if (is_encap)
     {
-      segment_list->rewrite = compute_rewrite_encaps (sl, sr_policy->type);
+      if (encap_src_v6addr)
+      {
+    	clib_memcpy_fast (&encap_srcv6, encap_src_v6addr, sizeof (ip6_address_t));
+      }
+      segment_list->rewrite = compute_rewrite_encaps (sl, &encap_srcv6, sr_policy->type);
       segment_list->rewrite_bsid = segment_list->rewrite;
     }
   else
@@ -647,6 +654,287 @@ update_replicate (ip6_sr_policy_t * sr_policy)
     replicate_multipath_update (&sr_policy->ip4_dpo, ip4_path_vector);
 }
 
+/******************* SR rewrite encaps sid encoder *******************/
+
+/**
+ * @brief SR SID Encoder plugin registry
+ */
+int
+sr_sid_encoder_flavor_register_function (vlib_main_t * vm,
+			     u8 * keyword_str, u8 * def_str,
+			     u8 * params_str, 
+			     format_function_t * ls_format,
+			     unformat_function_t * ls_unformat,
+					 sr_sid_encoder_callback_t * removal_fn,
+					 sr_sid_encoder_builder_t *builder_fn)
+{
+  ip6_sr_main_t *sm = &sr_main;
+  uword *p;
+
+  sr_sid_encoder_flavor_fn_registration_t *plugin;
+
+  /* Did this function exist? If so update it */
+  p = hash_get_mem (sm->sid_encoder_flavor_plugin_functions_by_key, keyword_str);
+  if (p)
+    {
+      plugin = pool_elt_at_index (sm->sid_encoder_flavor_plugin_functions, p[0]);
+    }
+  /* Else create a new one and set hash key */
+  else
+    {
+      pool_get (sm->sid_encoder_flavor_plugin_functions, plugin);
+      hash_set_mem (sm->sid_encoder_flavor_plugin_functions_by_key, keyword_str,
+		    plugin - sm->sid_encoder_flavor_plugin_functions);
+    }
+
+  clib_memset (plugin, 0, sizeof (*plugin));
+
+  plugin->sr_sid_encoder_flavor_number = (plugin - sm->sid_encoder_flavor_plugin_functions);
+  plugin->ls_format = ls_format;
+  plugin->ls_unformat = ls_unformat;
+	plugin->removal = removal_fn;
+	plugin->builder = builder_fn;
+  plugin->keyword_str = format (0, "%s%c", keyword_str, 0);
+  plugin->def_str = format (0, "%s%c", def_str, 0);
+  plugin->params_str = format (0, "%s%c", params_str, 0);
+
+  return plugin->sr_sid_encoder_flavor_number;
+}
+
+/**
+ * @brief CLI function to 'show' all available SR SID Encoder flavors
+ */
+static clib_error_t *
+show_sr_sid_flavors_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  ip6_sr_main_t *sm = &sr_main;
+  sr_sid_encoder_flavor_fn_registration_t *plugin;
+  sr_sid_encoder_flavor_fn_registration_t **plugins_vec = 0;
+  int i;
+
+  vlib_cli_output (vm, "SR SID Encoder flavors:\n-----------------------\n\n");
+
+  /* *INDENT-OFF* */
+  pool_foreach (plugin, sm->sid_encoder_flavor_plugin_functions)
+  { 
+		vec_add1 (plugins_vec, plugin); 
+	}
+  /* *INDENT-ON* */
+
+  for (i = 0; i < vec_len (plugins_vec); i++)
+    {
+      plugin = plugins_vec[i];
+      vlib_cli_output (vm, "%s\t-> %s.\n", plugin->keyword_str,
+		       plugin->def_str);
+      vlib_cli_output (vm, "\tParameters: '%s'\n", plugin->params_str);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_sr_sid_flavors_command, static) = {
+  .path = "show sr sid flavors",
+  .short_help = "show sr sid flavors",
+  .function = show_sr_sid_flavors_command_fn,
+};
+/* *INDENT-ON* */
+
+static int
+sr_sid_encoder_rule_id_compare (const void *_v1, const void *_v2)
+{
+  const ip6_sr_sid_encoder_t *t1 = _v1;
+	const ip6_sr_sid_encoder_t *t2 = _v2;
+
+  return (t1->rule_id > t2->rule_id);
+}
+
+/**
+ * @brief CLI function to 'show' all sid encoder rules.
+ */
+static clib_error_t *
+show_sr_sid_encoders_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_sid_encoder_t *instance = 0;
+
+  vlib_cli_output (vm, "SR SID encoders:\n-----------------------\n\n");
+  /* *INDENT-OFF* */
+	
+	vec_sort_with_function(sm->encoder_rules, sr_sid_encoder_rule_id_compare);
+
+  vec_foreach (instance, sm->encoder_rules)
+  {
+		sr_sid_encoder_flavor_fn_registration_t *plugin = 
+			pool_elt_at_index (sm->sid_encoder_flavor_plugin_functions, 
+													instance->sr_sid_encoder_flavor_number);
+		u8 *s=0;
+		s = format (
+			s, "rule: %d, flavor: %s, s/d v6Addr %U -> %U",
+			instance->rule_id,
+			plugin->keyword_str,
+			format_ip6_address,  &(instance)->v6src_addr,
+			format_ip6_address,  &(instance)->v6dst_addr);
+		vlib_cli_output (vm, "%s\n%U", s, plugin->ls_format, (instance)->plugin_mem);
+  }
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_sr_sid_encoders_command, static) = {
+  .path = "show sr sid encoders",
+  .short_help = "show sr sid encoders",
+  .function = show_sr_sid_encoders_command_fn,
+};
+/* *INDENT-ON* */
+
+static int sid_encoder_rule_id_is_equal(ip6_sr_sid_encoder_t *a, ip6_sr_sid_encoder_t *b)
+{
+	if(a->rule_id == b->rule_id)
+		return 1;
+
+	return 0;
+}
+
+always_inline int
+get_sid_encoder_rule_index(u32 rule_id)
+{
+  ip6_sr_main_t *sm = &sr_main;
+	u32 pos;
+	ip6_sr_sid_encoder_t target = {
+    .rule_id = rule_id,
+  };
+	
+  pos = vec_search_with_function (sm->encoder_rules, &target,
+				  sid_encoder_rule_id_is_equal);
+
+	if (~0 != pos)
+		return pos;
+
+	return -1;
+}
+always_inline bool get_sr_sid_encoder(u32 rule_id, ip6_sr_sid_encoder_t **e){
+  	ip6_sr_main_t *sm = &sr_main;
+	int index = get_sid_encoder_rule_index(rule_id);
+	if (index != -1)
+	{
+		*e = &sm->encoder_rules[index];
+		return true;
+	}
+	return false;
+}
+
+int
+sr_sid_encoder_policy (int is_del, u32 rule_id, void *ls_mem, sr_sid_encoder_flavor_fn_registration_t *flavor)
+{
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_address_t v6src_addr;
+  ip6_address_t v6dst_addr;
+  ip6_sr_sid_encoder_t *e;
+	int index = get_sid_encoder_rule_index(rule_id);
+
+	if (index != -1)
+	{
+		e = &sm->encoder_rules[index];
+		if (is_del)
+		{
+			vec_del1(sm->encoder_rules, index);
+			return 0;
+		}
+	}
+	else
+	{
+		e = clib_mem_alloc(sizeof *e);
+		clib_memset (e, 0, sizeof (*e));
+	}
+	flavor->builder(ls_mem, &v6src_addr, &v6dst_addr);
+	e->plugin_mem = ls_mem;
+  clib_memcpy_fast (&e->v6src_addr, &v6src_addr, sizeof (ip6_address_t));
+  clib_memcpy_fast (&e->v6dst_addr, &v6dst_addr, sizeof (ip6_address_t));
+  e->rule_id = rule_id;
+	e->sr_sid_encoder_flavor_number = flavor->sr_sid_encoder_flavor_number;
+	if(index == -1)
+		vec_add1(sm->encoder_rules, *e);
+
+  return 0;
+}
+
+static clib_error_t *
+sr_sid_encoder_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  ip6_sr_main_t *sm = &sr_main;
+  int is_del = 0;
+  u32 rule_id = -1;
+  int flavor = -1;
+  int rv;
+  void *ls_mem = 0;
+	sr_sid_encoder_flavor_fn_registration_t *p_plugin = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  {
+		if (unformat (input, "del"))
+			is_del = 1;
+		else if (unformat (input, "rule %d", &rule_id))
+    {
+      if (rule_id < 1)
+        return clib_error_return (0, "Please input zero or more");
+    }
+ 		else if (flavor < 0 && unformat (input, "flavor"))
+		{
+			sr_sid_encoder_flavor_fn_registration_t *plugin = 0, **vec_plugins = 0;
+			sr_sid_encoder_flavor_fn_registration_t **plugin_it = 0;
+
+			/* *INDENT-OFF* */
+			pool_foreach (plugin, sm->sid_encoder_flavor_plugin_functions)
+			{
+				vec_add1 (vec_plugins, plugin);
+			}
+
+			vec_foreach (plugin_it, vec_plugins)
+			{
+				if (unformat(input, "%U", (*plugin_it)->ls_unformat, &ls_mem))
+				{
+					flavor = (*plugin_it)->sr_sid_encoder_flavor_number;
+					p_plugin = *plugin_it;
+					break;
+				}
+			}
+			/* *INDENT-ON* */
+		}
+    else
+      break;
+	}
+  if (!is_del && flavor < 0)
+  {
+    return clib_error_return (0, "Please specify Encoder flavor");
+  }
+
+  if (flavor < 0)
+  {
+    return clib_error_return (0, "Unexpect Encoder flavor");
+  }
+  rv = sr_sid_encoder_policy (is_del, rule_id, ls_mem, p_plugin);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (sr_sid_encoder_command, static) = {
+  .path = "sr sid encoder",
+  .short_help = "sr sid encoder (del) rule <INTAGER> flavor <STRING>",
+  .long_help =
+    "Create the contents of the SID when encap\n"
+	"Arguments:\n"
+    "\tflavor <STRING>  Specifies the encoder\n"
+    "check `show sr sid flavors`\n",
+  .function = sr_sid_encoder_command_fn,
+};
+/* *INDENT-ON* */
+
 /******************************* SR rewrite API *******************************/
 /* Three functions for handling sr policies:
  *   -> sr_policy_add
@@ -659,6 +947,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  *
  * @param bsid is the bindingSID of the SR Policy
  * @param segments is a vector of IPv6 address composing the segment list
+ * @param encap_src_v6addr is a encaps IPv6 source addr
  * @param weight is the weight of the sid list. optional.
  * @param behavior is the behavior of the SR policy. (default//spray)
  * @param fib_table is the VRF where to install the FIB entry for the BSID
@@ -667,8 +956,8 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  * @return 0 if correct, else error
  */
 int
-sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments, u32 weight,
-	       u8 type, u32 fib_table, u8 is_encap, u16 plugin,
+sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments, ip6_address_t *encap_src_v6addr,
+        u32 weight, u8 type, u32 fib_table, u8 is_encap, u16 plugin,
 	       void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -725,7 +1014,7 @@ sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments, u32 weight,
 	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
-  create_sl (sr_policy, segments, weight, is_encap);
+  create_sl (sr_policy, segments, encap_src_v6addr, weight, is_encap);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -855,6 +1144,7 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
  * @param fib_table is the VRF where to install the FIB entry for the BSID
  * @param operation is the operation to perform (among the top ones)
  * @param segments is a vector of IPv6 address composing the segment list
+ * @param encap_src_v6addr is a encaps IPv6 source addr
  * @param sl_index is the index of the Segment List to modify/delete
  * @param weight is the weight of the sid list. optional.
  * @param is_encap Mode. Encapsulation or SRH insertion.
@@ -863,7 +1153,7 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
  */
 int
 sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-	       u8 operation, ip6_address_t * segments, u32 sl_index,
+	       u8 operation, ip6_address_t * segments, ip6_address_t *encap_src_v6addr, u32 sl_index,
 	       u32 weight)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -889,7 +1179,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap);
+	create_sl (sr_policy, segments, encap_src_v6addr, weight, sr_policy->is_encap);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -971,6 +1261,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 type = SR_POLICY_TYPE_DEFAULT;
   u16 behavior = 0;
   void *ls_plugin_mem = 0;
+  u32 sid_encoder_role_id = 0;
+  ip6_address_t *encap_src_v6addr = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1037,6 +1329,19 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      return clib_error_return (0, "Invalid behavior");
 	    }
 	}
+  else if(is_encap && unformat(input, "sid_encoder %d", &sid_encoder_role_id))
+  {
+    if (sid_encoder_role_id < 1)
+    {
+      return clib_error_return (0, "Invalid sid encoder role id. Please input zero or more.");
+    }
+	ip6_sr_sid_encoder_t *e;
+	if(!get_sr_sid_encoder(sid_encoder_role_id, &e)){
+		return clib_error_return (0, "Sid encoder role id notfound.");
+	}
+	encap_src_v6addr = &e->v6src_addr;
+	vec_add1 (segments, e->v6dst_addr);
+  }
       else
 	break;
     }
@@ -1058,7 +1363,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (vec_len (segments) == 0)
 	return clib_error_return (0, "No Segment List specified");
 
-      rv = sr_policy_add (&bsid, segments, weight, type, fib_table, is_encap,
+      rv = sr_policy_add (&bsid, segments, encap_src_v6addr, weight, type, fib_table, is_encap,
 			  behavior, ls_plugin_mem);
 
       vec_free (segments);
@@ -1078,7 +1383,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "No new weight for the SL specified");
 
       rv = sr_policy_mod ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
-			  sr_policy_index, fib_table, operation, segments,
+			  sr_policy_index, fib_table, operation, segments, encap_src_v6addr,
 			  sl_index, weight);
 
       if (segments)
