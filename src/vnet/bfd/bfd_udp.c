@@ -42,6 +42,14 @@
 #include <vnet/bfd/bfd_api.h>
 #include <vnet/bfd/bfd.api_enum.h>
 
+#define F(sym, str)                                                           \
+  STATIC_ASSERT ((int) BFD_ERROR_##sym == (int) BFD_UDP_ERROR_##sym,          \
+		 "BFD error enums mismatch");
+foreach_bfd_error (F)
+#undef F
+  STATIC_ASSERT ((int) BFD_N_ERROR <= (int) BFD_UDP_N_ERROR,
+		 "BFD error enum sizes mismatch");
+
 typedef struct
 {
   bfd_main_t *bfd_main;
