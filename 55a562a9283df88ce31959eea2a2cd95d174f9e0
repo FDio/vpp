@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "808a861e_61ea3c22",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-12-12T22:57:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "297eca66_03f3959e",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0f9ef011_efd61eb7",
@@ -48,6 +66,24 @@
       "writtenOn": "2022-11-17T11:15:22Z",
       "side": 1,
       "message": "Please remove this code too.",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "071cf60e_0328096c",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-12-12T22:57:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f9ef011_efd61eb7",
       "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7bdbf4b_c6a2743d",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-12-12T22:57:05Z",
+      "side": 1,
+      "message": "Ok, thanks for clarifying. Done",
+      "parentUuid": "41261f73_87ad77bc",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e9bbb693_15ca4a6c",
@@ -82,6 +136,24 @@
       "writtenOn": "2022-11-17T11:15:22Z",
       "side": 1,
       "message": "Please also fix this. We should not enable software gso chunking when interface does support GSO offload.",
+      "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ecebea5e_8ddd62f8",
+        "filename": "test/test_vm_vpp_interfaces.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2022-12-12T22:57:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e9bbb693_15ca4a6c",
       "revId": "55a562a9283df88ce31959eea2a2cd95d174f9e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
