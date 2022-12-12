@@ -1442,6 +1442,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
+  vlib_worker_thread_barrier_sync (vm);
   error = dpdk_lib_init (dm);
 
   if (error)
@@ -1458,6 +1459,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
     }
 
+  vlib_worker_thread_barrier_release (vm);
   tm->worker_thread_release = 1;
 
   f64 now = vlib_time_now (vm);
