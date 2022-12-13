@@ -319,7 +319,8 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 
       if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) &&
 	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
-	  (!ip6_ptr->protocol.mask))
+	  (ip6_ptr->dst_addr.mask.as_u64[0] == 0) &&
+	  (ip6_ptr->dst_addr.mask.as_u64[1] == 0) && (!ip6_ptr->protocol.mask))
 	{
 	  item->spec = NULL;
 	  item->mask = NULL;
