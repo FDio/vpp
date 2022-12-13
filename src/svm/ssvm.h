@@ -83,11 +83,13 @@ typedef struct
   ssvm_shared_header_t *sh;
   uword ssvm_size;
   uword requested_va;
+  uword page_size;
   u32 my_pid;
   u8 *name;
   u8 numa;			/**< UNUSED: numa requested at alloc time */
   int is_server;
   int huge_page;
+  int mapped;
   union
   {
     int fd;			/**< memfd segments */

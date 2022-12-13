@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <vlib/pci/pci.h>
+#include <vlib/linux/vfio.h>
+
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
@@ -81,6 +84,53 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
   return (seg - sm->segments);
 }
 
+static fifo_segment_t *
+segment_manager_get_segment_if_valid (segment_manager_t *sm, u32 segment_index)
+{
+  if (pool_is_free_index (sm->segments, segment_index))
+    return 0;
+  return pool_elt_at_index (sm->segments, segment_index);
+}
+
+static void
+sm_vfio_map_helper (void *arg)
+{
+  fifo_segment_t *fs = (fifo_segment_t *) arg;
+  vlib_main_t *vm = vlib_get_main ();
+  segment_manager_t *sm;
+
+  ASSERT (vlib_get_thread_index () == 0);
+
+  sm = segment_manager_get_if_valid (fs->sm_index);
+  if (!sm)
+    {
+      vlib_cli_output (vm, "segment manager %u not allocated", fs->sm_index);
+      return;
+    }
+
+  fs = segment_manager_get_segment_if_valid (sm, fs->fs_index);
+  if (!fs)
+    {
+      vlib_cli_output (vm, "fifo segment %u not allocated", fs->fs_index);
+      return;
+    }
+  if (!vfio_map_extended_mem (vm, uword_to_pointer (fs->ssvm.sh, u64),
+			      fs->ssvm.ssvm_size, fs->ssvm.page_size))
+    fs->ssvm.mapped = 1;
+  else
+    fs->ssvm.mapped = 0;
+}
+
+void
+segment_manager_map_segment (fifo_segment_t *fs)
+{
+  if (!vlib_thread_is_main_w_barrier ())
+    vlib_rpc_call_main_thread (sm_vfio_map_helper, (u8 *) fs,
+			       sizeof (fifo_segment_t));
+  else
+    sm_vfio_map_helper ((void *) fs);
+}
+
 /**
  * Adds segment to segment manager's pool
  *
@@ -93,11 +143,13 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 {
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
+  session_main_t *session_mm = &session_main;
   app_worker_t *app_wrk;
   fifo_segment_t *fs;
   u32 fs_index = ~0;
   u8 *seg_name;
   int rv;
+  uword page_size = clib_mem_get_page_size ();
 
   props = segment_manager_properties_get (sm);
   app_wrk = app_worker_get (sm->app_wrk_index);
@@ -130,12 +182,11 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 
   if (props->huge_page)
     {
-      uword hugepage_size = clib_mem_get_default_hugepage_size ();
-      segment_size = round_pow2 (segment_size, hugepage_size);
+      page_size = clib_mem_get_default_hugepage_size ();
       fs->ssvm.huge_page = 1;
     }
-  else
-    segment_size = round_pow2 (segment_size, clib_mem_get_page_size ());
+
+  segment_size = round_pow2 (segment_size, page_size);
 
   seg_name = format (0, "seg-%u-%u-%u%c", app_wrk->app_index,
 		     app_wrk->wrk_index, smm->seg_name_counter++, 0);
@@ -143,6 +194,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   fs->ssvm.ssvm_size = segment_size;
   fs->ssvm.name = seg_name;
   fs->ssvm.requested_va = 0;
+  fs->ssvm.page_size = page_size;
 
   if ((rv = ssvm_server_init (&fs->ssvm, props->segment_type)))
     {
@@ -173,6 +225,12 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   fs->flags = flags;
   fs->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
   fs->h->pct_first_alloc = props->pct_first_alloc;
+
+  /*
+   * Map shared memory if DMA enabled
+   */
+  if (session_mm->dma_enabled && !fs->ssvm.mapped)
+    segment_manager_map_segment (fs);
 
   if (notify_app)
     {
@@ -217,6 +275,8 @@ segment_manager_add_segment2 (segment_manager_t *sm, uword segment_size,
 void
 segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 {
+  session_main_t *session_mm = &session_main;
+  vlib_main_t *vm = vlib_get_main ();
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
     {
       if (!segment_manager_app_detached (sm))
@@ -229,21 +289,16 @@ segment_manager_del_segment (segment_manager_t * sm, fifo_segment_t * fs)
 	}
     }
 
+  if (session_mm->dma_enabled && fs->ssvm.mapped)
+    vfio_unmap_extended_mem (vm, uword_to_pointer (fs->ssvm.sh, u64),
+			     fs->ssvm.ssvm_size);
+
   fifo_segment_cleanup (fs);
   ssvm_delete (&fs->ssvm);
 
   if (CLIB_DEBUG)
     clib_memset (fs, 0xfb, sizeof (*fs));
   pool_put (sm->segments, fs);
-}
-
-static fifo_segment_t *
-segment_manager_get_segment_if_valid (segment_manager_t * sm,
-				      u32 segment_index)
-{
-  if (pool_is_free_index (sm->segments, segment_index))
-    return 0;
-  return pool_elt_at_index (sm->segments, segment_index);
 }
 
 /**
