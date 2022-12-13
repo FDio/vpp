@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2911ddfd_3189927e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2022-12-13T15:34:10Z",
+      "side": 1,
+      "message": "How is this feature being tested in the CI?\nDo existing testcases in \u0027make test\u0027 validate the new feature?",
+      "revId": "2847dadf109b719afe66902f6f9cdc2f6e3c3fd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
