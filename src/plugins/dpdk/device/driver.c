@@ -6,10 +6,10 @@
 
 #include <dpdk/device/dpdk.h>
 
-static const u32 supported_flow_actions_intel =
-  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
-   VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE |
-   VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS);
+#define supported_flow_actions_intel                                          \
+  (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |                \
+   VNET_FLOW_ACTION_REDIRECT_TO_QUEUE | VNET_FLOW_ACTION_BUFFER_ADVANCE |     \
+   VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS)
 
 #define DPDK_DRIVERS(...)                                                     \
   (dpdk_driver_name_t[])                                                      \
