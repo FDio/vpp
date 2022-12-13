@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "213c225b_953c1e67",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2022-12-13T14:35:37Z",
+      "side": 1,
+      "message": "The difference in the vpp and vpp-dev packages as a result:\n\n```\ndebdiff build-root/vpp_22.06-rc0~712-g07e0c05e6_amd64.deb ../vpp_packages_before_change/vpp_22.06-rc0~712-g07e0c05e6_amd64.deb\n[The following lists of changes regard files as different if they have\ndifferent names, permissions or owners.]\n\nFiles in second .deb but not in first\n-------------------------------------\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/liblcp.so -\u003e liblcp.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libnat.so -\u003e libnat.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libsvm.so -\u003e libsvm.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libsvmdb.so -\u003e libsvmdb.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvapiclient.so -\u003e libvapiclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvatclient.so -\u003e libvatclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvatplugin.so -\u003e libvatplugin.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvcl_ldpreload.so -\u003e libvcl_ldpreload.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlib.so -\u003e libvlib.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlibmemory.so -\u003e libvlibmemory.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlibmemoryclient.so -\u003e libvlibmemoryclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvnet.so -\u003e libvnet.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppapiclient.so -\u003e libvppapiclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppcom.so -\u003e libvppcom.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppmem_preload.so -\u003e libvppmem_preload.so.22.06\n\nControl files: lines which differ (wdiff format)\n------------------------------------------------\nInstalled-Size: [-33726-] {+33741+}\n```\n\n```\ndebdiff build-root/vpp-dev_22.06-rc0~712-g07e0c05e6_amd64.deb ../vpp_packages_before_change/vpp-dev_22.06-rc0~712-g07e0c05e6_amd64.deb\n[The following lists of changes regard files as different if they have\ndifferent names, permissions or owners.]\n\nFiles in first .deb but not in second\n-------------------------------------\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/liblcp.so -\u003e liblcp.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libnat.so -\u003e libnat.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libsvm.so -\u003e libsvm.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libsvmdb.so -\u003e libsvmdb.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvapiclient.so -\u003e libvapiclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvatclient.so -\u003e libvatclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvatplugin.so -\u003e libvatplugin.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvcl_ldpreload.so -\u003e libvcl_ldpreload.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlib.so -\u003e libvlib.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlibmemory.so -\u003e libvlibmemory.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvlibmemoryclient.so -\u003e libvlibmemoryclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvnet.so -\u003e libvnet.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppapiclient.so -\u003e libvppapiclient.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppcom.so -\u003e libvppcom.so.22.06\nlrwxrwxrwx  root/root   /usr/lib/x86_64-linux-gnu/libvppmem_preload.so -\u003e libvppmem_preload.so.22.06\n\nControl files: lines which differ (wdiff format)\n------------------------------------------------\nInstalled-Size: [-19540-] {+19525+}\n```\n",
+      "revId": "be8b69d6e947a971b6d8a2738e123dee991a9e58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
