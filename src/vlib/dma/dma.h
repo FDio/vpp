@@ -39,6 +39,7 @@ typedef struct
     u32 features;
   };
   u16 max_transfers;
+  u16 max_inflight;
   u32 max_transfer_size;
   vlib_dma_batch_callback_fn *callback_fn;
 } vlib_dma_config_t;

@@ -2023,6 +2023,7 @@ session_dma_completion_cb (vlib_main_t *vm, struct vlib_dma_batch *batch)
 static void
 session_prepare_dma_args (vlib_dma_config_t *args)
 {
+  args->max_inflight = 16;
   args->max_transfers = DMA_TRANS_SIZE;
   args->max_transfer_size = 65536;
   args->features = 0;
