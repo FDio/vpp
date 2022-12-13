@@ -16,6 +16,23 @@
       "message": "Fixed by renaming it.",
       "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a301fdc1_babb7cb3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-13T21:24:40Z",
+      "side": 1,
+      "message": "It looks like the patch is pushed against stable/2210, is that intentional? I think you wanted to use master branch. From gerrit, could you just cherry-pick (upper right corner) the patch to master? ",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
