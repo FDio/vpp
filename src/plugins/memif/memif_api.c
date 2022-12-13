@@ -122,6 +122,8 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
 
   args.is_zero_copy = mp->no_zero_copy ? 0 : 1;
 
+  args.use_dma = mp->use_dma ? 0 : 1;
+
   /* rx/tx queues */
   if (args.is_master == 0)
     {
@@ -249,6 +251,7 @@ send_memif_details (vl_api_registration_t * reg,
   mp->ring_size = htonl (1 << mif->run.log2_ring_size);
   mp->buffer_size = htons (mif->run.buffer_size);
   mp->zero_copy = (mif->flags & MEMIF_IF_FLAG_ZERO_COPY) ? 1 : 0;
+  mp->use_dma = (mif->flags & MEMIF_IF_FLAG_USE_DMA) ? 1 : 0;
 
   mp->flags = 0;
   mp->flags |= (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?

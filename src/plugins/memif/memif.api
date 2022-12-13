@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "4.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -65,6 +65,7 @@ autoreply define memif_socket_filename_add_del
     @param ring_size - the number of entries of RX/TX rings
     @param buffer_size - size of the buffer allocated for each ring entry
     @param no_zero_copy - if true, disable zero copy
+    @param use_dma - if true, use dma accelerate memory copy
     @param hw_addr - interface MAC address
     @param secret - optional, default is "", max length 24
 */
@@ -82,6 +83,7 @@ define memif_create
   u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
   u16 buffer_size; /* optional, default is 2048 bytes */
   bool no_zero_copy; /* disable zero copy */
+  bool use_dma; /* use dma acceleration */
   vl_api_mac_address_t hw_addr; /* optional, randomly generated if zero */
   string secret[24]; /* optional, default is "", max length 24 */
   option vat_help = "[id <id>] [socket-id <id>] [ring_size <size>] [buffer_size <size>] [hw_addr <mac_address>] [secret <string>] [mode ip] <master|slave>";
@@ -143,6 +145,7 @@ define memif_socket_filename_dump
     @param role - role of the interface in the connection (master/slave)
     @param mode - interface mode
     @param zero_copy - zero copy flag present
+    @param use_dma - if true, use dma accelerate memory copy
     @param socket_id - id of the socket filename used by this interface
            to establish new connections
     @param ring_size - the number of entries of RX/TX rings
@@ -163,6 +166,7 @@ define memif_details
   vl_api_memif_role_t role; /* 0 = master, 1 = slave */
   vl_api_memif_mode_t mode; /* 0 = ethernet, 1 = ip, 2 = punt/inject */
   bool zero_copy;
+  bool use_dma;
   u32 socket_id;
   u32 ring_size;
   u16 buffer_size; /* optional, default is 2048 bytes */
