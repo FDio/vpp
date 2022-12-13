@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "888dfb03_ed4e585a",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-13T21:20:38Z",
+      "side": 1,
+      "message": "This is probably going to be a problem. If we add a segment when a new session is accepted, from a worker, it looks like we\u0027ll end up in a bad state. Does vfio_map_extended_mem really need to be called from main? Can we wrap the calls with spinlocks or add some thread safe apis?",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 1
+      },
+      "revId": "f49d9bd17f08c5836246637aff761f6dcd66c6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "676f03fc_20aaf8d9",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-13T21:20:38Z",
+      "side": 1,
+      "message": "Move these under if. Or maybe better, add a set of dma specific functions and that wrap calls to vfio_* functions.",
+      "range": {
+        "startLine": 278,
+        "startChar": 0,
+        "endLine": 279,
+        "endChar": 37
+      },
+      "revId": "f49d9bd17f08c5836246637aff761f6dcd66c6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
