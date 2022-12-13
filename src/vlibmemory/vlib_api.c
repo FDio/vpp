@@ -338,9 +338,10 @@ vlib_apis_hookup (vlib_main_t *vm)
   /*
    * Set up the (msg_name, crc, message-id) table
    */
-  msg_id_base = setup_message_id_table ();
+  REPLY_MSG_ID_BASE = setup_message_id_table ();
 
-  vl_api_set_msg_thread_safe (am, VL_API_GET_NODE_GRAPH, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_GET_NODE_GRAPH,
+			      1);
   return 0;
 }
 
