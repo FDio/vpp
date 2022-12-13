@@ -257,9 +257,9 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	    {
 	      rcfg->input_set |= AVF_INSET_IPV6_DST;
 	      VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT (hdr, IPV6, DST);
-
-	      clib_memcpy (hdr->buffer, ipv6_spec, sizeof (*ipv6_spec));
 	    }
+
+	  clib_memcpy (hdr->buffer, ipv6_spec, sizeof (*ipv6_spec));
 	}
 
       break;
