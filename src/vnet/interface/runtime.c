@@ -90,6 +90,9 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
       ASSERT (rxq->mode != VNET_HW_IF_RX_MODE_UNKNOWN);
       ASSERT (rxq->mode != VNET_HW_IF_RX_MODE_DEFAULT);
 
+      if (rxq->hw_if_index != hw_if_index)
+	continue;
+
       rxq_hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
 
       if (rxq_hi->input_node_index != node_index)
