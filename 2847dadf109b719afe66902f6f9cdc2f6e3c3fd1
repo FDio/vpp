@@ -16,6 +16,24 @@
       "message": "How is this feature being tested in the CI?\nDo existing testcases in \u0027make test\u0027 validate the new feature?",
       "revId": "2847dadf109b719afe66902f6f9cdc2f6e3c3fd1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42c80beb_170fe9a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-12-13T22:20:49Z",
+      "side": 1,
+      "message": "This feature has not been tested yet.\nIn the future we intend to replace the description in `test_sr_mobile.py` via the API.",
+      "parentUuid": "2911ddfd_3189927e",
+      "revId": "2847dadf109b719afe66902f6f9cdc2f6e3c3fd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
