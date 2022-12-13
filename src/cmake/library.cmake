@@ -41,8 +41,10 @@ macro(add_vpp_library lib)
   endif()
   install(
     TARGETS ${lib}
-    DESTINATION ${VPP_LIBRARY_DIR}
-    COMPONENT ${ARG_COMPONENT}
+    LIBRARY
+      DESTINATION ${VPP_LIBRARY_DIR}
+      COMPONENT ${ARG_COMPONENT}
+      NAMELINK_COMPONENT ${ARG_COMPONENT}-dev
   )
 
   if (ARG_LTO AND VPP_USE_LTO)
