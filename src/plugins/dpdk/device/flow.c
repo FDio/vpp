@@ -317,29 +317,26 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
 
-      if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) &&
-	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
-	  (!ip6_ptr->protocol.mask))
-	{
-	  item->spec = NULL;
-	  item->mask = NULL;
-	}
-      else
-	{
-	  clib_memcpy (ip6[0].hdr.src_addr, &ip6_ptr->src_addr.addr,
-		       ARRAY_LEN (ip6_ptr->src_addr.addr.as_u8));
-	  clib_memcpy (ip6[1].hdr.src_addr, &ip6_ptr->src_addr.mask,
-		       ARRAY_LEN (ip6_ptr->src_addr.mask.as_u8));
-	  clib_memcpy (ip6[0].hdr.dst_addr, &ip6_ptr->dst_addr.addr,
-		       ARRAY_LEN (ip6_ptr->dst_addr.addr.as_u8));
-	  clib_memcpy (ip6[1].hdr.dst_addr, &ip6_ptr->dst_addr.mask,
-		       ARRAY_LEN (ip6_ptr->dst_addr.mask.as_u8));
-	  ip6[0].hdr.proto = ip6_ptr->protocol.prot;
-	  ip6[1].hdr.proto = ip6_ptr->protocol.mask;
+      if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) && (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
+          (ip6_ptr->dst_addr.mask.as_u64[0] == 0) && (ip6_ptr->dst_addr.mask.as_u64[1] == 0) &&
+          (!ip6_ptr->protocol.mask)) {
+          item->spec = NULL;
+          item->mask = NULL;
+      } else {
+          clib_memcpy(ip6[0].hdr.src_addr, &ip6_ptr->src_addr.addr,
+                      ARRAY_LEN(ip6_ptr->src_addr.addr.as_u8));
+          clib_memcpy(ip6[1].hdr.src_addr, &ip6_ptr->src_addr.mask,
+                      ARRAY_LEN(ip6_ptr->src_addr.mask.as_u8));
+          clib_memcpy(ip6[0].hdr.dst_addr, &ip6_ptr->dst_addr.addr,
+                      ARRAY_LEN(ip6_ptr->dst_addr.addr.as_u8));
+          clib_memcpy(ip6[1].hdr.dst_addr, &ip6_ptr->dst_addr.mask,
+                      ARRAY_LEN(ip6_ptr->dst_addr.mask.as_u8));
+          ip6[0].hdr.proto = ip6_ptr->protocol.prot;
+          ip6[1].hdr.proto = ip6_ptr->protocol.mask;
 
-	  item->spec = ip6;
-	  item->mask = ip6 + 1;
-	}
+          item->spec = ip6;
+          item->mask = ip6 + 1;
+      }
 
       if (FLOW_IS_L4_TYPE (f) || FLOW_IS_L4_TUNNEL_TYPE (f))
 	{
