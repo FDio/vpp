@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +10,6 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/edwarnicke/exechelper"
 )
 
 // TODO remove `configTemplate` once its usage has been replaced everywhere with VppConfig
@@ -61,7 +58,8 @@ const vclTemplate = `vcl {
 }
 `
 
-const TopologyDir string = "topo/"
+const NetworkTopologyDir string = "topo-network/"
+const ContainerTopologyDir string = "topo-containers/"
 
 type Stanza struct {
 	content string
@@ -126,30 +124,6 @@ func StartClientApp(env []string, clnCh chan error) {
 	}
 }
 
-// run vpphelper in docker
-func hstExec(args string, instance string) (string, error) {
-	syncFile := fmt.Sprintf("/tmp/%s/sync/rc", instance)
-	os.Remove(syncFile)
-
-	c := "docker exec -d " + instance + " /hs-test " + args
-	err := exechelper.Run(c)
-	if err != nil {
-		return "", err
-	}
-
-	res, err := waitForSyncFile(syncFile)
-
-	if err != nil {
-		return "", fmt.Errorf("failed to read sync file while executing './hs-test %s': %v", args, err)
-	}
-
-	o := res.StdOutput + res.ErrOutput
-	if res.Code != 0 {
-		return o, fmt.Errorf("cmd resulted in non-zero value %d: %s", res.Code, res.Desc)
-	}
-	return o, err
-}
-
 func waitForSyncFile(fname string) (*JsonResult, error) {
 	var res JsonResult
 
@@ -173,17 +147,6 @@ func waitForSyncFile(fname string) (*JsonResult, error) {
 	return nil, fmt.Errorf("no sync file found")
 }
 
-func dockerRun(instance, args string) error {
-	exechelper.Run(fmt.Sprintf("mkdir -p /tmp/%s/sync", instance))
-	syncPath := fmt.Sprintf("-v /tmp/%s/sync:/tmp/sync", instance)
-	cmd := "docker run --cap-add=all -d --privileged --network host --rm "
-	cmd += syncPath
-	cmd += " " + args
-	cmd += " --name " + instance + " hs-test/vpp"
-	fmt.Println(cmd)
-	return exechelper.Run(cmd)
-}
-
 func assertFileSize(f1, f2 string) error {
 	fi1, err := os.Stat(f1)
 	if err != nil {
@@ -197,62 +160,6 @@ func assertFileSize(f1, f2 string) error {
 
 	if fi1.Size() != fi2.Size() {
 		return fmt.Errorf("file sizes differ (%d vs %d)", fi1.Size(), fi2.Size())
-	}
-	return nil
-}
-
-func dockerExec(cmd string, instance string) ([]byte, error) {
-	c := "docker exec -d " + instance + " " + cmd
-	return exechelper.CombinedOutput(c)
-}
-
-func startEnvoy(ctx context.Context, dockerInstance string) <-chan error {
-	errCh := make(chan error)
-	wd, err := os.Getwd()
-	if err != nil {
-		errCh <- err
-		return errCh
-	}
-
-	c := []string{"docker", "run", "--rm", "--name", "envoy",
-		"-v", fmt.Sprintf("%s/envoy/proxy.yaml:/etc/envoy/envoy.yaml", wd),
-		"-v", fmt.Sprintf("shared-vol:/tmp/%s", dockerInstance),
-		"-v", fmt.Sprintf("%s/envoy:/tmp", wd),
-		"-e", "ENVOY_UID=0",
-		"-e", "VCL_CONFIG=/tmp/vcl.conf",
-		"envoyproxy/envoy-contrib:v1.21-latest"}
-	fmt.Println(c)
-
-	go func(errCh chan error) {
-		count := 0
-		var cmd *exec.Cmd
-		for ; ; count++ {
-			cmd = NewCommand(c, "")
-			err = cmd.Start()
-			if err == nil {
-				break
-			}
-			if count > 5 {
-				errCh <- fmt.Errorf("failed to start envoy docker after %d attempts", count)
-				return
-			}
-		}
-
-		err = cmd.Wait()
-		if err != nil {
-			errCh <- fmt.Errorf("failed to start docker: %v", err)
-			return
-		}
-		<-ctx.Done()
-	}(errCh)
-	return errCh
-}
-
-func configureVppProxy() error {
-	_, err := dockerExec("vppctl test proxy server server-uri tcp://10.0.0.2/555 client-uri tcp://10.0.1.1/666",
-		"vpp-proxy")
-	if err != nil {
-		return fmt.Errorf("error while configuring vpp proxy test: %v", err)
 	}
 	return nil
 }

@@ -3,24 +3,41 @@ package main
 import (
 	"fmt"
 	"testing"
-	"time"
+	"io/ioutil"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type HstSuite struct {
 	suite.Suite
 	teardownSuite func()
-	containers    []*Container
+	containers    map[string]*Container
 	volumes       []string
 }
 
 func (s *HstSuite) TearDownSuite() {
 	s.teardownSuite()
-	s.StopContainers()
+}
+
+func (s *HstSuite) TearDownTest() {
+	s.ResetContainers()
 	s.RemoveVolumes()
+}
+
+func (s *HstSuite) SetupTest() {
+	for _, volume := range s.volumes {
+		cmd := "docker volume create --name=" + volume
+		fmt.Println(cmd)
+		exechelper.Run(cmd)
+	}
+	for _, container := range s.containers {
+		if container.isOptional == false {
+			container.run()
+		}
+	}
 }
 
 func (s *HstSuite) hstFail() {
@@ -63,20 +80,7 @@ func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArg
 	}
 }
 
-func (s *HstSuite) NewContainer(name string) (*Container, error) {
-	if name == "" {
-		return nil, fmt.Errorf("creating container failed: name must not be blank")
-	}
-
-	container := new(Container)
-	container.name = name
-
-	s.containers = append(s.containers, container)
-
-	return container, nil
-}
-
-func (s *HstSuite) StopContainers() {
+func (s *HstSuite) ResetContainers() {
 	for _, container := range s.containers {
 		container.stop()
 	}
@@ -94,39 +98,43 @@ func (s *HstSuite) NewVolume(name string) error {
 
 func (s *HstSuite) RemoveVolumes() {
 	for _, volumeName := range s.volumes {
-		exechelper.Run("docker volume rm " + volumeName)
+		cmd := "docker volume rm " + volumeName
+		exechelper.Run(cmd)
 	}
 }
 
-type TapSuite struct {
-	HstSuite
+func (s *HstSuite) getContainerByName(name string) *Container {
+	return s.containers[name]
 }
 
-func (s *TapSuite) SetupSuite() {
-	time.Sleep(1 * time.Second)
-	s.teardownSuite = setupSuite(&s.Suite, "tap")
-}
+func (s *HstSuite) loadContainerTopology(topologyName string) {
+	data, err := ioutil.ReadFile(ContainerTopologyDir + topologyName + ".yaml")
+	if err != nil {
+		s.T().Fatalf("read error: %v", err)
+	}
+	var yamlTopo YamlTopology
+	err = yaml.Unmarshal(data, &yamlTopo)
+	if err != nil {
+		s.T().Fatalf("unmarshal error: %v", err)
+	}
 
-type VethsSuite struct {
-	HstSuite
-}
+	for _, elem := range yamlTopo.Volumes {
+		s.volumes = append(s.volumes, elem)
+	}
 
-func (s *VethsSuite) SetupSuite() {
-	time.Sleep(1 * time.Second)
-	s.teardownSuite = setupSuite(&s.Suite, "2peerVeth")
-}
-
-type NsSuite struct {
-	HstSuite
-}
-
-func (s *NsSuite) SetupSuite() {
-	s.teardownSuite = setupSuite(&s.Suite, "ns")
+	s.containers = make(map[string]*Container)
+	for _, elem := range yamlTopo.Containers {
+		newContainer, err := NewContainer(elem)
+		if err != nil {
+			s.T().Fatalf("config error: %v", err)
+		}
+		s.containers[newContainer.name] = newContainer
+	}
 }
 
 func setupSuite(s *suite.Suite, topologyName string) func() {
 	t := s.T()
-	topology, err := LoadTopology(TopologyDir, topologyName)
+	topology, err := LoadTopology(NetworkTopologyDir, topologyName)
 	if err != nil {
 		t.Fatalf("error on loading topology '%s': %v", topologyName, err)
 	}
