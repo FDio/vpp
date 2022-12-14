@@ -33,6 +33,41 @@
       "message": "It looks like the patch is pushed against stable/2210, is that intentional? I think you wanted to use master branch. From gerrit, could you just cherry-pick (upper right corner) the patch to master? ",
       "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d450fa3d_d2742bea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2889
+      },
+      "writtenOn": "2022-12-14T09:09:35Z",
+      "side": 1,
+      "message": "Honestly, I based it on stable/2210 because I met an unknown issue with running Nginx on the master. For minimal changes and better discussion, the stable/2210 was chosen. If the review process for GSO patch was done, I would like to turn back and merge these codes.",
+      "parentUuid": "a301fdc1_babb7cb3",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cd1844e_7492d9af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2889
+      },
+      "writtenOn": "2022-12-14T09:09:35Z",
+      "side": 1,
+      "message": "cherry-pick to master, new ticket:37798",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
