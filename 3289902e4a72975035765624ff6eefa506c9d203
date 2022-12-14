@@ -16,6 +16,24 @@
       "message": "I\u0027m not sure what this solves. It makes the code very ugly. When freeing a resource, usual convention is to leave it up to the caller to be prudent.\n\nSame way as free() takes void*, not void**.",
       "revId": "3289902e4a72975035765624ff6eefa506c9d203",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ae5a99b_95348ccd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-12-14T13:18:45Z",
+      "side": 1,
+      "message": "Fair enough, the alternative is to patch the various nodes to make sure they set the nat session pointer to 0 after free and hope nobody reintroduces the issue later.\nI\u0027ll update it accordingly.",
+      "parentUuid": "c931b6a3_7e57331d",
+      "revId": "3289902e4a72975035765624ff6eefa506c9d203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
