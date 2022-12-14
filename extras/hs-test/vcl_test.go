@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"time"
-
 )
 
 func (s *VethsSuite) TestVclEchoQuic() {
@@ -21,47 +20,27 @@ func (s *VethsSuite) TestVclEchoTcp() {
 }
 
 func (s *VethsSuite) testVclEcho(proto string) {
-	serverVolume := "echo-srv-vol"
-	s.NewVolume(serverVolume)
+	srvVppContainer := s.containers[0]
+	srvVol := s.volumes[0]
 
-	clientVolume := "echo-cln-vol"
-	s.NewVolume(clientVolume)
-
-	srvInstance := "vpp-vcl-test-srv"
-	serverVppContainer, err := s.NewContainer(srvInstance)
-	s.assertNil(err)
-	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
-	s.assertNil(serverVppContainer.run())
-
-	clnInstance := "vpp-vcl-test-cln"
-	clientVppContainer, err := s.NewContainer(clnInstance)
-	s.assertNil(err)
-	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
-	s.assertNil(clientVppContainer.run())
-
-	echoSrv := "echo-srv"
-	serverEchoContainer, err := s.NewContainer(echoSrv)
-	s.assertNil(err)
-	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
-	s.assertNil(serverEchoContainer.run())
-
-	echoCln := "echo-cln"
-	clientEchoContainer, err := s.NewContainer(echoCln)
-	s.assertNil(err)
-	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
-	s.assertNil(clientEchoContainer.run())
-
-	_, err = hstExec("Configure2Veths srv", srvInstance)
+	_, err := srvVppContainer.useVolumeAsWorkDir(srvVol).execAction("Configure2Veths srv")
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	clnVppContainer := s.containers[1]
+	clnVol := s.volumes[1]
+
+	_, err = clnVppContainer.useVolumeAsWorkDir(clnVol).execAction("Configure2Veths cln")
 	s.assertNil(err)
+
+	echoSrvContainer := s.containers[2]
 
 	// run server app
-	_, err = hstExec("RunEchoServer "+proto, echoSrv)
+	_, err = echoSrvContainer.useVolumeAsWorkDir(srvVol).execAction("RunEchoServer "+proto)
 	s.assertNil(err)
 
-	o, err := hstExec("RunEchoClient "+proto, echoCln)
+	echoClnContainer := s.containers[3]
+
+	o, err := echoClnContainer.useVolumeAsWorkDir(clnVol).execAction("RunEchoClient "+proto)
 	s.assertNil(err)
 
 	fmt.Println(o)
@@ -73,95 +52,67 @@ func (s *VethsSuite) TestVclRetryAttach() {
 }
 
 func (s *VethsSuite) testRetryAttach(proto string) {
-	serverVolume := "echo-srv-vol"
-	s.NewVolume(serverVolume)
+	srvVppContainer := s.containers[0]
+	srvVol := s.volumes[0]
 
-	clientVolume := "echo-cln-vol"
-	s.NewVolume(clientVolume)
-
-	srvInstance := "vpp-vcl-test-srv"
-	serverVppContainer, err := s.NewContainer(srvInstance)
-	s.assertNil(err)
-	serverVppContainer.addVolume(serverVolume, "/tmp/Configure2Veths")
-	s.assertNil(serverVppContainer.run())
-
-	clnInstance := "vpp-vcl-test-cln"
-	clientVppContainer, err := s.NewContainer(clnInstance)
-	s.assertNil(err)
-	clientVppContainer.addVolume(clientVolume, "/tmp/Configure2Veths")
-	s.assertNil(clientVppContainer.run())
-
-	echoSrv := "echo-srv"
-	serverEchoContainer, err := s.NewContainer(echoSrv)
-	s.assertNil(err)
-	serverEchoContainer.addVolume(serverVolume, "/tmp/" + echoSrv)
-	s.assertNil(serverEchoContainer.run())
-
-	echoCln := "echo-cln"
-	clientEchoContainer, err := s.NewContainer(echoCln)
-	s.assertNil(err)
-	clientEchoContainer.addVolume(clientVolume, "/tmp/" + echoCln)
-	s.assertNil(clientEchoContainer.run())
-
-	_, err = hstExec("Configure2Veths srv-with-preset-hw-addr", srvInstance)
+	_, err := srvVppContainer.useVolumeAsWorkDir(srvVol).execAction("Configure2Veths srv-with-preset-hw-addr")
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	clnVppContainer := s.containers[1]
+	clnVol := s.volumes[1]
+
+	_, err = clnVppContainer.useVolumeAsWorkDir(clnVol).execAction("Configure2Veths cln")
 	s.assertNil(err)
 
-	_, err = hstExec("RunVclEchoServer "+proto, echoSrv)
+	echoSrvContainer := s.containers[2]
+	_, err = echoSrvContainer.useVolumeAsWorkDir(srvVol).execAction("RunVclEchoServer "+proto)
 	s.assertNil(err)
 
 	fmt.Println("This whole test case can take around 3 minutes to run. Please be patient.")
 	fmt.Println("... Running first echo client test, before disconnect.")
-	_, err = hstExec("RunVclEchoClient "+proto, echoCln)
+	echoClnContainer := s.containers[3]
+	_, err = echoClnContainer.useVolumeAsWorkDir(clnVol).execAction("RunVclEchoClient "+proto)
 	s.assertNil(err)
 	fmt.Println("... First test ended. Stopping VPP server now.")
 
 	// Stop server-vpp-instance, start it again and then run vcl-test-client once more
 	stopVppCommand := "/bin/bash -c 'ps -C vpp_main -o pid= | xargs kill -9'"
-	_, err = dockerExec(stopVppCommand, srvInstance)
+	_, err = srvVppContainer.exec(stopVppCommand)
 	s.assertNil(err)
 	time.Sleep(5 * time.Second) // Give parent process time to reap the killed child process
 	stopVppCommand = "/bin/bash -c 'ps -C hs-test -o pid= | xargs kill -9'"
-	_, err = dockerExec(stopVppCommand, srvInstance)
+	_, err = srvVppContainer.exec(stopVppCommand)
 	s.assertNil(err)
-	_, err = hstExec("Configure2Veths srv-with-preset-hw-addr", srvInstance)
+	_, err = srvVppContainer.useVolumeAsWorkDir(srvVol).execAction("Configure2Veths srv-with-preset-hw-addr")
 	s.assertNil(err)
 
 	fmt.Println("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
 	fmt.Println("... Running second echo client test, after disconnect and re-attachment.")
-	_, err = hstExec("RunVclEchoClient "+proto, echoCln)
+	_, err = echoClnContainer.useVolumeAsWorkDir(clnVol).execAction("RunVclEchoClient "+proto)
 	s.assertNil(err)
 	fmt.Println("Done.")
 }
 
 func (s *VethsSuite) TestTcpWithLoss() {
-	serverContainer, err := s.NewContainer("server")
-	s.assertNil(err, "creating container failed")
-	err = serverContainer.run()
-	s.assertNil(err)
+	serverContainer := s.containers[0]
+	serverVolume := s.volumes[0]
 
-	serverVpp := NewVppInstance(serverContainer)
+	serverVpp := NewVppInstance(serverContainer.useVolumeAsWorkDir(serverVolume))
 	s.assertNotNil(serverVpp)
-	serverVpp.setCliSocket("/var/run/vpp/cli.sock")
 	serverVpp.set2VethsServer()
-	err = serverVpp.start()
+	err := serverVpp.start()
 	s.assertNil(err, "starting VPP failed")
 
 	_, err = serverVpp.vppctl("test echo server uri tcp://10.10.10.1/20022")
 	s.assertNil(err, "starting echo server failed")
 
-	clientContainer, err := s.NewContainer("client")
-	s.assertNil(err, "creating container failed")
-	err = clientContainer.run()
-	s.assertNil(err, "starting container failed")
+	clientContainer := s.containers[1]
+	clientVolume := s.volumes[1]
 
-	clientVpp := NewVppInstance(clientContainer)
+	clientVpp := NewVppInstance(clientContainer.useVolumeAsWorkDir(clientVolume))
 	s.assertNotNil(clientVpp)
-	clientVpp.setCliSocket("/var/run/vpp/cli.sock")
 	clientVpp.set2VethsClient()
 	err = clientVpp.start()
 	s.assertNil(err, "starting VPP failed")

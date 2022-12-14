@@ -2,30 +2,23 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/edwarnicke/exechelper"
 )
 
 func (s *VethsSuite) TestEchoBuiltin() {
-	srvInstance := "echo-srv-internal"
-	clnInstance := "echo-cln-internal"
-
-	s.assertNil(dockerRun(srvInstance, ""), "failed to start docker (srv)")
-	defer func() { exechelper.Run("docker stop " + srvInstance) }()
-
-	s.assertNil(dockerRun(clnInstance, ""), "failed to start docker (cln)")
-	defer func() { exechelper.Run("docker stop " + clnInstance) }()
-
-	_, err := hstExec("Configure2Veths srv", srvInstance)
+	serverContainer := s.containers[0]
+	serverVolume := s.volumes[0]
+	_, err := serverContainer.useVolumeAsWorkDir(serverVolume).execAction("Configure2Veths srv")
 	s.assertNil(err)
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	clientContainer := s.containers[1]
+	clientVolume := s.volumes[1]
+	_, err = clientContainer.useVolumeAsWorkDir(clientVolume).execAction("Configure2Veths cln")
 	s.assertNil(err)
 
-	_, err = hstExec("RunEchoSrvInternal private-segment-size 1g fifo-size 4 no-echo", srvInstance)
+	_, err = serverContainer.useVolumeAsWorkDir(serverVolume).execAction("RunEchoSrvInternal private-segment-size 1g fifo-size 4 no-echo")
 	s.assertNil(err)
 
-	o, err := hstExec("RunEchoClnInternal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4", clnInstance)
+	o, err := clientContainer.useVolumeAsWorkDir(clientVolume).execAction("RunEchoClnInternal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4")
 	s.assertNil(err)
 	fmt.Println(o)
 }

@@ -21,3 +21,30 @@ devices:
     interfaces:
       - vppsrv_veth
       - vppcln_veth
+
+volumes:
+  - one
+  - two
+
+containers:
+  - name: "server-vpp"
+    volumes:
+      - host-dir: "one"
+        container-dir: "/tmp/one"
+      - host-dir: "/tmp/server"
+        container-dir: "/tmp/server"
+  - name: "client-vpp"
+    volumes:
+      - host-dir: "two"
+        container-dir: "/tmp/two"
+      - host-dir: "/tmp/client"
+        container-dir: "/tmp/client"
+  - name: "server-echo"
+    volumes:
+      - host-dir: "one"
+        container-dir: "/tmp/one"
+  - name: "client-echo"
+    volumes:
+      - host-dir: "two"
+        container-dir: "/tmp/two"
+

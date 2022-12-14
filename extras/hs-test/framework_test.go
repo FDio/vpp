@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"io/ioutil"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type HstSuite struct {
@@ -19,8 +21,24 @@ type HstSuite struct {
 
 func (s *HstSuite) TearDownSuite() {
 	s.teardownSuite()
-	s.StopContainers()
+}
+
+func (s *HstSuite) TearDownTest() {
+	s.ResetContainers()
 	s.RemoveVolumes()
+}
+
+func (s *HstSuite) SetupTest() {
+	for _, volume := range s.volumes {
+		cmd := "docker volume create --name=" + volume
+		fmt.Println(cmd)
+		exechelper.Run(cmd)
+	}
+	for _, container := range s.containers {
+		if container.isOptional == false {
+			container.run()
+		}
+	}
 }
 
 func (s *HstSuite) hstFail() {
@@ -63,20 +81,7 @@ func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArg
 	}
 }
 
-func (s *HstSuite) NewContainer(name string) (*Container, error) {
-	if name == "" {
-		return nil, fmt.Errorf("creating container failed: name must not be blank")
-	}
-
-	container := new(Container)
-	container.name = name
-
-	s.containers = append(s.containers, container)
-
-	return container, nil
-}
-
-func (s *HstSuite) StopContainers() {
+func (s *HstSuite) ResetContainers() {
 	for _, container := range s.containers {
 		container.stop()
 	}
@@ -94,7 +99,32 @@ func (s *HstSuite) NewVolume(name string) error {
 
 func (s *HstSuite) RemoveVolumes() {
 	for _, volumeName := range s.volumes {
-		exechelper.Run("docker volume rm " + volumeName)
+		cmd := "docker volume rm " + volumeName
+		exechelper.Run(cmd)
+	}
+}
+
+func (s *HstSuite) loadDockerTopology(topologyName string) {
+	data, err := ioutil.ReadFile(TopologyDir + topologyName + ".yaml")
+	if err != nil {
+		s.T().Fatalf("read error: %v", err)
+	}
+	var yamlTopo YamlTopology
+	err = yaml.Unmarshal(data, &yamlTopo)
+	if err != nil {
+		s.T().Fatalf("unmarshal error: %v", err)
+	}
+
+	for _, elem := range yamlTopo.Volumes {
+		s.volumes = append(s.volumes, elem)
+	}
+
+	for _, elem := range yamlTopo.Containers {
+		newContainer, err := NewContainer(elem)
+		if err != nil {
+			s.T().Fatalf("config error: %v", err)
+		}
+		s.containers = append(s.containers, newContainer)
 	}
 }
 
@@ -114,6 +144,7 @@ type VethsSuite struct {
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.teardownSuite = setupSuite(&s.Suite, "2peerVeth")
+	s.loadDockerTopology("2peerVeth")
 }
 
 type NsSuite struct {
@@ -122,6 +153,7 @@ type NsSuite struct {
 
 func (s *NsSuite) SetupSuite() {
 	s.teardownSuite = setupSuite(&s.Suite, "ns")
+	s.loadDockerTopology("ns")
 }
 
 func setupSuite(s *suite.Suite, topologyName string) func() {
