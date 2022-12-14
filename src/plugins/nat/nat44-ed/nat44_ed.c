@@ -3044,7 +3044,9 @@ nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
     }
 
   hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +
-    (ip->src_address.as_u32 >> 16) + (ip->src_address.as_u32 >> 24);
+	 (ip->src_address.as_u32 >> 16) + (ip->src_address.as_u32 >> 24) +
+	 rx_fib_index + (rx_fib_index >> 8) + (rx_fib_index >> 16) +
+	 (rx_fib_index >> 24);
 
   if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
     next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
