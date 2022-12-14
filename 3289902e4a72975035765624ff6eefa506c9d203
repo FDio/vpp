@@ -34,6 +34,24 @@
       "parentUuid": "c931b6a3_7e57331d",
       "revId": "3289902e4a72975035765624ff6eefa506c9d203",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5a7a288_1c8e2888",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-12-14T18:10:13Z",
+      "side": 1,
+      "message": "I agree with Klement on this. I would rather go with the alternative solution.",
+      "parentUuid": "8ae5a99b_95348ccd",
+      "revId": "3289902e4a72975035765624ff6eefa506c9d203",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
