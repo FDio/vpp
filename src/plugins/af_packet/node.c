@@ -27,7 +27,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ethernet/packet.h>
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include <af_packet/af_packet.h>
 #include <vnet/devices/virtio/virtio_std.h>
 
 #define foreach_af_packet_input_error                                         \

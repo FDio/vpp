@@ -22,11 +22,11 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/devices/af_packet/af_packet.h>
+#include <af_packet/af_packet.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/devices/af_packet/af_packet.api_enum.h>
-#include <vnet/devices/af_packet/af_packet.api_types.h>
+#include <af_packet/af_packet.api_enum.h>
+#include <af_packet/af_packet.api_types.h>
 
 #define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -230,7 +230,7 @@ vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t * mp)
   vec_free (out_af_packet_ifs);
 }
 
-#include <vnet/devices/af_packet/af_packet.api.c>
+#include <af_packet/af_packet.api.c>
 static clib_error_t *
 af_packet_api_hookup (vlib_main_t * vm)
 {

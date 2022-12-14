@@ -35,7 +35,7 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include <af_packet/af_packet.h>
 
 af_packet_main_t af_packet_main;
 

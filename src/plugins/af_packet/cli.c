@@ -30,7 +30,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include <af_packet/af_packet.h>
 
 /**
  * @file
