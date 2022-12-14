@@ -133,7 +133,7 @@ func main() {
 	}
 
 	if os.Args[1] == "rm" {
-		topology, err := LoadTopology(TopologyDir, os.Args[2])
+		topology, err := LoadTopology(NetworkTopologyDir, os.Args[2])
 		if err != nil {
 			fmt.Printf("falied to load topologies: %v\n", err)
 			os.Exit(1)
