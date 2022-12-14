@@ -44,19 +44,18 @@ For adding a new suite, please see `Modifying the framework`_ below.
 #. Declare method whose name starts with ``Test`` and specifies its receiver as a pointer to the suite's struct (defined in ``framework_test.go``)
 #. Implement test behaviour inside the test method. This typically includes the following:
 
-  #. Start docker container(s) as needed. Function ``dockerRun(instance, args string)``
-     from ``utils.go`` serves this purpose. Alternatively use suite struct's ``NewContainer(name string)`` method to create
+  #. Retrieve a running container in which to run some action. Function ``getContainerByName(name string)``
+     from ``HstSuite`` struct serves this purpose
      an object representing a container and start it with ``run()`` method
   #. Execute *hs-test* action(s) inside any of the running containers.
-     Function ``hstExec`` from ``utils.go`` does this by using ``docker exec`` command to run ``hs-test`` executable.
-     For starting an VPP instance inside a container, the ``VppInstance`` struct can be used as a forward-looking alternative
-  #. Run arbitrary commands inside the containers with ``dockerExec(cmd string, instance string)``
+     Function ``execAction(args string)`` from ``container.go`` does this by using ``docker exec`` command to run ``hs-test`` executable.
+     For starting an VPP instance inside a container, the ``VppInstance`` struct can be used instead
+  #. Run arbitrary commands inside the containers with ``exec(cmd string)``
   #. Run other external tool with one of the preexisting functions in the ``utils.go`` file.
      For example, use ``wget`` with ``startWget(..)`` function
   #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
-  #. ``defer func() { exechelper.Run("docker stop <container-name>) }()`` inside the method body,
-     to stop the running container(s). It's not necessary to do this if containers were created
-     with suite's ``NewContainer(..)`` method
+  #. Verify results of your tests using ``assert`` methods provided by the test suite,
+     implemented by HstSuite struct
 
 **Example test case**
 
@@ -69,51 +68,24 @@ This can be put in file ``extras/hs-test/my_test.go`` and run with command ``./t
 
         import (
                 "fmt"
-                "github.com/edwarnicke/exechelper"
         )
 
         func (s *MySuite) TestMyCase() {
-                t := s.T()
+                serverVppContainer := s.getContainerByName("server-vpp")
 
-                vpp1Instance := "vpp-1"
-                vpp2Instance := "vpp-2"
+                serverVpp := NewVppInstance(serverContainer)
+                serverVpp.set2VethsServer()
+                serverVpp.start()
 
-                err := dockerRun(vpp1Instance, "")
-                if err != nil {
-                        t.Errorf("%v", err)
-                        return
-                }
-                defer func() { exechelper.Run("docker stop " + vpp1Instance) }()
+                clientVppContainer := s.getContainerByName("client-vpp")
 
-                err = dockerRun(vpp2Instance, "")
-                if err != nil {
-                        t.Errorf("%v", err)
-                        return
-                }
-                defer func() { exechelper.Run("docker stop " + vpp2Instance) }()
+                clientVpp:= NewVppInstance(clientContainer)
+                serverVpp.set2VethsClient()
+                clientVpp.start()
 
-                _, err = hstExec("Configure2Veths srv", vpp1Instance)
-                if err != nil {
-                        t.Errorf("%v", err)
-                        return
-                }
-
-                _, err = hstExec("Configure2Veths cln", vpp2Instance)
-                if err != nil {
-                        t.Errorf("%v", err)
-                        return
-                }
-
-                // ping one VPP from the other
-                //
-                // not using dockerExec because it executes in detached mode
-                // and we want to capture output from ping and show it
-                command := "docker exec --detach=false vpp-1 vppctl -s /tmp/2veths/var/run/vpp/cli.sock ping 10.10.10.2"
-                output, err := exechelper.CombinedOutput(command)
-                if err != nil {
-                        t.Errorf("ping failed: %v", err)
-                }
-                fmt.Println(string(output))
+                result, err := clientVpp.vppctl("ping 10.10.10.2")
+                s.assertNil(err, "ping resulted in error")
+                fmt.Println(result)
         }
 
 Modifying the framework
@@ -123,7 +95,9 @@ Modifying the framework
 
 .. _test-convention:
 
-#. Adding a new suite takes place in ``framework_test.go``
+#. Adding a new suite takes place in ``framework_test.go`` and by creating a new file for the suite.
+   Naming convention for the suite files is ``suite-name-test.go`` where *name* will be replaced
+   by the actual name
 
 #. Make a ``struct`` with at least ``HstSuite`` struct as its member.
    HstSuite provides functionality that can be shared for all suites, like starting containers
@@ -136,8 +110,12 @@ Modifying the framework
 
 #. Implement SetupSuite method which testify runs before running the tests.
    It's important here to call ``setupSuite(s *suite.Suite, topologyName string)`` and assign its result to the suite's ``teardownSuite`` member.
-   Pass the topology name to the function in the form of file name of one of the *yaml* files in ``topo`` folder.
-   Without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo/myTopology.yaml``
+   Pass the topology name to the function in the form of file name of one of the *yaml* files in ``topo-network`` folder.
+   Without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
+   This will ensure network topology, such as network interfaces and namespaces, will be created.
+   Another important method to call is ``loadContainerTopology(topologyName string)`` which will load
+   containers and shared volumes used by the suite. This time the name passed to method corresponds
+   to file in ``extras/hs-test/topo-containers`` folder
 
         ::
 
@@ -145,9 +123,11 @@ Modifying the framework
                         // Add custom setup code here
 
                         s.teardownSuite = setupSuite(&s.Suite, "myTopology")
+                        s.loadContainerTopology("2peerVeth")
                 }
 
-#. In order for ``go test`` to run this suite, we need to create a normal test function and pass our suite to ``suite.Run``
+#. In order for ``go test`` to run this suite, we need to create a normal test function and pass our suite to ``suite.Run``.
+   This is being at the end of ``framework_test.go``
 
         ::
 
@@ -160,20 +140,27 @@ Modifying the framework
 
 **Adding a topology element**
 
-Topology configuration exists as ``yaml`` files in the ``extras/hs-test/topo`` folder.
-Processing of a file for a particular test suite is started by the ``setupSuite`` function depending on which file's name is passed to it.
+Topology configuration exists as ``yaml`` files in the ``extras/hs-test/topo-network`` and
+``extras/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
+is started by the ``setupSuite`` function depending on which file's name is passed to it.
 Specified file is loaded by ``LoadTopology()`` function and converted into internal data structures which represent various elements of the topology.
 After parsing the configuration, ``Configure()`` method loops over array of topology elements and configures them one by one.
 
-These are currently supported types of elements.
+These are currently supported types of network elements.
 
 * ``netns`` - network namespace
 * ``veth`` - veth network interface, optionally with target network namespace or IPv4 address
 * ``bridge`` - ethernet bridge to connect created interfaces, optionally with target network namespace
 * ``tap`` - tap network interface with IP address
 
+Similarly, container topology is started by ``loadContainerTopology()``, configuration file is processed
+so that test suite retains map of defined containers and uses that to start them at the beginning
+of each test case and stop containers after the test finishes. Container configuration can specify
+also volumes which allow to share data between containers or between host system and containers.
+
 Supporting a new type of topology element requires adding code to recognize the new element type during loading.
-And adding code to set up the element in the host system with some Linux tool, such as *ip*. This should be implemented in ``netconfig.go``.
+And adding code to set up the element in the host system with some Linux tool, such as *ip*.
+This should be implemented in ``netconfig.go`` for network and in ``container.go`` for containers and volumes.
 
 **Communicating between containers**
 
@@ -193,13 +180,13 @@ For example, starting up VPP or running VCL echo client.
 
 The actions are located in ``extras/hs-test/actions.go``. To add one, create a new method that has its receiver as a pointer to ``Actions`` struct.
 
-Run it from test case with ``hstExec(args, instance)`` where ``args`` is the action method's name and ``instance`` is target Docker container's name.
+Run it from test case with container's method ``execAction(args)`` where ``args`` is the action method's name.
 This then executes the ``hs-test`` binary inside of the container and it then runs selected action.
 Action is specified by its name as first argument for the binary.
 
-*Note*: When ``hstExec(..)`` runs some action from a test case, the execution of ``hs-test`` inside the container
+*Note*: When ``execAction(args)`` runs some action from a test case, the execution of ``hs-test`` inside the container
 is asynchronous. The action might take many seconds to finish, while the test case execution context continues to run.
-To mitigate this, ``hstExec(..)`` waits pre-defined arbitrary number of seconds for a *sync file* to be written by ``hs-test``
+To mitigate this, ``execAction(args)`` waits pre-defined arbitrary number of seconds for a *sync file* to be written by ``hs-test``
 at the end of its run. The test case context and container use Docker volume to share the file.
 
 **Adding an external tool**

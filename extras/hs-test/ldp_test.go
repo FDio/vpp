@@ -4,22 +4,18 @@ import (
 	"fmt"
 	"os"
 	"time"
-
-	"github.com/edwarnicke/exechelper"
 )
 
 func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	var clnVclConf, srvVclConf Stanza
 
-	srvInstance := "vpp-ldp-srv"
-	clnInstance := "vpp-ldp-cln"
-	srvPath := "/tmp/" + srvInstance
-	clnPath := "/tmp/" + clnInstance
-	srvVcl := srvPath + "/vcl_srv.conf"
-	clnVcl := clnPath + "/vcl_cln.conf"
+	serverContainer := s.getContainerByName("server-vpp")
+	serverVolume := serverContainer.getVolumeByHostDir("/tmp/server")
+	srvVcl := serverVolume.containerDir + "/vcl_srv.conf"
 
-	exechelper.Run("mkdir " + srvPath)
-	exechelper.Run("mkdir " + clnPath)
+	clientContainer := s.getContainerByName("client-vpp")
+	clientVolume := clientContainer.getVolumeByHostDir("/tmp/client")
+	clnVcl := clientVolume.containerDir + "/vcl_cln.conf"
 
 	ldpreload := os.Getenv("HST_LDPRELOAD")
 	s.assertNotEqual("", ldpreload)
@@ -32,18 +28,20 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	fmt.Println("starting VPPs")
 
-	s.assertNil(dockerRun(srvInstance, fmt.Sprintf("-v /tmp/%s:/tmp", srvInstance)), "failed to start docker (srv)")
-	defer func() { exechelper.Run("docker stop " + srvInstance) }()
-
-	s.assertNil(dockerRun(clnInstance, fmt.Sprintf("-v /tmp/%s:/tmp", clnInstance)), "failed to start docker (cln)")
-	defer func() { exechelper.Run("docker stop " + clnInstance) }()
-
-	_, err := hstExec("Configure2Veths srv", srvInstance)
+	originalWorkDir := serverContainer.workDir
+	serverContainer.workDir = serverVolume.containerDir
+	_, err := serverContainer.execAction("Configure2Veths srv")
 	s.assertNil(err)
+	serverContainer.workDir = originalWorkDir
 
-	_, err = hstExec("Configure2Veths cln", clnInstance)
+	originalWorkDir = clientContainer.workDir
+	clientContainer.workDir = clientVolume.containerDir
+	_, err = clientContainer.execAction("Configure2Veths cln")
 	s.assertNil(err)
+	clientContainer.workDir = originalWorkDir
 
+	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/2",
+		clientVolume.containerDir)
 	err = clnVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
@@ -51,10 +49,12 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		Append("app-scope-local").
 		Append("app-scope-global").
 		Append("use-mq-eventfd").
-		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/2", clnInstance)).Close().
+		Append(clientAppSocketApi).Close().
 		SaveToFile(clnVcl)
 	s.assertNil(err)
 
+	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/1",
+		serverVolume.containerDir)
 	err = srvVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
@@ -62,7 +62,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		Append("app-scope-local").
 		Append("app-scope-global").
 		Append("use-mq-eventfd").
-		Append(fmt.Sprintf("app-socket-api /tmp/%s/Configure2Veths/var/run/app_ns_sockets/1", srvInstance)).Close().
+		Append(serverAppSocketApi).Close().
 		SaveToFile(srvVcl)
 	s.assertNil(err)
 
