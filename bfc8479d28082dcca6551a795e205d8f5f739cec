@@ -68,6 +68,23 @@
       "message": "cherry-pick to master, new ticket:37798",
       "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a34a447_fe65737b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-14T16:59:35Z",
+      "side": 1,
+      "message": "Merged the patch on master. Given the change in shm session layer api, let\u0027s not merge it in stable/2210. \n\nCould you provide more details about the issue you\u0027ve hit with nginx and vpp master?",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
