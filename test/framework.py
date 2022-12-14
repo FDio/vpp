@@ -931,7 +931,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
             self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
             self.logger.info("Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log))
-            os.rename(tmp_api_trace, vpp_api_trace_log)
+            shutil.move(tmp_api_trace, vpp_api_trace_log)
         except VppTransportSocketIOError:
             self.logger.debug(
                 "VppTransportSocketIOError: Vpp dead. Cannot log show commands."
