@@ -1007,7 +1007,6 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_MULTIARCH_SOURCES
   devices/virtio/node.c
-  devices/af_packet/node.c
   devices/virtio/device.c
 )
 
@@ -1106,27 +1105,6 @@ list(APPEND VNET_HEADERS
   tls/tls_test.h
 )
 
-##############################################################################
-# Linux packet interface
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  devices/af_packet/af_packet.c
-  devices/af_packet/device.c
-  devices/af_packet/node.c
-  devices/af_packet/cli.c
-  devices/af_packet/af_packet_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  devices/af_packet/device.c
-)
-
-list(APPEND VNET_HEADERS
-  devices/af_packet/af_packet.h
-)
-
-list(APPEND VNET_API_FILES devices/af_packet/af_packet.api)
 
 ##############################################################################
 # Driver feature graph arc support

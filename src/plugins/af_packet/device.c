@@ -33,7 +33,7 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include <af_packet/af_packet.h>
 #include <vnet/devices/virtio/virtio_std.h>
 
 #define foreach_af_packet_tx_func_error               \
