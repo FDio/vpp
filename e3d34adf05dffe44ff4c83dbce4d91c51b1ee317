@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51484a39_5735d44f",
+        "filename": "src/plugins/nat/nat44-ed/nat44_ed_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1568
+      },
+      "writtenOn": "2022-12-14T18:21:06Z",
+      "side": 1,
+      "message": "This part doesn\u0027t make sense here. We use ~0 for configuring unset variables in some of the API, where does parameters are optional. In this API vrf_id isn\u0027t optional.",
+      "revId": "e3d34adf05dffe44ff4c83dbce4d91c51b1ee317",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
