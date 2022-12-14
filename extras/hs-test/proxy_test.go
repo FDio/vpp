@@ -1,34 +1,22 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/edwarnicke/exechelper"
 )
 
-func testProxyHttpTcp(s *NsSuite, dockerInstance, action string, proxySetup func() error) error {
+func testProxyHttpTcp(s *NsSuite, proxySetup func() error) error {
 	const outputFile = "test.data"
 	const srcFile = "10M"
 	stopServer := make(chan struct{}, 1)
 	serverRunning := make(chan struct{}, 1)
 
-	volumeArgs := fmt.Sprintf("-v shared-vol:/tmp/%s", dockerInstance)
-	s.assertNil(dockerRun(dockerInstance, volumeArgs), "failed to start container")
-	defer func() { exechelper.Run("docker stop " + dockerInstance) }()
-
-	// start & configure vpp in the container
-	_, err := hstExec(action, dockerInstance)
-	s.assertNil(err)
-
-	fmt.Println("VPP running and configured...")
-
 	s.assertNil(proxySetup(), "failed to setup proxy")
-	fmt.Println("Proxy configured...")
 
 	// create test file
-	err = exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
+	err := exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
 	s.assertNil(err, "failed to run truncate command")
 	defer func() { os.Remove(srcFile) }()
 
@@ -55,50 +43,43 @@ func testProxyHttpTcp(s *NsSuite, dockerInstance, action string, proxySetup func
 	return nil
 }
 
-func setupEnvoy(ctx context.Context, dockerInstance string) error {
-	errCh := startEnvoy(ctx, dockerInstance)
-	select {
-	case err := <-errCh:
-		return err
-	default:
-	}
+func configureVppProxy(s *NsSuite) error {
+	container := s.getContainerByName("vpp")
+	testVppProxy := NewVppInstance(container)
+	testVppProxy.setVppProxy()
+	err := testVppProxy.start()
+	s.assertNil(err, "failed to start and configure VPP")
+	fmt.Println("VPP running and configured...")
 
-	go func(ctx context.Context, errCh <-chan error) {
-		for {
-			select {
-			// handle cancel() call from outside to gracefully stop the routine
-			case <-ctx.Done():
-				return
-			default:
-				select {
-				case err := <-errCh:
-					fmt.Printf("error while running envoy: %v", err)
-				default:
-				}
-			}
-		}
-	}(ctx, errCh)
+	output, err := testVppProxy.vppctl("test proxy server server-uri tcp://10.0.0.2/555 client-uri tcp://10.0.1.1/666")
+	fmt.Println("Proxy configured...", string(output))
 	return nil
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
-	dockerInstance := "vpp-proxy"
-	err := testProxyHttpTcp(s, dockerInstance, "ConfigureVppProxy", configureVppProxy)
+	err := testProxyHttpTcp(s, func() error {
+		return configureVppProxy(s)
+	})
 	s.assertNil(err)
 }
 
+func configureEnvoyProxy(s *NsSuite) error {
+	vppContainer := s.getContainerByName("vpp")
+	testVppForEnvoyProxy := NewVppInstance(vppContainer)
+	testVppForEnvoyProxy.setEnvoyProxy()
+	err := testVppForEnvoyProxy.start()
+	s.assertNil(err, "failed to start and configure VPP")
+
+	envoyContainer := s.getContainerByName("envoy")
+	envoyContainer.run()
+
+	fmt.Println("VPP running and configured...")
+	return nil
+}
+
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
-	exechelper.Run("docker volume create --name=shared-vol")
-	defer func() {
-		exechelper.Run("docker stop envoy")
-	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	dockerInstance := "vpp-envoy"
-	err := testProxyHttpTcp(s, dockerInstance, "ConfigureEnvoyProxy", func() error {
-		return setupEnvoy(ctx, dockerInstance)
+	err := testProxyHttpTcp(s, func() error {
+		return configureEnvoyProxy(s)
 	})
 	s.assertNil(err)
-	cancel()
 }

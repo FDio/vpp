@@ -40,6 +40,10 @@ plugins {
 
 `
 
+const (
+	defaultCliSocketFilePath = "/var/run/vpp/cli.sock"
+)
+
 type VppInstance struct {
 	container *Container
 	config VppConfig
@@ -65,28 +69,30 @@ func (vpp *VppInstance) set2VethsClient() {
 	vpp.config.Variant = "cln"
 }
 
+func (vpp *VppInstance) setVppProxy() {
+	vpp.actionFuncName = "ConfigureVppProxy"
+}
+
+func (vpp *VppInstance) setEnvoyProxy() {
+	vpp.actionFuncName = "ConfigureEnvoyProxy"
+}
+
 func (vpp *VppInstance) setCliSocket(filePath string) {
 	vpp.config.CliSocketFilePath = filePath
 }
 
 func (vpp *VppInstance) getCliSocket() string {
-	return fmt.Sprintf("/tmp/%s/%s", vpp.actionFuncName, vpp.config.CliSocketFilePath)
+	return fmt.Sprintf("%s%s", vpp.container.workDir, vpp.config.CliSocketFilePath)
 }
 
 func (vpp *VppInstance) start() error {
-	if vpp.config.Variant == "" {
-		return fmt.Errorf("vpp start failed: variant must not be blank")
-	}
 	if vpp.actionFuncName == "" {
 		return fmt.Errorf("vpp start failed: action function name must not be blank")
 	}
 
-	serializedConfig, err := json.Marshal(vpp.config)
-	if err != nil {
-		return fmt.Errorf("vpp start failed: serializing configuration failed: %s", err)
-	}
-	args := fmt.Sprintf("%s '%s'", vpp.actionFuncName, string(serializedConfig))
-	_, err = hstExec(args, vpp.container.name)
+	serializedConfig, err := serializeVppConfig(vpp.config)
+	args := fmt.Sprintf("%s '%s'", vpp.actionFuncName, serializedConfig)
+	_, err = vpp.container.execAction(args)
 	if err != nil {
 		return fmt.Errorf("vpp start failed: %s", err)
 	}
@@ -95,9 +101,9 @@ func (vpp *VppInstance) start() error {
 }
 
 func (vpp *VppInstance) vppctl(command string) (string, error) {
-	dockerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
+	cliExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.container.name, vpp.getCliSocket(), command)
-	output, err := exechelper.CombinedOutput(dockerExecCommand)
+	output, err := exechelper.CombinedOutput(cliExecCommand)
 	if err != nil {
 		return "", fmt.Errorf("vppctl failed: %s", err)
 	}
@@ -106,19 +112,30 @@ func (vpp *VppInstance) vppctl(command string) (string, error) {
 }
 
 func NewVppInstance(c *Container) *VppInstance {
+	var vppConfig VppConfig
+	vppConfig.CliSocketFilePath = defaultCliSocketFilePath
 	vpp := new(VppInstance)
 	vpp.container = c
+	vpp.config = vppConfig
 	return vpp
 }
 
-func DeserializeVppConfig(input string) (VppConfig, error) {
+func serializeVppConfig(vppConfig VppConfig) (string, error) {
+	serializedConfig, err := json.Marshal(vppConfig)
+	if err != nil {
+		return "", fmt.Errorf("vpp start failed: serializing configuration failed: %s", err)
+	}
+	return string(serializedConfig), nil
+}
+
+func deserializeVppConfig(input string) (VppConfig, error) {
 	var vppConfig VppConfig
 	err := json.Unmarshal([]byte(input), &vppConfig)
 	if err != nil {
-		// Since input is not a  valid JSON it is going be used as variant value
+		// Since input is not a  valid JSON it is going be used as a variant value
 		// for compatibility reasons
 		vppConfig.Variant = input
-		vppConfig.CliSocketFilePath = "/var/run/vpp/cli.sock"
+		vppConfig.CliSocketFilePath = defaultCliSocketFilePath
 	}
 	return vppConfig, nil
 }

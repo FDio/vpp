@@ -19,6 +19,10 @@ import (
 	"github.com/edwarnicke/vpphelper"
 )
 
+var (
+	workDir, _ = os.Getwd()
+)
+
 type ConfFn func(context.Context, api.Connection) error
 
 type Actions struct {
@@ -44,20 +48,22 @@ func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
 
 func (a *Actions) RunHttpCliSrv(args []string) *ActionResult {
 	cmd := fmt.Sprintf("http cli server")
-	return ApiCliInband("/tmp/Configure2Veths", cmd)
+	return ApiCliInband(workDir, cmd)
 }
 
 func (a *Actions) RunHttpCliCln(args []string) *ActionResult {
 	cmd := fmt.Sprintf("http cli client uri http://10.10.10.1/80 query %s", getArgs())
 	fmt.Println(cmd)
-	return ApiCliInband("/tmp/Configure2Veths", cmd)
+	return ApiCliInband(workDir, cmd)
 }
 
 func (a *Actions) ConfigureVppProxy(args []string) *ActionResult {
 	ctx, cancel := newVppContext()
 	defer cancel()
 
-	con, vppErrCh := vpphelper.StartAndDialContext(ctx, vpphelper.WithVppConfig(configTemplate))
+	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
+		vpphelper.WithVppConfig(configTemplate),
+		vpphelper.WithRootDir(workDir))
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	confFn := configureProxyTcp("vpp0", "10.0.0.2/24", "vpp1", "10.0.1.2/24")
@@ -83,7 +89,7 @@ func (a *Actions) ConfigureEnvoyProxy(args []string) *ActionResult {
 
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
 		vpphelper.WithVppConfig(configTemplate+startup.ToString()),
-		vpphelper.WithRootDir("/tmp/vpp-envoy"))
+		vpphelper.WithRootDir(workDir))
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	confFn := configureProxyTcp("vpp0", "10.0.0.2/24", "vpp1", "10.0.1.2/24")
@@ -91,7 +97,7 @@ func (a *Actions) ConfigureEnvoyProxy(args []string) *ActionResult {
 	if err != nil {
 		return NewActionResult(err, ActionResultWithDesc("configuration failed"))
 	}
-	err0 := exechelper.Run("chmod 777 -R /tmp/vpp-envoy")
+	err0 := exechelper.Run("chmod 777 -R " + workDir)
 	if err0 != nil {
 		return NewActionResult(err, ActionResultWithDesc("setting permissions failed"))
 	}
@@ -120,7 +126,7 @@ func (a *Actions) RunEchoClient(args []string) *ActionResult {
 	outBuff := bytes.NewBuffer([]byte{})
 	errBuff := bytes.NewBuffer([]byte{})
 
-	cmd := fmt.Sprintf("vpp_echo client socket-name /tmp/echo-cln/var/run/app_ns_sockets/2 use-app-socket-api uri %s://10.10.10.1/12344", args[2])
+	cmd := fmt.Sprintf("vpp_echo client socket-name %s/var/run/app_ns_sockets/2 use-app-socket-api uri %s://10.10.10.1/12344", workDir, args[2])
 	err := exechelper.Run(cmd,
 		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
 		exechelper.WithStdout(os.Stdout), exechelper.WithStderr(os.Stderr))
@@ -130,7 +136,7 @@ func (a *Actions) RunEchoClient(args []string) *ActionResult {
 }
 
 func (a *Actions) RunEchoServer(args []string) *ActionResult {
-	cmd := fmt.Sprintf("vpp_echo server TX=RX socket-name /tmp/echo-srv/var/run/app_ns_sockets/1 use-app-socket-api uri %s://10.10.10.1/12344", args[2])
+	cmd := fmt.Sprintf("vpp_echo server TX=RX socket-name %s/var/run/app_ns_sockets/1 use-app-socket-api uri %s://10.10.10.1/12344", workDir, args[2])
 	errCh := exechelper.Start(cmd)
 	select {
 	case err := <-errCh:
@@ -143,12 +149,12 @@ func (a *Actions) RunEchoServer(args []string) *ActionResult {
 
 func (a *Actions) RunEchoSrvInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo server %s uri tcp://10.10.10.1/1234", getArgs())
-	return ApiCliInband("/tmp/Configure2Veths", cmd)
+	return ApiCliInband(workDir, cmd)
 }
 
 func (a *Actions) RunEchoClnInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo client %s uri tcp://10.10.10.1/1234", getArgs())
-	return ApiCliInband("/tmp/Configure2Veths", cmd)
+	return ApiCliInband(workDir, cmd)
 }
 
 func (a *Actions) RunVclEchoServer(args []string) *ActionResult {
@@ -156,10 +162,11 @@ func (a *Actions) RunVclEchoServer(args []string) *ActionResult {
 	if err != nil {
 		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
 	}
-	fmt.Fprintf(f, vclTemplate, "/tmp/echo-srv/var/run/app_ns_sockets/1", "1")
+	socketPath := fmt.Sprintf("%s/var/run/app_ns_sockets/1", workDir)
+	fmt.Fprintf(f, vclTemplate, socketPath, "1")
 	f.Close()
 
-	os.Setenv("VCL_CONFIG", "/vcl_1.conf")
+	os.Setenv("VCL_CONFIG", "./vcl_1.conf")
 	cmd := fmt.Sprintf("vcl_test_server -p %s 12346", args[2])
 	errCh := exechelper.Start(cmd)
 	select {
@@ -179,10 +186,11 @@ func (a *Actions) RunVclEchoClient(args []string) *ActionResult {
 	if err != nil {
 		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
 	}
-	fmt.Fprintf(f, vclTemplate, "/tmp/echo-cln/var/run/app_ns_sockets/2", "2")
+	socketPath := fmt.Sprintf("%s/var/run/app_ns_sockets/2", workDir)
+	fmt.Fprintf(f, vclTemplate, socketPath, "2")
 	f.Close()
 
-	os.Setenv("VCL_CONFIG", "/vcl_2.conf")
+	os.Setenv("VCL_CONFIG", "./vcl_2.conf")
 	cmd := fmt.Sprintf("vcl_test_client -U -p %s 10.10.10.1 12346", args[2])
 	err = exechelper.Run(cmd,
 		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
@@ -237,22 +245,25 @@ func (a *Actions) Configure2Veths(args []string) *ActionResult {
 	ctx, cancel := newVppContext()
 	defer cancel()
 
-	vppConfig, err := DeserializeVppConfig(args[2])
+	vppConfig, err := deserializeVppConfig(args[2])
 	if err != nil {
 		return NewActionResult(err, ActionResultWithDesc("deserializing configuration failed"))
 	}
 
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,
 		vpphelper.WithVppConfig(vppConfig.getTemplate()+startup.ToString()),
-		vpphelper.WithRootDir(fmt.Sprintf("/tmp/%s", args[1])))
+		vpphelper.WithRootDir(workDir))
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	var fn func(context.Context, api.Connection) error
-	if vppConfig.Variant == "srv" {
+	switch vppConfig.Variant {
+	case "srv":
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1)
-	} else if vppConfig.Variant == "srv-with-preset-hw-addr" {
+	case "srv-with-preset-hw-addr":
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1, "00:00:5e:00:53:01")
-	} else {
+	case "cln":
+		fallthrough
+	default:
 		fn = configure2vethsTopo("vppcln", "10.10.10.2/24", "2", 2)
 	}
 	err = fn(ctx, con)
