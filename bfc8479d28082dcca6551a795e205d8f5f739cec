@@ -85,6 +85,24 @@
       "message": "Merged the patch on master. Given the change in shm session layer api, let\u0027s not merge it in stable/2210. \n\nCould you provide more details about the issue you\u0027ve hit with nginx and vpp master?",
       "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd99d556_0f32d550",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2889
+      },
+      "writtenOn": "2022-12-15T14:21:22Z",
+      "side": 1,
+      "message": "1\u003e thanks for the approval, but sorry I don\u0027t understand the \u0027given the changes in the...\u0027 means. Is that something like release notes?\n\n2\u003e Regarding the issue, I didn\u0027t start to debug. what I currently have known is: The LDP\u0027s APP Nginx tries to respond but the packages were blocked while the peer is waiting for them.  if turn back and check the VPP\u0027s status I found:\u0027udp4-output Invalid connection error\u0027. so, it looks like the UDP added a new egress Node. I am not sure of that now.\n\n3\u003e Because this issue is found on the master branch after stable/2210 and is irrelevant to these tickets, can we open a new ticket or some else to discuss this? I want to close these tickets.",
+      "parentUuid": "0a34a447_fe65737b",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
