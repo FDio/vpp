@@ -467,6 +467,8 @@ IBverbs
 iccrg
 icmp
 icmpr
+idpf
+Idpf
 ietf
 iface
 ifndef
