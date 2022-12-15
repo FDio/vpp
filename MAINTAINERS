@@ -571,6 +571,11 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/unittest/
 
+Plugin - IDPF Device driver
+I:      idpf
+M:      Ting Xu <ting.xu@intel.com>
+F:      src/plugins/idpf/
+
 Plugin - Intel DMA engines
 I:      dma_intel
 M:      Marvin Liu <yong.liu@intel.com>
