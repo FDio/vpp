@@ -103,6 +103,24 @@
       "parentUuid": "0a34a447_fe65737b",
       "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06c055c5_3d2b9186",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-15T17:21:43Z",
+      "side": 1,
+      "message": "1) Point is that this is a breaking binary api change, so we don\u0027t want to break an existing release. \n2) Yes, we now have a udp-output node, but that shouldn\u0027t have changed anything. Let me know if you want to setup a meeting to discuss this.\n3) Given point 1) above, let\u0027s close this.",
+      "parentUuid": "dd99d556_0f32d550",
+      "revId": "bfc8479d28082dcca6551a795e205d8f5f739cec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
