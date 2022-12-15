@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5c5d031_3b5354b1",
+        "filename": "src/plugins/af_packet/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2022-12-15T03:11:08Z",
+      "side": 1,
+      "message": "2022",
+      "revId": "5e1a15e1f152d39161fea773693569c50ce545c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
