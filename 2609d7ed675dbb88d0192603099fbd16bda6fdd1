@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "598f58cd_749f6d41",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2022-12-15T14:25:31Z",
+      "side": 1,
+      "message": "Hi Benoît,\nI have no idea what this patch is about, so I guess it\u0027s for you.\nHope this is the right call",
+      "revId": "2609d7ed675dbb88d0192603099fbd16bda6fdd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
