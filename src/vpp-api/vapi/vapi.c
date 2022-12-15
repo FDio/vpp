@@ -1420,6 +1420,16 @@ vapi_get_msg_name (vapi_msg_id_t id)
   return __vapi_metadata.msgs[id]->name;
 }
 
+void
+vapi_stop_rx_thread (vapi_ctx_t ctx)
+{
+  if (!ctx || !ctx->connected || !ctx->vl_input_queue)
+    {
+      return;
+    }
+
+  vl_client_stop_rx_thread (ctx->vl_input_queue);
+}
 /*
  * fd.io coding-style-patch-verification: ON
  *

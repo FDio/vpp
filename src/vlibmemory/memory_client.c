@@ -510,6 +510,14 @@ vl_client_connect_to_vlib_thread_fn (const char *svm_name,
 				   thread_fn, arg, 1 /* do map */ );
 }
 
+void
+vl_client_stop_rx_thread (svm_queue_t *vl_input_queue)
+{
+  vl_api_rx_thread_exit_t *ep;
+  ep = vl_msg_api_alloc (sizeof (*ep));
+  ep->_vl_msg_id = ntohs (VL_API_RX_THREAD_EXIT);
+  vl_msg_api_send_shmem (vl_input_queue, (u8 *) &ep);
+}
 
 static void
 disconnect_from_vlib_internal (u8 do_unmap)
@@ -520,10 +528,7 @@ disconnect_from_vlib_internal (u8 do_unmap)
 
   if (mm->rx_thread_jmpbuf_valid)
     {
-      vl_api_rx_thread_exit_t *ep;
-      ep = vl_msg_api_alloc (sizeof (*ep));
-      ep->_vl_msg_id = ntohs (VL_API_RX_THREAD_EXIT);
-      vl_msg_api_send_shmem (am->vl_input_queue, (u8 *) & ep);
+      vl_client_stop_rx_thread (am->vl_input_queue);
       pthread_join (mm->rx_thread_handle, (void **) &junk);
     }
   if (mm->connected_to_vlib)
