@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8520069_ac3ead94",
+        "filename": "extras/hs-test/container.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-16T10:31:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ddc2eaa2_9e9334dd",
+      "range": {
+        "startLine": 25,
+        "startChar": 28,
+        "endLine": 25,
+        "endChar": 50
+      },
+      "revId": "ccda3c3e9375603aefdd66bb1d3fcaecb4e46f60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89d06ddf_c79068c9",
@@ -64,6 +88,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5931d7d3_321bcd3c",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-16T10:31:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89d06ddf_c79068c9",
+      "range": {
+        "startLine": 16,
+        "startChar": 12,
+        "endLine": 16,
+        "endChar": 36
+      },
+      "revId": "ccda3c3e9375603aefdd66bb1d3fcaecb4e46f60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f1730d61_22a7ef1b",
@@ -77,6 +125,30 @@
       "writtenOn": "2022-12-16T00:37:46Z",
       "side": 1,
       "message": "Just thinking out loud, after re-reading the code. If we tackle this, we should do it in a separate patch, unless it\u0027s not too much work. \n\nIt feels like we should probably be separating network from app/container topology. Such that the suite at run time configures 1) network topology 2) container topology and then 3) runs tests.\n\nI suspect we don\u0027t have at this point multiple tests that use the same network topology, but (so multiple 2) that use the same 1)) but we might get there.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 11
+      },
+      "revId": "ccda3c3e9375603aefdd66bb1d3fcaecb4e46f60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8bd44b65_6643ac64",
+        "filename": "extras/hs-test/topo/2peerVeth.yaml",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-16T10:31:29Z",
+      "side": 1,
+      "message": "Okay, they\u0027ve been separated into their own files and to separate folders for container topology and for network topology..",
+      "parentUuid": "f1730d61_22a7ef1b",
       "range": {
         "startLine": 24,
         "startChar": 0,
