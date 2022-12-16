@@ -86,6 +86,24 @@
       "message": "recheck",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bb9cc5e_69870753",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2022-12-16T02:51:01Z",
+      "side": 1,
+      "message": "Thanks for reply. The code have not merged yet. I have another small question: why Code-Review is +1 and \"Looks good to me, but someone else must approve\"",
+      "parentUuid": "71e052e0_23d7d02f",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
