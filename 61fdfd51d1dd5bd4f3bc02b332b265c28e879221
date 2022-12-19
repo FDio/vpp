@@ -52,6 +52,24 @@
       "parentUuid": "ffe6118e_2ebf66cb",
       "revId": "61fdfd51d1dd5bd4f3bc02b332b265c28e879221",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "861aa741_37258774",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 2246,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2022-12-19T10:44:20Z",
+      "side": 0,
+      "message": "Right. VPP doesn\u0027t support GSO with GRE tunnel. So we don\u0027t have gso unit tests for GRE tunnel.\n\nOn checksum offload, we do not need to offload (outer) ipv4 header checksum (so we do not need to set outer_l3_hdr_offset) unless packet is GSO but VPP doesn\u0027t support GSO with GRE tunnel as mentioned above in case of GRE. That\u0027s why you will not see outer_l3_hdr_offset set in GRE encap.\n\nGenerally, we are interested in tcp/udp checksum offload to NICs. Packet with tcp or udp checksum offload traverses through the VPP graph nodes till the point where transmit interface has been known. Based on tx interface capabilities, either checksums are computed in vpp (i.e. interface_output node) or in the NIC.\n\nThe metadata which is required to compute the tcp/udp checksum offload is l4_hdr_offset and respective offload flag in vlib_buffer_t. l4_hdr_offset is valid unless intermediate nodes displace/move the tcp/udp header (in which case, node moving the headers is responsible to correctly (re)set the new offsets for headers).",
+      "parentUuid": "3b2468d2_7446ec9d",
+      "revId": "61fdfd51d1dd5bd4f3bc02b332b265c28e879221",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
