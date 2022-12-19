@@ -28,6 +28,13 @@
 #include <rte_ethdev.h>
 #include <rte_version.h>
 #include <rte_net.h>
+#include <rte_bus.h>
+#include <rte_pci.h>
+#include <ctype.h>
+
+#include <bus_driver.h>
+#include <bus_pci_driver.h>
+#include <bus_vmbus_driver.h>
 
 #include <vnet/devices/devices.h>
 
