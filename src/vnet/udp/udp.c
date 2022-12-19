@@ -223,8 +223,26 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port,
 			udp_csum_offload (uc));
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  /* Handle ip header now as session layer overwrite connection details for
+   * non-connected udp. */
+  if (uc->c_is_ip4)
+    vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
+				 IP_PROTOCOL_UDP, udp_csum_offload (uc),
+				 0 /* is_df */, uc->c_dscp);
+  else
+    vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
+			  IP_PROTOCOL_UDP);
+
   /* reuse tcp medatada for now */
   vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
+
+  /* Not connected udp session. Mark buffer for custom handling in
+   * udp_output */
+  if (PREDICT_FALSE (!(uc->flags & UDP_CONN_F_CONNECTED)))
+    vnet_buffer (b)->tcp.flags |= UDP_CONN_F_LISTEN;
+  else
+    vnet_buffer (b)->tcp.flags = 0;
 
   return 0;
 }
