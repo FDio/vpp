@@ -28,6 +28,15 @@
 #include <rte_ethdev.h>
 #include <rte_version.h>
 #include <rte_net.h>
+#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
+#include <rte_bus.h>
+#include <rte_pci.h>
+#include <ctype.h>
+
+#include <bus_driver.h>
+#include <bus_pci_driver.h>
+#include <bus_vmbus_driver.h>
+#endif
 
 #include <vnet/devices/devices.h>
 
