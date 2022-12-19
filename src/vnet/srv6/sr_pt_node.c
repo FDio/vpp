@@ -170,5 +170,4 @@ VLIB_REGISTER_NODE (sr_pt_node) = {
 VNET_FEATURE_INIT (sr_pt_node, static) = {
   .arc_name = "ip6-output",
   .node_name = "pt",
-  .runs_after = VNET_FEATURES ("ip6-lookup"),
 };
