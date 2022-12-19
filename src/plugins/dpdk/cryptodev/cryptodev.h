@@ -84,7 +84,7 @@ typedef enum
 /* Cryptodev session data, one data per direction per numa */
 typedef struct
 {
-  struct rte_cryptodev_sym_session ***keys;
+  void ***keys;
 } cryptodev_key_t;
 
 /* Replicate DPDK rte_cryptodev_sym_capability structure with key size ranges
@@ -125,7 +125,6 @@ typedef struct
 typedef struct
 {
   struct rte_mempool *sess_pool;
-  struct rte_mempool *sess_priv_pool;
 } cryptodev_session_pool_t;
 
 typedef struct
@@ -163,7 +162,7 @@ typedef struct
       u16 aad_index;
       u8 *aad_buf;
       u64 aad_phy_addr;
-      struct rte_cryptodev_sym_session *reset_sess;
+      void *reset_sess;
     };
   };
   u16 cryptodev_id;
