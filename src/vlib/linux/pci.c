@@ -486,7 +486,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 					 "is bound to IOMMU group and "
 					 "vfio-pci driver is not loaded",
 					 format_vlib_pci_addr, addr);
-	      goto done;
+	      goto err0;
 	    }
 	  else
 	    uio_drv_name = "vfio-pci";
@@ -507,7 +507,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 	      error = clib_error_return (0, "Skipping PCI device %U: missing "
 					 "kernel VFIO or UIO driver",
 					 format_vlib_pci_addr, addr);
-	      goto done;
+	      goto err0;
 	    }
 	  clib_error_free (error);
 	}
@@ -521,7 +521,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
       ((strcmp ("vfio-pci", (char *) driver_name) == 0) ||
        (strcmp ("uio_pci_generic", (char *) driver_name) == 0) ||
        (strcmp ("igb_uio", (char *) driver_name) == 0)))
-    goto done;
+    goto err0;
 
   if (!force)
     {
@@ -536,14 +536,14 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 				     "Skipping PCI device %U: failed to "
 				     "read /sys/class/net",
 				     format_vlib_pci_addr, addr);
-	  goto done;
+	  goto err0;
 	}
 
       fd = socket (PF_INET, SOCK_DGRAM, 0);
       if (fd < 0)
 	{
 	  error = clib_error_return_unix (0, "socket");
-	  goto done;
+	  goto err1;
 	}
 
       while ((e = readdir (dir)))
@@ -580,7 +580,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 	      error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
 					      e->d_name);
 	      close (fd);
-	      goto done;
+	      goto err1;
 	    }
 
 	  if (ifr.ifr_flags & IFF_UP)
@@ -590,7 +590,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 			"interface %s is up",
 			format_vlib_pci_addr, addr, e->d_name);
 	      close (fd);
-	      goto done;
+	      goto err1;
 	    }
 	}
 
@@ -628,8 +628,9 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
       vec_reset_length (s);
     }
 
-done:
+err1:
   closedir (dir);
+err0:
   vec_free (s);
   vec_free (dev_dir_name);
   vec_free (driver_name);
