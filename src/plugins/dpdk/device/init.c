@@ -205,8 +205,8 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   if ((vmbus_dev = dpdk_get_vmbus_device (di)))
     {
       unformat_input_t input_vmbus;
-      unformat_init_string (&input_vmbus, di->device->name,
-			    strlen (di->device->name));
+      unformat_init_string (&input_vmbus, rte_dev_name (di->device),
+			    strlen (rte_dev_name (di->device)));
       if (unformat (&input_vmbus, "%U", unformat_vlib_vmbus_addr, &vmbus_addr))
 	p = mhash_get (&dm->conf->device_config_index_by_vmbus_addr,
 		       &vmbus_addr);
