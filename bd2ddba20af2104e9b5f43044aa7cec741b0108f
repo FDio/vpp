@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a58a1947_6c34df09",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-19T17:11:49Z",
+      "side": 1,
+      "message": "vppctl, or am I missing something? Let\u0027s solve it in next patch",
+      "range": {
+        "startLine": 42,
+        "startChar": 27,
+        "endLine": 42,
+        "endChar": 37
+      },
+      "revId": "bd2ddba20af2104e9b5f43044aa7cec741b0108f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
