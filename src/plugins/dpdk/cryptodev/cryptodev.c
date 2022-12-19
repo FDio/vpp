@@ -151,9 +151,7 @@ cryptodev_session_del (struct rte_cryptodev_sym_session *sess)
   n_devs = rte_cryptodev_count ();
 
   for (i = 0; i < n_devs; i++)
-    rte_cryptodev_sym_session_clear (i, sess);
-
-  rte_cryptodev_sym_session_free (sess);
+    rte_cryptodev_sym_session_free (i, sess);
 }
 
 static int
@@ -380,13 +378,12 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   cryptodev_numa_data_t *numa_data;
   cryptodev_inst_t *dev_inst;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-  struct rte_mempool *sess_pool, *sess_priv_pool;
+  struct rte_mempool *sess_pool;
   cryptodev_session_pool_t *sess_pools_elt;
   cryptodev_key_t *ckey = vec_elt_at_index (cmt->keys, idx);
   struct rte_crypto_sym_xform xforms_enc[2] = { { 0 } };
   struct rte_crypto_sym_xform xforms_dec[2] = { { 0 } };
   struct rte_cryptodev_sym_session *sessions[CRYPTODEV_N_OP_TYPES] = { 0 };
-  struct rte_cryptodev_info dev_info;
   u32 numa_node = vm->numa_node;
   clib_error_t *error;
   int ret = 0;
@@ -427,13 +424,6 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
     }
 
   sess_pool = sess_pools_elt->sess_pool;
-  sess_priv_pool = sess_pools_elt->sess_priv_pool;
-
-  sessions[CRYPTODEV_OP_TYPE_ENCRYPT] =
-    rte_cryptodev_sym_session_create (sess_pool);
-
-  sessions[CRYPTODEV_OP_TYPE_DECRYPT] =
-    rte_cryptodev_sym_session_create (sess_pool);
 
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
     ret = prepare_linked_xform (xforms_enc, CRYPTODEV_OP_TYPE_ENCRYPT, key);
@@ -454,21 +444,10 @@ cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
   vec_foreach (dev_inst, cmt->cryptodev_inst)
     {
       u32 dev_id = dev_inst->dev_id;
-      rte_cryptodev_info_get (dev_id, &dev_info);
-      u32 driver_id = dev_info.driver_id;
-
-      /* if the session is already configured for the driver type, avoid
-	 configuring it again to increase the session data's refcnt */
-      if (sessions[CRYPTODEV_OP_TYPE_ENCRYPT]->sess_data[driver_id].data &&
-	  sessions[CRYPTODEV_OP_TYPE_DECRYPT]->sess_data[driver_id].data)
-	continue;
-
-      ret = rte_cryptodev_sym_session_init (
-	dev_id, sessions[CRYPTODEV_OP_TYPE_ENCRYPT], xforms_enc,
-	sess_priv_pool);
-      ret = rte_cryptodev_sym_session_init (
-	dev_id, sessions[CRYPTODEV_OP_TYPE_DECRYPT], xforms_dec,
-	sess_priv_pool);
+      sessions[CRYPTODEV_OP_TYPE_ENCRYPT] =
+	rte_cryptodev_sym_session_create (dev_id, xforms_enc, sess_pool);
+      sessions[CRYPTODEV_OP_TYPE_DECRYPT] =
+	rte_cryptodev_sym_session_create (dev_id, xforms_dec, sess_pool);
       if (ret < 0)
 	goto clear_key;
     }
@@ -737,7 +716,6 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
       struct rte_cryptodev_qp_conf qp_cfg;
 
       qp_cfg.mp_session = 0;
-      qp_cfg.mp_session_private = 0;
       qp_cfg.nb_descriptors = CRYPTODEV_NB_CRYPTO_OPS;
 
       ret = rte_cryptodev_queue_pair_setup (cryptodev_id, i, &qp_cfg,

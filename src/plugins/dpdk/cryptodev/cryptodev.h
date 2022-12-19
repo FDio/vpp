@@ -20,6 +20,7 @@
 #include <vnet/crypto/crypto.h>
 #undef always_inline
 #include <rte_cryptodev.h>
+#include <cryptodev_pmd.h>
 
 #define CRYPTODEV_NB_CRYPTO_OPS	   1024
 #define CRYPTODEV_CACHE_QUEUE_SIZE VNET_CRYPTO_FRAME_POOL_SIZE
