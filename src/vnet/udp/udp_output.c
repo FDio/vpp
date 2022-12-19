@@ -79,13 +79,17 @@ always_inline void
 udp_output_push_ip (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc,
 		    u8 is_ip4)
 {
-  if (uc->c_is_ip4)
-    vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, udp_csum_offload (uc),
-				 0 /* is_df */, uc->c_dscp);
-  else
-    vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
-			  IP_PROTOCOL_UDP);
+  if (PREDICT_TRUE (uc->flags & UDP_CONN_F_CONNECTED))
+    {
+      if (uc->c_is_ip4)
+        vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
+                                     IP_PROTOCOL_UDP, udp_csum_offload (uc),
+                                     0 /* is_df */, uc->c_dscp);
+      else
+        vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
+                              IP_PROTOCOL_UDP);
+    }
+
   vnet_buffer (b)->sw_if_index[VLIB_RX] = uc->sw_if_index;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
 }
@@ -108,6 +112,15 @@ udp_output_handle_packet (udp_connection_t *uc0, vlib_buffer_t *b0,
 
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = uc0->c_fib_index;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = uc0->sw_if_index;
+}
+
+always_inline udp_connection_t *
+udp_output_get_connection (vlib_buffer_t *b, u32 thread_index)
+{
+  if (PREDICT_FALSE (vnet_buffer (b)->tcp.flags & UDP_CONN_F_LISTEN))
+    return udp_listener_get (vnet_buffer (b)->tcp.connection_index);
+
+  return udp_connection_get (vnet_buffer (b)->tcp.connection_index, thread_index);
 }
 
 always_inline uword
@@ -138,10 +151,8 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_prefetch_buffer_header (b[3], STORE);
       CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
 
-      uc0 = udp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-				thread_index);
-      uc1 = udp_connection_get (vnet_buffer (b[1])->tcp.connection_index,
-				thread_index);
+      uc0 = udp_output_get_connection (b[0], thread_index);
+      uc1 = udp_output_get_connection (b[1], thread_index);
 
       if (PREDICT_TRUE (!uc0 + !uc1 == 0))
 	{
@@ -159,11 +170,11 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      udp_output_handle_packet (uc0, b[0], node, &next[0], is_ip4);
 	    }
 	  else
-	    {
+            {
 	      b[0]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
 	      next[0] = UDP_OUTPUT_NEXT_DROP;
-	    }
-	  if (uc1 != 0)
+            }
+          if (uc1 != 0)
 	    {
 	      udp_output_push_ip (vm, b[1], uc1, is_ip4);
 	      udp_output_handle_packet (uc1, b[1], node, &next[1], is_ip4);
@@ -189,8 +200,7 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
 	}
 
-      uc0 = udp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
-				thread_index);
+      uc0 = udp_output_get_connection (b[0], thread_index);
 
       if (PREDICT_TRUE (uc0 != 0))
 	{
@@ -198,10 +208,10 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  udp_output_handle_packet (uc0, b[0], node, &next[0], is_ip4);
 	}
       else
-	{
-	  b[0]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
-	  next[0] = UDP_OUTPUT_NEXT_DROP;
-	}
+        {
+          b[0]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
+          next[0] = UDP_OUTPUT_NEXT_DROP;
+        }
 
       b += 1;
       next += 1;
