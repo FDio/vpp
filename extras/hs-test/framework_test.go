@@ -1,15 +1,29 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 	"io/ioutil"
+	"os"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
 )
+
+func IsPersistent() bool {
+	if os.Getenv("HST_PERSIST") == "1" {
+		return true
+	}
+	return false
+}
+
+func IsVerbose() bool {
+	if os.Getenv("HST_VERBOSE") == "1" {
+		return true
+	}
+	return false
+}
 
 type HstSuite struct {
 	suite.Suite
@@ -23,6 +37,9 @@ func (s *HstSuite) TearDownSuite() {
 }
 
 func (s *HstSuite) TearDownTest() {
+	if IsPersistent() {
+		return
+	}
 	s.ResetContainers()
 	s.RemoveVolumes()
 }
@@ -30,7 +47,7 @@ func (s *HstSuite) TearDownTest() {
 func (s *HstSuite) SetupTest() {
 	for _, volume := range s.volumes {
 		cmd := "docker volume create --name=" + volume
-		fmt.Println(cmd)
+		s.log(cmd)
 		exechelper.Run(cmd)
 	}
 	for _, container := range s.containers {
@@ -80,20 +97,21 @@ func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArg
 	}
 }
 
+func (s *HstSuite) log(args ...any) {
+	if IsVerbose() {
+		s.T().Log(args...)
+	}
+}
+
+func (s *HstSuite) skip(args ...any) {
+	s.log(args...)
+	s.T().SkipNow()
+}
+
 func (s *HstSuite) ResetContainers() {
 	for _, container := range s.containers {
 		container.stop()
 	}
-}
-
-func (s *HstSuite) NewVolume(name string) error {
-	err := exechelper.Run(fmt.Sprintf("docker volume create --name=%s", name))
-	if err != nil {
-		return err
-	}
-
-	s.volumes = append(s.volumes, name)
-	return nil
 }
 
 func (s *HstSuite) RemoveVolumes() {
@@ -128,6 +146,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 		if err != nil {
 			s.T().Fatalf("config error: %v", err)
 		}
+		s.log(newContainer.getRunCommand())
 		s.containers[newContainer.name] = newContainer
 	}
 }
@@ -143,8 +162,10 @@ func setupSuite(s *suite.Suite, topologyName string) func() {
 		t.Fatalf("failed to configure %s: %v", topologyName, err)
 	}
 
-	t.Logf("topo %s loaded", topologyName)
 	return func() {
+		if IsPersistent() {
+			return
+		}
 		topology.Unconfigure()
 	}
 }

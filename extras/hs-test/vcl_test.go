@@ -1,17 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
 func (s *VethsSuite) TestVclEchoQuic() {
-	s.T().Skip("quic test skipping..")
+	s.skip("quic test skipping..")
 	s.testVclEcho("quic")
 }
 
 func (s *VethsSuite) TestVclEchoUdp() {
-	s.T().Skip("udp echo currently broken in vpp, skipping..")
+	s.skip("udp echo currently broken in vpp, skipping..")
 	s.testVclEcho("udp")
 }
 
@@ -41,11 +40,11 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	o, err := echoClnContainer.execAction("RunEchoClient "+proto)
 	s.assertNil(err)
 
-	fmt.Println(o)
+	s.log(o)
 }
 
 func (s *VethsSuite) TestVclRetryAttach() {
-	s.T().Skip()
+	s.skip()
 	s.testRetryAttach("tcp")
 }
 
@@ -64,12 +63,12 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	_, err = echoSrvContainer.execAction("RunVclEchoServer "+proto)
 	s.assertNil(err)
 
-	fmt.Println("This whole test case can take around 3 minutes to run. Please be patient.")
-	fmt.Println("... Running first echo client test, before disconnect.")
+	s.log("This whole test case can take around 3 minutes to run. Please be patient.")
+	s.log("... Running first echo client test, before disconnect.")
 	echoClnContainer := s.getContainerByName("client-application")
 	_, err = echoClnContainer.execAction("RunVclEchoClient "+proto)
 	s.assertNil(err)
-	fmt.Println("... First test ended. Stopping VPP server now.")
+	s.log("... First test ended. Stopping VPP server now.")
 
 	// Stop server-vpp-instance, start it again and then run vcl-test-client once more
 	stopVppCommand := "/bin/bash -c 'ps -C vpp_main -o pid= | xargs kill -9'"
@@ -82,13 +81,13 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	_, err = srvVppContainer.execAction("Configure2Veths srv-with-preset-hw-addr")
 	s.assertNil(err)
 
-	fmt.Println("... VPP server is starting again, so waiting for a bit.")
+	s.log("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
-	fmt.Println("... Running second echo client test, after disconnect and re-attachment.")
+	s.log("... Running second echo client test, after disconnect and re-attachment.")
 	_, err = echoClnContainer.execAction("RunVclEchoClient "+proto)
 	s.assertNil(err)
-	fmt.Println("Done.")
+	s.log("Done.")
 }
 
 func (s *VethsSuite) TestTcpWithLoss() {
@@ -127,5 +126,5 @@ func (s *VethsSuite) TestTcpWithLoss() {
 	s.assertNil(err)
 	s.assertEqual(true, len(output) != 0)
 	s.assertNotContains(output, "failed: timeout")
-	fmt.Println(output)
+	s.log(output)
 }

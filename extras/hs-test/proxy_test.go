@@ -20,7 +20,7 @@ func testProxyHttpTcp(s *NsSuite, proxySetup func() error) error {
 	s.assertNil(err, "failed to run truncate command")
 	defer func() { os.Remove(srcFile) }()
 
-	fmt.Println("Test file created...")
+	s.log("Test file created...")
 
 	go startHttpServer(serverRunning, stopServer, ":666", "server")
 	// TODO better error handling and recovery
@@ -30,7 +30,7 @@ func testProxyHttpTcp(s *NsSuite, proxySetup func() error) error {
 		stopServer <- struct{}{}
 	}(stopServer)
 
-	fmt.Println("http server started...")
+	s.log("http server started...")
 
 	c := fmt.Sprintf("ip netns exec client wget --retry-connrefused --retry-on-http-error=503 --tries=10 -O %s 10.0.0.2:555/%s", outputFile, srcFile)
 	_, err = exechelper.CombinedOutput(c)
@@ -49,10 +49,10 @@ func configureVppProxy(s *NsSuite) error {
 	testVppProxy.setVppProxy()
 	err := testVppProxy.start()
 	s.assertNil(err, "failed to start and configure VPP")
-	fmt.Println("VPP running and configured...")
+	s.log("VPP running and configured...")
 
 	output, err := testVppProxy.vppctl("test proxy server server-uri tcp://10.0.0.2/555 client-uri tcp://10.0.1.1/666")
-	fmt.Println("Proxy configured...", string(output))
+	s.log("Proxy configured...", string(output))
 	return nil
 }
 
@@ -73,7 +73,7 @@ func configureEnvoyProxy(s *NsSuite) error {
 	envoyContainer := s.getContainerByName("envoy")
 	envoyContainer.run()
 
-	fmt.Println("VPP running and configured...")
+	s.log("VPP running and configured...")
 	return nil
 }
 

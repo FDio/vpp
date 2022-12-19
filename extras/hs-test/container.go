@@ -71,19 +71,23 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	return container, nil
 }
 
-func (c *Container) run() error {
-	if c.name == "" {
-		return fmt.Errorf("create volume failed: container name is blank")
-	}
-
-	exechelper.Run(fmt.Sprintf("mkdir -p /tmp/%s/sync", c.name))
+func (c *Container) getRunCommand() string {
 	syncPath := fmt.Sprintf(" -v %s:/tmp/sync", c.getSyncPath())
 	cmd := "docker run --cap-add=all -d --privileged --network host --rm"
 	cmd += syncPath
 	cmd += c.getVolumesAsCliOption()
 	cmd += c.getEnvVarsAsCliOption()
 	cmd += " --name " + c.name + " " + c.image
-	fmt.Println(cmd)
+	return cmd
+}
+
+func (c *Container) run() error {
+	if c.name == "" {
+		return fmt.Errorf("run container failed: name is blank")
+	}
+
+	exechelper.Run(fmt.Sprintf("mkdir -p /tmp/%s/sync", c.name))
+	cmd := c.getRunCommand()
 	err := exechelper.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("container run failed: %s", err)

@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 func (s *VethsSuite) TestEchoBuiltin() {
 	serverContainer := s.getContainerByName("server-vpp")
 	_, err := serverContainer.execAction("Configure2Veths srv")
@@ -18,5 +14,5 @@ func (s *VethsSuite) TestEchoBuiltin() {
 
 	o, err := clientContainer.execAction("RunEchoClnInternal nclients 10000 bytes 1 syn-timeout 100 test-timeout 100 no-return private-segment-size 1g fifo-size 4")
 	s.assertNil(err)
-	fmt.Println(o)
+	s.log(o)
 }

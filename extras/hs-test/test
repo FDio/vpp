@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
 
 source vars
-sudo -E go test -buildvcs=false  -v $@
+
+for ARG in "$@"
+do
+	if [[ "$ARG" = "-p" ]]
+	then
+		export HST_PERSIST=1
+		shift
+	elif [[ "$ARG" = "-v" ]]
+	then
+		export HST_VERBOSE=1
+		shift
+	fi
+done
+
+sudo -E go test -buildvcs=false -v $@

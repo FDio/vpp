@@ -26,7 +26,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
 
-	fmt.Println("starting VPPs")
+	s.log("starting VPPs")
 
 	originalWorkDir := serverContainer.workDir
 	serverContainer.workDir = serverVolume.containerDir
@@ -66,7 +66,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		SaveToFile(srvVcl)
 	s.assertNil(err)
 
-	fmt.Printf("attaching server to vpp")
+	s.log("attaching server to vpp")
 
 	// FIXME
 	time.Sleep(5 * time.Second)
@@ -77,9 +77,11 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	err = <-srvCh
 	s.assertNil(err)
 
-	fmt.Println("attaching client to vpp")
+	s.log("attaching client to vpp")
+	var clnRes = make(chan string, 1)
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clnVcl)
-	go StartClientApp(clnEnv, clnCh)
+	go StartClientApp(clnEnv, clnCh, clnRes)
+	s.log(<- clnRes)
 
 	// wait for client's result
 	err = <-clnCh
