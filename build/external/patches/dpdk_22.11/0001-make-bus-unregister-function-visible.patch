@@ -1,0 +1,25 @@
+From baa7a3b2ca981e39a51bf768d292a33bef26199b Mon Sep 17 00:00:00 2001
+From: Xinyao Cai <xinyao.cai@intel.com>
+Date: Fri, 16 Dec 2022 16:19:18 +0800
+Subject: [PATCH] make bus unregister function visable
+
+---
+ lib/eal/include/bus_driver.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/eal/include/bus_driver.h b/lib/eal/include/bus_driver.h
+index 7b85a17a09..8e85aed564 100644
+--- a/lib/eal/include/bus_driver.h
++++ b/lib/eal/include/bus_driver.h
+@@ -299,7 +299,7 @@ RTE_INIT_PRIO(businitfn_ ##nm, BUS) \
+  *   A pointer to a rte_bus structure describing the bus
+  *   to be unregistered.
+  */
+-__rte_internal
++
+ void rte_bus_unregister(struct rte_bus *bus);
+ 
+ #ifdef __cplusplus
+-- 
+2.34.1
+
