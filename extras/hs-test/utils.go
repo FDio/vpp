@@ -96,7 +96,7 @@ func StartServerApp(running chan error, done chan struct{}, env []string) {
 	cmd.Process.Kill()
 }
 
-func StartClientApp(env []string, clnCh chan error) {
+func StartClientApp(env []string, clnCh chan error, clnRes chan string) {
 	defer func() {
 		clnCh <- nil
 	}()
@@ -118,7 +118,7 @@ func StartClientApp(env []string, clnCh chan error) {
 			nTries++
 			continue
 		} else {
-			fmt.Printf("Client output: %s", o)
+			clnRes <- fmt.Sprintf("Client output: %s", o)
 		}
 		break
 	}
@@ -186,10 +186,9 @@ func startWget(finished chan error, server_ip, port string, netNs string) {
 		netNs)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("wget error: '%s'.\n%s", err, o)
+		finished <- errors.New(fmt.Sprintf("wget error: '%s'.\n%s", err, o))
 		return
 	}
-	fmt.Printf("Client output: %s", o)
 	finished <- nil
 }
 
