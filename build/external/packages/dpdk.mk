@@ -19,14 +19,14 @@ DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 DPDK_MLX_IBV_LINK            ?= static
 
-dpdk_version                 ?= 22.07
+dpdk_version                 ?= 22.11
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
+dpdk_tarball_md5sum_22.11    := 494a3f8f3e1752ca5546bfed3051adca
 dpdk_tarball_md5sum_22.07    := fb73b58b80b1349cd05fe9cf6984afd4
 dpdk_tarball_md5sum_22.03    := a07ca8839f98062f46e1cc359735cce8
 dpdk_tarball_md5sum_21.11    := 58660bbbe9e95abce86e47692b196555
 dpdk_tarball_md5sum_21.08    := de33433a1806280996a0ecbe66e3642f
-dpdk_tarball_md5sum_21.05    := a78bba290b11d9717d1272cc6bfaf7c3
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
@@ -164,6 +164,7 @@ DPDK_MESON_ARGS = \
 	--libdir lib \
 	--prefix $(dpdk_install_dir) \
 	-Dtests=false \
+	-Denable_driver_sdk=true \
 	"-Ddisable_drivers=$(DPDK_DRIVERS_DISABLED)" \
 	"-Ddisable_libs=$(DPDK_LIBS_DISABLED)" \
 	-Db_pie=true \
