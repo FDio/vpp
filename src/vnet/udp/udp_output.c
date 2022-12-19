@@ -110,6 +110,25 @@ udp_output_handle_packet (udp_connection_t *uc0, vlib_buffer_t *b0,
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = uc0->sw_if_index;
 }
 
+static inline void
+udp_output_handle_no_connection (vlib_node_runtime_t *node, vlib_buffer_t *b,
+				 u16 *next, u8 is_ip4)
+{
+  /* Not connected session. Grab listener and handle output */
+  if (vnet_buffer (b)->tcp.flags & UDP_CONN_F_LISTEN)
+    {
+      udp_connection_t *uc;
+
+      uc = udp_listener_get (vnet_buffer (b)->tcp.connection_index);
+      udp_output_handle_packet (uc, b, node, next, is_ip4);
+    }
+  else
+    {
+      b->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
+      next[0] = UDP_OUTPUT_NEXT_DROP;
+    }
+}
+
 always_inline uword
 udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     vlib_frame_t *frame, int is_ip4)
@@ -160,8 +179,7 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
-	      b[0]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
-	      next[0] = UDP_OUTPUT_NEXT_DROP;
+	      udp_output_handle_no_connection (node, b[0], &next[0], is_ip4);
 	    }
 	  if (uc1 != 0)
 	    {
@@ -170,8 +188,7 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
-	      b[1]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
-	      next[1] = UDP_OUTPUT_NEXT_DROP;
+	      udp_output_handle_no_connection (node, b[1], &next[1], is_ip4);
 	    }
 	}
 
@@ -199,8 +216,7 @@ udp46_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  b[0]->error = node->errors[UDP_ERROR_INVALID_CONNECTION];
-	  next[0] = UDP_OUTPUT_NEXT_DROP;
+	  udp_output_handle_no_connection (node, b[0], &next[0], is_ip4);
 	}
 
       b += 1;
