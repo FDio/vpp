@@ -1,10 +1,10 @@
 package main
 
 func (s *TapSuite) TestLinuxIperf() {
-	t := s.T()
 	clnCh := make(chan error)
 	stopServerCh := make(chan struct{})
 	srvCh := make(chan error, 1)
+	clnRes := make(chan string, 1)
 	defer func() {
 		stopServerCh <- struct{}{}
 	}()
@@ -12,10 +12,11 @@ func (s *TapSuite) TestLinuxIperf() {
 	go StartServerApp(srvCh, stopServerCh, nil)
 	err := <-srvCh
 	s.assertNil(err)
-	t.Log("server running")
-	go StartClientApp(nil, clnCh)
-	t.Log("client running")
+	s.log("server running")
+	go StartClientApp(nil, clnCh, clnRes)
+	s.log("client running")
+	s.log(<- clnRes)
 	err = <-clnCh
 	s.assertNil(err)
-	t.Log("Test completed")
+	s.log("Test completed")
 }
