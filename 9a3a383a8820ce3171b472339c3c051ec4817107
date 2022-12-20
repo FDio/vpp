@@ -122,6 +122,23 @@
       "parentUuid": "4bb9cc5e_69870753",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "372c315b_baac38d0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2022-12-20T13:15:15Z",
+      "side": 1,
+      "message": "Thanks for the heads up and contribution.\nI see several problems with this change:\n - the main one: keep retrying until we send all packets may improve NDR performance, but it will probably decrease PDR/MRR performance. I see Vratko ran some tests, but I\u0027m not sure what was the outcome?\n - if we decide we want to keep retrying until we send everything, then the loop over n_retries is no longer needed",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
