@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2bbe399c_8c58b7c2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-20T19:01:48Z",
+      "side": 1,
+      "message": "Nice! Some quick nits",
+      "revId": "d9ad3744620a751ac08b2401a17c3e52d17bca7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de32417b_14d57414",
+        "filename": "extras/hs-test/topo-containers/2peerVeth.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-20T19:01:48Z",
+      "side": 1,
+      "message": "server-vol? Just wondering if that would improve readability",
+      "range": {
+        "startLine": 3,
+        "startChar": 13,
+        "endLine": 3,
+        "endChar": 18
+      },
+      "revId": "d9ad3744620a751ac08b2401a17c3e52d17bca7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e77e07ff_815de518",
+        "filename": "extras/hs-test/topo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-20T19:01:48Z",
+      "side": 1,
+      "message": "Hm, is this ia must or just a reuse? If a reuse, should we make it VolumeConfig. I know it\u0027s the same thing but, at least for me, easier to read.",
+      "range": {
+        "startLine": 18,
+        "startChar": 11,
+        "endLine": 18,
+        "endChar": 26
+      },
+      "revId": "d9ad3744620a751ac08b2401a17c3e52d17bca7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
