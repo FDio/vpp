@@ -78,6 +78,7 @@ DEB_DEPENDS += libssl-dev
 DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
 DEB_DEPENDS += nasm
+DEB_DEPENDS += iperf ethtool  # for 'make test TEST=vm_vpp_interfaces'
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
