@@ -16,6 +16,24 @@
       "message": "It may be useful to have some way of cleaning up topology after using -p option",
       "revId": "67dfe54dad4cc042ff10eb7f7db956d7948aa6b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9168bb01_15c5aa4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-20T10:11:22Z",
+      "side": 1,
+      "message": "I want to deal with that as part of the improvement \"failing tests don\u0027t always clean up after themselves (namespaces in the host system remain)\".\n\nI\u0027m considering two approaches.\n1.) Whenever network topology element is about to be created, the framework checks if it already exists and deletes it before it would try to add it again.\n2.) Whenever network topology element is created, the framework would add to a file command to delete the element. It would run the commands after tests are finished. And also it would check the file before starting to load topology, in case the previous run crashed and didn\u0027t clean-up after itself.\n\nWhat do you think?",
+      "parentUuid": "95cba1bc_3ec3d34e",
+      "revId": "67dfe54dad4cc042ff10eb7f7db956d7948aa6b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
