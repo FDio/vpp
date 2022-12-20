@@ -104,6 +104,24 @@
       "parentUuid": "71e052e0_23d7d02f",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb68c506_2db7bbbd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-12-20T12:59:57Z",
+      "side": 1,
+      "message": "Any registered user may vote +1, but only committers can merge. Adding the two listed as maintainers for af_xdp.",
+      "parentUuid": "4bb9cc5e_69870753",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
