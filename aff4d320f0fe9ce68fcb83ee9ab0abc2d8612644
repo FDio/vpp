@@ -22,6 +22,30 @@
       },
       "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "710ee026_3a928842",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2022-12-20T10:30:02Z",
+      "side": 0,
+      "message": "Hi Yong,\nIn DPDK 22.11, the use of struct rte_eth_fdir_conf is deprecated, and the affected PMDs (ixgbe and txgbe) set their fdir mode to RTE_FDIR_MODE_NONE by default.\nthe fdir mode will change to the first flow rule mode on the rule validation or creation, not when initializing.\n\nThanks,\nXinyao",
+      "parentUuid": "ab082127_393d0396",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 45
+      },
+      "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

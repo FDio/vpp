@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "510bec49_1b80f7f5",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2022-12-20T10:30:02Z",
+      "side": 1,
+      "message": "Hi Yong,\nIn DPDK 22.11, registering bus and drivers has been marked as internal APIs, the related APIs and date structures are collected to new header files, these header files will not be installed by default(enable_driver_sdk\u003dfalse), causing VPP to fail to register buses and devices normally.\n\nBy enabling enable_driver_sdk option, DPDK will install the new header files.\n\nThanks,\nXinyao",
+      "parentUuid": "4d6f93de_28f592e2",
+      "range": {
+        "startLine": 167,
+        "startChar": 0,
+        "endLine": 167,
+        "endChar": 27
+      },
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d38910e9_ca2db165",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
         "patchSetId": 1
