@@ -15,7 +15,7 @@ type ContainerConfig map[string]interface{}
 type YamlTopology struct {
 	Devices []NetDevConfig `yaml:"devices"`
 	Containers []ContainerConfig `yaml:"containers"`
-	Volumes []string `yaml:"volumes"`
+	Volumes []ContainerConfig `yaml:"volumes"`
 }
 
 func AddAddress(device, address, ns string) error {
