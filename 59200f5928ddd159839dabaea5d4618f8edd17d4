@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "59200f5928ddd159839dabaea5d4618f8edd17d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "53e41376_e13e818c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2889
+      },
+      "writtenOn": "2022-12-20T01:52:43Z",
+      "side": 1,
+      "message": "Passed \u0027Nginx LDP communication with Ngtcp2\u0027 test, fixed error-drop issue.",
+      "revId": "59200f5928ddd159839dabaea5d4618f8edd17d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
