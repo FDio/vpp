@@ -18,6 +18,19 @@
 
 #include <quicly.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+
+#define quic_load_openssl3_legacy_provider()                                  \
+  do                                                                          \
+    {                                                                         \
+      (void) OSSL_PROVIDER_load (NULL, "legacy");                             \
+    }                                                                         \
+  while (0)
+#else
+#define quic_load_openssl3_legacy_provider()
+#endif
+
 struct quic_ctx_t;
 
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
