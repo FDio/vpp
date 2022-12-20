@@ -131,7 +131,9 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	}
 
 	for _, elem := range yamlTopo.Volumes {
-		s.volumes = append(s.volumes, elem)
+		volumeMap := elem["volume"].(VolumeConfig)
+		hostDir := volumeMap["host-dir"].(string)
+		s.volumes = append(s.volumes, hostDir)
 	}
 
 	s.containers = make(map[string]*Container)

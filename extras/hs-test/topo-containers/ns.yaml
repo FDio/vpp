@@ -1,19 +1,20 @@
 ---
 volumes:
-  - shared-vol
+  - volume: &shared-vol
+      host-dir: shared-vol
 
 # $HST_DIR will be replaced during runtime by path to hs-test directory
 containers:
   - name: "vpp"
     volumes:
-      - host-dir: "shared-vol"
+      - <<: *shared-vol
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
   - name: "envoy"
     volumes:
       - host-dir: "$HST_DIR/envoy/proxy.yaml"
         container-dir: "/etc/envoy/envoy.yaml"
-      - host-dir: "shared-vol"
+      - <<: *shared-vol
         container-dir: "/tmp/vpp-envoy"
         is-default-work-dir: true
       - host-dir: "$HST_DIR/envoy"
