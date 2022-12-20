@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab082127_393d0396",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2022-12-20T03:30:04Z",
+      "side": 0,
+      "message": "Remove this part will cause FDIR not work, is there any reason for this change?",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 45
+      },
+      "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
