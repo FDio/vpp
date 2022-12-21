@@ -176,17 +176,16 @@ func startHttpServer(running chan struct{}, done chan struct{}, addressPort, net
 	cmd.Process.Kill()
 }
 
-func startWget(finished chan error, server_ip, port string, netNs string) {
-	fname := "test_file_10M"
+func startWget(finished chan error, server_ip, port, query, netNs string) {
 	defer func() {
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := NewCommand([]string{"wget", "--tries=5", "-q", "-O", "/dev/null", server_ip + ":" + port + "/" + fname},
+	cmd := NewCommand([]string{"wget", "--tries=5", "-q", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
-		finished <- errors.New(fmt.Sprintf("wget error: '%s'.\n%s", err, o))
+		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
 		return
 	}
 	finished <- nil

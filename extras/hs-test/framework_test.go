@@ -178,3 +178,8 @@ func TestVeths(t *testing.T) {
 	var m VethsSuite
 	suite.Run(t, &m)
 }
+
+func TestNoTopo(t *testing.T) {
+	var m NoTopoSuite
+	suite.Run(t, &m)
+}
