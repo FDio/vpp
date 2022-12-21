@@ -11,3 +11,4 @@ cp ${VPP_WS}/build-root/build-vpp_debug-native/vpp/bin/* ${bin}
 cp -r ${VPP_WS}/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/* ${lib}
 
 docker build -t hs-test/vpp -f Dockerfile.vpp .
+docker build -t hs-test/nginx-ldp -f Dockerfile.nginx .

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"testing"
 	"io/ioutil"
 	"os"
+	"testing"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
@@ -182,5 +182,10 @@ func TestNs(t *testing.T) {
 
 func TestVeths(t *testing.T) {
 	var m VethsSuite
+	suite.Run(t, &m)
+}
+
+func TestNoTopo(t *testing.T) {
+	var m NoTopoSuite
 	suite.Run(t, &m)
 }
