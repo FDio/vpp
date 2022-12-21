@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "651a43a1_7b95e56c",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2022-12-21T16:06:34Z",
+      "side": 1,
+      "message": "Is this required? vppInst.start() makes equal execAction call.",
+      "range": {
+        "startLine": 58,
+        "startChar": 1,
+        "endLine": 59,
+        "endChar": 17
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
