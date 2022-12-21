@@ -63,6 +63,24 @@
       "message": "I am not against the change here, just a reminder here.\n\nAs of Cryptodev, Akhil and I did a lot of effort to hide crypto session structure from external application in DPDK 21.11.\n\nMy question to everyone is if we want to use DPDK internal APIs in VPP.\n\nIf the answer is yes there are much work we can do for VPP cryptodev.\n\n1. One major change in DPDK 21.11 cryptodev is: one cryptodev session now only supports one driver type, compare to 1 crypto session may be used by multiple device types prior. This makes the session size massively reduced and more performant (session and session private data in a single contiguous buffer, rather than 2 buffers linked by pointer).\n\nSo if we have a system containing heterogeneous crypto devices, we may have to either let only the devices with same driver ID to be initialized, or we have to replicate prior cryptodev session structure (create a master session type for vpp only, and let each session server only one type of devices). My personal vote goes to the first option, as a. rarely user having heterogeneous crypto devices used, b. previous crypto session structure is a bit too big.\n\n2. If we choose to access DPDK internal API/data structure in VPP, I also have a good news for further improving vpp cryptodev. Since each cryptodev PMD\u0027s private session init callback function no longer require passing mempool as parameter, the session memory can now be provided by VPP (given physical memory address can be provided). This means we can ditch the current complex memory management in VPP cryptodev for good. This involves some big changes to cryptodev but I feel confident to the results.\n\nBTW, for performance reason, no matter which path we choose to follow, we still should have 1 session allocated for every numa node.",
       "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dbb5d76_9c2424eb",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2022-12-21T17:52:08Z",
+      "side": 1,
+      "message": "Just based on this actual patch,  can you show me what the api/data structure that cryptodev_pmd.h provides that rte_cryptodev.h doesn\u0027t",
+      "parentUuid": "d38910e9_ca2db165",
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
