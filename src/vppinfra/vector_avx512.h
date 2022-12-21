@@ -28,7 +28,7 @@
   _(f,32,8,ps) _(f,64,4,pd)
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
-   is_all_equal, is_zero_mask */
+   is_all_equal, is_zero_mask, add */
 #define _(t, s, c, i)                                                         \
   static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
   {                                                                           \
@@ -87,6 +87,11 @@
 							      t##s##x##c b)   \
   {                                                                           \
     return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b);       \
+  }                                                                           \
+  static_always_inline t##s##x##c t##s##x##c##_add (t##s##x##c a,             \
+						    t##s##x##c b)             \
+  {                                                                           \
+    return (t##s##x##c) _mm512_add_##i ((__m512i) a, (__m512i) b);            \
   }
 
 foreach_avx512_vec512i foreach_avx512_vec512u
@@ -98,6 +103,23 @@ u16x32_msb_mask (u16x32 v)
 {
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
+
+/* and */
+#define _(t, s, c, i)                                                         \
+  static_always_inline t##s##x##c t##s##x##c##_and (t##s##x##c a,             \
+						    t##s##x##c b)             \
+  {                                                                           \
+    return (t##s##x##c) _mm512_and_##i ((__m512i) a, (__m512i) b);            \
+  }
+
+_ (u, 32, 16, epi32)
+_ (u, 64, 8, epi64)
+_ (i, 32, 16, epi32)
+_ (i, 64, 8, epi64)
+#undef _
+
+#define u64x8_i64gather(index, base, scale)                                   \
+  (u64x8) _mm512_i64gather_epi64 ((__m512i) index, base, scale)
 
 /* 512-bit packs */
 #define _(f, t, fn)                                                           \
