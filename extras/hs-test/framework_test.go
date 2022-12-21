@@ -1,9 +1,9 @@
 package main
 
 import (
-	"testing"
 	"io/ioutil"
 	"os"
+	"testing"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
@@ -12,17 +12,11 @@ import (
 )
 
 func IsPersistent() bool {
-	if os.Getenv("HST_PERSIST") == "1" {
-		return true
-	}
-	return false
+	return os.Getenv("HST_PERSIST") == "1"
 }
 
 func IsVerbose() bool {
-	if os.Getenv("HST_VERBOSE") == "1" {
-		return true
-	}
-	return false
+	return os.Getenv("HST_VERBOSE") == "1"
 }
 
 type HstSuite struct {
