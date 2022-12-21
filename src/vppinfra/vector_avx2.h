@@ -105,6 +105,22 @@ _(u64x2, u64x4)
 #undef _
 /* *INDENT-ON* */
 
+/* shift */
+#define _(t, s, c, i)                                                         \
+  static_always_inline t##s##x##c t##s##x##c##_shift_left (t##s##x##c a,      \
+							   int n)             \
+  {                                                                           \
+    return (t##s##x##c) _mm256_slli_##i ((__m256i) a, n);                     \
+  }
+
+_ (u, 16, 16, epi16)
+_ (u, 32, 8, epi32)
+_ (u, 64, 4, epi64)
+_ (i, 16, 16, epi16)
+_ (i, 32, 8, epi32)
+_ (i, 64, 4, epi64)
+#undef _
+
 /* 256 bit packs. */
 #define _(f, t, fn)                                                           \
   always_inline t t##_pack (f lo, f hi)                                       \
