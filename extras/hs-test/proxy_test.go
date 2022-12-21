@@ -7,13 +7,11 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func testProxyHttpTcp(s *NsSuite, proxySetup func() error) error {
+func testProxyHttpTcp(s *NsSuite) error {
 	const outputFile = "test.data"
 	const srcFile = "10M"
 	stopServer := make(chan struct{}, 1)
 	serverRunning := make(chan struct{}, 1)
-
-	s.assertNil(proxySetup(), "failed to setup proxy")
 
 	// create test file
 	err := exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
@@ -53,13 +51,13 @@ func configureVppProxy(s *NsSuite) error {
 
 	output, err := testVppProxy.vppctl("test proxy server server-uri tcp://10.0.0.2/555 client-uri tcp://10.0.1.1/666")
 	s.log("Proxy configured...", string(output))
-	return nil
+	return err
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
-	err := testProxyHttpTcp(s, func() error {
-		return configureVppProxy(s)
-	})
+	err := configureVppProxy(s)
+	s.assertNil(err)
+	err = testProxyHttpTcp(s)
 	s.assertNil(err)
 }
 
@@ -71,15 +69,12 @@ func configureEnvoyProxy(s *NsSuite) error {
 	s.assertNil(err, "failed to start and configure VPP")
 
 	envoyContainer := s.getContainerByName("envoy")
-	envoyContainer.run()
-
-	s.log("VPP running and configured...")
-	return nil
+	return envoyContainer.run()
 }
 
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
-	err := testProxyHttpTcp(s, func() error {
-		return configureEnvoyProxy(s)
-	})
+	err := configureEnvoyProxy(s)
+	s.assertNil(err)
+	err = testProxyHttpTcp(s)
 	s.assertNil(err)
 }
