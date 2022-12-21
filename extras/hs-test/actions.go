@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"git.fd.io/govpp.git/api"
@@ -248,6 +249,16 @@ func (a *Actions) Configure2Veths(args []string) *ActionResult {
 	vppConfig, err := deserializeVppConfig(args[2])
 	if err != nil {
 		return NewActionResult(err, ActionResultWithDesc("deserializing configuration failed"))
+	}
+
+	cmd := exec.Command("rm", "-f", workDir + "/var/log/vpp/vpp.log")
+	err = cmd.Run()
+	cmd = exec.Command("ln", "-s", "/proc/1/fd/1", workDir + "/var/log/vpp/vpp.log")
+	err = cmd.Run()
+	if err != nil {
+		os.WriteFile("/proc/1/fd/1", []byte(err.Error()), 0666)
+	} else {
+		os.WriteFile("/proc/1/fd/1", []byte("successfully linked log file to stdout"), 0666)
 	}
 
 	con, vppErrCh := vpphelper.StartAndDialContext(ctx,

@@ -1,14 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	logDir string = "/var/log/hs-test/"
 )
 
 func IsPersistent() bool {
@@ -110,6 +117,35 @@ func (s *HstSuite) skip(args ...any) {
 
 func (s *HstSuite) ResetContainers() {
 	for _, container := range s.containers {
+		// Save logs from running containers before stopping them
+		cmd := exec.Command("docker", "inspect", "--format='{{.State.Status}}'", container.name)
+		if output, _ := cmd.CombinedOutput(); !strings.Contains(string(output), "running") {
+			continue
+		}
+
+		testName := s.T().Name()
+		testLogDir := logDir + testName
+		testLogFilePath := testLogDir + "/" + container.name + ".log"
+
+		cmd = exec.Command("mkdir", "-p", testLogDir)
+		if err := cmd.Run(); err != nil {
+			s.T().Fatalf("mkdir error: %v", err)
+		}
+
+		cmd = exec.Command("docker", "logs", "--details", "-t", container.name)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			s.T().Fatalf("fetching logs error: %v", err)
+		}
+
+		f, err := os.Create(testLogFilePath)
+		if err != nil {
+			s.T().Fatalf("file create error: %v", err)
+		}
+		fmt.Fprintf(f, string(output))
+		f.Close()
+
+		// Finally stop containers
 		container.stop()
 	}
 }

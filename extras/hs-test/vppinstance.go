@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"encoding/json"
+	"io"
+	"os/exec"
+
 	"github.com/edwarnicke/exechelper"
 )
 
@@ -103,12 +106,29 @@ func (vpp *VppInstance) start() error {
 func (vpp *VppInstance) vppctl(command string) (string, error) {
 	cliExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.container.name, vpp.getCliSocket(), command)
-	output, err := exechelper.CombinedOutput(cliExecCommand)
+	vppctlOutput, err := exechelper.CombinedOutput(cliExecCommand)
 	if err != nil {
 		return "", fmt.Errorf("vppctl failed: %s", err)
 	}
 
-	return string(output), nil
+	cmd := exec.Command("docker", "exec", "-i", vpp.container.name, "tee", "-a", "/proc/1/fd/1")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, string(vppctlOutput))
+	}()
+
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+
+	return string(vppctlOutput), nil
 }
 
 func NewVppInstance(c *Container) *VppInstance {
