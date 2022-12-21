@@ -3,6 +3,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e7fd0887_c1cf3707",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-21T17:04:52Z",
+      "side": 1,
+      "message": "Hm, something tells me we need a `make fixstyle` for hs-test :-)",
+      "range": {
+        "startLine": 6,
+        "startChar": 1,
+        "endLine": 6,
+        "endChar": 10
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "651a43a1_7b95e56c",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 1
@@ -19,6 +42,52 @@
         "startChar": 1,
         "endLine": 59,
         "endChar": 17
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "45a5ff14_9d8fa9f7",
+        "filename": "extras/hs-test/topo-containers/single.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-21T17:04:52Z",
+      "side": 1,
+      "message": "Can we do anchors?",
+      "range": {
+        "startLine": 8,
+        "startChar": 8,
+        "endLine": 8,
+        "endChar": 30
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11093f90_b710e621",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2022-12-21T17:04:52Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be an error, like above?",
+      "range": {
+        "startLine": 188,
+        "startChar": 14,
+        "endLine": 188,
+        "endChar": 24
       },
       "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
