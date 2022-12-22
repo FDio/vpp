@@ -1019,6 +1019,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   wrk_map = app_worker_map_alloc (app);
   wrk_map->wrk_index = app_wrk->wrk_index;
   app_wrk->wrk_map_index = app_worker_map_index (app, wrk_map);
+  vec_validate (app_wrk->wrk_evts, vlib_num_workers ());
 
   /*
    * Setup first segment manager
