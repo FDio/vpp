@@ -107,7 +107,8 @@ typedef struct ipsec_key_t_
   _ (128, IS_AEAD, "aead")                                                    \
   _ (256, IS_CTR, "ctr")                                                      \
   _ (512, IS_ASYNC, "async")                                                  \
-  _ (1024, NO_ALGO_NO_DROP, "no-algo-no-drop")
+  _ (1024, NO_ALGO_NO_DROP, "no-algo-no-drop")                                \
+  _ (2048, ANTI_REPLAY_HUGE, "anti-replay-huge")
 
 typedef enum ipsec_sad_flags_t_
 {
@@ -136,7 +137,11 @@ typedef struct
   u32 spi;
   u32 seq;
   u32 seq_hi;
-  u64 replay_window;
+  union
+  {
+    u64 replay_window;
+    clib_bitmap_t *replay_window_huge;
+  };
   u64 ctr_iv_counter;
   dpo_id_t dpo;
 
@@ -240,92 +245,129 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) ==
 		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_protocol),
 	       "IPSec data is overlapping with IP data");
 
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_is_set_##v (const ipsec_sa_t *sa) {                          \
-    return (sa->flags & IPSEC_SA_FLAG_##v);                             \
+#define _(a, v, s)                                                            \
+  always_inline bool ipsec_sa_is_set_##v (const ipsec_sa_t *sa)               \
+  {                                                                           \
+    return (sa->flags & IPSEC_SA_FLAG_##v);                                   \
   }
 foreach_ipsec_sa_flags
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_set_##v (ipsec_sa_t *sa) {                                   \
-    return (sa->flags |= IPSEC_SA_FLAG_##v);                            \
+#define _(a, v, s)                                                            \
+  always_inline void ipsec_sa_set_##v (ipsec_sa_t *sa)                        \
+  {                                                                           \
+    sa->flags |= IPSEC_SA_FLAG_##v;                                           \
   }
   foreach_ipsec_sa_flags
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_unset_##v (ipsec_sa_t *sa) {                                 \
-    return (sa->flags &= ~IPSEC_SA_FLAG_##v);                           \
+#define _(a, v, s)                                                            \
+  always_inline int ipsec_sa_unset_##v (ipsec_sa_t *sa)                       \
+  {                                                                           \
+    return (sa->flags &= ~IPSEC_SA_FLAG_##v);                                 \
   }
-  foreach_ipsec_sa_flags
+    foreach_ipsec_sa_flags
 #undef _
-/**
- * @brief
- * SA packet & bytes counters
- */
-extern vlib_combined_counter_main_t ipsec_sa_counters;
+  /**
+   * @brief
+   * SA packet & bytes counters
+   */
+  extern vlib_combined_counter_main_t ipsec_sa_counters;
 extern vlib_simple_counter_main_t ipsec_sa_lost_counters;
 
-extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
+extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len);
 
 extern int ipsec_sa_update (u32 id, u16 src_port, u16 dst_port,
 			    const tunnel_t *tun, bool is_tun);
-extern int
-ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
-		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
-		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
-		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
-		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index);
+extern int ipsec_sa_add_and_lock (
+  u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
+  const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+  ipsec_sa_flags_t flags, u32 salt, u16 src_port, u16 dst_port,
+  u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
+extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
 				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
+extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
 				    ipsec_integ_alg_t integ_alg);
 
-typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
+typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);
 extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 
 extern u8 *format_ipsec_replay_window (u8 *s, va_list *args);
-extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
-extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
-extern u8 *format_ipsec_sa (u8 * s, va_list * args);
-extern u8 *format_ipsec_key (u8 * s, va_list * args);
-extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
-					va_list * args);
-extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
-				       va_list * args);
-extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
+extern u8 *format_ipsec_crypto_alg (u8 *s, va_list *args);
+extern u8 *format_ipsec_integ_alg (u8 *s, va_list *args);
+extern u8 *format_ipsec_sa (u8 *s, va_list *args);
+extern u8 *format_ipsec_key (u8 *s, va_list *args);
+extern uword unformat_ipsec_crypto_alg (unformat_input_t *input,
+					va_list *args);
+extern uword unformat_ipsec_integ_alg (unformat_input_t *input, va_list *args);
+extern uword unformat_ipsec_key (unformat_input_t *input, va_list *args);
 
-#define IPSEC_UDP_PORT_NONE ((u16)~0)
+#define IPSEC_UDP_PORT_NONE ((u16) ~0)
 
 /*
  * Anti Replay definitions
  */
 
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE-1)
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE(_sa)                                 \
+  (u32) (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (_sa)) ?             \
+		 clib_bitmap_bytes (_sa->replay_window_huge) * 8 :                  \
+		 BITS (_sa->replay_window))
+
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN(_sa)                               \
+  (u64) (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (_sa)) ?             \
+		 clib_bitmap_count_set_bits (_sa->replay_window_huge) :             \
+		 count_set_bits (_sa->replay_window))
+
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX(_sa)                            \
+  (u32) (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (_sa) - 1)
 
 /*
  * sequence number less than the lower bound are outside of the window
  * From RFC4303 Appendix A:
  *  Bl = Tl - W + 1
  */
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_tl) (_tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1)
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_sa)                          \
+  (u32) (_sa->seq - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (_sa) + 1)
+
+always_inline u64
+ipsec_sa_anti_replay_get_64b_window (const ipsec_sa_t *sa)
+{
+  if (!ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
+    return sa->replay_window;
+
+  u64 w;
+  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa);
+  u32 tl = sa->seq & (window_size - 1);
+
+  if (PREDICT_TRUE (tl >= 63))
+    return clib_bitmap_get_multiple (sa->replay_window_huge, tl - 63, 64);
+
+  w = clib_bitmap_get_multiple_no_check (sa->replay_window_huge, 0, tl + 1)
+      << (63 - tl);
+  w |= clib_bitmap_get_multiple_no_check (sa->replay_window_huge,
+					  window_size - 63 + tl, 63 - tl);
+
+  return w;
+}
 
 always_inline int
 ipsec_sa_anti_replay_check (const ipsec_sa_t *sa, u32 seq)
 {
-  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
-      sa->replay_window & (1ULL << (sa->seq - seq)))
-    return 1;
+  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa);
+
+  /* we assume that the packet is in the window.
+   * if the packet falls left (sa->seq - seq >= window size),
+   * the result is wrong */
+
+  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+    return clib_bitmap_get (sa->replay_window_huge, seq & (window_size - 1));
   else
-    return 0;
+    return (sa->replay_window >> (window_size + seq - sa->seq - 1)) & 1;
+
+  return 0;
 }
 
 /*
@@ -361,14 +403,11 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
       if (PREDICT_TRUE (seq > sa->seq))
 	return 0;
 
-      u32 diff = sa->seq - seq;
-
-      if (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE > diff)
-	return ((sa->replay_window & (1ULL << diff)) ? 1 : 0);
-      else
+      /* does the packet fall out on the left of the window */
+      if (sa->seq >= seq + IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa))
 	return 1;
 
-      return 0;
+      return ipsec_sa_anti_replay_check (sa, seq);
     }
 
   if (!ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
@@ -408,14 +447,15 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
        */
       return 0;
     }
-  if (PREDICT_TRUE (sa->seq >= (IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX)))
+
+  if (PREDICT_TRUE (sa->seq >= IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX (sa)))
     {
       /*
-       * the last sequence number VPP recieved is more than one
+       * the last sequence number VPP received is more than one
        * window size greater than zero.
        * Case A from RFC4303 Appendix A.
        */
-      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (sa->seq))
+      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (sa))
 	{
 	  /*
 	   * the received sequence number is lower than the lower bound
@@ -427,7 +467,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
 	    {
 	      if (hi_seq_used == sa->seq_hi)
 		/* the high sequence number used to succesfully decrypt this
-		 * packet is the same as the last-sequnence number of the SA.
+		 * packet is the same as the last-sequence number of the SA.
 		 * that means this packet did not cause a wrap.
 		 * this packet is thus out of window and should be dropped */
 		return 1;
@@ -439,8 +479,8 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
 	    }
 	  else
 	    {
-	      /* pre-decrypt it might be the might that casues a wrap, we
-	       * need to decrpyt to find out */
+	      /* pre-decrypt it might be the packet that causes a wrap, we
+	       * need to decrypt it to find out */
 	      if (hi_seq_req)
 		*hi_seq_req = sa->seq_hi + 1;
 	      return 0;
@@ -449,17 +489,17 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
       else
 	{
 	  /*
-	   * the recieved sequence number greater than the low
+	   * the received sequence number greater than the low
 	   * end of the window.
 	   */
 	  if (hi_seq_req)
 	    *hi_seq_req = sa->seq_hi;
 	  if (seq <= sa->seq)
 	    /*
-	     * The recieved seq number is within bounds of the window
+	     * The received seq number is within bounds of the window
 	     * check if it's a duplicate
 	     */
-	    return (ipsec_sa_anti_replay_check (sa, seq));
+	    return ipsec_sa_anti_replay_check (sa, seq);
 	  else
 	    /*
 	     * The received sequence number is greater than the window
@@ -472,14 +512,14 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
   else
     {
       /*
-       * the last sequence number VPP recieved is within one window
+       * the last sequence number VPP received is within one window
        * size of zero, i.e. 0 < TL < WINDOW_SIZE, the lower bound is thus a
        * large sequence number.
-       * Note that the check below uses unsiged integer arthimetic, so the
+       * Note that the check below uses unsigned integer arithmetic, so the
        * RHS will be a larger number.
        * Case B from RFC4303 Appendix A.
        */
-      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (sa->seq))
+      if (seq < IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND (sa))
 	{
 	  /*
 	   * the sequence number is less than the lower bound.
@@ -492,7 +532,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
 	       */
 	      if (hi_seq_req)
 		*hi_seq_req = sa->seq_hi;
-	      return (ipsec_sa_anti_replay_check (sa, seq));
+	      return ipsec_sa_anti_replay_check (sa, seq);
 	    }
 	  else
 	    {
@@ -500,7 +540,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
 	       * the packet is less the window lower bound or greater than
 	       * the higher bound, depending on how you look at it...
 	       * We're assuming, given that the last sequence number received,
-	       * TL < WINDOW_SIZE, that a largeer seq num is more likely to be
+	       * TL < WINDOW_SIZE, that a larger seq num is more likely to be
 	       * a packet that moves the window forward, than a packet that has
 	       * wrapped the high sequence again. If it were the latter then
 	       * we've lost close to 2^32 packets.
@@ -513,15 +553,14 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
       else
 	{
 	  /*
-	   * the packet seq number is between the lower bound (a large nubmer)
-	   * and MAX_SEQ_NUM. This is in the window since the window upper bound
-	   * tl > 0.
-	   * However, since TL is the other side of 0 to the received
-	   * packet, the SA has moved on to a higher sequence number.
+	   * the packet seq number is between the lower bound (a large number)
+	   * and MAX_SEQ_NUM. This is in the window since the window upper
+	   * bound tl > 0. However, since TL is the other side of 0 to the
+	   * received packet, the SA has moved on to a higher sequence number.
 	   */
 	  if (hi_seq_req)
 	    *hi_seq_req = sa->seq_hi - 1;
-	  return (ipsec_sa_anti_replay_check (sa, seq));
+	  return ipsec_sa_anti_replay_check (sa, seq);
 	}
     }
 
@@ -534,42 +573,105 @@ always_inline u32
 ipsec_sa_anti_replay_window_shift (ipsec_sa_t *sa, u32 inc)
 {
   u32 n_lost = 0;
+  u32 seen = 0;
+  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa);
 
-  if (inc < IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+  if (inc < window_size)
     {
-      if (sa->seq > IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE)
+      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+	{
+	  /* the number of packets we saw in this section of the window */
+	  u32 window_lower_bound = (sa->seq + 1) & (window_size - 1);
+	  u32 window_next_lower_bound =
+	    (window_lower_bound + inc) & (window_size - 1);
+
+	  uword i_block, i_word_start, i_word_end, full_words;
+	  uword n_blocks = window_size / uword_bits;
+	  uword mask;
+
+	  i_block = window_lower_bound / uword_bits;
+	  i_word_start = window_lower_bound & (uword_bits - 1);
+	  i_word_end = window_next_lower_bound & (uword_bits - 1);
+
+	  /* We stay in the same word */
+	  if (i_word_start + inc <= uword_bits)
+	    {
+	      mask = pow2_mask (inc) << i_word_start;
+	      seen += count_set_bits (sa->replay_window_huge[i_block] & mask);
+	      sa->replay_window_huge[i_block] &= ~mask;
+	    }
+	  else
+	    {
+	      full_words =
+		(inc + i_word_start - uword_bits - i_word_end) / uword_bits;
+
+	      /* count set bits in the first word */
+	      mask = (uword) ~0 << i_word_start;
+	      seen += count_set_bits (sa->replay_window_huge[i_block] & mask);
+	      sa->replay_window_huge[i_block] &= ~mask;
+
+	      /* count set bits in the next full words */
+	      /* even if the last word need to be fully counted, we treat it
+	       * apart */
+	      for (; full_words > 0; --full_words)
+		{
+		  i_block = (i_block + 1) & (n_blocks - 1);
+		  seen += count_set_bits (sa->replay_window_huge[i_block]);
+		  sa->replay_window_huge[i_block] = 0;
+		}
+
+	      /* the last word */
+	      i_block = (i_block + 1) & (n_blocks - 1);
+	      mask = pow2_mask (i_word_end);
+	      seen += count_set_bits (sa->replay_window_huge[i_block] & mask);
+	      sa->replay_window_huge[i_block] &= ~mask;
+	    }
+
+	  clib_bitmap_set_no_check (sa->replay_window_huge,
+				    (sa->seq + inc) & (window_size - 1), 1);
+	}
+      else
 	{
 	  /*
 	   * count how many holes there are in the portion
 	   * of the window that we will right shift of the end
 	   * as a result of this increments
 	   */
-	  u64 mask = (((u64) 1 << inc) - 1) << (BITS (u64) - inc);
-	  u64 old = sa->replay_window & mask;
+	  u64 old = sa->replay_window & pow2_mask (inc);
 	  /* the number of packets we saw in this section of the window */
-	  u64 seen = count_set_bits (old);
-
-	  /*
-	   * the number we missed is the size of the window section
-	   * minus the number we saw.
-	   */
-	  n_lost = inc - seen;
+	  seen = count_set_bits (old);
+	  sa->replay_window =
+	    ((sa->replay_window) >> inc) | (1ULL << (window_size - 1));
 	}
-      sa->replay_window = ((sa->replay_window) << inc) | 1;
+
+      /*
+       * the number we missed is the size of the window section
+       * minus the number we saw.
+       */
+      n_lost = inc - seen;
     }
   else
     {
       /* holes in the replay window are lost packets */
-      n_lost = BITS (u64) - count_set_bits (sa->replay_window);
+      n_lost = window_size - IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN (sa);
 
       /* any sequence numbers that now fall outside the window
        * are forever lost */
-      n_lost += inc - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE;
+      n_lost += inc - window_size;
 
-      sa->replay_window = 1;
+      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+	{
+	  clib_bitmap_zero (sa->replay_window_huge);
+	  clib_bitmap_set_no_check (sa->replay_window_huge,
+				    (sa->seq + inc) & (window_size - 1), 1);
+	}
+      else
+	{
+	  sa->replay_window = 1ULL << (window_size - 1);
+	}
     }
 
-  return (n_lost);
+  return n_lost;
 }
 
 /*
@@ -586,6 +688,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 thread_index, u32 seq,
 			      u32 hi_seq)
 {
   u64 n_lost = 0;
+  u32 window_size = IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa);
   u32 pos;
 
   if (ipsec_sa_is_set_USE_ESN (sa))
@@ -600,7 +703,7 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 thread_index, u32 seq,
 	}
       else if (wrap > 0)
 	{
-	  pos = ~seq + sa->seq + 1;
+	  pos = seq + ~sa->seq + 1;
 	  n_lost = ipsec_sa_anti_replay_window_shift (sa, pos);
 	  sa->seq = seq;
 	  sa->seq_hi = hi_seq;
@@ -608,12 +711,20 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 thread_index, u32 seq,
       else if (wrap < 0)
 	{
 	  pos = ~seq + sa->seq + 1;
-	  sa->replay_window |= (1ULL << pos);
+	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+	    clib_bitmap_set_no_check (sa->replay_window_huge,
+				      seq & (window_size - 1), 1);
+	  else
+	    sa->replay_window |= (1ULL << (window_size - 1 - pos));
 	}
       else
 	{
 	  pos = sa->seq - seq;
-	  sa->replay_window |= (1ULL << pos);
+	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+	    clib_bitmap_set_no_check (sa->replay_window_huge,
+				      seq & (window_size - 1), 1);
+	  else
+	    sa->replay_window |= (1ULL << (window_size - 1 - pos));
 	}
     }
   else
@@ -627,7 +738,11 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 thread_index, u32 seq,
       else
 	{
 	  pos = sa->seq - seq;
-	  sa->replay_window |= (1ULL << pos);
+	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+	    clib_bitmap_set_no_check (sa->replay_window_huge,
+				      seq & (window_size - 1), 1);
+	  else
+	    sa->replay_window |= (1ULL << (window_size - 1 - pos));
 	}
     }
 
