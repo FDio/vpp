@@ -142,10 +142,14 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
     session_worker_stat_error_inc (wrk, rv, 1);
 
   app_wrk = application_get_worker (app, mp->wrk_index);
-  mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
+  app_worker_listened_notify (app_wrk, a->handle, mp->context, rv);
 
   if (mp->ext_config)
     session_mq_free_ext_config (app, mp->ext_config);
+
+  /* Make sure events are flushed before releasing barrier, to avoid
+   * potential race with accept. */
+  app_wrk_flush_wrk_events (app_wrk, 0);
 }
 
 static void
@@ -170,7 +174,8 @@ session_mq_listen_uri_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   rv = vnet_bind_uri (a);
 
   app_wrk = application_get_worker (app, 0);
-  mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
+  app_worker_listened_notify (app_wrk, a->handle, mp->context, rv);
+  app_wrk_flush_wrk_events (app_wrk, 0);
 }
 
 static void
@@ -466,7 +471,7 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
   session_set_state (s, SESSION_STATE_READY);
 
   if (!svm_fifo_is_empty_prod (s->rx_fifo))
-    app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
+    app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX);
 
   /* Closed while waiting for app to reply. Resend disconnect */
   if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
@@ -669,7 +674,7 @@ session_mq_worker_update_handler (void *data)
     session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
 
   if (s->rx_fifo && !svm_fifo_is_empty (s->rx_fifo))
-    app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
+    app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX);
 
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     app_worker_close_notify (app_wrk, s);
@@ -1778,6 +1783,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       transport_app_rx_evt (session_get_transport_proto (s),
 			    s->connection_index, s->thread_index);
       break;
+    /* TODO remove and convert to RX event in session_input */
     case SESSION_IO_EVT_BUILTIN_RX:
       s = session_event_get_session (wrk, e);
       if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
@@ -1785,6 +1791,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       svm_fifo_unset_event (s->rx_fifo);
       app_wrk = app_worker_get (s->app_wrk_index);
       app_worker_builtin_rx (app_wrk, s);
+      /* app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX); */
       break;
     case SESSION_IO_EVT_TX_MAIN:
       s = session_get_if_valid (e->session_index, 0 /* main thread */);
