@@ -282,6 +282,12 @@ vl_api_ipsec_sad_entry_add_reply_t_handler (
 {
 }
 
+static void
+vl_api_ipsec_sad_entry_add_v2_reply_t_handler (
+  vl_api_ipsec_sad_entry_add_reply_t *mp)
+{
+}
+
 static int
 api_ipsec_sad_entry_del (vat_main_t *vat)
 {
@@ -330,6 +336,12 @@ api_ipsec_sa_v3_dump (vat_main_t *vat)
 }
 
 static int
+api_ipsec_sa_v4_dump (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
 api_ipsec_tunnel_protect_dump (vat_main_t *vat)
 {
   return -1;
@@ -349,6 +361,12 @@ vl_api_ipsec_tunnel_protect_details_t_handler (
 
 static int
 api_ipsec_sad_entry_add (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
+api_ipsec_sad_entry_add_v2 (vat_main_t *vat)
 {
   return -1;
 }
@@ -379,6 +397,11 @@ api_ipsec_itf_dump (vat_main_t *vam)
 
 static void
 vl_api_ipsec_sa_v3_details_t_handler (vl_api_ipsec_sa_v3_details_t *mp)
+{
+}
+
+static void
+vl_api_ipsec_sa_v4_details_t_handler (vl_api_ipsec_sa_v4_details_t *mp)
 {
 }
 

@@ -2041,7 +2041,7 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
 			      a->encr_type, &a->loc_ckey, a->integ_type,
 			      &a->loc_ikey, a->flags, a->salt_local,
-			      a->src_port, a->dst_port, &tun_out, NULL);
+			      a->src_port, a->dst_port, 0, &tun_out, NULL);
   if (rv)
     goto err0;
 
@@ -2049,7 +2049,7 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
     a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
     &a->rem_ckey, a->integ_type, &a->rem_ikey,
     (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote,
-    a->ipsec_over_udp_port, a->ipsec_over_udp_port, &tun_in, NULL);
+    a->ipsec_over_udp_port, a->ipsec_over_udp_port, 0, &tun_in, NULL);
   if (rv)
     goto err1;
 
