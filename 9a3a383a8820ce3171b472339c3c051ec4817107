@@ -139,6 +139,24 @@
       "message": "Thanks for the heads up and contribution.\nI see several problems with this change:\n - the main one: keep retrying until we send all packets may improve NDR performance, but it will probably decrease PDR/MRR performance. I see Vratko ran some tests, but I\u0027m not sure what was the outcome?\n - if we decide we want to keep retrying until we send everything, then the loop over n_retries is no longer needed",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "367af217_f3866431",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2022-12-22T17:40:22Z",
+      "side": 1,
+      "message": "\u003e I see Vratko ran some tests, but I\u0027m not sure what was the outcome?\n\nThe test I had run a month ago was MRR, and +11% improvement. Now I triggered two more runs (https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-icx/8 and /9), MRR improved by 14% this time.\nNDR and PDR are quite bad for parent, so this patch improves not by percents but by multiplies. NDR is 7x better, PDR 18x.\n\nThis was using l2-patch, so perhaps other tests would not have such big difference between NDR and PDR. But even then, maybe using some non-default (bigger) values for size of rxq and/or txq would make the performance more stable.\n\n\u003e the loop over n_retries is no longer needed\n\nYep. In case the compiler has not seen it, removing it may change the performance.\nAlso, remembering the long story ending with 35620, sometimes better performance is achieved by outputting in smaller chunks.",
+      "parentUuid": "372c315b_baac38d0",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
