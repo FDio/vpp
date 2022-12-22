@@ -190,6 +190,8 @@ int svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
  */
 void svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 
+void svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem);
+
 /**
  * Producer enqueue one message to queue
  *
