@@ -121,7 +121,7 @@ class IpsecApiTestCase(VppTestCase):
 
     def __check_sa_binding(self, sa_id, thread_index):
         found_sa = False
-        sa_dumps = self.vapi.ipsec_sa_v4_dump()
+        sa_dumps = self.vapi.ipsec_sa_v5_dump()
         for dump in sa_dumps:
             if dump.entry.sad_id == sa_id:
                 self.assertEqual(dump.thread_index, thread_index)

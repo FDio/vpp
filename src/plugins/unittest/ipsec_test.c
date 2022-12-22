@@ -18,8 +18,8 @@
 #include <vnet/ipsec/ipsec_output.h>
 
 static clib_error_t *
-test_ipsec_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   u64 seq_num;
   u32 sa_id;
@@ -48,12 +48,18 @@ test_ipsec_command_fn (vlib_main_t * vm,
       sa->seq = seq_num & 0xffffffff;
       sa->seq_hi = seq_num >> 32;
 
+      /* clear the window */
+      if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
+	clib_bitmap_zero (sa->replay_window_huge);
+      else
+	sa->replay_window = 0;
+
       ipsec_sa_unlock (sa_index);
     }
   else
     {
-      return clib_error_return (0, "unknown SA `%U'",
-				format_unformat_error, input);
+      return clib_error_return (0, "unknown SA `%U'", format_unformat_error,
+				input);
     }
 
   return (NULL);
@@ -134,7 +140,7 @@ test_ipsec_spd_outbound_perf_command_fn (vlib_main_t *vm,
   /* creating a new SA */
   rv = ipsec_sa_add_and_lock (sa_id, spi, proto, crypto_alg, &ck, integ_alg,
 			      &ik, sa_flags, clib_host_to_net_u32 (salt),
-			      udp_src, udp_dst, &tun, &sai);
+			      udp_src, udp_dst, 0, &tun, &sai);
   if (rv)
     {
       err = clib_error_return (0, "create sa failure");
@@ -368,8 +374,7 @@ VLIB_CLI_COMMAND (test_ipsec_spd_perf_command, static) = {
 };
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_ipsec_command, static) =
-{
+VLIB_CLI_COMMAND (test_ipsec_command, static) = {
   .path = "test ipsec",
   .short_help = "test ipsec sa <ID> seq-num <VALUE>",
   .function = test_ipsec_command_fn,
