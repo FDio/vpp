@@ -228,10 +228,9 @@ always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, u8 is_ip4)
 {
-  u32 n_left_from, *from, errors, *first_buffer;
+  u32 thread_index = vm->thread_index, n_left_from, *from, *first_buffer;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[UDP_N_ERROR] = { 0 };
-  u32 thread_index = vm->thread_index;
 
   from = first_buffer = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -323,9 +322,6 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
-					      thread_index);
-  err_counters[UDP_ERROR_MQ_FULL] = errors;
   udp_store_err_counters (vm, is_ip4, err_counters);
   return frame->n_vectors;
 }
