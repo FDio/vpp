@@ -1194,6 +1194,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  next[0] = def_slow;
 	  goto trace0;
 	}
@@ -1206,6 +1207,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  // session is closed, go slow path
 	  next[0] = def_slow;
 	  goto trace0;
@@ -1227,6 +1229,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	  translation_error = NAT_ED_TRNSL_ERR_FLOW_MISMATCH;
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
@@ -1238,6 +1241,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;
@@ -1395,6 +1399,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    {
 	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      s0 = 0;
 	      next[0] = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
@@ -1418,6 +1423,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	    {
 	      nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	      nat_ed_session_delete (sm, s0, thread_index, 1);
+	      s0 = 0;
 	      next[0] = NAT_NEXT_DROP;
 	      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	      goto trace0;
@@ -1496,6 +1502,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 	{
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  next[0] = NAT_NEXT_DROP;
 	  b0->error = node->errors[NAT_IN2OUT_ED_ERROR_TRNSL_FAILED];
 	  goto trace0;

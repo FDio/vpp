@@ -881,6 +881,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  slow_path_reason = NAT_ED_SP_REASON_VRF_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
@@ -895,6 +896,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // session is closed, go slow path
 	  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  s0 = 0;
 	  slow_path_reason = NAT_ED_SP_SESS_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
@@ -943,6 +945,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 		  translation_error = NAT_ED_TRNSL_ERR_FLOW_MISMATCH;
 		  nat44_ed_free_session_data (sm, s0, thread_index, 0);
 		  nat_ed_session_delete (sm, s0, thread_index, 1);
+		  s0 = 0;
 		  next[0] = NAT_NEXT_DROP;
 		  b0->error = node->errors[NAT_OUT2IN_ED_ERROR_TRNSL_FAILED];
 		  goto trace0;
