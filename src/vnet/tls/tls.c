@@ -75,9 +75,10 @@ tls_add_vpp_q_tx_evt (session_t * s)
 }
 
 static inline int
-tls_add_app_q_evt (app_worker_t * app, session_t * app_session)
+tls_add_app_q_evt (app_worker_t *app_wrk, session_t *app_session)
 {
-  return app_worker_lock_and_send_event (app, app_session, SESSION_IO_EVT_RX);
+  app_worker_add_event (app_wrk, app_session, SESSION_IO_EVT_RX);
+  return 0;
 }
 
 u32
