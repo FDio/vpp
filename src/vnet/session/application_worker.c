@@ -358,8 +358,9 @@ app_worker_init_accepted (session_t * s)
 int
 app_worker_accept_notify (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.session_accept_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_ACCEPTED);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   return app->cb_fns.session_accept_callback (s);
 }
 
 int
@@ -383,9 +384,11 @@ int
 app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			   session_error_t err, u32 opaque)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
-						 s, err);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_CONNECTED);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   return app->cb_fns.session_connected_callback (app_wrk->wrk_index,
+  //   opaque,
+  // 						 s, err);
 }
 
 int
@@ -400,39 +403,43 @@ app_worker_add_half_open (app_worker_t *app_wrk, session_handle_t sh)
   return (shp - app_wrk->half_open_table);
 }
 
+// XXX NO EVENT
 int
 app_worker_del_half_open (app_worker_t *app_wrk, session_t *s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  ASSERT (session_vlib_thread_is_cl_thread ());
-  pool_put_index (app_wrk->half_open_table, s->ho_index);
-  if (app->cb_fns.half_open_cleanup_callback)
-    app->cb_fns.half_open_cleanup_callback (s);
+  //   application_t *app = application_get (app_wrk->app_index);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_HALF_CLEANUP);
+  //   if (app->cb_fns.half_open_cleanup_callback)
+  //     app->cb_fns.half_open_cleanup_callback (s);
   return 0;
 }
 
 int
 app_worker_close_notify (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  app->cb_fns.session_disconnect_callback (s);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   app->cb_fns.session_disconnect_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_DISCONNECTED);
   return 0;
 }
 
+// XXX NO EVENT
 int
 app_worker_transport_closed_notify (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  if (app->cb_fns.session_transport_closed_callback)
-    app->cb_fns.session_transport_closed_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_TRANSPORT_CLOSED);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   if (app->cb_fns.session_transport_closed_callback)
+  //     app->cb_fns.session_transport_closed_callback (s);
   return 0;
 }
 
 int
 app_worker_reset_notify (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  app->cb_fns.session_reset_callback (s);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   app->cb_fns.session_reset_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_CTRL_EVT_RESET);
   return 0;
 }
 
@@ -440,29 +447,40 @@ int
 app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
 			   session_cleanup_ntf_t ntf)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  if (app->cb_fns.session_cleanup_callback)
-    app->cb_fns.session_cleanup_callback (s, ntf);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   if (app->cb_fns.session_cleanup_callback)
+  //     app->cb_fns.session_cleanup_callback (s, ntf);
+
+  session_event_t evt;
+
+  evt.event_type = SESSION_CTRL_EVT_CLEANUP;
+  evt.session_index = s->session_index;
+  evt.as_u64[1] = ntf;
+
+  app_worker_add_event_custom (app_wrk, &evt);
+
   return 0;
 }
 
 int
 app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  app->cb_fns.builtin_app_rx_callback (s);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   app->cb_fns.builtin_app_rx_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_BUILTIN_RX);
   return 0;
 }
 
 int
 app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s)
 {
-  application_t *app = application_get (app_wrk->app_index);
+  //   application_t *app = application_get (app_wrk->app_index);
 
-  if (!app->cb_fns.builtin_app_tx_callback)
-    return 0;
+  //   if (!app->cb_fns.builtin_app_tx_callback)
+  //     return 0;
 
-  app->cb_fns.builtin_app_tx_callback (s);
+  //   app->cb_fns.builtin_app_tx_callback (s);
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_BUILTIN_TX);
   return 0;
 }
 
@@ -470,8 +488,15 @@ int
 app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			   session_handle_t new_sh)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  app->cb_fns.session_migrate_callback (s, new_sh);
+  session_event_t evt;
+
+  evt.event_type = SESSION_CTRL_EVT_MIGRATED;
+  evt.session_index = s->session_index;
+  evt.as_u64[1] = new_sh;
+
+  app_worker_add_event_custom (app_wrk, &evt);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   app->cb_fns.session_migrate_callback (s, new_sh);
   return 0;
 }
 
@@ -601,18 +626,30 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
 int
 app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
-  application_t *app = application_get (app_wrk->app_index);
+  //   application_t *app = application_get (app_wrk->app_index);
 
-  return app->cb_fns.add_segment_callback (app_wrk->wrk_index,
-					   segment_handle);
+  //   return app->cb_fns.add_segment_callback (app_wrk->wrk_index,
+  // 					   segment_handle);
+  session_event_t evt;
+
+  evt.event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT;
+  evt.as_u64[1] = segment_handle;
+
+  app_worker_add_event_custom (app_wrk, &evt);
 }
 
 int
 app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
-  application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.del_segment_callback (app_wrk->wrk_index,
-					   segment_handle);
+  //   application_t *app = application_get (app_wrk->app_index);
+  //   return app->cb_fns.del_segment_callback (app_wrk->wrk_index,
+  // 					   segment_handle);
+  session_event_t evt;
+
+  evt.event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT;
+  evt.as_u64[1] = segment_handle;
+
+  app_worker_add_event_custom (app_wrk, &evt);
 }
 
 static inline u8

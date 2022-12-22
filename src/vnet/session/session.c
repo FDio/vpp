@@ -533,6 +533,331 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
     }
 }
 
+void
+session_wrk_program_app_wrk_evts (session_wrk_t *wrk, app_worker_t *app_wrk)
+{
+  u8 need_interrupt;
+
+  need_interrupt = clib_bitmap_is_zero (wrk->app_wrks_peding_ntf);
+  clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 1);
+
+  if (need_interrupt)
+    vlib_node_set_interrupt_pending (wrk->vm, session_input_node.index);
+
+  //   wrk->n_pending_enq_events += 1;
+  //   if (wrk->n_pending_enq_events == 1)
+  //     vlib_node_set_interrupt_pending (wrk->vm,
+  //     session_input_node.index);
+}
+
+void
+app_worker_add_event (app_worker_t *app_wrk, session_t *s,
+		      session_evt_type_t evt_type)
+{
+  session_event_t *evt;
+
+  clib_fifo_add2 (app_wrk->wrk_evts[s->thread_index], evt);
+  evt->session_index = s->session_index;
+  evt->event_type = evt_type;
+  evt->postponed = 0;
+
+  /* First event for this app_wrk. Schedule it for handling in session input */
+  if (clib_fifo_elts (app_wrk->session_wrk_events[s->thread_index]) == 1)
+    {
+      session_worker_t *wrk = session_main_get_worker (s->thread_index);
+      session_wrk_program_app_wrk_evts (wrk, app_wrk);
+    }
+}
+
+void
+app_worker_add_event_custom (app_worker_t *app_wrk, session_event_t *evt)
+{
+  clib_fifo_add1 (app_wrk->wrk_evts[s->thread_index], *evt);
+
+  /* First event for this app_wrk. Schedule it for handling in session input */
+  if (clib_fifo_elts (app_wrk->session_wrk_events[s->thread_index]) == 1)
+    {
+      session_worker_t *wrk = session_main_get_worker (s->thread_index);
+      session_wrk_program_app_wrk_evts (wrk, app_wrk);
+    }
+}
+
+void
+session_program_rx_io_event (session_t *s)
+{
+  //   session_worker_t *wrk;
+  app_worker_t *app_wrk;
+
+  s->flags |= SESSION_F_RX_EVT;
+
+  /* Assumes that data has already been enqueued */
+  if (svm_fifo_has_event (s->rx_fifo))
+    return;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (PREDICT_FALSE (!app_wrk))
+    return;
+
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX);
+}
+
+void
+session_program_tx_io_event (session_t *s)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+
+  if (PREDICT_FALSE (!app_wrk))
+    return -1;
+
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_TX);
+}
+
+static int
+mq_send_io_rx_event (session_t *s)
+{
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+  message_queue_t *mq = app_wrk->event_queue;
+
+  if (PREDICT_FALSE (svm_msg_q_or_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+    return -1;
+
+  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  s = session_get (evt->session_index, thread_index);
+
+  mq_evt->event_type = SESSION_IO_EVT_RX;
+  mq_evt->session_index = s->rx_fifo->shr->client_session_index;
+
+  (void) svm_fifo_set_event (s->rx_fifo);
+
+  svm_msg_q_add_raw (mq, &mq_msg);
+}
+
+static int
+mq_send_io_tx_event (session_t *s)
+{
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+
+  if (PREDICT_FALSE (svm_msg_q_or_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+    return -1;
+
+  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  s = session_get (evt->session_index, thread_index);
+  mq_evt->event_type = SESSION_IO_EVT_TX;
+  mq_evt->session_index = s->tx_fifo->shr->client_session_index;
+  ;
+
+  svm_msg_q_add_raw (mq, &mq_msg);
+}
+
+static inline int
+mq_try_lock (svm_msg_q_t *mq)
+{
+  int rv, n_try = 0;
+
+  while (n_try < 10)
+    {
+      rv = svm_msg_q_try_lock (mq);
+      if (!rv)
+	return 0;
+      /*
+       * Break the loop if mq is full, usually this is because the
+       * app has crashed or is hanging on somewhere.
+       */
+      if (rv != -1)
+	break;
+      n_try += 1;
+      usleep (1);
+    }
+
+  return -1;
+}
+
+always_inline u8
+mq_event_ring_index (session_evt_type_t et)
+{
+  return (et > SESSION_IO_EVT_BUILTIN_TX ? SESSION_MQ_CTRL_EVT_RING :
+						 SESSION_MQ_IO_EVT_RING);
+}
+
+always_inline int
+app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
+				u8 is_builtin)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  message_queue_t *mq = app_worker->event_queue;
+  session_event_t *evt;
+  u32 n_evts = 128;
+  u8 ring_index;
+  session_t *s;
+
+  n_evts = clib_min (n_evts, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
+
+  if (!is_builtin)
+    {
+      if (mq_try_lock (mq))
+	{
+	  app_worker_set_mq_congested (app_wrk);
+	  return 0;
+	}
+    }
+
+  for (i = 0; i < n_evts; i++)
+    {
+      evt = clib_fifo_head (app_wrk->wrk_evts);
+      if (!is_builtin)
+	{
+	  ring_index = mq_event_ring_index (evt->event_type);
+	  if (svm_msg_q_or_ring_is_full (mq, ring_index))
+	    {
+	      app_worker_set_mq_congested (app_wrk);
+	      break;
+	    }
+	}
+
+      switch (evt->event_type)
+	{
+	case SESSION_IO_EVT_RX:
+	case SESSION_IO_EVT_BUILTIN_RX:
+	  app->cb_fns.builtin_app_rx_callback (s);
+	  break;
+	case SESSION_IO_EVT_TX:
+	case SESSION_IO_EVT_BUILTIN_TX:
+	  // TODO make sure the function always exists
+	  app->cb_fns.builtin_app_tx_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_ACCEPTED:
+	  s = session_get (evt->session_index, thread_index);
+	  app->cb_fns.session_accept_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_CONNECTED:
+	  s = session_get (evt->session_index, thread_index);
+	  app->cb_fns.session_connected_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_DISCONNECTED:
+	  s = session_get (evt->session_index, thread_index);
+	  app->cb_fns.session_disconnect_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_RESET:
+	  s = session_get (evt->session_index, thread_index);
+	  app->cb_fns.session_reset_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_MIGRATED:
+	  s = session_get (evt->session_index, thread_index);
+	  app->cb_fns.session_migrate_callback (s, evt->as_u64[1]);
+	  break;
+	case SESSION_CTRL_EVT_CLEANUP:
+	  s = session_get (evt->session_index, thread_index);
+	  if (app->cb_fns.session_cleanup_callback)
+	    app->cb_fns.session_cleanup_callback (s, evt->as_u64[1]);
+	  break;
+	case SESSION_CTRL_EVT_TRANSPORT_CLOSED:
+	  s = session_get (evt->session_index, thread_index);
+	  if (app->cb_fns.session_transport_closed_callback)
+	    app->cb_fns.session_transport_closed_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_HALF_CLEANUP:
+	  s = ho_session_get (evt->session_index);
+	  ASSERT (session_vlib_thread_is_cl_thread ());
+	  pool_put_index (app_wrk->half_open_table, s->ho_index);
+	  if (app->cb_fns.half_open_cleanup_callback)
+	    app->cb_fns.half_open_cleanup_callback (s);
+	  break;
+	case SESSION_CTRL_EVT_APP_ADD_SEGMENT:
+	  app->cb_fns.add_segment_callback (app_wrk->wrk_index,
+					    evt->as_u64[1]);
+	  break;
+	case SESSION_CTRL_EVT_APP_DEL_SEGMENT:
+	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
+					    evt->as_u64[1]);
+	  break;
+	default:
+	  ASSERT (0);
+	  break;
+	  //   SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
+	  //   SESSION_CTRL_EVT_WORKER_UPDATE,
+	  //       SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+	  //       SESSION_CTRL_EVT_SHUTDOWN, SESSION_CTRL_EVT_DISCONNECT,
+	  //       SESSION_CTRL_EVT_CONNECT, SESSION_CTRL_EVT_CONNECT_URI,
+	  //       SESSION_CTRL_EVT_LISTEN, SESSION_CTRL_EVT_LISTEN_URI,
+	  //       SESSION_CTRL_EVT_UNLISTEN, SESSION_CTRL_EVT_APP_DETACH,
+	  //       SESSION_CTRL_EVT_APP_WRK_RPC,
+	  //       SESSION_CTRL_EVT_TRANSPORT_ATTR,
+	  //       SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY,
+
+	  //       SESSION_CTRL_EVT_CLOSE, SESSION_CTRL_EVT_BOUND,
+	  //       SESSION_CTRL_EVT_UNLISTEN_REPLY,
+	  //       SESSION_CTRL_EVT_ACCEPTED_REPLY
+	  //           SESSION_CTRL_EVT_DISCONNECTED_REPLY,
+	  //       SESSION_CTRL_EVT_RESET_REPLY,
+	}
+      clib_fifo_advance_head (app_wrk->wrk_evts[thread_index], 1);
+    }
+
+  if (!is_builtin)
+    svm_msg_q_unlock (mq);
+}
+
+static int
+app_wrk_flush_wrk_events (app_worker_t *app_wrk, u32 thread_index)
+{
+  if (app_worker_application_is_builtin (app_wrk))
+    return app_worker_flush_events_inline (app_wrk, thread_index,
+					   1 /* is_builtin */);
+  else
+    return app_worker_flush_events_inline (app_wrk, thread_index,
+					   0 /* is_builtin */);
+}
+
+static inline int
+session_wrk_flush_events (session_worker_t *wrk)
+{
+  app_worker_t *app_wrk;
+  uword app_wrk_index;
+  u32 thread_index;
+
+  thread_index = wrk->vm->thread_index;
+  app_wrk_index = clib_bitmap_first_set (wrk->app_wrks_pending_ntf);
+
+  while (app_wrk_index != ~0)
+    {
+      app_wrk = app_worker_get (app_wrk_index);
+      app_wrk_flush_wrk_events (app_wrk, thread_index);
+
+      if (!clib_fifo_elts (app_wrk->session_wrk_events[s->thread_index]))
+	clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
+
+      app_wrk_index =
+	clib_bitmap_next_set (wrk->app_wrks_pending_ntf, app_wrk_index + 1);
+    }
+
+  if (!clib_bitmap_is_zero (wrk->app_wrks_peding_ntf))
+    vlib_node_set_interrupt_pending (wrk->vm, session_input_node.index);
+}
+
+VLIB_NODE_FN (session_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  u32 thread_index = vm->thread_index;
+  session_worker_t *wrk;
+
+  wrk = session_main_get_worker (thread_index);
+  session_wrk_flush_events (wrk);
+
+  return 0;
+}
+
+VLIB_REGISTER_NODE (session_input_node) = {
+  .name = "session-input",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
@@ -585,16 +910,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (queue_event)
     {
-      /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
-      session_worker_t *wrk;
-
-      wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[tc->proto], s->session_index);
-	}
+	session_program_rx_io_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -651,16 +968,14 @@ session_enqueue_dgram_connection (session_t * s,
 
   if (queue_event && rv > 0)
     {
-      /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
-      session_worker_t *wrk;
+      //       /* Queue RX event on this fifo. Eventually these will need to be
+      //       flushed
+      //        * by calling stream_server_flush_enqueue_events () */
+      //       session_worker_t *wrk;
 
-      wrk = session_main_get_worker (s->thread_index);
+      //       wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
-	}
+	session_program_rx_io_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -707,8 +1022,9 @@ session_notify_subscribers (u32 app_index, session_t * s,
       app_wrk = application_get_worker (app, f->shr->subscribers[i]);
       if (!app_wrk)
 	continue;
-      if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
-	return -1;
+      app_worker_add_event (app_wrk, s, evt_type);
+      //       if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
+      // 	return -1;
     }
 
   return 0;
@@ -806,13 +1122,7 @@ session_dequeue_notify (session_t * s)
 
   svm_fifo_clear_deq_ntf (s->tx_fifo);
 
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (PREDICT_FALSE (!app_wrk))
-    return -1;
-
-  if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     SESSION_IO_EVT_TX)))
-    return -1;
+  session_program_tx_io_event (s);
 
   if (PREDICT_FALSE (s->tx_fifo->shr->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
@@ -1803,11 +2113,12 @@ session_add_transport_proto (void)
 
   smm->last_transport_proto_type += 1;
 
-  for (thread = 0; thread < vec_len (smm->wrk); thread++)
-    {
-      wrk = session_main_get_worker (thread);
-      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
-    }
+  //   for (thread = 0; thread < vec_len (smm->wrk); thread++)
+  //     {
+  //       wrk = session_main_get_worker (thread);
+  //       vec_validate (wrk->session_to_enqueue,
+  //       smm->last_transport_proto_type);
+  //     }
 
   return smm->last_transport_proto_type;
 }
@@ -2106,6 +2417,7 @@ session_node_enable_disable (u8 is_en)
 	  if (!sm->poll_main)
 	    continue;
 	}
+      vlib_node_set_state (vm, session_input_node.index, mstate);
       vlib_node_set_state (vm, session_queue_node.index, state);
     }
 
