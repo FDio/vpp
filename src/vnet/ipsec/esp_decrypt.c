@@ -742,16 +742,16 @@ esp_decrypt_post_crypto (vlib_main_t *vm, const vlib_node_runtime_t *node,
    * check above we did so against the state of the window (W),
    * after packet s-1. So each of the packets in the sequence will be
    * accepted.
-   * This time s will be cheked against Ws-1, s+1 chceked against Ws
-   * (i.e. the window state is updated/advnaced)
-   * so this time the successive s+! packet will be dropped.
+   * This time s will be cheked against Ws-1, s+1 checked against Ws
+   * (i.e. the window state is updated/advanced)
+   * so this time the successive s+1 packet will be dropped.
    * This is a consequence of batching the decrypts. If the
-   * check-dcrypt-advance process was done for each packet it would
+   * check-decrypt-advance process was done for each packet it would
    * be fine. But we batch the decrypts because it's much more efficient
    * to do so in SW and if we offload to HW and the process is async.
    *
    * You're probably thinking, but this means an attacker can send the
-   * above sequence and cause VPP to perform decrpyts that will fail,
+   * above sequence and cause VPP to perform decrypts that will fail,
    * and that's true. But if the attacker can determine s (a valid
    * sequence number in the window) which is non-trivial, it can generate
    * a sequence s, s+1, s+2, s+3, ... s+n and nothing will prevent any
