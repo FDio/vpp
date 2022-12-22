@@ -77,6 +77,12 @@ typedef struct app_worker_
   /** Pool of half-open session handles. Tracked in case worker detaches */
   session_handle_t *half_open_table;
 
+  /* Per vpp worker fifos of events for app worker */
+  session_event_t **wrk_evts;
+
+  /* Vector of vpp workers mq congestion flags */
+  u8 *wrk_mq_congested;
+
   /** Protects detached seg managers */
   clib_spinlock_t detached_seg_managers_lock;
 
@@ -329,6 +335,8 @@ int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
+int app_worker_listened_notify (app_worker_t *app_wrk, session_handle_t alsh,
+				u32 opaque, int err);
 int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
 int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
@@ -341,6 +349,9 @@ int app_worker_transport_closed_notify (app_worker_t * app_wrk,
 int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
 			       session_cleanup_ntf_t ntf);
+int app_worker_cleanup_notify_custom (app_worker_t *app_wrk, session_t *s,
+				      session_cleanup_ntf_t ntf,
+				      void (*cleanup_cb) (session_t *s));
 int app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			       session_handle_t new_sh);
 int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
@@ -348,6 +359,11 @@ int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
 int app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
 				    svm_fifo_t * f,
 				    session_ft_action_t act, u32 len);
+void app_worker_add_event (app_worker_t *app_wrk, session_t *s,
+			   session_evt_type_t evt_type);
+void app_worker_add_event_custom (app_worker_t *app_wrk, u32 thread_index,
+				  session_event_t *evt);
+int app_wrk_flush_wrk_events (app_worker_t *app_wrk, u32 thread_index);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
@@ -365,6 +381,11 @@ void app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
 int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
 int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);
+u8 app_worker_mq_is_congested (app_worker_t *app_wrk);
+u8 app_worker_mq_wrk_is_congested (app_worker_t *app_wrk, u32 thread_index);
+void app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index);
+void app_worker_unset_wrk_mq_congested (app_worker_t *app_wrk,
+					u32 thread_index);
 session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 				      u8 transport_proto);
 void app_worker_del_detached_sm (app_worker_t * app_wrk, u32 sm_index);
@@ -392,6 +413,12 @@ void sapi_socket_close_w_handle (u32 api_handle);
 
 crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
+
+static inline u8
+app_worker_application_is_builtin (app_worker_t *app_wrk)
+{
+  return app_wrk->app_is_builtin;
+}
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
