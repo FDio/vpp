@@ -503,7 +503,7 @@ state_srv_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   hc->http_state = HTTP_STATE_WAIT_APP;
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-  app_worker_lock_and_send_event (app_wrk, as, SESSION_IO_EVT_RX);
+  app_worker_rx_notify (app_wrk, as);
 
   return HTTP_SM_STOP;
 
@@ -777,7 +777,7 @@ state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
     }
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-  app_worker_lock_and_send_event (app_wrk, as, SESSION_IO_EVT_RX);
+  app_worker_rx_notify (app_wrk, as);
   return HTTP_SM_STOP;
 }
 
@@ -808,7 +808,7 @@ cln_drain_rx_buf (http_conn_t *hc, session_t *ts, session_t *as)
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   ASSERT (app_wrk);
 
-  app_worker_lock_and_send_event (app_wrk, as, SESSION_IO_EVT_RX);
+  app_worker_rx_notify (app_wrk, as);
   return 1;
 }
 

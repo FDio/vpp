@@ -320,7 +320,7 @@ srtp_notify_app_enqueue (srtp_tc_t *ctx, session_t *app_session)
   app_worker_t *app_wrk;
   app_wrk = app_worker_get_if_valid (app_session->app_wrk_index);
   if (PREDICT_TRUE (app_wrk != 0))
-    app_worker_lock_and_send_event (app_wrk, app_session, SESSION_IO_EVT_RX);
+    app_worker_rx_notify (app_wrk, app_session);
 }
 
 static inline int
