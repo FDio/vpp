@@ -373,7 +373,6 @@ static int
 ec_init (vlib_main_t *vm)
 {
   ec_main_t *ecm = &ec_main;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   ec_worker_t *wrk;
   u32 num_threads;
   int i;
@@ -414,8 +413,8 @@ ec_init (vlib_main_t *vm)
   for (i = 0; i < vec_len (ecm->connect_test_data); i++)
     ecm->connect_test_data[i] = i & 0xff;
 
-  num_threads = 1 /* main thread */ + vtm->n_threads;
-  vec_validate (ecm->wrk, num_threads);
+  num_threads = 1 /* main thread */ + vlib_num_workers ();
+  vec_validate (ecm->wrk, num_threads - 1);
   vec_foreach (wrk, ecm->wrk)
     {
       vec_validate (wrk->rx_buf, vec_len (ecm->connect_test_data) - 1);
@@ -431,8 +430,8 @@ ec_init (vlib_main_t *vm)
   vlib_worker_thread_barrier_release (vm);
 
   /* Turn on the builtin client input nodes */
-  for (i = 0; i < vtm->n_vlib_mains; i++)
-    vlib_node_set_state (vlib_get_main_by_index (i), echo_clients_node.index,
+  foreach_vlib_main ()
+    vlib_node_set_state (this_vlib_main, echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
   return 0;
