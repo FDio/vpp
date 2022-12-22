@@ -1018,6 +1018,7 @@ list(APPEND VNET_SOURCES
   session/session_rules_table.c
   session/session_lookup.c
   session/session_node.c
+  session/session_input.c
   session/transport.c
   session/application.c
   session/application_worker.c

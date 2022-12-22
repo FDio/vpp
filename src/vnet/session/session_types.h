@@ -379,6 +379,8 @@ typedef enum
   SESSION_CTRL_EVT_APP_WRK_RPC,
   SESSION_CTRL_EVT_TRANSPORT_ATTR,
   SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY,
+  SESSION_CTRL_EVT_TRANSPORT_CLOSED,
+  SESSION_CTRL_EVT_HALF_CLEANUP,
 } session_evt_type_t;
 
 #define foreach_session_ctrl_evt                                              \
@@ -437,6 +439,7 @@ typedef struct
     session_handle_t session_handle;
     session_rpc_args_t rpc_args;
     u32 ctrl_data_index;
+    u64 as_u64[2];
     struct
     {
       u8 data[0];

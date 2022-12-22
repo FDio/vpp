@@ -149,11 +149,9 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
    * enqueue event now while we still have the peeker lock */
   if (s0->thread_index != thread_index)
     {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 /* queue event */ 0);
-      if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
-	session_enqueue_notify (s0);
+      wrote0 = session_enqueue_dgram_connection_cl (
+	s0, hdr0, b, TRANSPORT_PROTO_UDP,
+	/* queue event */ queue_event && !svm_fifo_has_event (s0->rx_fifo));
     }
   else
     {
@@ -232,10 +230,9 @@ always_inline uword
 udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame, u8 is_ip4)
 {
-  u32 n_left_from, *from, errors, *first_buffer;
+  u32 thread_index = vm->thread_index, n_left_from, *from, *first_buffer;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[UDP_N_ERROR] = { 0 };
-  u32 thread_index = vm->thread_index;
 
   from = first_buffer = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -327,9 +324,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
-					      thread_index);
-  err_counters[UDP_ERROR_MQ_FULL] = errors;
+  session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP, thread_index);
   udp_store_err_counters (vm, is_ip4, err_counters);
   return frame->n_vectors;
 }

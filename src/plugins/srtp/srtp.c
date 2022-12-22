@@ -309,8 +309,7 @@ done:
 int
 srtp_add_vpp_q_builtin_rx_evt (session_t *s)
 {
-  if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
+  session_enqueue_notify (s);
   return 0;
 }
 
@@ -320,7 +319,7 @@ srtp_notify_app_enqueue (srtp_tc_t *ctx, session_t *app_session)
   app_worker_t *app_wrk;
   app_wrk = app_worker_get_if_valid (app_session->app_wrk_index);
   if (PREDICT_TRUE (app_wrk != 0))
-    app_worker_lock_and_send_event (app_wrk, app_session, SESSION_IO_EVT_RX);
+    app_worker_rx_notify (app_wrk, app_session);
 }
 
 static inline int

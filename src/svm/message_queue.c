@@ -340,15 +340,15 @@ svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   return (dist1 < dist2);
 }
 
-static void
-svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
+void
+svm_msg_q_add_raw (svm_msg_q_t *mq, svm_msg_q_msg_t *msg)
 {
   svm_msg_q_shared_queue_t *sq = mq->q.shr;
   i8 *tailp;
   u32 sz;
 
   tailp = (i8 *) (&sq->data[0] + sq->elsize * sq->tail);
-  clib_memcpy_fast (tailp, elem, sq->elsize);
+  clib_memcpy_fast (tailp, msg, sq->elsize);
 
   sq->tail = (sq->tail + 1) % sq->maxsize;
 
@@ -381,7 +381,7 @@ svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
 	svm_msg_q_wait_prod (mq);
     }
 
-  svm_msg_q_add_raw (mq, (u8 *) msg);
+  svm_msg_q_add_raw (mq, msg);
 
   svm_msg_q_unlock (mq);
 
@@ -392,7 +392,7 @@ void
 svm_msg_q_add_and_unlock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 {
   ASSERT (svm_msq_q_msg_is_valid (mq, msg));
-  svm_msg_q_add_raw (mq, (u8 *) msg);
+  svm_msg_q_add_raw (mq, msg);
   svm_msg_q_unlock (mq);
 }
 
