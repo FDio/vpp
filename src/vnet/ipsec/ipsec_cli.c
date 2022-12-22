@@ -88,6 +88,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_crypto_alg_t crypto_alg;
   ipsec_integ_alg_t integ_alg;
+  u32 anti_replay_window_size;
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
   clib_error_t *error;
@@ -105,6 +106,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   is_add = 0;
   flags = IPSEC_SA_FLAG_NONE;
   proto = IPSEC_PROTOCOL_ESP;
+  anti_replay_window_size = 0;
   integ_alg = IPSEC_INTEG_ALG_NONE;
   crypto_alg = IPSEC_CRYPTO_ALG_NONE;
   udp_src = udp_dst = IPSEC_UDP_PORT_NONE;
@@ -153,6 +155,9 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	udp_src = i;
       else if (unformat (line_input, "udp-dst-port %d", &i))
 	udp_dst = i;
+      else if (unformat (line_input, "anti-replay-size %d",
+			 &anti_replay_window_size))
+	flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
       else if (unformat (line_input, "inbound"))
 	flags |= IPSEC_SA_FLAG_IS_INBOUND;
       else if (unformat (line_input, "use-anti-replay"))
@@ -184,9 +189,10 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  error = clib_error_return (0, "missing spi");
 	  goto done;
 	}
-      rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &ck, integ_alg,
-				  &ik, flags, clib_host_to_net_u32 (salt),
-				  udp_src, udp_dst, &tun, &sai);
+      rv =
+	ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &ck, integ_alg, &ik,
+			       flags, clib_host_to_net_u32 (salt), udp_src,
+			       udp_dst, anti_replay_window_size, &tun, &sai);
     }
   else
     {
