@@ -193,9 +193,6 @@ typedef ipsec_spd_entry_v2
 
 
 /** \brief IPsec: Security Association Database entry
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add SAD entry if non-zero, else delete
     @param sad_id - sad id
     @param spi - security parameter index
     @param protocol - 0 = AH, 1 = ESP
@@ -203,6 +200,7 @@ typedef ipsec_spd_entry_v2
     @param crypto_key - crypto keying material
     @param integrity_algorithm - one of the supported algorithms
     @param integrity_key - integrity keying material
+    @param flags - SA flags (see ipsec_sad_flags above)
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tx_table_id - the FIB id used for encapsulated packets
@@ -287,6 +285,46 @@ typedef ipsec_sad_entry_v3
   u16 udp_dst_port [default=4500];
 };
 
+/** \brief IPsec: Security Association Database entry
+    @param sad_id - sad id
+    @param spi - security parameter index
+    @param protocol - 0 = AH, 1 = ESP
+    @param crypto_algorithm - a supported crypto algorithm
+    @param crypto_key - crypto keying material
+    @param integrity_algorithm - one of the supported algorithms
+    @param integrity_key - integrity keying material
+    @param flags - SA flags (see ipsec_sad_flags above)
+    @param tunnel - tunnel description (see vnet/tunnel/tunnel_types.api)
+    @param salt - for use with counter mode ciphers
+    @param udp_src_port - If using UDP Encapsulation, use this source port for
+                          TX. It is ignored for RX.
+    @param udp_dst_port - If using UDP Encapsulation, use this destination port
+                          for TX. Expect traffic on this port for RX.
+    @param anti_replay_window_size - AR window size to use. The supplied value is round up to the nearest power of 2.
+ */
+typedef ipsec_sad_entry_v4
+{
+  u32 sad_id;
+  u32 spi;
+
+  vl_api_ipsec_proto_t protocol;
+
+  vl_api_ipsec_crypto_alg_t crypto_algorithm;
+  vl_api_key_t crypto_key;
+
+  vl_api_ipsec_integ_alg_t integrity_algorithm;
+  vl_api_key_t integrity_key;
+
+  vl_api_ipsec_sad_flags_t flags;
+
+  vl_api_tunnel_t tunnel;
+
+  u32 salt;
+  u16 udp_src_port [default=4500];
+  u16 udp_dst_port [default=4500];
+
+  u32 anti_replay_window_size [default=64];
+};
 
 /*
  * Local Variables:
