@@ -451,6 +451,57 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_CLEANUP, &m, sizeof (m));
 }
 
+static int
+mq_send_io_rx_event (session_t *s)
+{
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+  svm_msg_q_t *mq = app_wrk->event_queue;
+  session_event_t *mq_evt;
+  svm_msg_q_msg_t mq_msg;
+
+  //   if (PREDICT_FALSE (svm_msg_q_or_ring_is_full (mq,
+  //   SESSION_MQ_IO_EVT_RING)))
+  //     return -1;
+
+  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  //   s = session_get (evt->session_index, thread_index);
+
+  mq_evt->event_type = SESSION_IO_EVT_RX;
+  mq_evt->session_index = s->rx_fifo->shr->client_session_index;
+
+  (void) svm_fifo_set_event (s->rx_fifo);
+
+  svm_msg_q_add_raw (mq, (u8 *) &mq_msg);
+
+  return 0;
+}
+
+static int
+mq_send_io_tx_event (session_t *s)
+{
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+  svm_msg_q_t *mq = app_wrk->event_queue;
+  session_event_t *mq_evt;
+  svm_msg_q_msg_t mq_msg;
+
+  //   if (PREDICT_FALSE (svm_msg_q_or_ring_is_full (mq,
+  //   SESSION_MQ_IO_EVT_RING)))
+  //     return -1;
+
+  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  //   s = session_get (evt->session_index, thread_index);
+  mq_evt->event_type = SESSION_IO_EVT_TX;
+  mq_evt->session_index = s->tx_fifo->shr->client_session_index;
+
+  svm_msg_q_add_raw (mq, (u8 *) &mq_msg);
+
+  return 0;
+}
+
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
@@ -460,6 +511,8 @@ static session_cb_vft_t session_mq_cb_vft = {
   .session_cleanup_callback = mq_send_session_cleanup_cb,
   .add_segment_callback = mq_send_add_segment_cb,
   .del_segment_callback = mq_send_del_segment_cb,
+  .builtin_app_rx_callback = mq_send_io_rx_event,
+  .builtin_app_tx_callback = mq_send_io_tx_event,
 };
 
 static void
@@ -1171,6 +1224,8 @@ static session_cb_vft_t session_mq_sapi_cb_vft = {
   .session_cleanup_callback = mq_send_session_cleanup_cb,
   .add_segment_callback = mq_send_add_segment_sapi_cb,
   .del_segment_callback = mq_send_del_segment_sapi_cb,
+  .builtin_app_rx_callback = mq_send_io_rx_event,
+  .builtin_app_tx_callback = mq_send_io_tx_event,
 };
 
 static void
