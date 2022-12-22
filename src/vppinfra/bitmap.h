@@ -245,7 +245,7 @@ clib_bitmap_get_multiple_no_check (uword * ai, uword i, uword n_bits)
   uword i0 = i / BITS (ai[0]);
   uword i1 = i % BITS (ai[0]);
   ASSERT (i1 + n_bits <= BITS (uword));
-  return 0 != ((ai[i0] >> i1) & pow2_mask (n_bits));
+  return ((ai[i0] >> i1) & pow2_mask (n_bits));
 }
 
 /** Gets the ith through ith + n_bits bit values from a bitmap
@@ -339,14 +339,15 @@ clib_bitmap_set_multiple (uword * bitmap, uword i, uword value, uword n_bits)
 always_inline uword *
 clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 {
-  uword a0, a1, b0;
+  uword a0, a1, b0, b1;
   uword i_end, mask;
 
   a0 = i / BITS (bitmap[0]);
   a1 = i % BITS (bitmap[0]);
 
-  i_end = i + n_bits;
+  i_end = i + n_bits - 1;
   b0 = i_end / BITS (bitmap[0]);
+  b1 = i_end % BITS (bitmap[0]);
 
   clib_bitmap_vec_validate (bitmap, b0);
 
@@ -364,8 +365,7 @@ clib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
 
   if (a0 == b0)
     {
-      word n_bits_left = n_bits - (BITS (bitmap[0]) - a1);
-      mask = pow2_mask (n_bits_left);
+      mask = (uword) ~0 >> (BITS (bitmap[0]) - b1 - 1);
       if (value)
 	bitmap[a0] |= mask;
       else
