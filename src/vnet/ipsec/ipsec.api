@@ -191,12 +191,21 @@ define ipsec_sad_entry_add_del_v3
   bool is_add;
   vl_api_ipsec_sad_entry_v3_t entry;
 };
+
 define ipsec_sad_entry_add
 {
   u32 client_index;
   u32 context;
   vl_api_ipsec_sad_entry_v3_t entry;
 };
+
+define ipsec_sad_entry_add_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ipsec_sad_entry_v4_t entry;
+};
+
 autoreply define ipsec_sad_entry_del
 {
   u32 client_index;
@@ -273,7 +282,15 @@ define ipsec_sad_entry_add_del_v3_reply
   i32 retval;
   u32 stat_index;
 };
+
 define ipsec_sad_entry_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stat_index;
+};
+
+define ipsec_sad_entry_add_v2_reply
 {
   u32 context;
   i32 retval;
@@ -468,6 +485,12 @@ define ipsec_sa_v4_dump
   u32 context;
   u32 sa_id;
 };
+define ipsec_sa_v5_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
 
 /** \brief IPsec security association database response
     @param context - sender context which was passed in the request
@@ -528,7 +551,17 @@ define ipsec_sa_v4_details {
   u64 seq_outbound;
   u64 last_seq_inbound;
   u64 replay_window;
+  u32 thread_index;
+  u32 stat_index;
+};
+define ipsec_sa_v5_details {
+  u32 context;
+  vl_api_ipsec_sad_entry_v4_t entry;
 
+  vl_api_interface_index_t sw_if_index;
+  u64 seq_outbound;
+  u64 last_seq_inbound;
+  u64 replay_window;
   u32 thread_index;
   u32 stat_index;
 };
