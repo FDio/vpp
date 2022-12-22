@@ -100,8 +100,8 @@ typedef struct session_worker_
   /** Convenience pointer to this worker's vlib_main */
   vlib_main_t *vm;
 
-  /** Per-proto vector of sessions to enqueue */
-  u32 **session_to_enqueue;
+  /** Per-app-worker bitmap of pending notifications */
+  uword *app_wrks_pending_ntf;
 
   /** Timerfd used to periodically signal wrk session queue node */
   int timerfd;
@@ -275,6 +275,7 @@ typedef struct session_main_
 
 extern session_main_t session_main;
 extern vlib_node_registration_t session_queue_node;
+extern vlib_node_registration_t session_input_node;
 extern vlib_node_registration_t session_queue_process_node;
 extern vlib_node_registration_t session_queue_pre_input_node;
 
@@ -502,6 +503,8 @@ int session_stream_accept (transport_connection_t * tc, u32 listener_index,
 			   u32 thread_index, u8 notify);
 int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 			  u32 thread_index);
+
+void session_program_rx_io_event_custom (session_t *s);
 /**
  * Initialize session layer for given transport proto and ip version
  *
@@ -765,8 +768,6 @@ do {									\
       return clib_error_return (0, "session layer is not enabled");	\
 } while (0)
 
-int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
-int session_main_flush_all_enqueue_events (u8 transport_proto);
 void session_queue_run_on_main_thread (vlib_main_t * vm);
 
 /**
@@ -799,6 +800,8 @@ fifo_segment_t *session_main_get_wrk_mqs_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 void session_wrk_handle_evts_main_rpc (void *);
+void session_wrk_program_app_wrk_evts (session_worker_t *wrk,
+				       u32 app_wrk_index);
 
 session_t *session_alloc_for_connection (transport_connection_t * tc);
 session_t *session_alloc_for_half_open (transport_connection_t *tc);
