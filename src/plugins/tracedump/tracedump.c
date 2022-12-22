@@ -213,12 +213,15 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
   iterator_position = clib_net_to_host_u32 (mp->position);
   max_records = clib_net_to_host_u32 (mp->max_records);
 
-  /* Don't overflow the existing queue space. */
-  svm_queue_t *q = rp->vl_input_queue;
-  u32 queue_slots_available = q->maxsize - q->cursize;
-  int chunk = (queue_slots_available > 0) ? queue_slots_available - 1 : 0;
-  if (chunk < max_records)
-    max_records = chunk;
+  /* Don't overflow the existing queue space for shared memory API clients. */
+  if (rp->vl_input_queue)
+    {
+      svm_queue_t *q = rp->vl_input_queue;
+      u32 queue_slots_available = q->maxsize - q->cursize;
+      int chunk = (queue_slots_available > 0) ? queue_slots_available - 1 : 0;
+      if (chunk < max_records)
+	max_records = chunk;
+    }
 
   /* Need a fresh cache for this client? */
   if (vec_len (client_trace_cache) == 0
