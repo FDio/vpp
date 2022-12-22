@@ -193,6 +193,17 @@ void svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg);
 /**
  * Producer enqueue one message to queue
  *
+ * Must be called with mq locked. Prior to calling this, the producer should've
+ * obtained a message buffer from one of the rings.
+ *
+ * @param mq		message queue
+ * @param msg		message to be enqueued
+ */
+void svm_msg_q_add_raw (svm_msg_q_t *mq, svm_msg_q_msg_t *msg);
+
+/**
+ * Producer enqueue one message to queue
+ *
  * Prior to calling this, the producer should've obtained a message buffer
  * from one of the rings by calling @ref svm_msg_q_alloc_msg.
  *

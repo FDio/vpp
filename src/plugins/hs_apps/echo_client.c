@@ -706,10 +706,8 @@ ec_session_rx_callback (session_t *s)
   receive_data_chunk (wrk, es);
 
   if (svm_fifo_max_dequeue_cons (s->rx_fifo))
-    {
-      if (svm_fifo_set_event (s->rx_fifo))
-	session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
-    }
+    session_enqueue_notify (s);
+
   return 0;
 }
 
