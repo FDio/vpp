@@ -62,10 +62,11 @@ class ConfigIpsecESP(TemplateIpsec):
     def tearDown(self):
         super(ConfigIpsecESP, self).tearDown()
 
-    def config_anti_replay(self, params):
+    def config_anti_replay(self, params, anti_replay_window_size=64):
         saf = VppEnum.vl_api_ipsec_sad_flags_t
         for p in params:
             p.flags |= saf.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY
+            p.anti_replay_window_size = anti_replay_window_size
 
     def config_network(self, params):
         self.net_objs = []
@@ -134,6 +135,7 @@ class ConfigIpsecESP(TemplateIpsec):
         flags = params.flags
         tun_flags = params.tun_flags
         salt = params.salt
+        anti_replay_window_size = params.anti_replay_window_size
         objs = []
 
         params.tun_sa_in = VppIpsecSA(
@@ -152,6 +154,7 @@ class ConfigIpsecESP(TemplateIpsec):
             flags=flags,
             salt=salt,
             hop_limit=params.outer_hop_limit,
+            anti_replay_window_size=anti_replay_window_size,
         )
         params.tun_sa_out = VppIpsecSA(
             self,
@@ -169,6 +172,7 @@ class ConfigIpsecESP(TemplateIpsec):
             flags=flags,
             salt=salt,
             hop_limit=params.outer_hop_limit,
+            anti_replay_window_size=anti_replay_window_size,
         )
         objs.append(params.tun_sa_in)
         objs.append(params.tun_sa_out)
@@ -274,6 +278,7 @@ class ConfigIpsecESP(TemplateIpsec):
         e = VppEnum.vl_api_ipsec_spd_action_t
         flags = params.flags
         salt = params.salt
+        anti_replay_window_size = params.anti_replay_window_size
         objs = []
 
         params.tra_sa_in = VppIpsecSA(
@@ -287,6 +292,7 @@ class ConfigIpsecESP(TemplateIpsec):
             self.vpp_esp_protocol,
             flags=flags,
             salt=salt,
+            anti_replay_window_size=anti_replay_window_size,
         )
         params.tra_sa_out = VppIpsecSA(
             self,
@@ -299,6 +305,7 @@ class ConfigIpsecESP(TemplateIpsec):
             self.vpp_esp_protocol,
             flags=flags,
             salt=salt,
+            anti_replay_window_size=anti_replay_window_size,
         )
         objs.append(params.tra_sa_in)
         objs.append(params.tra_sa_out)
@@ -1148,9 +1155,16 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
         #
         saf = VppEnum.vl_api_ipsec_sad_flags_t
         if flag & saf.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY:
-            self.unconfig_network()
-            self.config_network(self.params.values())
-            self.verify_tra_anti_replay()
+            for anti_replay_window_size in (
+                64,
+                131072,
+            ):
+                self.unconfig_network()
+                self.config_anti_replay(self.params.values(), anti_replay_window_size)
+                self.config_network(self.params.values())
+                self.verify_tra_anti_replay()
+                self.verify_tra_anti_replay_algorithm()
+            self.config_anti_replay(self.params.values())
 
         self.unconfig_network()
         self.config_network(self.params.values())

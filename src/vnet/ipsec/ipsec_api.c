@@ -382,10 +382,10 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-  rv = ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key,
-			      integ_alg, &integ_key, flags, mp->entry.salt,
-			      htons (mp->entry.udp_src_port),
-			      htons (mp->entry.udp_dst_port), &tun, &sa_index);
+  rv = ipsec_sa_add_and_lock (
+    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+    mp->entry.salt, htons (mp->entry.udp_src_port),
+    htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
 
 out:
   /* *INDENT-OFF* */
@@ -456,10 +456,10 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   ip_address_decode2 (&mp->entry.tunnel_src, &tun.t_src);
   ip_address_decode2 (&mp->entry.tunnel_dst, &tun.t_dst);
 
-    rv = ipsec_sa_add_and_lock (
-      id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
-      mp->entry.salt, htons (mp->entry.udp_src_port),
-      htons (mp->entry.udp_dst_port), &tun, &sa_index);
+  rv = ipsec_sa_add_and_lock (
+    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+    mp->entry.salt, htons (mp->entry.udp_src_port),
+    htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
 
 out:
   /* *INDENT-OFF* */
@@ -514,10 +514,10 @@ ipsec_sad_entry_add_v3 (const vl_api_ipsec_sad_entry_v3_t *entry,
   ipsec_key_decode (&entry->crypto_key, &crypto_key);
   ipsec_key_decode (&entry->integrity_key, &integ_key);
 
-  return ipsec_sa_add_and_lock (id, spi, proto, crypto_alg, &crypto_key,
-				integ_alg, &integ_key, flags, entry->salt,
-				htons (entry->udp_src_port),
-				htons (entry->udp_dst_port), &tun, sa_index);
+  return ipsec_sa_add_and_lock (
+    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+    entry->salt, htons (entry->udp_src_port), htons (entry->udp_dst_port), 0,
+    &tun, sa_index);
 }
 
 static void
@@ -543,6 +543,56 @@ vl_api_ipsec_sad_entry_add_del_v3_t_handler (
 		{ rmp->stat_index = htonl (sa_index); });
 }
 
+static int
+ipsec_sad_entry_add_v4 (const vl_api_ipsec_sad_entry_v4_t *entry,
+			u32 *sa_index)
+{
+  ipsec_key_t crypto_key, integ_key;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+  ipsec_protocol_t proto;
+  ipsec_sa_flags_t flags;
+  u32 id, spi;
+  tunnel_t tun = { 0 };
+  int rv;
+
+  id = ntohl (entry->sad_id);
+  spi = ntohl (entry->spi);
+
+  rv = ipsec_proto_decode (entry->protocol, &proto);
+
+  if (rv)
+    return rv;
+
+  rv = ipsec_crypto_algo_decode (entry->crypto_algorithm, &crypto_alg);
+
+  if (rv)
+    return rv;
+
+  rv = ipsec_integ_algo_decode (entry->integrity_algorithm, &integ_alg);
+
+  if (rv)
+    return rv;
+
+  flags = ipsec_sa_flags_decode (entry->flags);
+
+  if (flags & IPSEC_SA_FLAG_IS_TUNNEL)
+    {
+      rv = tunnel_decode (&entry->tunnel, &tun);
+
+      if (rv)
+	return rv;
+    }
+
+  ipsec_key_decode (&entry->crypto_key, &crypto_key);
+  ipsec_key_decode (&entry->integrity_key, &integ_key);
+
+  return ipsec_sa_add_and_lock (
+    id, spi, proto, crypto_alg, &crypto_key, integ_alg, &integ_key, flags,
+    entry->salt, htons (entry->udp_src_port), htons (entry->udp_dst_port),
+    ntohl (entry->anti_replay_window_size), &tun, sa_index);
+}
+
 static void
 vl_api_ipsec_sad_entry_del_t_handler (vl_api_ipsec_sad_entry_del_t *mp)
 {
@@ -564,6 +614,19 @@ vl_api_ipsec_sad_entry_add_t_handler (vl_api_ipsec_sad_entry_add_t *mp)
   rv = ipsec_sad_entry_add_v3 (&mp->entry, &sa_index);
 
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_REPLY,
+		{ rmp->stat_index = htonl (sa_index); });
+}
+
+static void
+vl_api_ipsec_sad_entry_add_v2_t_handler (vl_api_ipsec_sad_entry_add_v2_t *mp)
+{
+  vl_api_ipsec_sad_entry_add_reply_t *rmp;
+  u32 sa_index = ~0;
+  int rv;
+
+  rv = ipsec_sad_entry_add_v4 (&mp->entry, &sa_index);
+
+  REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_V2_REPLY,
 		{ rmp->stat_index = htonl (sa_index); });
 }
 
@@ -953,7 +1016,10 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
-    mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
+    {
+      mp->replay_window =
+	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (sa));
+    }
 
   mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
 
@@ -1040,7 +1106,10 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
-    mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
+    {
+      mp->replay_window =
+	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (sa));
+    }
 
   mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
 
@@ -1120,7 +1189,10 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
-    mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
+    {
+      mp->replay_window =
+	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (sa));
+    }
 
   mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
 
@@ -1200,7 +1272,13 @@ send_ipsec_sa_v4_details (ipsec_sa_t *sa, void *arg)
       mp->last_seq_inbound |= (u64) (clib_host_to_net_u32 (sa->seq_hi));
     }
   if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
-    mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
+    {
+      mp->replay_window =
+	clib_host_to_net_u64 (ipsec_sa_anti_replay_get_64b_window (sa));
+
+      mp->replay_window_size =
+	clib_host_to_net_u32 (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa));
+    }
 
   mp->thread_index = clib_host_to_net_u32 (sa->thread_index);
   mp->stat_index = clib_host_to_net_u32 (sa->stat_index);
@@ -1228,7 +1306,7 @@ vl_api_ipsec_sa_v4_dump_t_handler (vl_api_ipsec_sa_v4_dump_t *mp)
 }
 
 static void
-vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
+vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t *mp)
 {
   vl_api_registration_t *rp;
   ipsec_main_t *im = &ipsec_main;
