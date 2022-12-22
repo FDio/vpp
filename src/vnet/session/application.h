@@ -77,6 +77,8 @@ typedef struct app_worker_
   /** Pool of half-open session handles. Tracked in case worker detaches */
   session_handle_t *half_open_table;
 
+  session_event_t **wrk_evts;
+
   /** Protects detached seg managers */
   clib_spinlock_t detached_seg_managers_lock;
 
@@ -348,8 +350,11 @@ int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
 int app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
 				    svm_fifo_t * f,
 				    session_ft_action_t act, u32 len);
+void app_worker_add_event (app_worker_t *app_wrk, session_t *s,
+                           session_evt_type_t evt_type);
+void app_worker_add_event_custom (app_worker_t *app_wrk, session_event_t *evt);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
-							  session_t *);
+                                                          session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
 int app_worker_add_segment_notify (app_worker_t * app_wrk,
 				   u64 segment_handle);
