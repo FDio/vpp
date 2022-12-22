@@ -129,6 +129,7 @@ typedef struct session_worker_
 
   /** Pool of session event list elements */
   session_evt_elt_t *event_elts;
+  uword *app_wrks_pending_ntf;
 
   /** Pool of ctrl events data buffers */
   session_evt_ctrl_data_t *ctrl_evts_data;
@@ -278,6 +279,7 @@ typedef struct session_main_
 
 extern session_main_t session_main;
 extern vlib_node_registration_t session_queue_node;
+extern vlib_node_registration_t session_input_node;
 extern vlib_node_registration_t session_queue_process_node;
 extern vlib_node_registration_t session_queue_pre_input_node;
 
