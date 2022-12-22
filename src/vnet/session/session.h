@@ -709,7 +709,7 @@ vnet_get_session_main ()
 always_inline session_worker_t *
 session_main_get_worker (u32 thread_index)
 {
-  return &session_main.wrk[thread_index];
+  return vec_elt_at_index (session_main.wrk, thread_index);
 }
 
 static inline session_worker_t *
@@ -717,13 +717,13 @@ session_main_get_worker_if_valid (u32 thread_index)
 {
   if (thread_index > vec_len (session_main.wrk))
     return 0;
-  return &session_main.wrk[thread_index];
+  return session_main_get_worker (thread_index);
 }
 
 always_inline svm_msg_q_t *
 session_main_get_vpp_event_queue (u32 thread_index)
 {
-  return session_main.wrk[thread_index].vpp_event_queue;
+  return session_main_get_worker (thread_index)->vpp_event_queue;
 }
 
 always_inline u8
