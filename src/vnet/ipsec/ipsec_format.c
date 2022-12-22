@@ -466,16 +466,18 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
-  s = format (s, "\n   window %U", format_ipsec_replay_window,
-	      sa->replay_window);
-  s = format (s, "\n   crypto alg %U",
-	      format_ipsec_crypto_alg, sa->crypto_alg);
+  s = format (s, "\n   window-size: %llu",
+	      IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa));
+  s = format (s, "\n   window: Bl <- %U Tl", format_ipsec_replay_window,
+	      ipsec_sa_anti_replay_get_64b_window (sa));
+  s =
+    format (s, "\n   crypto alg %U", format_ipsec_crypto_alg, sa->crypto_alg);
   if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->crypto_key);
   else
     s = format (s, " key [redacted]");
-  s = format (s, "\n   integrity alg %U",
-	      format_ipsec_integ_alg, sa->integ_alg);
+  s =
+    format (s, "\n   integrity alg %U", format_ipsec_integ_alg, sa->integ_alg);
   if (sa->integ_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
   else
