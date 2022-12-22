@@ -35,9 +35,11 @@ vlib_simple_counter_main_t ipsec_sa_lost_counters = {
 
 ipsec_sa_t *ipsec_sa_pool;
 
+vlib_log_class_t ipsec_sa_logger;
+
 static clib_error_t *
-ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
-			      u32 sa_index, int is_add)
+ipsec_call_add_del_callbacks (ipsec_main_t *im, ipsec_sa_t *sa, u32 sa_index,
+			      int is_add)
 {
   ipsec_ah_backend_t *ab;
   ipsec_esp_backend_t *eb;
@@ -58,7 +60,7 @@ ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
 }
 
 void
-ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
+ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len)
 {
   memset (key, 0, sizeof (*key));
 
@@ -74,7 +76,7 @@ ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
  * 'stack' (resolve the recursion for) the SA tunnel destination
  */
 static void
-ipsec_sa_stack (ipsec_sa_t * sa)
+ipsec_sa_stack (ipsec_sa_t *sa)
 {
   ipsec_main_t *im = &ipsec_main;
   dpo_id_t tmp = DPO_INVALID;
@@ -83,17 +85,19 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 
   if (IPSEC_PROTOCOL_AH == sa->protocol)
     dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			  im->ah6_encrypt_node_index :
-			  im->ah4_encrypt_node_index), &sa->dpo, &tmp);
+				  im->ah6_encrypt_node_index :
+				  im->ah4_encrypt_node_index),
+			 &sa->dpo, &tmp);
   else
     dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			  im->esp6_encrypt_node_index :
-			  im->esp4_encrypt_node_index), &sa->dpo, &tmp);
+				  im->esp6_encrypt_node_index :
+				  im->esp4_encrypt_node_index),
+			 &sa->dpo, &tmp);
   dpo_reset (&tmp);
 }
 
 void
-ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
+ipsec_sa_set_crypto_alg (ipsec_sa_t *sa, ipsec_crypto_alg_t crypto_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   sa->crypto_alg = crypto_alg;
@@ -118,7 +122,7 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
 }
 
 void
-ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
+ipsec_sa_set_integ_alg (ipsec_sa_t *sa, ipsec_integ_alg_t integ_alg)
 {
   ipsec_main_t *im = &ipsec_main;
   sa->integ_alg = integ_alg;
@@ -129,42 +133,42 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 }
 
 void
-ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
+ipsec_sa_set_async_op_ids (ipsec_sa_t *sa)
 {
   /* *INDENT-OFF* */
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
-#define _(n, s, k) \
-  if( sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC ) \
-    sa->async_op_data.crypto_async_enc_op_id = \
-      VNET_CRYPTO_OP_##n##_TAG16_AAD12_ENC; \
-  if( sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC ) \
-    sa->async_op_data.crypto_async_dec_op_id = \
+#define _(n, s, k)                                                            \
+  if (sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC)          \
+    sa->async_op_data.crypto_async_enc_op_id =                                \
+      VNET_CRYPTO_OP_##n##_TAG16_AAD12_ENC;                                   \
+  if (sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC)          \
+    sa->async_op_data.crypto_async_dec_op_id =                                \
       VNET_CRYPTO_OP_##n##_TAG16_AAD12_DEC;
-    foreach_crypto_aead_alg
+      foreach_crypto_aead_alg
 #undef _
     }
   else
     {
-#define _(n, s, k) \
-  if( sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC ) \
-    sa->async_op_data.crypto_async_enc_op_id = \
-      VNET_CRYPTO_OP_##n##_TAG16_AAD8_ENC; \
-  if( sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC ) \
-    sa->async_op_data.crypto_async_dec_op_id = \
+#define _(n, s, k)                                                            \
+  if (sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##n##_ENC)          \
+    sa->async_op_data.crypto_async_enc_op_id =                                \
+      VNET_CRYPTO_OP_##n##_TAG16_AAD8_ENC;                                    \
+  if (sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##n##_DEC)          \
+    sa->async_op_data.crypto_async_dec_op_id =                                \
       VNET_CRYPTO_OP_##n##_TAG16_AAD8_DEC;
-    foreach_crypto_aead_alg
+      foreach_crypto_aead_alg
 #undef _
     }
 
-#define _(c, h, s, k ,d) \
-  if( sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##c##_ENC && \
-      sa->sync_op_data.integ_op_id == VNET_CRYPTO_OP_##h##_HMAC) \
-    sa->async_op_data.crypto_async_enc_op_id = \
-      VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC; \
-  if( sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##c##_DEC && \
-      sa->sync_op_data.integ_op_id == VNET_CRYPTO_OP_##h##_HMAC) \
-    sa->async_op_data.crypto_async_dec_op_id = \
+#define _(c, h, s, k, d)                                                      \
+  if (sa->sync_op_data.crypto_enc_op_id == VNET_CRYPTO_OP_##c##_ENC &&        \
+      sa->sync_op_data.integ_op_id == VNET_CRYPTO_OP_##h##_HMAC)              \
+    sa->async_op_data.crypto_async_enc_op_id =                                \
+      VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC;                                \
+  if (sa->sync_op_data.crypto_dec_op_id == VNET_CRYPTO_OP_##c##_DEC &&        \
+      sa->sync_op_data.integ_op_id == VNET_CRYPTO_OP_##h##_HMAC)              \
+    sa->async_op_data.crypto_async_dec_op_id =                                \
       VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;
   foreach_crypto_link_async_alg
 #undef _
@@ -307,7 +311,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 		       ipsec_crypto_alg_t crypto_alg, const ipsec_key_t *ck,
 		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
 		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
-		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index)
+		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index,
+		       u32 anti_replay_window_size)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -348,11 +353,13 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   ipsec_sa_set_crypto_alg (sa, crypto_alg);
   ipsec_sa_set_async_op_ids (sa);
 
+  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) && anti_replay_window_size > 64)
+    ipsec_sa_set_ANTI_REPLAY_HUGE (sa);
+
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));
 
-  sa->crypto_key_index = vnet_crypto_key_add (vm,
-					      im->crypto_algs[crypto_alg].alg,
-					      (u8 *) ck->data, ck->len);
+  sa->crypto_key_index = vnet_crypto_key_add (
+    vm, im->crypto_algs[crypto_alg].alg, (u8 *) ck->data, ck->len);
   if (~0 == sa->crypto_key_index)
     {
       pool_put (ipsec_sa_pool, sa);
@@ -361,10 +368,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
-      sa->integ_key_index = vnet_crypto_key_add (vm,
-						 im->
-						 integ_algs[integ_alg].alg,
-						 (u8 *) ik->data, ik->len);
+      sa->integ_key_index = vnet_crypto_key_add (
+	vm, im->integ_algs[integ_alg].alg, (u8 *) ik->data, ik->len);
       if (~0 == sa->integ_key_index)
 	{
 	  pool_put (ipsec_sa_pool, sa);
@@ -374,10 +379,9 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
   if (sa->async_op_data.crypto_async_enc_op_id &&
       !ipsec_sa_is_set_IS_AEAD (sa))
-    {				//AES-CBC & HMAC
-      sa->async_op_data.linked_key_index =
-	vnet_crypto_key_add_linked (vm, sa->crypto_key_index,
-				    sa->integ_key_index);
+    { // AES-CBC & HMAC
+      sa->async_op_data.linked_key_index = vnet_crypto_key_add_linked (
+	vm, sa->crypto_key_index, sa->integ_key_index);
     }
 
   if (im->async_mode)
@@ -461,6 +465,19 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 				 !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
     }
 
+  /* window size rounded up to next power of 2 */
+  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
+    {
+      clib_bitmap_validate (sa->replay_window_huge,
+			    1 << max_log2 (anti_replay_window_size));
+      clib_memset_u8 (sa->replay_window_huge, ~0,
+		      clib_bitmap_bytes (sa->replay_window_huge));
+    }
+  else
+    {
+      sa->replay_window = ~0;
+    }
+
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
 
   if (sa_out_index)
@@ -470,7 +487,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 }
 
 static void
-ipsec_sa_del (ipsec_sa_t * sa)
+ipsec_sa_del (ipsec_sa_t *sa)
 {
   vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
@@ -494,6 +511,8 @@ ipsec_sa_del (ipsec_sa_t * sa)
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_key_index);
+  if (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa))
+    clib_bitmap_free (sa->replay_window_huge);
   pool_put (ipsec_sa_pool, sa);
 }
 
@@ -593,19 +612,18 @@ ipsec_sa_fib_node_get (fib_node_index_t index)
 }
 
 static ipsec_sa_t *
-ipsec_sa_from_fib_node (fib_node_t * node)
+ipsec_sa_from_fib_node (fib_node_t *node)
 {
   ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
-  return ((ipsec_sa_t *) (((char *) node) -
-			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
-
+  return (
+    (ipsec_sa_t *) (((char *) node) - STRUCT_OFFSET_OF (ipsec_sa_t, node)));
 }
 
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-ipsec_sa_last_lock_gone (fib_node_t * node)
+ipsec_sa_last_lock_gone (fib_node_t *node)
 {
   /*
    * The ipsec SA is a root of the graph. As such
@@ -618,7 +636,7 @@ ipsec_sa_last_lock_gone (fib_node_t * node)
  * Function definition to backwalk a FIB node
  */
 static fib_node_back_walk_rc_t
-ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+ipsec_sa_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   ipsec_sa_stack (ipsec_sa_from_fib_node (node));
 
@@ -637,9 +655,11 @@ const static fib_node_vft_t ipsec_sa_vft = {
 
 /* force inclusion from application's main.c */
 clib_error_t *
-ipsec_sa_interface_init (vlib_main_t * vm)
+ipsec_sa_interface_init (vlib_main_t *vm)
 {
   fib_node_register_type (FIB_NODE_TYPE_IPSEC_SA, &ipsec_sa_vft);
+
+  ipsec_sa_logger = vlib_log_register_class ("ipsec", "sa");
 
   return 0;
 }

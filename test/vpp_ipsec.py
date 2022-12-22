@@ -218,6 +218,7 @@ class VppIpsecSA(VppObject):
         udp_src=None,
         udp_dst=None,
         hop_limit=None,
+        anti_replay_window_size=0,
     ):
         e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
@@ -229,6 +230,7 @@ class VppIpsecSA(VppObject):
         self.crypto_key = crypto_key
         self.proto = proto
         self.salt = salt
+        self.anti_replay_window_size = anti_replay_window_size
 
         self.table_id = 0
         self.tun_src = tun_src
@@ -284,6 +286,7 @@ class VppIpsecSA(VppObject):
             "tunnel": self.tunnel_encode(),
             "flags": self.flags,
             "salt": self.salt,
+            "anti_replay_window_size": self.anti_replay_window_size,
         }
         # don't explicitly send the defaults, let papi fill them in
         if self.udp_src:
