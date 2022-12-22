@@ -128,6 +128,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left = from_frame->n_vectors;
   ipsec_sa_t *sa0 = 0;
+  bool anti_replay_result;
   u32 current_sa_index = ~0, current_sa_bytes = 0, current_sa_pkts = 0;
 
   clib_memset (pkt_data, 0, VLIB_FRAME_SIZE * sizeof (pkt_data[0]));
@@ -201,8 +202,17 @@ ah_decrypt_inline (vlib_main_t * vm,
       pd->seq = clib_host_to_net_u32 (ah0->seq_no);
 
       /* anti-replay check */
-      if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, ~0, false,
-					       &pd->seq_hi))
+      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
+	{
+	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
+	    sa0, pd->seq, ~0, false, &pd->seq_hi, true);
+	}
+      else
+	{
+	  anti_replay_result = ipsec_sa_anti_replay_and_sn_advance (
+	    sa0, pd->seq, ~0, false, &pd->seq_hi, false);
+	}
+      if (anti_replay_result)
 	{
 	  ah_decrypt_set_next_index (b[0], node, vm->thread_index,
 				     AH_DECRYPT_ERROR_REPLAY, 0, next,
@@ -306,16 +316,32 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
 	  /* redo the anti-reply check. see esp_decrypt for details */
-	  if (ipsec_sa_anti_replay_and_sn_advance (sa0, pd->seq, pd->seq_hi,
-						   true, NULL))
+	  if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa0)))
 	    {
-	      ah_decrypt_set_next_index (b[0], node, vm->thread_index,
-					 AH_DECRYPT_ERROR_REPLAY, 0, next,
-					 AH_DECRYPT_NEXT_DROP, pd->sa_index);
-	      goto trace;
+	      if (ipsec_sa_anti_replay_and_sn_advance (
+		    sa0, pd->seq, pd->seq_hi, true, NULL, true))
+		{
+		  ah_decrypt_set_next_index (
+		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
+		    next, AH_DECRYPT_NEXT_DROP, pd->sa_index);
+		  goto trace;
+		}
+	      n_lost = ipsec_sa_anti_replay_advance (
+		sa0, thread_index, pd->seq, pd->seq_hi, true);
 	    }
-	  n_lost = ipsec_sa_anti_replay_advance (sa0, thread_index, pd->seq,
-						 pd->seq_hi);
+	  else
+	    {
+	      if (ipsec_sa_anti_replay_and_sn_advance (
+		    sa0, pd->seq, pd->seq_hi, true, NULL, false))
+		{
+		  ah_decrypt_set_next_index (
+		    b[0], node, vm->thread_index, AH_DECRYPT_ERROR_REPLAY, 0,
+		    next, AH_DECRYPT_NEXT_DROP, pd->sa_index);
+		  goto trace;
+		}
+	      n_lost = ipsec_sa_anti_replay_advance (
+		sa0, thread_index, pd->seq, pd->seq_hi, false);
+	    }
 	  vlib_prefetch_simple_counter (
 	    &ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST], thread_index,
 	    pd->sa_index);
