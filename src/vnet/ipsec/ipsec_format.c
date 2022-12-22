@@ -26,121 +26,129 @@
 #include <vnet/ipsec/ipsec_itf.h>
 
 u8 *
-format_ipsec_policy_action (u8 * s, va_list * args)
+format_ipsec_policy_action (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   char *t = 0;
 
   switch (i)
     {
-#define _(v,f,str) case IPSEC_POLICY_ACTION_##f: t = str; break;
+#define _(v, f, str)                                                          \
+  case IPSEC_POLICY_ACTION_##f:                                               \
+    t = str;                                                                  \
+    break;
       foreach_ipsec_policy_action
 #undef _
-    default:
-      s = format (s, "unknown");
+	default : s = format (s, "unknown");
     }
   s = format (s, "%s", t);
   return s;
 }
 
 u8 *
-format_ipsec_policy_type (u8 * s, va_list * args)
+format_ipsec_policy_type (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   char *t = 0;
 
   switch (i)
     {
-#define _(f,str) case IPSEC_SPD_POLICY_##f: t = str; break;
+#define _(f, str)                                                             \
+  case IPSEC_SPD_POLICY_##f:                                                  \
+    t = str;                                                                  \
+    break;
       foreach_ipsec_spd_policy_type
 #undef _
-    default:
-      s = format (s, "unknown");
+	default : s = format (s, "unknown");
     }
   s = format (s, "%s", t);
   return s;
 }
 
 uword
-unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
+unformat_ipsec_policy_action (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_POLICY_ACTION_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = IPSEC_POLICY_ACTION_##f;
   foreach_ipsec_policy_action
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
 u8 *
-format_ipsec_crypto_alg (u8 * s, va_list * args)
+format_ipsec_crypto_alg (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v,f,str) case IPSEC_CRYPTO_ALG_##f: t = (u8 *) str; break;
+#define _(v, f, str)                                                          \
+  case IPSEC_CRYPTO_ALG_##f:                                                  \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_ipsec_crypto_alg
 #undef _
-    default:
-      s = format (s, "unknown");
+	default : s = format (s, "unknown");
     }
   s = format (s, "%s", t);
   return s;
 }
 
 uword
-unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args)
+unformat_ipsec_crypto_alg (unformat_input_t *input, va_list *args)
 {
   ipsec_crypto_alg_t *r = va_arg (*args, ipsec_crypto_alg_t *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_CRYPTO_ALG_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = IPSEC_CRYPTO_ALG_##f;
   foreach_ipsec_crypto_alg
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
 u8 *
-format_ipsec_integ_alg (u8 * s, va_list * args)
+format_ipsec_integ_alg (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v,f,str) case IPSEC_INTEG_ALG_##f: t = (u8 *) str; break;
+#define _(v, f, str)                                                          \
+  case IPSEC_INTEG_ALG_##f:                                                   \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_ipsec_integ_alg
 #undef _
-    default:
-      s = format (s, "unknown");
+	default : s = format (s, "unknown");
     }
   s = format (s, "%s", t);
   return s;
 }
 
 uword
-unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args)
+unformat_ipsec_integ_alg (unformat_input_t *input, va_list *args)
 {
   ipsec_integ_alg_t *r = va_arg (*args, ipsec_integ_alg_t *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_INTEG_ALG_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = IPSEC_INTEG_ALG_##f;
   foreach_ipsec_integ_alg
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
 u8 *
-format_ipsec_replay_window (u8 * s, va_list * args)
+format_ipsec_replay_window (u8 *s, va_list *args)
 {
   u64 w = va_arg (*args, u64);
   u8 i;
@@ -164,9 +172,8 @@ format_ipsec_policy_with_suffix (u8 *s, va_list *args, u8 *suffix)
 
   p = pool_elt_at_index (im->policies, pi);
 
-  s = format (s, "  [%d] priority %d action %U type %U protocol ",
-	      pi, p->priority,
-	      format_ipsec_policy_action, p->policy,
+  s = format (s, "  [%d] priority %d action %U type %U protocol ", pi,
+	      p->priority, format_ipsec_policy_action, p->policy,
 	      format_ipsec_policy_type, p->type);
   if (p->protocol != IPSEC_POLICY_PROTOCOL_ANY)
     {
@@ -188,14 +195,14 @@ format_ipsec_policy_with_suffix (u8 *s, va_list *args, u8 *suffix)
       ip_type = IP46_TYPE_IP6;
     }
 
-  s = format (s, "\n     local addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->laddr.start, ip_type,
-	      format_ip46_address, &p->laddr.stop, ip_type,
-	      p->lport.start, p->lport.stop);
-  s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-	      format_ip46_address, &p->raddr.start, ip_type,
-	      format_ip46_address, &p->raddr.stop, ip_type,
-	      p->rport.start, p->rport.stop);
+  s =
+    format (s, "\n     local addr range %U - %U port range %u - %u",
+	    format_ip46_address, &p->laddr.start, ip_type, format_ip46_address,
+	    &p->laddr.stop, ip_type, p->lport.start, p->lport.stop);
+  s =
+    format (s, "\n     remote addr range %U - %U port range %u - %u",
+	    format_ip46_address, &p->raddr.start, ip_type, format_ip46_address,
+	    &p->raddr.stop, ip_type, p->rport.start, p->rport.stop);
 
   vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
   s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
@@ -350,7 +357,7 @@ format_ipsec_fp_policies (u8 *s, va_list *args)
 }
 
 u8 *
-format_ipsec_spd (u8 * s, va_list * args)
+format_ipsec_spd (u8 *s, va_list *args)
 {
   u32 si = va_arg (*args, u32);
   ipsec_main_t *im = &ipsec_main;
@@ -404,7 +411,7 @@ format_ipsec_in_spd_flow_cache (u8 *s, va_list *args)
 }
 
 u8 *
-format_ipsec_key (u8 * s, va_list * args)
+format_ipsec_key (u8 *s, va_list *args)
 {
   ipsec_key_t *key = va_arg (*args, ipsec_key_t *);
 
@@ -412,7 +419,7 @@ format_ipsec_key (u8 * s, va_list * args)
 }
 
 uword
-unformat_ipsec_key (unformat_input_t * input, va_list * args)
+unformat_ipsec_key (unformat_input_t *input, va_list *args)
 {
   ipsec_key_t *key = va_arg (*args, ipsec_key_t *);
   u8 *data;
@@ -428,18 +435,20 @@ unformat_ipsec_key (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ipsec_sa_flags (u8 * s, va_list * args)
+format_ipsec_sa_flags (u8 *s, va_list *args)
 {
   ipsec_sa_flags_t flags = va_arg (*args, int);
 
-#define _(v, f, str) if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
+#define _(v, f, str)                                                          \
+  if (flags & IPSEC_SA_FLAG_##f)                                              \
+    s = format (s, "%s ", str);
   foreach_ipsec_sa_flags
 #undef _
     return (s);
 }
 
 u8 *
-format_ipsec_sa (u8 * s, va_list * args)
+format_ipsec_sa (u8 *s, va_list *args)
 {
   u32 sai = va_arg (*args, u32);
   ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
@@ -466,16 +475,18 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
   s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
-  s = format (s, "\n   window %U", format_ipsec_replay_window,
-	      sa->replay_window);
-  s = format (s, "\n   crypto alg %U",
-	      format_ipsec_crypto_alg, sa->crypto_alg);
+  s = format (s, "\n   window-size: %llu",
+	      IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (sa));
+  s = format (s, "\n   window: Bl <- %U Tl", format_ipsec_replay_window,
+	      ipsec_sa_anti_replay_get_64b_window (sa));
+  s =
+    format (s, "\n   crypto alg %U", format_ipsec_crypto_alg, sa->crypto_alg);
   if (sa->crypto_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->crypto_key);
   else
     s = format (s, " key [redacted]");
-  s = format (s, "\n   integrity alg %U",
-	      format_ipsec_integ_alg, sa->integ_alg);
+  s =
+    format (s, "\n   integrity alg %U", format_ipsec_integ_alg, sa->integ_alg);
   if (sa->integ_alg && (flags & IPSEC_FORMAT_INSECURE))
     s = format (s, " key %U", format_ipsec_key, &sa->integ_key);
   else
@@ -497,7 +508,7 @@ done:
 }
 
 u8 *
-format_ipsec_tun_protect_index (u8 * s, va_list * args)
+format_ipsec_tun_protect_index (u8 *s, va_list *args)
 {
   u32 itpi = va_arg (*args, index_t);
   ipsec_tun_protect_t *itp;
@@ -511,15 +522,14 @@ format_ipsec_tun_protect_index (u8 * s, va_list * args)
 }
 
 u8 *
-format_ipsec_tun_protect_flags (u8 * s, va_list * args)
+format_ipsec_tun_protect_flags (u8 *s, va_list *args)
 {
   ipsec_protect_flags_t flags = va_arg (*args, int);
 
   if (IPSEC_PROTECT_NONE == flags)
     s = format (s, "none");
-#define _(a,b,c)                                \
-  else if (flags & IPSEC_PROTECT_##a)           \
-    s = format (s, "%s", c);                    \
+#define _(a, b, c)                                                            \
+  else if (flags & IPSEC_PROTECT_##a) s = format (s, "%s", c);                \
   foreach_ipsec_protect_flags
 #undef _
 
@@ -527,7 +537,7 @@ format_ipsec_tun_protect_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_ipsec_tun_protect (u8 * s, va_list * args)
+format_ipsec_tun_protect (u8 *s, va_list *args)
 {
   ipsec_tun_protect_t *itp = va_arg (*args, ipsec_tun_protect_t *);
   u32 sai;
@@ -538,22 +548,21 @@ format_ipsec_tun_protect (u8 * s, va_list * args)
   if (!ip_address_is_zero (itp->itp_key))
     s = format (s, ": %U", format_ip_address, itp->itp_key);
   s = format (s, "\n output-sa:");
-  s = format (s, "\n  %U", format_ipsec_sa, itp->itp_out_sa,
-	      IPSEC_FORMAT_BRIEF);
+  s =
+    format (s, "\n  %U", format_ipsec_sa, itp->itp_out_sa, IPSEC_FORMAT_BRIEF);
 
   s = format (s, "\n input-sa:");
   /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
-  ({
-  s = format (s, "\n  %U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
-  }));
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI (
+    itp, sai,
+    ({ s = format (s, "\n  %U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF); }));
   /* *INDENT-ON* */
 
   return (s);
 }
 
 u8 *
-format_ipsec4_tunnel_kv (u8 * s, va_list * args)
+format_ipsec4_tunnel_kv (u8 *s, va_list *args)
 {
   ipsec4_tunnel_kv_t *kv = va_arg (*args, ipsec4_tunnel_kv_t *);
   ip4_address_t ip;
@@ -561,39 +570,36 @@ format_ipsec4_tunnel_kv (u8 * s, va_list * args)
 
   ipsec4_tunnel_extract_key (kv, &ip, &spi);
 
-  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d",
-	      format_ip4_address, &ip,
-	      clib_net_to_host_u32 (spi),
-	      clib_net_to_host_u32 (spi),
+  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d", format_ip4_address,
+	      &ip, clib_net_to_host_u32 (spi), clib_net_to_host_u32 (spi),
 	      kv->value.sa_index, kv->value.tun_index);
 
   return (s);
 }
 
 u8 *
-format_ipsec6_tunnel_kv (u8 * s, va_list * args)
+format_ipsec6_tunnel_kv (u8 *s, va_list *args)
 {
   ipsec6_tunnel_kv_t *kv = va_arg (*args, ipsec6_tunnel_kv_t *);
 
-  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d",
-	      format_ip6_address, &kv->key.remote_ip,
-	      clib_net_to_host_u32 (kv->key.spi),
-	      clib_net_to_host_u32 (kv->key.spi),
-	      kv->value.sa_index, kv->value.tun_index);
+  s = format (s, "remote:%U spi:%u (0x%08x) sa:%d tun:%d", format_ip6_address,
+	      &kv->key.remote_ip, clib_net_to_host_u32 (kv->key.spi),
+	      clib_net_to_host_u32 (kv->key.spi), kv->value.sa_index,
+	      kv->value.tun_index);
 
   return (s);
 }
 
 u8 *
-format_ipsec_itf (u8 * s, va_list * a)
+format_ipsec_itf (u8 *s, va_list *a)
 {
   index_t ii = va_arg (*a, index_t);
   ipsec_itf_t *itf;
 
   itf = ipsec_itf_get (ii);
-  s = format (s, "[%d] %U %U",
-	      ii, format_vnet_sw_if_index_name, vnet_get_main (),
-	      itf->ii_sw_if_index, format_tunnel_mode, itf->ii_mode);
+  s = format (s, "[%d] %U %U", ii, format_vnet_sw_if_index_name,
+	      vnet_get_main (), itf->ii_sw_if_index, format_tunnel_mode,
+	      itf->ii_mode);
 
   return (s);
 }

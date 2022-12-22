@@ -56,9 +56,9 @@
  * ipsec could potnetially support 0 encap (i.e. transport mode) since neither
  * the interface nor the SA *requires* encap. However, for a route beased VPN
  * to use transport mode is probably wrong since one shouldn't use thransport
- * mode for transit traffic, since without encap it is not guaranteed to return.
- * ipsec could potnetially support 2 encaps, but that would require the SA to
- * describe both, something it does not do at this time.
+ * mode for transit traffic, since without encap it is not guaranteed to
+ * return. ipsec could potnetially support 2 encaps, but that would require the
+ * SA to describe both, something it does not do at this time.
  *
  * ipsec currently does not support:
  *   - multipoint interfaces
@@ -72,8 +72,8 @@
  * they apply the encap. The midchain adj is stacked only once the proctecting
  * SA is known, since only then is the peer known. Otherwise the VLIB graph
  * nodes used are the same:
- *    (routing) --> ipX-michain --> espX-encrypt --> adj-midchain-tx --> (routing)
- * where X = 4 or 6.
+ *    (routing) --> ipX-michain --> espX-encrypt --> adj-midchain-tx -->
+ * (routing) where X = 4 or 6.
  *
  * Some benefits to the ipsec interface:
  *   - it is slightly more efficient since the encapsulating IP header has
@@ -98,16 +98,15 @@ typedef struct ipsec_itf_t_
   u32 ii_sw_if_index;
 } __clib_packed ipsec_itf_t;
 
-
-extern int ipsec_itf_create (u32 user_instance,
-			     tunnel_mode_t mode, u32 * sw_if_indexp);
+extern int ipsec_itf_create (u32 user_instance, tunnel_mode_t mode,
+			     u32 *sw_if_indexp);
 extern int ipsec_itf_delete (u32 sw_if_index);
 extern void ipsec_itf_reset_tx_nodes (u32 sw_if_index);
 
 extern void ipsec_itf_adj_stack (adj_index_t ai, u32 sai);
 extern void ipsec_itf_adj_unstack (adj_index_t ai);
 
-extern u8 *format_ipsec_itf (u8 * s, va_list * a);
+extern u8 *format_ipsec_itf (u8 *s, va_list *a);
 
 extern ipsec_itf_t *ipsec_itf_get (index_t ii);
 extern u32 ipsec_itf_count (void);
