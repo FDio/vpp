@@ -1771,6 +1771,74 @@ wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
     }
 }
 
+/* Used to be part of application_worker.c prior to adding support for
+ * async rx
+ */
+static int
+test_mq_try_lock_and_alloc_msg (svm_msg_q_t *mq, session_mq_rings_e ring,
+				svm_msg_q_msg_t *msg)
+{
+  int rv, n_try = 0;
+
+  while (n_try < 75)
+    {
+      rv = svm_msg_q_lock_and_alloc_msg_w_ring (mq, ring, SVM_Q_NOWAIT, msg);
+      if (!rv)
+	return 0;
+      /*
+       * Break the loop if mq is full, usually this is because the
+       * app has crashed or is hanging on somewhere.
+       */
+      if (rv != -1)
+	break;
+      n_try += 1;
+      usleep (1);
+    }
+
+  return -1;
+}
+
+/* Used to be part of application_worker.c prior to adding support for
+ * async rx and was used for delivering io events over mq
+ * NB: removed handling of mq congestion
+ */
+static inline int
+test_app_send_io_evt_rx (app_worker_t *app_wrk, session_t *s)
+{
+  svm_msg_q_msg_t _mq_msg = { 0 }, *mq_msg = &_mq_msg;
+  session_event_t *evt;
+  svm_msg_q_t *mq;
+  u32 app_session;
+  int rv;
+
+  if (app_worker_application_is_builtin (app_wrk))
+    return app_worker_builtin_rx (app_wrk, s);
+
+  if (svm_fifo_has_event (s->rx_fifo))
+    return 0;
+
+  app_session = s->rx_fifo->shr->client_session_index;
+  mq = app_wrk->event_queue;
+
+  rv = test_mq_try_lock_and_alloc_msg (mq, SESSION_MQ_IO_EVT_RING, mq_msg);
+
+  if (PREDICT_FALSE (rv))
+    {
+      clib_warning ("failed to alloc mq message");
+      return -1;
+    }
+
+  evt = svm_msg_q_msg_data (mq, mq_msg);
+  evt->event_type = SESSION_IO_EVT_RX;
+  evt->session_index = app_session;
+
+  (void) svm_fifo_set_event (s->rx_fifo);
+
+  svm_msg_q_add_and_unlock (mq, mq_msg);
+
+  return 0;
+}
+
 static int
 session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1885,7 +1953,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  while (svm_fifo_has_event (rx_fifo))
 	    ;
-	  app_worker_lock_and_send_event (app_wrk, &s, SESSION_IO_EVT_RX);
+	  test_app_send_io_evt_rx (app_wrk, &s);
 	}
     }
 

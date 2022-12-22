@@ -1028,6 +1028,17 @@ ct_close_is_reset (ct_connection_t *ct, session_t *s)
 }
 
 static void
+ct_session_cleanup_server_session (session_t *s)
+{
+  ct_connection_t *ct;
+
+  ct = (ct_connection_t *) session_get_transport (s);
+  ct_session_dealloc_fifos (ct, s->rx_fifo, s->tx_fifo);
+  session_free (s);
+  ct_connection_free (ct);
+}
+
+static void
 ct_session_postponed_cleanup (ct_connection_t *ct)
 {
   ct_connection_t *peer_ct;
@@ -1047,33 +1058,36 @@ ct_session_postponed_cleanup (ct_connection_t *ct)
     }
   session_transport_closed_notify (&ct->connection);
 
+  /* Maybe it would be cleaner to call session_transport_delete_notify */
+  if (app_wrk)
+    app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_TRANSPORT);
+
   if (ct->flags & CT_CONN_F_CLIENT)
     {
-      if (app_wrk)
-	app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_TRANSPORT);
-
       /* Normal free for client session as the fifos are allocated through
        * the connects segment manager in a segment that's not shared with
        * the server */
       ct_session_dealloc_fifos (ct, ct->client_rx_fifo, ct->client_tx_fifo);
-      session_free_w_fifos (s);
+      session_program_cleanup (s);
+      ct_connection_free (ct);
     }
   else
     {
       /* Manual session and fifo segment cleanup to avoid implicit
        * segment manager cleanups and notifications */
-      app_wrk = app_worker_get_if_valid (s->app_wrk_index);
       if (app_wrk)
 	{
-	  app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_TRANSPORT);
-	  app_worker_cleanup_notify (app_wrk, s, SESSION_CLEANUP_SESSION);
+	  /* Remove custom cleanup notify infra when/if switching to normal
+	   * session cleanup. Note that ct is freed in the cb function */
+	  app_worker_cleanup_notify_custom (app_wrk, s,
+					    SESSION_CLEANUP_SESSION,
+					    ct_session_cleanup_server_session);
 	}
-
-      ct_session_dealloc_fifos (ct, s->rx_fifo, s->tx_fifo);
-      session_free (s);
+      else
+	{
+	  ct_connection_free (ct);
+	}
     }
-
-  ct_connection_free (ct);
 }
 
 static void
