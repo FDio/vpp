@@ -244,11 +244,25 @@ session_is_valid (u32 si, u8 thread_index)
     return 1;
 
   tc = session_get_transport (s);
+  if (!tc)
+    {
+      /* Transport closed cleanly and already freed */
+      if (s->session_state == SESSION_STATE_CLOSED)
+        return 1;
+      return 0;
+    }
   if (s->connection_index != tc->c_index
       || s->thread_index != tc->thread_index || tc->s_index != si)
     return 0;
 
   return 1;
+}
+
+void
+session_cleanup (session_t *s)
+{
+  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  session_free (s);
 }
 
 static void
@@ -258,16 +272,23 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
-    return;
+    {
+      if (ntf == SESSION_CLEANUP_TRANSPORT)
+        return;
+
+      session_cleanup (s);
+      return;
+    }
   app_worker_cleanup_notify (app_wrk, s, ntf);
 }
 
+// TODO make this session_program_cleanup
 void
 session_free_w_fifos (session_t * s)
 {
   session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
-  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
-  session_free (s);
+  //   segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+  //   session_free (s);
 }
 
 /**
@@ -320,7 +341,7 @@ session_half_open_free (session_t *ho)
   ASSERT (vlib_get_thread_index () <= 1);
   app_wrk = app_worker_get (ho->app_wrk_index);
   app_worker_del_half_open (app_wrk, ho);
-  session_free (ho);
+  //   session_free (ho);
 }
 
 static void
@@ -533,6 +554,56 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
     }
 }
 
+void
+session_wrk_program_app_wrk_evts (session_worker_t *wrk, u32 app_wrk_index)
+{
+  u8 need_interrupt;
+
+  need_interrupt = clib_bitmap_is_zero (wrk->app_wrks_pending_ntf);
+  wrk->app_wrks_pending_ntf
+      = clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk_index, 1);
+
+  if (need_interrupt)
+    vlib_node_set_interrupt_pending (wrk->vm, session_input_node.index);
+
+  //   wrk->n_pending_enq_events += 1;
+  //   if (wrk->n_pending_enq_events == 1)
+  //     vlib_node_set_interrupt_pending (wrk->vm,
+  //     session_input_node.index);
+}
+
+void
+session_program_rx_io_event (session_t *s)
+{
+  //   session_worker_t *wrk;
+  app_worker_t *app_wrk;
+
+  /* Assumes that data has already been enqueued */
+  if (svm_fifo_has_event (s->rx_fifo))
+    return;
+
+  s->flags |= SESSION_F_RX_EVT;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (PREDICT_FALSE (!app_wrk))
+    return;
+
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX);
+}
+
+void
+session_program_tx_io_event (session_t *s)
+{
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+
+  if (PREDICT_FALSE (!app_wrk))
+    return;
+
+  app_worker_add_event (app_wrk, s, SESSION_IO_EVT_TX);
+}
+
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
@@ -585,16 +656,8 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (queue_event)
     {
-      /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
-      session_worker_t *wrk;
-
-      wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[tc->proto], s->session_index);
-	}
+	session_program_rx_io_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -651,16 +714,14 @@ session_enqueue_dgram_connection (session_t * s,
 
   if (queue_event && rv > 0)
     {
-      /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
-      session_worker_t *wrk;
+      //       /* Queue RX event on this fifo. Eventually these will need to be
+      //       flushed
+      //        * by calling stream_server_flush_enqueue_events () */
+      //       session_worker_t *wrk;
 
-      wrk = session_main_get_worker (s->thread_index);
+      //       wrk = session_main_get_worker (s->thread_index);
       if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
-	}
+	session_program_rx_io_event (s);
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
     }
@@ -707,8 +768,9 @@ session_notify_subscribers (u32 app_index, session_t * s,
       app_wrk = application_get_worker (app, f->shr->subscribers[i]);
       if (!app_wrk)
 	continue;
-      if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
-	return -1;
+      app_worker_add_event (app_wrk, s, evt_type);
+      //       if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
+      // 	return -1;
     }
 
   return 0;
@@ -722,7 +784,7 @@ session_notify_subscribers (u32 app_index, session_t * s,
  *
  * @return 0 on success or negative number if failed to send notification.
  */
-static inline int
+int
 session_enqueue_notify_inline (session_t * s)
 {
   app_worker_t *app_wrk;
@@ -761,10 +823,13 @@ session_enqueue_notify_inline (session_t * s)
   return 0;
 }
 
+/* TODO REMOVE ?? */
 int
-session_enqueue_notify (session_t * s)
+session_enqueue_notify (session_t *s)
 {
-  return session_enqueue_notify_inline (s);
+  session_program_rx_io_event (s);
+  return 0;
+  //   return session_enqueue_notify_inline (s);
 }
 
 static void
@@ -802,21 +867,21 @@ session_enqueue_notify_thread (session_handle_t sh)
 int
 session_dequeue_notify (session_t * s)
 {
-  app_worker_t *app_wrk;
 
   svm_fifo_clear_deq_ntf (s->tx_fifo);
 
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (PREDICT_FALSE (!app_wrk))
-    return -1;
-
-  if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     SESSION_IO_EVT_TX)))
-    return -1;
+  session_program_tx_io_event (s);
 
   if (PREDICT_FALSE (s->tx_fifo->shr->n_subscribers))
-    return session_notify_subscribers (app_wrk->app_index, s,
-				       s->tx_fifo, SESSION_IO_EVT_TX);
+    {
+      app_worker_t *app_wrk;
+
+      app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+      if (PREDICT_FALSE (!app_wrk))
+	return -1;
+      return session_notify_subscribers (app_wrk->app_index, s, s->tx_fifo,
+					 SESSION_IO_EVT_TX);
+    }
 
   return 0;
 }
@@ -829,47 +894,47 @@ session_dequeue_notify (session_t * s)
  * @return 0 on success or a positive number indicating the number of
  *         failures due to API queue being full.
  */
-int
-session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
-{
-  session_worker_t *wrk = session_main_get_worker (thread_index);
-  session_t *s;
-  int i, errors = 0;
-  u32 *indices;
+// int
+// session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
+// {
+//   session_worker_t *wrk = session_main_get_worker (thread_index);
+//   session_t *s;
+//   int i, errors = 0;
+//   u32 *indices;
 
-  indices = wrk->session_to_enqueue[transport_proto];
+//   indices = wrk->session_to_enqueue[transport_proto];
 
-  for (i = 0; i < vec_len (indices); i++)
-    {
-      s = session_get_if_valid (indices[i], thread_index);
-      if (PREDICT_FALSE (!s))
-	{
-	  errors++;
-	  continue;
-	}
+//   for (i = 0; i < vec_len (indices); i++)
+//     {
+//       s = session_get_if_valid (indices[i], thread_index);
+//       if (PREDICT_FALSE (!s))
+// 	{
+// 	  errors++;
+// 	  continue;
+// 	}
 
-      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
-			   0 /* TODO/not needed */ );
+//       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
+// 			   0 /* TODO/not needed */ );
 
-      if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
-	errors++;
-    }
+//       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
+// 	errors++;
+//     }
 
-  vec_reset_length (indices);
-  wrk->session_to_enqueue[transport_proto] = indices;
+//   vec_reset_length (indices);
+//   wrk->session_to_enqueue[transport_proto] = indices;
 
-  return errors;
-}
+//   return errors;
+// }
 
-int
-session_main_flush_all_enqueue_events (u8 transport_proto)
-{
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  int i, errors = 0;
-  for (i = 0; i < 1 + vtm->n_threads; i++)
-    errors += session_main_flush_enqueue_events (transport_proto, i);
-  return errors;
-}
+// int
+// session_main_flush_all_enqueue_events (u8 transport_proto)
+// {
+//   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+//   int i, errors = 0;
+//   for (i = 0; i < 1 + vtm->n_threads; i++)
+//     errors += session_main_flush_enqueue_events (transport_proto, i);
+//   return errors;
+// }
 
 int
 session_stream_connect_notify (transport_connection_t * tc,
@@ -1156,6 +1221,8 @@ session_transport_delete_notify (transport_connection_t * tc)
       break;
     case SESSION_STATE_CLOSED:
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      /* If app_wrk is removed, session_close will cleanup the session */
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_delete (s);
       break;
     default:
@@ -1798,16 +1865,17 @@ transport_proto_t
 session_add_transport_proto (void)
 {
   session_main_t *smm = &session_main;
-  session_worker_t *wrk;
-  u32 thread;
+  //   session_worker_t *wrk;
+  //   u32 thread;
 
   smm->last_transport_proto_type += 1;
 
-  for (thread = 0; thread < vec_len (smm->wrk); thread++)
-    {
-      wrk = session_main_get_worker (thread);
-      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
-    }
+  //   for (thread = 0; thread < vec_len (smm->wrk); thread++)
+  //     {
+  //       wrk = session_main_get_worker (thread);
+  //       vec_validate (wrk->session_to_enqueue,
+  //       smm->last_transport_proto_type);
+  //     }
 
   return smm->last_transport_proto_type;
 }
@@ -1934,7 +2002,8 @@ session_manager_main_enable (vlib_main_t * vm)
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
-      vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
+      //       vec_validate (wrk->session_to_enqueue,
+      //       smm->last_transport_proto_type);
 
       if (!smm->no_adaptive && smm->use_private_rx_mqs)
 	session_wrk_enable_adaptive_mode (wrk);
@@ -2106,6 +2175,7 @@ session_node_enable_disable (u8 is_en)
 	  if (!sm->poll_main)
 	    continue;
 	}
+      vlib_node_set_state (vm, session_input_node.index, mstate);
       vlib_node_set_state (vm, session_queue_node.index, state);
     }
 
