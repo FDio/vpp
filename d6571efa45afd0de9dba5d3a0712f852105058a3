@@ -99,6 +99,24 @@
       "parentUuid": "6dbb5d76_9c2424eb",
       "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32b5283b_a2d64a7f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2022-12-22T10:14:22Z",
+      "side": 1,
+      "message": "Hi Xinyao,\n\nThe reason it is moved to internal header is because the change to the session structure will no longer trigger ABI break. If you have a look at the rest of the changes you will see the session pointer used by external applications is replaced by \"void *\".\n\nMore importantly - your change might not work as the session pool creation process remains unchanged. \n\n1. session pool elt size should be expanded based on the PMD required session size.\n2. sess_pools_elt-\u003esess_priv_pool should be removed as it is no longer needed.\n\nPlease also be aware the changes I stated in the first comment. They should be taken care of as well.",
+      "parentUuid": "2f815a3c_e8d07c53",
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
