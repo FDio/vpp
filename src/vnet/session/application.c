@@ -725,6 +725,12 @@ application_get_if_valid (u32 app_index)
   return pool_elt_at_index (app_main.app_pool, app_index);
 }
 
+static int
+_null_app_tx_callback (session_t *s)
+{
+  return 0;
+}
+
 static void
 application_verify_cb_fns (session_cb_vft_t * cb_fns)
 {
@@ -736,6 +742,11 @@ application_verify_cb_fns (session_cb_vft_t * cb_fns)
     clib_warning ("No session disconnect callback function provided");
   if (cb_fns->session_reset_callback == 0)
     clib_warning ("No session reset callback function provided");
+  if (!cb_fns->builtin_app_tx_callback)
+    {
+      //       clib_warning ("No tx notification funcion. Provided default");
+      cb_fns->builtin_app_tx_callback = _null_app_tx_callback;
+    }
 }
 
 /**

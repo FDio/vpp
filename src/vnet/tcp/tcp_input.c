@@ -1394,11 +1394,10 @@ always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, errors = 0;
+  u32 thread_index = vm->thread_index, n_left_from, *from;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[TCP_N_ERROR] = { 0 };
-  u32 n_left_from, *from;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
@@ -1462,9 +1461,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b += 1;
     }
 
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-					      thread_index);
-  err_counters[TCP_ERROR_MSG_QUEUE_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
@@ -1746,7 +1742,7 @@ always_inline uword
 tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vlib_frame_t *frame, int is_ip4)
 {
-  u32 n_left_from, *from, thread_index = vm->thread_index, errors = 0;
+  u32 n_left_from, *from, thread_index = vm->thread_index;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
 
@@ -1981,9 +1977,6 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_inc_counter (syn_sent, error, 1);
     }
 
-  errors =
-    session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
-  tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
   vlib_buffer_free (vm, from, frame->n_vectors);
   tcp_handle_disconnects (wrk);
 
@@ -2058,7 +2051,7 @@ always_inline uword
 tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlib_frame_t *frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, errors, n_left_from, *from, max_deq;
+  u32 thread_index = vm->thread_index, n_left_from, *from, max_deq;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
 
@@ -2431,9 +2424,6 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_inc_counter (rcv_process, error, 1);
     }
 
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-					      thread_index);
-  tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, from, frame->n_vectors);

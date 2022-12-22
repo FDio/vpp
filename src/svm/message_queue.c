@@ -340,7 +340,7 @@ svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
   return (dist1 < dist2);
 }
 
-static void
+void
 svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
 {
   svm_msg_q_shared_queue_t *sq = mq->q.shr;
