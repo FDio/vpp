@@ -228,6 +228,8 @@ echo_server_rx_callback (session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
+	  /* TODO should be session_enqueue_notify(s) but quic tests seem
+	   * to fail if that's the case */
 	  if (session_send_io_evt_to_thread (rx_fifo,
 					     SESSION_IO_EVT_BUILTIN_RX))
 	    clib_warning ("failed to enqueue self-tap");
