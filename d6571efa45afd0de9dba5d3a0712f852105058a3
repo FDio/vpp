@@ -117,6 +117,24 @@
       "parentUuid": "2f815a3c_e8d07c53",
       "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f584fed_a5272c85",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2022-12-23T10:53:34Z",
+      "side": 1,
+      "message": "Hi Fan,\n\nI have noticed the problem you mentioned and I am making changes to fix it. The latest submission is a misoperation and I will update it later.",
+      "parentUuid": "32b5283b_a2d64a7f",
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
