@@ -38,10 +38,14 @@ System configuration files
       ## Disable all plugins, selectively enable specific plugins
           ## YMMV, you may wish to enable other plugins (acl, etc.)
       plugin default { disable }
+      plugin dhcp_plugin.so { enable }
+      plugin dns_plugin.so { enable }
       plugin dpdk_plugin.so { enable }
       plugin nat_plugin.so { enable }
+      plugin ping_plugin.so { enable }
           ## if you plan to use the time-based MAC filter
       plugin mactime_plugin.so { enable }
+      plugin vmxnet3_plugin.so { enable }
     }
 
 /etc/dhcp/dhcpd.conf:
@@ -76,8 +80,8 @@ If you decide to enable the vpp dns name resolver, substitute
    PasswordAuthentication no
 
 For your own comfort and safety, do NOT allow password authentication
-and do not answer ssh requests on port 22. Experience shows several hack
-attempts per hour on port 22, but none (ever) on random high-number
+and do not answer ssh requests on port 22. Experience shows several
+hack attempts per hour on port 22, but none on random high-number
 ports.
 
 Systemd configuration
@@ -167,17 +171,22 @@ Here we see a nice use-case for the vpp debug CLI macro expander:
    comment { inside subnet 192.168.<inside_subnet>.0/24 }
    define INSIDE_SUBNET 1
 
+   # Adjust as needed to match PCI addresses of inside network ports
    define INSIDE_PORT1 GigabitEthernet6/0/0
    define INSIDE_PORT2 GigabitEthernet6/0/1
    define INSIDE_PORT3 GigabitEthernet8/0/0
    define INSIDE_PORT4 GigabitEthernet8/0/1
 
    comment { feature selections }
-   define FEATURE_NAT44 comment
-   define FEATURE_CNAT uncomment
+   define FEATURE_ADL uncomment
+   define FEATURE_NAT44 uncomment
+   define FEATURE_CNAT comment
    define FEATURE_DNS comment
    define FEATURE_IP6 comment
+   define FEATURE_IKE_RESPONDER comment
    define FEATURE_MACTIME uncomment
+   define FEATURE_OVPN uncomment
+   define FEATURE_MODEM_ROUTE uncomment
 
    exec /setup.tmpl
 
@@ -213,23 +222,36 @@ Here we see a nice use-case for the vpp debug CLI macro expander:
 
    service restart isc-dhcp-server
 
-   $(FEATURE_NAT44) { nat44 enable users 50 user-sessions 750 sessions 63000 }
+   $(FEATURE_ADL) { bin adl_interface_enable_disable $(TRUNK) }
+   $(FEATURE_ADL) { ip table 1 }
+   $(FEATURE_ADL) { ip route add table 1 0.0.0.0/0 via local }
+
+   $(FEATURE_NAT44) { nat44 forwarding enable }
+   $(FEATURE_NAT44) { nat44 plugin enable sessions 63000 }
    $(FEATURE_NAT44) { nat44 add interface address $(TRUNK) }
    $(FEATURE_NAT44) { set interface nat44 in bvi0 out $(TRUNK) }
 
-   $(FEATURE_NAT44) { nat44 add static mapping local 192.168.$(INSIDE_SUBNET).2 22432 external $(TRUNK) 22432 tcp }
+   $(FEATURE_NAT44) { nat44 add static mapping local 192.168.$(INSIDE_SUBNET).2 22342 external $(TRUNK) 22342 tcp }
+   $(FEATURE_NAT44) { $(FEATURE_IKE_RESPONDER) { nat44 add identity mapping external $(TRUNK) udp 500 } }
+   $(FEATURE_NAT44) { $(FEATURE_IKE_RESPONDER) { nat44 add identity mapping external $(TRUNK) udp 4500 } }
+   $(FEATURE_NAT44) { $(FEATURE_DNS) { nat44 add static mapping local 192.168.$(INSIDE_SUBNET).2 53053 external $(TRUNK) 53053 udp } }
+   $(FEATURE_NAT44) { $(FEATURE_OVPN) { nat44 add static mapping local 192.168.$(INSIDE_SUBNET).2 37979 external $(TRUNK) 37979 udp } }
+   $(FEATURE_NAT44) { $(FEATURE_OVPN) { set interface feature bvi0 skipnat arc ip4-unicast } }
+   $(FEATURE_NAT44) { $(FEATURE_OVPN) { ip route add 192.168.10.0/24 via 192.168.$(INSIDE_SUBNET).2 } }
 
-   $(FEATURE_CNAT) { cnat snat with $(TRUNK) }
-   $(FEATURE_CNAT) { set interface feature bvi0 ip4-cnat-snat arc ip4-unicast }
-   $(FEATURE_CNAT) { cnat translation add proto tcp real $(TRUNK) 22432 to -> 192.168.$(INSIDE_SUBNET).2 22432 }
+   $(FEATURE_CNAT) { set cnat snat-policy none }
+   $(FEATURE_CNAT) { set cnat snat-policy addr $(TRUNK) }
+   $(FEATURE_CNAT) { set interface feature bvi0 cnat-snat-ip4 arc ip4-unicast }
+   $(FEATURE_CNAT) { cnat translation add proto tcp real $(TRUNK) 22342 to -> 192.168.$(INSIDE_SUBNET).2 22342 }
    $(FEATURE_CNAT) { $(FEATURE_DNS) { cnat translation add proto udp real $(TRUNK) 53053 to -> 192.168.$(INSIDE_SUBNET).1 53053 } }
+   $(FEATURE_CNAT) { $(FEATURE_OVPN) { cnat translation add proto udp real $(TRUNK) 37979 to -> 192.168.$(INSIDE_SUBNET).2 37979 } }
+   $(FEATURE_CNAT) { $(FEATURE_OVPN) { set interface feature bvi0 skipnat arc ip4-unicast } }
+   $(FEATURE_CNAT) { $(FEATURE_OVPN) { ip route add 192.168.10.0/24 via 192.168.$(INSIDE_SUBNET).2 } }
 
-   $(FEATURE_DNS) { $(FEATURE_NAT44) { nat44 add identity mapping external $(TRUNK) udp 53053 } }
+
+   $(FEATURE_DNS) { nat44 add identity mapping external $(TRUNK) udp 53053 }
    $(FEATURE_DNS) { bin dns_name_server_add_del 8.8.8.8 }
    $(FEATURE_DNS) { bin dns_enable_disable }
-
-   comment { set ct6 inside $(TRUNK) }
-   comment { set ct6 outside $(TRUNK) }
 
    $(FEATURE_IP6) { set int ip6 table $(TRUNK) 0 }
    $(FEATURE_IP6) { ip6 nd address autoconfig $(TRUNK) default-route }
@@ -238,17 +260,31 @@ Here we see a nice use-case for the vpp debug CLI macro expander:
    $(FEATURE_IP6) { set ip6 address bvi0 prefix group hgw ::1/64 }
    $(FEATURE_IP6) { ip6 nd address autoconfig bvi0 default-route }
    comment { iPhones seem to need lots of RA messages... }
-   $(FEATURE_IP6) { ip6 nd bvi0 ra-managed-config-flag ra-other-config-flag ra-interval 5 3 ra-lifetime 180 }
+   $(FEATURE_IP6) { ip6 nd bvi0 ra-managed-config-flag ra-other-config-flag ra-interval 30 20 ra-lifetime 180 }
    comment { ip6 nd bvi0 prefix 0::0/0  ra-lifetime 100000 }
 
+   comment { responder profile }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile add swan }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan auth rsa-sig cert-file /home/dbarach/certs/swancert.pem }
+   $(FEATURE_IKE_RESPONDER) { set ikev2 local key /home/dbarach/certs/dorakey.pem }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan id remote fqdn swan.barachs.net }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan id local fqdn broiler2.barachs.net }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan traffic-selector remote ip-range 192.168.1.0 - 192.168.1.255 port-range 0 - 65535 protocol 0 }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan traffic-selector local ip-range 192.168.$(INSIDE_SUBNET).0 - 192.168.$(INSIDE_SUBNET).255 port-range 0 - 65535 protocol 0 }
+   $(FEATURE_IKE_RESPONDER) { create ipip tunnel src 73.120.164.15 dst 162.255.170.167 }
+   $(FEATURE_IKE_RESPONDER) { ikev2 profile set swan tunnel ipip0 }
 
-   $(FEATURE_MACTIME) { bin mactime_add_del_range name cisco-vpn mac a8:b4:56:e1:b8:3e allow-static }
-   $(FEATURE_MACTIME) { bin mactime_add_del_range name old-mac mac <redacted> allow-static }
-   $(FEATURE_MACTIME) { bin mactime_add_del_range name roku mac <redacted> allow-static }
+   $(FEATURE_IKE_RESPONDER) { set int mtu packet 1390 ipip0 }
+   $(FEATURE_IKE_RESPONDER) { set int unnum ipip0 use $(TRUNK) }
+
+   comment { if using the mactime plugin, configure it }
+   $(FEATURE_MACTIME) { bin mactime_add_del_range name roku mac 00:00:01:de:ad:be allow-static }
    $(FEATURE_MACTIME) { bin mactime_enable_disable $(INSIDE_PORT1) }
    $(FEATURE_MACTIME) { bin mactime_enable_disable $(INSIDE_PORT2) }
    $(FEATURE_MACTIME) { bin mactime_enable_disable $(INSIDE_PORT3) }
    $(FEATURE_MACTIME) { bin mactime_enable_disable $(INSIDE_PORT4) }
+
+   $(FEATURE_MODEM_ROUTE) { ip route add 192.168.100.1/32 via $(TRUNK) }
 
 Installing new vpp software
 ---------------------------
