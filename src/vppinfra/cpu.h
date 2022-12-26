@@ -166,10 +166,10 @@ _ (asimddp,    20) \
 _ (sha512,     21) \
 _ (sve,        22)
 
-u32 clib_get_current_cpu_id ();
-u32 clib_get_current_numa_node ();
+u32 clib_get_current_cpu_id (void);
+u32 clib_get_current_numa_node (void);
 
-typedef int (*clib_cpu_supports_func_t) ();
+typedef int (*clib_cpu_supports_func_t) (void);
 
 #if defined(__x86_64__)
 #include "cpuid.h"

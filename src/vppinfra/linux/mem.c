@@ -100,7 +100,7 @@ legacy_get_log2_default_hugepage_size (void)
 }
 
 void
-clib_mem_main_init ()
+clib_mem_main_init (void)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   long sysconf_page_size;
