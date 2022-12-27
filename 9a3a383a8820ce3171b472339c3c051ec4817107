@@ -157,6 +157,24 @@
       "parentUuid": "372c315b_baac38d0",
       "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aaf8b26a_ef7f579c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2022-12-27T03:49:32Z",
+      "side": 1,
+      "message": "The packet goes through a series of processes and should be sent out as far as possible during the sending phase. If packets need to be discarded, packets should be discarded as early as possible.\n\n-- the loop over n_retries is no longer needed\nYep. Done.",
+      "parentUuid": "367af217_f3866431",
+      "revId": "9a3a383a8820ce3171b472339c3c051ec4817107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
