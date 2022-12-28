@@ -34,6 +34,24 @@
       "parentUuid": "2911ddfd_3189927e",
       "revId": "2847dadf109b719afe66902f6f9cdc2f6e3c3fd1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e0d0673_ae2c809f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2022-12-28T02:04:24Z",
+      "side": 1,
+      "message": "Hi. Changed `test_sr_mobile.py` to work via API. Tested with this.",
+      "parentUuid": "42c80beb_170fe9a1",
+      "revId": "2847dadf109b719afe66902f6f9cdc2f6e3c3fd1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
