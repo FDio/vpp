@@ -72,6 +72,7 @@ autoreply define sr_localsid_add_del
     @param is_spray is the type of the SR policy. (0.Default // 1.Spray)
     @param fib_table is the VRF where to install the FIB entry for the BSID
     @param sids is a srv6_sid_list object
+    @param encap_src_v6addr is a encaps IPv6 source addr. optional.
 */
 autoreply define sr_policy_add
 {
@@ -83,6 +84,7 @@ autoreply define sr_policy_add
   bool is_spray;
   u32 fib_table;
   vl_api_srv6_sid_list_t sids;
+  vl_api_ip6_address_t encap_src_v6addr;
 };
 
 /** \brief IPv6 SR policy modification
@@ -95,6 +97,7 @@ autoreply define sr_policy_add
     @param sl_index is the index of the Segment List to modify/delete
     @param weight is the weight of the sid list. optional.
     @param sids is a srv6_sid_list object
+    @param encap_src_v6addr is a encaps IPv6 source addr. optional.
 */
 autoreply define sr_policy_mod
 {
@@ -107,6 +110,7 @@ autoreply define sr_policy_mod
   u32 sl_index;
   u32 weight;
   vl_api_srv6_sid_list_t sids;
+  vl_api_ip6_address_t encap_src_v6addr;
 };
 
 /** \brief IPv6 SR policy deletion
@@ -241,6 +245,7 @@ define sr_policies_details
 {
   u32 context;
   vl_api_ip6_address_t bsid;
+  vl_api_ip6_address_t encap_srcip;
   bool is_spray;
   bool is_encap;
   u32 fib_table;

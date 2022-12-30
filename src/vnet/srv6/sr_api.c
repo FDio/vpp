@@ -72,6 +72,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
   vl_api_sr_policy_add_reply_t *rmp;
   ip6_address_t *segments = 0, *seg;
   ip6_address_t bsid_addr;
+  ip6_address_t encap_src_v6addr;
 
   int i;
   for (i = 0; i < mp->sids.num_sids; i++)
@@ -81,18 +82,17 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
     }
 
   ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  ip6_address_decode (mp->encap_src_v6addr, &encap_src_v6addr);
 
-/*
- * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
- *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
- *                u16 behavior, void *plugin_mem)
- */
+  /*
+   * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+   *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+   *                u16 behavior, void *plugin_mem)
+   */
   int rv = 0;
-  rv = sr_policy_add (&bsid_addr,
-		      segments,
-		      ntohl (mp->sids.weight),
-		      mp->is_spray, ntohl (mp->fib_table), mp->is_encap, 0,
-		      NULL);
+  rv = sr_policy_add (&bsid_addr, segments, &encap_src_v6addr,
+		      ntohl (mp->sids.weight), mp->is_spray,
+		      ntohl (mp->fib_table), mp->is_encap, 0, NULL);
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
@@ -104,6 +104,7 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
   vl_api_sr_policy_mod_reply_t *rmp;
   ip6_address_t *segments = 0, *seg;
   ip6_address_t bsid_addr;
+  ip6_address_t encap_src_v6addr;
 
   int i;
   for (i = 0; i < mp->sids.num_sids; i++)
@@ -113,6 +114,7 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
     }
 
   ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  ip6_address_decode (mp->encap_src_v6addr, &encap_src_v6addr);
 
   int rv = 0;
 /*
@@ -121,11 +123,9 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
  *               u8 operation, ip6_address_t *segments, u32 sl_index,
  *               u32 weight, u8 is_encap)
  */
-  rv = sr_policy_mod (&bsid_addr,
-		      ntohl (mp->sr_policy_index),
-		      ntohl (mp->fib_table),
-		      mp->operation,
-		      segments, ntohl (mp->sl_index),
+  rv = sr_policy_mod (&bsid_addr, ntohl (mp->sr_policy_index),
+		      ntohl (mp->fib_table), mp->operation, segments,
+		      &encap_src_v6addr, ntohl (mp->sl_index),
 		      ntohl (mp->sids.weight));
   vec_free (segments);
 
@@ -343,6 +343,7 @@ static void send_sr_policies_details
 
   rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_POLICIES_DETAILS);
   ip6_address_encode (&t->bsid, rmp->bsid);
+  ip6_address_encode (&t->encap_srcip, rmp->encap_srcip);
   rmp->is_encap = t->is_encap;
   rmp->is_spray = t->type;
   rmp->fib_table = htonl (t->fib_table);
