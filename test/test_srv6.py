@@ -10,6 +10,7 @@ from vpp_srv6 import (
     SRv6LocalSIDBehaviors,
     VppSRv6LocalSID,
     VppSRv6Policy,
+    VppSRv6PolicyV2,
     SRv6PolicyType,
     VppSRv6Steering,
     SRv6PolicySteeringTypes,
@@ -237,6 +238,121 @@ class TestSRv6(VppTestCase):
         # remove SR steering
         pol_steering.remove_vpp_config()
         self.logger.info(self.vapi.cli("show sr steering policies"))
+
+        # remove SR Policies
+        self.sr_policy.remove_vpp_config()
+        self.logger.info(self.vapi.cli("show sr policies"))
+
+        # remove FIB entries
+        # done by tearDown
+
+        # cleanup interfaces
+        self.teardown_interfaces()
+
+    def test_SRv6_T_Encaps_with_v6src(self):
+        """Test SRv6 Transit.Encaps behavior for IPv6 and select multiple src v6addr case."""
+        # send traffic to one destination interface
+        # source and destination are IPv6 only
+        self.setup_interfaces(ipv6=[True, True])
+
+        # configure FIB entries
+        route = VppIpRoute(
+            self, "a4::", 64, [VppRoutePath(self.pg1.remote_ip6, self.pg1.sw_if_index)]
+        )
+        route.add_vpp_config()
+
+        # configure encaps IPv6 source address
+        # needs to be done before SR Policy config
+        # TODO: API?
+        self.vapi.cli("set sr encaps source addr a3::")
+
+        bsid = "a3::9999:1"
+        other_src_ip = "b1::"
+        # configure SRv6 Policy
+        # Note: segment list order: first -> last
+        sr_policy = VppSRv6PolicyV2(
+            self,
+            bsid=bsid,
+            is_encap=1,
+            sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
+            weight=1,
+            fib_table=0,
+            segments=["a4::", "a5::", "a6::c7"],
+            encap_src=other_src_ip,
+            source=other_src_ip,
+        )
+        sr_policy.add_vpp_config()
+        self.sr_policy = sr_policy
+
+        # log the sr policies
+        self.logger.info(self.vapi.cli("show sr policies"))
+
+        # steer IPv6 traffic to a7::/64 into SRv6 Policy
+        # use the bsid of the above self.sr_policy
+        pol_steering = VppSRv6Steering(
+            self,
+            bsid=self.sr_policy.bsid,
+            prefix="a7::",
+            mask_width=64,
+            traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
+            sr_policy_index=0,
+            table_id=0,
+            sw_if_index=0,
+        )
+        pol_steering.add_vpp_config()
+
+        # log the sr steering policies
+        self.logger.info(self.vapi.cli("show sr steering-policies"))
+
+        # create packets
+        count = len(self.pg_packet_sizes)
+        dst_inner = "a7::1234"
+        pkts = []
+
+        # create IPv6 packets without SRH
+        packet_header = self.create_packet_header_IPv6(dst_inner)
+        # create traffic stream pg0->pg1
+        pkts.extend(
+            self.create_stream(
+                self.pg0, self.pg1, packet_header, self.pg_packet_sizes, count
+            )
+        )
+
+        # create IPv6 packets with SRH
+        # packets with segments-left 1, active segment a7::
+        packet_header = self.create_packet_header_IPv6_SRH(
+            sidlist=["a8::", "a7::", "a6::"], segleft=1
+        )
+        # create traffic stream pg0->pg1
+        pkts.extend(
+            self.create_stream(
+                self.pg0, self.pg1, packet_header, self.pg_packet_sizes, count
+            )
+        )
+
+        # create IPv6 packets with SRH and IPv6
+        # packets with segments-left 1, active segment a7::
+        packet_header = self.create_packet_header_IPv6_SRH_IPv6(
+            dst_inner, sidlist=["a8::", "a7::", "a6::"], segleft=1
+        )
+        # create traffic stream pg0->pg1
+        pkts.extend(
+            self.create_stream(
+                self.pg0, self.pg1, packet_header, self.pg_packet_sizes, count
+            )
+        )
+
+        # send packets and verify received packets
+        self.send_and_verify_pkts(
+            self.pg0, pkts, self.pg1, self.compare_rx_tx_packet_T_Encaps
+        )
+
+        # log the localsid counters
+        self.logger.info(self.vapi.cli("show sr localsid"))
+
+        # remove SR steering
+        pol_steering.remove_vpp_config()
+        self.logger.info(self.vapi.cli("show sr steering-policies"))
 
         # remove SR Policies
         self.sr_policy.remove_vpp_config()

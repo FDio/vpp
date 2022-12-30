@@ -80,6 +80,18 @@ api_sr_policy_add (vat_main_t *vam)
 }
 
 static int
+api_sr_policy_mod_v2 (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_sr_policy_add_v2 (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
 api_sr_localsids_dump (vat_main_t *vam)
 {
   return -1;
@@ -87,6 +99,12 @@ api_sr_localsids_dump (vat_main_t *vam)
 
 static int
 api_sr_policies_dump (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_sr_policies_v2_dump (vat_main_t *vam)
 {
   return -1;
 }
@@ -105,6 +123,11 @@ api_sr_steering_pol_dump (vat_main_t *vam)
 
 static void
 vl_api_sr_policies_details_t_handler (vl_api_sr_policies_details_t *mp)
+{
+}
+
+static void
+vl_api_sr_policies_v2_details_t_handler (vl_api_sr_policies_v2_details_t *mp)
 {
 }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -107,6 +107,65 @@ autoreply define sr_policy_mod
   u32 sl_index;
   u32 weight;
   vl_api_srv6_sid_list_t sids;
+};
+
+enum sr_policy_type : u8
+{
+  SR_API_POLICY_TYPE_DEFAULT = 0,
+  SR_API_POLICY_TYPE_SPRAY = 1,
+  SR_API_POLICY_TYPE_TEF = 2,
+};
+
+/** \brief IPv6 SR policy add
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bsid is the bindingSID of the SR Policy
+    @param weight is the weight of the sid list. optional.
+    @param is_encap is the behavior of the SR policy. (0.SRH insert // 1.Encapsulation)
+    @param type is the SR policy param. (0.Default // 1.Spray // 2.Tef)
+    @param fib_table is the VRF where to install the FIB entry for the BSID
+    @param sids is a srv6_sid_list object
+    @param encap_src is a encaps IPv6 source addr. optional.
+*/
+autoreply define sr_policy_add_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip6_address_t bsid_addr;
+  u32 weight;
+  bool is_encap;
+  vl_api_sr_policy_type_t type [default=0x0];
+  u32 fib_table;
+  vl_api_srv6_sid_list_t sids;
+  vl_api_ip6_address_t encap_src;
+  option status="in_progress";
+};
+
+/** \brief IPv6 SR policy modification
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bsid is the bindingSID of the SR Policy
+    @param sr_policy_index is the index of the SR policy
+    @param fib_table is the VRF where to install the FIB entry for the BSID
+    @param operation is the operation to perform (among the top ones)
+    @param sl_index is the index of the Segment List to modify/delete
+    @param weight is the weight of the sid list. optional.
+    @param sids is a srv6_sid_list object
+    @param encap_src is a encaps IPv6 source addr. optional.
+*/
+autoreply define sr_policy_mod_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip6_address_t bsid_addr;
+  u32 sr_policy_index;
+  u32 fib_table;
+  vl_api_sr_policy_op_t operation;
+  u32 sl_index;
+  u32 weight;
+  vl_api_srv6_sid_list_t sids;
+  vl_api_ip6_address_t encap_src;
+  option status="in_progress";
 };
 
 /** \brief IPv6 SR policy deletion
@@ -246,6 +305,29 @@ define sr_policies_details
   u32 fib_table;
   u8 num_sid_lists;
   vl_api_srv6_sid_list_t sid_lists[num_sid_lists];
+};
+
+/** \brief Dump the list of SR policies v2
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sr_policies_v2_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sr_policies_v2_details
+{
+  u32 context;
+  vl_api_ip6_address_t bsid;
+  vl_api_ip6_address_t encap_src;
+  vl_api_sr_policy_type_t type;
+  bool is_encap;
+  u32 fib_table;
+  u8 num_sid_lists;
+  vl_api_srv6_sid_list_t sid_lists[num_sid_lists];
+  option in_progress;
 };
 
 /** \brief Dump the list of SR policies along with actual segment list index on VPP
