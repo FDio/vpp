@@ -6,6 +6,7 @@
 
 from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+import copy
 
 
 class SRv6LocalSIDBehaviors:
@@ -148,6 +149,79 @@ class VppSRv6Policy(VppObject):
         )
 
 
+class VppSRv6PolicyV2(VppObject):
+    """
+    SRv6 Policy
+    """
+
+    def __init__(
+        self,
+        test,
+        bsid,
+        is_encap,
+        sr_type,
+        weight,
+        fib_table,
+        segments,
+        encap_src_v6addr,
+        source,
+    ):
+        self._test = test
+        self.bsid = bsid
+        self.is_encap = is_encap
+        self.sr_type = sr_type
+        self.weight = weight
+        self.fib_table = fib_table
+        self.segments = segments
+        self.encap_src_v6addr = encap_src_v6addr
+        self.n_segments = len(segments)
+
+        # source not passed to API
+        # self.source = inet_pton(AF_INET6, source)
+        self.source = source
+        self._configured = False
+
+    def add_vpp_config(self):
+        self._test.vapi.sr_policy_add_v2(
+            bsid_addr=self.bsid,
+            weight=self.weight,
+            is_encap=self.is_encap,
+            is_spray=self.sr_type,
+            fib_table=self.fib_table,
+            encap_src_v6addr=self.encap_src_v6addr,
+            sids={
+                "num_sids": self.n_segments,
+                "sids": self._get_fixed_segments(),
+                "weight": 1,
+            },
+        )
+        self._configured = True
+
+    def remove_vpp_config(self):
+        self._test.vapi.sr_policy_del(self.bsid)
+        self._configured = False
+
+    def query_vpp_config(self):
+        # no API to query SR Policies
+        # use _configured flag for now
+        return self._configured
+
+    def object_id(self):
+        return "%d;%s-><%s>;%d" % (
+            self.sr_type,
+            self.bsid,
+            ",".join(self.segments),
+            self.is_encap,
+        )
+
+    def _get_fixed_segments(self):
+        segs = copy.copy(self.segments)
+        # note: array expect size is 16
+        for _ in range(16 - self.n_segments):
+            segs.append("")
+        return segs
+
+
 class VppSRv6Steering(VppObject):
     """
     SRv6 Steering
@@ -177,7 +251,7 @@ class VppSRv6Steering(VppObject):
     def add_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
             is_del=0,
-            bsid=self.bsid,
+            bsid_addr=self.bsid,
             sr_policy_index=self.sr_policy_index,
             table_id=self.table_id,
             prefix={"address": self.prefix, "len": self.mask_width},
@@ -189,7 +263,7 @@ class VppSRv6Steering(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
             is_del=1,
-            bsid=self.bsid,
+            bsid_addr=self.bsid,
             sr_policy_index=self.sr_policy_index,
             table_id=self.table_id,
             prefix={"address": self.prefix, "len": self.mask_width},
