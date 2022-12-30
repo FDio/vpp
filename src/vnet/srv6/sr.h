@@ -112,6 +112,8 @@ typedef struct
 
   u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
 
+  ip6_address_t encap_src;
+
   u16 plugin;
   void *plugin_mem;
 } ip6_sr_policy_t;
@@ -345,11 +347,12 @@ sr_policy_register_function (vlib_main_t * vm, u8 * fn_name,
 			     sr_p_plugin_callback_t * removal_fn);
 
 extern int sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
-			  u32 weight, u8 type, u32 fib_table, u8 is_encap,
-			  u16 plugin, void *plugin_mem);
-extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-			  u8 operation, ip6_address_t * segments,
-			  u32 sl_index, u32 weight);
+			  ip6_address_t *encap_src, u32 weight, u8 type,
+			  u32 fib_table, u8 is_encap, u16 plugin,
+			  void *plugin_mem);
+extern int sr_policy_mod (ip6_address_t *bsid, u32 index, u32 fib_table,
+			  u8 operation, ip6_address_t *segments,
+			  ip6_address_t *encap_src, u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int

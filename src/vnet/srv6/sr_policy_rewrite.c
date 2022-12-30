@@ -193,11 +193,12 @@ VLIB_CLI_COMMAND (set_sr_hop_limit_command, static) = {
  * @brief SR rewrite string computation for IPv6 encapsulation (inline)
  *
  * @param sl is a vector of IPv6 addresses composing the Segment List
+ * @param src_v6addr is a encaps IPv6 source addr
  *
  * @return precomputed rewrite string for encapsulation
  */
 static inline u8 *
-compute_rewrite_encaps (ip6_address_t *sl, u8 type)
+compute_rewrite_encaps (ip6_address_t *sl, ip6_address_t *src_v6addr, u8 type)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
@@ -225,8 +226,8 @@ compute_rewrite_encaps (ip6_address_t *sl, u8 type)
   iph = (ip6_header_t *) rs;
   iph->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0 | ((6 & 0xF) << 28));
-  iph->src_address.as_u64[0] = sr_pr_encaps_src.as_u64[0];
-  iph->src_address.as_u64[1] = sr_pr_encaps_src.as_u64[1];
+  iph->src_address.as_u64[0] = src_v6addr->as_u64[0];
+  iph->src_address.as_u64[1] = src_v6addr->as_u64[1];
   iph->payload_length = header_length - IPv6_DEFAULT_HEADER_LENGTH;
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = sr_pr_encaps_hop_limit;
@@ -370,18 +371,20 @@ compute_rewrite_bsid (ip6_address_t * sl)
  *
  * @param sr_policy is the SR policy where the SL will be added
  * @param sl is a vector of IPv6 addresses composing the Segment List
+ * @param encap_src is a encaps IPv6 source addr. optional.
  * @param weight is the weight of the SegmentList (for load-balancing purposes)
  * @param is_encap represents the mode (SRH insertion vs Encapsulation)
  *
  * @return pointer to the just created segment list
  */
 static inline ip6_sr_sl_t *
-create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap)
+create_sl (ip6_sr_policy_t *sr_policy, ip6_address_t *sl,
+	   ip6_address_t *encap_src, u32 weight, u8 is_encap)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
   sr_policy_fn_registration_t *plugin = 0;
+  ip6_address_t encap_srcv6 = sr_pr_encaps_src;
 
   pool_get (sm->sid_lists, segment_list);
   clib_memset (segment_list, 0, sizeof (*segment_list));
@@ -400,8 +403,14 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
 
   if (is_encap)
     {
-      segment_list->rewrite = compute_rewrite_encaps (sl, sr_policy->type);
+      if (encap_src)
+	{
+	  clib_memcpy_fast (&encap_srcv6, encap_src, sizeof (ip6_address_t));
+	}
+      segment_list->rewrite =
+	compute_rewrite_encaps (sl, &encap_srcv6, sr_policy->type);
       segment_list->rewrite_bsid = segment_list->rewrite;
+      sr_policy->encap_src = encap_srcv6;
     }
   else
     {
@@ -660,17 +669,19 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  *
  * @param bsid is the bindingSID of the SR Policy
  * @param segments is a vector of IPv6 address composing the segment list
+ * @param encap_src is a encaps IPv6 source addr. optional.
  * @param weight is the weight of the sid list. optional.
  * @param behavior is the behavior of the SR policy. (default//spray)
  * @param fib_table is the VRF where to install the FIB entry for the BSID
- * @param is_encap (bool) whether SR policy should behave as Encap/SRH Insertion
+ * @param is_encap (bool) whether SR policy should behave as Encap/SRH
+ * Insertion
  *
  * @return 0 if correct, else error
  */
 int
-sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments, u32 weight,
-	       u8 type, u32 fib_table, u8 is_encap, u16 plugin,
-	       void *ls_plugin_mem)
+sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+	       ip6_address_t *encap_src, u32 weight, u8 type, u32 fib_table,
+	       u8 is_encap, u16 plugin, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -726,7 +737,7 @@ sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments, u32 weight,
 	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
-  create_sl (sr_policy, segments, weight, is_encap);
+  create_sl (sr_policy, segments, encap_src, weight, is_encap);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -856,6 +867,7 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
  * @param fib_table is the VRF where to install the FIB entry for the BSID
  * @param operation is the operation to perform (among the top ones)
  * @param segments is a vector of IPv6 address composing the segment list
+ * @param encap_src is a encaps IPv6 source addr. optional.
  * @param sl_index is the index of the Segment List to modify/delete
  * @param weight is the weight of the sid list. optional.
  * @param is_encap Mode. Encapsulation or SRH insertion.
@@ -863,8 +875,8 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
  * @return 0 if correct, else error
  */
 int
-sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-	       u8 operation, ip6_address_t * segments, u32 sl_index,
+sr_policy_mod (ip6_address_t *bsid, u32 index, u32 fib_table, u8 operation,
+	       ip6_address_t *segments, ip6_address_t *encap_src, u32 sl_index,
 	       u32 weight)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -889,8 +901,8 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
   if (operation == 1)		/* Add SR List to an existing SR policy */
     {
       /* Create the new SL */
-      segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap);
+      segment_list = create_sl (sr_policy, segments, encap_src, weight,
+				sr_policy->is_encap);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -963,7 +975,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv = -1;
   char is_del = 0, is_add = 0, is_mod = 0;
   char policy_set = 0;
-  ip6_address_t bsid, next_address;
+  ip6_address_t bsid, next_address, src_v6addr;
   u32 sr_policy_index = (u32) ~ 0, sl_index = (u32) ~ 0;
   u32 weight = (u32) ~ 0, fib_table = (u32) ~ 0;
   ip6_address_t *segments = 0, *this_seg;
@@ -972,6 +984,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 type = SR_POLICY_TYPE_DEFAULT;
   u16 behavior = 0;
   void *ls_plugin_mem = 0;
+  ip6_address_t *encap_src = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -994,6 +1007,10 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vec_add2 (segments, this_seg, 1);
 	  clib_memcpy_fast (this_seg->as_u8, next_address.as_u8,
 			    sizeof (*this_seg));
+	}
+      else if (unformat (input, "v6src %U", unformat_ip6_address, &src_v6addr))
+	{
+	  encap_src = &src_v6addr;
 	}
       else if (unformat (input, "add sl"))
 	operation = 1;
@@ -1059,8 +1076,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (vec_len (segments) == 0)
 	return clib_error_return (0, "No Segment List specified");
 
-      rv = sr_policy_add (&bsid, segments, weight, type, fib_table, is_encap,
-			  behavior, ls_plugin_mem);
+      rv = sr_policy_add (&bsid, segments, encap_src, weight, type, fib_table,
+			  is_encap, behavior, ls_plugin_mem);
 
       vec_free (segments);
     }
@@ -1078,9 +1095,9 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (operation == 3 && weight == (u32) ~ 0)
 	return clib_error_return (0, "No new weight for the SL specified");
 
-      rv = sr_policy_mod ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
+      rv = sr_policy_mod ((sr_policy_index != (u32) ~0 ? NULL : &bsid),
 			  sr_policy_index, fib_table, operation, segments,
-			  sl_index, weight);
+			  encap_src, sl_index, weight);
 
       if (segments)
 	vec_free (segments);
@@ -1170,6 +1187,11 @@ show_sr_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "\tBehavior: %s",
 		     (sr_policy->is_encap ? "Encapsulation" :
 		      "SRH insertion"));
+    if (sr_policy->is_encap)
+      {
+	vlib_cli_output (vm, "\tEncapSrcIP: %U", format_ip6_address,
+			 &sr_policy->encap_src);
+      }
     switch (sr_policy->type)
       {
       case SR_POLICY_TYPE_SPRAY:

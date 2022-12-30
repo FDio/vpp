@@ -82,17 +82,16 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 
   ip6_address_decode (mp->bsid_addr, &bsid_addr);
 
-/*
- * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
- *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
- *                u16 behavior, void *plugin_mem)
- */
+  /*
+   * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+   *                ip6_address_t *encap_src,
+   *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+   *                u16 behavior, void *plugin_mem)
+   */
   int rv = 0;
-  rv = sr_policy_add (&bsid_addr,
-		      segments,
-		      ntohl (mp->sids.weight),
-		      mp->is_spray, ntohl (mp->fib_table), mp->is_encap, 0,
-		      NULL);
+  rv =
+    sr_policy_add (&bsid_addr, segments, NULL, ntohl (mp->sids.weight),
+		   mp->is_spray, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
@@ -115,18 +114,93 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
   ip6_address_decode (mp->bsid_addr, &bsid_addr);
 
   int rv = 0;
-/*
- * int
- * sr_policy_mod(ip6_address_t *bsid, u32 index, u32 fib_table,
- *               u8 operation, ip6_address_t *segments, u32 sl_index,
- *               u32 weight, u8 is_encap)
- */
-  rv = sr_policy_mod (&bsid_addr,
-		      ntohl (mp->sr_policy_index),
-		      ntohl (mp->fib_table),
-		      mp->operation,
-		      segments, ntohl (mp->sl_index),
-		      ntohl (mp->sids.weight));
+  /*
+   * int
+   * sr_policy_mod(ip6_address_t *bsid, u32 index, u32 fib_table,
+   *               u8 operation, ip6_address_t *segments,
+   *               ip6_address_t *encap_src, u32 sl_index,
+   *               u32 weight, u8 is_encap)
+   */
+  rv = sr_policy_mod (&bsid_addr, ntohl (mp->sr_policy_index),
+		      ntohl (mp->fib_table), mp->operation, segments, NULL,
+		      ntohl (mp->sl_index), ntohl (mp->sids.weight));
+  vec_free (segments);
+
+  REPLY_MACRO (VL_API_SR_POLICY_MOD_REPLY);
+}
+
+static void
+vl_api_sr_policy_add_v2_t_handler (vl_api_sr_policy_add_v2_t *mp)
+{
+  vl_api_sr_policy_add_v2_reply_t *rmp;
+  ip6_address_t *segments = 0, *seg;
+  ip6_address_t bsid_addr;
+  ip6_address_t encap_src;
+
+  int i;
+  for (i = 0; i < mp->sids.num_sids; i++)
+    {
+      vec_add2 (segments, seg, 1);
+      ip6_address_decode (mp->sids.sids[i], seg);
+    }
+
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  ip6_address_decode (mp->encap_src, &encap_src);
+
+  if (ip6_address_is_zero (&encap_src))
+    {
+      encap_src = *sr_get_encaps_source ();
+    }
+  /*
+   * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+   *                ip6_address_t *encap_src,
+   *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+   *                u16 behavior, void *plugin_mem)
+   */
+  int rv = 0;
+  rv =
+    sr_policy_add (&bsid_addr, segments, &encap_src, ntohl (mp->sids.weight),
+		   mp->type, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
+  vec_free (segments);
+
+  REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
+}
+
+static void
+vl_api_sr_policy_mod_v2_t_handler (vl_api_sr_policy_mod_v2_t *mp)
+{
+  vl_api_sr_policy_mod_v2_reply_t *rmp;
+  ip6_address_t *segments = 0, *seg;
+  ip6_address_t bsid_addr;
+  ip6_address_t encap_src;
+
+  int i;
+  for (i = 0; i < mp->sids.num_sids; i++)
+    {
+      vec_add2 (segments, seg, 1);
+      ip6_address_decode (mp->sids.sids[i], seg);
+    }
+
+  ip6_address_decode (mp->bsid_addr, &bsid_addr);
+  ip6_address_decode (mp->encap_src, &encap_src);
+
+  if (ip6_address_is_zero (&encap_src))
+    {
+      encap_src = *sr_get_encaps_source ();
+    }
+
+  int rv = 0;
+  /*
+   * int
+   * sr_policy_mod(ip6_address_t *bsid, u32 index, u32 fib_table,
+   *               u8 operation, ip6_address_t *segments,
+   *               ip6_address_t *encap_src, u32 sl_index,
+   *               u32 weight, u8 is_encap)
+   */
+  rv =
+    sr_policy_mod (&bsid_addr, ntohl (mp->sr_policy_index),
+		   ntohl (mp->fib_table), mp->operation, segments, &encap_src,
+		   ntohl (mp->sl_index), ntohl (mp->sids.weight));
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_MOD_REPLY);
@@ -387,7 +461,68 @@ vl_api_sr_policies_dump_t_handler (vl_api_sr_policies_dump_t * mp)
   /* *INDENT-ON* */
 }
 
+static void
+send_sr_policies_v2_details (ip6_sr_policy_t *t, vl_api_registration_t *reg,
+			     u32 context)
+{
+  vl_api_sr_policies_v2_details_t *rmp;
+  ip6_sr_main_t *sm = &sr_main;
 
+  u32 *sl_index, slidx = 0;
+  ip6_sr_sl_t *segment_list = 0;
+  ip6_address_t *segment;
+  vl_api_srv6_sid_list_t *api_sid_list;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len (t->segments_lists) *
+					    sizeof (vl_api_srv6_sid_list_t));
+  clib_memset (rmp, 0,
+	       (sizeof (*rmp) + vec_len (t->segments_lists) *
+				  sizeof (vl_api_srv6_sid_list_t)));
+
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_SR_POLICIES_V2_DETAILS);
+  ip6_address_encode (&t->bsid, rmp->bsid);
+  ip6_address_encode (&t->encap_src, rmp->encap_src);
+  rmp->is_encap = t->is_encap;
+  rmp->type = t->type;
+  rmp->fib_table = htonl (t->fib_table);
+  rmp->num_sid_lists = vec_len (t->segments_lists);
+
+  /* Fill in all the segments lists */
+  vec_foreach (sl_index, t->segments_lists)
+    {
+      segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
+
+      api_sid_list = &rmp->sid_lists[sl_index - t->segments_lists];
+
+      api_sid_list->num_sids = vec_len (segment_list->segments);
+      api_sid_list->weight = htonl (segment_list->weight);
+      slidx = 0;
+      vec_foreach (segment, segment_list->segments)
+	{
+	  ip6_address_encode (segment, api_sid_list->sids[slidx++]);
+	}
+    }
+
+  rmp->context = context;
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_sr_policies_v2_dump_t_handler (vl_api_sr_policies_v2_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *t;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  pool_foreach (t, sm->sr_policies)
+    {
+      send_sr_policies_v2_details (t, reg, mp->context);
+    }
+}
 
 static void send_sr_policies_details_with_sl_index
   (ip6_sr_policy_t * t, vl_api_registration_t * reg, u32 context)
