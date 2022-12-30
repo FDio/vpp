@@ -445,9 +445,10 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
   if (is_mlx5dv)
     {
       struct mlx5dv_cq_init_attr dvcq = { };
-      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE |
+		       MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
       dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
-
+      dvcq.cqe_size = 64;
       if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
 	return clib_error_return_unix (0, "Create mlx5dv rx CQ Failed");
     }
@@ -717,15 +718,32 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   struct ibv_qp_init_attr qpia;
   struct ibv_qp_attr qpa;
   int qp_flags;
+  int is_mlx5dv = !!(rd->flags & RDMA_DEVICE_F_MLX5DV);
 
   vec_validate_aligned (rd->txqs, qid, CLIB_CACHE_LINE_BYTES);
   txq = vec_elt_at_index (rd->txqs, qid);
   ASSERT (is_pow2 (n_desc));
   txq->bufs_log2sz = min_log2 (n_desc);
   vec_validate_aligned (txq->bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
-
-  if ((txq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
-    return clib_error_return_unix (0, "Create CQ Failed");
+  if (is_mlx5dv)
+    {
+      struct ibv_cq_init_attr_ex cqa = {};
+      struct ibv_cq_ex *cqex;
+      struct mlx5dv_cq_init_attr dvcq = {};
+      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE |
+		       MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
+      dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+      dvcq.cqe_size = 64;
+      cqa.cqe = n_desc;
+      if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
+	return clib_error_return_unix (0, "Create mlx5dv tx CQ Failed");
+      txq->cq = ibv_cq_ex_to_cq (cqex);
+    }
+  else
+    {
+      if ((txq->cq = ibv_create_cq (rd->ctx, n_desc, NULL, NULL, 0)) == 0)
+	return clib_error_return_unix (0, "Create CQ Failed");
+    }
 
   memset (&qpia, 0, sizeof (qpia));
   qpia.send_cq = txq->cq;
