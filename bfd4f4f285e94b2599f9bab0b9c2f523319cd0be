@@ -33,6 +33,23 @@
       "message": "perftest-2n-tx2 mrrANDnic_intel-xl710ANDdrv_vfio_pciAND1cAND64bANDethip4-ip4base",
       "revId": "bfd4f4f285e94b2599f9bab0b9c2f523319cd0be",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75c409a7_1e71396d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2023-01-01T12:34:21Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_mellanox-cx556aANDdrv_rdma_coreAND1cAND64bANDeth-l2bdbasemaclrn-eth-2memif-1dcr",
+      "revId": "bfd4f4f285e94b2599f9bab0b9c2f523319cd0be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
