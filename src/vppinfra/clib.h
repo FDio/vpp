@@ -170,12 +170,14 @@
  */
 #define CLIB_COMPILER_BARRIER() asm volatile ("":::"memory")
 
-/* Full memory barrier (read and write). */
-#define CLIB_MEMORY_BARRIER() __sync_synchronize ()
-
 #if __x86_64__
+#define CLIB_MEMORY_BARRIER()	    __sync_synchronize ()
 #define CLIB_MEMORY_STORE_BARRIER() __builtin_ia32_sfence ()
+#elif __aarch64__
+#define CLIB_MEMORY_BARRIER()	    asm volatile("dmb osh" ::: "memory")
+#define CLIB_MEMORY_STORE_BARRIER() asm volatile("dmb oshst" ::: "memory")
 #else
+#define CLIB_MEMORY_BARRIER()	    __sync_synchronize ()
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
 #endif
 
