@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ded675f_e619b1fa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-03T10:38:51Z",
+      "side": 1,
+      "message": "I\u0027m a bit wary of letting the tx function running for too long, what about using a timeout instead of a retry count?",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
