@@ -343,6 +343,132 @@ class TestAbf(VppTestCase):
         #
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
+    def test_abf4_deny(self):
+        """IPv4 ACL Deny Rule"""
+        import ipaddress
+
+        #
+        # Rules 1/2
+        #
+        pg0_subnet = ipaddress.ip_network(self.pg0.local_ip4_prefix, strict=False)
+        pg2_subnet = ipaddress.ip_network(self.pg2.local_ip4_prefix, strict=False)
+        pg3_subnet = ipaddress.ip_network(self.pg3.local_ip4_prefix, strict=False)
+        rule_deny = AclRule(
+            is_permit=0,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv4Network(pg0_subnet),
+            dst_prefix=IPv4Network(pg3_subnet),
+        )
+        rule_permit = AclRule(
+            is_permit=1,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv4Network(pg0_subnet),
+            dst_prefix=IPv4Network(pg2_subnet),
+        )
+        acl_1 = VppAcl(self, rules=[rule_deny, rule_permit])
+        acl_1.add_vpp_config()
+
+        #
+        # ABF policy for ACL 1 - path via interface 1
+        #
+        abf_1 = VppAbfPolicy(
+            self, 10, acl_1, [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)]
+        )
+        abf_1.add_vpp_config()
+
+        #
+        # Attach the policy to input interface Pg0
+        #
+        attach_1 = VppAbfAttach(self, 10, self.pg0.sw_if_index, 50)
+        attach_1.add_vpp_config()
+
+        #
+        # a packet matching the deny rule
+        #
+        p_deny = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg3.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg3.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.send_and_expect(self.pg0, p_deny * NUM_PKTS, self.pg3)
+
+        #
+        # a packet matching the permit rule
+        #
+        p_permit = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg2.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg2.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.send_and_expect(self.pg0, p_permit * NUM_PKTS, self.pg1)
+
+    def test_abf6_deny(self):
+        """IPv6 ACL Deny Rule"""
+        import ipaddress
+
+        #
+        # Rules 1/2
+        #
+        pg0_subnet = ipaddress.ip_network(self.pg0.local_ip6_prefix, strict=False)
+        pg2_subnet = ipaddress.ip_network(self.pg2.local_ip6_prefix, strict=False)
+        pg3_subnet = ipaddress.ip_network(self.pg3.local_ip6_prefix, strict=False)
+        rule_deny = AclRule(
+            is_permit=0,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv6Network(pg0_subnet),
+            dst_prefix=IPv6Network(pg3_subnet),
+        )
+        rule_permit = AclRule(
+            is_permit=1,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv6Network(pg0_subnet),
+            dst_prefix=IPv6Network(pg2_subnet),
+        )
+        acl_1 = VppAcl(self, rules=[rule_deny, rule_permit])
+        acl_1.add_vpp_config()
+
+        #
+        # ABF policy for ACL 1 - path via interface 1
+        #
+        abf_1 = VppAbfPolicy(
+            self, 10, acl_1, [VppRoutePath(self.pg1.remote_ip6, self.pg1.sw_if_index)]
+        )
+        abf_1.add_vpp_config()
+
+        #
+        # Attach the policy to input interface Pg0
+        #
+        attach_1 = VppAbfAttach(self, 10, self.pg0.sw_if_index, 50, is_ipv6=1)
+        attach_1.add_vpp_config()
+
+        #
+        # a packet matching the deny rule
+        #
+        p_deny = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg3.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg3.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.send_and_expect(self.pg0, p_deny * NUM_PKTS, self.pg3)
+
+        #
+        # a packet matching the permit rule
+        #
+        p_permit = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg2.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg2.remote_ip6)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.send_and_expect(self.pg0, p_permit * NUM_PKTS, self.pg1)
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
