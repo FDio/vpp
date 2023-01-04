@@ -343,6 +343,52 @@ class TestAbf(VppTestCase):
         #
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
+    def test_abf4_deny(self):
+        """IPv4 ACL Deny Rule"""
+
+        #
+        # Rules 1/2
+        #
+        rule_1 = AclRule(
+            is_permit=0,
+            proto=17,
+            ports=1234,
+            dst_prefix=IPv4Network("172.16.3.0/24"),
+        )
+        rule_2 = AclRule(
+            is_permit=1,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv4Network("1.1.2.0/26"),
+        )
+        acl_1 = VppAcl(self, rules=[rule_1, rule_2])
+        acl_1.add_vpp_config()
+
+        #
+        # ABF policy for ACL 1 - path via interface 1
+        #
+        abf_1 = VppAbfPolicy(
+            self, 10, acl_1, [VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index)]
+        )
+        abf_1.add_vpp_config()
+
+        #
+        # Attach the policy to input interface Pg0
+        #
+        attach_1 = VppAbfAttach(self, 10, self.pg0.sw_if_index, 50)
+        attach_1.add_vpp_config()
+
+        #
+        # fire in packet matching the ACL src,dst. If it's forwarded
+        # then the ABF was successful, since default routing will drop it
+        #
+        p_1 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="1.1.2.1", dst="172.16.3.2")
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.send_and_expect(self.pg0, p_1 * NUM_PKTS, self.pg2)
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

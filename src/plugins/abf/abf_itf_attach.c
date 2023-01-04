@@ -570,7 +570,8 @@ abf_input_inline (vlib_main_t * vm,
 	  if (acl_plugin_match_5tuple_inline
 	      (acl_plugin.p_acl_main, lc_index, &fa_5tuple0,
 	       (FIB_PROTOCOL_IP6 == fproto), &action, &match_acl_pos,
-	       &match_acl_index, &match_rule_index, &trace_bitmap))
+	         &match_acl_index, &match_rule_index, &trace_bitmap)
+	        && action > 0)
 	    {
 	      /*
 	       * match:
