@@ -40,5 +40,5 @@ add_vpp_plugin(ikev2
   ikev2_priv.h
 
   LINK_LIBRARIES
-  ${OPENSSL_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARIES}
 )
