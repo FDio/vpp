@@ -16,6 +16,24 @@
       "message": "I\u0027m a bit wary of letting the tx function running for too long, what about using a timeout instead of a retry count?",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d57f65f_9cb6f355",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-01-04T04:24:20Z",
+      "side": 1,
+      "message": "This maybe not a problem, if the bandwidth is not enough or the kernel issues cause the sending time to be too long, we will definitely lose the packet. I think it is better to spend on sending, so that the packets can be dropped earlier.\n\nHow about calling `af_xdp_device_output_tx_db` once per 32 or 64 packages?",
+      "parentUuid": "8ded675f_e619b1fa",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
