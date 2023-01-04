@@ -23,5 +23,5 @@ add_vpp_plugin(crypto_openssl
   main.c
 
   LINK_LIBRARIES
-  ${OPENSSL_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARIES}
 )

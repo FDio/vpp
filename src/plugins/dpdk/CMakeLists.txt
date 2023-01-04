@@ -156,7 +156,7 @@ add_vpp_plugin(dpdk
   ${DPDK_LINK_LIBRARIES}
 
   LINK_LIBRARIES
-  ${OPENSSL_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARIES}
 
   COMPONENT
   vpp-plugin-dpdk
