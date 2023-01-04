@@ -16,6 +16,23 @@
       "message": "Hello maintainers. I would love to contribute, so please give me a review 😎",
       "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02553cea_8dff8c2c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2023-01-04T15:12:55Z",
+      "side": 1,
+      "message": "Many thanks for the patch Takeru-san! Code looks good to me. Feel free to contribute more!",
+      "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
