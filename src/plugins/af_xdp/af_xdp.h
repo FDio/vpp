@@ -20,7 +20,7 @@
 
 #include <vlib/log.h>
 #include <vnet/interface.h>
-#include <bpf/xsk.h>
+#include <xdp/xsk.h>
 
 #define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
 
