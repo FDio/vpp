@@ -11,36 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vpp_find_path(BPF_INCLUDE_DIR NAMES bpf/xsk.h)
-if (NOT BPF_INCLUDE_DIR)
-  message(WARNING "libbpf headers not found - af_xdp plugin disabled")
+vpp_find_path(XDP_INCLUDE_DIR NAMES xdp/xsk.h)
+if (NOT XDP_INCLUDE_DIR)
+  message(WARNING "libxdp headers not found - af_xdp plugin disabled")
   return()
 endif()
 
 set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS TRUE)
+vpp_plugin_find_library(af_xdp XDP_LIB libxdp.a)
 vpp_plugin_find_library(af_xdp BPF_LIB libbpf.a)
-vpp_plugin_find_library(af_xdp BPF_ELF_LIB elf)
-vpp_plugin_find_library(af_xdp BPF_Z_LIB z)
-if (NOT BPF_LIB OR NOT BPF_ELF_LIB OR NOT BPF_Z_LIB)
+vpp_plugin_find_library(af_xdp ELF_LIB elf)
+vpp_plugin_find_library(af_xdp Z_LIB z)
+if (NOT XDP_LIB OR NOT BPF_LIB OR NOT ELF_LIB OR NOT Z_LIB)
   message(WARNING "af_xdp plugin - missing libraries - af_xdp plugin disabled")
   return()
 endif()
 
 set(CMAKE_REQUIRED_FLAGS "-fPIC")
-set(CMAKE_REQUIRED_INCLUDES "${BPF_INCLUDE_DIR}")
-set(CMAKE_REQUIRED_LIBRARIES "${BPF_LIB}" "${BPF_ELF_LIB}" "${BPF_Z_LIB}")
+set(CMAKE_REQUIRED_INCLUDES "${XDP_INCLUDE_DIR}")
+set(CMAKE_REQUIRED_LIBRARIES "${XDP_LIB}" "${BPF_LIB}" "${ELF_LIB}" "${Z_LIB}")
 CHECK_C_SOURCE_COMPILES("
-#include <bpf/xsk.h>
+#include <xdp/xsk.h>
 int main(void)
 {
     return xsk_socket__create (0, 0, 0, 0, 0, 0, 0);
-}" BPF_COMPILES_CHECK)
-if (NOT BPF_COMPILES_CHECK)
-  message(WARNING "af_xdp plugins - no working libbpf found - af_xdp plugin disabled")
+}" XDP_COMPILES_CHECK)
+if (NOT XDP_COMPILES_CHECK)
+message(WARNING "af_xdp plugins - no working libxdp found - af_xdp plugin disabled")
   return()
 endif()
 
-include_directories(${BPF_INCLUDE_DIR})
+include_directories(${XDP_INCLUDE_DIR})
 
 add_vpp_plugin(af_xdp
   SOURCES
@@ -65,7 +66,8 @@ add_vpp_plugin(af_xdp
   test_api.c
 
   LINK_LIBRARIES
+  ${XDP_LIB}
   ${BPF_LIB}
-  ${BPF_ELF_LIB}
-  ${BPF_Z_LIB}
+  ${ELF_LIB}
+  ${Z_LIB}
 )

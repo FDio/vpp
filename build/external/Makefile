@@ -40,14 +40,14 @@ include packages/ipsec-mb.mk
 include packages/quicly.mk
 include packages/rdma-core.mk
 include packages/dpdk.mk
-include packages/libbpf.mk
+include packages/xdp-tools.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install
+install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install xdp-tools-install
 
 .PHONY: config
 config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
