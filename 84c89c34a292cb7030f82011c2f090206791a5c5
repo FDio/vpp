@@ -33,6 +33,24 @@
       "message": "Many thanks for the patch Takeru-san! Code looks good to me. Feel free to contribute more!",
       "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1ab7bf5_67427e27",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-01-05T04:54:10Z",
+      "side": 1,
+      "message": "Hi Pablo-san.Thank you for your review!\nI would like to continue to contribute by fixing tests and adding new features. I\u0027ll try 😊\nBy the way, who should I ask to merge this?I\u0027m glad if you could tell me 🙏",
+      "parentUuid": "02553cea_8dff8c2c",
+      "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
