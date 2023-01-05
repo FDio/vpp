@@ -34,6 +34,24 @@
       "parentUuid": "8ded675f_e619b1fa",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "753cc11c_dba48424",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-05T15:38:25Z",
+      "side": 1,
+      "message": "The problem is that while VPP worker process packets, most control plane operations (including API calls) are blocked. It is not good to block for too long. In the worst case, if we block for more than 1s, VPP worker barrier watchdog will trigger an abort.\nMoreover, blocking too much on tx can also trigger bufferbloat.\nAll in all, I think we want to allow blocking on tx long enough to send all packets in most situation, but not for too long.\n\nRegarding calling af_xdp_device_output_tx_db once every 32/64 packets, I\u0027m not sure what it would solve?",
+      "parentUuid": "7d57f65f_9cb6f355",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
