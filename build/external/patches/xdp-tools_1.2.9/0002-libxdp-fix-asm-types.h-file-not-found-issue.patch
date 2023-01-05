@@ -1,0 +1,32 @@
+From 51ea3b590f5e0a6b34b5148af43996029fd60ac6 Mon Sep 17 00:00:00 2001
+From: Yulong <yulong.pei@intel.com>
+Date: Fri, 6 Jan 2023 07:46:10 +0000
+Subject: [PATCH 2/2] libxdp: fix asm/types.h file not found issue
+
+The file asm/types.h located in /usr/include/$(uname -m)-linux-gnu,
+the path string already assigned to ARCH_INCLUDES when run xdp-tools
+configure, so include ARCH_INCLUDES to CFLAGS and BPF_CFLAGS directly.
+
+Signed-off-by: Yulong <yulong.pei@intel.com>
+---
+ lib/defines.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/defines.mk b/lib/defines.mk
+index f134c43..515411c 100644
+--- a/lib/defines.mk
++++ b/lib/defines.mk
+@@ -40,8 +40,8 @@ endif
+ 
+ DEFINES += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+ 
+-CFLAGS += -std=gnu11 -Wextra -Werror $(DEFINES)
+-BPF_CFLAGS += $(DEFINES) $(filter -ffile-prefix-map=%,$(CFLAGS))
++CFLAGS += -std=gnu11 -Wextra -Werror $(DEFINES) $(ARCH_INCLUDES)
++BPF_CFLAGS += $(DEFINES) $(filter -ffile-prefix-map=%,$(CFLAGS)) $(ARCH_INCLUDES)
+ 
+ CONFIGMK := $(LIB_DIR)/../config.mk
+ LIBMK := Makefile $(CONFIGMK) $(LIB_DIR)/defines.mk $(LIB_DIR)/common.mk $(LIB_DIR)/../version.mk
+-- 
+2.25.1
+
