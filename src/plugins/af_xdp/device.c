@@ -176,10 +176,10 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
     {
       int ns_fds[2];
       af_xdp_enter_netns (ad->netns, ns_fds);
-      bpf_set_link_xdp_fd (ad->linux_ifindex, -1, 0);
+      bpf_xdp_detach (ad->linux_ifindex, XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
       af_xdp_exit_netns (ad->netns, ns_fds);
 
-      bpf_object__unload (ad->bpf_obj);
+      bpf_object__close (ad->bpf_obj);
     }
 
   vec_free (ad->xsk);
@@ -198,6 +198,7 @@ static int
 af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
 {
   int fd;
+  struct bpf_program *bpf_prog;
   struct rlimit r = { RLIM_INFINITY, RLIM_INFINITY };
 
   if (setrlimit (RLIMIT_MEMLOCK, &r))
@@ -215,27 +216,39 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
       goto err0;
     }
 
-  if (bpf_prog_load (args->prog, BPF_PROG_TYPE_XDP, &ad->bpf_obj, &fd))
+  ad->bpf_obj = bpf_object__open_file (args->prog, NULL);
+  if (libbpf_get_error (ad->bpf_obj))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_5;
-      args->error =
-	clib_error_return_unix (0, "bpf_prog_load(%s) failed", args->prog);
+      args->error = clib_error_return_unix (
+	0, "bpf_object__open_file(%s) failed", args->prog);
       goto err0;
     }
 
-  if (bpf_set_link_xdp_fd (ad->linux_ifindex, fd, 0))
+  bpf_prog = bpf_object__next_program (ad->bpf_obj, NULL);
+  if (!bpf_prog)
+    goto err1;
+
+  bpf_program__set_type (bpf_prog, BPF_PROG_TYPE_XDP);
+
+  if (bpf_object__load (ad->bpf_obj))
+    goto err1;
+
+  fd = bpf_program__fd (bpf_prog);
+
+  if (bpf_xdp_attach (ad->linux_ifindex, fd, XDP_FLAGS_UPDATE_IF_NOEXIST,
+		      NULL))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
-      args->error =
-	clib_error_return_unix (0, "bpf_set_link_xdp_fd(%s) failed",
-				ad->linux_ifname);
+      args->error = clib_error_return_unix (0, "bpf_xdp_attach(%s) failed",
+					    ad->linux_ifname);
       goto err1;
     }
 
   return 0;
 
 err1:
-  bpf_object__unload (ad->bpf_obj);
+  bpf_object__close (ad->bpf_obj);
   ad->bpf_obj = 0;
 err0:
   ad->linux_ifindex = ~0;
