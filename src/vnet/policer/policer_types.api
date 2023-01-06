@@ -56,6 +56,34 @@ typedef sse2_qos_action
   u8 dscp;
 };
 
+/** \brief Policer configuration
+    @param cir - CIR
+    @param eir - EIR
+    @param cb - Committed Burst
+    @param eb - Excess or Peak Burst
+    @param rate_type - rate type
+    @param round_type - rounding type
+    @param type - policer algorithm
+    @param color_aware - 0=color-blind, 1=color-aware
+    @param conform_action - conform action
+    @param exceed_action - exceed action type
+    @param violate_action - violate action type
+*/
+typedef policer_config
+{
+  u32 cir;
+  u32 eir;
+  u64 cb;
+  u64 eb;
+  vl_api_sse2_qos_rate_type_t rate_type;
+  vl_api_sse2_qos_round_type_t round_type;
+  vl_api_sse2_qos_policer_type_t type;
+  bool color_aware;
+  vl_api_sse2_qos_action_t conform_action;
+  vl_api_sse2_qos_action_t exceed_action;
+  vl_api_sse2_qos_action_t violate_action;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

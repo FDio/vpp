@@ -73,8 +73,6 @@ typedef enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 lock;			// for exclusive access to the struct
-
   u32 single_rate;		// 1 = single rate policer, 0 = two rate policer
   u32 color_aware;		// for hierarchical policing
   u32 scale;			// power-of-2 shift amount for lower rates
@@ -93,11 +91,9 @@ typedef struct
   u32 current_bucket;		// MOD
   u32 extended_limit;
   u32 extended_bucket;		// MOD
-
-  u64 last_update_time;		// MOD
   u32 thread_index;		// Tie policer to a thread, rather than lock
-  u32 pad32;
-
+  u64 last_update_time;		// MOD
+  u8 *name;
 } policer_t;
 
 STATIC_ASSERT_SIZEOF (policer_t, CLIB_CACHE_LINE_BYTES);

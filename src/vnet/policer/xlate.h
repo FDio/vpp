@@ -158,7 +158,7 @@ typedef struct qos_pol_hw_params_st_
   u32 extd_bkt;
 } qos_pol_hw_params_st;
 
-int pol_logical_2_physical (qos_pol_cfg_params_st *cfg, policer_t *phys);
+int pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys);
 
 #endif /* __included_xlate_h__ */
 
