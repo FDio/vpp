@@ -70,6 +70,24 @@
       "parentUuid": "753cc11c_dba48424",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "092f05de_943786d3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:37:59Z",
+      "side": 1,
+      "message": "\u003e node processes max 256 packets at a time.\n\u003e `af_xdp_device_output_tx_db` is called to process 256 packages at a time, worrying that it will take too long in the kernel. So, I think it makes more sense to refer to DPDK and call `af_xdp_device_output_tx_db` every 32 packets.\n\u003e Can you provide some more explicit advice on timeout instead of retry?\n\nI\u0027m not worried about the syscall taking too long, it should be non-blocking in this case and should return in a reasonable amount of time.\nWhat I\u0027m worried is if for some reason the kernel takes a long time to send all the packets, we\u0027ll be continuously busy-looping doing syscalls until it\u0027s fully done. My issue are not the syscalls (we have to pay for them anyway, we\u0027re trying to send packets), but the busy-loop.",
+      "parentUuid": "4f428f00_292209ed",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
