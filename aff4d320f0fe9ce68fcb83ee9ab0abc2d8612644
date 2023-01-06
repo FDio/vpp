@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "08f92a74_b6cfdca2",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-06T09:43:34Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "f1509acb_63c7a383",
+      "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ab082127_393d0396",
