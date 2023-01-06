@@ -52,6 +52,24 @@
       "parentUuid": "7d57f65f_9cb6f355",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f428f00_292209ed",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-01-06T11:27:45Z",
+      "side": 1,
+      "message": "node processes max 256 packets at a time.\n`af_xdp_device_output_tx_db` is called to process 256 packages at a time, worrying that it will take too long in the kernel. So, I think it makes more sense to refer to DPDK and call `af_xdp_device_output_tx_db` every 32 packets.\n\nCan you provide some more explicit advice on timeout instead of retry?",
+      "parentUuid": "753cc11c_dba48424",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
