@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "3.0.0";
 
 import "vnet/interface_types.api";
 import "vnet/policer/policer_types.api";
@@ -35,6 +35,16 @@ autoreply define policer_bind
   bool bind_enable;
 };
 
+autoreply define policer_bind_v2
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+  u32 worker_index;
+  bool bind_enable;
+};
+
 /** \brief policer input: Apply policer as an input feature.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -52,6 +62,16 @@ autoreply define policer_input
   bool apply;
 };
 
+autoreply define policer_input_v2
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+  vl_api_interface_index_t sw_if_index;
+  bool apply;
+};
+
 /** \brief policer output: Apply policer as an output feature.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -65,6 +85,16 @@ autoreply define policer_output
   u32 context;
 
   string name[64];
+  vl_api_interface_index_t sw_if_index;
+  bool apply;
+};
+
+autoreply define policer_output_v2
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
   vl_api_interface_index_t sw_if_index;
   bool apply;
 };
@@ -106,12 +136,53 @@ define policer_add_del
   vl_api_sse2_qos_action_t violate_action;
 };
 
+define policer_add
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  vl_api_policer_config_t infos;
+};
+
+autoreply define policer_del
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+};
+
+autoreply define policer_update
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+  vl_api_policer_config_t infos;
+};
+
+autoreply define policer_reset
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+};
+
 /** \brief Add/del policer response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
     @param policer_index - for add, returned index of the new policer
 */
 define policer_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 policer_index;
+};
+
+define policer_add_reply
 {
   u32 context;
   i32 retval;
@@ -131,6 +202,23 @@ define policer_dump
 
   bool match_name_valid;
   string match_name[64];
+};
+
+/** \brief Get list of policers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param policer_index - index of policer in the pool, ~0 to request all
+*/
+define policer_dump_v2
+{
+  u32 client_index;
+  u32 context;
+
+  u32 policer_index;
+};
+
+service {
+  rpc policer_dump_v2 returns stream policer_details;
 };
 
 /** \brief Policer operational state response.

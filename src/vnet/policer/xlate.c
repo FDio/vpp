@@ -1058,7 +1058,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
  * Return: Status, success or failure code.
  */
 int
-pol_logical_2_physical (qos_pol_cfg_params_st *cfg, policer_t *phys)
+pol_logical_2_physical (const qos_pol_cfg_params_st *cfg, policer_t *phys)
 {
   int rc;
   qos_pol_cfg_params_st kbps_cfg;
