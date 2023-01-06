@@ -92,6 +92,85 @@ class TestPolicerInput(VppTestCase):
         """Output Policing"""
         self.policer_interface_test(Dir.TX)
 
+    def test_policer_reset(self):
+        """Policer reset bucket"""
+        pkts = self.pkt * NUM_PKTS
+
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            1,
+            0,
+            10000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Start policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, True)
+
+        self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
+        details = policer.get_details()
+
+        self.assertGreater(details.current_limit, details.current_bucket)
+
+        self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
+        self.vapi.policer_reset(policer_index=policer.policer_index)
+        details = policer.get_details()
+
+        self.assertEqual(details.current_limit, details.current_bucket)
+
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, False)
+
+        policer.remove_vpp_config()
+
+    def test_policer_update(self):
+        """Policer update"""
+        pkts = self.pkt * NUM_PKTS
+
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            1,
+            0,
+            10000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Start policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, True)
+
+        self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
+        details_before = policer.get_details()
+
+        self.assertGreater(details_before.current_limit, details_before.current_bucket)
+
+        policer.cir = 8000
+        policer.commited_burst = 100000
+        policer.update()
+
+        details_after = policer.get_details()
+
+        self.assertGreater(details_after.cir, details_before.cir)
+        self.assertGreater(details_after.cb, details_before.cb)
+
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, False)
+
+        policer.remove_vpp_config()
+
     def policer_handoff_test(self, dir: Dir):
         pkts = self.pkt * NUM_PKTS
 

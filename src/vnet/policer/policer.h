@@ -32,7 +32,7 @@ typedef struct
   qos_pol_cfg_params_st *configs;
   policer_t *policer_templates;
 
-  /* Config by name hash */
+  /* Config by policer name hash */
   uword *policer_config_by_name;
 
   /* Policer by name hash */
@@ -68,11 +68,16 @@ typedef enum
 } vnet_policer_next_t;
 
 u8 *format_policer_instance (u8 * s, va_list * va);
-clib_error_t *policer_add_del (vlib_main_t *vm, u8 *name,
-			       qos_pol_cfg_params_st *cfg, u32 *policer_index,
-			       u8 is_add);
-int policer_bind_worker (u8 *name, u32 worker, bool bind);
-int policer_input (u8 *name, u32 sw_if_index, vlib_dir_t dir, bool apply);
+int policer_add (vlib_main_t *vm, const u8 *name,
+		 const qos_pol_cfg_params_st *cfg, u32 *policer_index);
+
+int policer_update (vlib_main_t *vm, u32 policer_index,
+		    const qos_pol_cfg_params_st *cfg);
+int policer_del (vlib_main_t *vm, u32 policer_index);
+int policer_reset (vlib_main_t *vm, u32 policer_index);
+int policer_bind_worker (u32 policer_index, u32 worker, bool bind);
+int policer_input (u32 policer_index, u32 sw_if_index, vlib_dir_t dir,
+		   bool apply);
 
 #endif /* __included_policer_h__ */
 
