@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eaed5e42_38af45e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "Thanks, I have a few comments",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "612fbfd0_804200d2",
+        "filename": "src/vnet/policer/police.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "not related to your patch, but now I\u0027m curious: where does this lock is used?",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "229fc47e_9f0a54d4",
+        "filename": "src/vnet/policer/police.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "something I was thinking about: we have 6-bytes of padding available already, if we change thread_index from u32 to u16, we\u0027ll have enough to store the name pointer in the 1st cacheline alongside the rest.\nIt should not change performance, however we would still consume 64-bytes per policer instead of 128-bytes.",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b3fc4a2b_1cf5e365",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "while we\u0027re at it, I think we can make name and cfg const.",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a23a0c6_297b060c",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "I\u0027d rather use the index internally instead of the name. Also cfg can be const?",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b8e9fcd2_a9ae1906",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "I\u0027d rather use the index internally instead of the name.",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab1a021e_752a5a2d",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "I\u0027d rather use the index internally instead of the name.",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0edee222_9935fc3a",
+        "filename": "src/vnet/policer/policer_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T15:13:10Z",
+      "side": 1,
+      "message": "typo: configuration",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
