@@ -88,6 +88,23 @@
       "parentUuid": "4f428f00_292209ed",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9dc8f88b_a0da9f13",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-06T16:37:15Z",
+      "side": 1,
+      "message": "Actually, I remember the issue now! There is https://gerrit.fd.io/r/c/vpp/+/34668 quietly rusting...\nThe issue stems from the kernel AF_XDP code which limits a TX batch to a magic value defined only in net/xdp/xsk.c. I think it used to be 16 and is 32 now.\nSo if we try to send more than this (say 256), we\u0027ll fail and drop the rest. Which obviously is not ideal.\nThe difficulty is we do not know this magic value in userspace, hence my other patch retrying as long as we get EAGAIN.",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
