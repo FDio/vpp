@@ -38,8 +38,8 @@ format_pt_trace (u8 *s, va_list *args)
 	"outgoing interface load %u, t64_sec %u, t64_nsec %u, tts_template "
 	"%u, tts %u",
 	format_vnet_sw_if_index_name, vnet_get_main (), t->iface, t->id,
-	t->load, htobe32 (t->t64.sec), htobe32 (t->t64.nsec), t->tts_template,
-	t->tts);
+	t->load, clib_host_to_net_u32 (t->t64.sec),
+	clib_host_to_net_u32 (t->t64.nsec), t->tts_template, t->tts);
       break;
     default:
       break;
@@ -65,7 +65,8 @@ pt_midpoint_processing (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  hbh_opt_pt = (void *) (hbh_opt + 1);
 	  clib_memcpy_fast (&hbh_opt_pt->cmd_stack[1],
 			    &hbh_opt_pt->cmd_stack[0], 33);
-	  hbh_opt_pt->cmd_stack[0].oif_oil = htobe16 (ls->id << 4);
+	  hbh_opt_pt->cmd_stack[0].oif_oil =
+	    clib_host_to_net_u16 (ls->id << 4);
 	  hbh_opt_pt->cmd_stack[0].oif_oil |= ls->egress_load;
 	  switch (ls->tts_template)
 	    {
@@ -122,7 +123,7 @@ VLIB_NODE_FN (sr_pt_node)
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-	  timestamp_64_t t64;
+	  timestamp_64_t t64 = {};
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  iface = vnet_buffer (b0)->sw_if_index[VLIB_TX];
