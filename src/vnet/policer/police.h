@@ -98,9 +98,12 @@ typedef struct
   u32 thread_index;		// Tie policer to a thread, rather than lock
   u32 pad32;
 
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  u8 *name;
 } policer_t;
 
-STATIC_ASSERT_SIZEOF (policer_t, CLIB_CACHE_LINE_BYTES);
+STATIC_ASSERT_OFFSET_OF (policer_t, cacheline1, CLIB_CACHE_LINE_BYTES);
 
 static inline policer_result_e
 vnet_police_packet (policer_t *policer, u32 packet_length,

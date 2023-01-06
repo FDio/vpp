@@ -53,83 +53,194 @@ clib_error_t *
 policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
 		 u32 *policer_index, u8 is_add)
 {
-  vnet_policer_main_t *pm = &vnet_policer_main;
-  policer_t test_policer;
-  policer_t *policer;
-  uword *p;
-  u32 pi;
+  clib_error_t *error = 0;
   int rv;
 
-  p = hash_get_mem (pm->policer_config_by_name, name);
-
-  if (is_add == 0)
+  if (is_add)
     {
-      /* free policer config and template */
-      if (p == 0)
+      rv = policer_add (vm, name, cfg, policer_index);
+      switch (rv)
 	{
-	  vec_free (name);
-	  return clib_error_return (0, "No such policer configuration");
-	}
-      pool_put_index (pm->configs, p[0]);
-      pool_put_index (pm->policer_templates, p[0]);
-      hash_unset_mem (pm->policer_config_by_name, name);
-
-      /* free policer */
-      p = hash_get_mem (pm->policer_index_by_name, name);
-      if (p == 0)
-	{
-	  vec_free (name);
-	  return clib_error_return (0, "No such policer");
-	}
-      pool_put_index (pm->policers, p[0]);
-      hash_unset_mem (pm->policer_index_by_name, name);
-
-      vec_free (name);
-      return 0;
-    }
-
-  if (p != 0)
-    {
-      vec_free (name);
-      return clib_error_return (0, "Policer already exists");
-    }
-
-  /* Vet the configuration before adding it to the table */
-  rv = pol_logical_2_physical (cfg, &test_policer);
-
-  if (rv == 0)
-    {
-      policer_t *pp;
-      qos_pol_cfg_params_st *cp;
-      int i;
-
-      pool_get (pm->configs, cp);
-      pool_get (pm->policer_templates, pp);
-
-      ASSERT (cp - pm->configs == pp - pm->policer_templates);
-
-      clib_memcpy (cp, cfg, sizeof (*cp));
-      clib_memcpy (pp, &test_policer, sizeof (*pp));
-
-      hash_set_mem (pm->policer_config_by_name, name, cp - pm->configs);
-      pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
-      policer[0] = pp[0];
-      pi = policer - pm->policers;
-      hash_set_mem (pm->policer_index_by_name, name, pi);
-      *policer_index = pi;
-      policer->thread_index = ~0;
-
-      for (i = 0; i < NUM_POLICE_RESULTS; i++)
-	{
-	  vlib_validate_combined_counter (&policer_counters[i], pi);
-	  vlib_zero_combined_counter (&policer_counters[i], pi);
+	case VNET_API_ERROR_VALUE_EXIST:
+	  error = clib_error_return (0, "Policer already exists");
+	  break;
+	case VNET_API_ERROR_INVALID_VALUE:
+	  error = clib_error_return (0, "Config failed sanity check");
+	  break;
 	}
     }
   else
     {
-      vec_free (name);
-      return clib_error_return (0, "Config failed sanity check");
+      rv = policer_del (vm, name);
+      switch (rv)
+	{
+	case VNET_API_ERROR_INVALID_VALUE:
+	  error = clib_error_return (0, "No such policer configuration");
+	  break;
+	case VNET_API_ERROR_INVALID_VALUE_2:
+	  error = clib_error_return (0, "No such policer");
+	  break;
+	}
     }
+
+  return error;
+}
+
+int
+policer_add (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
+	     u32 *policer_index)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_t test_policer;
+  policer_t *policer;
+  policer_t *pp;
+  qos_pol_cfg_params_st *cp;
+  uword *p;
+  u32 pi;
+  int rv;
+  int i;
+
+  p = hash_get_mem (pm->policer_config_by_name, name);
+
+  if (0 != p)
+    return VNET_API_ERROR_VALUE_EXIST;
+
+  /* Vet the configuration before adding it to the table */
+  rv = pol_logical_2_physical (cfg, &test_policer);
+
+  if (0 != rv)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  pool_get (pm->configs, cp);
+  pool_get (pm->policer_templates, pp);
+
+  ASSERT (cp - pm->configs == pp - pm->policer_templates);
+
+  clib_memcpy (cp, cfg, sizeof (*cp));
+  clib_memcpy (pp, &test_policer, sizeof (*pp));
+
+  pp->name = format (0, "%s%c", name, 0);
+
+  hash_set_mem (pm->policer_config_by_name, pp->name, cp - pm->configs);
+  pool_get_aligned (pm->policers, policer, CLIB_CACHE_LINE_BYTES);
+  policer[0] = pp[0];
+  pi = policer - pm->policers;
+  hash_set_mem (pm->policer_index_by_name, pp->name, pi);
+  *policer_index = pi;
+  policer->thread_index = ~0;
+
+  for (i = 0; i < NUM_POLICE_RESULTS; i++)
+    {
+      vlib_validate_combined_counter (&policer_counters[i], pi);
+      vlib_zero_combined_counter (&policer_counters[i], pi);
+    }
+
+  return 0;
+}
+
+int
+policer_del (vlib_main_t *vm, u8 *name)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_t *policer;
+  uword *p;
+
+  p = hash_get_mem (pm->policer_config_by_name, name);
+
+  /* free policer config and template */
+  if (0 == p)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  pool_put_index (pm->configs, p[0]);
+  pool_put_index (pm->policer_templates, p[0]);
+  hash_unset_mem (pm->policer_config_by_name, name);
+
+  /* free policer */
+  p = hash_get_mem (pm->policer_index_by_name, name);
+  if (0 == p)
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  policer = &pm->policers[p[0]];
+
+  /* free policer */
+  hash_unset_mem (pm->policer_index_by_name, name);
+  vec_free (policer->name);
+  pool_put_index (pm->policers, p[0]);
+
+  return 0;
+}
+
+int
+policer_update (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_t test_policer;
+  policer_t *policer;
+  policer_t *pp;
+  qos_pol_cfg_params_st *cp;
+  uword *p, *pi;
+  u32 policer_index, pool_index;
+  u8 *pp_name;
+  int rv;
+  int i;
+
+  p = hash_get_mem (pm->policer_config_by_name, name);
+
+  if (0 == p)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  pi = hash_get_mem (pm->policer_index_by_name, name);
+
+  if (0 == pi)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  /* Vet the configuration before adding it to the table */
+  rv = pol_logical_2_physical (cfg, &test_policer);
+
+  if (0 != rv)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  pool_index = p[0];
+  cp = pool_elt_at_index (pm->configs, pool_index);
+  pp = pool_elt_at_index (pm->policer_templates, pool_index);
+
+  pp_name = pp->name;
+
+  clib_memcpy (cp, cfg, sizeof (*cp));
+  clib_memcpy (pp, &test_policer, sizeof (*pp));
+
+  pp->name = pp_name;
+
+  policer_index = pi[0];
+  policer = pool_elt_at_index (pm->policers, policer_index);
+  policer[0] = pp[0];
+
+  policer->thread_index = ~0;
+
+  for (i = 0; i < NUM_POLICE_RESULTS; i++)
+    {
+      vlib_validate_combined_counter (&policer_counters[i], policer_index);
+      vlib_zero_combined_counter (&policer_counters[i], policer_index);
+    }
+
+  return 0;
+}
+
+int
+policer_reset (vlib_main_t *vm, u8 *name)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_t *policer;
+  uword *p;
+
+  p = hash_get_mem (pm->policer_index_by_name, name);
+  if (0 == p)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  policer = &pm->policers[p[0]];
+
+  policer->current_bucket = policer->current_limit;
+  policer->extended_bucket = policer->extended_limit;
 
   return 0;
 }
@@ -207,13 +318,28 @@ policer_input (u8 *name, u32 sw_if_index, vlib_dir_t dir, bool apply)
   return 0;
 }
 
+int
+policer_name_from_index (u32 policer_index, u8 **name)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_t *policer;
+
+  policer = pool_elt_at_index (pm->policers, policer_index);
+  *name = policer->name;
+
+  return 0;
+}
+
 u8 *
 format_policer_instance (u8 * s, va_list * va)
 {
-  policer_t *i = va_arg (*va, policer_t *);
+  vnet_policer_main_t *pm = &vnet_policer_main;
   uword pi = va_arg (*va, uword);
+  policer_t *i;
   int result;
   vlib_counter_t counts[NUM_POLICE_RESULTS];
+
+  i = &pm->policers[pi];
 
   for (result = 0; result < NUM_POLICE_RESULTS; result++)
     {
@@ -221,9 +347,9 @@ format_policer_instance (u8 * s, va_list * va)
 				 &counts[result]);
     }
 
-  s = format (s, "policer at %llx: %s rate, %s color-aware\n",
-	      i, i->single_rate ? "single" : "dual",
-	      i->color_aware ? "is" : "not");
+  s =
+    format (s, "Policer at %llx: %s rate, %s color-aware\n", i,
+	    i->single_rate ? "single" : "dual", i->color_aware ? "is" : "not");
   s = format (s, "cir %u tok/period, pir %u tok/period, scale %u\n",
 	      i->cir_tokens_per_period, i->pir_tokens_per_period, i->scale);
   s = format (s, "cur lim %u, cur bkt %u, ext lim %u, ext bkt %u\n",
@@ -515,9 +641,9 @@ policer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   qos_pol_cfg_params_st c;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
   u8 *name = 0;
   u32 pi;
+  int rv;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -528,9 +654,7 @@ policer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "name %s", &name))
+      if (unformat (line_input, "name %s", &name))
 	;
       else if (unformat (line_input, "color-aware"))
 	c.color_aware = 1;
@@ -546,7 +670,17 @@ policer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  error = policer_add_del (vm, name, &c, &pi, is_add);
+  rv = policer_add (vm, name, &c, &pi);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_VALUE_EXIST:
+      error = clib_error_return (0, "Policer already exists");
+      break;
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "Config failed sanity check");
+      break;
+    }
 
 done:
   unformat_free (line_input);
@@ -560,6 +694,7 @@ policer_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
+  int rv;
   u8 *name = 0;
 
   /* Get a line of input. */
@@ -578,7 +713,17 @@ policer_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  error = policer_add_del (vm, name, NULL, NULL, 0);
+  rv = policer_del (vm, name);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "No such policer configuration");
+      break;
+    case VNET_API_ERROR_INVALID_VALUE_2:
+      error = clib_error_return (0, "No such policer");
+      break;
+    }
 
 done:
   unformat_free (line_input);
@@ -751,7 +896,6 @@ show_policer_command_fn (vlib_main_t * vm,
   u8 *name;
   uword *pi;
   qos_pol_cfg_params_st *config;
-  policer_t *templ;
 
   (void) unformat (input, "name %s", &match_name);
 
@@ -765,13 +909,11 @@ show_policer_command_fn (vlib_main_t * vm,
 
 	pool_index = p->value[0];
 	config = pool_elt_at_index (pm->configs, pool_index);
-	templ = pool_elt_at_index (pm->policer_templates, pool_index);
 	vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
 			 config);
 	if (pi)
 	  {
-	    vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
-			     pi[0]);
+	    vlib_cli_output (vm, "%U", format_policer_instance, pi[0]);
 	  }
 	else
 	  {
