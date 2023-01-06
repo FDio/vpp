@@ -16,6 +16,23 @@
       "message": "Could Intel team test the patches against QAT to see if there is any problem?",
       "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3305eed_90b52ef9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-06T16:05:25Z",
+      "side": 1,
+      "message": "By the way please rename the patch to \"dpdk: bump to dpdk 22.11\"",
+      "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
