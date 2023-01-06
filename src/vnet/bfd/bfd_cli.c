@@ -397,23 +397,30 @@ WARN_OFF(tautological-compare)                                            \
       goto out;                                                           \
     }
 
+static uword
+bfd_cli_unformat_ip46_address (unformat_input_t *input, va_list *args)
+{
+  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
+  return unformat_user (input, unformat_ip46_address, ip46, IP46_TYPE_ANY);
+}
+
 static clib_error_t *
 bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
 			 CLIB_UNUSED (vlib_cli_command_t * lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_add_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")    \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")  \
-  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")          \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, optional, "%u")           \
+#define foreach_bfd_cli_udp_session_add_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
+  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")                      \
+  F (u32, conf_key_id, CONF_KEY_ID_STR, optional, "%u")                       \
   F (u32, bfd_key_id, BFD_KEY_ID_STR, optional, "%u")
 
   foreach_bfd_cli_udp_session_add_cli_param (DECLARE);
@@ -501,15 +508,15 @@ bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_mod_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")    \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")  \
+#define foreach_bfd_cli_udp_session_mod_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
   F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")
 
   foreach_bfd_cli_udp_session_mod_cli_param (DECLARE);
@@ -576,13 +583,13 @@ bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_del_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)
+#define foreach_bfd_cli_udp_session_del_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)
 
   foreach_bfd_cli_udp_session_del_cli_param (DECLARE);
 
@@ -637,14 +644,14 @@ bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_set_flags_cli_param(F)        \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u8 *, admin_up_down_token, ADMIN_STR, mandatory, "%v",       \
+#define foreach_bfd_cli_udp_session_set_flags_cli_param(F)                    \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (u8 *, admin_up_down_token, ADMIN_STR, mandatory, "%v",                   \
      &admin_up_down_token)
 
   foreach_bfd_cli_udp_session_set_flags_cli_param (DECLARE);
@@ -721,15 +728,15 @@ bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_activate_cli_param(F)    \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")            \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, mandatory, "%u")          \
+#define foreach_bfd_cli_udp_session_auth_activate_cli_param(F)                \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")                        \
+  F (u32, conf_key_id, CONF_KEY_ID_STR, mandatory, "%u")                      \
   F (u32, bfd_key_id, BFD_KEY_ID_STR, mandatory, "%u")
 
   foreach_bfd_cli_udp_session_auth_activate_cli_param (DECLARE);
@@ -818,13 +825,13 @@ bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_deactivate_cli_param(F)  \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
+#define foreach_bfd_cli_udp_session_auth_deactivate_cli_param(F)              \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     bfd_cli_unformat_ip46_address)                                           \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     bfd_cli_unformat_ip46_address)                                           \
   F (u8 *, delayed_token, DELAYED_STR, optional, "%v")
 
   foreach_bfd_cli_udp_session_auth_deactivate_cli_param (DECLARE);
