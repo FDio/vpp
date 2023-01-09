@@ -185,6 +185,7 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
   hdr->lcl_port = udp->dst_port;
   hdr->rmt_port = udp->src_port;
   hdr->is_ip4 = is_ip4;
+  hdr->gso_size = 0;
 
   if (is_ip4)
     {
