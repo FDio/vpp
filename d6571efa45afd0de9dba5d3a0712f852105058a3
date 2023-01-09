@@ -74,6 +74,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "122f59f2_22d1d7cc",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-01-09T09:32:43Z",
+      "side": 1,
+      "message": "When VPP DPDK plugin initializing, PCI address is needed as key to retrieve device configs (you can see this in dpdk_find_startup_config function in src/plugins/dpdk/device/init.c), but now DPDK makes rte_pci_device as internal and it seems that there is no method to access PCI address.\n\nIn my opinion, there are 2 options: 1.enable enable_driver_sdk option, and use the definition of rte_pci_device directly. 2. discard using PCI address as key of the hashmap, this will lead to some changes in the VPP code.\n\nDo you have any good ideas?",
+      "parentUuid": "3414b346_7461d16a",
+      "range": {
+        "startLine": 167,
+        "startChar": 0,
+        "endLine": 167,
+        "endChar": 27
+      },
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d38910e9_ca2db165",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
         "patchSetId": 1
