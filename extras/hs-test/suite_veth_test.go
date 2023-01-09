@@ -13,4 +13,3 @@ func (s *VethsSuite) SetupSuite() {
 	s.teardownSuite = setupSuite(&s.Suite, "2peerVeth")
 	s.loadContainerTopology("2peerVeth")
 }
-

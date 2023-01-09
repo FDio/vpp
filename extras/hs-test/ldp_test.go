@@ -81,7 +81,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	var clnRes = make(chan string, 1)
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clnVcl)
 	go StartClientApp(clnEnv, clnCh, clnRes)
-	s.log(<- clnRes)
+	s.log(<-clnRes)
 
 	// wait for client's result
 	err = <-clnCh

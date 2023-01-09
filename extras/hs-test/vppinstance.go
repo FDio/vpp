@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"github.com/edwarnicke/exechelper"
 )
 
@@ -45,13 +45,13 @@ const (
 )
 
 type VppInstance struct {
-	container *Container
-	config VppConfig
+	container      *Container
+	config         VppConfig
 	actionFuncName string
 }
 
 type VppConfig struct {
-	Variant string
+	Variant           string
 	CliSocketFilePath string
 }
 

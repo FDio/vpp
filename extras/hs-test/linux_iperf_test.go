@@ -15,7 +15,7 @@ func (s *TapSuite) TestLinuxIperf() {
 	s.log("server running")
 	go StartClientApp(nil, clnCh, clnRes)
 	s.log("client running")
-	s.log(<- clnRes)
+	s.log(<-clnRes)
 	err = <-clnCh
 	s.assertNil(err)
 	s.log("Test completed")

@@ -47,7 +47,7 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		r:= strings.NewReplacer("$HST_DIR", workDir)
+		r := strings.NewReplacer("$HST_DIR", workDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
 			volumeMap := volu.(ContainerConfig)
 			hostDir := r.Replace(volumeMap["host-dir"].(string))
@@ -55,8 +55,8 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 			container.addVolume(hostDir, containerDir)
 
 			if isDefaultWorkDir, ok := volumeMap["is-default-work-dir"]; ok &&
-			isDefaultWorkDir.(bool) &&
-			len(container.workDir) == 0 {
+				isDefaultWorkDir.(bool) &&
+				len(container.workDir) == 0 {
 				container.workDir = containerDir
 			}
 

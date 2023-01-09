@@ -32,12 +32,12 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	echoSrvContainer := s.getContainerByName("server-application")
 
 	// run server app
-	_, err = echoSrvContainer.execAction("RunEchoServer "+proto)
+	_, err = echoSrvContainer.execAction("RunEchoServer " + proto)
 	s.assertNil(err)
 
 	echoClnContainer := s.getContainerByName("client-application")
 
-	o, err := echoClnContainer.execAction("RunEchoClient "+proto)
+	o, err := echoClnContainer.execAction("RunEchoClient " + proto)
 	s.assertNil(err)
 
 	s.log(o)
@@ -60,13 +60,13 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	s.assertNil(err)
 
 	echoSrvContainer := s.getContainerByName("server-application")
-	_, err = echoSrvContainer.execAction("RunVclEchoServer "+proto)
+	_, err = echoSrvContainer.execAction("RunVclEchoServer " + proto)
 	s.assertNil(err)
 
 	s.log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.log("... Running first echo client test, before disconnect.")
 	echoClnContainer := s.getContainerByName("client-application")
-	_, err = echoClnContainer.execAction("RunVclEchoClient "+proto)
+	_, err = echoClnContainer.execAction("RunVclEchoClient " + proto)
 	s.assertNil(err)
 	s.log("... First test ended. Stopping VPP server now.")
 
@@ -85,7 +85,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
 	s.log("... Running second echo client test, after disconnect and re-attachment.")
-	_, err = echoClnContainer.execAction("RunVclEchoClient "+proto)
+	_, err = echoClnContainer.execAction("RunVclEchoClient " + proto)
 	s.assertNil(err)
 	s.log("Done.")
 }

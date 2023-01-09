@@ -7,4 +7,7 @@ build:
 docker:
 	bash ./script/build.sh
 
+fixstyle:
+	@gofmt -w .
+
 .PHONY: docker
