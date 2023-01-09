@@ -38,6 +38,9 @@ udp_connection_register_port (u16 lcl_port, u8 is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port6, lcl_port);
 
   n[0] = um->local_to_input_edge[is_ip4];
+
+  __atomic_add_fetch (&um->transport_ports_refcnt[is_ip4][lcl_port], 1,
+		      __ATOMIC_RELAXED);
 }
 
 static void
@@ -45,6 +48,11 @@ udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
   u16 *n;
+
+  /* Needed because listeners are not tracked as local endpoints */
+  if (__atomic_sub_fetch (&um->transport_ports_refcnt[is_ip4][lcl_port], 1,
+			  __ATOMIC_RELAXED))
+    return;
 
   if (is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port4, lcl_port);
@@ -547,6 +555,9 @@ udp_enable_disable (vlib_main_t *vm, u8 is_en)
 
   udp_realloc_ports_sv (&um->next_by_dst_port4);
   udp_realloc_ports_sv (&um->next_by_dst_port6);
+
+  vec_validate (um->transport_ports_refcnt[0], 65535);
+  vec_validate (um->transport_ports_refcnt[1], 65535);
 
   return 0;
 }

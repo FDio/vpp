@@ -147,6 +147,10 @@ typedef struct
   udp_worker_t *wrk;
   udp_connection_t *listener_pool;
 
+  /* Refcounts for ports consumed by udp transports to handle
+   * both passive and active opens using the same port */
+  u16 *transport_ports_refcnt[N_UDP_AF];
+
   u16 default_mtu;
   u16 msg_id_base;
   u8 csum_offload;
