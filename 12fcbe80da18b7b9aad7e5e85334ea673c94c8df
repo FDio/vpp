@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "078feba4_0ed8dfff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-01-09T22:23:11Z",
+      "side": 1,
+      "message": "I rebased this patch to the tip of the master branch. It seems unrelated to the NAT patch that was formerly its parent. I will approve/merge when CI verify jobs pass.",
+      "revId": "12fcbe80da18b7b9aad7e5e85334ea673c94c8df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
