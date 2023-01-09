@@ -33,6 +33,24 @@
       "message": "BITS(x) is defined as (8*sizeof(x)), is_user as uword *is_user.\nIsn\u0027t BITS(h-\u003eis_user[0]) will always be already constant 8*sizeof(uword)?",
       "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ddcfca1_4df27779",
+        "filename": "src/vppinfra/hash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-01-09T16:09:07Z",
+      "side": 1,
+      "message": "maybe\n#define\tBIT_SIZEOF(x) (sizeof(x) * CHAR_BIT)",
+      "parentUuid": "c2c676f4_4c06ca06",
+      "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
