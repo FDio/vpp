@@ -187,6 +187,30 @@
       },
       "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfe53939_92f454a5",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-09T16:36:04Z",
+      "side": 1,
+      "message": "I meant it from a consistency perspective, i.e., we should pick a style unless we believe both are okay. But that\u0027s just a nit.",
+      "parentUuid": "4eee97e5_253e5995",
+      "range": {
+        "startLine": 188,
+        "startChar": 14,
+        "endLine": 188,
+        "endChar": 24
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
