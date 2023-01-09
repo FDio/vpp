@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "de8a4a08_f4801b99",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-01-09T10:41:14Z",
+      "side": 1,
+      "message": "you mean something like running gofmt?",
+      "parentUuid": "e7fd0887_c1cf3707",
+      "range": {
+        "startLine": 6,
+        "startChar": 1,
+        "endLine": 6,
+        "endChar": 10
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "651a43a1_7b95e56c",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 1
@@ -37,6 +61,30 @@
       "writtenOn": "2022-12-21T16:06:34Z",
       "side": 1,
       "message": "Is this required? vppInst.start() makes equal execAction call.",
+      "range": {
+        "startLine": 58,
+        "startChar": 1,
+        "endLine": 59,
+        "endChar": 17
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11a9aaf8_dd427b71",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-01-09T10:41:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "651a43a1_7b95e56c",
       "range": {
         "startLine": 58,
         "startChar": 1,
@@ -107,6 +155,30 @@
       "writtenOn": "2022-12-21T17:04:52Z",
       "side": 1,
       "message": "Shouldn\u0027t this be an error, like above?",
+      "range": {
+        "startLine": 188,
+        "startChar": 14,
+        "endLine": 188,
+        "endChar": 24
+      },
+      "revId": "79cb9759c35e81dc934b3907b9a7aea7dc462190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4eee97e5_253e5995",
+        "filename": "extras/hs-test/utils.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-01-09T10:41:14Z",
+      "side": 1,
+      "message": "fmt.Errorf returns an error",
+      "parentUuid": "11093f90_b710e621",
       "range": {
         "startLine": 188,
         "startChar": 14,
