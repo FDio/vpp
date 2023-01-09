@@ -22,6 +22,37 @@
 
 udp_main_t udp_main;
 
+static int
+udp_connection_port_update_refcnt (u16 lcl_port, u8 is_ip4, u8 is_inc)
+{
+  udp_main_t *um = &udp_main;
+  uword *p;
+
+  p = hash_get (um->transport_ports_refcnt[is_ip4], lcl_port);
+  if (is_inc)
+    {
+      if (!p)
+	{
+	  hash_set (um->transport_ports_refcnt[is_ip4], lcl_port, 1);
+	  return 1;
+	}
+
+      clib_atomic_fetch_add_rel (p, 1);
+      return p[0];
+    }
+  else
+    {
+      if (p[0] == 1)
+	{
+	  hash_unset (um->transport_ports_refcnt[is_ip4], lcl_port);
+	  return 0;
+	}
+
+      clib_atomic_fetch_sub_rel (p, 1);
+      return (p[0]);
+    }
+}
+
 static void
 udp_connection_register_port (u16 lcl_port, u8 is_ip4)
 {
@@ -38,6 +69,8 @@ udp_connection_register_port (u16 lcl_port, u8 is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port6, lcl_port);
 
   n[0] = um->local_to_input_edge[is_ip4];
+
+  udp_connection_port_update_refcnt (lcl_port, is_ip4, 1 /* is_inc*/);
 }
 
 static void
@@ -45,6 +78,10 @@ udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
   u16 *n;
+
+  /* Needed because listeners are not tracked as local endpoints */
+  if (udp_connection_port_update_refcnt (lcl_port, is_ip4, 0 /* is_inc */))
+    return;
 
   if (is_ip4)
     n = sparse_vec_validate (um->next_by_dst_port4, lcl_port);
