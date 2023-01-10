@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90a73330_db9e9897",
+        "filename": "src/plugins/vmxnet3/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-10T18:48:36Z",
+      "side": 1,
+      "message": "IMHO, this looks unnatural (creating a single token with 2 words).\n\nI would recommend checking for the \u0027force\u0027 token on line 53:\n\nargs.bind \u003d unformat (line_input, \"force\") ? VMXNET3_BIND_FORCE : VMXNET3_BIND_DEFAULT",
+      "range": {
+        "startLine": 50,
+        "startChar": 37,
+        "endLine": 50,
+        "endChar": 49
+      },
+      "revId": "70822bd492c65694f6953fb1c4b4723549fce3df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
