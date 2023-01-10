@@ -34,6 +34,24 @@
       "parentUuid": "26387849_9c4aeab9",
       "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b374d854_0fe52a40",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-10T10:24:32Z",
+      "side": 1,
+      "message": "Did you try with op data path, the same?",
+      "parentUuid": "fae459bd_463878a5",
+      "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
