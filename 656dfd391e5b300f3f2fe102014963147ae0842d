@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26387849_9c4aeab9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-10T09:21:51Z",
+      "side": 1,
+      "message": "Hi Dastin,\n\nCan you share\n1. Did the patch resolved SPR NDR rate drop problem?\n2. What is the perf impact to QAT GEN2/3?\n\nAlso a nit, it would be better if you can explain the issue in SPR QAT in the commit message.\n\nRegards,\nFan",
+      "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
