@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "922cdc2d_7f68d69f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2856
+      },
+      "writtenOn": "2023-01-10T16:54:51Z",
+      "side": 1,
+      "message": "Looks good to me. The same fix will be included in the next v1.4 release.",
+      "revId": "d25a8ae56b7a966456fadc9130ea9317cc12a8fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
