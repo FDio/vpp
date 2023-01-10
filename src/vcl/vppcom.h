@@ -18,8 +18,8 @@
 
 #include <netdb.h>
 #include <errno.h>
-#include <sys/fcntl.h>
-#include <sys/poll.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/epoll.h>
 
 /* *INDENT-OFF* */

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <vppinfra/mpcap.h>
 
 /*
