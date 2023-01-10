@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6a5bbda_a3877506",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-10T03:41:37Z",
+      "side": 1,
+      "message": "please update the FEATURE.yaml file with the functionality that deny rules provide.",
+      "revId": "5d788e5b08c6c3d2411f6d5c19e112907e39f6ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
