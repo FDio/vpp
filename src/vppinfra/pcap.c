@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <vppinfra/pcap.h>
 
 /**
