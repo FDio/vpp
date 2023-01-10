@@ -1253,8 +1253,9 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 				 (u8 *) & hdr);
 		  ASSERT (hdr.data_length > hdr.data_offset);
 		  dgram_len = hdr.data_length - hdr.data_offset;
-		  if (len + dgram_len > ctx->max_dequeue
-		      || first_dgram_len != dgram_len)
+		  if (offset + sizeof (hdr) + hdr.data_length >
+			ctx->max_dequeue ||
+		      first_dgram_len != dgram_len)
 		    break;
 		  len += dgram_len;
 		  offset += sizeof (hdr) + hdr.data_length;
