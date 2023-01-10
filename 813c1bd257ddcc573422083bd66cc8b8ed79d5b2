@@ -51,6 +51,24 @@
       "parentUuid": "c2c676f4_4c06ca06",
       "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e3ef9b7_0e876935",
+        "filename": "src/vppinfra/hash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-01-10T18:16:34Z",
+      "side": 1,
+      "message": "after revisit this code, I wonder what is the problem here? h-\u003euser[0] is pointer, so BITS(h-\u003eis_user[0]) will be 8*sizeof(pointer) and the sizeof pointer is depend on the word size of the processor.",
+      "parentUuid": "4ddcfca1_4df27779",
+      "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
