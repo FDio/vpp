@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e19df067_1d1248a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-10T16:00:07Z",
+      "side": 1,
+      "message": "@Vratko, can you please run CSIT performance tests against this to verify that it does not break CSIT?",
+      "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
