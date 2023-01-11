@@ -34,6 +34,29 @@
       "parentUuid": "e19df067_1d1248a7",
       "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f04f031_0a06148c",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-11T16:40:45Z",
+      "side": 1,
+      "message": "Based on https://gerrit.fd.io/r/c/vpp/+/37897/1\nI believe there is no such thing as a comment statement (only tokens of type COMMENT).",
+      "range": {
+        "startLine": 606,
+        "startChar": 10,
+        "endLine": 606,
+        "endChar": 17
+      },
+      "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
