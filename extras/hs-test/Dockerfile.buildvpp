@@ -1,0 +1,16 @@
+ARG UBUNTU_VERSION=20.04
+
+FROM ubuntu:${UBUNTU_VERSION}
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git make python3 sudo asciidoc \
+    openssl libapr1 libnuma1 libsubunit0 \
+    iproute2 libnl-3-dev libnl-route-3-dev iputils-ping  \
+    vim gdb golang
+
+# build vpp
+COPY ./ /vpp
+WORKDIR /vpp
+RUN make wipe
+RUN DEBIAN_FRONTEND=noninteractive UNATTENDED=y make install-dep
+RUN make build
+RUN rm -rf /var/lib/apt/lists/*

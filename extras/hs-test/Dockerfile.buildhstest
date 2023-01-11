@@ -1,0 +1,10 @@
+ARG GO_VERSION=1.19
+
+FROM golang:${GO_VERSION}
+
+# build hs-test
+COPY ./extras/hs-test /hs-test
+WORKDIR /hs-test
+RUN go build .
+# TODO move this to vpp dockerfile RUN cp vpp/extras/hs-test/hs-test /usr/local/bin/hs-test
+

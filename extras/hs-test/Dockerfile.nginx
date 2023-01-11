@@ -1,6 +1,6 @@
 FROM nginx:1.22.1
 
-COPY vpp-data/lib/* /usr/lib/
+COPY --from=hs-test/buildvpp /vpp/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/lib* /usr/lib/
 COPY resources/nginx/vcl.conf /vcl.conf
 COPY resources/nginx/nginx.conf /nginx.conf
 COPY resources/nginx/start.sh /start.sh
