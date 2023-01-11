@@ -63,6 +63,30 @@
       },
       "revId": "b57b29a632a7683c889aef6f0e8a4b7bed447f07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fff946dd_5de0d0b1",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-11T07:55:24Z",
+      "side": 1,
+      "message": "This value depends on when wireguard will be in under load state.\nI think that value 1000.0 will be enough because this value will be update itself in the later stage when wireguard will be in under load state.",
+      "parentUuid": "d92fb834_c202302d",
+      "range": {
+        "startLine": 646,
+        "startChar": 36,
+        "endLine": 646,
+        "endChar": 42
+      },
+      "revId": "b57b29a632a7683c889aef6f0e8a4b7bed447f07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
