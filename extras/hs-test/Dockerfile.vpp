@@ -1,13 +1,9 @@
-FROM ubuntu:22.04
+ARG UBUNTU_VERSION=22.04
 
-RUN apt-get update \
- && apt-get install -y openssl libapr1 libnuma1 libsubunit0 \
-    iproute2 libnl-3-dev libnl-route-3-dev python3 iputils-ping  \
-    vim gdb \
- && rm -rf /var/lib/apt/lists/*
+FROM ubuntu:${UBUNTU_VERSION}
 
 ENV DIR=vpp-data/lib/vpp_plugins
-COPY \
+COPY --from=hs-test/buildall \
    $DIR/af_packet_plugin.so \
    $DIR/hs_apps_plugin.so \
    $DIR/http_plugin.so \
@@ -15,10 +11,17 @@ COPY \
    $DIR/quic_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
-COPY vpp-data/bin/* /usr/bin/
-COPY vpp-data/lib/* /usr/lib/
+COPY --from=hs-test/buildall vpp-data/bin/* /usr/bin/
+COPY --from=hs-test/buildall vpp-data/lib/* /usr/lib/
 
-COPY hs-test /usr/local/bin/hs-test
+COPY --from=hs-test/buildall /hs-test/hs-test /usr/local/bin/hs-test
+
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    openssl libapr1 libnuma1 libsubunit0 \
+    iproute2 libnl-3-dev libnl-route-3-dev iputils-ping  \
+    vim gdb
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN addgroup vpp
 

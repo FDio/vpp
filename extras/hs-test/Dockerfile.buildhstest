@@ -1,0 +1,9 @@
+ARG GO_VERSION=1.18
+
+FROM golang:${GO_VERSION}
+
+# build hs-test
+COPY . /hs-test
+WORKDIR /hs-test
+RUN go build .
+

@@ -1,0 +1,21 @@
+ARG UBUNTU_VERSION=22.04
+
+FROM ubuntu:${UBUNTU_VERSION}
+
+RUN apt-get update
+
+# build hs-test
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y openssl ca-certificates golang
+COPY ./extras/hs-test /hs-test
+WORKDIR /hs-test
+RUN go build .
+
+# build vpp
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git make python3 sudo asciidoc
+COPY ./ /vpp
+WORKDIR /vpp
+RUN make wipe
+RUN DEBIAN_FRONTEND=noninteractive UNATTENDED=y make install-dep
+RUN make build
+
+RUN rm -rf /var/lib/apt/lists/*
