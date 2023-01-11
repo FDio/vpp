@@ -16,6 +16,24 @@
       "message": "@Vratko, can you please run CSIT performance tests against this to verify that it does not break CSIT?",
       "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7566f4fa_4c766f22",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-11T16:17:57Z",
+      "side": 1,
+      "message": "Device tests passed and they already use PAPI (which is the only part of CSIT directly affected by .api.json content). That being said, if a change actually adds an API message with the new comment statement in it, device tests may fail (either immediately, or when CSIT tries to use the new message). I do not expect any such failure (not even a warning as with deprecated messages), but I will create a VPP change to verify that.",
+      "parentUuid": "e19df067_1d1248a7",
+      "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
