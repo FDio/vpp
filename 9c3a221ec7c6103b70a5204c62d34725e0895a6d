@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b46ece8_66d5f1df",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T14:10:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a247b6ca_7f940d62",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f30aa86a_45fcf3cf",
@@ -54,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4d61db61_f4b2d5cb",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T14:10:41Z",
+      "side": 1,
+      "message": "I think we can also remove the validate as clib_bitmap_set_region() already calls clib_bitmap_validate() internally",
+      "parentUuid": "f30aa86a_45fcf3cf",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "25139c46_41a619cd",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 3
@@ -65,6 +101,24 @@
       "writtenOn": "2023-01-06T15:00:51Z",
       "side": 1,
       "message": "As we enforce window_size to be a power of 2 (maybe add an assert here also), you can use the faster\n\n  u32 tl \u003d sa-\u003eseq \u0026 (window_size - 1);\n\ninstead. That\u0027s applicable to all the other occurences below.",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ede3ab64_0fcdf1fc",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T14:10:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "25139c46_41a619cd",
       "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +174,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "182aabc8_1f516c00",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 591,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T14:10:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "055c36af_c796caeb",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d35c60c7_d5548425",
@@ -133,6 +205,24 @@
       "writtenOn": "2023-01-06T15:00:51Z",
       "side": 1,
       "message": "why remove the test against 0? this force the result to be a boolean (0 or 1)",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a1a3533_3edd01ad",
+        "filename": "src/vppinfra/bitmap.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T14:10:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d35c60c7_d5548425",
       "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
