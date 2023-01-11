@@ -22,6 +22,30 @@
       },
       "revId": "70822bd492c65694f6953fb1c4b4723549fce3df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9df56ec6_b8f143f4",
+        "filename": "src/plugins/vmxnet3/cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T09:04:14Z",
+      "side": 1,
+      "message": "I personally prefer it this way because I see it as simpler and more readable 😊\nAnd I contest it is unnatural, here are a few examples in VPP:\nhttps://git.fd.io/vpp/tree/src/plugins/dpdk/device/init.c#n890\nhttps://git.fd.io/vpp/tree/src/plugins/lb/cli.c#n46\nhttps://git.fd.io/vpp/tree/src/plugins/acl/acl.c#n3628\nhttps://git.fd.io/vpp/tree/src/plugins/af_packet/cli.c#n90\nhttps://git.fd.io/vpp/tree/src/plugins/ikev2/ikev2_cli.c#n333",
+      "parentUuid": "90a73330_db9e9897",
+      "range": {
+        "startLine": 50,
+        "startChar": 37,
+        "endLine": 50,
+        "endChar": 49
+      },
+      "revId": "70822bd492c65694f6953fb1c4b4723549fce3df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
