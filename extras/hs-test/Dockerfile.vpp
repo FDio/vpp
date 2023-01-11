@@ -6,9 +6,15 @@ RUN apt-get update \
     vim gdb \
  && rm -rf /var/lib/apt/lists/*
 
-COPY vpp-data/lib/vat2_plugins/ /usr/lib/vat2_plugins/
-COPY vpp-data/lib/vpp_api_test_plugins/ /usr/lib/vpp_api_test_plugins/
-COPY vpp-data/lib/vpp_plugins/ /usr/lib/x86_64-linux-gnu/vpp_plugins/
+ENV DIR=vpp-data/lib/vpp_plugins
+COPY \
+   $DIR/af_packet_plugin.so \
+   $DIR/hs_apps_plugin.so \
+   $DIR/http_plugin.so \
+   $DIR/unittest_plugin.so \
+   $DIR/quic_plugin.so \
+   /usr/lib/x86_64-linux-gnu/vpp_plugins/
+
 COPY vpp-data/bin/* /usr/bin/
 COPY vpp-data/lib/* /usr/lib/
 
