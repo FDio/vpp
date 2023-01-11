@@ -195,6 +195,7 @@ typedef ip_route_v2
                           is_add=0 & is_multipath=0 implies delete all paths
     @param is_add - Are the paths being added or removed
 */
+comment before;
 define ip_route_add_del
 {
   u32 client_index;
@@ -203,6 +204,7 @@ define ip_route_add_del
   bool is_multipath;
   vl_api_ip_route_t route;
 };
+comment after;
 define ip_route_add_del_v2
 {
   option in_progress;
