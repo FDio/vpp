@@ -39,11 +39,13 @@ statseg {
 }
 
 plugins {
-	plugin unittest_plugin.so { enable }
-    plugin dpdk_plugin.so { disable }
-    plugin crypto_aesni_plugin.so { enable }
-    plugin quic_plugin.so { enable }
-    plugin crypto_ipsecmb_plugin.so { disable }
+  plugin default { disable }
+
+  plugin unittest_plugin.so { enable }
+  plugin quic_plugin.so { enable }
+  plugin af_packet_plugin.so { enable }
+  plugin hs_apps_plugin.so { enable }
+  plugin http_plugin.so { enable }
 }
 
 `
