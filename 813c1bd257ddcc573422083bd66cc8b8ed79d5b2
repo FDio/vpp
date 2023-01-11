@@ -69,6 +69,24 @@
       "parentUuid": "4ddcfca1_4df27779",
       "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "384183a8_c9242106",
+        "filename": "src/vppinfra/hash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-11T07:49:30Z",
+      "side": 1,
+      "message": "so BITS (h-\u003eis_user[0]) will return the size of pointer in bits",
+      "parentUuid": "1e3ef9b7_0e876935",
+      "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
