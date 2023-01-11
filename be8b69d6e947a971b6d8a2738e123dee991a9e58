@@ -34,6 +34,24 @@
       "parentUuid": "213c225b_953c1e67",
       "revId": "be8b69d6e947a971b6d8a2738e123dee991a9e58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "33bc7332_c93c372b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2539
+      },
+      "writtenOn": "2023-01-11T10:40:24Z",
+      "side": 1,
+      "message": "The diff of the vpp_22.06 .deb shows that .so link files are removed (\"Files in second .deb but not in first\"), while the diff of the vpp-dev_22.06 .deb shows that .so link files have been added (\"Files in first .deb but not in second\").",
+      "parentUuid": "a80c9ef3_c9213d04",
+      "revId": "be8b69d6e947a971b6d8a2738e123dee991a9e58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
