@@ -87,6 +87,24 @@
       "parentUuid": "1e3ef9b7_0e876935",
       "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6737128f_95d02bcf",
+        "filename": "src/vppinfra/hash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-01-11T16:51:38Z",
+      "side": 1,
+      "message": "actually not, h-\u003eis_user[0] is not pointer, here h-\u003eis_user is pointer to an array of uword, h-\u003eis_user[0] is just uword value.\nsizeof(uword) is known at compile time, so, BITS(h-\u003eis_user[0]) \u003d\u003d 8*sizeof(uword) is compile-time constant as well, i.e 64 on x64.\nwith -O0 optimization commit adds local variable, used with div.\nwith -O2 the both variants of hash_is_user() (previous and current) produce same asm code - \"bits\" variable is being optimized out and shr is used for division by known compile-time constant.\nthat\u0027s why I can\u0027t understand how the commit helps to improve tread safety, isn\u0027t it noop?",
+      "parentUuid": "384183a8_c9242106",
+      "revId": "813c1bd257ddcc573422083bd66cc8b8ed79d5b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
