@@ -10,4 +10,7 @@ docker:
 fixstyle:
 	@gofmt -w .
 
+wipe:
+	rm -rf ./vpp-data/*
+
 .PHONY: docker

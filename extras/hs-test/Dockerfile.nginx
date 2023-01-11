@@ -6,7 +6,7 @@ RUN apt-get update
 RUN apt-get install -y nginx
 RUN rm -rf /var/lib/apt/lists/*
 
-COPY vpp-data/lib/* /usr/lib/
+COPY --from=hs-test/build /vpp/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/lib* /usr/lib/
 COPY resources/nginx/vcl.conf /vcl.conf
 COPY resources/nginx/nginx.conf /nginx.conf
 
