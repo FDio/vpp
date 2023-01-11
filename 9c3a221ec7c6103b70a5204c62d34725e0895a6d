@@ -230,6 +230,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6df78ec3_77bf2e39",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T15:29:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6b7ec63f_d2555ad1",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "59fd3d54_ef12cab7",
@@ -261,6 +279,24 @@
       "side": 1,
       "message": "My bad, after re-thinking it multiple times, I think this can happen:\n- the window is in the same subspace (Tl \u003e\u003d W - 1) and Bl \u003e W\n- 2 packets are received, say A and B such that: seqB \u003c W - 1 \u003c seqA \u003c Bl\n- in pre-crypto, both packets are predicted to cause a wrap and hence are assigned a hi-seqB \u003d hi-seqA \u003d sa-\u003eseq_hi + 1\n- both packets pass the integrity check\n- A pass the post-crypto check and move the window to Tl \u003d seqA \u003e\u003d W - 1 (so the window has wrapped but has fully moved to the next subspace)\n- B is then out-of-window (too far on the left), and at the moment of the post-crypto check it has hi-seqB \u003d sa-\u003eseq_hi (since A made the sa-\u003eseq_hi increments)",
       "parentUuid": "59fd3d54_ef12cab7",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "376d49b3_441b90f2",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 468,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T15:29:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a70d200c_5b614ffb",
       "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -367,6 +403,24 @@
       "side": 1,
       "message": "I was thinking that the purpose of this function was to retrieve a whole region of the bitmap (as clib_bitmap_get_multiple)",
       "parentUuid": "d35c60c7_d5548425",
+      "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "916eef86_4605ffd7",
+        "filename": "src/vppinfra/bitmap.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-11T15:29:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a84d2cc_be3667fa",
       "revId": "9c3a221ec7c6103b70a5204c62d34725e0895a6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
