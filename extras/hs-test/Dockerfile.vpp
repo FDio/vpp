@@ -2,25 +2,27 @@ ARG UBUNTU_VERSION
 
 FROM ubuntu:${UBUNTU_VERSION}
 
-RUN apt-get update \
- && apt-get install -y openssl libapr1 libnuma1 libsubunit0 \
-    iproute2 libnl-3-dev libnl-route-3-dev python3 iputils-ping  \
-    vim gdb \
- && rm -rf /var/lib/apt/lists/*
-
-ENV DIR=vpp-data/lib/vpp_plugins
-COPY \
-   $DIR/af_packet_plugin.so \
-   $DIR/hs_apps_plugin.so \
-   $DIR/http_plugin.so \
-   $DIR/unittest_plugin.so \
-   $DIR/quic_plugin.so \
+ENV BASE_DIR=/vpp/build-root/build-vpp_debug-native/vpp
+ENV PLUGIN_DIR=$BASE_DIR/lib/x86_64-linux-gnu/vpp_plugins/
+COPY --from=hs-test/build \
+   $PLUGIN_DIR/af_packet_plugin.so \
+   $PLUGIN_DIR/hs_apps_plugin.so \
+   $PLUGIN_DIR/http_plugin.so \
+   $PLUGIN_DIR/unittest_plugin.so \
+   $PLUGIN_DIR/quic_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
-COPY vpp-data/bin/* /usr/bin/
-COPY vpp-data/lib/* /usr/lib/
+COPY --from=hs-test/build $BASE_DIR/bin/* /usr/bin/
+COPY --from=hs-test/build $BASE_DIR/lib/* /usr/lib/
 
-COPY hs-test /usr/local/bin/hs-test
+COPY --from=hs-test/build /hs-test/hs-test /usr/local/bin/hs-test
+
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    openssl libapr1 libnuma1 libsubunit0 \
+    iproute2 libnl-3-dev libnl-route-3-dev iputils-ping \
+    vim gdb
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN addgroup vpp
 
