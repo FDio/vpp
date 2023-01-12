@@ -183,7 +183,7 @@ func startWget(finished chan error, server_ip, port, query, netNs string) {
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := NewCommand([]string{"wget", "--tries=5", "-q", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+	cmd := NewCommand([]string{"wget", "--no-proxy", "--tries=5", "-q", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
