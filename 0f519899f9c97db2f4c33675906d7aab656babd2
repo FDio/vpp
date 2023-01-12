@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "241ece96_53f3f264",
+        "filename": "src/vnet/policer/police.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Never used, as stated by the comment on the thread_index field...",
+      "parentUuid": "612fbfd0_804200d2",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "229fc47e_9f0a54d4",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-01-06T15:13:10Z",
       "side": 1,
       "message": "something I was thinking about: we have 6-bytes of padding available already, if we change thread_index from u32 to u16, we\u0027ll have enough to store the name pointer in the 1st cacheline alongside the rest.\nIt should not change performance, however we would still consume 64-bytes per policer instead of 128-bytes.",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ad678fa_372b67cf",
+        "filename": "src/vnet/policer/police.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Even better, by removing the lock (which is not used), there is not need to reduce the size of the thread_index!",
+      "parentUuid": "229fc47e_9f0a54d4",
       "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc7b213b_64e4107d",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b3fc4a2b_1cf5e365",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1a23a0c6_297b060c",
@@ -82,6 +136,24 @@
       "writtenOn": "2023-01-06T15:13:10Z",
       "side": 1,
       "message": "I\u0027d rather use the index internally instead of the name. Also cfg can be const?",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31cee2c5_60faf8b5",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1a23a0c6_297b060c",
       "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a5d28eb_02a00906",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8e9fcd2_a9ae1906",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ab1a021e_752a5a2d",
@@ -120,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ab23cec_12250d30",
+        "filename": "src/vnet/policer/policer.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ab1a021e_752a5a2d",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0edee222_9935fc3a",
@@ -133,6 +241,24 @@
       "writtenOn": "2023-01-06T15:13:10Z",
       "side": 1,
       "message": "typo: configuration",
+      "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "137e8b36_86bd57af",
+        "filename": "src/vnet/policer/policer_types.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-12T08:51:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0edee222_9935fc3a",
       "revId": "0f519899f9c97db2f4c33675906d7aab656babd2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
