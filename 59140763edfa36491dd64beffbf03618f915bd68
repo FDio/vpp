@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ede39c4d_b11c5c71",
+        "filename": "src/vnet/policer/policer.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "maybe we should add a dump_v2 supporting an index for completeness?",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f24a72fb_99d6db25",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "why is it needed? we already have the policer index?",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "974b31b8_ebda1fd3",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "why is it needed? We already have the policer index?",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a71fa13c_b40abe33",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "instead of displaying the pointer (%llx with i) I think we should display the index (%d with pi)",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03a93df8_33588c99",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "maybe we should add support for index too (and for other commands too)",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e350915a_07d6bc80",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:24:34Z",
+      "side": 1,
+      "message": "I think we should iterate on the pool instead with pool_foreach",
+      "revId": "59140763edfa36491dd64beffbf03618f915bd68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
