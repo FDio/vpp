@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f31dbd5e_24fdc21d",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T10:41:42Z",
+      "side": 1,
+      "message": "It would be good to add PREDICT_FALSE for all anti replay huge tests in the dataplane, so we make sure the 64-bits case is not impacted.\nNo need for PREDICT in the control plane though.",
+      "revId": "201d5e9de4bcea3a13f46cc851b9dba25c51a4ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
