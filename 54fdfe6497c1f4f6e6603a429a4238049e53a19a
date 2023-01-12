@@ -36,6 +36,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "159a7916_1d81796f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-12T09:53:11Z",
+      "side": 1,
+      "message": "After some fumbling I realized what this patch does, and I can confirm it does not affect CSIT. For future reference, here is the json content for an API message now:\n\n[\u0027wireguard_interface_create_reply\u0027, [\u0027u16\u0027, \u0027_vl_msg_id\u0027], [\u0027u32\u0027, \u0027context\u0027], [\u0027i32\u0027, \u0027retval\u0027], [\u0027vl_api_interface_index_t\u0027, \u0027sw_if_index\u0027], {\u0027crc\u0027: \u00270x5383d31f\u0027, \u0027options\u0027: {}, \u0027comment\u0027: \u0027/** \\\\brief Add Wireguard interface interface response\\n    @param context - sender context, to match reply w/ request\\n    @param retval - return status\\n    @param sw_if_index - sw_if_index of new interface (for successful add)\\n*/\u0027}]\n\nI would give +1, but see my line comment on statement versus token type.\n\nIf we are worried about other users, VPP could include a strict json schema (so consumers can more easily see what is changed between VPP versions) and build would verify the generated files conform the schema, but not sure it worth the work.\n\nAnother future reference, complete json content: https://logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-api-crc-master-ubuntu2204-x86_64/867/console.log.gz",
+      "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9f04f031_0a06148c",
