@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65661217_ad110f6b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-12T13:16:18Z",
+      "side": 1,
+      "message": "Thanks a lot for this, it\u0027s definitely useful!\n\nLooks like we need to add libpcap-dev in the build deps:\n  ~# make install-ext-dep\n  [...]\n  --- building xdp-tools 1.2.9 - log: /home/bganne/src/vpp/build/external/deb/_build/xdp-tools.build.log\n  make[6]: *** [Makefile:49: config.mk] Error 1\n  [...]\n  ~# cat /home/bganne/src/vpp/build/external/deb/_build/xdp-tools.build.log\n  [...]\n  pcap support: missing - this is required\n  error: config.WqCYx2/libpcaptest.c:2:10: fatal error: pcap/dlt.h: No such file or directory\n    2 | #include \u003cpcap/dlt.h\u003e\n      |          ^~~~~~~~~~~~\n\nAlso, I see a bunch of patches to xdptools for compilation flags. We used to be able to pass additional flags to libbpf build w/o having to patch, is that something you looked at? In term of maintenance, it\u0027s always easier to avoid patches to external deps.\n\nFinally when creating af_xdp interface, I see a bunch of messages:\n  DBGvpp# create interface af_xdp host-if veth1\n  libbpf: elf: skipping unrecognized data section(7) .xdp_run_config\n  libbpf: elf: skipping unrecognized data section(8) xdp_metadata\n  libbpf: elf: skipping unrecognized data section(7) xdp_metadata\n  libbpf: elf: skipping unrecognized data section(7) xdp_metadata\n\nAny idea where that comes from?",
+      "revId": "c07a4f380c08ebbed848bf8f87525919aeac819f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
