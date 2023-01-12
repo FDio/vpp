@@ -136,6 +136,46 @@ typedef struct
   serialize_main_t unserialize_main;
 } test_serialize_main_t;
 
+u8 *test_pattern;
+
+int
+vl (void *p)
+{
+  return vec_len (p);
+}
+
+void
+test_serialize_not_inline_double_vector_expand (void)
+{
+  serialize_main_t _m, *m = &_m;
+  u8 *serialized = 0;
+  u64 *magic;
+  void *p;
+  int i;
+
+  vec_validate (test_pattern, 1023);
+
+  for (i = 0; i < vec_len (test_pattern); i++)
+    test_pattern[i] = i & 0xff;
+
+  serialize_open_vector (m, serialized);
+  p = serialize_get (m, 61);
+  clib_memcpy_fast (p, test_pattern, 61);
+  serialize_integer (m, 0xDEADBEEFFEEDFACEULL, 8);
+  p = serialize_get (m, vec_len (test_pattern) - 62);
+  clib_memcpy_fast (p, test_pattern + 61, vec_len (test_pattern) - 62);
+  serialized = serialize_close_vector (m);
+
+  magic = (u64 *) (serialized + 61);
+
+  if (*magic != clib_net_to_host_u64 (0xDEADBEEFFEEDFACEULL))
+    {
+      fformat (stderr, "BUG!\n");
+      exit (1);
+    }
+  return;
+}
+
 int
 test_serialize_main (unformat_input_t * input)
 {
@@ -168,6 +208,12 @@ test_serialize_main (unformat_input_t * input)
 	;
       else if (unformat (input, "verbose %=", &tm->verbose, 1))
 	;
+      else if (unformat (input, "double-expand"))
+	{
+	  test_serialize_not_inline_double_vector_expand ();
+	  clib_warning ("serialize_not_inline double vector expand OK");
+	  exit (0);
+	}
       else
 	{
 	  error = clib_error_create ("unknown input `%U'\n",

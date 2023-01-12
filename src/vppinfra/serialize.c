@@ -741,6 +741,7 @@ serialize_write_not_inline (serialize_main_header_t * m,
   if (n_left_o > 0 || n_left_b < n_bytes_to_write)
     {
       u8 *r;
+      s->current_buffer_index = cur_bi;
       vec_add2 (s->overflow_buffer, r, n_bytes_to_write);
       return r;
     }
