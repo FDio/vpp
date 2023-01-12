@@ -33,6 +33,23 @@
       "message": "By the way please rename the patch to \"dpdk: bump to dpdk 22.11\"",
       "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4673444b_5e724c91",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-12T12:54:29Z",
+      "side": 1,
+      "message": "I believe 37885 gas bumped the version of vpp-ext-deps in the meantime, so this needs to be rebased.\n\nrecheck",
+      "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
