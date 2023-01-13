@@ -3048,6 +3048,10 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  (s->flags & VCL_SESSION_F_HAS_RX_EVT) ||
 	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
 	break;
+      /* We didn't have a fifo when the event was added */
+      svm_fifo_add_want_deq_ntf (
+	(vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo),
+	SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       add_event = 1;
       events[*num_ev].events = EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
