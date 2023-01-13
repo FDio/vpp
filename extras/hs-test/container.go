@@ -14,12 +14,13 @@ type Volume struct {
 }
 
 type Container struct {
-	isOptional bool
-	name       string
-	image      string
-	workDir    string
-	volumes    map[string]Volume
-	envVars    map[string]string
+	isOptional       bool
+	name             string
+	image            string
+	workDir          string
+	extraRunningArgs string
+	volumes          map[string]Volume
+	envVars          map[string]string
 }
 
 func NewContainer(yamlInput ContainerConfig) (*Container, error) {
@@ -38,6 +39,12 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 		container.image = image.(string)
 	} else {
 		container.image = "hs-test/vpp"
+	}
+
+	if args, ok := yamlInput["extra-args"]; ok {
+		container.extraRunningArgs = args.(string)
+	} else {
+		container.extraRunningArgs = ""
 	}
 
 	if isOptional, ok := yamlInput["is-optional"]; ok {
@@ -77,7 +84,7 @@ func (c *Container) getRunCommand() string {
 	cmd += syncPath
 	cmd += c.getVolumesAsCliOption()
 	cmd += c.getEnvVarsAsCliOption()
-	cmd += " --name " + c.name + " " + c.image
+	cmd += " --name " + c.name + " " + c.image + " " + c.extraRunningArgs
 	return cmd
 }
 
