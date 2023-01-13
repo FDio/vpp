@@ -62,9 +62,8 @@ enum
 /* Low level error reporting function.
    Code specifies whether to call exit, abort or nothing at
    all (for non-fatal warnings). */
-extern void _clib_error (int code,
-			 char *function_name,
-			 uword line_number, char *format, ...);
+extern void _clib_error (int code, const char *function_name,
+			 uword line_number, const char *format, ...);
 
 #define ASSERT(truth)					\
 do {							\
