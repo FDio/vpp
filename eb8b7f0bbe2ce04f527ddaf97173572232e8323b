@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc4a36fa_f8c8e9b0",
+        "filename": "extras/hs-test/topo-containers/ns.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-13T21:35:16Z",
+      "side": 1,
+      "message": "Just realized this is the container image. Can we maybe add an optional \"custom-run\" or \"extra-args\" key which we use only if present?",
+      "range": {
+        "startLine": 27,
+        "startChar": 11,
+        "endLine": 27,
+        "endChar": 91
+      },
+      "revId": "eb8b7f0bbe2ce04f527ddaf97173572232e8323b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
