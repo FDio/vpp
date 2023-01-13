@@ -2390,7 +2390,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
  *   any-interface tests fail.
  *
  * - <b>error <node>.<error></b> - filter packets based on a specific error.
- *   For example: error {ip4-udp-lookup}.{No listener for dst port}
+ *   For example: error {ip4-udp-lookup}.{no_listener}
  *
  * - <b>file <name></b> - Used to specify the output filename. The file will
  *   be placed in the '<em>/tmp</em>' directory, so only the filename is

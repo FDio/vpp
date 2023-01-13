@@ -733,6 +733,47 @@ autoreply define collect_detailed_interface_stats
   bool  enable_disable;
 };
 
+/** \brief pcap_trace_on
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param capture_rx - capture received packets
+    @param capture_tx - capture transmitted packets
+    @param capture_drop - capture dropped packets
+    @param filter - is a filter is being used on this capture
+    @param preallocate_data - preallocate the data buffer
+    @param free_data - free the data buffer
+    @param max_packets - depth of local buffer
+    @param max_bytes_per_packet - maximum number of bytes to capture
+                                  for each packet
+    @param sw_if_index - specify a given interface, or 0 for any
+    @param error - filter packets based on a specific error.
+    @param filename - output filename, will be placed in /tmp
+*/
+autoreply define pcap_trace_on
+{
+    u32 client_index;
+    u32 context;
+    bool capture_rx;
+    bool capture_tx;
+    bool capture_drop;
+    bool filter;
+    bool preallocate_data;
+    bool free_data;
+    u32 max_packets [default=1000];
+    u32 max_bytes_per_packet [default=512];
+    vl_api_interface_index_t sw_if_index;
+    string error[128];
+    string filename[64];
+
+    option vat_help = "pcap_trace_on [capture_rx] [capture_tx] [capture_drop] [max_packets <nn>] [sw_if_index <sw_if_index>|0 for any] [error <node>.<error>] [filename <name>] [max_bytes_per_packet <nnnn>] [filter] [preallocate_data] [free_data]";
+};
+
+autoreply define pcap_trace_off
+{
+  u32 client_index;
+  u32 context;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

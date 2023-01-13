@@ -1283,6 +1283,18 @@ api_sw_interface_set_interface_name (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_pcap_trace_on (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_pcap_trace_off (vat_main_t *vam)
+{
+  return -1;
+}
+
 #include <vnet/interface.api_test.c>
 
 /*

@@ -3,8 +3,11 @@
 import os
 import unittest
 
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import IP, UDP
+from scapy.packet import Raw
+
 from asfframework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 class TestPcap(VppTestCase):
@@ -14,8 +17,17 @@ class TestPcap(VppTestCase):
     def setUpClass(cls):
         super(TestPcap, cls).setUpClass()
 
+        cls.create_pg_interfaces(range(1))
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
     @classmethod
     def tearDownClass(cls):
+        for i in cls.pg_interfaces:
+            i.admin_down()
+
         super(TestPcap, cls).tearDownClass()
 
     def setUp(self):
@@ -85,6 +97,66 @@ class TestPcap(VppTestCase):
         os.remove("/tmp/dispatch.pcap")
         os.remove("/tmp/rxtx.pcap")
         os.remove("/tmp/filt.pcap")
+
+    def test_pcap_trace_api(self):
+        """PCAP API Tests"""
+
+        pkt = (
+            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            / IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4, ttl=2)
+            / UDP(sport=1234, dport=2345)
+            / Raw(b"\xa5" * 128)
+        )
+
+        self.vapi.pcap_trace_on(
+            capture_rx=True,
+            capture_tx=True,
+            max_packets=1000,
+            sw_if_index=0,
+            filename="trace_any.pcap",
+        )
+        self.pg_send(self.pg0, pkt * 10)
+        self.vapi.pcap_trace_off()
+
+        self.vapi.cli(
+            f"classify filter pcap mask l3 ip4 src match l3 ip4 src {self.pg0.local_ip4}"
+        )
+        self.vapi.pcap_trace_on(
+            capture_rx=True,
+            capture_tx=True,
+            filter=True,
+            max_packets=1000,
+            sw_if_index=0,
+            filename="trace_any_filter.pcap",
+        )
+        self.pg_send(self.pg0, pkt * 10)
+        self.vapi.pcap_trace_off()
+        self.vapi.cli("classify filter pcap del mask l3 ip4 src")
+
+        pkt = (
+            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            # wrong destination address
+            / IP(src=self.pg0.local_ip4, dst=self.pg0.local_ip4, ttl=2)
+            / UDP(sport=1234, dport=2345)
+            / Raw(b"\xa5" * 128)
+        )
+
+        self.vapi.pcap_trace_on(
+            capture_drop=True,
+            max_packets=1000,
+            sw_if_index=0,
+            error="{ip4-local}.{spoofed_local_packets}",
+            filename="trace_drop_err.pcap",
+        )
+        self.pg_send(self.pg0, pkt * 10)
+        self.vapi.pcap_trace_off()
+
+        self.assertTrue(os.path.exists("/tmp/trace_any.pcap"))
+        self.assertTrue(os.path.exists("/tmp/trace_any_filter.pcap"))
+        self.assertTrue(os.path.exists("/tmp/trace_drop_err.pcap"))
+        os.remove("/tmp/trace_any.pcap")
+        os.remove("/tmp/trace_any_filter.pcap")
+        os.remove("/tmp/trace_drop_err.pcap")
 
 
 if __name__ == "__main__":

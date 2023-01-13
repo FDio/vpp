@@ -115,9 +115,8 @@ static void vl_api_classify_pcap_set_table_t_handler
   u32 table_index = ntohl (mp->table_index);
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  if (sw_if_index == ~0
-      || sw_if_index >= vec_len (cm->classify_table_index_by_sw_if_index)
-      || (table_index != ~0 && pool_is_free_index (cm->tables, table_index)))
+  if (sw_if_index == ~0 ||
+      (table_index != ~0 && pool_is_free_index (cm->tables, table_index)))
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;
