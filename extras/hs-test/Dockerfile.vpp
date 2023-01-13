@@ -1,4 +1,6 @@
-FROM ubuntu:22.04
+ARG UBUNTU_VERSION
+
+FROM ubuntu:${UBUNTU_VERSION}
 
 RUN apt-get update \
  && apt-get install -y openssl libapr1 libnuma1 libsubunit0 \
