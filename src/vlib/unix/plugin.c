@@ -35,7 +35,7 @@ char *vlib_plugin_app_version __attribute__ ((weak));
 char *vlib_plugin_app_version = "";
 
 void *
-vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
+vlib_get_plugin_symbol (const char *plugin_name, const char *symbol_name)
 {
   plugin_main_t *pm = &vlib_plugin_main;
   uword *p;
