@@ -39,6 +39,30 @@
       },
       "revId": "177f98700fb4c5f3bee42d44d0328368db7d5e87",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee09fc52_41c5ab48",
+        "filename": "extras/hs-test/script/build.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-13T19:52:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e66e93b2_900de14b",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 27
+      },
+      "revId": "177f98700fb4c5f3bee42d44d0328368db7d5e87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
