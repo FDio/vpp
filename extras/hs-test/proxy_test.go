@@ -30,7 +30,7 @@ func testProxyHttpTcp(s *NsSuite) error {
 
 	s.log("http server started...")
 
-	c := fmt.Sprintf("ip netns exec client wget --retry-connrefused --retry-on-http-error=503 --tries=10 -O %s 10.0.0.2:555/%s", outputFile, srcFile)
+	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused --retry-on-http-error=503 --tries=10 -O %s 10.0.0.2:555/%s", outputFile, srcFile)
 	_, err = exechelper.CombinedOutput(c)
 	s.assertNil(err, "failed to run wget")
 	stopServer <- struct{}{}

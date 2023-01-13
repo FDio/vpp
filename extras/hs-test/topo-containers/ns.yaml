@@ -24,5 +24,5 @@ containers:
         value: "0"
       - name: "VCL_CONFIG"
         value: "/tmp/vcl.conf"
-    image: "envoyproxy/envoy-contrib:v1.21-latest"
+    image: "envoyproxy/envoy-contrib:v1.21-latest --concurrency 2 -c /etc/envoy/envoy.yaml"
     is-optional: true
