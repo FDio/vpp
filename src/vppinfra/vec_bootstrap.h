@@ -190,7 +190,7 @@ _vec_set_len (void *v, uword len, uword elt_sz)
 
   if (len > old_len)
     clib_mem_unpoison (v + old_len * elt_sz, (len - old_len) * elt_sz);
-  else if (len > old_len)
+  else if (len < old_len)
     clib_mem_poison (v + len * elt_sz, (old_len - len) * elt_sz);
 
   _vec_set_grow_elts (v, old_len + grow_elts - len);
