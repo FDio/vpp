@@ -16,6 +16,23 @@
       "message": "Adding Benoit for his review",
       "revId": "a9d69c2b22a1248df3940907d3ea67177af6b862",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52b0b868_c5ce567a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-13T17:14:06Z",
+      "side": 1,
+      "message": "Good catch, looks good to me",
+      "revId": "a9d69c2b22a1248df3940907d3ea67177af6b862",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
