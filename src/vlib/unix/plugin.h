@@ -146,7 +146,8 @@ extern plugin_main_t vlib_plugin_main;
 clib_error_t *vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input);
 int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
-void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
+void *vlib_get_plugin_symbol (const char *plugin_name,
+			      const char *symbol_name);
 u8 *vlib_get_vat_plugin_path (void);
 
 #define VLIB_PLUGIN_REGISTER() \
