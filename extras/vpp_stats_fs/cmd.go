@@ -44,11 +44,13 @@ func LogMsg(msg string) {
 }
 
 func main() {
-	syslogger, err := syslog.New(syslog.LOG_ERR|syslog.LOG_DAEMON, "statsfs")
-	if err != nil {
-		log.Fatalln(err)
+	syslogger, err := syslog.New(syslog.LOG_ERR | syslog.LOG_DAEMON, "statsfs")
+
+	if err == nil {
+	        log.SetOutput(syslogger)
+	} else {
+		log.SetOutput(os.Stdout)
 	}
-	log.SetOutput(syslogger)
 
 	statsSocket := flag.String("socket", statsclient.DefaultSocketName, "Path to VPP stats socket")
 	debug := flag.Bool("debug", false, "print debugging messages.")
