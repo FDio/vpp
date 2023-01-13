@@ -534,7 +534,10 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   if (n_slots == 0)
-    goto refill;
+    {
+      ptd->n_packets = 0;
+      goto refill;
+    }
 
   n_desc = memif_parse_desc (ptd, mif, mq, cur_slot, n_slots);
 
