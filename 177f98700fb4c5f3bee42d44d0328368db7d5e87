@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7fe82c36_aaf8641f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-13T17:29:01Z",
+      "side": 1,
+      "message": "Nice! Just a nit",
+      "revId": "177f98700fb4c5f3bee42d44d0328368db7d5e87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e66e93b2_900de14b",
+        "filename": "extras/hs-test/script/build.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-13T17:29:01Z",
+      "side": 1,
+      "message": "Maybe move it to vars that\u0027s sourced above?",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 27
+      },
+      "revId": "177f98700fb4c5f3bee42d44d0328368db7d5e87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
