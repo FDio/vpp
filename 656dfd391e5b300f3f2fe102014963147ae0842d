@@ -70,6 +70,24 @@
       "parentUuid": "b374d854_0fe52a40",
       "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "06403822_85483930",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2589
+      },
+      "writtenOn": "2023-01-13T12:51:37Z",
+      "side": 1,
+      "message": "I\u0027ve uploaded new patchset, I\u0027ve reversed change where single worker owned more that one cryptodev instance and readjusted code to not divide enc/dec. This seems to make patch functional and I have not observed any drops originating from QAT on SPR, perf seems to be not impacted, more testing needed.\nThere is a question though, why there was an issue when single worker tried to divide work between two cryptodev instances (as seen in show cryptodev assignment), this issue was not occurring on GEN3 while for GEN4 packet on decryption instance got stuck in the queue and attempt to dequeu it was always resulting in empty response from QAT.",
+      "parentUuid": "a431c973_3f1d1b1e",
+      "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
