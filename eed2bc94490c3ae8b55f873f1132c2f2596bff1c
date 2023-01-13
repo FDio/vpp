@@ -105,6 +105,24 @@
       "message": "Actually, I remember the issue now! There is https://gerrit.fd.io/r/c/vpp/+/34668 quietly rusting...\nThe issue stems from the kernel AF_XDP code which limits a TX batch to a magic value defined only in net/xdp/xsk.c. I think it used to be 16 and is 32 now.\nSo if we try to send more than this (say 256), we\u0027ll fail and drop the rest. Which obviously is not ideal.\nThe difficulty is we do not know this magic value in userspace, hence my other patch retrying as long as we get EAGAIN.",
       "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09762c4c_ec0a3199",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-01-13T13:13:04Z",
+      "side": 1,
+      "message": "Well done!\n\nI think we should commit these two patches together.\n\nAnd, I think this patch(https://gerrit.fd.io/r/c/vpp/+/34668) should be changed look like below:\n\n```\n      do\n\t{\n\t  ret \u003d poll (\u0026fd, 1, 0);\n\t}\n      while (ret \u003c 0 \u0026\u0026 EAGAIN \u003d\u003d errno);\n```",
+      "parentUuid": "9dc8f88b_a0da9f13",
+      "revId": "eed2bc94490c3ae8b55f873f1132c2f2596bff1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
