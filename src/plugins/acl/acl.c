@@ -2874,6 +2874,7 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
   int rv;
   int rule_idx = 0;
   int n_rules_override = -1;
+  u32 acl_index = ~0;
   u32 proto = 0;
   u32 port1 = 0;
   u32 port2 = 0;
@@ -2887,7 +2888,13 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "permit+reflect"))
+      if (unformat (line_input, "index %d", &acl_index))
+	{
+	  /* operate on this acl index (which must exist),
+	   * If not specified, or set to -1, create a new ACL
+	   */
+	}
+      else if (unformat (line_input, "permit+reflect"))
 	{
 	  vec_validate_acl_rules (rules, rule_idx);
 	  rules[rule_idx].is_permit = 2;
@@ -2975,7 +2982,6 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 	break;
     }
 
-  u32 acl_index = ~0;
   if (!tag)
     vec_add (tag, "cli", 4);
 
@@ -2990,6 +2996,37 @@ acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "ACL index:%d", acl_index);
 
+  return (NULL);
+}
+
+static clib_error_t *
+acl_delete_aclplugin_acl_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int rv;
+  u32 acl_index = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "index %d", &acl_index))
+	{
+	  /* operate on this acl index (which must exist) */
+	}
+      else
+	break;
+    }
+
+  rv = acl_del_list (acl_index);
+
+  unformat_free (line_input);
+  if (rv)
+    return (clib_error_return (0, "failed"));
+
+  vlib_cli_output (vm, "Deleted ACL index:%d", acl_index);
   return (NULL);
 }
 
@@ -3590,7 +3627,10 @@ VLIB_CLI_COMMAND (aclplugin_set_interface_command, static) = {
 
 /*?
  * Create an Access Control List (ACL)
- *  an ACL is composed of more than one Access control element (ACE). Multiple
+ *  If index is not specified, a new one will be created. Otherwise, replace
+ *  the one at this index.
+ *
+ *  An ACL is composed of more than one Access control element (ACE). Multiple
  *  ACEs can be specified with this command using a comma separated list.
  *
  * Each ACE describes a tuple of src+dst IP prefix, ip protocol, src+dst port
@@ -3600,15 +3640,33 @@ VLIB_CLI_COMMAND (aclplugin_set_interface_command, static) = {
  * An ACL can optionally be assigned a 'tag' - which is an identifier
  * understood by the client. VPP does not examine it in any way.
  *
- * @cliexcmd{set acl-plugin acl <permit|deny> src <PREFIX> dst <PREFIX> proto
- * <TCP|UDP> sport <X-Y> dport <X-Y> [tag FOO]}
+ * @cliexcmd{set acl-plugin acl <permit|deny|permit+reflect> src <PREFIX> dst
+ * <PREFIX> proto <TCP|UDP> sport <X-Y> dport <X-Y> tcpflags <X> mask <X>
+ * [tag FOO]}
  ?*/
 VLIB_CLI_COMMAND (aclplugin_set_acl_command, static) = {
-    .path = "set acl-plugin acl",
-    .short_help = "set acl-plugin acl <permit|deny> src <PREFIX> dst <PREFIX> proto X sport X-Y dport X-Y [tag FOO] {use comma separated list for multiple rules}",
-    .function = acl_set_aclplugin_acl_fn,
+  .path = "set acl-plugin acl",
+  .short_help =
+    "set acl-plugin acl [index <idx>] <permit|deny|permit+reflect> src "
+    "<PREFIX> dst <PREFIX> [proto X] [sport X[-Y]] [dport X[-Y]] [tcpflags "
+    "<int> mask <int>] [tag FOO] {use comma separated list for multiple "
+    "rules}",
+  .function = acl_set_aclplugin_acl_fn,
 };
 /* *INDENT-ON* */
+
+/*?
+ * Delete an Access Control List (ACL)
+ *  Removes an ACL at the specified index, which must exist but not in use by
+ *  any interface.
+ *
+ * @cliexcmd{delete acl-plugin acl index <idx>}
+ ?*/
+VLIB_CLI_COMMAND (aclplugin_delete_acl_command, static) = {
+  .path = "delete acl-plugin acl",
+  .short_help = "delete acl-plugin acl index <idx>",
+  .function = acl_delete_aclplugin_acl_fn,
+};
 
 static clib_error_t *
 acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
