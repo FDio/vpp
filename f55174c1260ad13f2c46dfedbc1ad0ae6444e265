@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e3bcf00_b20022fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-01-15T19:15:17Z",
+      "side": 1,
+      "message": "Please take a look - some simple CLI additions, discussion and short demo on https://lists.fd.io/g/vpp-dev/message/22469",
+      "revId": "f55174c1260ad13f2c46dfedbc1ad0ae6444e265",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
