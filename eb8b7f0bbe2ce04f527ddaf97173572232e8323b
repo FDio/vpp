@@ -22,6 +22,30 @@
       },
       "revId": "eb8b7f0bbe2ce04f527ddaf97173572232e8323b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7bedc6d8_3f63e92f",
+        "filename": "extras/hs-test/topo-containers/ns.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-01-16T07:30:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dc4a36fa_f8c8e9b0",
+      "range": {
+        "startLine": 27,
+        "startChar": 11,
+        "endLine": 27,
+        "endChar": 91
+      },
+      "revId": "eb8b7f0bbe2ce04f527ddaf97173572232e8323b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
