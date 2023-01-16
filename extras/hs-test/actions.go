@@ -259,13 +259,13 @@ func (a *Actions) Configure2Veths(args []string) *ActionResult {
 	var fn func(context.Context, api.Connection) error
 	switch vppConfig.Variant {
 	case "srv":
-		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1)
+		fn = configure2vethsTopo("hst_vppsrv", "10.10.10.1/24", "1", 1)
 	case "srv-with-preset-hw-addr":
-		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1, "00:00:5e:00:53:01")
+		fn = configure2vethsTopo("hst_vppsrv", "10.10.10.1/24", "1", 1, "00:00:5e:00:53:01")
 	case "cln":
 		fallthrough
 	default:
-		fn = configure2vethsTopo("vppcln", "10.10.10.2/24", "2", 2)
+		fn = configure2vethsTopo("hst_vppcln", "10.10.10.2/24", "2", 2)
 	}
 	err = fn(ctx, con)
 	if err != nil {

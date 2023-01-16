@@ -1,5 +1,5 @@
 ---
 devices:
-  - name: "tap0"
+  - name: "hst_tap0"
     type: "tap"
     ip4: "10.10.10.1/24"
