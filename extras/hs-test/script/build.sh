@@ -21,5 +21,7 @@ if [ $res -ne 0 ]; then
 	exit 1
 fi
 
-docker build --build-arg UBUNTU_VERSION -t hs-test/vpp -f docker/Dockerfile.vpp .
-docker build --build-arg UBUNTU_VERSION -t hs-test/nginx-ldp -f docker/Dockerfile.nginx .
+docker build --build-arg UBUNTU_VERSION --build-arg http_proxy=$HTTP_PROXY \
+	-t hs-test/vpp -f docker/Dockerfile.vpp .
+docker build --build-arg UBUNTU_VERSION --build-arg http_proxy=$HTTP_PROXY \
+	-t hs-test/nginx-ldp -f docker/Dockerfile.nginx .
