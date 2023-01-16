@@ -1298,6 +1298,22 @@ vl_api_set_ip_flow_hash_v2_t_handler (vl_api_set_ip_flow_hash_v2_t *mp)
 }
 
 static void
+vl_api_set_ip_flow_hash_v3_t_handler (vl_api_set_ip_flow_hash_v3_t *mp)
+{
+  vl_api_set_ip_flow_hash_v3_reply_t *rmp;
+  ip_address_family_t af;
+  int rv;
+
+  rv = ip_address_family_decode (mp->af, &af);
+
+  if (!rv)
+    rv = ip_flow_hash_set (af, htonl (mp->table_id),
+			   htonl (mp->flow_hash_config));
+
+  REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_V3_REPLY);
+}
+
+static void
 vl_api_set_ip_flow_hash_router_id_t_handler (
   vl_api_set_ip_flow_hash_router_id_t *mp)
 {

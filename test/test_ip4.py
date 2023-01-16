@@ -6,6 +6,7 @@ import unittest
 
 import scapy.compat
 from scapy.contrib.mpls import MPLS
+from scapy.contrib.gtp import GTP_U_Header
 from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -1210,6 +1211,7 @@ class TestIPLoadBalance(VppTestCase):
         """IP Load-Balancing"""
 
         fhc = VppEnum.vl_api_ip_flow_hash_config_t
+        fhcv2 = VppEnum.vl_api_ip_flow_hash_config_v2_t
         af = VppEnum.vl_api_address_family_t
 
         #
@@ -1217,16 +1219,20 @@ class TestIPLoadBalance(VppTestCase):
         #
         port_ip_pkts = []
         port_mpls_pkts = []
+        port_gtp_pkts = []
 
         #
         # An array of packets that differ only in the source address
         #
         src_ip_pkts = []
         src_mpls_pkts = []
+        src_gtp_pkts = []
 
         for ii in range(NUM_PKTS):
+            internal_src_ip_hdr = IP(dst="10.0.0.1", src="20.0.0.1")
+
             port_ip_hdr = (
-                IP(dst="10.0.0.1", src="20.0.0.1")
+                internal_src_ip_hdr
                 / UDP(sport=1234, dport=1234 + ii)
                 / Raw(b"\xa5" * 100)
             )
@@ -1238,6 +1244,15 @@ class TestIPLoadBalance(VppTestCase):
                     Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                     / MPLS(label=66, ttl=2)
                     / port_ip_hdr
+                )
+            )
+            port_gtp_pkts.append(
+                (
+                    Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                    / internal_src_ip_hdr
+                    / UDP(sport=2152, dport=2152, chksum=0)
+                    / GTP_U_Header(gtp_type="g_pdu", teid=200)
+                    / Raw(b"\xa5" * 100)
                 )
             )
 
@@ -1254,6 +1269,15 @@ class TestIPLoadBalance(VppTestCase):
                     Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                     / MPLS(label=66, ttl=2)
                     / src_ip_hdr
+                )
+            )
+            src_gtp_pkts.append(
+                (
+                    Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                    / IP(dst="10.0.0.1", src="20.0.0.1")
+                    / UDP(sport=2152, dport=2152, chksum=0)
+                    / GTP_U_Header(gtp_type="g_pdu", teid=ii)
+                    / Raw(b"\xa5" * 100)
                 )
             )
 
@@ -1329,6 +1353,26 @@ class TestIPLoadBalance(VppTestCase):
         )
 
         self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
+
+        #
+        # this case gtp v1 teid key LB
+        #
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP4,
+            table_id=0,
+            flow_hash_config=(
+                fhcv2.IP_API_V2_FLOW_HASH_SRC_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_PROTO
+                | fhcv2.IP_API_V2_FLOW_HASH_GTPV1_TEID
+            ),
+        )
+        self.logger.info(self.vapi.cli("show ip fib"))
+
+        self.send_and_expect_load_balancing(
+            self.pg0, src_gtp_pkts, [self.pg1, self.pg2]
+        )
+
+        self.send_and_expect_only(self.pg0, port_gtp_pkts, self.pg2)
 
         #
         # change the flow hash config back to defaults
