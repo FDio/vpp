@@ -68,6 +68,23 @@
       "message": "hi dave. \nIf you don\u0027t mind, could you please merge this?\nThe maintainer gave Approve, so I think there is no problem.\nthanks 🙏",
       "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e02e1922_7a09ce7d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-01-16T19:07:52Z",
+      "side": 1,
+      "message": "Hello Takeru-san!\nCould you allow me some time to review this?\nWhile the code looks fine, I have few suggestions to propose here. \nFor example, there are some changes introduced to the SR Policy code to support PT Sink Node behavior (updating the policy definition to include the type). It would be great to include this as part of the new revision of the API. ",
+      "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
