@@ -1479,10 +1479,10 @@ ip4_local_check_l4_csum_x2 (vlib_main_t * vm, vlib_buffer_t ** b,
   if (PREDICT_FALSE (ip4_local_need_csum_check (is_tcp_udp[0], b[0])
 		     || ip4_local_need_csum_check (is_tcp_udp[1], b[1])))
     {
-      if (is_tcp_udp[0])
+      if (is_tcp_udp[0] && !ip4_local_csum_is_offloaded (b[0]))
 	ip4_local_l4_csum_validate (vm, b[0], ih[0], is_udp[0], &error[0],
 				    &good_tcp_udp[0]);
-      if (is_tcp_udp[1])
+      if (is_tcp_udp[1] && !ip4_local_csum_is_offloaded (b[1]))
 	ip4_local_l4_csum_validate (vm, b[1], ih[1], is_udp[1], &error[1],
 				    &good_tcp_udp[1]);
     }
