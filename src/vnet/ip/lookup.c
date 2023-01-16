@@ -145,13 +145,13 @@ unformat_ip_flow_hash_config (unformat_input_t *input, va_list *args)
     {
       if (unformat (input, "%_,"))
 	;
-#define _(a, b)                                                               \
+#define _(a, b, c)                                                            \
   else if (unformat (input, "%_" #a))                                         \
   {                                                                           \
-    *flow_hash_config |= b;                                                   \
+    *flow_hash_config |= c;                                                   \
     matched_once = 1;                                                         \
   }
-      foreach_flow_hash_bit_v1
+      foreach_flow_hash_bit
 #undef _
 	else
       {

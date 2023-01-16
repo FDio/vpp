@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_cover.h>
 #include <vnet/fib/fib_internal.h>
+#include <vnet/ip/ip_flow_hash.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/mpls_fib.h>

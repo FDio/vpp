@@ -38,7 +38,24 @@
   _ (proto, 4, IP_FLOW_HASH_PROTO)                                            \
   _ (reverse, 5, IP_FLOW_HASH_REVERSE_SRC_DST)                                \
   _ (symmetric, 6, IP_FLOW_HASH_SYMMETRIC)                                    \
-  _ (flowlabel, 7, IP_FLOW_HASH_FL)
+  _ (flowlabel, 7, IP_FLOW_HASH_FL)                                           \
+  _ (gtpv1teid, 8, IP_FLOW_HASH_GTPV1_TEID)
+
+typedef struct
+{
+  u16 seq;
+  u8 npdu_num;
+  u8 nextexthdr;
+} __attribute__ ((packed)) gtpv1u_exthdr_t;
+typedef struct
+{
+  u8 ver_flags;
+  u8 type;
+  u16 length;
+  u32 teid;
+  gtpv1u_exthdr_t ext[0];
+} __attribute__ ((packed)) gtpv1u_header_t;
+#define GTPV1_PORT 2152
 
 /**
  * A flow hash configuration is a mask of the flow hash options
