@@ -43,6 +43,7 @@
 #include <vnet/ip/ip_flow_hash.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/tcp/tcp_packet.h>
+#include <vnet/udp/udp_packet.h>
 
 #define IP_DF 0x4000		/* don't fragment */
 
@@ -53,9 +54,11 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
   tcp_header_t *tcp = (void *) (ip + 1);
+  udp_header_t *udp = (void *) (ip + 1);
+  gtpv1u_header_t *gtpu = (void *) (udp + 1);
   u32 a, b, c, t1, t2;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-		      || ip->protocol == IP_PROTOCOL_UDP);
+  uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
+  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
     ? ip->src_address.data_u32 : 0;
@@ -90,6 +93,13 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
   c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
     (t1 << 16) | t2 : (t2 << 16) | t1;
+  if (PREDICT_TRUE (is_udp) &&
+      PREDICT_FALSE ((flow_hash_config & IP_FLOW_HASH_GTPV1_TEID) &&
+		     udp->dst_port == GTPV1_PORT_BE))
+    {
+      t1 = gtpu->teid;
+      c ^= t1;
+    }
   a ^= ip_flow_hash_router_id;
 
   hash_v3_mix32 (a, b, c);

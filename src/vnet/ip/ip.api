@@ -366,6 +366,41 @@ autoreply define set_ip_flow_hash_v2
   vl_api_ip_flow_hash_config_t flow_hash_config;
 };
 
+/**
+    @brief flow hash settings for an IP table
+    @param src - include src in flow hash
+    @param dst - include dst in flow hash
+    @param sport - include sport in flow hash
+    @param dport - include dport in flow hash
+    @param proto - include proto in flow hash
+    @param reverse - include reverse in flow hash
+    @param symmetric - include symmetry in flow hash
+    @param flowlabel - include flowlabel in flow hash
+    @param gtpv1teid - include gtpv1teid in flow hash
+*/
+enumflag ip_flow_hash_config_v2
+{
+  IP_API_V2_FLOW_HASH_SRC_IP = 0x01,
+  IP_API_V2_FLOW_HASH_DST_IP = 0x02,
+  IP_API_V2_FLOW_HASH_SRC_PORT = 0x04,
+  IP_API_V2_FLOW_HASH_DST_PORT = 0x08,
+  IP_API_V2_FLOW_HASH_PROTO = 0x10,
+  IP_API_V2_FLOW_HASH_REVERSE = 0x20,
+  IP_API_V2_FLOW_HASH_SYMETRIC = 0x40,
+  IP_API_V2_FLOW_HASH_FLOW_LABEL = 0x80,
+  IP_API_V2_FLOW_HASH_GTPV1_TEID = 0x100,
+};
+
+autoreply define set_ip_flow_hash_v3
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  vl_api_address_family_t af;
+  vl_api_ip_flow_hash_config_v2_t flow_hash_config;
+  option status="in_progress";
+};
+
 /** \brief Set the ip flow hash router ID
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
