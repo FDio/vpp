@@ -1,24 +1,24 @@
 ---
 devices:
-  - name: "hsns"
+  - name: "hst_hsns"
     type: "netns"
 
-  - name: "vppsrv"
+  - name: "hst_vppsrv"
     type: "veth"
     peer:
-      name: "vppsrv_veth"
-      netns: "hsns"
+      name: "hst_vppsrv_veth"
+      netns: "hst_hsns"
 
-  - name: "vppcln"
+  - name: "hst_vppcln"
     type: "veth"
     peer:
-      name: "vppcln_veth"
-      netns: "hsns"
+      name: "hst_vppcln_veth"
+      netns: "hst_hsns"
 
-  - name: "br"
+  - name: "hst_br"
     type: "bridge"
-    netns: "hsns"
+    netns: "hst_hsns"
     interfaces:
-      - vppsrv_veth
-      - vppcln_veth
+      - hst_vppsrv_veth
+      - hst_vppcln_veth
 

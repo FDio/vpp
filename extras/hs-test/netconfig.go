@@ -185,7 +185,7 @@ func AddVethPair(ifName, peerName string) error {
 	cmd := exec.Command("ip", "link", "add", ifName, "type", "veth", "peer", "name", peerName)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("creating veth pair failed: %v", err)
+		return fmt.Errorf("creating veth pair %s:%s failed: %v", ifName, peerName, err)
 	}
 	err = SetDevUp(ifName, "")
 	if err != nil {
