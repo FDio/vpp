@@ -2834,11 +2834,10 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) =
-{
+VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) = {
   .path = "set ip flow-hash",
-  .short_help =
-  "set ip flow-hash table <table-id> [src] [dst] [sport] [dport] [proto] [reverse]",
+  .short_help = "set ip flow-hash table <table-id> [src] [dst] [sport] "
+		"[dport] [proto] [reverse] [gtpv1teid]",
   .function = set_ip_flow_hash_command_fn,
 };
 /* *INDENT-ON* */
