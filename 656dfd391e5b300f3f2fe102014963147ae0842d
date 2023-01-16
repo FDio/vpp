@@ -88,6 +88,24 @@
       "parentUuid": "a431c973_3f1d1b1e",
       "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f04fb176_4c3a3983",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-16T15:00:58Z",
+      "side": 1,
+      "message": "I would check if the worker has done proper enqueue and dequeue operations for each and every crypto it possesses - maybe SPR is sensitive in order even (the first op enqueued to the first queue has to be dequeued from first queue). Since this is a SPR specific problem it would be good to validate on DPDK only as well - by writing a simple test application on top of DPDK, to narrow the problem - see if it is VPP/DPDK/or SPR HW/FW problem.",
+      "parentUuid": "06403822_85483930",
+      "revId": "656dfd391e5b300f3f2fe102014963147ae0842d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
