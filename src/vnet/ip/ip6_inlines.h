@@ -42,6 +42,7 @@
 
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vlibmemory/api.h>
 
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
    flow.  And other things. */
@@ -50,14 +51,16 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
   tcp_header_t *tcp;
+  udp_header_t *udp = (void *) (ip + 1);
+  gtpv1u_header_t *gtpu = (void *) (udp + 1);
   u64 a, b, c;
   u64 t1, t2;
+  u32 t3;
   uword is_tcp_udp = 0;
+  uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
   u8 protocol = ip->protocol;
 
-  if (PREDICT_TRUE
-      ((ip->protocol == IP_PROTOCOL_TCP)
-       || (ip->protocol == IP_PROTOCOL_UDP)))
+  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) || is_udp))
     {
       is_tcp_udp = 1;
       tcp = (void *) (ip + 1);
@@ -113,7 +116,12 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
     ((flow_hash_config & IP_FLOW_HASH_FL) ? ip6_flow_label_network_order (ip) :
 					    0);
   c ^= t1;
-
+  if (is_udp && (flow_hash_config & IP_FLOW_HASH_GTPV1_TEID) &&
+      udp->dst_port == htons (GTPV1_PORT))
+    {
+      t3 = gtpu->teid;
+      a ^= t3;
+    }
   hash_mix64 (a, b, c);
   return (u32) c;
 }

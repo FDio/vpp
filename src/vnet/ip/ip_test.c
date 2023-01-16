@@ -1277,6 +1277,12 @@ api_set_ip_flow_hash_v2 (vat_main_t *vat)
 }
 
 static int
+api_set_ip_flow_hash_v3 (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
 api_ip_mroute_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
