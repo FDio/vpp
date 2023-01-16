@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a23d45fb_1b4e8996",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-16T20:53:37Z",
+      "side": 1,
+      "message": "Hm, hope was that we\u0027d be using vpp binaries from the host, not build them in a separate container. Worst case, if anyone wants to run in an older ubuntu, a change of ubuntu version in var should suffice, no?\n\nSpeaking of which, we could detect the ubuntu version instead of it being static, I guess.",
+      "revId": "724335f146d7b13bf06e63ccd81b1be5e9008401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
