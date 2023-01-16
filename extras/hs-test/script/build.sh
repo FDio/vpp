@@ -10,5 +10,7 @@ mkdir -p ${bin} ${lib} || true
 cp ${VPP_WS}/build-root/build-vpp_debug-native/vpp/bin/* ${bin}
 cp -r ${VPP_WS}/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/* ${lib}
 
-docker build --build-arg UBUNTU_VERSION -t hs-test/vpp -f docker/Dockerfile.vpp .
-docker build --build-arg UBUNTU_VERSION -t hs-test/nginx-ldp -f docker/Dockerfile.nginx .
+docker build --build-arg UBUNTU_VERSION --build-arg http_proxy=$HTTP_PROXY \
+	-t hs-test/vpp -f docker/Dockerfile.vpp .
+docker build --build-arg UBUNTU_VERSION --build-arg http_proxy=$HTTP_PROXY \
+	-t hs-test/nginx-ldp -f docker/Dockerfile.nginx .
