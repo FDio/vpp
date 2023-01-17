@@ -522,8 +522,6 @@ pattern_end:
 	  is_fdir = true;
 	}
 
-      is_fdir = false;
-
       if (fate == true)
 	{
 	  rv = VNET_FLOW_ERROR_INTERNAL;
