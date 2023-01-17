@@ -33,6 +33,24 @@
       "message": "Can you explain the logic of the code in this branch?\n\nTo me your idx_cookie is initialized as 0, and then incremented to 1 after it is used to set avg_cookie[0] to max. Which means the line 815/816 will never hit. So line 824 i will only be iterated between 0 and 1. Within only your avg_cookie[0] was set to max and avg_cookie[1] is never set.\n\nDid I miss something?",
       "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60813397_a30de2bd",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-17T10:28:05Z",
+      "side": 1,
+      "message": "idx_cookie is initialized as 0 and also will be incremented to 1 after it is used to set avg_cookie[0] to max, but also we have line 809 - modulus operation so it means that we can reach 0 after MAX_COUNT_COOKIE and then lines 815/816 will be hit.",
+      "parentUuid": "019cfcd3_abd7a963",
+      "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
