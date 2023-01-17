@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bd174d21_a3683707",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2396
+      },
+      "writtenOn": "2023-01-17T10:26:43Z",
+      "side": 1,
+      "message": "Generally lgtm. Happy you\u0027ve removed the \"template\". I was too timid when working on this (vpp noob). 😊\n\nI don\u0027t think there\u0027s actually any need to save the configs in a separate pool either. I think everything salient is in policer_t, would just be a case of changing the dump/details handlers to work from that.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "8e0303da_424b2b7d",
         "filename": "src/vnet/policer/policer.c",
         "patchSetId": 4
@@ -82,6 +99,23 @@
       "writtenOn": "2023-01-17T03:22:32Z",
       "side": 1,
       "message": "personally i prefer (NULL !\u003d p) since p is a pointer; the statement is more expressive about the check.\nyou can ignore my preferences though :)",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1af6e24f_7d766772",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 2396
+      },
+      "writtenOn": "2023-01-17T10:26:43Z",
+      "side": 1,
+      "message": "You could factor out this block from add and update.",
       "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
