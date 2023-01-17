@@ -141,6 +141,24 @@
       "parentUuid": "7ada9ec8_ea8c9659",
       "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ccba305_ab74131a",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-17T11:03:00Z",
+      "side": 1,
+      "message": "this is static variable in line 803 for idx_cookie",
+      "parentUuid": "0e95f8d3_9ff0f540",
+      "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
