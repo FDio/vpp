@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d0fdc70_fdbc7219",
+        "filename": "src/vnet/policer/police.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 0,
+      "message": "removing this seems unrelated to the review\u0027s commit message.",
+      "revId": "227660b9969410f29d6b3d14eba16be5f57fbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

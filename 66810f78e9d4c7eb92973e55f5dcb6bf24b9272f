@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84c03464_2bff8e22",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "if you\u0027re doing multiple changes (adding new APIs and changing the semantics of existing, removing dead code) it\u0027s kinder to the reviewers to do so in separate commits. for next time please.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e0303da_424b2b7d",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "i\u0027d say this error is unrecoverable by the user. ignore and continue?",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90ef5843_fe7a1c66",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "same here. choose the authoritative DB.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a18cd1c2_ff739fef",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "the counters were validated/created when the policer was created.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6abc8d2d_f9481890",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "personally i prefer (NULL !\u003d p) since p is a pointer; the statement is more expressive about the check.\nyou can ignore my preferences though :)",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "991250c6_ec47ce60",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "INPUT_V2_REPLY",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e4bcda5_0f9d9fab",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T03:22:32Z",
+      "side": 1,
+      "message": "OUTPUT_V2_REPLY",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
