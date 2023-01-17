@@ -99,6 +99,30 @@
       },
       "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3841d75_95ce7fc0",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-01-17T07:04:25Z",
+      "side": 0,
+      "message": "Got it. Thanks for clear.",
+      "parentUuid": "710ee026_3a928842",
+      "range": {
+        "startLine": 137,
+        "startChar": 0,
+        "endLine": 137,
+        "endChar": 45
+      },
+      "revId": "aff4d320f0fe9ce68fcb83ee9ab0abc2d8612644",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

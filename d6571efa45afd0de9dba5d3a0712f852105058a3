@@ -183,6 +183,24 @@
       "parentUuid": "32b5283b_a2d64a7f",
       "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c2fab7f_a2a6ffd3",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-01-17T07:04:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1f584fed_a5272c85",
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
