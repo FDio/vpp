@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d4500df2_5374f5ec",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2589
+      },
+      "writtenOn": "2023-01-17T12:55:57Z",
+      "side": 1,
+      "message": "On GEN3 I was getting very uneven enc/dec distribution while using smaller burst sizes for enq/deq (high packet rate).",
+      "parentUuid": "6500ff1c_4e71cb94",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5f435ecd_a326cd0d",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 3
@@ -48,6 +66,24 @@
       "writtenOn": "2023-01-17T10:43:09Z",
       "side": 1,
       "message": "Originally we drop the whole frame if the queue is full, but since you have a SW ring now, you don\u0027t have to drop it but enqueue whatever you can and only increment the enqueued count instead.\n\nThe logic could be \n\nwhile (there are remaining frames has elts not enqueued)\n{\nassemble the ops and do enqueue.\nif (whole frame is enqueued) move to next frame.\n}\n\nif (there are still room to enqueue current frame)\n{\ndo enqueue.\n}\n\nif (current frame has all elts enqueued)\n{\nmove to next empty slot for next enqueue\n}\nelse\n{\npush the frame into sw ring, mark enqueued for current frame with the count enqueued, and wait for next enqueue.\n}",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c2f8eff_6d0b36cd",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 2589
+      },
+      "writtenOn": "2023-01-17T12:55:57Z",
+      "side": 1,
+      "message": "Frame is not dropped, it is still on the ring and will be enqueued once there is a space for it. \nIt is feasible to enqueue frames partially and worth testing (I wouldn\u0027t expect big gains out of it though). Unfortunately it has to be done by someone else as I\u0027m no longer part of IPSec stack team.",
+      "parentUuid": "5f435ecd_a326cd0d",
       "revId": "52079341f1943a4d257b004bbf97046203744fa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
