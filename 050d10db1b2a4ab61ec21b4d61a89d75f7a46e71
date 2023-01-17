@@ -105,6 +105,24 @@
       "parentUuid": "06b5c458_fb27bdcc",
       "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ada9ec8_ea8c9659",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-17T10:55:21Z",
+      "side": 1,
+      "message": "if idx_cookie will be 1023 in line 807 and is_max_cookie \u003d\u003d false\nthen in 808 idx_cookie will be 1024 \nthen in 809 idx_cookie will be 0 after modulus operation \n\nand in line 811 we hit this and also in 813 then we set is_max_cookie \u003d\u003d true\nnow time for cookie it will be count from 1024 last samples \n\nif we don\u0027t have enough samples in the array for avg then we count avg from the small number of samples and if we reach MAX_COUNT_COOKIE the first time then we count from the last 1024 samples",
+      "parentUuid": "0d9cf09e_bb37e0da",
+      "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
