@@ -50,6 +50,23 @@
       "message": "I believe 37885 gas bumped the version of vpp-ext-deps in the meantime, so this needs to be rebased.\n\nrecheck",
       "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "339ab0ea_33c42e10",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-01-17T07:04:49Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "2678adde4a4932d5ddd14d61d6b22ecfdd5be4dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
