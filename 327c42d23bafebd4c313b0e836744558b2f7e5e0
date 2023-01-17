@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f46f811e_52b36eee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-17T12:02:56Z",
+      "side": 1,
+      "message": "There are some other required changes in files not included in the current patchset, but I don\u0027t know how to comment on those in Gerrit. The new namespace has to be updated in following places in tests.\n\nhttp_test.go:21\n`go startWget(finished, server_ip, port, \"test_file_10M\", \"hst_client\")`\n\nproxy_test.go:17\n`err :\u003d exechelper.Run(fmt.Sprintf(\"ip netns exec hst_server truncate -s %s %s\", srcFile, srcFile))`\n\nproxy_test.go:23\n`go startHttpServer(serverRunning, stopServer, \":666\", \"hst_server\")`\n\nproxy_test.go:33\n`c :\u003d fmt.Sprintf(\"ip netns exec hst_client wget --no-proxy --retry-connrefused --retry-on-http-error\u003d503 --tries\u003d10 -O %s 10.0.0.2:555/%s\", outputFile, srcFile)`",
+      "revId": "327c42d23bafebd4c313b0e836744558b2f7e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "375735ba_88b9580d",
+        "filename": "extras/hs-test/actions.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-17T12:02:56Z",
+      "side": 1,
+      "message": "Interface names should be changed here as well.",
+      "revId": "327c42d23bafebd4c313b0e836744558b2f7e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cda447f7_23d9b099",
+        "filename": "extras/hs-test/actions.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-17T12:02:56Z",
+      "side": 1,
+      "message": "Same as above.",
+      "revId": "327c42d23bafebd4c313b0e836744558b2f7e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81e51832_8bbf27d8",
+        "filename": "extras/hs-test/actions.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-17T12:02:56Z",
+      "side": 1,
+      "message": "The interface names should be changed here as well.",
+      "revId": "327c42d23bafebd4c313b0e836744558b2f7e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
