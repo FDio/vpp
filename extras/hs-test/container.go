@@ -187,5 +187,5 @@ func (c *Container) execAction(args string) (string, error) {
 }
 
 func (c *Container) stop() error {
-	return exechelper.Run("docker stop " + c.name)
+	return exechelper.Run("docker stop " + c.name + " -t 0")
 }
