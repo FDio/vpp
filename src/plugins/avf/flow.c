@@ -506,6 +506,7 @@ pattern_end:
   if (f->actions & VNET_FLOW_ACTION_RSS)
     {
       avf_actions[action_count].conf = &act_rss;
+      is_fdir = false;
 
       if ((act_rss.func = avf_flow_convert_rss_func (f->rss_fun)) ==
 	  AVF_ETH_HASH_FUNCTION_MAX)
@@ -521,8 +522,6 @@ pattern_end:
 	  avf_actions[action_count].type = VIRTCHNL_ACTION_Q_REGION;
 	  is_fdir = true;
 	}
-
-      is_fdir = false;
 
       if (fate == true)
 	{
