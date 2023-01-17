@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "89dfe58b748bb9a3fb8c981c2aa7a15f4adcded1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea437275_2b14e654",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-17T10:24:21Z",
+      "side": 1,
+      "message": "Works on my machine. But I don\u0027t have a proxy.",
+      "revId": "89dfe58b748bb9a3fb8c981c2aa7a15f4adcded1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
