@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "65fe9c09_c3e9ad38",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-17T16:36:24Z",
+      "side": 1,
+      "message": "Ouch, this is a bit worrisome because all tests passed on my dev host :/ \n\nRegarding the changes, added another item to our hst todo list, i.e., we should not depend on string interface names in tests. ",
+      "revId": "327c42d23bafebd4c313b0e836744558b2f7e5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "375735ba_88b9580d",
