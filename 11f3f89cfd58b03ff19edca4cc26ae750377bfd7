@@ -16,6 +16,142 @@
       "message": "Vratko, could you run a basic IPsec CSIT perf test to make sure we did not introduced perf regressions? Thanks in advance!",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ef2b6fd_d29814ac",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 629,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "ADD_V2_REPLY",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "868bed46_e2667c90",
+        "filename": "src/vnet/ipsec/ipsec_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "dump the whole bitmap in binary format?",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3e6017f_11733793",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "whilst you\u0027re here. return bool.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d7d0691_5020946e",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "return void?",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7fbae62f_0cdd9edb",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "the unwritten convention is that output parameters go last.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c7ce9ae_8b433c08",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "why change this? and all the other places where the old u64 is used.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f573c9a2_e58bcda2",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "s/falls/fall/",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f67e07b8_e880c35b",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-17T23:59:17Z",
+      "side": 1,
+      "message": "maybe a note here to say the value supplied will be round down to the nearest power of 2.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
