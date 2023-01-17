@@ -85,6 +85,24 @@
       "message": "Hello Takeru-san!\nCould you allow me some time to review this?\nWhile the code looks fine, I have few suggestions to propose here. \nFor example, there are some changes introduced to the SR Policy code to support PT Sink Node behavior (updating the policy definition to include the type). It would be great to include this as part of the new revision of the API. ",
       "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b05a634_64b31954",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-01-17T17:23:47Z",
+      "side": 1,
+      "message": "Hi Ahmed-san!\nOf course:) I would appreciate it if you could confirm.\n\n\u003e there are some changes introduced to the SR Policy code to support PT\n\nokay, I do git rebase to and Support SR Policy Type. please confirm!",
+      "parentUuid": "e02e1922_7a09ce7d",
+      "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
