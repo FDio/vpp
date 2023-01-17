@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d7566ad_f9664da5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-01-17T09:19:54Z",
+      "side": 1,
+      "message": "LGTM, 2 minor comments.\nAlso, I see there is a test_pcap.py file that tests the CLI Pcap functions. Maybe, you could add a test there for the API ;)",
+      "revId": "232a5ef84e27f15a6dee242398d0b74af769c84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "594f31e5_4cb7d949",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 740,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-01-17T09:19:54Z",
+      "side": 1,
+      "message": "small typo: `capture_rx` instead of `capture_tx`\nAlso it seems `capture_drop` is missing in this description",
+      "revId": "232a5ef84e27f15a6dee242398d0b74af769c84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6b6531b_25dc384c",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1639,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-01-17T09:19:54Z",
+      "side": 1,
+      "message": "Is there a reason you don\u0027t allow filtering on a specific error code?",
+      "revId": "232a5ef84e27f15a6dee242398d0b74af769c84a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
