@@ -122,6 +122,7 @@ add_vpp_library(vlib
   counter.h
   counter_types.h
   defs.h
+  dma/dma.h
   error_funcs.h
   error.h
   format_funcs.h
