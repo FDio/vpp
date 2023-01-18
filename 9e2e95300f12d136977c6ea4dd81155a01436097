@@ -16,6 +16,74 @@
       "message": "Hi.mentainers!please a review. \nthank you",
       "revId": "9e2e95300f12d136977c6ea4dd81155a01436097",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e67c874a_5dca9672",
+        "filename": "src/vnet/fib/fib_table.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-18T00:18:27Z",
+      "side": 1,
+      "message": "do you need this?",
+      "revId": "9e2e95300f12d136977c6ea4dd81155a01436097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e384e14_f9a61a0d",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-18T00:18:27Z",
+      "side": 1,
+      "message": "why this include?",
+      "revId": "9e2e95300f12d136977c6ea4dd81155a01436097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1acf7175_e2946524",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-18T00:18:27Z",
+      "side": 1,
+      "message": "is_udo is likely, flow_hash_config \u0026 IP_FLOW_HASH_GTPV1_TEID is unlikely; check the unlikely conditions first. A PREDICT_FALSE() around the composite too please.",
+      "revId": "9e2e95300f12d136977c6ea4dd81155a01436097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6398f3b4_ef81fc8b",
+        "filename": "src/vnet/ip/ip_flow_hash.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-01-18T00:18:27Z",
+      "side": 1,
+      "message": "is this needed? I don\u0027t see fields therein being used.",
+      "revId": "9e2e95300f12d136977c6ea4dd81155a01436097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
