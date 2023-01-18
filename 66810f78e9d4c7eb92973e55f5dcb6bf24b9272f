@@ -35,6 +35,42 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "61cab15b_b42fe95b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Indeed, sorry for that. I\u0027d be more careful in the future!",
+      "parentUuid": "84c03464_2bff8e22",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "24886034_14a6afd3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "I think the values in the configuration are more friendly to handle (CIR/EIR in Kbps, etc...) rather than the values in the policer that are scaled.\nBut if there is no need for that, I could drop the config also :)",
+      "parentUuid": "bd174d21_a3683707",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8e0303da_424b2b7d",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-01-17T03:22:32Z",
       "side": 1,
       "message": "i\u0027d say this error is unrecoverable by the user. ignore and continue?",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c68f24ec_7116df49",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8e0303da_424b2b7d",
       "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "54c84dfb_c3009051",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "90ef5843_fe7a1c66",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a18cd1c2_ff739fef",
@@ -82,6 +154,24 @@
       "writtenOn": "2023-01-17T03:22:32Z",
       "side": 1,
       "message": "the counters were validated/created when the policer was created.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "545f6665_976923b2",
+        "filename": "src/vnet/policer/policer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a18cd1c2_ff739fef",
       "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -121,6 +211,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "558966f0_10661648",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "I don\u0027t have any preferences, I just tried to align with other bits of code I already saw in VPP 😄",
+      "parentUuid": "ba1d5dd7_19dcacf3",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1af6e24f_7d766772",
@@ -134,6 +242,24 @@
       "writtenOn": "2023-01-17T10:26:43Z",
       "side": 1,
       "message": "You could factor out this block from add and update.",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "03094fa4_61710227",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1af6e24f_7d766772",
       "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -155,6 +281,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d938745_8f73c913",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "991250c6_ec47ce60",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7e4bcda5_0f9d9fab",
@@ -168,6 +312,24 @@
       "writtenOn": "2023-01-17T03:22:32Z",
       "side": 1,
       "message": "OUTPUT_V2_REPLY",
+      "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b4e5bb8_b4d5ce09",
+        "filename": "src/vnet/policer/policer_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T09:48:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7e4bcda5_0f9d9fab",
       "revId": "66810f78e9d4c7eb92973e55f5dcb6bf24b9272f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
