@@ -1096,9 +1096,11 @@ pcap_drop_trace (vlib_main_t * vm,
       from++;
       n_left--;
 
-      /* See if we're pointedly ignoring this specific error */
-      if (im->pcap_drop_filter_hash
-	  && hash_get (im->pcap_drop_filter_hash, b0->error))
+      /* Ignore specific only if we are tracing all drops. (Allow to trace
+       * specific ARP errors, but block them when tracing all drops) */
+      if (pp->pcap_error_index == (vlib_error_t) ~0 &&
+	  im->pcap_drop_filter_hash &&
+	  hash_get (im->pcap_drop_filter_hash, b0->error))
 	continue;
 
       if (!vnet_is_packet_pcaped (pp, b0, ~0))
