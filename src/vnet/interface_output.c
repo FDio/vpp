@@ -1069,9 +1069,7 @@ interface_drop_punt (vlib_main_t * vm,
 }
 
 static inline void
-pcap_drop_trace (vlib_main_t * vm,
-		 vnet_interface_main_t * im,
-		 vnet_pcap_t * pp, vlib_frame_t * f)
+pcap_drop_trace (vlib_main_t *vm, vnet_pcap_t *pp, vlib_frame_t *f)
 {
   u32 *from;
   u32 n_left = f->n_vectors;
@@ -1095,11 +1093,6 @@ pcap_drop_trace (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       from++;
       n_left--;
-
-      /* See if we're pointedly ignoring this specific error */
-      if (im->pcap_drop_filter_hash
-	  && hash_get (im->pcap_drop_filter_hash, b0->error))
-	continue;
 
       if (!vnet_is_packet_pcaped (pp, b0, ~0))
 	continue; /* not matching, skip */
@@ -1205,11 +1198,10 @@ VLIB_NODE_FN (interface_drop) (vlib_main_t * vm,
 			       vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
   vnet_pcap_t *pp = &vnm->pcap;
 
   if (PREDICT_FALSE (pp->pcap_drop_enable))
-    pcap_drop_trace (vm, im, pp, frame);
+    pcap_drop_trace (vm, pp, frame);
 
   return interface_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_DROP);
 }
