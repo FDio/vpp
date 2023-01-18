@@ -16,6 +16,24 @@
       "message": "Hi,\n\nThe type should be \"feature\".\nAlso could you include brief intro to the changes made, especially with the flag that enables internal header files installed.",
       "revId": "a2f62d1b02b1b6c23ae37d355879f143c16faed0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8208d8c_50647736",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-01-18T02:57:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6c1c1716_4d008432",
+      "revId": "a2f62d1b02b1b6c23ae37d355879f143c16faed0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
