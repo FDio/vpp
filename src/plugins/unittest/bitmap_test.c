@@ -16,51 +16,162 @@
 #include <vppinfra/bitmap.h>
 
 static clib_error_t *
+check_bitmap (const char *test_name, const uword *bm, u32 expected_len, ...)
+{
+  clib_error_t *error = 0;
+  u32 i;
+  uword expected_value;
+
+  va_list va;
+  va_start (va, expected_len);
+
+  if (vec_len (bm) != expected_len)
+    {
+      error = clib_error_create ("%s failed, wrong "
+				 "bitmap's size (%u != %u expected)",
+				 test_name, vec_len (bm), expected_len);
+      goto done;
+    }
+
+  for (i = 0; i < expected_len; ++i)
+    {
+      expected_value = va_arg (va, uword);
+      if (bm[i] != expected_value)
+	{
+	  error = clib_error_create (
+	    "%s failed, wrong "
+	    "bitmap's value at index %u (%u != %u expected)",
+	    test_name, i, bm[i], expected_value);
+	  break;
+	}
+    }
+
+done:
+  va_end (va);
+  return error;
+}
+
+static clib_error_t *
 test_bitmap_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u64 *bm = 0;
-  u64 *bm2 = 0;
-  u64 *dup;
-  uword junk;
+  clib_error_t *error = 0;
+  uword *bm = 0;
+  uword *bm2 = 0;
+  uword *dup = 0;
 
+  /*  bm should look like:
+   *          bm[0]     bm[1]
+   *  LSB |0011...11|1100...00| MSB
+   */
+  bm = clib_bitmap_set_multiple (0, 2, ~0ULL, BITS (uword));
+  error = check_bitmap ("clib_bitmap_set_multiple 1", bm, 2, ~0ULL << 2, 3);
+  if (error != 0)
+    goto done;
+
+  /*  bm2 should look like:
+   *	    bm2[0]
+   *  LSB |11...11| MSB
+   */
+  bm2 = clib_bitmap_set_multiple (0, 0, ~0ULL, BITS (uword));
+  error = check_bitmap ("clib_bitmap_set_multiple 2", bm2, 1, ~0ULL);
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *	      bm[0]      bm[1]
+   *  LSB |0011...1100|000...000| MSB
+   */
+  bm = clib_bitmap_set_multiple (bm, 2, pow2_mask (BITS (uword) - 3),
+				 BITS (uword));
+  error = check_bitmap ("clib_bitmap_set_multiple 3", bm, 2,
+			pow2_mask (BITS (uword) - 3) << 2, 0);
+  if (error != 0)
+    goto done;
+
+  /*  bm2 should look like:
+   *	     bm2[0]
+   *  LSB |101...111| MSB
+   */
+  bm2 = clib_bitmap_xori (bm2, 1);
+  error = check_bitmap ("clib_bitmap_xori 1", bm2, 1, ~0ULL ^ 2);
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *	       bm[0]      bm[1]
+   *  LSB |0011...1100|000...001| MSB
+   */
+  bm = clib_bitmap_xori (bm, 2 * BITS (uword) - 1);
+  error = check_bitmap ("clib_bitmap_xori 2", bm, 2,
+			pow2_mask (BITS (uword) - 3) << 2,
+			1ULL << (BITS (uword) - 1));
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *         bm[0]      bm[1]
+   *  LSB |00100...00|000...001| MSB
+   */
+  bm = clib_bitmap_andi (bm, 2);
+  error =
+    check_bitmap ("clib_bitmap_andi", bm, 2, 4, 1ULL << (BITS (uword) - 1));
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *	     bm[0]
+   *  LSB |00100...00| MSB
+   */
+  bm = clib_bitmap_xori (bm, 2 * BITS (uword) - 1);
+  error = check_bitmap ("clib_bitmap_xori 3", bm, 1, 4);
+  if (error != 0)
+    goto done;
+
+  /*  bm and bm2 should look like:
+   *	     bm[0]     bm[1]
+   *  LSB |0011...11|1100...00| MSB
+   *         bm2[0]    bm2[1]
+   *  LSB |101...111|0011...11| MSB
+   */
   bm = clib_bitmap_set_multiple (bm, 2, ~0ULL, BITS (uword));
-
-  junk = clib_bitmap_next_clear (bm, 3);
-  junk = clib_bitmap_next_clear (bm, 65);
-
-  bm2 = clib_bitmap_set_multiple (bm2, 0, ~0ULL, BITS (uword));
-  vec_set_len (bm2, 1);
-  junk = clib_bitmap_next_clear (bm2, 0);
-
-
-  bm = clib_bitmap_set_multiple (bm, 2, ~0ULL, BITS (uword) - 3);
-  junk = clib_bitmap_get_multiple (bm, 2, BITS (uword));
-  junk = clib_bitmap_first_set (bm);
-  junk = 1 << 3;
-  bm = clib_bitmap_xori (bm, junk);
-  bm = clib_bitmap_andi (bm, junk);
-  bm = clib_bitmap_xori_notrim (bm, junk);
-  bm = clib_bitmap_andi_notrim (bm, junk);
-
-  bm = clib_bitmap_set_multiple (bm, 2, ~0ULL, BITS (uword) - 3);
-  bm2 = clib_bitmap_set_multiple (bm2, 2, ~0ULL, BITS (uword) - 3);
-
+  bm2 =
+    clib_bitmap_set_multiple (bm2, BITS (uword) + 2, ~0ULL, BITS (uword) - 3);
   dup = clib_bitmap_dup_and (bm, bm2);
-  vec_free (dup);
-  dup = clib_bitmap_dup_andnot (bm, bm2);
-  vec_free (dup);
+  error = check_bitmap ("clib_bitmap_dup_and", dup, 1, bm[0] & bm2[0]);
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *	     bm[0]    bm[1]   ...   bm[3]
+   *  LSB |0011...11|11...11| ... |11...11| MSB
+   */
+  bm = clib_bitmap_set_region (bm, 5, 1, 4 * BITS (uword) - 5);
+  error = check_bitmap ("clib_bitmap_set_region 1", bm, 4, ~0ULL << 2, ~0ULL,
+			~0ULL, ~0ULL);
+  if (error != 0)
+    goto done;
+
+  /*  bm should look like:
+   *	     bm[0]    bm[1]   ...      bm[3]
+   *  LSB |0011...11|11...11| ... |11...1100000| MSB
+   */
+  bm = clib_bitmap_set_region (bm, 4 * BITS (uword) - 5, 0, 5);
+  error = check_bitmap ("clib_bitmap_set_region 2", bm, 4, ~0ULL << 2, ~0ULL,
+			~0ULL, pow2_mask (BITS (uword) - 5));
+  if (error != 0)
+    goto done;
+
+done:
   vec_free (bm);
   vec_free (bm2);
+  vec_free (dup);
 
-  return 0;
+  return error;
 }
 
-
-
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_bihash_command, static) =
-{
+VLIB_CLI_COMMAND (test_bitmap_command, static) = {
   .path = "test bitmap",
   .short_help = "Coverage test for bitmap.h",
   .function = test_bitmap_command_fn,
