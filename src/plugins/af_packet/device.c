@@ -343,6 +343,7 @@ fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 	    (tcp_header_t *) (b0->data + vnet_buffer (b0)->l4_hdr_offset);
 	  tcp->checksum = ip4_pseudo_header_cksum (ip4);
 	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+	  vnet_hdr->hdr_len = l4_hdr_offset + tcp_header_bytes (tcp);
 	}
       else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
 	{
@@ -350,6 +351,7 @@ fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 	    (udp_header_t *) (b0->data + vnet_buffer (b0)->l4_hdr_offset);
 	  udp->checksum = ip4_pseudo_header_cksum (ip4);
 	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+	  vnet_hdr->hdr_len = l4_hdr_offset + sizeof (udp_header_t);
 	}
     }
   else if (b0->flags & VNET_BUFFER_F_IS_IP6)
@@ -364,6 +366,7 @@ fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 	    (tcp_header_t *) (b0->data + vnet_buffer (b0)->l4_hdr_offset);
 	  tcp->checksum = ip6_pseudo_header_cksum (ip6);
 	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
+	  vnet_hdr->hdr_len = l4_hdr_offset + tcp_header_bytes (tcp);
 	}
       else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
 	{
@@ -371,6 +374,7 @@ fill_cksum_offload (vlib_buffer_t *b0, vnet_virtio_net_hdr_t *vnet_hdr)
 	    (udp_header_t *) (b0->data + vnet_buffer (b0)->l4_hdr_offset);
 	  udp->checksum = ip6_pseudo_header_cksum (ip6);
 	  vnet_hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
+	  vnet_hdr->hdr_len = l4_hdr_offset + sizeof (udp_header_t);
 	}
     }
 }
