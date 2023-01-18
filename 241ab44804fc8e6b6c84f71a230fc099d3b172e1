@@ -34,6 +34,24 @@
       "parentUuid": "882e18c2_5a090571",
       "revId": "241ab44804fc8e6b6c84f71a230fc099d3b172e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "400737a9_6a5c4ff3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-18T01:52:45Z",
+      "side": 1,
+      "message": "Actually, I ran the test on the wrong gerrit change locally, so it was my mistake on both accounts.",
+      "parentUuid": "21aa20ed_8dd1f506",
+      "revId": "241ab44804fc8e6b6c84f71a230fc099d3b172e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
