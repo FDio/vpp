@@ -16,6 +16,24 @@
       "message": "the feature name (misc) on the subject line is not correct.\nIt should be \u0027avf, dpdk: ...\u0027",
       "revId": "241ab44804fc8e6b6c84f71a230fc099d3b172e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "21aa20ed_8dd1f506",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-18T01:50:06Z",
+      "side": 1,
+      "message": "Ting,\n\nSorry for the syntax error.  Strangely enough, including the comma in the feature name worked when I tested it locally, but does not work in the CI ;/\n\nAll fixed now.  Thanks for the quick update :)",
+      "parentUuid": "882e18c2_5a090571",
+      "revId": "241ab44804fc8e6b6c84f71a230fc099d3b172e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
