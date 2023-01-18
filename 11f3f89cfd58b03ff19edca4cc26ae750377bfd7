@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "870ebf38_602932d0",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 629,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3ef2b6fd_d29814ac",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "868bed46_e2667c90",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-01-17T23:59:17Z",
       "side": 1,
       "message": "dump the whole bitmap in binary format?",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07928689_7b991bcf",
+        "filename": "src/vnet/ipsec/ipsec_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "If we have a bitmap of several thousands of bits, couldn\u0027t it be hard to read?",
+      "parentUuid": "868bed46_e2667c90",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "089103c0_c2d7f513",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c3e6017f_11733793",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2d7d0691_5020946e",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d83496d_4cc201b5",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2d7d0691_5020946e",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7fbae62f_0cdd9edb",
@@ -99,6 +171,24 @@
       "writtenOn": "2023-01-17T23:59:17Z",
       "side": 1,
       "message": "the unwritten convention is that output parameters go last.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aea5ecc6_45c2683a",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7fbae62f_0cdd9edb",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -122,6 +212,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5d185528_dbe6219d",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "I changed this so the old u64 and the new bitmap use the same convention of having sequence numbers grow in direction of the MSB. This way, it is easier to format the window when calling ipsec_sa_anti_replay_get_64b_window, without the need to reverse all the bits.\n\nI took care of applying this change everywhere the old u64 is used.",
+      "parentUuid": "0c7ce9ae_8b433c08",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f573c9a2_e58bcda2",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 7
@@ -133,6 +241,24 @@
       "writtenOn": "2023-01-17T23:59:17Z",
       "side": 1,
       "message": "s/falls/fall/",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7d8c0a2_a1ed56c2",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f573c9a2_e58bcda2",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -150,6 +276,24 @@
       "writtenOn": "2023-01-17T23:59:17Z",
       "side": 1,
       "message": "maybe a note here to say the value supplied will be round down to the nearest power of 2.",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3d8c5ef_bfdcaa60",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f67e07b8_e880c35b",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

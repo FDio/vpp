@@ -16,6 +16,24 @@
       "message": "is this wrong? a separate commit please to explain what this change does.",
       "revId": "227660b9969410f29d6b3d14eba16be5f57fbffe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9064f4f_d119768d",
+        "filename": "src/vppinfra/bitmap.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-18T13:59:40Z",
+      "side": 0,
+      "message": "Done in https://gerrit.fd.io/r/c/vpp/+/37944",
+      "parentUuid": "9df8bc2a_1ef04a1b",
+      "revId": "227660b9969410f29d6b3d14eba16be5f57fbffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
