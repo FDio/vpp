@@ -3,13 +3,13 @@
     "name" : "mac",
     "layout" : [
         {
-            "name" : "src",
+            "name" : "dst",
             "size" : "48",
             "format" : "mac",
             "default" : "00:00:00:00:00:01"
         },
         {
-            "name" : "dst",
+            "name" : "src",
             "size" : "48",
             "format" : "mac",
             "default" : "00:00:00:00:00:02"
