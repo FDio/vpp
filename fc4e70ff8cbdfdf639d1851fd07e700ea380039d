@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8e688a5_f812cdca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-01-18T18:07:49Z",
+      "side": 1,
+      "message": "Adding Ole for the API-infra related discussion. I suspect we probably should get the signoff from the component owners - as this change actually makes the set of APIs MP-safe which the owners obviously *thought* were marked as MP-Safe, but in fact they weren\u0027t. Which to me signals the amount of explicit testing the MP-Safe-ness of these APIs has got... Which makes me feel somewhere at the level of \"-0.2\" (weakly uncomfortable but maybe we will get away with it) about cherry-picking this fix into stable/2302. We probably should add the corresponding API owners for comments, and certainly discuss it in the upcoming community meeting, and/or on the maillist.\n\nOn the meta-topic of \"vl_api_set_msg_thread_safe()\": in my observation it\u0027s not just a foot-gun, but rather a foot-AK47, which, as this change also shows, the folks keep pointing to their feet and discharging. There is clearly more area for improvement at a computer-human interface there rather than just fixing the arithmetic. So, I would suggest to introduce vl_api_set_msg_thread_safe_with_msg_base(), which would take msg_id_base as an additional explicit parameter; and hide the export of vl_api_set_msg_thread_safe(), so that attempting to use it would fail the compilation. This would either force the folks to include the msg_id_base into the call, or define their own static function vl_api_set_msg_thread_safe which would use the corresponding module-specific static variable. This way we can systematically solve this problem once and for all... If you think there is some sense in this - probably also worth discussing this in the maillist and/or community meeting....",
+      "revId": "fc4e70ff8cbdfdf639d1851fd07e700ea380039d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
