@@ -74,6 +74,30 @@
       },
       "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "645171b1_5458c40c",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-18T01:32:18Z",
+      "side": 1,
+      "message": "Removing this line, causes a sequence of errors which ultimately causes the feature to break.  Thus it is required even if your belief is correct.",
+      "parentUuid": "9f04f031_0a06148c",
+      "range": {
+        "startLine": 606,
+        "startChar": 10,
+        "endLine": 606,
+        "endChar": 17
+      },
+      "revId": "54fdfe6497c1f4f6e6603a429a4238049e53a19a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
