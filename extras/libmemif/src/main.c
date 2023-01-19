@@ -412,11 +412,12 @@ memif_connect_handler (memif_fd_event_type_t type, void *private_ctx)
   if (ms->timer_fd >= 0)
     {
       uint64_t u64;
+      ssize_t __attribute__ ((unused)) r;
       /*
 	Have to read the timer fd else it stays read-ready
 	and makes epoll_pwait() return without sleeping
       */
-      read (ms->timer_fd, &u64, sizeof (u64));
+      r = read (ms->timer_fd, &u64, sizeof (u64));
     }
 
   /* loop ms->slave_interfaces and request connection for disconnected ones */
