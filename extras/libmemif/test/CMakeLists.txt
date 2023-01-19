@@ -1,0 +1,2 @@
+add_subdirectory(suite_socket)
+add_subdirectory(suite_main)
