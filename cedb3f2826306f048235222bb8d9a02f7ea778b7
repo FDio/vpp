@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3106adb2_df5cc7cb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-01-19T21:37:20Z",
+      "side": 1,
+      "message": "@Hongjun, \n\nNow that VPP 23.02 RC1 is complete (i.e. stable/2302 branch creation), I\u0027m going to merge this into master.  Please feel free to cherry-pick this into stable/2302 prior to VPP 23.02 RC2 (2023-02-08).",
+      "revId": "cedb3f2826306f048235222bb8d9a02f7ea778b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
