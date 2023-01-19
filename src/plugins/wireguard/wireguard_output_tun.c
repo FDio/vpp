@@ -423,20 +423,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto out;
 	}
 
-      is_ip4_out = ip46_address_is_ip4 (&peer->src.addr);
-      if (is_ip4_out)
-	{
-	  hdr4_out = vlib_buffer_get_current (b[0]);
-	  message_data_wg = &hdr4_out->wg;
-	}
-      else
-	{
-	  hdr6_out = vlib_buffer_get_current (b[0]);
-	  message_data_wg = &hdr6_out->wg;
-	}
-
       iph_offset = vnet_buffer (b[0])->ip.save_rewrite_length;
-      plain_data = vlib_buffer_get_current (b[0]) + iph_offset;
       plain_data_len = vlib_buffer_length_in_chain (vm, b[0]) - iph_offset;
       u8 *iv_data = b[0]->pre_data;
 
@@ -447,11 +434,34 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
        * into the packet
        */
       if (PREDICT_FALSE (encrypted_packet_len >= WG_DEFAULT_DATA_SIZE) ||
-	  PREDICT_FALSE ((b[0]->current_data + encrypted_packet_len) >=
+	  PREDICT_FALSE ((iph_offset + encrypted_packet_len) >=
 			 vlib_buffer_get_default_data_size (vm)))
 	{
 	  b[0]->error = node->errors[WG_OUTPUT_ERROR_TOO_BIG];
 	  goto out;
+	}
+
+      /*
+       * Move the buffer to fit ethernet header
+       */
+      if (b[0]->current_data + VLIB_BUFFER_PRE_DATA_SIZE <
+	  sizeof (ethernet_header_t))
+	{
+	  vlib_buffer_move (vm, b[0], 0);
+	}
+
+      plain_data = vlib_buffer_get_current (b[0]) + iph_offset;
+
+      is_ip4_out = ip46_address_is_ip4 (&peer->src.addr);
+      if (is_ip4_out)
+	{
+	  hdr4_out = vlib_buffer_get_current (b[0]);
+	  message_data_wg = &hdr4_out->wg;
+	}
+      else
+	{
+	  hdr6_out = vlib_buffer_get_current (b[0]);
+	  message_data_wg = &hdr6_out->wg;
 	}
 
       if (PREDICT_FALSE (last_adj_index != adj_index))
