@@ -142,10 +142,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	var err error
-	res := processArgs()
-	err = writeSyncFile(res)
-	if err != nil {
-		fmt.Printf("failed to write to sync file: %v\n", err)
-	}
+	// var err error
+	processArgs()
+	// err = writeSyncFile(res)
+	// if err != nil {
+	// 	fmt.Printf("failed to write to sync file: %v\n", err)
+	// }
 }

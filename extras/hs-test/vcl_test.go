@@ -128,3 +128,28 @@ func (s *VethsSuite) TestTcpWithLoss() {
 	s.assertNotContains(output, "failed: timeout")
 	s.log(output)
 }
+
+func (s *VethsSuite) TestEvent() {
+	srvVppContainer := s.getContainerByName("server-vpp")
+
+	_, err := srvVppContainer.execAction("ConfigureVpp srv")
+	s.assertNil(err)
+
+ 	clnVppContainer := s.getContainerByName("client-vpp")
+ 
+ 	_, err = clnVppContainer.execAction("ConfigureVpp cln")
+ 	s.assertNil(err)
+ 
+ 	echoSrvContainer := s.getContainerByName("server-application")
+ 
+ 	// run server app
+ 	_, err = echoSrvContainer.execAction("NewRunEchoServer tcp")
+ 	s.assertNil(err)
+ 
+ 	echoClnContainer := s.getContainerByName("client-application")
+ 
+ 	o, err := echoClnContainer.execAction("NewRunEchoClient tcp")
+ 	s.assertNil(err)
+ 
+ 	s.log(o)
+}

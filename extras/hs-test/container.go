@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	// "os"
 	"strings"
 
 	"github.com/edwarnicke/exechelper"
@@ -163,27 +163,28 @@ func (c *Container) exec(command string) (string, error) {
 }
 
 func (c *Container) execAction(args string) (string, error) {
-	syncFile := c.getSyncPath() + "/rc"
-	os.Remove(syncFile)
+	// syncFile := c.getSyncPath() + "/rc"
+	// os.Remove(syncFile)
 
 	workDir := c.getWorkDirAsCliOption()
-	cmd := fmt.Sprintf("docker exec -d %s %s hs-test %s",
+	cmd := fmt.Sprintf("docker exec %s %s hs-test %s",
 		workDir,
 		c.name,
 		args)
-	err := exechelper.Run(cmd)
+	byteoutput, err := exechelper.CombinedOutput(cmd)
 	if err != nil {
 		return "", err
 	}
-	res, err := waitForSyncFile(syncFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read sync file while executing 'hs-test %s': %v", args, err)
-	}
-	o := res.StdOutput + res.ErrOutput
-	if res.Code != 0 {
-		return o, fmt.Errorf("cmd resulted in non-zero value %d: %s", res.Code, res.Desc)
-	}
-	return o, err
+	// res, err := waitForSyncFile(syncFile)
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to read sync file while executing 'hs-test %s': %v", args, err)
+	// }
+	// o := res.StdOutput + res.ErrOutput
+	// if res.Code != 0 {
+	// 	return o, fmt.Errorf("cmd resulted in non-zero value %d: %s", res.Code, res.Desc)
+	// }
+	// return o, err
+	return string(byteoutput), err
 }
 
 func (c *Container) stop() error {
