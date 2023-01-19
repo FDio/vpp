@@ -33,6 +33,24 @@
       "message": "please add UT to: src/plugins/unittest/bitmap_test.c",
       "revId": "33c348c02b209301c9d4c9a0e44ada0a56862c16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01940e78_d1c7f86b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-01-19T13:19:57Z",
+      "side": 1,
+      "message": "I updated the test so they return something if the result is not as expected.\nI also fixed clib_bitmap_set_multiple which had a similar issue to clib_bitmap_set_region.",
+      "parentUuid": "a935305a_4cd46acf",
+      "revId": "33c348c02b209301c9d4c9a0e44ada0a56862c16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
