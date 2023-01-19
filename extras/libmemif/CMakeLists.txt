@@ -18,6 +18,35 @@ set(CMAKE_C_STANDARD 11)
 
 include(CheckCCompilerFlag)
 include(CheckFunctionExists)
+find_package(Git REQUIRED)
+
+include(ExternalProject)
+set(UNITY unity_project)
+
+ExternalProject_Add(
+    unity_project
+    GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
+    GIT_TAG cf949f45ca6d172a177b00da21310607b97bc7a7
+    PREFIX ${PROJECT_BINARY_DIR}/external/${UNITY}
+    INSTALL_COMMAND cmake --install . --prefix ${PROJECT_BINARY_DIR}
+
+)
+set_source_files_properties(
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/src/unity.c
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/fixture/src/unity_fixture.c
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/memory/src/unity_memory.c
+  PROPERTIES GENERATED TRUE)
+add_library(unity STATIC
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/src/unity.c
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/fixture/src/unity_fixture.c
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/memory/src/unity_memory.c
+)
+target_include_directories(unity PUBLIC
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/src/
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/fixture/src/
+  ${PROJECT_BINARY_DIR}/external/${UNITY}/src/${UNITY}/extras/memory/src/
+)
+add_dependencies(unity unity_project)
 
 if (NOT CMAKE_BUILD_TYPE)
   message(STATUS "No build type selected, default to Release")
@@ -42,6 +71,9 @@ include_directories(src)
 add_subdirectory(src)
 add_subdirectory(examples)
 
+  enable_testing()
+  include(CTest)
+  add_subdirectory(test)
 ##############################################################################
 # Packaging
 ##############################################################################
