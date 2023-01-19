@@ -49,6 +49,25 @@ Use ``-?`` flag to display help::
             -?      Show help and exit.
             -v      Show libmemif and memif version information and exit.
 
+Running tests:
+--------------
+
+Tests needs to their proper functioning Unity framework which is depended externally and cloned from official git repository::
+
+    mkdir -p extras/libmemif/build
+    cd extras/libmemif/build
+    cmake ..
+    make
+    make test
+
+``make test`` will execute the tests and print out brief information about test suites with their statuses.
+
+In case we want verbose output with list of every test in the suite we need to execute test app directly with ``-v`` flag e.g. ::
+
+     test/suite_main/MemifMainTest -v
+
+If there are any needs to debug tests, just add to cmake command ``-DCMAKE_BUILD_TYPE=Debug`` flag.
+
 Use Cases
 ---------
 
