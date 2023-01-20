@@ -16,6 +16,23 @@
       "message": "perftest-3n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cANDethip4ipsec1tnlsw-ip4base-*-aes256gcmNOT9000bNOTimix",
       "revId": "06ea35798f1d0fb14dd62c65824b71c0c8a383f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "440fae08_175f4851",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-20T17:10:52Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/7/ : FAILURE (skipped)\n\nOne test got almost 3% worse performance, but I am not sure it is real. I will trigger more runs.",
+      "revId": "06ea35798f1d0fb14dd62c65824b71c0c8a383f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
