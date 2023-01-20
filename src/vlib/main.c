@@ -1472,7 +1472,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
     cpu_time_now = clib_cpu_time_now ();
 
   /* Pre-allocate interupt runtime indices and lock. */
-  vec_alloc_aligned (nm->pending_interrupts, 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (nm->pending_interrupts, 0, CLIB_CACHE_LINE_BYTES);
 
   /* Pre-allocate expired nodes. */
   if (!nm->polling_threshold_vector_length)
