@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "da78d086_aa624536",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-01-21T20:17:57Z",
+      "side": 1,
+      "message": "Fixed",
+      "parentUuid": "eda2d4b1_5fa7e6f8",
+      "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "23553f82_6ded5271",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-01-19T12:53:02Z",
       "side": 1,
       "message": "return [\nEther(dst\u003din_if.local_mac, src\u003din_if.remote_mac)\n                / IP(src\u003din_if.remote_ip4, dst\u003dout_if.remote_ip4, ttl\u003d64)\n                / UDP(sport\u003dbase_port + i, dport\u003d20)\n                for i in range(count)\n                ]",
+      "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01ecec28_207c8405",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 631,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-01-21T20:17:57Z",
+      "side": 1,
+      "message": "Fixed",
+      "parentUuid": "23553f82_6ded5271",
       "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -58,6 +94,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f83bd6d7_d4610713",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4831,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-01-21T20:17:57Z",
+      "side": 1,
+      "message": "Unfortunately that won\u0027t work. I expect some packets to be dropped due to port search attempts exhaustion (and trigger what was the bug), but due to a random nature of the port search, I can\u0027t be sure when exactly this will happen.\n\nI could\u0027ve used one large batch of 63K+ packets and go with send_and_expect_some, but it takes up to 3 times more time (33s vs 12s in debug build on my machine) and more memory.\n\nI\u0027ve removed pg_enable_capture though, it\u0027s clearly excessive here.",
+      "parentUuid": "03b5568d_f21aa796",
+      "range": {
+        "startLine": 4829,
+        "startChar": 17,
+        "endLine": 4831,
+        "endChar": 27
+      },
+      "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2b770032_46b6331f",
@@ -71,6 +131,24 @@
       "writtenOn": "2023-01-19T12:53:02Z",
       "side": 1,
       "message": "if m:",
+      "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "011ec2c2_b7ee3620",
+        "filename": "test/test_nat44_ed.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4846,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-01-21T20:17:57Z",
+      "side": 1,
+      "message": "Fixed",
+      "parentUuid": "2b770032_46b6331f",
       "revId": "b070629abe3f80adb4b8fd9de8ba8341d2e8a08a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
