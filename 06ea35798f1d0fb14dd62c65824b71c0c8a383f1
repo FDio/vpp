@@ -33,6 +33,46 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/7/ : FAILURE (skipped)\n\nOne test got almost 3% worse performance, but I am not sure it is real. I will trigger more runs.",
       "revId": "06ea35798f1d0fb14dd62c65824b71c0c8a383f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "94014145_a9bdc520",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-23T16:37:15Z",
+      "side": 1,
+      "message": "Looks like the regression is real, 1-3% depending on packet size. Looking at runtime stats [0] [1], graph node esp4-decrypt-tun needs more cycles per packet due to more L1 cache hits. I guess some performance decrease is expected as this Change adds more stuff to do in that graph node.\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/9/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k13-k8-k10-k1-k1-k1-k12\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/9/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k13-k8-k10-k1-k1-k1-k12",
+      "revId": "06ea35798f1d0fb14dd62c65824b71c0c8a383f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60bbcf3e_2259c9ad",
+        "filename": "src/vnet/ipsec/ipsec_types.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-01-23T16:37:15Z",
+      "side": 1,
+      "message": "Update for current param names (lines 326-328 do not match this nor lines 301-303).",
+      "range": {
+        "startLine": 309,
+        "startChar": 11,
+        "endLine": 309,
+        "endChar": 23
+      },
+      "revId": "06ea35798f1d0fb14dd62c65824b71c0c8a383f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
