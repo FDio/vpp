@@ -147,6 +147,8 @@ UNDER_LOAD_INTERVAL = 1.0
 HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD = 40
 HANDSHAKE_NUM_BEFORE_RATELIMITING = 5
 
+HANDSHAKE_JITTER = 0.5
+
 
 class VppWgPeer(VppObject):
     def __init__(self, test, itf, endpoint, port, allowed_ips, persistent_keepalive=15):
@@ -672,6 +674,9 @@ class TestWg(VppTestCase):
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
 
         if is_resp:
+            # skip the first automatic handshake
+            self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
+
             # prepare and send a handshake initiation
             # expect the peer to send a handshake response
             init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
@@ -764,6 +769,9 @@ class TestWg(VppTestCase):
             # reset noise to be able to turn into initiator later
             peer_1.noise_reset()
         else:
+            # skip the first automatic handshake
+            self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
+
             # prepare and send a bunch of handshake initiations
             # expect to switch to under load state
             init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
@@ -829,6 +837,9 @@ class TestWg(VppTestCase):
         ).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
 
+        # skip the first automatic handshake
+        self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
+
         # prepare and send a bunch of handshake initiations
         # expect to switch to under load state
         init = peer_1.mk_handshake(self.pg1)
@@ -892,6 +903,9 @@ class TestWg(VppTestCase):
                 self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
             ).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 1)
+
+        # skip the first automatic handshake
+        self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
 
         # prepare and send a bunch of handshake initiations
         # expect to switch to under load state
@@ -963,6 +977,9 @@ class TestWg(VppTestCase):
         ).add_vpp_config()
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), 2)
 
+        # skip the first automatic handshake
+        self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
+
         # (peer_1) prepare and send a bunch of handshake initiations
         # expect not to switch to under load state
         init_1 = peer_1.mk_handshake(self.pg1)
@@ -979,6 +996,9 @@ class TestWg(VppTestCase):
 
         # (peer_1) expect the peer to send a cookie reply
         peer_1.consume_cookie(rxs[-1])
+
+        # skip the first automatic handshake
+        self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
 
         # (peer_2) prepare and send a handshake initiation
         # expect a cookie reply
@@ -1081,6 +1101,10 @@ class TestWg(VppTestCase):
                 peer_1.change_endpoint(self.pg1.remote_hosts[1].ip6, port + 100)
             else:
                 peer_1.change_endpoint(self.pg1.remote_hosts[1].ip4, port + 100)
+
+            # skip the first automatic handshake
+            self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
+
             # prepare and send a handshake initiation
             # expect a handshake response sent to the new endpoint
             init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
@@ -2129,6 +2153,9 @@ class TestWg(VppTestCase):
 
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), NUM_IFS)
 
+        # skip the first automatic handshake
+        self.pg1.get_capture(NUM_IFS, timeout=HANDSHAKE_JITTER)
+
         for i in range(NUM_IFS):
             # send a valid handsake init for which we expect a response
             p = peers[i].mk_handshake(self.pg1)
@@ -2281,6 +2308,10 @@ class TestWg(VppTestCase):
             )
 
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), NUM_PEERS * 2)
+
+        # skip the first automatic handshake
+        self.pg1.get_capture(NUM_PEERS, timeout=HANDSHAKE_JITTER)
+        self.pg2.get_capture(NUM_PEERS, timeout=HANDSHAKE_JITTER)
 
         # Want events from the first perr of wg0
         # and from all wg1 peers
@@ -2480,6 +2511,9 @@ class WireguardHandoffTests(TestWg):
         r1 = VppIpRoute(
             self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
         ).add_vpp_config()
+
+        # skip the first automatic handshake
+        self.pg1.get_capture(1, timeout=HANDSHAKE_JITTER)
 
         # send a valid handsake init for which we expect a response
         p = peer_1.mk_handshake(self.pg1)
