@@ -50,6 +50,7 @@ void wg_timers_any_authenticated_packet_received_opt (wg_peer_t *peer,
 						      f64 time);
 void wg_timers_handshake_initiated (wg_peer_t * peer);
 void wg_timers_handshake_complete (wg_peer_t * peer);
+void wg_timers_send_first_handshake (wg_peer_t *peer);
 void wg_timers_session_derived (wg_peer_t * peer);
 void wg_timers_any_authenticated_packet_traversal (wg_peer_t * peer);
 
