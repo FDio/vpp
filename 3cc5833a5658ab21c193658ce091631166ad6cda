@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3cc5833a5658ab21c193658ce091631166ad6cda",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7eaaa497_522e875b",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 798,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2023-01-24T07:22:16Z",
+      "side": 1,
+      "message": "Can we use more descriptive names here? And add some comments to describe what is happening. For example:\n// handshake_rate is...\nf64 handshake_rate \u003d 1.0 / (handshake_end_time - handshake_start_time)",
+      "revId": "3cc5833a5658ab21c193658ce091631166ad6cda",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

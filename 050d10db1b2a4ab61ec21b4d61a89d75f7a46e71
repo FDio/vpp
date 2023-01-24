@@ -177,6 +177,24 @@
       "parentUuid": "0e95f8d3_9ff0f540",
       "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21af28f2_844639b3",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2023-01-24T07:22:16Z",
+      "side": 1,
+      "message": "Can this be simplified to:\n              {\n              static f64 avg_cookie[MAX_COUNT_COOKIE] \u003d { 0.0 };\n\t      static u32 idx_cookie \u003d 0;\n\t      \n\t      idx_cookie \u003d (idx_cookie % MAX_COUNT_COOKIE);\n\t      avg_cookie[idx_cookie] \u003d max;\n\t      \n\t      u32 i;\n\t      f64 avg_cookie_sum \u003d 0.0;\n\t      for (i \u003d 0; i \u003c idx_cookie + 1; i++)\n\t      {\n\t\t  avg_cookie_sum +\u003d avg_cookie[i];\n\t      }\n\t      max_handshake_cookie \u003d avg_cookie_sum / (idx_cookie + 1);\n\t      idx_cookie++;\n              }",
+      "parentUuid": "4ccba305_ab74131a",
+      "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
