@@ -239,6 +239,15 @@ wg_timers_handshake_initiated (wg_peer_t * peer)
 }
 
 void
+wg_timers_send_first_handshake (wg_peer_t *peer)
+{
+  peer->new_handshake_interval_tick =
+    get_random_u32_max (REKEY_TIMEOUT_JITTER);
+  start_timer_from_mt (peer - wg_peer_pool, WG_TIMER_NEW_HANDSHAKE,
+		       peer->new_handshake_interval_tick);
+}
+
+void
 wg_timers_session_derived (wg_peer_t * peer)
 {
   peer->session_derived = vlib_time_now (vlib_get_main ());

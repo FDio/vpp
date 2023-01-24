@@ -674,6 +674,7 @@ class TestWg(VppTestCase):
         if is_resp:
             # prepare and send a handshake initiation
             # expect the peer to send a handshake response
+            self.sleep(0.5)
             init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
             rxs = self.send_and_expect(self.pg1, [init], self.pg1)
         else:
@@ -766,6 +767,7 @@ class TestWg(VppTestCase):
         else:
             # prepare and send a bunch of handshake initiations
             # expect to switch to under load state
+            self.sleep(0.5)
             init = peer_1.mk_handshake(self.pg1, is_ip6=is_ip6)
             txs = [init] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
             rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
@@ -965,6 +967,8 @@ class TestWg(VppTestCase):
 
         # (peer_1) prepare and send a bunch of handshake initiations
         # expect not to switch to under load state
+
+        self.sleep(0.5)
         init_1 = peer_1.mk_handshake(self.pg1)
         txs = [init_1] * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD
         rxs = self.send_and_expect_some(self.pg1, txs, self.pg1)
@@ -2129,6 +2133,7 @@ class TestWg(VppTestCase):
 
         self.assertEqual(len(self.vapi.wireguard_peers_dump()), NUM_IFS)
 
+        self.sleep(0.5)
         for i in range(NUM_IFS):
             # send a valid handsake init for which we expect a response
             p = peers[i].mk_handshake(self.pg1)

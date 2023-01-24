@@ -244,11 +244,7 @@ wg_peer_enable (vlib_main_t *vm, wg_peer_t *peer)
 
   noise_remote_init (&peer->remote, peeri, public_key, wg_if->local_idx);
 
-  wg_send_handshake (vm, peer, false);
-  if (peer->persistent_keepalive_interval != 0)
-    {
-      wg_send_keepalive (vm, peer);
-    }
+  wg_timers_send_first_handshake (peer);
 }
 
 walk_rc_t
@@ -494,11 +490,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
 
   if (vnet_sw_interface_is_admin_up (vnet_get_main (), tun_sw_if_index))
     {
-      wg_send_handshake (vm, peer, false);
-      if (peer->persistent_keepalive_interval != 0)
-	{
-	  wg_send_keepalive (vm, peer);
-	}
+      wg_timers_send_first_handshake (peer);
     }
 
   *peer_index = peer - wg_peer_pool;
