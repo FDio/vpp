@@ -266,10 +266,6 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    vlib_node_increment_counter (vm, node_idx,
 					 WG_INPUT_ERROR_HANDSHAKE_SEND, 1);
 	  }
-	else
-	  {
-	    wg_peer_update_flags (rp->r_peer_idx, WG_PEER_ESTABLISHED, true);
-	  }
 	break;
       }
     case MESSAGE_HANDSHAKE_RESPONSE:
@@ -365,7 +361,7 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
   if (decr_len == 0)
     {
       *is_keepalive = true;
-      return -1;
+      return 0;
     }
 
   wg_timers_data_received (peer);
@@ -870,6 +866,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
+	  wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, true);
 	  last_peer_time_idx = peer_idx;
 	}
 
@@ -1016,6 +1013,7 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
+	  wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, true);
 	  last_peer_time_idx = peer_idx;
 	}
 
