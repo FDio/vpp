@@ -103,6 +103,24 @@
       "parentUuid": "e02e1922_7a09ce7d",
       "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ec7cf98_14907ad2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-01-24T14:42:42Z",
+      "side": 1,
+      "message": "Hi. Ahmed-san!\nHow is the review progressing?\nIf there is no problem, I would like you to approve it.\nThe reason is that I would like to proceed after the patch issued elsewhere incorporates this.\ncf. https://gerrit.fd.io/r/c/vpp/+/37628\n\nIf it still takes time, please let me know how long it will take. :pray:\nthank you.",
+      "parentUuid": "0b05a634_64b31954",
+      "revId": "84c89c34a292cb7030f82011c2f090206791a5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
