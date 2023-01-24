@@ -2288,17 +2288,45 @@ class TestWg(VppTestCase):
         wg1.want_events()
 
         for i in range(NUM_PEERS):
-            # send a valid handsake init for which we expect a response
+            # wg0 peers: send a valid handsake init for which we expect a response
             p = peers_0[i].mk_handshake(self.pg1)
             rx = self.send_and_expect(self.pg1, [p], self.pg1)
             peers_0[i].consume_response(rx[0])
+
+            # wg0 peers: send empty packet, it means successful connection (WIREGUARD_PEER_ESTABLISHED)
+            keepalive = peers_0[i].encrypt_transport(0)
+            p = peers_0[i].mk_tunnel_header(self.pg1) / (
+                Wireguard(message_type=4, reserved_zero=0)
+                / WireguardTransport(
+                    receiver_index=peers_0[i].sender,
+                    counter=0,
+                    encrypted_encapsulated_packet=keepalive,
+                )
+            )
+            self.send_and_assert_no_replies(self.pg1, [p])
+
+            # wg0 peers: wait for established flag
             if i == 0:
                 peers_0[0].wait_event(ESTABLISHED_FLAG)
 
+            # wg1 peers: send a valid handsake init for which we expect a response
             p = peers_1[i].mk_handshake(self.pg2)
             rx = self.send_and_expect(self.pg2, [p], self.pg2)
             peers_1[i].consume_response(rx[0])
 
+            # wg1 peers: send empty packet, it means successful connection (WIREGUARD_PEER_ESTABLISHED)
+            keepalive = peers_1[i].encrypt_transport(0)
+            p = peers_1[i].mk_tunnel_header(self.pg2) / (
+                Wireguard(message_type=4, reserved_zero=0)
+                / WireguardTransport(
+                    receiver_index=peers_1[i].sender,
+                    counter=0,
+                    encrypted_encapsulated_packet=keepalive,
+                )
+            )
+            self.send_and_assert_no_replies(self.pg2, [p])
+
+        # wg1 peers: wait for established flag
         wg1.wait_events(ESTABLISHED_FLAG, [peers_1[0].index, peers_1[1].index])
 
         # remove routes
