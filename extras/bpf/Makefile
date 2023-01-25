@@ -1,13 +1,14 @@
-CC?=clang
-# where to find bpf includes?
-BPF_ROOT?=/usr/include
-#BPF_ROOT?=/opt/vpp/external/x86_64/include
+CC := $(shell which clang)
 
-CFLAGS:=-O3 -g -Wextra -Wall -target bpf
+# where to find bpf includes?
+BPF_ROOT ?= /usr/include
+#BPF_ROOT ?= /opt/vpp/external/x86_64/include
+
+CFLAGS := -O3 -g -Wextra -Wall -target bpf
 # Workaround for Ubuntu/Debian for asm/types.h
-CFLAGS+= -I/usr/include/x86_64-linux-gnu
-CFLAGS+= -I$(BPF_ROOT)
-#CFLAGS+= -DDEBUG
+CFLAGS += -I/usr/include/x86_64-linux-gnu
+CFLAGS += -I$(BPF_ROOT)
+#CFLAGS += -DDEBUG
 
 all: af_xdp.bpf.o
 
