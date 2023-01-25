@@ -124,6 +124,9 @@ abf_itf_attach_stack (abf_itf_attach_t * aia)
 				       FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
 				       &via_dpo);
 
+  via_dpo.dpoi_proto =
+    (aia->aia_proto == FIB_PROTOCOL_IP4) ? DPO_PROTO_IP4 : DPO_PROTO_IP6;
+
   dpo_stack_from_node ((FIB_PROTOCOL_IP4 == aia->aia_proto ?
 			abf_ip4_node.index :
 			abf_ip6_node.index), &aia->aia_dpo, &via_dpo);
@@ -194,6 +197,8 @@ abf_itf_attach (fib_protocol_t fproto,
   aia->aia_acl = ap->ap_acl;
   aia->aia_abf = api;
   aia->aia_sw_if_index = sw_if_index;
+  aia->aia_dpo.dpoi_proto =
+    (fproto == FIB_PROTOCOL_IP4) ? DPO_PROTO_IP4 : DPO_PROTO_IP6;
   aiai = aia - abf_itf_attach_pool;
   abf_itf_attach_db_add (policy_id, sw_if_index, aia);
 
