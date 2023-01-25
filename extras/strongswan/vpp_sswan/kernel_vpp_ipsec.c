@@ -126,6 +126,13 @@ struct private_kernel_vpp_ipsec_t
    * Whether to install routes along policies
    */
   bool install_routes;
+
+  /**
+   * Whether to install SAs with tunnel flag. Disabling this can be useful
+   * in some scenarios e.g. using SAs to "ipsec tunnel protect" for the
+   * route-based IPsec
+   */
+  bool use_tunnel_mode_sa;
 };
 
 /**
@@ -1414,9 +1421,15 @@ METHOD (kernel_ipsec_t, add_sa, status_t, private_kernel_vpp_ipsec_t *this,
 	  mp->entry.integrity_key.length);
 
   int flags = IPSEC_API_SAD_FLAG_NONE;
+  if (data->inbound)
+    flags |= IPSEC_API_SAD_FLAG_IS_INBOUND;
+  /* like the kernel-netlink plugin, anti-replay can be disabled with zero
+   * replay_window, but window size cannot be customized for vpp */
+  if (data->replay_window)
+    flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
   if (data->esn)
     flags |= IPSEC_API_SAD_FLAG_USE_ESN;
-  if (data->mode == MODE_TUNNEL)
+  if (this->use_tunnel_mode_sa && data->mode == MODE_TUNNEL)
     {
       if (id->src->get_family (id->src) == AF_INET6)
 	flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
@@ -1739,6 +1752,9 @@ kernel_vpp_ipsec_create ()
         .routes = linked_list_create(),
         .install_routes = lib->settings->get_bool(lib->settings,
                             "%s.install_routes", TRUE, lib->ns),
+        .use_tunnel_mode_sa = lib->settings->get_bool(lib->settings,
+                            "%s.plugins.kernel-vpp.use_tunnel_mode_sa",
+                            TRUE, lib->ns),
     );
 
   if (!init_spi (this))
