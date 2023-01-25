@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "657fa556_bf71858a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-25T11:31:08Z",
+      "side": 1,
+      "message": "After talking with Damjan, we should add a single API which provides following data per-pool:\npool index\nnuma\ntotal_buffers\nn_alloc\nn_free\nn_alloc_fail",
+      "revId": "95b0b61328a25b3a76af9086d1de779c9700b03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
