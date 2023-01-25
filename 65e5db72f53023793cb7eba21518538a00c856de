@@ -34,6 +34,24 @@
       "parentUuid": "0f65207f_d887dc08",
       "revId": "65e5db72f53023793cb7eba21518538a00c856de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "181b8968_2cd960b1",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-25T15:51:42Z",
+      "side": 1,
+      "message": "So what you are saying is that some another rate, and not handshake messages processing rate,  is used to determine how many handshake messages the server can process in a certain time intrerval. That does not sound correct to me.\n\nCan you clarify why it is needed to artificially overestimate the rate the server is able to process handshake messages? And what are the reasons the actual handshake messages processing rate is not used?",
+      "parentUuid": "0575f724_d2462496",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
