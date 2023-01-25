@@ -96,6 +96,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4af8ff77_7eb31915",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-25T10:21:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "122f59f2_22d1d7cc",
+      "range": {
+        "startLine": 167,
+        "startChar": 0,
+        "endLine": 167,
+        "endChar": 27
+      },
+      "revId": "d6571efa45afd0de9dba5d3a0712f852105058a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d38910e9_ca2db165",

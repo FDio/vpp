@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "41a38feb_9c22fbf7",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-25T10:21:59Z",
+      "side": 1,
+      "message": "There should be checks for both sessions[OP_TYPE_X] !\u003d 0  after session_create API is called as the xforms may have the params that the driver doesn\u0027t like.",
+      "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc680000_119a1735",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-01-25T10:21:59Z",
+      "side": 1,
+      "message": "rte_cryptodev_sym_session_opaque_data_get () return type is u64, comparing it against u8 type aad_len may be dangerous.\nI know the original change was not ok either - but could you take this chance to change it?",
+      "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
