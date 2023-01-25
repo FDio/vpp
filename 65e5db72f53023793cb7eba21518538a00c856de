@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f65207f_d887dc08",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-25T14:30:02Z",
+      "side": 1,
+      "message": "If understand correctly, currently, `wmp-\u003emax_handshake_cookie` represents the rate the server can generate cookie messages as this branch is only executed when a cookie was replied. And looking at the updated version of `wg_if_is_under_load()`, `wmp-\u003emax_handshake_cookie` is used there as if it was the rate the server can process handshake messages. The latter seems to be correct for me.\n\nCan you clarify what the intension of `wmp-\u003emax_handshake_cookie` is?",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
