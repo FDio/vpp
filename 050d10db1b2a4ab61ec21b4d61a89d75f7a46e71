@@ -195,6 +195,24 @@
       "parentUuid": "4ccba305_ab74131a",
       "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "afa858ca_45b23a32",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-25T12:58:37Z",
+      "side": 1,
+      "message": "I changed this part and should be more simplified. \nAverage from elements in array.",
+      "parentUuid": "21af28f2_844639b3",
+      "revId": "050d10db1b2a4ab61ec21b4d61a89d75f7a46e71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
