@@ -91,6 +91,9 @@ func (vpp *VppInstance) start() error {
 	}
 
 	serializedConfig, err := serializeVppConfig(vpp.config)
+	if err != nil {
+		return fmt.Errorf("serialize vpp config: %v", err)
+	}
 	args := fmt.Sprintf("%s '%s'", vpp.actionFuncName, serializedConfig)
 	_, err = vpp.container.execAction(args)
 	if err != nil {
