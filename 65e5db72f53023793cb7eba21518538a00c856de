@@ -52,6 +52,24 @@
       "parentUuid": "0575f724_d2462496",
       "revId": "65e5db72f53023793cb7eba21518538a00c856de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f85377c1_7194022e",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-26T12:06:41Z",
+      "side": 1,
+      "message": "In this patch we calculate number of cookie messages VPP can reply, and we use this number to determinate if wg should be in under-load state or not. At the beginning of this process this number is set up to a priori value, but gradually with time it will get tuned to the desired value, which later depending on the traffic will only fluctuate.\n\nIn ‘wg_if_is_under_load()’ we predict the moment when we have to switch to under-load state when we have to reply by cookie message because we don’t have enough time to process all messages in normal way. Still by using cookie WG will be able to response. \n\nWG will update the number of ongoing handshakes in inflight variable – how many packets handoffs will be made from other to main thread, and if the time to consume these packets by cookie messages will be longer than the remaining time for each REKEY_TIME then we switch to under-load state and WG will reply all messages by sending a cookie.",
+      "parentUuid": "181b8968_2cd960b1",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
