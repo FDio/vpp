@@ -813,6 +813,7 @@ vl_msg_api_queue_handler (svm_queue_t * q)
 
   while (!svm_queue_sub (q, (u8 *) &msg, SVM_Q_WAIT, 0))
     {
+      VL_MSG_API_UNPOISON ((u8 *) msg);
       msgbuf_t *msgbuf = (msgbuf_t *) ((u8 *) msg - offsetof (msgbuf_t, data));
       vl_msg_api_handler ((void *) msg, ntohl (msgbuf->data_len));
     }
