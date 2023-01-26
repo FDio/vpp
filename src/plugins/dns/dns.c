@@ -38,6 +38,19 @@
 
 dns_main_t dns_main;
 
+/* the cache hashtable expects a NULL-terminated C-string but everywhere else
+ * expects a non-NULL terminated vector... The pattern of adding \0 but hiding
+ * it away drives AddressSanitizer crazy, this helper tries to bring some of
+ * its sanity back
+ */
+static_always_inline void
+dns_terminate_c_string (u8 **v)
+{
+  vec_add1 (*v, 0);
+  vec_dec_len (*v, 1);
+  clib_mem_unpoison (vec_end (*v), 1);
+}
+
 static int
 dns_cache_clear (dns_main_t * dm)
 {
@@ -826,8 +839,8 @@ re_resolve:
   pool_get (dm->entries, ep);
   clib_memset (ep, 0, sizeof (*ep));
 
-  ep->name = format (0, "%s%c", name, 0);
-  vec_set_len (ep->name, vec_len (ep->name) - 1);
+  ep->name = format (0, "%s", name);
+  dns_terminate_c_string (&ep->name);
 
   hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
 
@@ -985,8 +998,7 @@ found_last_request:
   now = vlib_time_now (vm);
   cname = vnet_dns_labels_to_name (rr->rdata, reply, &pos2);
   /* Save the cname */
-  vec_add1 (cname, 0);
-  vec_dec_len (cname, 1);
+  dns_terminate_c_string (&cname);
   ep = pool_elt_at_index (dm->entries, ep_index);
   ep->cname = cname;
   ep->flags |= (DNS_CACHE_ENTRY_FLAG_CNAME | DNS_CACHE_ENTRY_FLAG_VALID);
@@ -1004,8 +1016,7 @@ found_last_request:
 
   clib_memset (next_ep, 0, sizeof (*next_ep));
   next_ep->name = vec_dup (cname);
-  vec_add1 (next_ep->name, 0);
-  vec_dec_len (next_ep->name, 1);
+  dns_terminate_c_string (&next_ep->name);
 
   hash_set_mem (dm->cache_entry_by_name, next_ep->name,
 		next_ep - dm->entries);
@@ -2607,10 +2618,7 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   dns_cache_entry_t *ep;
 
   if (unformat (input, "%v", &name))
-    {
-      vec_add1 (name, 0);
-      vec_dec_len (name, 1);
-    }
+    dns_terminate_c_string (&name);
   else
     return clib_error_return (0, "no name provided");
 
