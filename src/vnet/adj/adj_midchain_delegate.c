@@ -148,12 +148,11 @@ adj_midchain_delegate_remove (adj_index_t ai)
     {
         adj_nbr_midchain_unstack(ai);
 
-        adj_delegate_remove (ai, ADJ_DELEGATE_MIDCHAIN);
-
         amd = pool_elt_at_index(amd_pool, ad->ad_index);
         fib_entry_untrack(amd->amd_fei, amd->amd_sibling);
-
         pool_put(amd_pool, amd);
+
+        adj_delegate_remove (ai, ADJ_DELEGATE_MIDCHAIN);
     }
 }
 
