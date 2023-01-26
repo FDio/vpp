@@ -43,7 +43,7 @@ class QUICAppWorker(Worker):
         if self.process is None:
             return False
         try:
-            logger.debug("Killing worker process (pid %d)" % self.process.pid)
+            logger.debug(f"Killing worker process (pid {self.process.pid})")
             os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
             self.join(timeout)
         except OSError as e:
@@ -58,6 +58,10 @@ class QUICTestCase(VppTestCase):
     timeout = 20
     pre_test_sleep = 0.3
     post_test_sleep = 0.3
+    server_appns = "server"
+    server_appns_secret = None
+    client_appns = "client"
+    client_appns_secret = None
 
     @classmethod
     def setUpClass(cls):
@@ -69,7 +73,7 @@ class QUICTestCase(VppTestCase):
         self.vppDebug = "vpp_debug" in config.vpp_build_dir
 
         self.create_loopback_interfaces(2)
-        self.uri = "quic://%s/1234" % self.loop0.local_ip4
+        self.uri = f"quic://{self.loop0.local_ip4}/1234"
         table_id = 1
         for i in self.lo_interfaces:
             i.admin_up()
@@ -84,10 +88,14 @@ class QUICTestCase(VppTestCase):
 
         # Configure namespaces
         self.vapi.app_namespace_add_del(
-            namespace_id="server", sw_if_index=self.loop0.sw_if_index
+            namespace_id=self.server_appns,
+            secret=self.server_appns_secret,
+            sw_if_index=self.loop0.sw_if_index,
         )
         self.vapi.app_namespace_add_del(
-            namespace_id="client", sw_if_index=self.loop1.sw_if_index
+            namespace_id=self.client_appns,
+            secret=self.client_appns_secret,
+            sw_if_index=self.loop1.sw_if_index,
         )
 
         # Add inter-table routes
@@ -129,26 +137,24 @@ class QUICEchoIntTestCase(QUICTestCase):
 
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
-        self.client_args = "uri {uri} fifo-size 64{testbytes} appns client".format(
-            uri=self.uri, testbytes=self.test_bytes
+        self.client_args = (
+            f"uri {self.uri} fifo-size 64{self.test_bytes} appns {self.client_appns} "
         )
-        self.server_args = "uri %s fifo-size 64 appns server" % self.uri
+        self.server_args = f"uri {self.uri} fifo-size 64 appns {self.server_appns} "
 
     def tearDown(self):
         super(QUICEchoIntTestCase, self).tearDown()
 
     def server(self, *args):
-        error = self.vapi.cli(
-            "test echo server %s %s" % (self.server_args, " ".join(args))
-        )
+        _args = self.server_args + " ".join(args)
+        error = self.vapi.cli(f"test echo server {_args}")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
     def client(self, *args):
-        error = self.vapi.cli(
-            "test echo client %s %s" % (self.client_args, " ".join(args))
-        )
+        _args = self.client_args + " ".join(args)
+        error = self.vapi.cli(f"test echo client {_args}")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
@@ -203,7 +209,7 @@ class QUICEchoExtTestCase(QUICTestCase):
         "{",
         "enable",
         "poll-main",
-        "evt_qs_memfd_seg",
+        "use-app-socket-api",
         "wrk-mqs-segment-size",
         "64M",
         "event-queue-length",
@@ -226,34 +232,39 @@ class QUICEchoExtTestCase(QUICTestCase):
     ]
 
     def setUp(self):
+        self.server_appns_secret = 1234
+        self.client_appns_secret = 5678
         super(QUICEchoExtTestCase, self).setUp()
         common_args = [
             "uri",
             self.uri,
             "json",
             self.test_bytes,
-            "socket-name",
-            self.get_api_sock_path(),
             "quic-setup",
             self.quic_setup,
             "nthreads",
             "1",
             "mq-size",
             f"{self.evt_q_len}",
+            "use-app-socket-api",
         ]
         self.server_echo_test_args = common_args + [
             "server",
             "appns",
-            "server",
+            f"{self.server_appns}",
             "fifo-size",
             f"{self.server_fifo_size}",
+            "socket-name",
+            f"{self.tempdir}/app_ns_sockets/{self.server_appns}",
         ]
         self.client_echo_test_args = common_args + [
             "client",
             "appns",
-            "client",
+            f"{self.client_appns}",
             "fifo-size",
             f"{self.client_fifo_size}",
+            "socket-name",
+            f"{self.tempdir}/app_ns_sockets/{self.client_appns}",
         ]
         error = self.vapi.cli("quic set fifo-size 2M")
         if error:
@@ -262,13 +273,17 @@ class QUICEchoExtTestCase(QUICTestCase):
 
     def server(self, *args):
         _args = self.server_echo_test_args + list(args)
-        self.worker_server = QUICAppWorker(self.app, _args, self.logger, "server", self)
+        self.worker_server = QUICAppWorker(
+            self.app, _args, self.logger, self.server_appns, self
+        )
         self.worker_server.start()
         self.sleep(self.pre_test_sleep)
 
     def client(self, *args):
         _args = self.client_echo_test_args + list(args)
-        self.worker_client = QUICAppWorker(self.app, _args, self.logger, "client", self)
+        self.worker_client = QUICAppWorker(
+            self.app, _args, self.logger, self.client_appns, self
+        )
         self.worker_client.start()
         timeout = None if self.debug_all else self.timeout
         self.worker_client.join(timeout)
@@ -285,19 +300,19 @@ class QUICEchoExtTestCase(QUICTestCase):
     def validate_ext_test_results(self):
         server_result = self.worker_server.result
         client_result = self.worker_client.result
-        self.logger.info("Server worker result is `%s'" % server_result)
-        self.logger.info("Client worker result is `%s'" % client_result)
+        self.logger.info(f"Server worker result is `{server_result}'")
+        self.logger.info(f"Client worker result is `{client_result}'")
         server_kill_error = False
         if self.worker_server.result is None:
             server_kill_error = self.worker_server.teardown(self.logger, self.timeout)
         if self.worker_client.result is None:
             self.worker_client.teardown(self.logger, self.timeout)
-        err_msg = "Wrong server worker return code (%s)" % server_result
+        err_msg = f"Wrong server worker return code ({server_result})"
         self.assertEqual(server_result, 0, err_msg)
         self.assertIsNotNone(
-            client_result, "Timeout! Client worker did not finish in %ss" % self.timeout
+            client_result, f"Timeout! Client worker did not finish in {self.timeout}s"
         )
-        err_msg = "Wrong client worker return code (%s)" % client_result
+        err_msg = f"Wrong client worker return code ({client_result})"
         self.assertEqual(client_result, 0, err_msg)
         self.assertFalse(server_kill_error, "Server kill errored")
 
