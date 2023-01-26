@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -45,17 +44,6 @@ func configureProxyTcp(ifName0, ipAddr0, ifName1, ipAddr1 string) ConfFn {
 		}
 		return nil
 	}
-}
-
-func (a *Actions) RunHttpCliSrv(args []string) *ActionResult {
-	cmd := fmt.Sprintf("http cli server")
-	return ApiCliInband(workDir, cmd)
-}
-
-func (a *Actions) RunHttpCliCln(args []string) *ActionResult {
-	cmd := fmt.Sprintf("http cli client uri http://10.10.10.1/80 query %s", getArgs())
-	fmt.Println(cmd)
-	return ApiCliInband(workDir, cmd)
 }
 
 func (a *Actions) ConfigureVppProxy(args []string) *ActionResult {
@@ -123,31 +111,6 @@ func ApiCliInband(root, cmd string) *ActionResult {
 	return NewActionResult(err, ActionResultWithStdout(cliInbandReply.Reply))
 }
 
-func (a *Actions) RunEchoClient(args []string) *ActionResult {
-	outBuff := bytes.NewBuffer([]byte{})
-	errBuff := bytes.NewBuffer([]byte{})
-
-	cmd := fmt.Sprintf("vpp_echo client socket-name %s/var/run/app_ns_sockets/2 use-app-socket-api uri %s://10.10.10.1/12344", workDir, args[2])
-	err := exechelper.Run(cmd,
-		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
-		exechelper.WithStdout(os.Stdout), exechelper.WithStderr(os.Stderr))
-
-	return NewActionResult(err, ActionResultWithStdout(string(outBuff.String())),
-		ActionResultWithStderr(string(errBuff.String())))
-}
-
-func (a *Actions) RunEchoServer(args []string) *ActionResult {
-	cmd := fmt.Sprintf("vpp_echo server TX=RX socket-name %s/var/run/app_ns_sockets/1 use-app-socket-api uri %s://10.10.10.1/12344", workDir, args[2])
-	errCh := exechelper.Start(cmd)
-	select {
-	case err := <-errCh:
-		writeSyncFile(NewActionResult(err, ActionResultWithDesc("echo_server: ")))
-	default:
-	}
-	writeSyncFile(OkResult())
-	return nil
-}
-
 func (a *Actions) RunEchoSrvInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo server %s uri tcp://10.10.10.1/1234", getArgs())
 	return ApiCliInband(workDir, cmd)
@@ -156,49 +119,6 @@ func (a *Actions) RunEchoSrvInternal(args []string) *ActionResult {
 func (a *Actions) RunEchoClnInternal(args []string) *ActionResult {
 	cmd := fmt.Sprintf("test echo client %s uri tcp://10.10.10.1/1234", getArgs())
 	return ApiCliInband(workDir, cmd)
-}
-
-func (a *Actions) RunVclEchoServer(args []string) *ActionResult {
-	f, err := os.Create("vcl_1.conf")
-	if err != nil {
-		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
-	}
-	socketPath := fmt.Sprintf("%s/var/run/app_ns_sockets/1", workDir)
-	fmt.Fprintf(f, vclTemplate, socketPath, "1")
-	f.Close()
-
-	os.Setenv("VCL_CONFIG", "./vcl_1.conf")
-	cmd := fmt.Sprintf("vcl_test_server -p %s 12346", args[2])
-	errCh := exechelper.Start(cmd)
-	select {
-	case err := <-errCh:
-		writeSyncFile(NewActionResult(err, ActionResultWithDesc("vcl_test_server: ")))
-	default:
-	}
-	writeSyncFile(OkResult())
-	return nil
-}
-
-func (a *Actions) RunVclEchoClient(args []string) *ActionResult {
-	outBuff := bytes.NewBuffer([]byte{})
-	errBuff := bytes.NewBuffer([]byte{})
-
-	f, err := os.Create("vcl_2.conf")
-	if err != nil {
-		return NewActionResult(err, ActionResultWithStderr(("create vcl config: ")))
-	}
-	socketPath := fmt.Sprintf("%s/var/run/app_ns_sockets/2", workDir)
-	fmt.Fprintf(f, vclTemplate, socketPath, "2")
-	f.Close()
-
-	os.Setenv("VCL_CONFIG", "./vcl_2.conf")
-	cmd := fmt.Sprintf("vcl_test_client -U -p %s 10.10.10.1 12346", args[2])
-	err = exechelper.Run(cmd,
-		exechelper.WithStdout(outBuff), exechelper.WithStderr(errBuff),
-		exechelper.WithStdout(os.Stdout), exechelper.WithStderr(os.Stderr))
-
-	return NewActionResult(err, ActionResultWithStdout(string(outBuff.String())),
-		ActionResultWithStderr(string(errBuff.String())))
 }
 
 func configure2vethsTopo(ifName, interfaceAddress, namespaceId string, secret uint64, optionalHardwareAddress ...string) ConfFn {

@@ -51,7 +51,7 @@ plugins {
 `
 
 const vclTemplate = `vcl {
-  app-socket-api %[1]s
+  app-socket-api %[1]s/var/run/app_ns_sockets/%[2]s
   app-scope-global
   app-scope-local
   namespace-id %[2]s
