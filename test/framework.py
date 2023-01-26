@@ -329,7 +329,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     """
 
     extra_vpp_statseg_config = ""
-    extra_vpp_punt_config = []
+    extra_vpp_config = []
     extra_vpp_plugin_config = []
     logger = null_logger
     vapi_response_timeout = 5
@@ -538,8 +538,8 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             ]
         )
 
-        if cls.extra_vpp_punt_config is not None:
-            cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
+        if cls.extra_vpp_config is not None:
+            cls.vpp_cmdline.extend(cls.extra_vpp_config)
 
         if not cls.debug_attach:
             cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
