@@ -34,7 +34,6 @@ typedef struct
   u32 socket_buffer_size;
   u8 *socket_tx_buffer;
   u8 *socket_rx_buffer;
-  u32 socket_tx_nbytes;
   int control_pings_outstanding;
 
   u8 *name;
