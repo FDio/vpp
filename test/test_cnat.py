@@ -41,7 +41,7 @@ class CnatCommonTestCase(VppTestCase):
     # turn the scanner off whilst testing otherwise sessions
     # will time out
     #
-    extra_vpp_punt_config = [
+    extra_vpp_config = [
         "cnat",
         "{",
         "session-db-buckets",

@@ -67,7 +67,7 @@ class VCLTestCase(VppTestCase):
     def setUpClass(cls):
         if cls.session_startup:
             conf = "session {" + " ".join(cls.session_startup) + "}"
-            cls.extra_vpp_punt_config = [conf]
+            cls.extra_vpp_config = [conf]
         super(VCLTestCase, cls).setUpClass()
 
     @classmethod

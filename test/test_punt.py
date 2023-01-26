@@ -110,7 +110,7 @@ class TestPuntSocket(VppTestCase):
 
     @classmethod
     def setUpConstants(cls):
-        cls.extra_vpp_punt_config = [
+        cls.extra_vpp_config = [
             "punt",
             "{",
             "socket",
