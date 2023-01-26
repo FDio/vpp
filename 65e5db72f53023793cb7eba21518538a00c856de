@@ -70,6 +70,24 @@
       "parentUuid": "181b8968_2cd960b1",
       "revId": "65e5db72f53023793cb7eba21518538a00c856de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3586f065_ee559cb8",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-26T13:22:07Z",
+      "side": 1,
+      "message": "Basically, you are describing what the code in this patch does and not answering my questions above.\n\n\u003e Can you clarify why it is needed to artificially overestimate the rate the server is able to process handshake messages? And what are the reasons the actual handshake messages processing rate is not used?\n\nThe server should switch to the under load state when it cannot keep up with processing of all the handshake messages it is receiving. So the server needs to answer the question whether the current handshake messages rate is acceptable for it or the rate will cause high load. There are different ways of how this question might be answered. As can be seen, this patch chooses to answer this question based on an average historical time of how long it took to process a single handshake message previously. But in fact, the average time being used represents a totally different value - average time of generation a cookie reply (which is much lower). Will the server be able to estimate handshake messages processing performance if use a rate of another activity? I don\u0027t think so.\n\nAlso, can you describe how this code is tested? Do you test an initial handshake messages storm? That might work only because of the magic number that `wmp-\u003emax_handshake_cookie` is initialized with. Do you test a handshake messages storm after the initial one stops? And how many of them? Does the server switch to the under load state?",
+      "parentUuid": "f85377c1_7194022e",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
