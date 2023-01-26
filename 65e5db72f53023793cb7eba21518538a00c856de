@@ -88,6 +88,24 @@
       "parentUuid": "f85377c1_7194022e",
       "revId": "65e5db72f53023793cb7eba21518538a00c856de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99836a96_a02dab33",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-26T14:29:37Z",
+      "side": 1,
+      "message": "I\u0027ve tested wg setup with 10k tunnels and 10k peers. 10k wg interfaces have been configured with 10k peers on both sides vpp DUT1 and DUT2, flows for these tunnels have been generated. After a few seconds flows were stopped. After 10-15 minutes pause, traffic has been resumed again with the same amount of flows for each tunnel. In such scenario, I observed under-load state for wg with this patch applied. On the other hand, in case of the original implementation the under-load state in such scenario will not occur at all. \n\nThe current handshake processing rate is not used for prediction because it was calculated for each interface separately and it doesn\u0027t reflect the rate for all interfaces together. The main thread though handles handshakes for all interfaces and for each peer performs handshake process.\n\nI agree that the value for handshake rate for cookie is overestimated, as based on the time spend in calling function for handshake process, and this value gives aggressive estimation, but I also think that it is better to have higher value and enable under load state early, instead of waiting too long for enabling this state and in result become unresponsive.",
+      "parentUuid": "3586f065_ee559cb8",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
