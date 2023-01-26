@@ -257,7 +257,7 @@ func (a *Actions) Configure2Veths(args []string) *ActionResult {
 	exitOnErrCh(ctx, cancel, vppErrCh)
 
 	var fn func(context.Context, api.Connection) error
-	switch vppConfig.Variant {
+	switch vppConfig.variant {
 	case "srv":
 		fn = configure2vethsTopo("vppsrv", "10.10.10.1/24", "1", 1)
 	case "srv-with-preset-hw-addr":

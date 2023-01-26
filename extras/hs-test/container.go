@@ -3,24 +3,26 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/edwarnicke/exechelper"
 )
 
 type Volume struct {
-	hostDir      string
-	containerDir string
+	hostDir          string
+	containerDir     string
+	isDefaultWorkDir bool
 }
 
 type Container struct {
 	isOptional       bool
 	name             string
 	image            string
-	workDir          string
 	extraRunningArgs string
 	volumes          map[string]Volume
 	envVars          map[string]string
+	vppInstance      *VppInstance
 }
 
 func NewContainer(yamlInput ContainerConfig) (*Container, error) {
@@ -59,13 +61,13 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 			volumeMap := volu.(ContainerConfig)
 			hostDir := r.Replace(volumeMap["host-dir"].(string))
 			containerDir := volumeMap["container-dir"].(string)
-			container.addVolume(hostDir, containerDir)
+			isDefaultWorkDir := false
 
-			if isDefaultWorkDir, ok := volumeMap["is-default-work-dir"]; ok &&
-				isDefaultWorkDir.(bool) &&
-				len(container.workDir) == 0 {
-				container.workDir = containerDir
+			if isDefault, ok := volumeMap["is-default-work-dir"]; ok {
+				isDefaultWorkDir = isDefault.(bool)
 			}
+
+			container.addVolume(hostDir, containerDir, isDefaultWorkDir)
 
 		}
 	}
@@ -76,6 +78,31 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 		}
 	}
 	return container, nil
+}
+
+func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
+	for _, v := range c.volumes {
+		if v.isDefaultWorkDir {
+			res = v
+			exists = true
+			return
+		}
+	}
+	return
+}
+
+func (c *Container) GetHostWorkDir() (res string) {
+	if v, ok := c.getWorkDirVolume(); ok {
+		res = v.hostDir
+	}
+	return
+}
+
+func (c *Container) GetContainerWorkDir() (res string) {
+	if v, ok := c.getWorkDirVolume(); ok {
+		res = v.containerDir
+	}
+	return
 }
 
 func (c *Container) getRunCommand() string {
@@ -103,10 +130,11 @@ func (c *Container) run() error {
 	return nil
 }
 
-func (c *Container) addVolume(hostDir string, containerDir string) {
+func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) { // TODO make a constructor and pass existing object instead of parameters
 	var volume Volume
 	volume.hostDir = hostDir
 	volume.containerDir = containerDir
+	volume.isDefaultWorkDir = isDefaultWorkDir
 	c.volumes[hostDir] = volume
 }
 
@@ -127,10 +155,10 @@ func (c *Container) getVolumesAsCliOption() string {
 }
 
 func (c *Container) getWorkDirAsCliOption() string {
-	if len(c.workDir) == 0 {
-		return ""
+	if _, ok := c.getWorkDirVolume(); ok {
+		return fmt.Sprintf(" --workdir=\"%s\"", c.GetContainerWorkDir())
 	}
-	return fmt.Sprintf(" --workdir=\"%s\"", c.workDir)
+	return ""
 }
 
 func (c *Container) addEnvVar(envVar interface{}) {
@@ -156,6 +184,32 @@ func (c *Container) getSyncPath() string {
 	return fmt.Sprintf("/tmp/%s/sync", c.name)
 }
 
+func (c *Container) newVppInstance(additionalConfig ...Stanza) (*VppInstance, error) {
+	vppConfig := new(VppConfig)
+	vppConfig.cliSocketFilePath = defaultCliSocketFilePath
+	if len(additionalConfig) > 0 {
+		vppConfig.additionalConfig = additionalConfig[0]
+	}
+
+	vpp := new(VppInstance)
+	vpp.container = c
+	vpp.config = vppConfig
+
+	c.vppInstance = vpp
+
+	return vpp, nil
+}
+
+func (c *Container) copy(sourceFileName string, targetFileName string) error {
+	cmd := exec.Command("docker", "cp", sourceFileName, c.name+":"+targetFileName)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TODO does CombinedOutput contain anything if `docker exec` is executed as detached?
 func (c *Container) exec(command string) (string, error) {
 	cliCommand := "docker exec -d " + c.name + " " + command
 	byteOutput, err := exechelper.CombinedOutput(cliCommand)
@@ -187,5 +241,18 @@ func (c *Container) execAction(args string) (string, error) {
 }
 
 func (c *Container) stop() error {
+	fmt.Println("Stopping container:", c.name)
+	if c.vppInstance != nil {
+		fmt.Printf("VPP instance address: %p\n", c.vppInstance)
+		fmt.Printf("Channel address: %p\n", &c.vppInstance.apiChannel)
+		if c.vppInstance.apiChannel != nil {
+			c.vppInstance.disconnect()
+		}
+	}
+	// TODO remove volumes after all VPPs are disconnected
+	//	for _, volume := range c.volumes {
+	//		fmt.Println("Deleting volume:", volume.hostDir)
+	//		os.RemoveAll(volume.hostDir)
+	//	}
 	return exechelper.Run("docker stop " + c.name + " -t 0")
 }

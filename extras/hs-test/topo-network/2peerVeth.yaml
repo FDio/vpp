@@ -5,12 +5,15 @@ devices:
 
   - name: "vppsrv"
     type: "veth"
+    preset-ip4-address: "10.10.10.1/24"
+    preset-hw-address: "00:00:00:00"
     peer:
       name: "vppsrv_veth"
       netns: "hsns"
 
   - name: "vppcln"
     type: "veth"
+    preset-ip4-address: "10.10.10.2/24"
     peer:
       name: "vppcln_veth"
       netns: "hsns"

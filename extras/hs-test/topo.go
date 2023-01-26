@@ -31,9 +31,9 @@ func AddAddress(device, address, ns string) error {
 
 func convertToNetConfig(t *YamlTopology) (*NetTopology, error) {
 	var topology NetTopology
-	for _, dev := range t.Devices {
-		topology = append(topology, NewNetConfig(dev))
-	}
+	// 	for _, dev := range t.Devices {
+	// 		//topology = append(topology, NewNetConfig(dev)) // TODO fix this by removing it
+	// 	}
 	return &topology, nil
 }
 

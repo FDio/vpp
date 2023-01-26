@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt" // TODO remove this
 	"io/ioutil"
 	"os"
 	"testing"
@@ -22,12 +23,16 @@ func IsVerbose() bool {
 type HstSuite struct {
 	suite.Suite
 	teardownSuite func()
+	netConfigKeys []string
+	netConfigs    map[string]*NetConfig
 	containers    map[string]*Container
 	volumes       []string
 }
 
 func (s *HstSuite) TearDownSuite() {
-	s.teardownSuite()
+	// s.teardownSuite() // TODO remove this
+
+	s.unconfigureNetworkTopology()
 }
 
 func (s *HstSuite) TearDownTest() {
@@ -36,6 +41,7 @@ func (s *HstSuite) TearDownTest() {
 	}
 	s.ResetContainers()
 	s.RemoveVolumes()
+	// TODO remove directories used by volumes on host system
 }
 
 func (s *HstSuite) SetupTest() {
@@ -112,6 +118,8 @@ func (s *HstSuite) RemoveVolumes() {
 	for _, volumeName := range s.volumes {
 		cmd := "docker volume rm " + volumeName
 		exechelper.Run(cmd)
+		fmt.Println("Deleting volume:", volumeName)
+		os.RemoveAll(volumeName)
 	}
 }
 
@@ -140,10 +148,56 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := NewContainer(elem)
 		if err != nil {
-			s.T().Fatalf("config error: %v", err)
+			s.T().Fatalf("container config error: %v", err)
 		}
 		s.log(newContainer.getRunCommand())
 		s.containers[newContainer.name] = newContainer
+	}
+}
+
+func (s *HstSuite) loadNetworkTopology(topologyName string) {
+	data, err := ioutil.ReadFile(NetworkTopologyDir + topologyName + ".yaml")
+	if err != nil {
+		s.T().Fatalf("read error: %v", err)
+	}
+	var yamlTopo YamlTopology
+	err = yaml.Unmarshal(data, &yamlTopo)
+	if err != nil {
+		s.T().Fatalf("unmarshal error: %v", err)
+	}
+
+	s.netConfigs = make(map[string]*NetConfig)
+	for _, elem := range yamlTopo.Devices {
+		newNetConfig, err := NewNetConfig(elem)
+		if err != nil {
+			s.T().Fatalf("network config error: %v", err)
+		}
+		// TODO s.log(newNetConfig.GetCommand()) // this could be useful for dry-run mode
+		s.netConfigKeys = append(s.netConfigKeys, newNetConfig.GetName())
+		s.netConfigs[s.netConfigKeys[len(s.netConfigKeys)-1]] = &newNetConfig
+	}
+}
+
+func (s *HstSuite) configureNetworkTopology(topologyName string) {
+	s.loadNetworkTopology(topologyName)
+
+	fmt.Printf("Network topology: %+v\n", s.netConfigKeys)
+
+	for _, key := range s.netConfigKeys {
+		netConfig := *s.netConfigs[key] // TODO should the map hold just the actual type instead of pointer to the type?
+		if err := netConfig.Configure(); err != nil {
+			s.T().Fatalf("network config error: %v", err)
+		}
+	}
+}
+
+func (s *HstSuite) unconfigureNetworkTopology() {
+	if IsPersistent() {
+		return
+	}
+	for _, key := range s.netConfigKeys {
+		netConfig := *s.netConfigs[key] // TODO should the map hold just the actual type instead of pointer to the type?
+		netConfig.Unconfigure()
 	}
 }
 
