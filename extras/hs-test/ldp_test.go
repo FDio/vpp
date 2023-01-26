@@ -10,12 +10,10 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	var clnVclConf, srvVclConf Stanza
 
 	serverContainer := s.getContainerByName("server-vpp")
-	serverVolume := serverContainer.getVolumeByHostDir("/tmp/server")
-	srvVcl := serverVolume.containerDir + "/vcl_srv.conf"
+	srvVcl := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
 
 	clientContainer := s.getContainerByName("client-vpp")
-	clientVolume := clientContainer.getVolumeByHostDir("/tmp/client")
-	clnVcl := clientVolume.containerDir + "/vcl_cln.conf"
+	clnVcl := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
 
 	ldpreload := os.Getenv("HST_LDPRELOAD")
 	s.assertNotEqual("", ldpreload)
@@ -28,20 +26,14 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	s.log("starting VPPs")
 
-	originalWorkDir := serverContainer.workDir
-	serverContainer.workDir = serverVolume.containerDir
 	_, err := serverContainer.execAction("Configure2Veths srv")
 	s.assertNil(err)
-	serverContainer.workDir = originalWorkDir
 
-	originalWorkDir = clientContainer.workDir
-	clientContainer.workDir = clientVolume.containerDir
 	_, err = clientContainer.execAction("Configure2Veths cln")
 	s.assertNil(err)
-	clientContainer.workDir = originalWorkDir
 
 	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/2",
-		clientVolume.containerDir)
+		clientContainer.GetContainerWorkDir())
 	err = clnVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
@@ -54,7 +46,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	s.assertNil(err)
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/1",
-		serverVolume.containerDir)
+		serverContainer.GetContainerWorkDir())
 	err = srvVclConf.
 		NewStanza("vcl").
 		Append("rx-fifo-size 4000000").
