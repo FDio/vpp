@@ -33,6 +33,24 @@
       "message": "rte_cryptodev_sym_session_opaque_data_get () return type is u64, comparing it against u8 type aad_len may be dangerous.\nI know the original change was not ok either - but could you take this chance to change it?",
       "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f0cd30e_783c09e8",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-01-26T03:41:04Z",
+      "side": 1,
+      "message": "When compared against u64, u8 type will be zero extended to u64, I think this should be OK",
+      "parentUuid": "bc680000_119a1735",
+      "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
