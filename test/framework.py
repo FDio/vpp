@@ -1511,13 +1511,15 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                             f"{stats_snapshot[cntr][:, sw_if_index].sum()}, "
                             f"expected diff: {diff})",
                         )
-                    except IndexError:
+                    except IndexError as e:
                         # if diff is 0, then this most probably a case where
                         # test declares multiple interfaces but traffic hasn't
                         # passed through this one yet - which means the counter
                         # value is 0 and can be ignored
                         if 0 != diff:
-                            raise
+                            raise Exception(
+                                f"Couldn't sum counter: {cntr} on sw_if_index: {sw_if_index}"
+                            ) from e
 
     def send_and_assert_no_replies(
         self, intf, pkts, remark="", timeout=None, stats_diff=None, trace=True, msg=None
