@@ -88,8 +88,7 @@ lb_hash_t *lb_hash_alloc(u32 buckets, u32 timeout)
       sizeof(lb_hash_bucket_t) * (buckets + 1);
   u8 *mem = 0;
   lb_hash_t *h;
-  vec_alloc_aligned(mem, size, CLIB_CACHE_LINE_BYTES);
-  clib_memset(mem, 0, size);
+  vec_validate_aligned (mem, size - 1, CLIB_CACHE_LINE_BYTES);
   h = (lb_hash_t *)mem;
   h->buckets_mask = (buckets - 1);
   h->timeout = timeout;
