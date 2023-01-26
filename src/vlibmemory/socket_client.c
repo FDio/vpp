@@ -178,11 +178,11 @@ static int
 vl_socket_client_write_internal (socket_client_main_t * scm)
 {
   int n;
-
+  int len = vec_len (scm->socket_tx_buffer);
   msgbuf_t msgbuf = {
     .q = 0,
     .gc_mark_timestamp = 0,
-    .data_len = htonl (scm->socket_tx_nbytes),
+    .data_len = htonl (len),
   };
 
   n = write (scm->socket_fd, &msgbuf, sizeof (msgbuf));
@@ -192,8 +192,11 @@ vl_socket_client_write_internal (socket_client_main_t * scm)
       return -1;
     }
 
-  n = write (scm->socket_fd, scm->socket_tx_buffer, scm->socket_tx_nbytes);
-  if (n < scm->socket_tx_nbytes)
+  n = write (scm->socket_fd, scm->socket_tx_buffer, len);
+
+  vec_set_len (scm->socket_tx_buffer, 0);
+
+  if (n < len)
     {
       clib_unix_warning ("socket write (msg)");
       return -1;
@@ -223,7 +226,7 @@ vl_socket_client_write2 (socket_client_main_t * scm)
 void *
 vl_socket_client_msg_alloc2 (socket_client_main_t * scm, int nbytes)
 {
-  scm->socket_tx_nbytes = nbytes;
+  vec_set_len (scm->socket_tx_buffer, nbytes);
   return ((void *) scm->socket_tx_buffer);
 }
 
