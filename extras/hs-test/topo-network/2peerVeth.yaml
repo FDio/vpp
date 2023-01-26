@@ -5,6 +5,7 @@ devices:
 
   - name: "vppsrv"
     type: "veth"
+    preset-hw-address: "00:00:5e:00:53:01"
     peer:
       name: "vppsrv_veth"
       netns: "hsns"
