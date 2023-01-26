@@ -168,7 +168,7 @@ class VppPGInterface(VppInterface):
                     filename,
                 )
                 self.test.logger.debug("Renaming %s->%s" % (path, name))
-                os.rename(path, name)
+                shutil.move(path, name)
         except OSError:
             self.test.logger.debug("OSError: Could not rename %s %s" % (path, filename))
 
