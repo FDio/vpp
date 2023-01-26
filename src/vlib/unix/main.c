@@ -513,6 +513,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   if (error)
     return error;
 
+  if (chdir ((char *) um->runtime_dir) < 0)
+    return clib_error_return_unix (0, "chdir('%s')", um->runtime_dir);
+
   error = setup_signal_handlers (um);
   if (error)
     return error;
