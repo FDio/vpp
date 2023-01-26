@@ -1,33 +1,25 @@
 ---
 volumes:
   - volume: &server-vol
-      host-dir: server-share
+      host-dir: /tmp/server-share
+      container-dir: /tmp/server-share
+      is-default-work-dir: true
   - volume: &client-vol
-      host-dir: client-share
+      host-dir: /tmp/client-share
+      container-dir: "/tmp/client-share"
+      is-default-work-dir: true
 
 containers:
   - name: "server-vpp"
     volumes:
       - <<: *server-vol
-        container-dir: "/tmp/server-share"
-        is-default-work-dir: true
-      - host-dir: "/tmp/server"
-        container-dir: "/tmp/server"
   - name: "client-vpp"
     volumes:
       - <<: *client-vol
-        container-dir: "/tmp/client-share"
-        is-default-work-dir: true
-      - host-dir: "/tmp/client"
-        container-dir: "/tmp/client"
   - name: "server-application"
     volumes:
       - <<: *server-vol
-        container-dir: "/tmp/server-share"
-        is-default-work-dir: true
   - name: "client-application"
     volumes:
       - <<: *client-vol
-        container-dir: "/tmp/client-share"
-        is-default-work-dir: true
 

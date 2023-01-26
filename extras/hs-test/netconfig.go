@@ -4,22 +4,131 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
+
+	"go.fd.io/govpp/binapi/interface_types"
+	"go.fd.io/govpp/binapi/ip_types"
 )
 
-type NetType string
+type (
+	NetConfig struct {
+		Configure   func() error
+		Unconfigure func()
+	}
+
+	NetTopology []NetConfig
+
+	NetConfigBase struct {
+		name     string
+		category string // what else to call this when `type` is reserved?
+	}
+
+	TopoMaker interface {
+		Configure() error
+		Unconfigure()
+		GetName() string
+		GetType() string
+	}
+
+	NetworkInterfaceVeth struct {
+		NetConfigBase
+		index                interface_types.InterfaceIndex
+		peerNetworkNamespace string
+		peerName             string
+		peerIp4Address       string
+		ip4Address           ip_types.AddressWithPrefix
+		hwAddress            string
+	}
+
+	NetworkInterfaceTap struct {
+		NetConfigBase
+		index      interface_types.InterfaceIndex
+		ip4Address string
+	}
+
+	NetworkNamespace struct {
+		NetConfigBase
+	}
+
+	NetworkBridge struct {
+		NetConfigBase
+		networkNamespace string
+		interfaces       []string
+	}
+)
 
 const (
-	NetNs NetType = "netns"
-	Veth  string  = "veth"
-	Tap   string  = "tap"
+	NetNs  string = "netns"
+	Veth   string = "veth"
+	Tap    string = "tap"
+	Bridge string = "bridge"
 )
 
-type NetConfig struct {
-	Configure   func() error
-	Unconfigure func()
+func (b NetConfigBase) Name() string {
+	return b.name
 }
 
-type NetTopology []NetConfig
+func (b NetConfigBase) Type() string {
+	return b.category
+}
+
+func (iface NetworkInterfaceVeth) Configure() error {
+	err := AddVethPair(iface.name, iface.peerName)
+	if err != nil {
+		return err
+	}
+
+	if iface.peerNetworkNamespace != "" {
+		err := LinkSetNetns(iface.peerName, iface.peerNetworkNamespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	if iface.peerIp4Address != "" {
+		err = AddAddress(iface.peerName, iface.peerIp4Address, iface.peerNetworkNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to add configure address for %s: %v", iface.peerName, err)
+		}
+	}
+	return nil
+}
+
+func (iface NetworkInterfaceVeth) Unconfigure() {
+	DelLink(iface.name)
+}
+
+func (iface NetworkInterfaceVeth) GetAddress() string {
+	return strings.Split(iface.ip4Address.String(), "/")[0]
+}
+
+func (iface NetworkInterfaceTap) Configure() error {
+	err := AddTap(iface.name, iface.ip4Address)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (iface NetworkInterfaceTap) Unconfigure() {
+	DelLink(iface.name)
+}
+
+func (ns NetworkNamespace) Configure() error {
+	return addDelNetns(ns.name, true)
+}
+
+func (ns NetworkNamespace) Unconfigure() {
+	addDelNetns(ns.name, false)
+}
+
+func (b NetworkBridge) Configure() error {
+	return AddBridge(b.name, b.interfaces, b.networkNamespace)
+}
+
+func (b NetworkBridge) Unconfigure() {
+	DelBridge(b.name, b.networkNamespace)
+}
 
 func (t *NetTopology) Configure() error {
 	for _, c := range *t {
@@ -99,6 +208,56 @@ func NewNetConfig(cfg NetDevConfig) NetConfig {
 	nc.Unconfigure = newUnconfigFn(cfg)
 
 	return nc
+}
+
+func NewNetNamespace(cfg NetDevConfig) (NetworkNamespace, error) {
+	var networkNamespace NetworkNamespace
+	networkNamespace.name = cfg["name"].(string)
+	networkNamespace.category = "netns"
+	return networkNamespace, nil
+}
+
+func NewBridge(cfg NetDevConfig) (NetworkBridge, error) {
+	var bridge NetworkBridge
+	bridge.name = cfg["name"].(string)
+	bridge.category = "bridge"
+	for _, v := range cfg["interfaces"].([]interface{}) {
+		bridge.interfaces = append(bridge.interfaces, v.(string))
+	}
+	bridge.networkNamespace = cfg["netns"].(string)
+	return bridge, nil
+}
+
+func NewVeth(cfg NetDevConfig) (NetworkInterfaceVeth, error) {
+	var veth NetworkInterfaceVeth
+	veth.name = cfg["name"].(string)
+	veth.category = "veth"
+
+	if cfg["preset-hw-address"] != nil {
+		veth.hwAddress = cfg["preset-hw-address"].(string)
+	}
+
+	peer := cfg["peer"].(NetDevConfig)
+
+	veth.peerName = peer["name"].(string)
+
+	if peer["netns"] != nil {
+		veth.peerNetworkNamespace = peer["netns"].(string)
+	}
+
+	if peer["ip4"] != nil {
+		veth.peerIp4Address = peer["ip4"].(string)
+	}
+
+	return veth, nil
+}
+
+func NewTap(cfg NetDevConfig) (NetworkInterfaceTap, error) {
+	var tap NetworkInterfaceTap
+	tap.name = cfg["name"].(string)
+	tap.category = "tap"
+	tap.ip4Address = cfg["ip4"].(string)
+	return tap, nil
 }
 
 func DelBridge(brName, ns string) error {
