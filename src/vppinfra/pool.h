@@ -295,8 +295,8 @@ _pool_put_index (void *p, uword index, uword elt_sz)
   /* Preallocated pool? */
   if (ph->max_elts)
     {
-      ph->free_indices[_vec_len (ph->free_indices)] = index;
       vec_inc_len (ph->free_indices, 1);
+      ph->free_indices[_vec_len (ph->free_indices) - 1] = index;
     }
   else
     vec_add1 (ph->free_indices, index);
