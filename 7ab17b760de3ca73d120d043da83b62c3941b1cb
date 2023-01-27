@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5fea5a27_2ad0f993",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-01-27T12:38:48Z",
+      "side": 1,
+      "message": "Another example where simply running ASAN tests on CI may have helped to avoid a bug. Let alone using more sound and type-safe language",
+      "revId": "7ab17b760de3ca73d120d043da83b62c3941b1cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
