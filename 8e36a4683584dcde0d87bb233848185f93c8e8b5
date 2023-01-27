@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4632642d_be395cbc",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 853,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-27T08:38:11Z",
+      "side": 1,
+      "message": "https://www.wireguard.com/protocol/\n\u003e [...] The responder must wait to use the new session until it has recieved one encrypted session packet from the initiator, in order to provide key confirmation. [...] Therefore, after the initiator receives the response from the responder, if it has no data packets immediately queued up to send, it should send an empty packet, so as to provide this confirmation.\n\nIt looks like it does not necessarily will be a keepalive message. Instead, it might be a normal encrypted data packet. This packet will be a keepalive message only if the initiator\u0027s output queue is empty at that moment.\n\nWhat do you think?",
+      "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
