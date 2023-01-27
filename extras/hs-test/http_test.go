@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -63,4 +65,43 @@ func (s *NoTopoSuite) TestNginx() {
 	defer func() { os.Remove(query) }()
 	go startWget(finished, "10.10.10.1", "80", query, "")
 	s.assertNil(<-finished)
+}
+
+func runNginxPerf(s *NoTopoSuite, mode string) error {
+	nRequests := 1000000
+	nClients := 2000
+
+	abArgs := []string{"-n", fmt.Sprintf("%d", nRequests), "-c",
+		fmt.Sprintf("%d", nClients)}
+
+	vppCont := s.getContainerByName("vpp")
+	vppInst := NewVppInstance(vppCont)
+	vppInst.actionFuncName = "ConfigureTap"
+	s.assertNil(vppInst.start(), "failed to start vpp")
+
+	nginxCont := s.getContainerByName("nginx")
+	s.assertNil(nginxCont.run())
+	time.Sleep(3 * time.Second)
+
+	if mode == "rps" {
+		abArgs = append(abArgs, "-k")
+	} else if mode != "cps" {
+		return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
+	}
+	abArgs = append(abArgs, "http://10.10.10.1:80/64B.json")
+	cmd := exec.Command("ab", abArgs...)
+	fmt.Println(cmd)
+	o, _ := cmd.CombinedOutput()
+	fmt.Print(string(o))
+	sh, _ := vppInst.vppctl("show session verbose")
+	fmt.Print(sh)
+	return nil
+}
+
+func (s *NoTopoSuite) TestNginxPerfCps() {
+	s.assertNil(runNginxPerf(s, "cps"))
+}
+
+func (s *NoTopoSuite) TestNginxPerfRps() {
+	s.assertNil(runNginxPerf(s, "rps"))
 }
