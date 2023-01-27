@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4b41e9e7_aeb69106",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-27T10:37:29Z",
+      "side": 1,
+      "message": "Why change this? This could be valid on a dev system where someone recompiled vpp-ext-deps packets, but not on an end-user system.\nThe main usecase here is for a user installing VPP from packagecloud binary packages, but having an ebpf toolchain (think \"devops\")",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "affaddc6_e2bf1bf8",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-27T10:37:29Z",
+      "side": 1,
+      "message": "any reason for changing include orders? This means searching for headers in $BPF_ROOT before /usr/include/x86_64-linux-gnu",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc682354_17c4af38",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-01-27T10:37:29Z",
+      "side": 1,
+      "message": "I do not think DEBUG should be enable by default",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
