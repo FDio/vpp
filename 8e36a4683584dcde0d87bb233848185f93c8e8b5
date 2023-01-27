@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0074116e_27f57aa9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-27T10:16:25Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2e19acdf_3fca1515",
+      "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4632642d_be395cbc",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Yes I thought about it, but at the moment the initiator always sends a keepalive packet. Therefore, I just simplified the flag logic.\nBut you\u0027re right, it might be better to work with every encrypted packet.",
       "parentUuid": "4632642d_be395cbc",
+      "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "de04d71f_ecfd9ac8",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 853,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-27T10:16:25Z",
+      "side": 1,
+      "message": "If consider VPP to VPP communication, yes, a keepalive message is always sent by the initiator. But if consider communication with some other implementation, there might be an actual data packet.\n\nOK, if this is just flag logic simplification for the VPP to VPP case, then I think this looks good.",
+      "parentUuid": "fdb24eab_db51ca7e",
       "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
