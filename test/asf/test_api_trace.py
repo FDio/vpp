@@ -3,6 +3,7 @@ import unittest
 from asfframework import VppTestCase, VppTestRunner
 from vpp_papi import VppEnum
 import json
+import shutil
 
 
 class TestJsonApiTrace(VppTestCase):
@@ -28,7 +29,7 @@ class TestJsonApiTrace(VppTestCase):
         tmp_api_trace = "/tmp/%s" % fname
         fpath = "%s/%s" % (self.tempdir, fname)
         self.vapi.cli("api trace save-json {}".format(fname))
-        os.rename(tmp_api_trace, fpath)
+        shutil.move(tmp_api_trace, fpath)
         with open(fpath, encoding="utf-8") as f:
             s = f.read()
         trace = json.loads(s)
