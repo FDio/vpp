@@ -105,6 +105,24 @@
       "parentUuid": "fdb24eab_db51ca7e",
       "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8caa8628_4bbd3fd8",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 853,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2023-01-27T18:41:20Z",
+      "side": 1,
+      "message": "I still think you are right and this should be done with every encrypted packet. Fixed (and found another small bug). Thanks",
+      "parentUuid": "de04d71f_ecfd9ac8",
+      "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
