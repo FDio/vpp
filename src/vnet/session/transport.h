@@ -246,10 +246,10 @@ transport_register_new_protocol (const transport_proto_vft_t * vft,
 transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
 void transport_update_time (clib_time_type_t time_now, u8 thread_index);
 
-int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
-int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
-				    ip46_address_t * lcl_addr,
-				    u16 * lcl_port);
+int transport_alloc_local_port (u8 proto, ip46_address_t *ip,
+				transport_endpoint_cfg_t *rmt);
+int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t *rmt,
+				    ip46_address_t *lcl_addr, u16 *lcl_port);
 void transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip,
 				     u16 port);
 int transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip,
