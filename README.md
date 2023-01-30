@@ -1,7 +1,7 @@
 Vector Packet Processing
 ========================
 
-## Introduction
+## DAW Introduction
 
 The VPP platform is an extensible framework that provides out-of-the-box
 production quality switch/router functionality. It is the open source version
