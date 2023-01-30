@@ -124,6 +124,24 @@
       "parentUuid": "99836a96_a02dab33",
       "revId": "65e5db72f53023793cb7eba21518538a00c856de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5ce67fc_30b7cb35",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-01-30T12:13:26Z",
+      "side": 1,
+      "message": "I did some testing and the value for handshake rate in case of sending cookie `wmp-\u003emax_handshake_cookie` for the first storm of handshake messages is calculated based on the magic value, but for the second storm of handshake messages it is based on the value calculated from the first storm and during my test with 10k tunnels I observed that under-load state was triggered during the second storm of handshakes when I paused packets generation from TREX and then resumed the traffic again. During the second storm of handshakes the value for `wmp-\u003emax_handshake_cookie` was very similar to the value calculated for the first storm of handshakes (the value fluctuated). The difference between handshakes rate for cookie and for normal handshakes is huge and, in my case, it was more than 30 times. I used separate udp-port listening for each wireguard interface. I did that as there is a bottleneck in the function doing the look-up for the right interfaces when all were created on the same udp-port.",
+      "parentUuid": "a5c60a64_e0fb659c",
+      "revId": "65e5db72f53023793cb7eba21518538a00c856de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
