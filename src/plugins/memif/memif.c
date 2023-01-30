@@ -747,9 +747,6 @@ memif_delete_socket_file (u32 sock_id)
 int
 memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 {
-  char *dir = 0, *tmp;
-  u32 idx = 0;
-
   /* allow adding socket id 0 */
   if ((sock_id == 0 && is_add == 0) || sock_id == ~0)
     {
@@ -766,59 +763,7 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
 
-  if (sock_filename[0] != '/')
-    {
-      clib_error_t *error;
-
-      /* copy runtime dir path */
-      vec_add (dir, vlib_unix_get_runtime_dir (),
-	       strlen (vlib_unix_get_runtime_dir ()));
-      vec_add1 (dir, '/');
-
-      /* if sock_filename contains dirs, add them to path */
-      tmp = strrchr ((char *) sock_filename, '/');
-      if (tmp)
-	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
-	}
-
-      vec_add1 (dir, '\0');
-      /* create socket dir */
-      error = vlib_unix_recursive_mkdir (dir);
-      if (error)
-	{
-	  clib_error_free (error);
-	  return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
-
-      sock_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
-			      sock_filename, 0);
-    }
-  else
-    {
-      sock_filename = vec_dup (sock_filename);
-
-      /* check if directory exists */
-      tmp = strrchr ((char *) sock_filename, '/');
-      if (tmp)
-	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
-	  vec_add1 (dir, '\0');
-	}
-
-      /* check dir existance and access rights for effective user/group IDs */
-      if ((dir == NULL)
-	  ||
-	  (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS)
-	   < 0))
-	{
-	  vec_free (dir);
-	  return VNET_API_ERROR_INVALID_ARGUMENT;
-	}
-    }
-  vec_free (dir);
+  sock_filename = format (0, "%s%c", sock_filename, 0);
 
   return memif_add_socket_file (sock_id, sock_filename);
 }
@@ -947,25 +892,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   /* Create new socket file */
   if (msf->ref_cnt == 0)
     {
-      struct stat file_stat;
-
-      /* If we are creating listener make sure file doesn't exist or if it
-       * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
-	{
-	  if (S_ISSOCK (file_stat.st_mode))
-	    {
-	      unlink ((char *) msf->filename);
-	    }
-	  else
-	    {
-	      error = clib_error_return (0, "File exists for %s",
-					 msf->filename);
-	      rv = VNET_API_ERROR_VALUE_EXIST;
-	      goto done;
-	    }
-	}
-
       mhash_init (&msf->dev_instance_by_id, sizeof (uword),
 		  sizeof (memif_interface_id_t));
       msf->dev_instance_by_fd = hash_create (0, sizeof (uword));
@@ -1062,7 +988,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   /* If this is new one, start listening */
   if (msf->is_listener && msf->ref_cnt == 0)
     {
-      struct stat file_stat;
       clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
 
       ASSERT (msf->sock == 0);
@@ -1070,19 +995,15 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
       clib_memset (s, 0, sizeof (clib_socket_t));
       s->config = (char *) msf->filename;
-      s->flags = CLIB_SOCKET_F_IS_SERVER |
-	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
-	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+      s->local_only = 1;
+      s->is_server = 1;
+      s->allow_group_write = 1;
+      s->is_seqpacket = 1;
+      s->passcred = 1;
 
       if ((error = clib_socket_init (s)))
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
-	  goto error;
-	}
-
-      if (stat ((char *) msf->filename, &file_stat) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
 	  goto error;
 	}
 
