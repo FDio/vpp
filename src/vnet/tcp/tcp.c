@@ -764,11 +764,13 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 }
 
 static int
-tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
-				 u16 * lcl_port, u8 is_ip4)
+tcp_alloc_custom_local_endpoint (ip46_address_t *lcl_addr, u16 *lcl_port,
+				 transport_endpoint_cfg_t *rmt)
 {
+  tcp_main_t *tm = vnet_get_tcp_main ();
   int index, port;
-  if (is_ip4)
+
+  if (rmt->is_ip4)
     {
       index = tm->last_v4_addr_rotor++;
       if (tm->last_v4_addr_rotor >= vec_len (tcp_cfg.ip4_src_addrs))
@@ -784,7 +786,7 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
       clib_memcpy_fast (&lcl_addr->ip6, &tcp_cfg.ip6_src_addrs[index],
 			sizeof (ip6_address_t));
     }
-  port = transport_alloc_local_port (TRANSPORT_PROTO_TCP, lcl_addr);
+  port = transport_alloc_local_port (TRANSPORT_PROTO_TCP, lcl_addr, rmt);
   if (port < 1)
     return SESSION_E_NOPORT;
   *lcl_port = port;
@@ -794,7 +796,6 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
 static int
 tcp_session_open (transport_endpoint_cfg_t * rmt)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
   ip46_address_t lcl_addr;
   u16 lcl_port;
@@ -805,27 +806,13 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
    */
   if ((rmt->is_ip4 && vec_len (tcp_cfg.ip4_src_addrs))
       || (!rmt->is_ip4 && vec_len (tcp_cfg.ip6_src_addrs)))
-    rv = tcp_alloc_custom_local_endpoint (tm, &lcl_addr, &lcl_port,
-					  rmt->is_ip4);
+    rv = tcp_alloc_custom_local_endpoint (&lcl_addr, &lcl_port, rmt);
   else
     rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_TCP,
 					 rmt, &lcl_addr, &lcl_port);
 
   if (rv)
-    {
-      if (rv != SESSION_E_PORTINUSE)
-	return rv;
-
-      if (session_lookup_connection (rmt->fib_index, &lcl_addr, &rmt->ip,
-				     lcl_port, rmt->port, TRANSPORT_PROTO_TCP,
-				     rmt->is_ip4))
-	return SESSION_E_PORTINUSE;
-
-      /* 5-tuple is available so increase lcl endpoint refcount and proceed
-       * with connection allocation */
-      transport_share_local_endpoint (TRANSPORT_PROTO_TCP, &lcl_addr,
-				      lcl_port);
-    }
+    return rv;
 
   /*
    * Create connection and send SYN
