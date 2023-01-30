@@ -53,6 +53,12 @@
 #define CLIB_UNIX
 #endif
 
+#ifdef __linux__
+#define CLIB_LINUX 1
+#else
+#define CLIB_LINUX 0
+#endif
+
 #include <vppinfra/types.h>
 #include <vppinfra/atomics.h>
 

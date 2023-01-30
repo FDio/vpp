@@ -322,7 +322,7 @@ typedef struct
 } memif_create_if_args_t;
 
 clib_error_t *memif_socket_filename_add_del (u8 is_add, u32 sock_id,
-					     u8 *sock_filename);
+					     char *sock_filename);
 clib_error_t *memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args);
 clib_error_t *memif_delete_if (vlib_main_t *vm, memif_if_t *mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
