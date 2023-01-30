@@ -566,7 +566,8 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
  * table to mark the pair as used.
  */
 int
-transport_alloc_local_port (u8 proto, ip46_address_t * ip)
+transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
+			    transport_endpoint_cfg_t *rmt)
 {
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
   transport_main_t *tm = &tp_main;
@@ -594,8 +595,18 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 	    break;
 	}
 
-      if (!transport_endpoint_mark_used (proto, ip, port))
+      if (!transport_endpoint_mark_used (proto, lcl_addr, port))
 	return port;
+
+      /* IP:port pair already in use, check if 6-tuple available */
+      if (session_lookup_connection (rmt->fib_index, lcl_addr, &rmt->ip, port,
+				     rmt->port, proto, rmt->is_ip4))
+	continue;
+
+      /* 6-tuple is available so increment lcl endpoint refcount */
+      transport_share_local_endpoint (proto, lcl_addr, port);
+
+      return port;
     }
   return -1;
 }
@@ -683,7 +694,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
    */
   if (rmt_cfg->peer.port == 0)
     {
-      port = transport_alloc_local_port (proto, lcl_addr);
+      port = transport_alloc_local_port (proto, lcl_addr, rmt_cfg);
       if (port < 1)
 	return SESSION_E_NOPORT;
       *lcl_port = port;
