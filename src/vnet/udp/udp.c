@@ -362,25 +362,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				       &lcl_port);
   if (rv)
-    {
-      if (rv != SESSION_E_PORTINUSE)
-	return rv;
-
-      if (udp_connection_port_used_extern (lcl_port, rmt->is_ip4))
-	return SESSION_E_PORTINUSE;
-
-      /* If port in use, check if 5-tuple is also in use */
-      if (session_lookup_connection (rmt->fib_index, &lcl_addr, &rmt->ip,
-				     lcl_port, rmt->port, TRANSPORT_PROTO_UDP,
-				     rmt->is_ip4))
-	return SESSION_E_PORTINUSE;
-
-      /* 5-tuple is available so increase lcl endpoint refcount and proceed
-       * with connection allocation */
-      transport_share_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
-				      lcl_port);
-      goto conn_alloc;
-    }
+    return rv;
 
   if (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
     {
@@ -391,14 +373,14 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
       /* Try to find a port that's not used */
       while (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
 	{
-	  lcl_port = transport_alloc_local_port (TRANSPORT_PROTO_UDP,
-						 &lcl_addr);
+	  lcl_port =
+	    transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr, rmt);
 	  if (lcl_port < 1)
 	    return SESSION_E_PORTINUSE;
 	}
     }
 
-conn_alloc:
+  // conn_alloc:
 
   /* We don't poll main thread if we have workers */
   thread_index = transport_cl_thread ();
