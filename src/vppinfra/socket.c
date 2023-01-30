@@ -93,108 +93,6 @@ find_free_port (word sock)
   return port < 1 << 16 ? port : -1;
 }
 
-/* Convert a config string to a struct sockaddr and length for use
-   with bind or connect. */
-static clib_error_t *
-socket_config (char *config,
-	       void *addr, socklen_t * addr_len, u32 ip4_default_address)
-{
-  clib_error_t *error = 0;
-
-  if (!config)
-    config = "";
-
-  /* Anything that begins with a / is a local PF_LOCAL socket. */
-  if (config[0] == '/')
-    {
-      struct sockaddr_un *su = addr;
-      su->sun_family = PF_LOCAL;
-      clib_memcpy (&su->sun_path, config,
-		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
-      *addr_len = sizeof (su[0]);
-    }
-
-  /* Treat everything that starts with @ as an abstract socket. */
-  else if (config[0] == '@')
-    {
-      struct sockaddr_un *su = addr;
-      su->sun_family = PF_LOCAL;
-      clib_memcpy (&su->sun_path, config,
-		   clib_min (sizeof (su->sun_path), 1 + strlen (config)));
-
-      *addr_len = sizeof (su->sun_family) + strlen (config);
-      su->sun_path[0] = '\0';
-    }
-
-  /* Hostname or hostname:port or port. */
-  else
-    {
-      char *host_name;
-      int port = -1;
-      struct sockaddr_in *sa = addr;
-
-      host_name = 0;
-      port = -1;
-      if (config[0] != 0)
-	{
-	  unformat_input_t i;
-
-	  unformat_init_string (&i, config, strlen (config));
-	  if (unformat (&i, "%s:%d", &host_name, &port)
-	      || unformat (&i, "%s:0x%x", &host_name, &port))
-	    ;
-	  else if (unformat (&i, "%s", &host_name))
-	    ;
-	  else
-	    error = clib_error_return (0, "unknown input `%U'",
-				       format_unformat_error, &i);
-	  unformat_free (&i);
-
-	  if (error)
-	    goto done;
-	}
-
-      sa->sin_family = PF_INET;
-      *addr_len = sizeof (sa[0]);
-      if (port != -1)
-	sa->sin_port = htons (port);
-      else
-	sa->sin_port = 0;
-
-      if (host_name)
-	{
-	  struct in_addr host_addr;
-
-	  /* Recognize localhost to avoid host lookup in most common cast. */
-	  if (!strcmp (host_name, "localhost"))
-	    sa->sin_addr.s_addr = htonl (INADDR_LOOPBACK);
-
-	  else if (inet_aton (host_name, &host_addr))
-	    sa->sin_addr = host_addr;
-
-	  else if (host_name && strlen (host_name) > 0)
-	    {
-	      struct hostent *host = gethostbyname (host_name);
-	      if (!host)
-		error = clib_error_return (0, "unknown host `%s'", config);
-	      else
-		clib_memcpy (&sa->sin_addr.s_addr, host->h_addr_list[0],
-			     host->h_length);
-	    }
-
-	  else
-	    sa->sin_addr.s_addr = htonl (ip4_default_address);
-
-	  vec_free (host_name);
-	  if (error)
-	    goto done;
-	}
-    }
-
-done:
-  return error;
-}
-
 static clib_error_t *
 default_socket_write (clib_socket_t * s)
 {
@@ -253,7 +151,7 @@ default_socket_read (clib_socket_t * sock, int n_bytes)
   u8 *buf;
 
   /* RX side of socket is down once end of file is reached. */
-  if (sock->flags & CLIB_SOCKET_F_RX_END_OF_FILE)
+  if (sock->rx_end_of_file)
     return 0;
 
   fd = sock->fd;
@@ -275,7 +173,7 @@ default_socket_read (clib_socket_t * sock, int n_bytes)
 
   /* Other side closed the socket. */
   if (n_read == 0)
-    sock->flags |= CLIB_SOCKET_F_RX_END_OF_FILE;
+    sock->rx_end_of_file = 1;
 
 non_fatal:
   vec_inc_len (sock->rx_buffer, n_read - n_bytes);
@@ -328,7 +226,7 @@ static clib_error_t *
 default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
 			int fds[], int num_fds)
 {
-#ifdef __linux__
+#ifdef CLIB_LINUX
   char ctl[CMSG_SPACE (sizeof (int) * num_fds) +
 	   CMSG_SPACE (sizeof (struct ucred))];
   struct ucred *cr = 0;
@@ -363,7 +261,7 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
     {
       if (cmsg->cmsg_level == SOL_SOCKET)
 	{
-#ifdef __linux__
+#ifdef CLIB_LINUX
 	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
 	    {
 	      cr = (struct ucred *) CMSG_DATA (cmsg);
@@ -399,158 +297,431 @@ socket_init_funcs (clib_socket_t * s)
     s->recvmsg_func = default_socket_recvmsg;
 }
 
-__clib_export clib_error_t *
-clib_socket_init (clib_socket_t * s)
+static const struct
 {
-  union
-  {
-    struct sockaddr sa;
-    struct sockaddr_un su;
-  } addr;
-  socklen_t addr_len = 0;
-  int socket_type, rv;
-  clib_error_t *error = 0;
-  word port;
+  char *prefix;
+  sa_family_t family;
+  clib_socket_type_t type;
+  u16 skip_prefix : 1;
+  u16 is_local : 1;
+} clib_socket_type_data[] = {
+  { .prefix = "unix:",
+    .family = AF_UNIX,
+    .type = CLIB_SOCKET_TYPE_UNIX,
+    .skip_prefix = 1,
+    .is_local = 1 },
+  { .prefix = "tcp:",
+    .family = AF_INET,
+    .type = CLIB_SOCKET_TYPE_INET,
+    .skip_prefix = 1 },
+  { .prefix = "abstract:",
+    .family = AF_UNIX,
+    .type = CLIB_SOCKET_TYPE_LINUX_ABSTRACT,
+    .skip_prefix = 1,
+    .is_local = 1 },
+  { .prefix = "/",
+    .family = AF_UNIX,
+    .type = CLIB_SOCKET_TYPE_UNIX,
+    .skip_prefix = 0,
+    .is_local = 1 },
+  { .prefix = "",
+    .family = AF_INET,
+    .type = CLIB_SOCKET_TYPE_INET,
+    .skip_prefix = 0,
+    .is_local = 0 },
+  { .prefix = "",
+    .family = AF_UNIX,
+    .type = CLIB_SOCKET_TYPE_UNIX,
+    .skip_prefix = 0,
+    .is_local = 1 },
+};
 
-  error = socket_config (s->config, &addr.sa, &addr_len,
-			 (s->flags & CLIB_SOCKET_F_IS_SERVER
-			  ? INADDR_LOOPBACK : INADDR_ANY));
-  if (error)
-    goto done;
-
-  socket_init_funcs (s);
-
-  socket_type = s->flags & CLIB_SOCKET_F_SEQPACKET ?
-    SOCK_SEQPACKET : SOCK_STREAM;
-
-  s->fd = socket (addr.sa.sa_family, socket_type, 0);
-  if (s->fd < 0)
+static u8 *
+_clib_socket_get_string (char **p, int is_hostname)
+{
+  u8 *s = 0;
+  while (**p)
     {
-      error = clib_error_return_unix (0, "socket (fd %d, '%s')",
-				      s->fd, s->config);
+      switch (**p)
+	{
+	case '_':
+	  if (is_hostname)
+	    return s;
+	case 'a' ... 'z':
+	case 'A' ... 'Z':
+	case '0' ... '9':
+	case '/':
+	case '-':
+	case '.':
+	  vec_add1 (s, **p);
+	  (*p)++;
+	  break;
+	  break;
+	default:
+	  return s;
+	}
+    }
+  return s;
+}
+
+__clib_export int
+clib_socket_prefix_is_valid (char *s)
+{
+  for (typeof (clib_socket_type_data[0]) *d = clib_socket_type_data;
+       d - clib_socket_type_data < ARRAY_LEN (clib_socket_type_data); d++)
+    if (d->skip_prefix && strncmp (s, d->prefix, strlen (d->prefix)) == 0)
+      return 1;
+  return 0;
+}
+
+__clib_export clib_error_t *
+clib_socket_init (clib_socket_t *s)
+{
+  struct sockaddr_un su = { .sun_family = AF_UNIX };
+  struct sockaddr_in si = { .sin_family = AF_INET };
+  struct sockaddr *sa = 0;
+  typeof (clib_socket_type_data[0]) *data = 0;
+  socklen_t addr_len = 0;
+  int rv;
+  char *p;
+  clib_error_t *err = 0;
+  u8 *name = 0;
+  u16 port = 0;
+#if CLIB_LINUX
+  int netns_fd = -1;
+#endif
+
+  s->fd = -1;
+
+  if (!s->config)
+    s->config = "";
+
+  for (int i = 0; i < ARRAY_LEN (clib_socket_type_data); i++)
+    {
+      typeof (clib_socket_type_data[0]) *d = clib_socket_type_data + i;
+
+      if (d->is_local == 0 && s->local_only)
+	continue;
+
+      if (strncmp (s->config, d->prefix, strlen (d->prefix)) == 0)
+	{
+	  data = d;
+	  break;
+	}
+    }
+
+  if (data == 0)
+    return clib_error_return (0, "unsupported socket config '%s'", s->config);
+
+  s->type = data->type;
+  p = s->config + (data->skip_prefix ? strlen (data->prefix) : 0);
+
+  name = _clib_socket_get_string (&p, data->type == CLIB_SOCKET_TYPE_INET);
+  vec_add1 (name, 0);
+
+  /* parse port type for INET sockets */
+  if (data->type == CLIB_SOCKET_TYPE_INET && p[0] == ':')
+    {
+      char *old_p = p + 1;
+      long long ll = strtoll (old_p, &p, 0);
+
+      if (p == old_p)
+	{
+	  err = clib_error_return (0, "invalid port");
+	  goto done;
+	}
+
+      if (ll > CLIB_U16_MAX || ll < 1)
+	{
+	  err = clib_error_return (0, "port out of range");
+	  goto done;
+	}
+      port = ll;
+    }
+
+  while (p[0] == ',')
+    {
+      p++;
+      if (0)
+	;
+#if CLIB_LINUX
+      else if (netns_fd == -1 && strncmp (p, "netns_name=", 11) == 0)
+	{
+	  p += 11;
+	  u8 *str = _clib_socket_get_string (&p, 0);
+	  u8 *pathname = format (0, "/var/run/netns/%v%c", str, 0);
+	  if ((netns_fd = open ((char *) pathname, O_RDONLY)) < 0)
+	    err = clib_error_return_unix (0, "open('%s')", pathname);
+	  vec_free (str);
+	  vec_free (pathname);
+	  if (err)
+	    goto done;
+	}
+      else if (netns_fd == -1 && strncmp (p, "netns_pid=", 10) == 0)
+	{
+	  char *old_p = p = p + 10;
+	  u32 pid = (u32) strtol (old_p, &p, 0);
+
+	  if (p == old_p)
+	    err = clib_error_return (0, "invalid pid");
+	  else
+	    {
+	      u8 *pathname = format (0, "/proc/%u/ns/net%c", pid, 0);
+	      if ((netns_fd = open ((char *) pathname, O_RDONLY)) < 0)
+		err = clib_error_return_unix (0, "open('%s')", pathname);
+	      vec_free (pathname);
+	    }
+	  if (err)
+	    goto done;
+	}
+#endif
+      else
+	break;
+    }
+
+  if (p[0] != 0)
+    {
+      err = clib_error_return (0, "unknown input `%s'", p);
       goto done;
     }
 
-  port = 0;
-  if (addr.sa.sa_family == PF_INET)
-    port = ((struct sockaddr_in *) &addr)->sin_port;
+#if CLIB_LINUX
+  /* change netns if requested */
+  if (s->type != CLIB_SOCKET_TYPE_INET && netns_fd != -1)
+    {
+      int fd = open ("/proc/self/ns/net", O_RDONLY);
 
-  if (s->flags & CLIB_SOCKET_F_IS_SERVER)
+      if (setns (netns_fd, CLONE_NEWNET) < 0)
+	{
+	  close (fd);
+	  err = clib_error_return_unix (0, "setns(%d)", netns_fd);
+	  goto done;
+	}
+      netns_fd = fd;
+    }
+#endif
+
+  if (s->type == CLIB_SOCKET_TYPE_INET)
+    {
+      addr_len = sizeof (si);
+      si.sin_port = htons (port);
+
+      if (name)
+	{
+	  struct in_addr host_addr;
+	  vec_add1 (name, 0);
+
+	  /* Recognize localhost to avoid host lookup in most common cast. */
+	  if (!strcmp ((char *) name, "localhost"))
+	    si.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
+
+	  else if (inet_aton ((char *) name, &host_addr))
+	    si.sin_addr = host_addr;
+
+	  else if (strlen ((char *) name) > 0)
+	    {
+	      struct hostent *host = gethostbyname ((char *) name);
+	      if (!host)
+		err = clib_error_return (0, "unknown host `%s'", name);
+	      else
+		clib_memcpy (&si.sin_addr.s_addr, host->h_addr_list[0],
+			     host->h_length);
+	    }
+
+	  else
+	    si.sin_addr.s_addr =
+	      htonl (s->is_server ? INADDR_LOOPBACK : INADDR_ANY);
+
+	  if (err)
+	    goto done;
+	}
+      sa = (struct sockaddr *) &si;
+    }
+  else if (s->type == CLIB_SOCKET_TYPE_UNIX)
+    {
+      struct stat st = { 0 };
+      char *path = (char *) &su.sun_path;
+
+      if (vec_len (name) > sizeof (su.sun_path) - 1)
+	{
+	  err = clib_error_return (0, "File path '%v' too long", name);
+	  goto done;
+	}
+
+      clib_memcpy (path, s->config, vec_len (name));
+      addr_len = sizeof (su);
+      sa = (struct sockaddr *) &su;
+
+      rv = stat (path, &st);
+      if (!s->is_server && rv < 0)
+	{
+	  err = clib_error_return_unix (0, "stat ('%s')", path);
+	  goto done;
+	}
+
+      if (s->is_server && rv == 0)
+	{
+	  if (S_ISSOCK (st.st_mode))
+	    {
+	      int client_fd = socket (AF_UNIX, SOCK_STREAM, 0);
+	      int ret = connect (client_fd, (const struct sockaddr *) &su,
+				 sizeof (su));
+	      typeof (errno) connect_errno = errno;
+	      close (client_fd);
+
+	      if (ret == 0 || (ret < 0 && connect_errno != ECONNREFUSED))
+		{
+		  err = clib_error_return (0, "Active listener on '%s'", path);
+		  goto done;
+		}
+
+	      if (unlink (path) < 0)
+		{
+		  err = clib_error_return_unix (0, "unlink ('%s')", path);
+		  goto done;
+		}
+	    }
+	  else
+	    {
+	      err = clib_error_return (0, "File '%s' already exists", path);
+	      goto done;
+	    }
+	}
+    }
+#if CLIB_LINUX
+  else if (s->type == CLIB_SOCKET_TYPE_LINUX_ABSTRACT)
+    {
+      if (vec_len (name) > sizeof (su.sun_path) - 2)
+	{
+	  err = clib_error_return (0, "Socket name '%v' too long", name);
+	  goto done;
+	}
+
+      clib_memcpy (&su.sun_path[1], name, vec_len (name));
+      addr_len = sizeof (su.sun_family) + vec_len (name);
+      sa = (struct sockaddr *) &su;
+      s->allow_group_write = 0;
+    }
+#endif
+  else
+    {
+      err = clib_error_return_unix (0, "unknown socket family");
+      goto done;
+    }
+
+  socket_init_funcs (s);
+
+  if ((s->fd = socket (sa->sa_family,
+		       s->is_seqpacket ? SOCK_SEQPACKET : SOCK_STREAM, 0)) < 0)
+    {
+      err =
+	clib_error_return_unix (0, "socket (fd %d, '%s')", s->fd, s->config);
+      goto done;
+    }
+
+  if (s->is_server)
     {
       uword need_bind = 1;
 
-      if (addr.sa.sa_family == PF_INET)
+      if (sa->sa_family == AF_INET && si.sin_port == 0)
 	{
-	  if (port == 0)
+	  word port = find_free_port (s->fd);
+	  if (port < 0)
 	    {
-	      port = find_free_port (s->fd);
-	      if (port < 0)
-		{
-		  error = clib_error_return (0, "no free port (fd %d, '%s')",
-					     s->fd, s->config);
-		  goto done;
-		}
-	      need_bind = 0;
+	      err = clib_error_return (0, "no free port (fd %d, '%s')", s->fd,
+				       s->config);
+	      goto done;
 	    }
+	  si.sin_port = port;
+	  need_bind = 0;
 	}
-      if (addr.sa.sa_family == PF_LOCAL &&
-	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
-	unlink (((struct sockaddr_un *) &addr)->sun_path);
 
-      /* Make address available for multiple users. */
-      {
-	int v = 1;
-	if (setsockopt (s->fd, SOL_SOCKET, SO_REUSEADDR, &v, sizeof (v)) < 0)
-	  clib_unix_warning ("setsockopt SO_REUSEADDR fails");
-      }
+      if (setsockopt (s->fd, SOL_SOCKET, SO_REUSEADDR, &((int){ 1 }),
+		      sizeof (int)) < 0)
+	clib_unix_warning ("setsockopt SO_REUSEADDR fails");
 
-#if __linux__
-      if (addr.sa.sa_family == PF_LOCAL && s->flags & CLIB_SOCKET_F_PASSCRED)
+#if CLIB_LINUX
+      if (sa->sa_family == AF_UNIX && s->passcred)
 	{
-	  int x = 1;
-	  if (setsockopt (s->fd, SOL_SOCKET, SO_PASSCRED, &x, sizeof (x)) < 0)
+	  if (setsockopt (s->fd, SOL_SOCKET, SO_PASSCRED, &((int){ 1 }),
+			  sizeof (int)) < 0)
 	    {
-	      error = clib_error_return_unix (0, "setsockopt (SO_PASSCRED, "
-					      "fd %d, '%s')", s->fd,
-					      s->config);
+	      err = clib_error_return_unix (0,
+					    "setsockopt (SO_PASSCRED, "
+					    "fd %d, '%s')",
+					    s->fd, s->config);
 	      goto done;
 	    }
 	}
 #endif
 
-      if (need_bind && bind (s->fd, &addr.sa, addr_len) < 0)
+      if (need_bind && bind (s->fd, sa, addr_len) < 0)
 	{
-	  error = clib_error_return_unix (0, "bind (fd %d, '%s')",
-					  s->fd, s->config);
+	  err =
+	    clib_error_return_unix (0, "bind (fd %d, '%s')", s->fd, s->config);
 	  goto done;
 	}
 
       if (listen (s->fd, 5) < 0)
 	{
-	  error = clib_error_return_unix (0, "listen (fd %d, '%s')",
-					  s->fd, s->config);
+	  err = clib_error_return_unix (0, "listen (fd %d, '%s')", s->fd,
+					s->config);
 	  goto done;
 	}
-      if (addr.sa.sa_family == PF_LOCAL &&
-	  s->flags & CLIB_SOCKET_F_ALLOW_GROUP_WRITE &&
-	  ((struct sockaddr_un *) &addr)->sun_path[0] != 0)
+
+      if (s->local_only && s->allow_group_write)
 	{
-	  struct stat st = { 0 };
-	  if (stat (((struct sockaddr_un *) &addr)->sun_path, &st) < 0)
+	  if (fchmod (s->fd, S_IWGRP) < 0)
 	    {
-	      error = clib_error_return_unix (0, "stat (fd %d, '%s')",
-					      s->fd, s->config);
-	      goto done;
-	    }
-	  st.st_mode |= S_IWGRP;
-	  if (chmod (((struct sockaddr_un *) &addr)->sun_path, st.st_mode) <
-	      0)
-	    {
-	      error =
-		clib_error_return_unix (0, "chmod (fd %d, '%s', mode %o)",
-					s->fd, s->config, st.st_mode);
+	      err = clib_error_return_unix (
+		0, "fchmod (fd %d, '%s', mode S_IWGRP)", s->fd, s->config);
 	      goto done;
 	    }
 	}
     }
   else
     {
-      if ((s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT)
-	  && fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
+      if (s->non_blocking_connect && fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
 	{
-	  error = clib_error_return_unix (0, "fcntl NONBLOCK (fd %d, '%s')",
-					  s->fd, s->config);
+	  err = clib_error_return_unix (0, "fcntl NONBLOCK (fd %d, '%s')",
+					s->fd, s->config);
 	  goto done;
 	}
 
-      while ((rv = connect (s->fd, &addr.sa, addr_len)) < 0
-	     && errno == EAGAIN)
+      while ((rv = connect (s->fd, sa, addr_len)) < 0 && errno == EAGAIN)
 	;
-      if (rv < 0 && !((s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT) &&
-		      errno == EINPROGRESS))
+      if (rv < 0 && !(s->non_blocking_connect && errno == EINPROGRESS))
 	{
-	  error = clib_error_return_unix (0, "connect (fd %d, '%s')",
-					  s->fd, s->config);
+	  err = clib_error_return_unix (0, "connect (fd %d, '%s')", s->fd,
+					s->config);
 	  goto done;
 	}
       /* Connect was blocking so set fd to non-blocking now unless
        * blocking mode explicitly requested. */
-      if (!(s->flags & CLIB_SOCKET_F_NON_BLOCKING_CONNECT) &&
-	  !(s->flags & CLIB_SOCKET_F_BLOCKING) &&
+      if (!s->non_blocking_connect && !s->is_blocking &&
 	  fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
 	{
-	  error = clib_error_return_unix (0, "fcntl NONBLOCK2 (fd %d, '%s')",
-					  s->fd, s->config);
+	  err = clib_error_return_unix (0, "fcntl NONBLOCK2 (fd %d, '%s')",
+					s->fd, s->config);
 	  goto done;
 	}
     }
 
-  return error;
-
 done:
-  if (s->fd > 0)
-    close (s->fd);
-  return error;
+  if (err && s->fd > -1)
+    {
+      close (s->fd);
+      s->fd = -1;
+    }
+#if CLIB_LINUX
+  if (netns_fd != -1)
+    {
+      setns (CLONE_NEWNET, netns_fd);
+      close (netns_fd);
+    }
+#endif
+  vec_free (name);
+  return err;
 }
 
 __clib_export clib_error_t *

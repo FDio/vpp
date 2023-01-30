@@ -259,8 +259,10 @@ snort_listener_init (vlib_main_t *vm)
   s = clib_mem_alloc (sizeof (clib_socket_t));
   clib_memset (s, 0, sizeof (clib_socket_t));
   s->config = (char *) sm->socket_name;
-  s->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
-	     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+  s->is_server = 1;
+  s->allow_group_write = 1;
+  s->is_seqpacket = 1;
+  s->passcred = 1;
 
   if ((err = clib_socket_init (s)))
     {
