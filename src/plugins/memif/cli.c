@@ -73,7 +73,7 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Invalid socket filename");
     }
 
-  err = memif_socket_filename_add_del (1, socket_id, socket_filename);
+  err = memif_socket_filename_add_del (1, socket_id, (char *) socket_filename);
 
   vec_free (socket_filename);
 

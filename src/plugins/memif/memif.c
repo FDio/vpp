@@ -641,8 +641,8 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    {
               clib_memset (sock, 0, sizeof(clib_socket_t));
 	      sock->config = (char *) msf->filename;
-	      sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET |
-			    CLIB_SOCKET_F_BLOCKING;
+	      sock->is_seqpacket = 1;
+	      sock->is_blocking = 1;
 
 	      if ((err = clib_socket_init (sock)))
 		{
@@ -675,79 +675,22 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_process_node,static) = {
   .function = memif_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "memif-process",
 };
-/* *INDENT-ON* */
-
-static clib_error_t *
-memif_add_socket_file (u32 sock_id, u8 *socket_filename)
-{
-  memif_main_t *mm = &memif_main;
-  uword *p;
-  memif_socket_file_t *msf;
-
-  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
-  if (p)
-    {
-      msf = pool_elt_at_index (mm->socket_files, *p);
-      if (strcmp ((char *) msf->filename, (char *) socket_filename) == 0)
-	{
-	  /* Silently accept identical "add". */
-	  return 0;
-	}
-
-      /* But don't allow a direct add of a different filename. */
-      return vnet_error (VNET_ERR_ENTRY_ALREADY_EXISTS,
-			 "entry already exists");
-    }
-
-  pool_get (mm->socket_files, msf);
-  clib_memset (msf, 0, sizeof (memif_socket_file_t));
-
-  msf->filename = socket_filename;
-  msf->socket_id = sock_id;
-
-  hash_set (mm->socket_file_index_by_sock_id, sock_id,
-	    msf - mm->socket_files);
-
-  return 0;
-}
-
-static clib_error_t *
-memif_delete_socket_file (u32 sock_id)
-{
-  memif_main_t *mm = &memif_main;
-  uword *p;
-  memif_socket_file_t *msf;
-
-  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
-  if (!p)
-    /* Don't delete non-existent entries. */
-    return vnet_error (VNET_ERR_INVALID_ARGUMENT,
-		       "socket file with id %u does not exist", sock_id);
-
-  msf = pool_elt_at_index (mm->socket_files, *p);
-  if (msf->ref_cnt > 0)
-    return vnet_error (VNET_ERR_UNEXPECTED_INTF_STATE,
-		       "socket file '%s' is in use", msf->filename);
-
-  vec_free (msf->filename);
-  pool_put (mm->socket_files, msf);
-
-  hash_unset (mm->socket_file_index_by_sock_id, sock_id);
-
-  return 0;
-}
 
 clib_error_t *
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename)
+memif_socket_filename_add_del (u8 is_add, u32 sock_id, char *sock_filename)
 {
+  memif_main_t *mm = &memif_main;
+  uword *p;
+  memif_socket_file_t *msf;
+  clib_error_t *err = 0;
   char *dir = 0, *tmp;
   u32 idx = 0;
+  u8 *name = 0;
 
   /* allow adding socket id 0 */
   if (sock_id == 0 && is_add == 0)
@@ -758,70 +701,95 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename)
 		       "socked id is not specified");
 
   if (is_add == 0)
-    return memif_delete_socket_file (sock_id);
+    {
+      p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
+      if (!p)
+	/* Don't delete non-existent entries. */
+	return vnet_error (VNET_ERR_INVALID_ARGUMENT,
+			   "socket file with id %u does not exist", sock_id);
+
+      msf = pool_elt_at_index (mm->socket_files, *p);
+      if (msf->ref_cnt > 0)
+	return vnet_error (VNET_ERR_UNEXPECTED_INTF_STATE,
+			   "socket file '%s' is in use", msf->filename);
+
+      vec_free (msf->filename);
+      pool_put (mm->socket_files, msf);
+
+      hash_unset (mm->socket_file_index_by_sock_id, sock_id);
+
+      return 0;
+    }
 
   if (sock_filename == 0 || sock_filename[0] == 0)
     return vnet_error (VNET_ERR_INVALID_ARGUMENT,
 		       "socket filename not specified");
 
-  if (sock_filename[0] != '/')
+  if (clib_socket_prefix_is_valid (sock_filename))
     {
-      clib_error_t *error;
-
+      name = format (0, "%s%c", sock_filename, 0);
+    }
+  else if (sock_filename[0] == '/')
+    {
+      name = format (0, "%s%c", sock_filename, 0);
+    }
+  else
+    {
       /* copy runtime dir path */
       vec_add (dir, vlib_unix_get_runtime_dir (),
 	       strlen (vlib_unix_get_runtime_dir ()));
       vec_add1 (dir, '/');
 
       /* if sock_filename contains dirs, add them to path */
-      tmp = strrchr ((char *) sock_filename, '/');
+      tmp = strrchr (sock_filename, '/');
       if (tmp)
 	{
-	  idx = tmp - (char *) sock_filename;
+	  idx = tmp - sock_filename;
 	  vec_add (dir, sock_filename, idx);
 	}
 
       vec_add1 (dir, '\0');
       /* create socket dir */
-      error = vlib_unix_recursive_mkdir (dir);
-      if (error)
+      if ((err = vlib_unix_recursive_mkdir (dir)))
 	{
-	  clib_error_free (error);
-	  return vnet_error (VNET_ERR_SYSCALL_ERROR_1,
-			     "unable to create socket dir");
+	  clib_error_free (err);
+	  err = vnet_error (VNET_ERR_SYSCALL_ERROR_1,
+			    "unable to create socket dir");
+	  goto done;
 	}
 
-      sock_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
-			      sock_filename, 0);
+      name =
+	format (0, "%s/%s%c", vlib_unix_get_runtime_dir (), sock_filename, 0);
     }
-  else
+
+  p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
+  if (p)
     {
-      sock_filename = vec_dup (sock_filename);
-
-      /* check if directory exists */
-      tmp = strrchr ((char *) sock_filename, '/');
-      if (tmp)
+      msf = pool_elt_at_index (mm->socket_files, *p);
+      if (strcmp ((char *) msf->filename, (char *) name) == 0)
 	{
-	  idx = tmp - (char *) sock_filename;
-	  vec_add (dir, sock_filename, idx);
-	  vec_add1 (dir, '\0');
+	  /* Silently accept identical "add". */
+	  goto done;
 	}
 
-      /* check dir existance and access rights for effective user/group IDs */
-      if ((dir == NULL)
-	  ||
-	  (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS)
-	   < 0))
-	{
-	  vec_free (dir);
-	  return vnet_error (
-	    VNET_ERR_INVALID_ARGUMENT,
-	    "directory doesn't exist or no access permissions");
-	}
+      /* But don't allow a direct add of a different filename. */
+      err = vnet_error (VNET_ERR_ENTRY_ALREADY_EXISTS, "entry already exists");
+      goto done;
     }
-  vec_free (dir);
 
-  return memif_add_socket_file (sock_id, sock_filename);
+  pool_get (mm->socket_files, msf);
+  clib_memset (msf, 0, sizeof (memif_socket_file_t));
+
+  msf->filename = name;
+  msf->socket_id = sock_id;
+  name = 0;
+
+  hash_set (mm->socket_file_index_by_sock_id, sock_id, msf - mm->socket_files);
+
+done:
+  vec_free (name);
+  vec_free (dir);
+  return err;
 }
 
 clib_error_t *
@@ -949,24 +917,6 @@ memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args)
   /* Create new socket file */
   if (msf->ref_cnt == 0)
     {
-      struct stat file_stat;
-
-      /* If we are creating listener make sure file doesn't exist or if it
-       * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
-	{
-	  if (S_ISSOCK (file_stat.st_mode))
-	    {
-	      unlink ((char *) msf->filename);
-	    }
-	  else
-	    {
-	      err = vnet_error (VNET_ERR_VALUE_EXIST, "File exists for %s",
-				msf->filename);
-	      goto done;
-	    }
-	}
-
       mhash_init (&msf->dev_instance_by_id, sizeof (uword),
 		  sizeof (memif_interface_id_t));
       msf->dev_instance_by_fd = hash_create (0, sizeof (uword));
@@ -1068,9 +1018,11 @@ memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args)
 
       clib_memset (s, 0, sizeof (clib_socket_t));
       s->config = (char *) msf->filename;
-      s->flags = CLIB_SOCKET_F_IS_SERVER |
-	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
-	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+      s->local_only = 1;
+      s->is_server = 1;
+      s->allow_group_write = 1;
+      s->is_seqpacket = 1;
+      s->passcred = 1;
 
       if ((err = clib_socket_init (s)))
 	{
@@ -1159,9 +1111,7 @@ memif_init (vlib_main_t * vm)
    * for socket-id 0 to MEMIF_DEFAULT_SOCKET_FILENAME in the
    * default run-time directory.
    */
-  memif_socket_filename_add_del (1, 0, (u8 *) MEMIF_DEFAULT_SOCKET_FILENAME);
-
-  return 0;
+  return memif_socket_filename_add_del (1, 0, MEMIF_DEFAULT_SOCKET_FILENAME);
 }
 
 VLIB_INIT_FUNCTION (memif_init);
