@@ -54,15 +54,21 @@ typedef struct _socket_t
   /* Config string for socket HOST:PORT or just HOST. */
   char *config;
 
-  u32 flags;
-#define CLIB_SOCKET_F_IS_SERVER (1 << 0)
-#define CLIB_SOCKET_F_IS_CLIENT (0 << 0)
-#define CLIB_SOCKET_F_RX_END_OF_FILE (1 << 2)
-#define CLIB_SOCKET_F_NON_BLOCKING_CONNECT (1 << 3)
-#define CLIB_SOCKET_F_ALLOW_GROUP_WRITE (1 << 4)
-#define CLIB_SOCKET_F_SEQPACKET (1 << 5)
-#define CLIB_SOCKET_F_PASSCRED  (1 << 6)
-#define CLIB_SOCKET_F_BLOCKING		   (1 << 7)
+  union
+  {
+    struct
+    {
+      u32 is_server : 1;
+      u32 rx_end_of_file : 1;
+      u32 non_blocking_connect : 1;
+      u32 allow_group_write : 1;
+      u32 is_seqpacket : 1;
+      u32 passcred : 1;
+      u32 is_blocking : 1;
+      u32 is_local : 1;
+    };
+    u32 flags;
+  };
 
   /* Transmit buffer.  Holds data waiting to be written. */
   u8 *tx_buffer;
@@ -88,6 +94,14 @@ typedef struct _socket_t
   uword private_data;
 } clib_socket_t;
 
+#define CLIB_SOCKET_FLAG(f)		(((clib_socket_t){ .f = 1 }).flags)
+#define CLIB_SOCKET_F_IS_CLIENT		0
+#define CLIB_SOCKET_F_IS_SERVER		CLIB_SOCKET_FLAG (is_server)
+#define CLIB_SOCKET_F_ALLOW_GROUP_WRITE CLIB_SOCKET_FLAG (allow_group_write)
+#define CLIB_SOCKET_F_SEQPACKET		CLIB_SOCKET_FLAG (is_seqpacket)
+#define CLIB_SOCKET_F_PASSCRED		CLIB_SOCKET_FLAG (passcred)
+#define CLIB_SOCKET_F_BLOCKING		CLIB_SOCKET_FLAG (is_blocking)
+
 /* socket config format is host:port.
    Unspecified port causes a free one to be chosen starting
    from IPPORT_USERRESERVED (5000). */
@@ -101,7 +115,7 @@ clib_error_t *clib_socket_accept (clib_socket_t * server,
 always_inline uword
 clib_socket_is_server (clib_socket_t * sock)
 {
-  return (sock->flags & CLIB_SOCKET_F_IS_SERVER) != 0;
+  return sock->is_server;
 }
 
 always_inline uword
@@ -120,7 +134,7 @@ clib_socket_is_connected (clib_socket_t * sock)
 always_inline int
 clib_socket_rx_end_of_file (clib_socket_t * s)
 {
-  return s->flags & CLIB_SOCKET_F_RX_END_OF_FILE;
+  return s->rx_end_of_file;
 }
 
 always_inline void *
