@@ -123,6 +123,24 @@
       "parentUuid": "de04d71f_ecfd9ac8",
       "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f09689e_8393bad3",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 853,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-01-31T09:10:15Z",
+      "side": 1,
+      "message": "OK, this is more accurate determination of session establishment now. And yes, a keepalive packet does not mean an error.",
+      "parentUuid": "8caa8628_4bbd3fd8",
+      "revId": "8e36a4683584dcde0d87bb233848185f93c8e8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
