@@ -16,6 +16,24 @@
       "message": "I think the enter/exit netns and the bpf_objectclose calls should all be moved into af_xdp_remove_program()",
       "revId": "61489aa715381a9ec876d969ecf6a57f565c6183",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a7ce09bf_2b9ad4c1",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-01-31T02:18:27Z",
+      "side": 1,
+      "message": "Hi Ben,  Done it in patch set 2, thanks",
+      "parentUuid": "a3e2344a_61f5ef02",
+      "revId": "61489aa715381a9ec876d969ecf6a57f565c6183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
