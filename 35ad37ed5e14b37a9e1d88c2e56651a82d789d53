@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "16bdafea_435c1e5a",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-01-31T03:09:20Z",
+      "side": 1,
+      "message": "Now I understand the initial purpose, changed it back.",
+      "parentUuid": "4b41e9e7_aeb69106",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "affaddc6_e2bf1bf8",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d77b1b5_b18c1fd9",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-01-31T03:09:20Z",
+      "side": 1,
+      "message": "Due to libxdp upgraded, original af_xdp.bpf.o failed to load, \nI change it for debug, finally root caused that codes in af_xdp.bpf.c \nwere out of date, so fixed it in af_xdp.bpf.c.\nthe include orders have no impact on the issue, now changed to its original in Patchset 3.",
+      "parentUuid": "affaddc6_e2bf1bf8",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bc682354_17c4af38",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-01-27T10:37:29Z",
       "side": 1,
       "message": "I do not think DEBUG should be enable by default",
+      "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77ce511a_50141fb4",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-01-31T03:09:20Z",
+      "side": 1,
+      "message": "Agree, disabled it by default.",
+      "parentUuid": "bc682354_17c4af38",
       "revId": "35ad37ed5e14b37a9e1d88c2e56651a82d789d53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
