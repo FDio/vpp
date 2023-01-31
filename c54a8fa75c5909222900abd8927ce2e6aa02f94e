@@ -60,6 +60,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6bd139a4_abc3346d",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-31T19:42:55Z",
+      "side": 1,
+      "message": "Yes, let\u0027s do that in subsequent patch, one where I get to convert some tests which use tap. I want to \"see a pattern emerge\" and then make the interface type for veth and tap structs to fit that.",
+      "parentUuid": "59face7c_3a855ebb",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 50
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a553b204_4046d099",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 3
@@ -83,6 +107,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1e54c034_0766cd62",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-31T19:42:55Z",
+      "side": 1,
+      "message": "Yeah, I agree. I\u0027ll tackle this together with the other improvement comment when converting a tap test. The tap interface address is being used on host system, while the veth address is used in VPP. I don\u0027t want to force make it now and make this patch larger.",
+      "parentUuid": "a553b204_4046d099",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 36,
+        "endChar": 46
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a98bad4a_3ea706fe",
         "filename": "extras/hs-test/netaddress.go",
         "patchSetId": 3
@@ -94,6 +142,30 @@
       "writtenOn": "2023-01-31T10:31:10Z",
       "side": 1,
       "message": "avoid generating random addresses - there is no need to do that. Instead have generator provide a method like getAddress() that returns an unique address every time which is just +1 increment of the previous:\nip4gen() \u003d NewIp4Generator(\"10.10.10.0/24\") // the arg can be 10.10.10.%v\nip4gen.GetAddr() // -\u003e 10.10.10.1\nip4gen.GetAddr() // -\u003e 10.10.10.2",
+      "range": {
+        "startLine": 14,
+        "startChar": 5,
+        "endLine": 14,
+        "endChar": 20
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "565d1939_a071bd25",
+        "filename": "extras/hs-test/netaddress.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-01-31T19:42:55Z",
+      "side": 1,
+      "message": "The change to move this into suite required moving the suite code to its own file. That\u0027s because the suite struct is now being referenced from container struct, and since container struct is non-test source file, and suite was in test source file, it wouldn\u0027t compile.",
+      "parentUuid": "a98bad4a_3ea706fe",
       "range": {
         "startLine": 14,
         "startChar": 5,
