@@ -74,7 +74,8 @@ void
       memcpy (socket_filename, mp->socket_filename, len);
     }
 
-  rv = memif_socket_filename_add_del (is_add, socket_id, socket_filename);
+  rv = vnet_api_error (
+    memif_socket_filename_add_del (is_add, socket_id, socket_filename));
 
   vec_free (socket_filename);
 
@@ -164,7 +165,7 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
       args.hw_addr_set = 1;
     }
 
-  rv = memif_create_if (vm, &args);
+  rv = vnet_api_error (memif_create_if (vm, &args));
 
   vec_free (args.secret);
 
@@ -201,7 +202,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
   else
     {
       mif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
-      rv = memif_delete_if (vm, mif);
+      rv = vnet_api_error (memif_delete_if (vm, mif));
     }
 
   REPLY_MACRO (VL_API_MEMIF_DELETE_REPLY);

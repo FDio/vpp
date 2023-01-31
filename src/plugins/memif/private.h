@@ -321,10 +321,10 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
-int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
-				   u8 * sock_filename);
-int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
-int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
+clib_error_t *memif_socket_filename_add_del (u8 is_add, u32 sock_id,
+					     u8 *sock_filename);
+clib_error_t *memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args);
+clib_error_t *memif_delete_if (vlib_main_t *vm, memif_if_t *mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
 clib_error_t *memif_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index,
 					     u32 flags);

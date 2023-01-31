@@ -683,8 +683,8 @@ VLIB_REGISTER_NODE (memif_process_node,static) = {
 };
 /* *INDENT-ON* */
 
-static int
-memif_add_socket_file (u32 sock_id, u8 * socket_filename)
+static clib_error_t *
+memif_add_socket_file (u32 sock_id, u8 *socket_filename)
 {
   memif_main_t *mm = &memif_main;
   uword *p;
@@ -701,7 +701,8 @@ memif_add_socket_file (u32 sock_id, u8 * socket_filename)
 	}
 
       /* But don't allow a direct add of a different filename. */
-      return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+      return vnet_error (VNET_ERR_ENTRY_ALREADY_EXISTS,
+			 "entry already exists");
     }
 
   pool_get (mm->socket_files, msf);
@@ -716,7 +717,7 @@ memif_add_socket_file (u32 sock_id, u8 * socket_filename)
   return 0;
 }
 
-static int
+static clib_error_t *
 memif_delete_socket_file (u32 sock_id)
 {
   memif_main_t *mm = &memif_main;
@@ -725,16 +726,14 @@ memif_delete_socket_file (u32 sock_id)
 
   p = hash_get (mm->socket_file_index_by_sock_id, sock_id);
   if (!p)
-    {
-      /* Don't delete non-existent entries. */
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
+    /* Don't delete non-existent entries. */
+    return vnet_error (VNET_ERR_INVALID_ARGUMENT,
+		       "socket file with id %u does not exist", sock_id);
 
   msf = pool_elt_at_index (mm->socket_files, *p);
   if (msf->ref_cnt > 0)
-    {
-      return VNET_API_ERROR_UNEXPECTED_INTF_STATE;
-    }
+    return vnet_error (VNET_ERR_UNEXPECTED_INTF_STATE,
+		       "socket file '%s' is in use", msf->filename);
 
   vec_free (msf->filename);
   pool_put (mm->socket_files, msf);
@@ -744,27 +743,26 @@ memif_delete_socket_file (u32 sock_id)
   return 0;
 }
 
-int
-memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
+clib_error_t *
+memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename)
 {
   char *dir = 0, *tmp;
   u32 idx = 0;
 
   /* allow adding socket id 0 */
-  if ((sock_id == 0 && is_add == 0) || sock_id == ~0)
-    {
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
+  if (sock_id == 0 && is_add == 0)
+    return vnet_error (VNET_ERR_INVALID_ARGUMENT, "cannot delete socket id 0");
+
+  if (sock_id == ~0)
+    return vnet_error (VNET_ERR_INVALID_ARGUMENT,
+		       "socked id is not specified");
 
   if (is_add == 0)
-    {
-      return memif_delete_socket_file (sock_id);
-    }
+    return memif_delete_socket_file (sock_id);
 
   if (sock_filename == 0 || sock_filename[0] == 0)
-    {
-      return VNET_API_ERROR_INVALID_ARGUMENT;
-    }
+    return vnet_error (VNET_ERR_INVALID_ARGUMENT,
+		       "socket filename not specified");
 
   if (sock_filename[0] != '/')
     {
@@ -789,7 +787,8 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       if (error)
 	{
 	  clib_error_free (error);
-	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	  return vnet_error (VNET_ERR_SYSCALL_ERROR_1,
+			     "unable to create socket dir");
 	}
 
       sock_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
@@ -815,7 +814,9 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 	   < 0))
 	{
 	  vec_free (dir);
-	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	  return vnet_error (
+	    VNET_ERR_INVALID_ARGUMENT,
+	    "directory doesn't exist or no access permissions");
 	}
     }
   vec_free (dir);
@@ -823,8 +824,8 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
   return memif_add_socket_file (sock_id, sock_filename);
 }
 
-int
-memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
+clib_error_t *
+memif_delete_if (vlib_main_t *vm, memif_if_t *mif)
 {
   vnet_main_t *vnm = vnet_get_main ();
   memif_main_t *mm = &memif_main;
@@ -903,8 +904,8 @@ VNET_HW_INTERFACE_CLASS (memif_ip_hw_if_class, static) = {
 };
 /* *INDENT-ON* */
 
-int
-memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
+clib_error_t *
+memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args)
 {
   memif_main_t *mm = &memif_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -912,16 +913,14 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   vnet_eth_interface_registration_t eir = {};
   memif_if_t *mif = 0;
   vnet_sw_interface_t *sw;
-  clib_error_t *error = 0;
-  int ret = 0;
   uword *p;
   memif_socket_file_t *msf = 0;
-  int rv = 0;
+  clib_error_t *err = 0;
 
   p = hash_get (mm->socket_file_index_by_sock_id, args->socket_id);
   if (p == 0)
     {
-      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+      err = vnet_error (VNET_ERR_INVALID_ARGUMENT, "unknown socket id");
       goto done;
     }
 
@@ -932,14 +931,17 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
     {
       if ((!msf->is_listener != !args->is_master))
 	{
-	  rv = VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
+	  err =
+	    vnet_error (VNET_ERR_SUBIF_ALREADY_EXISTS,
+			"socket file cannot be used by both master and slave");
 	  goto done;
 	}
 
       p = mhash_get (&msf->dev_instance_by_id, &args->id);
       if (p)
 	{
-	  rv = VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
+	  err = vnet_error (VNET_ERR_SUBIF_ALREADY_EXISTS,
+			    "interface already exists");
 	  goto done;
 	}
     }
@@ -959,9 +961,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	    }
 	  else
 	    {
-	      error = clib_error_return (0, "File exists for %s",
-					 msf->filename);
-	      rv = VNET_API_ERROR_VALUE_EXIST;
+	      err = vnet_error (VNET_ERR_VALUE_EXIST, "File exists for %s",
+				msf->filename);
 	      goto done;
 	    }
 	}
@@ -1039,11 +1040,9 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 				 mif->dev_instance);
     }
   else
-    error = clib_error_return (0, "unsupported interface mode");
-
-  if (error)
     {
-      ret = VNET_API_ERROR_SYSCALL_ERROR_2;
+      err =
+	vnet_error (VNET_ERR_SYSCALL_ERROR_2, "unsupported interface mode");
       goto error;
     }
 
@@ -1062,7 +1061,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   /* If this is new one, start listening */
   if (msf->is_listener && msf->ref_cnt == 0)
     {
-      struct stat file_stat;
       clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
 
       ASSERT (msf->sock == 0);
@@ -1074,15 +1072,9 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
 	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-      if ((error = clib_socket_init (s)))
+      if ((err = clib_socket_init (s)))
 	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
-	  goto error;
-	}
-
-      if (stat ((char *) msf->filename, &file_stat) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
+	  err->code = VNET_ERR_SYSCALL_ERROR_4;
 	  goto error;
 	}
 
@@ -1116,15 +1108,12 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
 error:
   memif_delete_if (vm, mif);
-  if (error)
-    {
-      memif_log_err (mif, "%U", format_clib_error, error);
-      clib_error_free (error);
-    }
-  return ret;
+  if (err)
+    memif_log_err (mif, "%U", format_clib_error, err);
+  return err;
 
 done:
-  return rv;
+  return err;
 }
 
 clib_error_t *
