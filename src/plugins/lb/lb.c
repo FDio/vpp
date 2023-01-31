@@ -486,7 +486,8 @@ out:
   }
 
   //First, let's sort the ASs
-  vec_alloc(sort_arr, pool_elts(vip->as_indexes));
+  if (pool_elts (vip->as_indexes) > 0)
+    vec_validate (sort_arr, pool_elts (vip->as_indexes) - 1);
 
   i = 0;
   pool_foreach (as_index, vip->as_indexes) {
