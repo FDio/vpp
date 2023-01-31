@@ -16,6 +16,69 @@
       "message": "recheck",
       "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e28c6a5_7c8e7751",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-31T06:15:20Z",
+      "side": 1,
+      "message": "Quick reply with the first two things that caught my eye",
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59face7c_3a855ebb",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-31T06:15:20Z",
+      "side": 1,
+      "message": "Can we make this a generic struct, e.g., networkInterfaces, and figure out in the implementation what we have/want? Just make sure you have the right apis to configure/unconfigure them. I\u0027m okay with doing it in a subsequent patch as well.",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 50
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a553b204_4046d099",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-01-31T06:15:20Z",
+      "side": 1,
+      "message": "Nice! But see my other improvement comment. Would be nice to be able to just say: s.netInterfaces[\"vppsrv\"].getAddress(). Test doesn\u0027t need to understand the nature of the interface",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 36,
+        "endChar": 46
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
