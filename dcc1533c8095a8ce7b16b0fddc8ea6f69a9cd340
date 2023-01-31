@@ -16,6 +16,23 @@
       "message": "Hi Ben, all your comments was addressed with patch set 3, please help review again, thanks a lot.",
       "revId": "dcc1533c8095a8ce7b16b0fddc8ea6f69a9cd340",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea73bac4_b8833141",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-01-31T03:10:42Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "dcc1533c8095a8ce7b16b0fddc8ea6f69a9cd340",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
