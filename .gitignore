@@ -128,3 +128,4 @@ compile_commands.json
 /extras/hs-test/vpp-data
 /extras/hs-test/hs-test
 /extras/hs-test/http_server
+/extras/hs-test/.build.vpp
