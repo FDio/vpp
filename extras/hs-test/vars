@@ -1,6 +1,6 @@
 export VPP_WS=../../
 
-export HST_LDPRELOAD=${VPP_WS}/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so
-export PATH=${VPP_WS}/build-root/build-vpp_debug-native/vpp/bin:$PATH
+export HST_LDPRELOAD=${VPP_WS}/build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so
+export PATH=${VPP_WS}/build-root/build-vpp-native/vpp/bin:$PATH
 
 export UBUNTU_VERSION=$(lsb_release -rs)

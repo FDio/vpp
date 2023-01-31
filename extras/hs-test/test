@@ -2,17 +2,38 @@
 
 source vars
 
-for ARG in "$@"
+args=
+single_test=0
+persist_set=0
+
+for i in "$@"
 do
-	if [[ "$ARG" = "-p" ]]
-	then
-		export HST_PERSIST=1
-		shift
-	elif [[ "$ARG" = "-v" ]]
-	then
-		export HST_VERBOSE=1
-		shift
-	fi
+case "${i}" in
+    --persist=*)
+        persist="${i#*=}"
+        if [ $persist = "true" ]; then
+            args="$args -persist"
+            persist_set=1
+        fi
+        ;;
+    --verbose=*)
+        verbose="${i#*=}"
+        if [ $verbose = "true" ]; then
+            args="$args -verbose"
+        fi
+        ;;
+    --test=*)
+        tc_name="${i#*=}"
+        if [ $tc_name != "all" ]; then
+            single_test=1
+            args="$args -run $tc_name"
+        fi
+esac
 done
 
-sudo -E go test -buildvcs=false -v $@
+if [ $single_test -eq 0 ] && [ $persist_set -eq 1 ]; then
+    echo "persist flag is not supperted while running all tests!"
+    exit 1
+fi
+
+sudo -E go test -buildvcs=false -v $args

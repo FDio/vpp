@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,13 +16,8 @@ const (
 	defaultNetworkNumber int = 1
 )
 
-func IsPersistent() bool {
-	return os.Getenv("HST_PERSIST") == "1"
-}
-
-func IsVerbose() bool {
-	return os.Getenv("HST_VERBOSE") == "1"
-}
+var IsPersistent = flag.Bool("persist", false, "persists topology config")
+var IsVerbose = flag.Bool("verbose", false, "verbose test output")
 
 type HstSuite struct {
 	suite.Suite
@@ -37,7 +33,7 @@ func (s *HstSuite) TearDownSuite() {
 }
 
 func (s *HstSuite) TearDownTest() {
-	if IsPersistent() {
+	if *IsPersistent {
 		return
 	}
 	s.ResetContainers()
@@ -112,7 +108,7 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 }
 
 func (s *HstSuite) log(args ...any) {
-	if IsVerbose() {
+	if *IsVerbose {
 		s.T().Log(args...)
 	}
 }
@@ -241,7 +237,7 @@ func (s *HstSuite) configureNetworkTopology(topologyName string) {
 }
 
 func (s *HstSuite) unconfigureNetworkTopology() {
-	if IsPersistent() {
+	if *IsPersistent {
 		return
 	}
 	for _, nc := range s.netConfigs {

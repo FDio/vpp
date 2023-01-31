@@ -16,14 +16,16 @@ Anatomy of a test case
 
 **Prerequisites**:
 
-* Tests use *hs-test*'s own docker image, so building it before starting tests is a prerequisite. Run ``sudo make`` to do so
+* Install hs-test dependencies with ``make install-deps``
+* Tests use *hs-test*'s own docker image, so building it before starting tests is a prerequisite. Run ``make build[-debug]`` to do so
 * Docker has to be installed and Go has to be in path of both the running user and root
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
 
 **Action flow when running a test case**:
 
-#. It starts with running ``./test``. This script is basically a wrapper for ``go test`` and accepts its parameters,
-   for example following runs a specific test: ``./test -run TestNs/TestHttpTps``
+#. It starts with running ``make test``. Optional arguments are VERBOSE, PERSIST (topoloy configuration isn't cleaned up after test run),
+   and TEST=<test-name> to run specific test.
+#. ``make list-tests`` (or ``make help``) shows all test names.
 #. ``go test`` compiles package ``main`` along with any files with names matching the file pattern ``*_test.go``
    and then runs the resulting test binaries
 #. The go test framework runs each function matching :ref:`naming convention<test-convention>`. Each of these corresponds to a `test suite`_
