@@ -51,6 +51,24 @@
       "parentUuid": "bc680000_119a1735",
       "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0935d67e_2f81d855",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-02-01T11:40:58Z",
+      "side": 1,
+      "message": "You are right technically - only a type cast can improve the readability and may ease the future maintenance. \n\nThough I am ok as it is.\n\nI am giving +1 for now. I am hoping Vratko can spend sometime testing the patch before merging.",
+      "parentUuid": "8f0cd30e_783c09e8",
+      "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
