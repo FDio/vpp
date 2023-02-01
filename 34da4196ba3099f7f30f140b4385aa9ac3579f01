@@ -1,0 +1,242 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4bdc817d_5eb8ab0f",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "rename it to encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "253037ae_86293d53",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "same comment for encap_src_v6addr",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0428695_3ef08064",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "same comment for encap_src_v6addr",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3169b54_0083d4d6",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "we don\u0027t use is_spray anymore. please use type.",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e29ed11_4772ccec",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "let\u0027s call it encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "274bc152_5c0466a2",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "can we rename it to encap_src instead of encap_src_v6addr. No need for v6addr. It is always v6.",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "abc0bea3_92f18547",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "same as before.",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3690b451_ec94edc4",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3242f697_b920e3a8",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "change is_spray to type.",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "04348226_b7910f4a",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e079fdb_586799eb",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1724c881_3b7e9f56",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce172c6a_9d0ee87c",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a7830e4_5ed8b611",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:30:10Z",
+      "side": 1,
+      "message": "just encap_src and make sure to change in the rest of the code.",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
