@@ -48,11 +48,8 @@ vpp_plugin_path = vpp_test_plugin_path = ld_library_path = None
 pip_version = "22.0.4"
 pip_tools_version = "6.6.0"
 
-# Test requirement files
-test_requirements_file = os.path.join(test_dir, "requirements.txt")
-# Auto-generated requirement file
+# Compiled pip requirements file
 pip_compiled_requirements_file = os.path.join(test_dir, "requirements-3.txt")
-
 
 # Gracefully exit after executing cleanup scripts
 # upon receiving a SIGINT or SIGTERM
@@ -116,11 +113,6 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         os.environ[
             "CUSTOM_COMPILE_COMMAND"
         ] = "make test-refresh-deps (or update requirements.txt)"
-        # Cleanup previously auto-generated pip req. file
-        try:
-            os.unlink(pip_compiled_requirements_file)
-        except OSError:
-            pass
         # Set the venv python executable & binary install path
         env_exe = context.env_exe
         bin_path = context.bin_path
@@ -129,15 +121,6 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         test_req = [
             ["pip", "install", "pip===%s" % pip_version],
             ["pip", "install", "pip-tools===%s" % pip_tools_version],
-            [
-                "piptools",
-                "compile",
-                "-q",
-                "--generate-hashes",
-                test_requirements_file,
-                "--output-file",
-                pip_compiled_requirements_file,
-            ],
             ["piptools", "sync", pip_compiled_requirements_file],
             ["pip", "install", "-e", papi_python_src_dir],
         ]
