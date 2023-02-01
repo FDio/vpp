@@ -25,6 +25,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"log/syslog"
 	"os"
@@ -38,40 +39,66 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 )
 
-func LogMsg(msg string) {
-	fmt.Fprint(os.Stderr, msg)
-	log.Print(msg)
-}
+var logger *log.Logger
+
+const DEFAULT_LOG_OUTPUT = "syslog"
 
 func main() {
-	syslogger, err := syslog.New(syslog.LOG_ERR|syslog.LOG_DAEMON, "statsfs")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.SetOutput(syslogger)
-
+	logOutput := flag.String("log", DEFAULT_LOG_OUTPUT, "Log file path")
 	statsSocket := flag.String("socket", statsclient.DefaultSocketName, "Path to VPP stats socket")
-	debug := flag.Bool("debug", false, "print debugging messages.")
+	debug := flag.Bool("debug", false, "Show fuse debugging messages")
+
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		LogMsg(fmt.Sprintf("usage: %s MOUNTPOINT\n", os.Args[0]))
+		fmt.Printf("Usage: %s MOUNTPOINT\n", os.Args[0])
 		os.Exit(2)
 	}
+
+	var logWriter io.Writer
+
+	// Initialize syslog
+	if *logOutput == DEFAULT_LOG_OUTPUT {
+		var err error
+
+		logWriter, err = syslog.New(syslog.LOG_ERR|syslog.LOG_DAEMON, "statsfs")
+
+		if err != nil {
+			fmt.Printf("Unable to initialize syslog: %v", err)
+			os.Exit(2)
+		}
+	} else {
+		var err error
+
+		// Initialize a file descriptor for the logs
+		logWriter, err = os.OpenFile(*logOutput, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+
+		if err != nil {
+			fmt.Printf("Unable to initialize log file: %v", err)
+			os.Exit(2)
+		}
+	}
+
+	logger := log.New(logWriter, "", log.Ldate|log.Ltime|log.Lshortfile)
+
 	//Conection to the stat segment socket.
 	sc := statsclient.NewStatsClient(*statsSocket)
-	fmt.Println("Waiting for the VPP socket to be available. Be sure a VPP instance is running.")
+
+	logger.Println("Waiting for the VPP socket to be available. Be sure a VPP instance is running.")
 	c, err := core.ConnectStats(sc)
+
 	if err != nil {
-		LogMsg(fmt.Sprintf("Failed to connect to the stats socket: %v\n", err))
+		logger.Printf("Failed to connect to the stats socket: %v\n", err)
 		os.Exit(1)
 	}
+
 	defer c.Disconnect()
 	fmt.Printf("Connected to the socket\n")
+
 	//Creating the filesystem instance
 	root, err := NewStatsFileSystem(sc)
 	if err != nil {
-		LogMsg(fmt.Sprintf("NewStatsFileSystem failed: %v\n", err))
+		logger.Printf(fmt.Sprintf("NewStatsFileSystem failed: %v\n", err))
 		os.Exit(1)
 	}
 
@@ -80,26 +107,29 @@ func main() {
 	opts.Debug = *debug
 	opts.AllowOther = true
 	server, err := fs.Mount(flag.Arg(0), root, opts)
+
 	if err != nil {
-		LogMsg(fmt.Sprintf("Mount fail: %v\n", err))
+		logger.Printf(fmt.Sprintf("Mount fail: %v\n", err))
 		os.Exit(1)
 	}
 
-	sigs := make(chan os.Signal)
+	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Printf("Successfully mounted the file system in directory: %s\n", flag.Arg(0))
+	logger.Printf("Successfully mounted the file system in directory: %s\n", flag.Arg(0))
 	runtime.GC()
 
 	for {
 		go server.Wait()
-
 		<-sigs
-		fmt.Println("Unmounting...")
+
+		logger.Println("Unmounting...")
 		err := server.Unmount()
+
 		if err == nil || !strings.Contains(err.Error(), "Device or resource busy") {
 			break
 		}
-		LogMsg(fmt.Sprintf("Unmount fail: %v\n", err))
+
+		logger.Printf(fmt.Sprintf("Unmount fail: %v\n", err))
 	}
 }
