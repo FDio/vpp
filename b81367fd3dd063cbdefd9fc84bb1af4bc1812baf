@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "b81367fd3dd063cbdefd9fc84bb1af4bc1812baf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bcf1bd0_47f2a4cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2023-02-01T01:59:17Z",
+      "side": 1,
+      "message": "Is there anything wrong with this patch? Can it be merged?",
+      "revId": "b81367fd3dd063cbdefd9fc84bb1af4bc1812baf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
