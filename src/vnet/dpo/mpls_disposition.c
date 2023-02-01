@@ -147,17 +147,17 @@ extern vlib_node_registration_t ip4_mpls_label_disposition_uniform_node;
 extern vlib_node_registration_t ip6_mpls_label_disposition_uniform_node;
 
 always_inline uword
-mpls_label_disposition_inline (vlib_main_t * vm,
-                               vlib_node_runtime_t * node,
-                               vlib_frame_t * from_frame,
-                               u8 payload_is_ip4,
-                               u8 payload_is_ip6,
-                               fib_mpls_lsp_mode_t mode)
+mpls_label_disposition_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       vlib_frame_t *frame,
+			       ip_address_family_t payload_af,
+			       fib_mpls_lsp_mode_t mode)
 {
-    u32 n_left_from, next_index, * from, * to_next;
-    vlib_node_runtime_t *error_node;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_node_runtime_t *error_node;
+  u32 n_left, *from;
 
-    if (payload_is_ip4)
+  if (AF_IP4 == payload_af)
     {
         if (FIB_MPLS_LSP_MODE_PIPE == mode)
             error_node =
@@ -175,235 +175,198 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             error_node =
                 vlib_node_get_runtime(vm, ip6_mpls_label_disposition_uniform_node.index);
     }
-    from = vlib_frame_vector_args(from_frame);
-    n_left_from = from_frame->n_vectors;
+    from = vlib_frame_vector_args (frame);
+    n_left = frame->n_vectors;
 
-    next_index = node->cached_next_index;
+    vlib_get_buffers (vm, from, bufs, n_left);
+    b = bufs;
+    next = nexts;
 
-    while (n_left_from > 0)
-    {
-        u32 n_left_to_next;
+    while (n_left >= 2)
+      {
+	mpls_disp_dpo_t *mdd0, *mdd1;
+	u32 mddi0, mddi1;
 
-        vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+	/* Prefetch next iteration. */
+	if (n_left >= 4)
+	  {
+	    vlib_prefetch_buffer_header (b[2], LOAD);
+	    vlib_prefetch_buffer_header (b[3], LOAD);
+	    CLIB_PREFETCH (b[2]->data, sizeof (ip6_header_t), LOAD);
+	    CLIB_PREFETCH (b[3]->data, sizeof (ip6_header_t), LOAD);
+	  }
 
-        while (n_left_from >= 4 && n_left_to_next >= 2)
-        {
-            mpls_disp_dpo_t *mdd0, *mdd1;
-            u32 bi0, mddi0, bi1, mddi1;
-            vlib_buffer_t * b0, *b1;
-            u32 next0, next1;
+	/* dst lookup was done by ip4 lookup */
+	mddi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+	mddi1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
+	mdd0 = mpls_disp_dpo_get (mddi0);
+	mdd1 = mpls_disp_dpo_get (mddi1);
 
-            bi0 = to_next[0] = from[0];
-            bi1 = to_next[1] = from[1];
+	next[0] = mdd0->mdd_dpo.dpoi_next_node;
+	next[1] = mdd1->mdd_dpo.dpoi_next_node;
 
-            /* Prefetch next iteration. */
-            {
-                vlib_buffer_t * p2, * p3;
+	if (AF_IP4 == payload_af)
+	  {
+	    ip4_header_t *ip0, *ip1;
 
-                p2 = vlib_get_buffer(vm, from[2]);
-                p3 = vlib_get_buffer(vm, from[3]);
+	    ip0 = vlib_buffer_get_current (b[0]);
+	    ip1 = vlib_buffer_get_current (b[1]);
 
-                vlib_prefetch_buffer_header(p2, STORE);
-                vlib_prefetch_buffer_header(p3, STORE);
+	    /*
+	     * IPv4 input checks on the exposed IP header
+	     * including checksum
+	     */
+	    ip4_input_check_x2 (vm, error_node, b, next,
+				IP_INPUT_FLAGS_VERIFY_CHECKSUM);
 
-                CLIB_PREFETCH(p2->data, sizeof(ip6_header_t), STORE);
-                CLIB_PREFETCH(p3->data, sizeof(ip6_header_t), STORE);
-            }
+	    if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
+	      {
+		/*
+		 * Copy the TTL from the MPLS packet into the
+		 * exposed IP. recalc the chksum
+		 */
+		ip0->ttl = vnet_buffer (b[0])->mpls.ttl;
+		ip1->ttl = vnet_buffer (b[1])->mpls.ttl;
+		ip0->tos = mpls_exp_to_ip_dscp (vnet_buffer (b[0])->mpls.exp);
+		ip1->tos = mpls_exp_to_ip_dscp (vnet_buffer (b[1])->mpls.exp);
 
-            from += 2;
-            to_next += 2;
-            n_left_from -= 2;
-            n_left_to_next -= 2;
+		ip0->checksum = ip4_header_checksum (ip0);
+		ip1->checksum = ip4_header_checksum (ip1);
+	      }
+	  }
+	else
+	  {
+	    ip6_header_t *ip0, *ip1;
 
-            b0 = vlib_get_buffer(vm, bi0);
-            b1 = vlib_get_buffer(vm, bi1);
+	    ip0 = vlib_buffer_get_current (b[0]);
+	    ip1 = vlib_buffer_get_current (b[1]);
 
-            /* dst lookup was done by ip4 lookup */
-            mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            mddi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
-            mdd0 = mpls_disp_dpo_get(mddi0);
-            mdd1 = mpls_disp_dpo_get(mddi1);
+	    /*
+	     * IPv6 input checks on the exposed IP header
+	     */
+	    ip6_input_check_x2 (vm, error_node, b, next);
 
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
-            next1 = mdd1->mdd_dpo.dpoi_next_node;
+	    if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
+	      {
+		/*
+		 * Copy the TTL from the MPLS packet into the
+		 * exposed IP
+		 */
+		ip0->hop_limit = vnet_buffer (b[0])->mpls.ttl;
+		ip1->hop_limit = vnet_buffer (b[1])->mpls.ttl;
 
-            if (payload_is_ip4)
-            {
-                ip4_header_t *ip0, *ip1;
+		ip6_set_traffic_class_network_order (
+		  ip0, mpls_exp_to_ip_dscp (vnet_buffer (b[0])->mpls.exp));
+		ip6_set_traffic_class_network_order (
+		  ip1, mpls_exp_to_ip_dscp (vnet_buffer (b[1])->mpls.exp));
+	      }
+	  }
 
-                ip0 = vlib_buffer_get_current(b0);
-                ip1 = vlib_buffer_get_current(b1);
+	vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
+	vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = mdd1->mdd_dpo.dpoi_index;
+	vnet_buffer (b[0])->ip.rpf_id = mdd0->mdd_rpf_id;
+	vnet_buffer (b[1])->ip.rpf_id = mdd1->mdd_rpf_id;
 
-                /*
-                 * IPv4 input checks on the exposed IP header
-                 * including checksum
-                 */
-                ip4_input_check_x2(vm, error_node,
-                                   b0, b1, ip0, ip1,
-                                   &next0, &next1, 1);
+	if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	  {
+	    mpls_label_disposition_trace_t *tr =
+	      vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	    tr->mddt_payload_proto = mdd0->mdd_payload_proto;
+	    tr->mddt_rpf_id = mdd0->mdd_rpf_id;
+	    tr->mddt_mode = mdd0->mdd_mode;
+	  }
+	if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
+	  {
+	    mpls_label_disposition_trace_t *tr =
+	      vlib_add_trace (vm, node, b[1], sizeof (*tr));
+	    tr->mddt_payload_proto = mdd1->mdd_payload_proto;
+	    tr->mddt_rpf_id = mdd1->mdd_rpf_id;
+	    tr->mddt_mode = mdd1->mdd_mode;
+	  }
 
-                if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
-                {
-                    /*
-                     * Copy the TTL from the MPLS packet into the
-                     * exposed IP. recalc the chksum
-                     */
-                    ip0->ttl = vnet_buffer(b0)->mpls.ttl;
-                    ip1->ttl = vnet_buffer(b1)->mpls.ttl;
-                    ip0->tos = mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp);
-                    ip1->tos = mpls_exp_to_ip_dscp(vnet_buffer(b1)->mpls.exp);
+	next += 2;
+	b += 2;
+	n_left -= 2;
+      }
 
-                    ip0->checksum = ip4_header_checksum(ip0);
-                    ip1->checksum = ip4_header_checksum(ip1);
-                }
-            }
-            else if (payload_is_ip6)
-            {
-                ip6_header_t *ip0, *ip1;
+    while (n_left > 0)
+      {
+	mpls_disp_dpo_t *mdd0;
+	u32 mddi0;
 
-                ip0 = vlib_buffer_get_current(b0);
-                ip1 = vlib_buffer_get_current(b1);
+	/* dst lookup was done by ip4 lookup */
+	mddi0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+	mdd0 = mpls_disp_dpo_get (mddi0);
+	next[0] = mdd0->mdd_dpo.dpoi_next_node;
 
-                /*
-                 * IPv6 input checks on the exposed IP header
-                 */
-                ip6_input_check_x2(vm, error_node,
-                                   b0, b1, ip0, ip1,
-                                   &next0, &next1);
+	if (AF_IP4 == payload_af)
+	  {
+	    ip4_header_t *ip0;
 
-                if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
-                {
-                    /*
-                     * Copy the TTL from the MPLS packet into the
-                     * exposed IP
-                     */
-                    ip0->hop_limit = vnet_buffer(b0)->mpls.ttl;
-                    ip1->hop_limit = vnet_buffer(b1)->mpls.ttl;
+	    ip0 = vlib_buffer_get_current (b[0]);
 
-                    ip6_set_traffic_class_network_order(
-                        ip0,
-                        mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp));
-                    ip6_set_traffic_class_network_order(
-                        ip1,
-                        mpls_exp_to_ip_dscp(vnet_buffer(b1)->mpls.exp));
-                }
-            }
+	    /*
+	     * IPv4 input checks on the exposed IP header
+	     * including checksum
+	     */
+	    ip4_input_check_x1 (vm, error_node, b, next,
+				IP_INPUT_FLAGS_VERIFY_CHECKSUM);
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mdd1->mdd_dpo.dpoi_index;
-            vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
-            vnet_buffer(b1)->ip.rpf_id = mdd1->mdd_rpf_id;
+	    if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
+	      {
+		/*
+		 * Copy the TTL from the MPLS packet into the
+		 * exposed IP. recalc the chksum
+		 */
+		ip0->ttl = vnet_buffer (b[0])->mpls.ttl;
+		ip0->tos = mpls_exp_to_ip_dscp (vnet_buffer (b[0])->mpls.exp);
+		ip0->checksum = ip4_header_checksum (ip0);
+	      }
+	  }
+	else
+	  {
+	    ip6_header_t *ip0;
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                mpls_label_disposition_trace_t *tr =
-                    vlib_add_trace(vm, node, b0, sizeof(*tr));
+	    ip0 = vlib_buffer_get_current (b[0]);
 
-                tr->mddt_payload_proto = mdd0->mdd_payload_proto;
-                tr->mddt_rpf_id = mdd0->mdd_rpf_id;
-                tr->mddt_mode = mdd0->mdd_mode;
-            }
-            if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                mpls_label_disposition_trace_t *tr =
-                    vlib_add_trace(vm, node, b1, sizeof(*tr));
-                tr->mddt_payload_proto = mdd1->mdd_payload_proto;
-                tr->mddt_rpf_id = mdd1->mdd_rpf_id;
-                tr->mddt_mode = mdd1->mdd_mode;
-            }
+	    /*
+	     * IPv6 input checks on the exposed IP header
+	     */
+	    ip6_input_check_x1 (vm, error_node, b, next);
 
-            vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
-                                            n_left_to_next,
-                                            bi0, bi1, next0, next1);
-        }
+	    if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
+	      {
+		/*
+		 * Copy the TTL from the MPLS packet into the
+		 * exposed IP
+		 */
+		ip0->hop_limit = vnet_buffer (b[0])->mpls.ttl;
 
-        while (n_left_from > 0 && n_left_to_next > 0)
-        {
-            mpls_disp_dpo_t *mdd0;
-            vlib_buffer_t * b0;
-            u32 bi0, mddi0;
-            u32 next0;
+		ip6_set_traffic_class_network_order (
+		  ip0, mpls_exp_to_ip_dscp (vnet_buffer (b[0])->mpls.exp));
+	      }
+	  }
 
-            bi0 = from[0];
-            to_next[0] = bi0;
-            from += 1;
-            to_next += 1;
-            n_left_from -= 1;
-            n_left_to_next -= 1;
+	vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
+	vnet_buffer (b[0])->ip.rpf_id = mdd0->mdd_rpf_id;
 
-            b0 = vlib_get_buffer(vm, bi0);
+	if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	  {
+	    mpls_label_disposition_trace_t *tr =
+	      vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	    tr->mddt_payload_proto = mdd0->mdd_payload_proto;
+	    tr->mddt_rpf_id = mdd0->mdd_rpf_id;
+	    tr->mddt_mode = mdd0->mdd_mode;
+	  }
 
-            /* dst lookup was done by ip4 lookup */
-            mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
-            mdd0 = mpls_disp_dpo_get(mddi0);
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
+	next += 1;
+	b += 1;
+	n_left -= 1;
+      }
 
-            if (payload_is_ip4)
-            {
-                ip4_header_t *ip0;
+    vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
-                ip0 = vlib_buffer_get_current(b0);
-
-                /*
-                 * IPv4 input checks on the exposed IP header
-                 * including checksum
-                 */
-                ip4_input_check_x1(vm, error_node, b0, ip0, &next0, 1);
-
-                if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
-                {
-                    /*
-                     * Copy the TTL from the MPLS packet into the
-                     * exposed IP. recalc the chksum
-                     */
-                    ip0->ttl = vnet_buffer(b0)->mpls.ttl;
-                    ip0->tos = mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp);
-                    ip0->checksum = ip4_header_checksum(ip0);
-                }
-            }
-            else if (payload_is_ip6)
-            {
-                ip6_header_t *ip0;
-
-                ip0 = vlib_buffer_get_current(b0);
-
-                /*
-                 * IPv6 input checks on the exposed IP header
-                 */
-                ip6_input_check_x1(vm, error_node, b0, ip0, &next0);
-
-                if (FIB_MPLS_LSP_MODE_UNIFORM == mode)
-                {
-                    /*
-                     * Copy the TTL from the MPLS packet into the
-                     * exposed IP
-                     */
-                    ip0->hop_limit = vnet_buffer(b0)->mpls.ttl;
-
-                    ip6_set_traffic_class_network_order(
-                        ip0,
-                        mpls_exp_to_ip_dscp(vnet_buffer(b0)->mpls.exp));
-                }
-            }
-
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
-            vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
-
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                mpls_label_disposition_trace_t *tr =
-                    vlib_add_trace(vm, node, b0, sizeof(*tr));
-                tr->mddt_payload_proto = mdd0->mdd_payload_proto;
-                tr->mddt_rpf_id = mdd0->mdd_rpf_id;
-                tr->mddt_mode = mdd0->mdd_mode;
-            }
-
-            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, next0);
-        }
-        vlib_put_next_frame(vm, node, next_index, n_left_to_next);
-    }
-    return from_frame->n_vectors;
+    return frame->n_vectors;
 }
 
 static u8 *
@@ -427,8 +390,8 @@ VLIB_NODE_FN (ip4_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
-    return (mpls_label_disposition_inline(vm, node, frame, 1, 0,
-                                          FIB_MPLS_LSP_MODE_PIPE));
+  return (mpls_label_disposition_inline (vm, node, frame, AF_IP4,
+					 FIB_MPLS_LSP_MODE_PIPE));
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_disposition_pipe_node) = {
@@ -445,8 +408,8 @@ VLIB_NODE_FN (ip6_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
-    return (mpls_label_disposition_inline(vm, node, frame, 0, 1,
-                                          FIB_MPLS_LSP_MODE_PIPE));
+  return (mpls_label_disposition_inline (vm, node, frame, AF_IP6,
+					 FIB_MPLS_LSP_MODE_PIPE));
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_disposition_pipe_node) = {
@@ -463,8 +426,8 @@ VLIB_NODE_FN (ip4_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
-    return (mpls_label_disposition_inline(vm, node, frame, 1, 0,
-                                          FIB_MPLS_LSP_MODE_UNIFORM));
+  return (mpls_label_disposition_inline (vm, node, frame, AF_IP4,
+					 FIB_MPLS_LSP_MODE_UNIFORM));
 }
 
 VLIB_REGISTER_NODE (ip4_mpls_label_disposition_uniform_node) = {
@@ -481,8 +444,8 @@ VLIB_NODE_FN (ip6_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                     vlib_node_runtime_t * node,
                                     vlib_frame_t * frame)
 {
-    return (mpls_label_disposition_inline(vm, node, frame, 0, 1,
-                                          FIB_MPLS_LSP_MODE_UNIFORM));
+  return (mpls_label_disposition_inline (vm, node, frame, AF_IP6,
+					 FIB_MPLS_LSP_MODE_UNIFORM));
 }
 
 VLIB_REGISTER_NODE (ip6_mpls_label_disposition_uniform_node) = {
