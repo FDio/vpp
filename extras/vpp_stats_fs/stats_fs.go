@@ -38,7 +38,7 @@ import (
 func updateDir(ctx context.Context, n *fs.Inode, cl *statsclient.StatsClient, dirPath string) syscall.Errno {
 	stats, err := cl.PrepareDir(dirPath)
 	if err != nil {
-		LogMsg(fmt.Sprintf("Listing stats index failed: %v\n", err))
+		logger.Printf(fmt.Sprintf("Listing stats index failed: %v\n", err))
 		return syscall.EAGAIN
 	}
 
@@ -81,7 +81,7 @@ func getCounterContent(index uint32, client *statsclient.StatsClient) (content s
 	content = ""
 	statsDir, err := client.PrepareDirOnIndex(index)
 	if err != nil {
-		LogMsg(fmt.Sprintf("Dumping stats on index failed: %v\n", err))
+		logger.Printf(fmt.Sprintf("Dumping stats on index failed: %v\n", err))
 		return content, syscall.EAGAIN
 	}
 	if len(statsDir.Entries) != 1 {

@@ -56,7 +56,7 @@ function install_go() {
   mkdir -p "${GOROOT}"
   mkdir -p "${GOPATH}/"{src,pkg,bin}
 
-  wget "https://dl.google.com/go/$(curl https://golang.org/VERSION?m=text).linux-amd64.tar.gz" -O "${TMP}/go.tar.gz"
+  wget "https://dl.google.com/go/$(curl https://go.dev/VERSION?m=text).linux-amd64.tar.gz" -O "${TMP}/go.tar.gz"
   tar -C "$GOROOT" --strip-components=1 -xzf "${TMP}/go.tar.gz"
 
   rm -f "${TMP}/go.tar.gz"
