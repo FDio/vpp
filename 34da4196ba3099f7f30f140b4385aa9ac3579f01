@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "330882ad_1133b011",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-01T11:36:13Z",
+      "side": 1,
+      "message": "Hi Tetsuya. I provided my first review. Main points are: \n\n- we don\u0027t use is_spray anymore. Now we have a policy type and we should use and propagate across the code.\n\n- I propose the following logic for setting the source address for a given policy:\nThe encap_src is optional when creating a new policy. \nIn the dataplane, if the encap_src is defined as part of the policy creation, then we use that encap_src\nif the encap_src is not defined at the time of policy creation, then we use the encap_src defined per node. \n\nThis way we allow users who don\u0027t want to configure an encap_src per policy to configure the encap_src once per node and will be used by all policies. \n ",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4bdc817d_5eb8ab0f",
