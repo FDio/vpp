@@ -55,6 +55,10 @@
    is set.
 */
 
+#ifdef HAVE_GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <signal.h>
 #include <dlfcn.h>
 
@@ -66,7 +70,6 @@
 #include <vppinfra/clib.h>
 
 #include <vcl/ldp_socket_wrapper.h>
-
 
 enum swrap_dbglvl_e
 {
@@ -156,16 +159,14 @@ PRINTF_ATTRIBUTE (3, 4);
  * SWRAP LOADING LIBC FUNCTIONS
  *********************************************************/
 
-typedef int (*__libc_accept4) (int sockfd,
-			       struct sockaddr * addr,
-			       socklen_t * addrlen, int flags);
-typedef int (*__libc_accept) (int sockfd,
-			      struct sockaddr * addr, socklen_t * addrlen);
-typedef int (*__libc_bind) (int sockfd,
-			    const struct sockaddr * addr, socklen_t addrlen);
+typedef int (*__libc_accept4) (int sockfd, __SOCKADDR_ARG addr,
+			       socklen_t *addrlen, int flags);
+typedef int (*__libc_accept) (int sockfd, __SOCKADDR_ARG addr,
+			      socklen_t *addrlen);
+typedef int (*__libc_bind) (int sockfd, __CONST_SOCKADDR_ARG addr,
+			    socklen_t addrlen);
 typedef int (*__libc_close) (int fd);
-typedef int (*__libc_connect) (int sockfd,
-			       const struct sockaddr * addr,
+typedef int (*__libc_connect) (int sockfd, __CONST_SOCKADDR_ARG addr,
 			       socklen_t addrlen);
 
 #if 0
@@ -185,16 +186,12 @@ typedef FILE *(*__libc_fopen64) (const char *name, const char *mode);
 #ifdef HAVE_EVENTFD
 typedef int (*__libc_eventfd) (int count, int flags);
 #endif
-typedef int (*__libc_getpeername) (int sockfd,
-				   struct sockaddr * addr,
-				   socklen_t * addrlen);
-typedef int (*__libc_getsockname) (int sockfd,
-				   struct sockaddr * addr,
-				   socklen_t * addrlen);
-typedef int (*__libc_getsockopt) (int sockfd,
-				  int level,
-				  int optname,
-				  void *optval, socklen_t * optlen);
+typedef int (*__libc_getpeername) (int sockfd, __SOCKADDR_ARG addr,
+				   socklen_t *addrlen);
+typedef int (*__libc_getsockname) (int sockfd, __SOCKADDR_ARG addr,
+				   socklen_t *addrlen);
+typedef int (*__libc_getsockopt) (int sockfd, int level, int optname,
+				  void *optval, socklen_t *optlen);
 typedef int (*__libc_ioctl) (int d, unsigned long int request, ...);
 typedef int (*__libc_listen) (int sockfd, int backlog);
 typedef int (*__libc_open) (const char *pathname, int flags, mode_t mode);
@@ -204,25 +201,29 @@ typedef int (*__libc_open64) (const char *pathname, int flags, mode_t mode);
 typedef int (*__libc_openat) (int dirfd, const char *path, int flags, ...);
 typedef int (*__libc_pipe) (int pipefd[2]);
 typedef int (*__libc_read) (int fd, void *buf, size_t count);
-typedef ssize_t (*__libc_readv) (int fd, const struct iovec * iov,
-				 int iovcnt);
+typedef ssize_t (*__libc_readv) (int fd, const struct iovec *iov, int iovcnt);
 typedef int (*__libc_recv) (int sockfd, void *buf, size_t len, int flags);
-typedef int (*__libc_recvfrom) (int sockfd,
-				void *buf,
-				size_t len,
-				int flags,
-				struct sockaddr * src_addr,
-				socklen_t * addrlen);
-typedef int (*__libc_recvmsg) (int sockfd, const struct msghdr * msg,
+typedef int (*__libc_recvfrom) (int sockfd, void *buf, size_t len, int flags,
+				__SOCKADDR_ARG src_addr, socklen_t *addrlen);
+typedef int (*__libc_recvmsg) (int sockfd, const struct msghdr *msg,
 			       int flags);
+#ifdef HAVE_GNU_SOURCE
+typedef int (*__libc_recvmmsg) (int fd, struct mmsghdr *vmessages,
+				unsigned int vlen, int flags,
+				struct timespec *tmo);
+#endif
 typedef int (*__libc_send) (int sockfd, const void *buf, size_t len,
 			    int flags);
 typedef ssize_t (*__libc_sendfile) (int out_fd, int in_fd, off_t * offset,
 				    size_t len);
 typedef int (*__libc_sendmsg) (int sockfd, const struct msghdr * msg,
 			       int flags);
+#ifdef HAVE_GNU_SOURCE
+typedef int (*__libc_sendmmsg) (int __fd, struct mmsghdr *__vmessages,
+				unsigned int __vlen, int __flags);
+#endif
 typedef int (*__libc_sendto) (int sockfd, const void *buf, size_t len,
-			      int flags, const struct sockaddr * dst_addr,
+			      int flags, __CONST_SOCKADDR_ARG dst_addr,
 			      socklen_t addrlen);
 typedef int (*__libc_setsockopt) (int sockfd, int level, int optname,
 				  const void *optval, socklen_t optlen);
@@ -271,7 +272,7 @@ typedef int (*__libc_epoll_pwait) (int __epfd, struct epoll_event * __events,
 typedef int (*__libc_poll) (struct pollfd * __fds, nfds_t __nfds,
 			    int __timeout);
 
-#ifdef __USE_GNU
+#ifdef HAVE_GNU_SOURCE
 typedef int (*__libc_ppoll) (struct pollfd * __fds, nfds_t __nfds,
 			     const struct timespec * __timeout,
 			     const __sigset_t * __ss);
@@ -323,9 +324,15 @@ struct swrap_libc_symbols
   SWRAP_SYMBOL_ENTRY (recv);
   SWRAP_SYMBOL_ENTRY (recvfrom);
   SWRAP_SYMBOL_ENTRY (recvmsg);
+#ifdef HAVE_GNU_SOURCE
+  SWRAP_SYMBOL_ENTRY (recvmmsg);
+#endif
   SWRAP_SYMBOL_ENTRY (send);
   SWRAP_SYMBOL_ENTRY (sendfile);
   SWRAP_SYMBOL_ENTRY (sendmsg);
+#ifdef HAVE_GNU_SOURCE
+  SWRAP_SYMBOL_ENTRY (sendmmsg);
+#endif
   SWRAP_SYMBOL_ENTRY (sendto);
   SWRAP_SYMBOL_ENTRY (setsockopt);
 #ifdef HAVE_SIGNALFD
@@ -350,7 +357,7 @@ struct swrap_libc_symbols
   SWRAP_SYMBOL_ENTRY (epoll_wait);
   SWRAP_SYMBOL_ENTRY (epoll_pwait);
   SWRAP_SYMBOL_ENTRY (poll);
-#ifdef __USE_GNU
+#ifdef HAVE_GNU_SOURCE
   SWRAP_SYMBOL_ENTRY (ppoll);
 #endif
 };
@@ -480,8 +487,7 @@ _swrap_bind_symbol (enum swrap_lib lib, const char *fn_name)
  * So we need load each function at the point it is called the first time.
  */
 int
-libc_accept4 (int sockfd,
-	      struct sockaddr *addr, socklen_t * addrlen, int flags)
+libc_accept4 (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen, int flags)
 {
   swrap_bind_symbol_libc (accept4);
 
@@ -489,7 +495,7 @@ libc_accept4 (int sockfd,
 }
 
 int
-libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
+libc_accept (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen)
 {
   swrap_bind_symbol_libc (accept);
 
@@ -497,7 +503,7 @@ libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 }
 
 int
-libc_bind (int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+libc_bind (int sockfd, __CONST_SOCKADDR_ARG addr, socklen_t addrlen)
 {
   swrap_bind_symbol_libc (bind);
 
@@ -513,7 +519,7 @@ libc_close (int fd)
 }
 
 int
-libc_connect (int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+libc_connect (int sockfd, __CONST_SOCKADDR_ARG addr, socklen_t addrlen)
 {
   swrap_bind_symbol_libc (connect);
 
@@ -587,7 +593,7 @@ libc_vioctl (int fd, int cmd, va_list ap)
 }
 
 int
-libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
+libc_getpeername (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen)
 {
   swrap_bind_symbol_libc (getpeername);
 
@@ -595,7 +601,7 @@ libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 }
 
 int
-libc_getsockname (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
+libc_getsockname (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen)
 {
   swrap_bind_symbol_libc (getsockname);
 
@@ -647,10 +653,8 @@ libc_recv (int sockfd, void *buf, size_t len, int flags)
 }
 
 int
-libc_recvfrom (int sockfd,
-	       void *buf,
-	       size_t len,
-	       int flags, struct sockaddr *src_addr, socklen_t * addrlen)
+libc_recvfrom (int sockfd, void *buf, size_t len, int flags,
+	       __SOCKADDR_ARG src_addr, socklen_t *addrlen)
 {
   swrap_bind_symbol_libc (recvfrom);
 
@@ -666,6 +670,17 @@ libc_recvmsg (int sockfd, struct msghdr *msg, int flags)
 
   return swrap.libc.symbols._libc_recvmsg.f (sockfd, msg, flags);
 }
+
+#ifdef HAVE_GNU_SOURCE
+int
+libc_recvmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags,
+	       struct timespec *tmo)
+{
+  swrap_bind_symbol_libc (recvmmsg);
+
+  return swrap.libc.symbols._libc_recvmmsg.f (fd, vmessages, vlen, flags, tmo);
+}
+#endif
 
 int
 libc_send (int sockfd, const void *buf, size_t len, int flags)
@@ -691,11 +706,19 @@ libc_sendmsg (int sockfd, const struct msghdr *msg, int flags)
   return swrap.libc.symbols._libc_sendmsg.f (sockfd, msg, flags);
 }
 
+#ifdef HAVE_GNU_SOURCE
 int
-libc_sendto (int sockfd,
-	     const void *buf,
-	     size_t len,
-	     int flags, const struct sockaddr *dst_addr, socklen_t addrlen)
+libc_sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
+{
+  swrap_bind_symbol_libc (sendmmsg);
+
+  return swrap.libc.symbols._libc_sendmmsg.f (fd, vmessages, vlen, flags);
+}
+#endif
+
+int
+libc_sendto (int sockfd, const void *buf, size_t len, int flags,
+	     __CONST_SOCKADDR_ARG dst_addr, socklen_t addrlen)
 {
   swrap_bind_symbol_libc (sendto);
 
@@ -838,7 +861,7 @@ libc_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
   return swrap.libc.symbols._libc_poll.f (__fds, __nfds, __timeout);
 }
 
-#ifdef __USE_GNU
+#ifdef HAVE_GNU_SOURCE
 int
 libc_ppoll (struct pollfd *__fds, nfds_t __nfds,
 	    const struct timespec *__timeout, const __sigset_t * __ss)
