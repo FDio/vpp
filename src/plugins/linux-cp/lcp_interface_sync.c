@@ -389,7 +389,7 @@ lcp_itf_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_create)
       if (!sup_lip)
 	return NULL;
 
-      name = format (name, "%s.%d", sup_lip->lip_host_name, sw->sub.id);
+      name = format (name, "%s.%d%c", sup_lip->lip_host_name, sw->sub.id, 0);
 
       LCP_ITF_PAIR_INFO (
 	"interface_%s: %U has parent %U, auto-creating LCP with host-if %s",
