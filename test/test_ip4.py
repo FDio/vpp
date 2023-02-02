@@ -6,7 +6,7 @@ import unittest
 
 import scapy.compat
 from scapy.contrib.mpls import MPLS
-from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
+from scapy.layers.inet import IP, IPOption, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, Dot1Q, ARP
 from scapy.packet import Raw
@@ -2252,6 +2252,9 @@ class TestIPInput(VppTestCase):
         )
 
         rx = self.send_and_assert_no_replies(self.pg0, p_long * NUM_PKTS, "too long")
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/bad_length")[0], NUM_PKTS
+        )
 
         #
         # bad chksum - this is dropped
@@ -2265,6 +2268,9 @@ class TestIPInput(VppTestCase):
 
         rx = self.send_and_assert_no_replies(
             self.pg0, p_chksum * NUM_PKTS, "bad checksum"
+        )
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/bad_checksum")[0], NUM_PKTS
         )
 
         #
@@ -2280,6 +2286,9 @@ class TestIPInput(VppTestCase):
         rx = self.send_and_assert_no_replies(
             self.pg0, p_ver * NUM_PKTS, "funky version"
         )
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/version")[0], NUM_PKTS
+        )
 
         #
         # fragment offset 1 - this is dropped
@@ -2292,6 +2301,33 @@ class TestIPInput(VppTestCase):
         )
 
         rx = self.send_and_assert_no_replies(self.pg0, p_frag * NUM_PKTS, "frag offset")
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/fragment_offset_one")[0],
+            NUM_PKTS,
+        )
+
+        #
+        # options - this is dropped
+        #
+        p_options = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(
+                src=self.pg0.remote_ip4,
+                dst=self.pg1.remote_ip4,
+                options=[
+                    IPOption(
+                        copy_flag=1, optclass="control", option="flow_control", length=4
+                    )
+                ],
+            )
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        rx = self.send_and_assert_no_replies(self.pg0, p_options * NUM_PKTS, "options")
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/options")[0], NUM_PKTS
+        )
 
         #
         # TTL expired packet
@@ -2304,6 +2340,9 @@ class TestIPInput(VppTestCase):
         )
 
         rxs = self.send_and_expect_some(self.pg0, p_ttl * NUM_PKTS, self.pg0)
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/time_expired")[0], NUM_PKTS
+        )
 
         for rx in rxs:
             icmp = rx[ICMP]
@@ -2325,6 +2364,9 @@ class TestIPInput(VppTestCase):
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [1500, 0, 0, 0])
 
         rxs = self.send_and_expect_some(self.pg0, p_mtu * NUM_PKTS, self.pg0)
+        self.assertEqual(
+            self.statistics.get_counter("/err/ip4-input/mtu_exceeded")[0], NUM_PKTS
+        )
 
         for rx in rxs:
             icmp = rx[ICMP]
