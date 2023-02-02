@@ -1660,7 +1660,7 @@ class TestIPv6Reassembly(VppTestCase):
         """IPv6 atomic fragment"""
         pkt = (
             Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
-            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=65535)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44)
             / IPv6ExtHdrFragment(
                 offset=8191, m=1, res1=0xFF, res2=0xFF, nh=255, id=0xFFFF
             )
