@@ -2937,6 +2937,19 @@ class TestIP6Input(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_short * NUM_PKTS, self.pg1)
 
         #
+        # Packet too long - this is dropped
+        #
+        p_long = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, plen=400)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        rx = self.send_and_assert_no_replies(self.pg0, p_long * NUM_PKTS, "too long")
+        self.assert_error_counter_equal("/err/ip6-input/bad_length", NUM_PKTS)
+
+        #
         # bad version - this is dropped
         #
         p_ver = (
