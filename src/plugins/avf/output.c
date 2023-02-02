@@ -123,8 +123,6 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
 	}
 
-  /* ip_csum does a byte swap for some reason... */
-  sum = clib_net_to_host_u16 (sum);
   if (is_tcp)
     tcp->checksum = sum;
   else
