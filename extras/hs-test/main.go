@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"reflect"
 )
@@ -18,16 +17,6 @@ func newVppContext() (context.Context, context.CancelFunc) {
 		os.Interrupt,
 	)
 	return ctx, cancel
-}
-
-func Vppcli(runDir, command string) (string, error) {
-	cmd := exec.Command("vppctl", "-s", fmt.Sprintf("%s/var/run/vpp/cli.sock", runDir), command)
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("failed to execute command: '%v'.\n", err)
-	}
-	fmt.Printf("Command output %s", string(o))
-	return string(o), err
 }
 
 func exitOnErrCh(ctx context.Context, cancel context.CancelFunc, errCh <-chan error) {

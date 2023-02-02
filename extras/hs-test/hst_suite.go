@@ -8,8 +8,11 @@ import (
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.fd.io/govpp/binapi/ip_types"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	defaultNamespaceName string = "default"
 )
 
 func IsPersistent() bool {
@@ -22,14 +25,12 @@ func IsVerbose() bool {
 
 type HstSuite struct {
 	suite.Suite
-	teardownSuite     func()
-	containers        map[string]*Container
-	volumes           []string
-	networkNamespaces map[string]*NetworkNamespace
-	veths             map[string]*NetworkInterfaceVeth
-	taps              map[string]*NetworkInterfaceTap
-	bridges           map[string]*NetworkBridge
-	numberOfAddresses int
+	teardownSuite func()
+	containers    map[string]*Container
+	volumes       []string
+	netConfigs    []NetConfig
+	netInterfaces map[string]NetInterface
+	addresser     *Addresser
 }
 
 func (s *HstSuite) TearDownSuite() {
@@ -138,9 +139,11 @@ func (s *HstSuite) getContainerByName(name string) *Container {
 	return s.containers[name]
 }
 
-func (s *HstSuite) getContainerCopyByName(name string) *Container {
-	// Create a copy and return its address, so that individial tests which call this
-	// are not able to modify the original container and affect other tests by doing that
+/*
+ * Create a copy and return its address, so that individial tests which call this
+ * are not able to modify the original container and affect other tests by doing that
+ */
+func (s *HstSuite) getTransientContainerByName(name string) *Container {
 	containerCopy := *s.containers[name]
 	return &containerCopy
 }
@@ -185,32 +188,32 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 		s.T().Fatalf("unmarshal error: %v", err)
 	}
 
-	s.networkNamespaces = make(map[string]*NetworkNamespace)
-	s.veths = make(map[string]*NetworkInterfaceVeth)
-	s.taps = make(map[string]*NetworkInterfaceTap)
-	s.bridges = make(map[string]*NetworkBridge)
+	s.addresser = NewAddresser(s)
+	s.netInterfaces = make(map[string]NetInterface)
 	for _, elem := range yamlTopo.Devices {
 		switch elem["type"].(string) {
 		case NetNs:
 			{
 				if namespace, err := NewNetNamespace(elem); err == nil {
-					s.networkNamespaces[namespace.Name()] = &namespace
+					s.netConfigs = append(s.netConfigs, &namespace)
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
 			}
 		case Veth:
 			{
-				if veth, err := NewVeth(elem); err == nil {
-					s.veths[veth.Name()] = &veth
+				if veth, err := NewVeth(elem, s.addresser); err == nil {
+					s.netConfigs = append(s.netConfigs, &veth)
+					s.netInterfaces[veth.Name()] = &veth
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
 			}
 		case Tap:
 			{
-				if tap, err := NewTap(elem); err == nil {
-					s.taps[tap.Name()] = &tap
+				if tap, err := NewTap(elem, s.addresser); err == nil {
+					s.netConfigs = append(s.netConfigs, &tap)
+					s.netInterfaces[tap.Name()] = &tap
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
@@ -218,7 +221,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 		case Bridge:
 			{
 				if bridge, err := NewBridge(elem); err == nil {
-					s.bridges[bridge.Name()] = &bridge
+					s.netConfigs = append(s.netConfigs, &bridge)
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
@@ -230,23 +233,8 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 func (s *HstSuite) configureNetworkTopology(topologyName string) {
 	s.loadNetworkTopology(topologyName)
 
-	for _, ns := range s.networkNamespaces {
-		if err := ns.Configure(); err != nil {
-			s.T().Fatalf("network config error: %v", err)
-		}
-	}
-	for _, veth := range s.veths {
-		if err := veth.Configure(); err != nil {
-			s.T().Fatalf("network config error: %v", err)
-		}
-	}
-	for _, tap := range s.taps {
-		if err := tap.Configure(); err != nil {
-			s.T().Fatalf("network config error: %v", err)
-		}
-	}
-	for _, bridge := range s.bridges {
-		if err := bridge.Configure(); err != nil {
+	for _, nc := range s.netConfigs {
+		if err := nc.Configure(); err != nil {
 			s.T().Fatalf("network config error: %v", err)
 		}
 	}
@@ -256,34 +244,52 @@ func (s *HstSuite) unconfigureNetworkTopology() {
 	if IsPersistent() {
 		return
 	}
-	for _, ns := range s.networkNamespaces {
-		ns.Unconfigure()
-	}
-	for _, veth := range s.veths {
-		veth.Unconfigure()
-	}
-	for _, tap := range s.taps {
-		tap.Unconfigure()
-	}
-	for _, bridge := range s.bridges {
-		bridge.Unconfigure()
+	for _, nc := range s.netConfigs {
+		nc.Unconfigure()
 	}
 }
 
-func (s *HstSuite) NewAddress() (AddressWithPrefix, error) {
-	var ipPrefix AddressWithPrefix
-	var err error
+type NamespaceAddresses struct {
+	namespace         string
+	numberOfAddresses int
+}
 
-	if s.numberOfAddresses == 255 {
-		s.T().Fatalf("no available IPv4 addresses")
+type Addresser struct {
+	namespaces []*NamespaceAddresses
+	suite      *HstSuite
+}
+
+func (a *Addresser) AddNamespace(name string) {
+	var newNamespace = &NamespaceAddresses{
+		namespace:         name,
+		numberOfAddresses: 0,
 	}
+	a.namespaces = append(a.namespaces, newNamespace)
+}
 
-	address := fmt.Sprintf("10.10.10.%v/24", s.numberOfAddresses+1)
-	ipPrefix, err = ip_types.ParseAddressWithPrefix(address)
-	if err != nil {
-		return AddressWithPrefix{}, err
+func (a *Addresser) NewIp4Address() (string, error) {
+	return a.NewIp4AddressWithNamespace(defaultNamespaceName)
+}
+
+func (a *Addresser) NewIp4AddressWithNamespace(namespace string) (string, error) {
+	for i, val := range a.namespaces {
+		if val.namespace != namespace {
+			continue
+		}
+		if val.numberOfAddresses == 255 {
+			return "", fmt.Errorf("no available IPv4 addresses")
+		}
+		address := fmt.Sprintf("10.10.%v.%v/24", i, val.numberOfAddresses+1)
+		val.numberOfAddresses++
+		return address, nil
 	}
-	s.numberOfAddresses++
+	a.AddNamespace(namespace)
+	return a.NewIp4AddressWithNamespace(namespace)
+}
 
-	return ipPrefix, nil
+func NewAddresser(suite *HstSuite) *Addresser {
+	var addresser = new(Addresser)
+	addresser.suite = suite
+	addresser.AddNamespace(defaultNamespaceName)
+	return addresser
 }
