@@ -6,16 +6,16 @@ devices:
   - name: "server"
     type: "netns"
 
-  - name: "vpp0"
+  - name: "hst_client_vpp"
     type: "veth"
     peer:
       name: "client"
       netns: "client"
-      ip4: "10.0.0.1/24"
+      ip4: true
 
-  - name: "vpp1"
+  - name: "hst_server_vpp"
     type: "veth"
     peer:
       name: "server"
       netns: "server"
-      ip4: "10.0.1.1/24"
+      ip4: true

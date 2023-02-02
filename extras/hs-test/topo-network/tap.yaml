@@ -2,4 +2,3 @@
 devices:
   - name: "tap0"
     type: "tap"
-    ip4: "10.10.10.1/24"
