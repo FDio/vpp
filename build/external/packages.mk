@@ -101,11 +101,17 @@ define $1_config_cmds
 endef
 endif
 
+ifneq ($(filter $1,$(VPP_SKIP_EXTERNAL)), $1)
 $(B)/.$1.config.ok: $(B)/.$1.patch.ok $(addsuffix -install,$($1_depends))
 	$$(call h1,"configuring $1 $($1_version) - log: $$($1_config_log)")
 	@mkdir -p $$($1_build_dir)
 	$$(call $1_config_cmds)
 	@touch $$@
+else
+$(B)/.$1.config.ok:
+	$$(call h1,"Skipping $1 $($1_version)")
+	@touch $$@
+endif
 
 .PHONY: $1-config
 $1-config: $(B)/.$1.config.ok
@@ -120,10 +126,16 @@ define $1_build_cmds
 endef
 endif
 
+ifneq ($(filter $1,$(VPP_SKIP_EXTERNAL)), $1)
 $(B)/.$1.build.ok: $(B)/.$1.config.ok
 	$$(call h1,"building $1 $($1_version) - log: $$($1_build_log)")
 	$$(call $1_build_cmds)
 	@touch $$@
+else
+$(B)/.$1.build.ok:
+	$$(call h1,"Skipping $1 $($1_version)")
+	@touch $$@
+endif
 
 .PHONY: $1-build
 $1-build: $(B)/.$1.build.ok
@@ -138,10 +150,16 @@ define $1_install_cmds
 endef
 endif
 
+ifneq ($(filter $1,$(VPP_SKIP_EXTERNAL)), $1)
 $(B)/.$1.install.ok: $(B)/.$1.build.ok
 	$$(call h1,"installing $1 $($1_version) - log: $$($1_install_log)")
 	$$(call $1_install_cmds)
 	@touch $$@
+else
+$(B)/.$1.install.ok:
+	$$(call h1,"Skipping $1 $($1_version)")
+	@touch $$@
+endif
 
 .PHONY: $1-install
 $1-install: $(B)/.$1.install.ok
