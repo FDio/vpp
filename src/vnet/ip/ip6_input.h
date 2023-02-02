@@ -49,6 +49,8 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 		    vlib_buffer_t **b, u16 *next)
 {
   const ip6_header_t *ip[4];
+  u32 ip_len[4], cur_len[4];
+  i32 len_diff[4];
   u8 error[4];
 
   ip[0] = vlib_buffer_get_current (b[0]);
@@ -98,6 +100,27 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
     b[2]->current_length < sizeof (*ip[2]) ? IP6_ERROR_TOO_SHORT : error[2];
   error[3] =
     b[3]->current_length < sizeof (*ip[3]) ? IP6_ERROR_TOO_SHORT : error[3];
+
+  /* Verify lengths. */
+  ip_len[0] = clib_net_to_host_u16 (ip[0]->payload_length) + sizeof (*ip[0]);
+  ip_len[1] = clib_net_to_host_u16 (ip[1]->payload_length) + sizeof (*ip[1]);
+  ip_len[2] = clib_net_to_host_u16 (ip[2]->payload_length) + sizeof (*ip[2]);
+  ip_len[3] = clib_net_to_host_u16 (ip[3]->payload_length) + sizeof (*ip[3]);
+
+  cur_len[0] = vlib_buffer_length_in_chain (vm, b[0]);
+  cur_len[1] = vlib_buffer_length_in_chain (vm, b[1]);
+  cur_len[2] = vlib_buffer_length_in_chain (vm, b[2]);
+  cur_len[3] = vlib_buffer_length_in_chain (vm, b[3]);
+
+  len_diff[0] = cur_len[0] - ip_len[0];
+  len_diff[1] = cur_len[1] - ip_len[1];
+  len_diff[2] = cur_len[2] - ip_len[2];
+  len_diff[3] = cur_len[3] - ip_len[3];
+
+  error[0] = len_diff[0] < 0 ? IP6_ERROR_BAD_LENGTH : error[0];
+  error[1] = len_diff[1] < 0 ? IP6_ERROR_BAD_LENGTH : error[1];
+  error[2] = len_diff[2] < 0 ? IP6_ERROR_BAD_LENGTH : error[2];
+  error[3] = len_diff[3] < 0 ? IP6_ERROR_BAD_LENGTH : error[3];
 
   if (PREDICT_FALSE (error[0] != IP6_ERROR_NONE))
     {
@@ -166,6 +189,8 @@ ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 		    vlib_buffer_t **b, u16 *next)
 {
   const ip6_header_t *ip[2];
+  u32 ip_len[2], cur_len[2];
+  i32 len_diff[2];
   u8 error[2];
 
   ip[0] = vlib_buffer_get_current (b[0]);
@@ -197,6 +222,19 @@ ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
     b[0]->current_length < sizeof (*ip[0]) ? IP6_ERROR_TOO_SHORT : error[0];
   error[1] =
     b[1]->current_length < sizeof (*ip[1]) ? IP6_ERROR_TOO_SHORT : error[1];
+
+  /* Verify lengths. */
+  ip_len[0] = clib_net_to_host_u16 (ip[0]->payload_length) + sizeof (*ip[0]);
+  ip_len[1] = clib_net_to_host_u16 (ip[1]->payload_length) + sizeof (*ip[1]);
+
+  cur_len[0] = vlib_buffer_length_in_chain (vm, b[0]);
+  cur_len[1] = vlib_buffer_length_in_chain (vm, b[1]);
+
+  len_diff[0] = cur_len[0] - ip_len[0];
+  len_diff[1] = cur_len[1] - ip_len[1];
+
+  error[0] = len_diff[0] < 0 ? IP6_ERROR_BAD_LENGTH : error[0];
+  error[1] = len_diff[1] < 0 ? IP6_ERROR_BAD_LENGTH : error[1];
 
   if (PREDICT_FALSE (error[0] != IP6_ERROR_NONE))
     {
@@ -235,6 +273,8 @@ ip6_input_check_x1 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 		    vlib_buffer_t **b, u16 *next)
 {
   const ip6_header_t *ip0;
+  u32 ip_len0, cur_len0;
+  i32 len_diff0;
   u8 error0;
 
   error0 = IP6_ERROR_NONE;
@@ -254,6 +294,12 @@ ip6_input_check_x1 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 
   /* L2 length must be at least minimal IP header. */
   error0 = b[0]->current_length < sizeof (*ip0) ? IP6_ERROR_TOO_SHORT : error0;
+
+  /* Verify lengths. */
+  ip_len0 = clib_net_to_host_u16 (ip0->payload_length) + sizeof (*ip0);
+  cur_len0 = vlib_buffer_length_in_chain (vm, b[0]);
+  len_diff0 = cur_len0 - ip_len0;
+  error0 = len_diff0 < 0 ? IP6_ERROR_BAD_LENGTH : error0;
 
   if (PREDICT_FALSE (error0 != IP6_ERROR_NONE))
     {
