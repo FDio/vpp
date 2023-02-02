@@ -1763,7 +1763,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   /* set hw interface caps */
   vnet_hw_if_set_caps (vnm, ad->hw_if_index,
 		       VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_MAC_FILTER |
-			 VNET_HW_IF_CAP_L4_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO);
+			 VNET_HW_IF_CAP_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO);
 
   for (i = 0; i < ad->n_rx_queues; i++)
     {
