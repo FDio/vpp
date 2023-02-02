@@ -26,6 +26,7 @@ override_dh_auto_configure:
 
 override_dh_install:
 	make $(MAKE_ARGS) install
+	@mkdir -p $(INSTALL_DIR)
 	dh_install -p$(PKG) --autodest /opt
 
 override_dh_shlibdeps:
