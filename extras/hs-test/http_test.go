@@ -9,21 +9,19 @@ import (
 )
 
 func (s *NsSuite) TestHttpTps() {
-	finished := make(chan error, 1)
-	server_ip := "10.0.0.2"
+	iface := s.netInterfaces[clientInterface]
+	client_ip := iface.Ip4AddressString()
 	port := "8080"
+	finished := make(chan error, 1)
 
 	container := s.getContainerByName("vpp")
 
-	s.log("starting vpp..")
+	// configure vpp in the container
+	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	// start & configure vpp in the container
-	_, err := container.execAction("ConfigureHttpTps")
-	s.assertNil(err)
-
-	go startWget(finished, server_ip, port, "test_file_10M", "client")
+	go startWget(finished, client_ip, port, "test_file_10M", "client")
 	// wait for client
-	err = <-finished
+	err := <-finished
 	s.assertNil(err)
 }
 
@@ -31,16 +29,14 @@ func (s *VethsSuite) TestHttpCli() {
 	serverContainer := s.getContainerByName("server-vpp")
 	clientContainer := s.getContainerByName("client-vpp")
 
-	serverVeth := s.veths["vppsrv"]
+	serverVeth := s.netInterfaces[serverInterfaceName]
 
-	_, err := serverContainer.vppInstance.vppctl("http cli server")
-	s.assertNil(err)
+	serverContainer.vppInstance.vppctl("http cli server")
 
-	uri := "http://" + serverVeth.Address() + "/80"
+	uri := "http://" + serverVeth.Ip4AddressString() + "/80"
 
-	o, err := clientContainer.vppInstance.vppctl("http cli client" +
+	o := clientContainer.vppInstance.vppctl("http cli client" +
 		" uri " + uri + " query /show/version")
-	s.assertNil(err)
 
 	s.log(o)
 	s.assertContains(o, "<html>", "<html> not found in the result!")
@@ -48,10 +44,7 @@ func (s *VethsSuite) TestHttpCli() {
 
 func waitForApp(vppInst *VppInstance, appName string, timeout int) error {
 	for i := 0; i < timeout; i++ {
-		o, err := vppInst.vppctl("show app")
-		if err != nil {
-			return fmt.Errorf("Error ocurred during 'show app'")
-		}
+		o := vppInst.vppctl("show app")
 		if strings.Contains(o, appName) {
 			return nil
 		}

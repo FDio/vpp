@@ -84,6 +84,10 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	return container, nil
 }
 
+func (c *Container) Suite() *HstSuite {
+	return c.suite
+}
+
 func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	for _, v := range c.volumes {
 		if v.isDefaultWorkDir {
@@ -227,14 +231,22 @@ func (c *Container) createFile(destFileName string, content string) error {
  * Executes in detached mode so that the started application can continue to run
  * without blocking execution of test
  */
-func (c *Container) execServer(command string) error {
-	return exechelper.Run("docker exec -d" + c.getEnvVarsAsCliOption() + " " + c.name + " " + command)
+func (c *Container) execServer(command string, arguments ...any) {
+	serverCommand := fmt.Sprintf(command, arguments...)
+	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
+		" " + c.name + " " + serverCommand
+	c.Suite().log(containerExecCommand)
+	c.Suite().assertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) exec(command string) (string, error) {
-	cliCommand := "docker exec" + c.getEnvVarsAsCliOption() + " " + c.name + " " + command
-	byteOutput, err := exechelper.CombinedOutput(cliCommand)
-	return string(byteOutput), err
+func (c *Container) exec(command string, arguments ...any) string {
+	cliCommand := fmt.Sprintf(command, arguments...)
+	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
+		" " + c.name + " " + cliCommand
+	c.Suite().log(containerExecCommand)
+	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
+	c.Suite().assertNil(err)
+	return string(byteOutput)
 }
 
 func (c *Container) execAction(args string) (string, error) {
