@@ -23,9 +23,9 @@
 #define LDP_DEBUG_INIT 0
 #endif
 
+#include <vcl/ldp_glibc_socket.h>
 #include <vppinfra/error.h>
 #include <vppinfra/types.h>
-#include <vcl/ldp_glibc_socket.h>
 
 #define LDP_ENV_DEBUG     "LDP_DEBUG"
 #define LDP_ENV_APP_NAME  "LDP_APP_NAME"
