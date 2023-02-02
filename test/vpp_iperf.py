@@ -36,7 +36,7 @@ class VppIperf:
         self.server_args = ""
         self.logger = logger
         # Set the iperf executable
-        self.iperf = os.path.join(os.getenv("TEST_DATA_DIR") or "/", "usr/bin/iperf")
+        self.iperf = self.get_iperf()
 
     def ensure_init(self):
         if self.server_ns and self.client_ns and self.server_ip:
@@ -45,6 +45,24 @@ class VppIperf:
             raise Exception(
                 "Error: Cannot Start." "iPerf object has not been initialized"
             )
+
+    def get_iperf(self):
+        """Return the iperf executable for running tests.
+
+        Look for the iperf executable in the following order
+        1. ${TEST_DATA_DIR}/usr/bin/iperf  # running tests inside the VM
+        2. /usr/bin/iperf3                 # running tests on the host
+        """
+        vm_test_dir = os.getenv("TEST_DATA_DIR", "/tmp/vpp-vm-tests")
+        if os.path.isdir(vm_test_dir):
+            iperf = os.path.join(vm_test_dir, "/usr/bin/iperf")
+        else:
+            iperf = "/usr/bin/iperf3"
+        if os.path.exists(iperf):
+            return iperf
+        else:
+            self.logger.error(f"Could not find an iperf executable for running tests")
+            sys.exit(1)
 
     def start_iperf_server(self):
         args = [
@@ -58,6 +76,7 @@ class VppIperf:
         ]
         args.extend(self.server_args.split())
         args = " ".join(args)
+        self.logger.debug(f"Starting iperf server: {args}")
         try:
             return subprocess.run(
                 args,
