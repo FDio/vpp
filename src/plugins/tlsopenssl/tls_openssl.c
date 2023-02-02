@@ -186,18 +186,20 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
       return 0;
     }
 
-  for (i = 1; i < n_fs; i++)
+  if (read == (int) fs[0].len)
     {
-      rv = SSL_read (ssl, fs[i].data, fs[i].len);
-      read += rv > 0 ? rv : 0;
-
-      if (rv < (int) fs[i].len)
+      for (i = 1; i < n_fs; i++)
 	{
-	  ossl_check_err_is_fatal (ssl, rv);
-	  break;
+	  rv = SSL_read (ssl, fs[i].data, fs[i].len);
+	  read += rv > 0 ? rv : 0;
+
+	  if (rv < (int) fs[i].len)
+	    {
+	      ossl_check_err_is_fatal (ssl, rv);
+	      break;
+	    }
 	}
     }
-
   svm_fifo_enqueue_nocopy (f, read);
 
   return read;
