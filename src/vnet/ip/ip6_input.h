@@ -112,6 +112,7 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[0] = IP_INPUT_NEXT_DROP;
 	}
+      b[0]->error = error_node->errors[error[0]];
     }
   if (PREDICT_FALSE (error[1] != IP6_ERROR_NONE))
     {
@@ -126,6 +127,7 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[1] = IP_INPUT_NEXT_DROP;
 	}
+      b[1]->error = error_node->errors[error[1]];
     }
   if (PREDICT_FALSE (error[2] != IP6_ERROR_NONE))
     {
@@ -140,6 +142,7 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[2] = IP_INPUT_NEXT_DROP;
 	}
+      b[2]->error = error_node->errors[error[2]];
     }
   if (PREDICT_FALSE (error[3] != IP6_ERROR_NONE))
     {
@@ -154,6 +157,7 @@ ip6_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[3] = IP_INPUT_NEXT_DROP;
 	}
+      b[3]->error = error_node->errors[error[3]];
     }
 }
 
@@ -207,6 +211,7 @@ ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[0] = IP_INPUT_NEXT_DROP;
 	}
+      b[0]->error = error_node->errors[error[0]];
     }
   if (PREDICT_FALSE (error[1] != IP6_ERROR_NONE))
     {
@@ -221,6 +226,7 @@ ip6_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[1] = IP_INPUT_NEXT_DROP;
 	}
+      b[1]->error = error_node->errors[error[1]];
     }
 }
 
@@ -262,6 +268,7 @@ ip6_input_check_x1 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
 	{
 	  next[0] = IP_INPUT_NEXT_DROP;
 	}
+      b[0]->error = error_node->errors[error0];
     }
 }
 
