@@ -419,6 +419,10 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 			       lip->lip_phy_sw_if_index);
 	      return;
 	    }
+
+	  /* pool could grow during the previous operation */
+	  lip = lcp_itf_pair_get (lipi);
+
 	  /* create the vlan interface on the parent host */
 	  if (vnet_create_sub_interface (lip->lip_host_sw_if_index, vlan, 18,
 					 0, vlan, &sub_host_sw_if_index))
