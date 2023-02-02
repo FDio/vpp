@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "68d18efd_e842916f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-02-02T11:38:45Z",
+      "side": 1,
+      "message": "Hi Benoit, Your new comments was addressed with patch set 5, please help review again, thanks a lot.",
+      "revId": "c536a18dba267698613431f0271f2877c3ae2208",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
