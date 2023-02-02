@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e12e228b_8deda899",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-02T10:33:05Z",
+      "side": 1,
+      "message": "Why change this? It does not match the environment for \u0027make install-ext-deps\u0027.\nIf you want to match a build env where you do not use it (and where you recompile DPDK etc. from scratch each time) you can add an additional example line (but not remove this one).\nIf you do so, I suggest to make it relative to this makefile so it can match build env other than /opt/vpp, eg. BPF_ROOT?\u003d../../build-root/install-vpp-native/external/include or something similar",
+      "revId": "28bd3ee1e3493dc13c67073a5e797a69493cf2e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eaf3da52_ec9c1fc5",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-02T10:33:05Z",
+      "side": 1,
+      "message": "Is O2 better than O3 here?",
+      "revId": "28bd3ee1e3493dc13c67073a5e797a69493cf2e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
