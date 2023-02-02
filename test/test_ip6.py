@@ -2832,6 +2832,7 @@ class TestIP6Input(VppTestCase):
         )
 
         rxs = self.send_and_expect_some(self.pg0, p_version * NUM_PKTS, self.pg0)
+        self.assert_error_counter_equal("/err/ip6-input/time_expired", NUM_PKTS)
 
         for rx in rxs:
             icmp = rx[ICMPv6TimeExceeded]
@@ -2845,14 +2846,6 @@ class TestIP6Input(VppTestCase):
     @parameterized.expand(
         [
             # Name, src, dst, l4proto, msg, timeout
-            (
-                "src='iface',   dst='iface'",
-                None,
-                None,
-                inet6.UDP(sport=1234, dport=1234),
-                "funky version",
-                None,
-            ),
             (
                 "src='All 0's', dst='iface'",
                 all_0s,
@@ -2903,8 +2896,7 @@ class TestIP6Input(VppTestCase):
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(
                 src=src or self.pg0.remote_ip6,
-                dst=dst or self.pg1.remote_ip6,
-                version=3,
+                dst=dst or self.pg0.local_ip6,
             )
             / l4
             / Raw(b"\xa5" * 100)
@@ -2928,6 +2920,36 @@ class TestIP6Input(VppTestCase):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
+
+    def test_ip_input(self):
+        """IP Input Exceptions"""
+
+        #
+        # Packet too short - this is forwarded
+        #
+        p_short = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, plen=0)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        rx = self.send_and_expect(self.pg0, p_short * NUM_PKTS, self.pg1)
+
+        #
+        # bad version - this is dropped
+        #
+        p_ver = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, version=3)
+            / UDP(sport=1234, dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+
+        rx = self.send_and_assert_no_replies(
+            self.pg0, p_ver * NUM_PKTS, "funky version"
+        )
+        self.assert_error_counter_equal("/err/ip6-input/version", NUM_PKTS)
 
 
 class TestIP6Replace(VppTestCase):
