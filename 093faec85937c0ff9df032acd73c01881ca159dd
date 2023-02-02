@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f684255_9ed54754",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-02T00:08:46Z",
+      "side": 1,
+      "message": "can you please include a UT that is fixed by this change.",
+      "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81df456f_adbae73d",
+        "filename": "src/plugins/abf/abf_itf_attach.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-02T00:08:46Z",
+      "side": 1,
+      "message": "you shouldn\u0027t need this, the returned DPO from the contribute above, should have a DPO proto that\u0027s appropriate for the chain type passed.",
+      "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
