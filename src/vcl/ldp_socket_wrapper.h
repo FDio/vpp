@@ -58,6 +58,10 @@
 #ifndef included_ldp_socket_wrapper_h
 #define included_ldp_socket_wrapper_h
 
+#ifdef HAVE_GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -98,16 +102,16 @@
  * has probably something todo with with the linker.
  * So we need load each function at the point it is called the first time.
  */
-int libc_accept4 (int sockfd, struct sockaddr *addr, socklen_t * addrlen,
+int libc_accept4 (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen,
 		  int flags);
 
-int libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
+int libc_accept (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen);
 
-int libc_bind (int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int libc_bind (int sockfd, __CONST_SOCKADDR_ARG addr, socklen_t addrlen);
 
 int libc_close (int fd);
 
-int libc_connect (int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int libc_connect (int sockfd, __CONST_SOCKADDR_ARG addr, socklen_t addrlen);
 
 #if 0
 /* TBD: dup and dup2 to be implemented later */
@@ -128,9 +132,9 @@ int libc_vfcntl64 (int fd, int cmd, va_list ap);
 
 int libc_vioctl (int fd, int cmd, va_list ap);
 
-int libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
+int libc_getpeername (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen);
 
-int libc_getsockname (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
+int libc_getsockname (int sockfd, __SOCKADDR_ARG addr, socklen_t *addrlen);
 
 int
 libc_getsockopt (int sockfd,
@@ -144,13 +148,15 @@ ssize_t libc_readv (int fd, const struct iovec *iov, int iovcnt);
 
 int libc_recv (int sockfd, void *buf, size_t len, int flags);
 
-int
-libc_recvfrom (int sockfd,
-	       void *buf,
-	       size_t len,
-	       int flags, struct sockaddr *src_addr, socklen_t * addrlen);
+int libc_recvfrom (int sockfd, void *buf, size_t len, int flags,
+		   __SOCKADDR_ARG src_addr, socklen_t *addrlen);
 
 int libc_recvmsg (int sockfd, struct msghdr *msg, int flags);
+
+#ifdef HAVE_GNU_SOURCE
+int libc_recvmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen,
+		   int flags, struct timespec *tmo);
+#endif
 
 int libc_send (int sockfd, const void *buf, size_t len, int flags);
 
@@ -158,11 +164,13 @@ ssize_t libc_sendfile (int out_fd, int in_fd, off_t * offset, size_t len);
 
 int libc_sendmsg (int sockfd, const struct msghdr *msg, int flags);
 
-int
-libc_sendto (int sockfd,
-	     const void *buf,
-	     size_t len,
-	     int flags, const struct sockaddr *dst_addr, socklen_t addrlen);
+#ifdef HAVE_GNU_SOURCE
+int libc_sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen,
+		   int flags);
+#endif
+
+int libc_sendto (int sockfd, const void *buf, size_t len, int flags,
+		 __CONST_SOCKADDR_ARG dst_addr, socklen_t addrlen);
 
 int
 libc_setsockopt (int sockfd,
@@ -210,7 +218,7 @@ int libc_epoll_pwait (int __epfd, struct epoll_event *__events,
 
 int libc_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
 
-#ifdef __USE_GNU
+#ifdef HAVE_GNU_SOURCE
 int libc_ppoll (struct pollfd *__fds, nfds_t __nfds,
 		const struct timespec *__timeout, const __sigset_t * __ss);
 #endif
