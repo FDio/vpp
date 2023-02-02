@@ -75,14 +75,8 @@ func (vc *VppConfig) getTemplate() string {
 	return fmt.Sprintf(vppConfigTemplate, "%[1]s", vc.CliSocketFilePath)
 }
 
-func (vpp *VppInstance) set2VethsServer() {
-	vpp.actionFuncName = "Configure2Veths"
-	vpp.config.Variant = "srv"
-}
-
-func (vpp *VppInstance) set2VethsClient() {
-	vpp.actionFuncName = "Configure2Veths"
-	vpp.config.Variant = "cln"
+func (vpp *VppInstance) Suite() *HstSuite {
+	return vpp.container.suite
 }
 
 func (vpp *VppInstance) setVppProxy() {
@@ -114,10 +108,6 @@ func (vpp *VppInstance) getEtcDir() string {
 }
 
 func (vpp *VppInstance) legacyStart() error {
-	if vpp.actionFuncName == "" {
-		return fmt.Errorf("vpp start failed: action function name must not be blank")
-	}
-
 	serializedConfig, err := serializeVppConfig(vpp.config)
 	if err != nil {
 		return fmt.Errorf("serialize vpp config: %v", err)
@@ -149,9 +139,7 @@ func (vpp *VppInstance) start() error {
 	vpp.container.createFile(startupFileName, configContent)
 
 	// Start VPP
-	if err := vpp.container.execServer("vpp -c " + startupFileName); err != nil {
-		return err
-	}
+	vpp.container.execServer("vpp -c " + startupFileName)
 
 	// Connect to VPP and store the connection
 	sockAddress := vpp.container.GetHostWorkDir() + defaultApiSocketFilePath
@@ -186,16 +174,15 @@ func (vpp *VppInstance) start() error {
 	return nil
 }
 
-func (vpp *VppInstance) vppctl(command string, arguments ...any) (string, error) {
+func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	vppCliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.container.name, vpp.getCliSocket(), vppCliCommand)
+	vpp.Suite().log(containerExecCommand)
 	output, err := exechelper.CombinedOutput(containerExecCommand)
-	if err != nil {
-		return "", fmt.Errorf("vppctl failed: %s", err)
-	}
+	vpp.Suite().assertNil(err)
 
-	return string(output), nil
+	return string(output)
 }
 
 func NewVppInstance(c *Container) *VppInstance {
@@ -228,26 +215,29 @@ func deserializeVppConfig(input string) (VppConfig, error) {
 }
 
 func (vpp *VppInstance) createAfPacket(
-	veth *NetworkInterfaceVeth,
+	netInterface NetInterface,
 ) (interface_types.InterfaceIndex, error) {
+	var veth *NetworkInterfaceVeth
+	veth = netInterface.(*NetworkInterfaceVeth)
+
 	createReq := &af_packet.AfPacketCreateV2{
 		UseRandomHwAddr: true,
 		HostIfName:      veth.Name(),
 	}
-	if veth.hwAddress != (MacAddress{}) {
+	if veth.HwAddress() != (MacAddress{}) {
 		createReq.UseRandomHwAddr = false
-		createReq.HwAddr = veth.hwAddress
+		createReq.HwAddr = veth.HwAddress()
 	}
 	createReply := &af_packet.AfPacketCreateV2Reply{}
 
 	if err := vpp.apiChannel.SendRequest(createReq).ReceiveReply(createReply); err != nil {
 		return 0, err
 	}
-	veth.index = createReply.SwIfIndex
+	veth.SetIndex(createReply.SwIfIndex)
 
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
-		SwIfIndex: veth.index,
+		SwIfIndex: veth.Index(),
 		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
 	}
 	upReply := &interfaces.SwInterfaceSetFlagsReply{}
@@ -257,17 +247,29 @@ func (vpp *VppInstance) createAfPacket(
 	}
 
 	// Add address
-	if veth.ip4Address == (AddressWithPrefix{}) {
-		ipPrefix, err := vpp.container.suite.NewAddress()
-		if err != nil {
-			return 0, err
+	if veth.Ip4AddressWithPrefix() == (AddressWithPrefix{}) {
+		if veth.peerNetworkNamespace != "" {
+			ip4Address, err := veth.addresser.
+				NewIp4AddressWithNamespace(veth.peerNetworkNamespace)
+			if err == nil {
+				veth.SetAddress(ip4Address)
+			} else {
+				return 0, err
+			}
+		} else {
+			ip4Address, err := veth.addresser.
+				NewIp4Address()
+			if err == nil {
+				veth.SetAddress(ip4Address)
+			} else {
+				return 0, err
+			}
 		}
-		veth.ip4Address = ipPrefix
 	}
 	addressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
-		SwIfIndex: veth.index,
-		Prefix:    veth.ip4Address,
+		SwIfIndex: veth.Index(),
+		Prefix:    veth.Ip4AddressWithPrefix(),
 	}
 	addressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
@@ -275,7 +277,7 @@ func (vpp *VppInstance) createAfPacket(
 		return 0, err
 	}
 
-	return veth.index, nil
+	return veth.Index(), nil
 }
 
 func (vpp *VppInstance) addAppNamespace(
