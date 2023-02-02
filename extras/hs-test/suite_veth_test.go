@@ -14,13 +14,6 @@ type VethsSuite struct {
 	HstSuite
 }
 
-var ConvertedTests = map[string]any{
-	"TestVeths/TestEchoBuiltin":    "",
-	"TestVeths/TestHttpCli":        "",
-	"TestVeths/TestVclEchoTcp":     "",
-	"TestVeths/TestVclRetryAttach": "",
-}
-
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 
@@ -32,11 +25,6 @@ func (s *VethsSuite) SetupSuite() {
 func (s *VethsSuite) SetupTest() {
 	s.SetupVolumes()
 	s.SetupContainers()
-
-	// TODO remove this after all tests are converted to configuration from test suite
-	if _, ok := ConvertedTests[s.T().Name()]; !ok {
-		return
-	}
 
 	// Setup test conditions
 
@@ -69,7 +57,7 @@ func (s *VethsSuite) setupServerVpp() {
 	err := serverVpp.start()
 	s.assertNil(err)
 
-	serverVeth := s.veths["vppsrv"]
+	serverVeth := s.netInterfaces[serverInterfaceName]
 	idx, err := serverVpp.createAfPacket(serverVeth)
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
@@ -86,7 +74,7 @@ func (s *VethsSuite) setupClientVpp() {
 	err := clientVpp.start()
 	s.assertNil(err)
 
-	clientVeth := s.veths["vppcln"]
+	clientVeth := s.netInterfaces[clientInterfaceName]
 	idx, err := clientVpp.createAfPacket(clientVeth)
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
