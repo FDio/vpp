@@ -30,6 +30,11 @@ add_vpp_library(vppcom
   api_headers
 )
 
+option(LDP_HAS_GNU_SOURCE "LDP configured to use _GNU_SOURCE" ON)
+if (LDP_HAS_GNU_SOURCE)
+  add_compile_definitions(HAVE_GNU_SOURCE)
+endif(LDP_HAS_GNU_SOURCE)
+
 add_vpp_library(vcl_ldpreload
   SOURCES
   ldp_socket_wrapper.c
