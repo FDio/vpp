@@ -12,6 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifdef HAVE_GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
@@ -51,6 +56,12 @@
 #endif
 
 #define LDP_MAX_NWORKERS 32
+
+#ifdef HAVE_GNU_SOURCE
+#define SOCKADDR_GET_SA(__addr) __addr.__sockaddr__;
+#else
+#define SOCKADDR_GET_SA(__addr) _addr;
+#endif
 
 typedef struct ldp_worker_ctx_
 {
@@ -1052,8 +1063,9 @@ socketpair (int domain, int type, int protocol, int fds[2])
 }
 
 int
-bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
+bind (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 {
+  const struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t vlsh;
   int rv;
 
@@ -1124,11 +1136,10 @@ done:
 }
 
 static inline int
-ldp_copy_ep_to_sockaddr (__SOCKADDR_ARG addr, socklen_t * __restrict len,
-			 vppcom_endpt_t * ep)
+ldp_copy_ep_to_sockaddr (struct sockaddr *addr, socklen_t *__restrict len,
+			 vppcom_endpt_t *ep)
 {
-  int rv = 0;
-  int sa_len, copy_len;
+  int rv = 0, sa_len, copy_len;
 
   ldp_init_check ();
 
@@ -1169,8 +1180,9 @@ ldp_copy_ep_to_sockaddr (__SOCKADDR_ARG addr, socklen_t * __restrict len,
 }
 
 int
-getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
+getsockname (int fd, __SOCKADDR_ARG _addr, socklen_t *__restrict len)
 {
+  struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t vlsh;
   int rv;
 
@@ -1203,15 +1215,16 @@ getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
     }
   else
     {
-      rv = libc_getsockname (fd, addr, len);
+      rv = libc_getsockname (fd, _addr, len);
     }
 
   return rv;
 }
 
 int
-connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
+connect (int fd, __CONST_SOCKADDR_ARG _addr, socklen_t len)
 {
+  const struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t vlsh;
   int rv;
 
@@ -1291,8 +1304,9 @@ done:
 }
 
 int
-getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
+getpeername (int fd, __SOCKADDR_ARG _addr, socklen_t *__restrict len)
 {
+  struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t vlsh;
   int rv;
 
@@ -1543,8 +1557,9 @@ __recv_chk (int fd, void *buf, size_t n, size_t buflen, int flags)
 static inline int
 ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n,
 	       vppcom_endpt_tlv_t *ep_tlv, int flags,
-	       __CONST_SOCKADDR_ARG addr, socklen_t addr_len)
+	       __CONST_SOCKADDR_ARG _addr, socklen_t addr_len)
 {
+  const struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vppcom_endpt_t *ep = 0;
   vppcom_endpt_t _ep;
 
@@ -1582,11 +1597,11 @@ ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n,
 }
 
 static int
-ldp_vls_recvfrom (vls_handle_t vlsh, void *__restrict buf, size_t n,
-		  int flags, __SOCKADDR_ARG addr,
-		  socklen_t * __restrict addr_len)
+ldp_vls_recvfrom (vls_handle_t vlsh, void *__restrict buf, size_t n, int flags,
+		  __SOCKADDR_ARG _addr, socklen_t *__restrict addr_len)
 {
   u8 src_addr[sizeof (struct sockaddr_in6)];
+  struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vppcom_endpt_t ep;
   ssize_t size;
   int rv;
@@ -1611,8 +1626,9 @@ ldp_vls_recvfrom (vls_handle_t vlsh, void *__restrict buf, size_t n,
 
 ssize_t
 sendto (int fd, const void *buf, size_t n, int flags,
-	__CONST_SOCKADDR_ARG addr, socklen_t addr_len)
+	__CONST_SOCKADDR_ARG _addr, socklen_t addr_len)
 {
+  const struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t vlsh;
   ssize_t size;
 
@@ -1723,7 +1739,7 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
   return size;
 }
 
-#ifdef USE_GNU
+#ifdef _GNU_SOURCE
 int
 sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
 {
@@ -1822,7 +1838,7 @@ recvmsg (int fd, struct msghdr * msg, int flags)
   return size;
 }
 
-#ifdef USE_GNU
+#ifdef _GNU_SOURCE
 int
 recvmmsg (int fd, struct mmsghdr *vmessages,
 	  unsigned int vlen, int flags, struct timespec *tmo)
@@ -2139,9 +2155,10 @@ listen (int fd, int n)
 }
 
 static inline int
-ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
-	     socklen_t * __restrict addr_len, int flags)
+ldp_accept4 (int listen_fd, __SOCKADDR_ARG _addr,
+	     socklen_t *__restrict addr_len, int flags)
 {
+  struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vls_handle_t listen_vlsh, accept_vlsh;
   int rv;
 
@@ -2671,7 +2688,7 @@ done:
   return rv;
 }
 
-#ifdef USE_GNU
+#ifdef _GNU_SOURCE
 int
 ppoll (struct pollfd *fds, nfds_t nfds,
        const struct timespec *timeout, const sigset_t * sigmask)
