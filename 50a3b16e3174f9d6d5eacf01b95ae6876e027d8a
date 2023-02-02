@@ -87,6 +87,24 @@
       "parentUuid": "8f0cd30e_783c09e8",
       "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d447843_8544cd5e",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-02-02T02:30:47Z",
+      "side": 1,
+      "message": "Done. Added type casting to u64 for aad_len",
+      "parentUuid": "0935d67e_2f81d855",
+      "revId": "50a3b16e3174f9d6d5eacf01b95ae6876e027d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
