@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/edwarnicke/exechelper"
 )
@@ -30,7 +31,15 @@ func testProxyHttpTcp(s *NsSuite) error {
 
 	s.log("http server started...")
 
-	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused --retry-on-http-error=503 --tries=10 -O %s 10.0.0.2:555/%s", outputFile, srcFile)
+	clientVeth := s.netInterfaces[clientInterface]
+	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused"+
+		" --retry-on-http-error=503 --tries=10"+
+		" -O %s %s:555/%s",
+		outputFile,
+		clientVeth.AddressString(),
+		srcFile,
+	)
+	s.log(c)
 	_, err = exechelper.CombinedOutput(c)
 	s.assertNil(err, "failed to run wget")
 	stopServer <- struct{}{}
@@ -42,16 +51,18 @@ func testProxyHttpTcp(s *NsSuite) error {
 }
 
 func configureVppProxy(s *NsSuite) error {
-	container := s.getContainerByName("vpp")
-	testVppProxy := NewVppInstance(container)
-	testVppProxy.setVppProxy()
-	err := testVppProxy.start()
-	s.assertNil(err, "failed to start and configure VPP")
-	s.log("VPP running and configured...")
+	serverVeth := s.netInterfaces[serverInterface].(*NetworkInterfaceVeth)
+	clientVeth := s.netInterfaces[clientInterface]
 
-	output, err := testVppProxy.vppctl("test proxy server server-uri tcp://10.0.0.2/555 client-uri tcp://10.0.1.1/666")
-	s.log("Proxy configured...", string(output))
-	return err
+	testVppProxy := s.getContainerByName("vpp").vppInstance
+	output := testVppProxy.vppctl(
+		"test proxy server server-uri tcp://%s/555 client-uri tcp://%s/666",
+		clientVeth.AddressString(),
+		strings.Split(serverVeth.peerIp4Address, "/")[0],
+	)
+	s.log("Proxy configured...", output)
+	s.log("VPP running and configured...")
+	return nil
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
@@ -62,12 +73,6 @@ func (s *NsSuite) TestVppProxyHttpTcp() {
 }
 
 func configureEnvoyProxy(s *NsSuite) error {
-	vppContainer := s.getContainerByName("vpp")
-	testVppForEnvoyProxy := NewVppInstance(vppContainer)
-	testVppForEnvoyProxy.setEnvoyProxy()
-	err := testVppForEnvoyProxy.start()
-	s.assertNil(err, "failed to start and configure VPP")
-
 	envoyContainer := s.getContainerByName("envoy")
 	return envoyContainer.run()
 }
