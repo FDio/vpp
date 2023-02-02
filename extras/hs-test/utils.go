@@ -98,7 +98,7 @@ func StartServerApp(running chan error, done chan struct{}, env []string) {
 	cmd.Process.Kill()
 }
 
-func StartClientApp(env []string, clnCh chan error, clnRes chan string) {
+func StartClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
 	defer func() {
 		clnCh <- nil
 	}()
@@ -106,7 +106,7 @@ func StartClientApp(env []string, clnCh chan error, clnRes chan string) {
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", "10.10.10.1", "-u", "-l", "1460", "-b", "10g")
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
 		if env != nil {
 			cmd.Env = env
 		}
@@ -183,11 +183,14 @@ func startWget(finished chan error, server_ip, port, query, netNs string) {
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := NewCommand([]string{"wget", "--no-proxy", "--tries=5", "-q", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+	cmd := NewCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
 		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
+		return
+	} else if strings.Contains(string(o), "200 OK") == false {
+		finished <- fmt.Errorf("wget error: response not 200 OK")
 		return
 	}
 	finished <- nil

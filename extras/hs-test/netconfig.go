@@ -12,35 +12,56 @@ import (
 )
 
 type (
-	AddressWithPrefix = ip_types.AddressWithPrefix
 	MacAddress        = ethernet_types.MacAddress
+	AddressWithPrefix = ip_types.AddressWithPrefix
+	InterfaceIndex    = interface_types.InterfaceIndex
 
-	NetConfig struct {
+	LegacyNetConfig struct {
 		Configure   func() error
 		Unconfigure func()
 	}
 
-	NetTopology []NetConfig
+	NetTopology []LegacyNetConfig
+
+	NetConfig interface {
+		Configure() error
+		Unconfigure()
+		Name() string
+		Type() string
+	}
 
 	NetConfigBase struct {
 		name     string
 		category string // what else to call this when `type` is reserved?
 	}
 
-	NetworkInterfaceVeth struct {
+	NetInterface interface {
+		NetConfig
+		SetAddress(string)
+		Ip4AddressWithPrefix() AddressWithPrefix
+		Ip4AddressString() string
+		SetIndex(InterfaceIndex)
+		Index() InterfaceIndex
+		HwAddress() MacAddress
+	}
+
+	NetInterfaceBase struct {
 		NetConfigBase
-		index                interface_types.InterfaceIndex
+		addresser  *Addresser
+		ip4address string // this will have form 10.10.10.1/24
+		index      InterfaceIndex
+		hwAddress  MacAddress
+	}
+
+	NetworkInterfaceVeth struct {
+		NetInterfaceBase
 		peerNetworkNamespace string
 		peerName             string
 		peerIp4Address       string
-		ip4Address           ip_types.AddressWithPrefix
-		hwAddress            ethernet_types.MacAddress
 	}
 
 	NetworkInterfaceTap struct {
-		NetConfigBase
-		index      interface_types.InterfaceIndex
-		ip4Address string
+		NetInterfaceBase
 	}
 
 	NetworkNamespace struct {
@@ -61,15 +82,40 @@ const (
 	Bridge string = "bridge"
 )
 
-func (b NetConfigBase) Name() string {
+func (b *NetConfigBase) Name() string {
 	return b.name
 }
 
-func (b NetConfigBase) Type() string {
+func (b *NetConfigBase) Type() string {
 	return b.category
 }
 
-func (iface NetworkInterfaceVeth) Configure() error {
+func (b *NetInterfaceBase) SetAddress(address string) {
+	b.ip4address = address
+}
+
+func (b *NetInterfaceBase) SetIndex(index InterfaceIndex) {
+	b.index = index
+}
+
+func (b *NetInterfaceBase) Index() InterfaceIndex {
+	return b.index
+}
+
+func (b *NetInterfaceBase) Ip4AddressWithPrefix() AddressWithPrefix {
+	address, _ := ip_types.ParseAddressWithPrefix(b.ip4address)
+	return address
+}
+
+func (b *NetInterfaceBase) Ip4AddressString() string {
+	return strings.Split(b.ip4address, "/")[0]
+}
+
+func (b *NetInterfaceBase) HwAddress() MacAddress {
+	return b.hwAddress
+}
+
+func (iface *NetworkInterfaceVeth) Configure() error {
 	err := AddVethPair(iface.name, iface.peerName)
 	if err != nil {
 		return err
@@ -91,39 +137,39 @@ func (iface NetworkInterfaceVeth) Configure() error {
 	return nil
 }
 
-func (iface NetworkInterfaceVeth) Unconfigure() {
+func (iface *NetworkInterfaceVeth) Unconfigure() {
 	DelLink(iface.name)
 }
 
-func (iface NetworkInterfaceVeth) Address() string {
-	return strings.Split(iface.ip4Address.String(), "/")[0]
+func (iface *NetworkInterfaceVeth) PeerIp4AddressString() string {
+	return strings.Split(iface.peerIp4Address, "/")[0]
 }
 
-func (iface NetworkInterfaceTap) Configure() error {
-	err := AddTap(iface.name, iface.ip4Address)
+func (iface *NetworkInterfaceTap) Configure() error {
+	err := AddTap(iface.name, iface.Ip4AddressString())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (iface NetworkInterfaceTap) Unconfigure() {
+func (iface *NetworkInterfaceTap) Unconfigure() {
 	DelLink(iface.name)
 }
 
-func (ns NetworkNamespace) Configure() error {
+func (ns *NetworkNamespace) Configure() error {
 	return addDelNetns(ns.name, true)
 }
 
-func (ns NetworkNamespace) Unconfigure() {
+func (ns *NetworkNamespace) Unconfigure() {
 	addDelNetns(ns.name, false)
 }
 
-func (b NetworkBridge) Configure() error {
+func (b *NetworkBridge) Configure() error {
 	return AddBridge(b.name, b.interfaces, b.networkNamespace)
 }
 
-func (b NetworkBridge) Unconfigure() {
+func (b *NetworkBridge) Unconfigure() {
 	DelBridge(b.name, b.networkNamespace)
 }
 
@@ -176,8 +222,6 @@ func newConfigFn(cfg NetDevConfig) func() error {
 		}
 	} else if t == "bridge" {
 		return func() error { return configureBridge(cfg) }
-	} else if t == "tap" {
-		return func() error { return configureTap(cfg) }
 	}
 	return nil
 }
@@ -186,9 +230,7 @@ func newUnconfigFn(cfg NetDevConfig) func() {
 	t := cfg["type"]
 	name := cfg["name"].(string)
 
-	if t == "tap" {
-		return func() { DelLink(name) }
-	} else if t == "netns" {
+	if t == "netns" {
 		return func() { DelNetns(name) }
 	} else if t == "veth" {
 		return func() { DelLink(name) }
@@ -198,8 +240,8 @@ func newUnconfigFn(cfg NetDevConfig) func() {
 	return nil
 }
 
-func NewNetConfig(cfg NetDevConfig) NetConfig {
-	var nc NetConfig
+func NewNetConfig(cfg NetDevConfig) LegacyNetConfig {
+	var nc LegacyNetConfig
 
 	nc.Configure = newConfigFn(cfg)
 	nc.Unconfigure = newUnconfigFn(cfg)
@@ -225,9 +267,10 @@ func NewBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	return bridge, nil
 }
 
-func NewVeth(cfg NetDevConfig) (NetworkInterfaceVeth, error) {
+func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
 	var veth NetworkInterfaceVeth
 	var err error
+	veth.addresser = a
 	veth.name = cfg["name"].(string)
 	veth.category = "veth"
 
@@ -246,18 +289,27 @@ func NewVeth(cfg NetDevConfig) (NetworkInterfaceVeth, error) {
 		veth.peerNetworkNamespace = peer["netns"].(string)
 	}
 
-	if peer["ip4"] != nil {
-		veth.peerIp4Address = peer["ip4"].(string)
+	if peer["ip4"] != nil && peer["ip4"].(bool) == true {
+		veth.peerIp4Address, err = veth.addresser.
+			NewIp4AddressWithNamespace(veth.peerNetworkNamespace)
+		if err != nil {
+			return NetworkInterfaceVeth{}, err
+		}
 	}
 
 	return veth, nil
 }
 
-func NewTap(cfg NetDevConfig) (NetworkInterfaceTap, error) {
+func NewTap(cfg NetDevConfig, a *Addresser) (NetworkInterfaceTap, error) {
 	var tap NetworkInterfaceTap
+	tap.addresser = a
 	tap.name = cfg["name"].(string)
 	tap.category = "tap"
-	tap.ip4Address = cfg["ip4"].(string)
+	ip4Address, err := tap.addresser.NewIp4Address()
+	if err != nil {
+		return NetworkInterfaceTap{}, err
+	}
+	tap.SetAddress(ip4Address)
 	return tap, nil
 }
 
