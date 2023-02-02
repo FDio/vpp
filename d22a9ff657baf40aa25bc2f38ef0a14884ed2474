@@ -16,6 +16,40 @@
       "message": "Hi！ Mentainers.\nPlease continue the review　🙇",
       "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86b489b5_602ea68f",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-02T00:20:27Z",
+      "side": 1,
+      "message": "you shouldn\u0027t need this.",
+      "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d73b83d_4acdb8ad",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-02T00:20:27Z",
+      "side": 1,
+      "message": "does the compiler optimise out this byte swap? if not define a GTPV1_PORT_BE.",
+      "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
