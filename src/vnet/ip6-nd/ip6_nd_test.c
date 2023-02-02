@@ -325,6 +325,63 @@ api_ip6nd_proxy_enable_disable (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_sw_interface_ip6nd_ra_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip6nd_ra_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_IP6ND_RA_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* Send it */
+  S (mp);
+
+  /* Use control ping for synchronization */
+  PING (&ip6_nd_test_main, mp_ping);
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
+static void
+vl_api_sw_interface_ip6nd_ra_details_t_handler (
+  vl_api_sw_interface_ip6nd_ra_details_t *mp)
+{
+  vat_main_t *vam = ip6_nd_test_main.vat_main;
+  u32 sw_if_index;
+  u8 send_radv;
+
+  /* Read the message */
+  sw_if_index = ntohl (mp->sw_if_index);
+  send_radv = mp->send_radv;
+
+  /* Print it */
+  print (vam->ofp, "sw_if_index: %u, send_radv: %s", sw_if_index,
+	 (send_radv ? "on" : "off"));
+}
+
 #include <ip6-nd/ip6_nd.api_test.c>
 
 /*

@@ -779,6 +779,85 @@ class TestIPv6(TestIPv6ND):
         rx = rx[0]
         self.validate_ra(intf, rx, dst_ip, src_ip=src_ip, pi_opt=opt)
 
+    def test_ip6_ra_dump(self):
+        """IPv6 RA dump"""
+
+        # Dump IPv6 RA for all interfaces
+        ip6_ra_dump = self.vapi.sw_interface_ip6nd_ra_dump(sw_if_index=0xFFFFFFFF)
+        self.assertEqual(len(ip6_ra_dump), len(self.interfaces))
+
+        for ip6_ra in ip6_ra_dump:
+            self.assertFalse(ip6_ra.send_radv)
+            self.assertEqual(ip6_ra.n_prefixes, 0)
+            self.assertEqual(len(ip6_ra.prefixes), 0)
+            self.assertEqual(ip6_ra.last_radv_time, 0.0)
+            self.assertEqual(ip6_ra.last_multicast_time, 0.0)
+            self.assertEqual(ip6_ra.next_multicast_time, 0.0)
+            self.assertEqual(ip6_ra.n_advertisements_sent, 0)
+            self.assertEqual(ip6_ra.n_solicitations_rcvd, 0)
+            self.assertEqual(ip6_ra.n_solicitations_dropped, 0)
+
+        # Enable sending IPv6 RA for an interface
+        self.pg0.ip6_ra_config(no=1, suppress=1)
+
+        # Add IPv6 RA prefixes for the interface
+        pfx0 = IPv6Network(
+            "%s/%s" % (self.pg0.local_ip6, self.pg0.local_ip6_prefix_len), strict=False
+        )
+        pfx1 = IPv6Network("fafa::/96")
+        self.pg0.ip6_ra_prefix(pfx0, off_link=0, no_autoconfig=0)
+        self.pg0.ip6_ra_prefix(pfx1, off_link=1, no_autoconfig=1)
+
+        # Wait for multicast IPv6 RA
+        self.sleep(1)
+
+        # Dump IPv6 RA for the interface
+        ip6_ra_dump = self.vapi.sw_interface_ip6nd_ra_dump(
+            sw_if_index=self.pg0.sw_if_index
+        )
+        self.assertEqual(len(ip6_ra_dump), 1)
+        ip6_ra = ip6_ra_dump[0]
+
+        self.assertEqual(ip6_ra.sw_if_index, self.pg0.sw_if_index)
+        self.assertTrue(ip6_ra.send_radv)
+        self.assertEqual(ip6_ra.n_prefixes, 2)
+        self.assertEqual(len(ip6_ra.prefixes), 2)
+        self.assertEqual(ip6_ra.last_radv_time, 0.0)
+        self.assertGreater(ip6_ra.last_multicast_time, 0.0)
+        self.assertGreater(ip6_ra.next_multicast_time, 0.0)
+        self.assertGreater(ip6_ra.n_advertisements_sent, 0)
+        self.assertEqual(ip6_ra.n_solicitations_rcvd, 0)
+        self.assertEqual(ip6_ra.n_solicitations_dropped, 0)
+
+        self.assertEqual(ip6_ra.prefixes[0].prefix, pfx0)
+        self.assertTrue(ip6_ra.prefixes[0].onlink_flag)
+        self.assertTrue(ip6_ra.prefixes[0].autonomous_flag)
+        self.assertFalse(ip6_ra.prefixes[0].no_advertise)
+
+        self.assertEqual(ip6_ra.prefixes[1].prefix, pfx1)
+        self.assertFalse(ip6_ra.prefixes[1].onlink_flag)
+        self.assertFalse(ip6_ra.prefixes[1].autonomous_flag)
+        self.assertFalse(ip6_ra.prefixes[1].no_advertise)
+
+        # Reset sending IPv6 RA for the interface
+        self.pg0.ip6_ra_config(suppress=1)
+
+        # Remove IPv6 RA prefixes for the interface
+        self.pg0.ip6_ra_prefix(pfx0, is_no=1)
+        self.pg0.ip6_ra_prefix(pfx1, is_no=1)
+
+        # Dump IPv6 RA for the interface
+        ip6_ra_dump = self.vapi.sw_interface_ip6nd_ra_dump(
+            sw_if_index=self.pg0.sw_if_index
+        )
+        self.assertEqual(len(ip6_ra_dump), 1)
+        ip6_ra = ip6_ra_dump[0]
+
+        self.assertEqual(ip6_ra.sw_if_index, self.pg0.sw_if_index)
+        self.assertFalse(ip6_ra.send_radv)
+        self.assertEqual(ip6_ra.n_prefixes, 0)
+        self.assertEqual(len(ip6_ra.prefixes), 0)
+
     def test_rs(self):
         """IPv6 Router Solicitation Exceptions
 
