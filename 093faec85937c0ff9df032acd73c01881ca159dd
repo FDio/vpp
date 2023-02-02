@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f2ddf2b_ab7298ab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2023-02-02T10:58:52Z",
+      "side": 1,
+      "message": "ICMP6 packet goes via abg-input-ip6 and then into ip4\nIt happens when we choose ipv6-next-hop is set to local. The same with ICMP4 works as expected. I\u0027ve just found that DPO protocol is always V4 in both cases for both FIB_PROTOCOLs\n\nIf you meant trace - here it is:\n\n00:13:16:494476: dpdk-input\n  GigabitEthernet0/9/0 rx queue 0\n  buffer 0x12f551: current data 0, length 118, buffer-pool 0, ref-count 1, trace\n handle 0x3\n                   ext-hdr-valid\n  PKT MBUF: port 1, nb_segs 1, pkt_len 118\n    buf_len 2176, data_len 118, ol_flags 0x0, data_off 128, phys_addr 0x737d54c0\n\n    packet_type 0x0 l2_len 0 l3_len 0 outer_l2_len 0 outer_l3_len 0\n    rss 0x0 fdir.hi 0x0 fdir.lo 0x0\n  IP6: 08:00:27:b5:1d:93 -\u003e 08:00:27:fc:97:cc\n  ICMP6: 2001:db8:10::100 -\u003e fc00:100:100::1\n    tos 0x00, flow label 0x2c568, hop limit 64, payload length 64\n00:13:16:494484: ethernet-input\n  frame: flags 0x1, hw-if-index 2, sw-if-index 2\n  IP6: 08:00:27:b5:1d:93 -\u003e 08:00:27:fc:97:cc\n00:13:16:494488: ip6-input\n  ICMP6: 2001:db8:10::100 -\u003e fc00:100:100::1\n    tos 0x00, flow label 0x2c568, hop limit 64, payload length 64\n00:13:16:494490: abf-input-ip6\n   next 1 index 2\n00:13:16:494493: ip4-null\n  ip4-null action:send-prohibited\n00:13:16:494494: ip4-icmp-error\n  ICMP: 0.16.0.0 -\u003e 0.0.0.0\n    version 6, header length 0\n    tos 0x02, ttl 32, length 50536, checksum 0x0db8 (should be 0x8003) dscp CS0\necn ECT_1\n    fragment id 0x0040 offset 53760, flags MORE_FRAGMENTS\n00:13:16:494497: ip4-drop\n    ICMP: 0.16.0.0 -\u003e 0.0.0.0\n      version 6, header length 0\n      tos 0x02, ttl 32, length 50536, checksum 0x0db8 (should be 0x8003) dscp CS\n0 ecn ECT_1\n      fragment id 0x0040 offset 53760, flags MORE_FRAGMENTS\n00:13:16:494498: error-drop\n  rx:GigabitEthernet0/9/0\n00:13:16:494499: drop\n  dpdk-input: no error",
+      "parentUuid": "9f684255_9ed54754",
+      "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "81df456f_adbae73d",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-02-02T00:08:46Z",
       "side": 1,
       "message": "you shouldn\u0027t need this, the returned DPO from the contribute above, should have a DPO proto that\u0027s appropriate for the chain type passed.",
+      "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e2b8e7e_c0d92e78",
+        "filename": "src/plugins/abf/abf_itf_attach.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2023-02-02T10:58:52Z",
+      "side": 1,
+      "message": "Ok, i\u0027ll check it. Maybe it\u0027s really an extra and i\u0027ve not checked changes done in different order",
+      "parentUuid": "81df456f_adbae73d",
       "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
