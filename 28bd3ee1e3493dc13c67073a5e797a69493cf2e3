@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f3167eb_09696fae",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-02-02T11:36:39Z",
+      "side": 1,
+      "message": "Hi Benoit, thanks for you explaination, now I understand initial value\u0027s purpose,\nrestored to its original value with patchset 5.",
+      "parentUuid": "e12e228b_8deda899",
+      "revId": "28bd3ee1e3493dc13c67073a5e797a69493cf2e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eaf3da52_ec9c1fc5",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-02-02T10:33:05Z",
       "side": 1,
       "message": "Is O2 better than O3 here?",
+      "revId": "28bd3ee1e3493dc13c67073a5e797a69493cf2e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18820b80_c151784b",
+        "filename": "extras/bpf/Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-02-02T11:36:39Z",
+      "side": 1,
+      "message": "Just noticed that libbpf and libxdp always use -O2 for the build, maybe align with that is good. Since here is an example, let the user decide that is fine, so restored to its original value with patchset 5",
+      "parentUuid": "eaf3da52_ec9c1fc5",
       "revId": "28bd3ee1e3493dc13c67073a5e797a69493cf2e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
