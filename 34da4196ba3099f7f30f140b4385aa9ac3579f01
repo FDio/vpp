@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ff37706c_9e805d7c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2023-02-03T18:40:11Z",
+      "side": 1,
+      "message": "Hi Ahmed,\nI guess you sent your comments to Takeru (not me)... Anyway, I agree with you. The encap source must be an option. only when specifying the encap source upon creating a new policy, this encap source must be used.\n\nHi Takeru,\nPlease double-check if your code is align to the above logic?",
+      "parentUuid": "330882ad_1133b011",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4bdc817d_5eb8ab0f",
         "filename": "src/vnet/srv6/sr.api",
         "patchSetId": 4
