@@ -1843,47 +1843,55 @@ int
 recvmmsg (int fd, struct mmsghdr *vmessages,
 	  unsigned int vlen, int flags, struct timespec *tmo)
 {
-  ssize_t size;
-  const char *func_str;
-  u32 sh = ldp_fd_to_vlsh (fd);
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  u32 sh;
 
   ldp_init_check ();
 
+  sh = ldp_fd_to_vlsh (fd);
+
   if (sh != VLS_INVALID_HANDLE)
     {
-      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
-      errno = ENOSYS;
-      size = -1;
+      struct mmsghdr *mh;
+      u32 nvecs = 0;
+      f64 time_out;
+      ssize_t rv;
+
+      if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+	clib_time_init (&ldpw->clib_time);
+      if (tmo)
+	{
+	  time_out = (f64) tmo->tv_sec + (f64) tmo->tv_nsec / (f64) 1e9;
+	  time_out += clib_time_now (&ldpw->clib_time);
+	}
+      else
+	{
+	  time_out = (f64) ~0;
+	}
+
+      while (nvecs < vlen)
+	{
+	  mh = &vmessages[nvecs];
+	  rv = recvmsg (fd, &mh->msg_hdr, flags);
+	  if (rv > 0)
+	    {
+	      mh->msg_len = rv;
+	      nvecs += 1;
+	      continue;
+	    }
+
+	  if (!time_out || clib_time_now (&ldpw->clib_time) >= time_out)
+	    break;
+
+	  usleep (1);
+	}
+
+      return nvecs > 0 ? nvecs : rv;
     }
   else
     {
-      func_str = "libc_recvmmsg";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "vmessages %p, vlen %u, flags 0x%x, tmo %p",
-		      getpid (), fd, fd, func_str, vmessages, vlen,
-		      flags, tmo);
-
-      size = libc_recvmmsg (fd, vmessages, vlen, flags, tmo);
+      return libc_recvmmsg (fd, vmessages, vlen, flags, tmo);
     }
-
-  if (LDP_DEBUG > 2)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, size, size);
-    }
-  return size;
 }
 #endif
 
