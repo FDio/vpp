@@ -16,6 +16,24 @@
       "message": "Hi All, with this patch applied, 10k wireguard tunnels test passed.",
       "revId": "de8a8641deaaf905a205dcb0dc12c769ba154678",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60ca75ad_5ece7fe0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-02-03T15:14:04Z",
+      "side": 1,
+      "message": "We have conduct 10k tunnels with 10k peers validation test, in fact there is a new CSIT 10K tunnelling wireguard also passed as we speak.\n\nIn our testcase we did something like this:\n1. Config 10k tunnels with 10k peers – and during this WG was under-load state so max_handhake_cookie value was updated\n2. Send traffic to 10k tunnels – during this for some peers start to re-handshake and under-load state observed again\n3. Waited for 2-5 minutes and traffic flow, no handshake process\n4. Paused traffic for 5-10 minutes\n5. Traffic resumed and again in wg under-load state was observed. \n\nThe magic number 1000 for max_handshake_cookie compare to the real world value should be reasonable small enough. In this design the under-load state is activated in earlier rather than late for the first storm (step 1). Once its value get updated after first storm, the under-load state should activated a bit later (step 2), which is a good thing, we don’t what WG in the under-load state unless it has to. What we observed so far, the rate of normal handshake around 1Kps , and the max_handhake_cookie is update to 60Kps. ",
+      "parentUuid": "0e0a2447_58eedcc2",
+      "revId": "de8a8641deaaf905a205dcb0dc12c769ba154678",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
