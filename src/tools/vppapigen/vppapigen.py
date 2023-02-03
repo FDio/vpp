@@ -752,6 +752,7 @@ class VPPAPIParser:
         """define : DEFINE ID '{' block_statements_opt '}' ';'"""
         self.fields = []
         p[0] = Define(p[2], [], p[4], self.last_comment)
+        self.last_comment = None
 
     def p_define_flist(self, p):
         """define : flist DEFINE ID '{' block_statements_opt '}' ';'"""
@@ -763,6 +764,7 @@ class VPPAPIParser:
             )
         else:
             p[0] = Define(p[3], p[1], p[5], self.last_comment)
+            self.last_comment = None
 
     def p_flist(self, p):
         """flist : flag
