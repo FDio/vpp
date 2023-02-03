@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2e0a1a5_9b616a81",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1162
+      },
+      "writtenOn": "2023-02-03T10:45:36Z",
+      "side": 1,
+      "message": "Please review this fix for incorrect comments in VPP API JSON. ",
+      "revId": "3ac44eaa6e1b3723855007ccf1217d9734afcc91",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
