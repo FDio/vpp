@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e0aaa81_cfe47b70",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 2914
+      },
+      "writtenOn": "2023-02-03T18:16:07Z",
+      "side": 0,
+      "message": "You removed this flag - what was the meaning behind this flag?  Why is it no longer useful?\n\nAlso, if you never set the flag, do you need the code that tests it?",
+      "revId": "946f918a27c194e5a305db607eefb6ec83b5f5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07237fef_9b43a888",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 2914
+      },
+      "writtenOn": "2023-02-03T18:16:07Z",
+      "side": 0,
+      "message": "Is this code used for something other than AES (e.g. 3DES?).  If so, are we sure the changes are appropriate (they might be; I haven\u0027t gone through it in detail)?",
+      "revId": "946f918a27c194e5a305db607eefb6ec83b5f5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
