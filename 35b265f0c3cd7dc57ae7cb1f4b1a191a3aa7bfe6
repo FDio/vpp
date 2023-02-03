@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6eb4bdf_6ef1753b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-02-03T09:19:57Z",
+      "side": 1,
+      "message": "Thanks for this evolution, 2 comments",
+      "revId": "35b265f0c3cd7dc57ae7cb1f4b1a191a3aa7bfe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4517be35_299ff57c",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-02-03T09:19:57Z",
+      "side": 1,
+      "message": "Thinking about this, it could be nice to write the error both in the provided output and stderr. This would allow people to launch this binary both via the Makefile or directly in commandline. Something like:\n```\nmw :\u003d io.MultiWriter(os.Stderr, logWritter)\nlog.SetOutput(mw)\n```",
+      "revId": "35b265f0c3cd7dc57ae7cb1f4b1a191a3aa7bfe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0158cbfa_308433cd",
+        "filename": "extras/vpp_stats_fs/cmd.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-02-03T09:19:57Z",
+      "side": 1,
+      "message": "By default, this will be logged in syslog as an error. I think we should only write error messages in syslog, not info messages. So I would suggest to keep fmt.Printf here. Same goes for the \"Unmounting...\" message.",
+      "revId": "35b265f0c3cd7dc57ae7cb1f4b1a191a3aa7bfe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
