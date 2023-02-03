@@ -302,7 +302,6 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
   session_worker_t *wrk;
   int i, index, found = 0;
   svm_msg_q_msg_t *msg;
-  svm_msg_q_ring_t *ring;
   svm_msg_q_t *mq;
   u8 thread_index;
 
@@ -319,8 +318,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
   for (i = 0; i < sq->cursize; i++)
     {
       msg = (svm_msg_q_msg_t *) (&sq->data[0] + sq->elsize * index);
-      ring = svm_msg_q_ring (mq, msg->ring_index);
-      clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
+      clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
       found = session_node_cmp_event (e, f);
       if (found)
 	return 1;
