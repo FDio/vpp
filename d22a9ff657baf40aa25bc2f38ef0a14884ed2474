@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f4bd29cc_8b3a121f",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-02-03T00:06:50Z",
+      "side": 1,
+      "message": "thank you for review.\nokay i do remove.",
+      "parentUuid": "86b489b5_602ea68f",
+      "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "8d73b83d_4acdb8ad",
         "filename": "src/vnet/ip/ip4_inlines.h",
         "patchSetId": 3
@@ -48,6 +66,24 @@
       "writtenOn": "2023-02-02T00:20:27Z",
       "side": 1,
       "message": "does the compiler optimise out this byte swap? if not define a GTPV1_PORT_BE.",
+      "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c81e3a33_d43bdd8b",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-02-03T00:06:50Z",
+      "side": 1,
+      "message": "I do not know the behavior of the compiler because it depends on the version of the compiler.\nI set to define GTPV1_PORT_BE and compare.",
+      "parentUuid": "8d73b83d_4acdb8ad",
       "revId": "d22a9ff657baf40aa25bc2f38ef0a14884ed2474",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
