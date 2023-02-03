@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc8edcf2_2944ce64",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-03T19:05:15Z",
+      "side": 1,
+      "message": "Thanks Scott for the review, very useful :)",
+      "revId": "7b234c6fa0fe4538f9eb8647d3894d1706eab244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "66e326c8_a4cd6ff7",
@@ -31,6 +48,30 @@
       "writtenOn": "2023-02-03T18:16:07Z",
       "side": 1,
       "message": "CBC mode IVs are 16 bytes (for AES); this only sets 8 - what happens to the other 8.  Do they remain whatever garbage happens to be in the buffer?  One issue would be that the receiver could potentially recover these bytes - if they\u0027re from (say) a previous packet (that was destined to someone else), that\u0027d be information leakage.",
+      "range": {
+        "startLine": 231,
+        "startChar": 3,
+        "endLine": 231,
+        "endChar": 6
+      },
+      "revId": "7b234c6fa0fe4538f9eb8647d3894d1706eab244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32a2713f_08daa682",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-03T19:05:15Z",
+      "side": 1,
+      "message": "Yikes, good catch!",
+      "parentUuid": "66e326c8_a4cd6ff7",
       "range": {
         "startLine": 231,
         "startChar": 3,

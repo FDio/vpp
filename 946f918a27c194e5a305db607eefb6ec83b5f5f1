@@ -33,6 +33,42 @@
       "message": "Is this code used for something other than AES (e.g. 3DES?).  If so, are we sure the changes are appropriate (they might be; I haven\u0027t gone through it in detail)?",
       "revId": "946f918a27c194e5a305db607eefb6ec83b5f5f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "036103a0_cab6e319",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-03T19:05:15Z",
+      "side": 0,
+      "message": "This was asking the crypto backend to initialize the IV, which leads to the issue we\u0027re now trying to fix: for OpenSSL this just used the OpenSSL CSPRNG to initialize the IV which is good, but for native and ipsecmb, this used the \"chaining IV with a round of AES\" technique which is bad.\nI have a separate patch [0] to get rid of that functionality altogether, because as the IV requirements are different depending upon the mode (CBC vs counter etc), it is really upon the caller to initialize it properly.\n\n[0] https://gerrit.fd.io/r/c/vpp/+/34966",
+      "parentUuid": "5e0aaa81_cfe47b70",
+      "revId": "946f918a27c194e5a305db607eefb6ec83b5f5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e0d99a7_12e71966",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-03T19:05:15Z",
+      "side": 0,
+      "message": "It is used for all algorithm for all modes apart counter modes (CTR or GCM). IOW it is used for 3DES.\nWith the changes, 3DES will use the same technique as AES CBC: encrypt a 64-bits with the same key as the message.\nAs far as I know, the only requirement for 3DES is IV uniqueness (similar to counter mode) [0] so we should be ok.\n\n[0] https://www.rfc-editor.org/rfc/rfc1851#section-1.2",
+      "parentUuid": "07237fef_9b43a888",
+      "revId": "946f918a27c194e5a305db607eefb6ec83b5f5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
