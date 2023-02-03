@@ -173,6 +173,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ea79b97a_7d31867e",
+        "filename": "src/vnet/srv6/sr_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-02-03T01:18:43Z",
+      "side": 1,
+      "message": "The schema of an already Stable API cannot be changed.",
+      "parentUuid": "3242f697_b920e3a8",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "04348226_b7910f4a",
         "filename": "src/vnet/srv6/sr_api.c",
         "patchSetId": 4
