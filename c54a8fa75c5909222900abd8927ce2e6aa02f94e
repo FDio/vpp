@@ -82,6 +82,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d3fccb4_fd8457e2",
+        "filename": "extras/hs-test/framework_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-06T14:45:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6bd139a4_abc3346d",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 50
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a553b204_4046d099",
@@ -119,6 +143,30 @@
       "side": 1,
       "message": "Yeah, I agree. I\u0027ll tackle this together with the other improvement comment when converting a tap test. The tap interface address is being used on host system, while the veth address is used in VPP. I don\u0027t want to force make it now and make this patch larger.",
       "parentUuid": "a553b204_4046d099",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 36,
+        "endChar": 46
+      },
+      "revId": "c54a8fa75c5909222900abd8927ce2e6aa02f94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa057295_3f823101",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-06T14:45:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1e54c034_0766cd62",
       "range": {
         "startLine": 36,
         "startChar": 1,
