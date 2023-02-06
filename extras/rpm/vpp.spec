@@ -48,23 +48,32 @@ BuildRequires: python3, python36-devel, python3-virtualenv
 BuildRequires: cmake
 %else
 %if 0%{rhel} >= 7
-Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python36
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils
 Requires: libffi-devel
 BuildRequires: epel-release
 BuildREquires: openssl-devel
-BuildRequires: python36-devel
 %if 0%{rhel} == 7
+Requires: python36
 BuildRequires: devtoolset-9-toolchain
 BuildRequires: cmake3
 BuildRequires: glibc-static, yum-utils
+BuildRequires: python36-devel
 %else
+%if 0%{rhel} == 8
+Requires: python36
 BuildRequires: cmake
 BuildRequires: dnf-utils
+BuildRequires: python36-devel
+%else
+Requires: python3
+BuildRequires: cmake
+BuildRequires: dnf-utils
+BuildRequires: python3-devel
+%endif
 %endif
 %endif
 %endif
 BuildRequires: libffi-devel
-BuildRequires: redhat-lsb
 BuildRequires: apr-devel
 BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
@@ -321,7 +330,7 @@ fi
 
 
 %postun
-%systemd_postun
+%systemd_postun vpp.service
 if [ $1 -eq 0 ] ; then
     echo "Uninstalling, unbind user-mode PCI drivers"
     # Unbind user-mode PCI drivers

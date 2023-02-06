@@ -56,7 +56,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora opensuse-leap,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse-leap rocky,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
@@ -111,7 +111,7 @@ endif
 
 DEB_DEPENDS += $(LIBFFI)
 
-RPM_DEPENDS  = redhat-lsb glibc-static
+RPM_DEPENDS  = glibc-static
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
@@ -120,7 +120,7 @@ RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
-RPM_DEPENDS += elfutils-libelf-devel
+RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
 RPM_DEPENDS += nasm
 
@@ -133,6 +133,15 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
+else ifeq ($(OS_ID),rocky)
+	RPM_DEPENDS += yum-utils
+	RPM_DEPENDS += subunit subunit-devel
+	RPM_DEPENDS += openssl-devel
+	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
+	RPM_DEPENDS += python3-ply  # for vppapigen
+	RPM_DEPENDS += python3-virtualenv python3-jsonschema
+	RPM_DEPENDS += infiniband-diags llvm clang cmake
+	RPM_DEPENDS_GROUPS = 'Development Tools'
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
@@ -318,6 +327,12 @@ ifeq ($(OS_ID),rhel)
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
+else ifeq ($(OS_ID),rocky)
+	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
+	@sudo -E dnf config-manager --set-enabled \
+          $(shell dnf repolist all 2>/dev/null|grep -i crb|cut -d' ' -f1|grep -v source)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
 	@sudo -E dnf config-manager --set-enabled \
