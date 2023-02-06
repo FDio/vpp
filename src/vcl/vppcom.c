@@ -51,8 +51,8 @@ vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
     clib_memcpy_fast (c->data, s->ext_config, s->ext_config->len);
 }
 
-static void
-vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
+void
+vcl_send_session_listen (vcl_worker_t *wrk, vcl_session_t *s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_listen_msg_t *mp;
@@ -80,6 +80,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
       clib_mem_free (s->ext_config);
       s->ext_config = 0;
     }
+  s->flags |= VCL_SESSION_F_PENDING_LISTEN;
 }
 
 static void
@@ -569,6 +570,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
     }
 
   VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
+  session->flags &= ~VCL_SESSION_F_PENDING_LISTEN;
   return sid;
 }
 
@@ -1232,7 +1234,7 @@ vppcom_session_unbind (u32 session_handle)
 
   vcl_send_session_unlisten (wrk, session);
 
-  VDBG (1, "session %u [0x%llx]: sending unbind!", session->session_index,
+  VDBG (0, "session %u [0x%llx]: sending unbind!", session->session_index,
 	session->vpp_handle);
   vcl_evt (VCL_EVT_UNBIND, session);
 
@@ -1696,21 +1698,12 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
 static int
 validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
 {
-  if (ls->flags & VCL_SESSION_F_IS_VEP)
+  if ((ls->session_state != VCL_STATE_LISTEN) &&
+      (ls->session_state != VCL_STATE_LISTEN_NO_MQ) &&
+      (!vcl_session_is_connectable_listener (wrk, ls)))
     {
-      VDBG (0, "ERROR: cannot accept on epoll session %u!",
-	    ls->session_index);
-      return VPPCOM_EBADFD;
-    }
-
-  if ((ls->session_state != VCL_STATE_LISTEN)
-      && (!vcl_session_is_connectable_listener (wrk, ls)))
-    {
-      VDBG (0,
-	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
-	    " (%s)",
-	    ls->vpp_handle, ls->session_state,
-	    vcl_session_state_str (ls->session_state));
+      VDBG (0, "ERROR: session [0x%llx]: not in listen state! state (%s)",
+	    ls->vpp_handle, vcl_session_state_str (ls->session_state));
       return VPPCOM_EBADFD;
     }
   return VPPCOM_OK;
