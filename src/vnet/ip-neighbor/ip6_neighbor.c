@@ -338,7 +338,7 @@ ip6_nd_main_loop_enter (vlib_main_t * vm)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
 
-  throttle_init (&nd_throttle, tm->n_vlib_mains, 1e-3);
+  throttle_init (&nd_throttle, tm->n_vlib_mains, THROTTLE_BITS, 1e-3);
 
   return 0;
 }
