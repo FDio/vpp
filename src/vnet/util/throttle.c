@@ -18,15 +18,22 @@
 void
 throttle_init (throttle_t * t, u32 n_threads, f64 time)
 {
+  throttle_init_v2 (t, n_threads, THROTTLE_BITS, time);
+}
+
+void
+throttle_init_v2 (throttle_t *t, u32 n_threads, u32 buckets, f64 time)
+{
   u32 i;
 
   t->time = time;
+  t->buckets = buckets;
   vec_validate (t->bitmaps, n_threads);
   vec_validate (t->seeds, n_threads);
   vec_validate (t->last_seed_change_time, n_threads);
 
   for (i = 0; i < n_threads; i++)
-    vec_validate (t->bitmaps[i], (THROTTLE_BITS / BITS (uword)) - 1);
+    clib_bitmap_alloc (t->bitmaps[i], buckets);
 }
 
 /*

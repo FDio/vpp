@@ -31,11 +31,14 @@ typedef struct throttle_t_
   uword **bitmaps;
   u64 *seeds;
   f64 *last_seed_change_time;
+  u32 buckets;
 } throttle_t;
 
 #define THROTTLE_BITS	(512)
 
 extern void throttle_init (throttle_t * t, u32 n_threads, f64 time);
+extern void throttle_init_v2 (throttle_t *t, u32 n_threads, u32 buckets,
+			      f64 time);
 
 always_inline u64
 throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
@@ -43,7 +46,7 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
   if (time_now - t->last_seed_change_time[thread_index] > t->time)
     {
       (void) random_u64 (&t->seeds[thread_index]);
-      clib_memset (t->bitmaps[thread_index], 0, THROTTLE_BITS / BITS (u8));
+      clib_bitmap_zero (t->bitmaps[thread_index]);
 
       t->last_seed_change_time[thread_index] = time_now;
     }
@@ -53,21 +56,12 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
 always_inline int
 throttle_check (throttle_t * t, u32 thread_index, u64 hash, u64 seed)
 {
-  int drop;
-  uword m;
-  u32 w;
-
   hash = clib_xxhash (hash ^ seed);
 
   /* Select bit number */
-  hash &= THROTTLE_BITS - 1;
-  w = hash / BITS (uword);
-  m = (uword) 1 << (hash % BITS (uword));
+  hash %= t->buckets;
 
-  drop = (t->bitmaps[thread_index][w] & m) != 0;
-  t->bitmaps[thread_index][w] |= m;
-
-  return (drop);
+  return clib_bitmap_set_no_check (t->bitmaps[thread_index], hash, 1);
 }
 
 #endif
