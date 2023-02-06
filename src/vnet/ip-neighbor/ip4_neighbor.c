@@ -328,7 +328,7 @@ ip4_neighbor_main_loop_enter (vlib_main_t * vm)
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
 
-  throttle_init (&arp_throttle, n_vlib_mains, 1e-3);
+  throttle_init (&arp_throttle, n_vlib_mains, THROTTLE_BITS, 1e-3);
 
   return (NULL);
 }
