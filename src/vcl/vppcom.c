@@ -51,8 +51,8 @@ vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
     clib_memcpy_fast (c->data, s->ext_config, s->ext_config->len);
 }
 
-static void
-vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
+void
+vcl_send_session_listen (vcl_worker_t *wrk, vcl_session_t *s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_listen_msg_t *mp;
@@ -80,6 +80,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
       clib_mem_free (s->ext_config);
       s->ext_config = 0;
     }
+  s->flags |= VCL_SESSION_F_PENDING_LISTEN;
 }
 
 static void
@@ -554,6 +555,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   session->transport.lcl_port = mp->lcl_port;
   vcl_session_table_add_listener (wrk, mp->handle, sid);
   session->session_state = VCL_STATE_LISTEN;
+  session->flags &= ~VCL_SESSION_F_PENDING_LISTEN;
 
   if (vcl_session_is_cl (session))
     {
@@ -1232,7 +1234,7 @@ vppcom_session_unbind (u32 session_handle)
 
   vcl_send_session_unlisten (wrk, session);
 
-  VDBG (1, "session %u [0x%llx]: sending unbind!", session->session_index,
+  VDBG (0, "session %u [0x%llx]: sending unbind!", session->session_index,
 	session->vpp_handle);
   vcl_evt (VCL_EVT_UNBIND, session);
 
@@ -1693,29 +1695,6 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   return VPPCOM_OK;
 }
 
-static int
-validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
-{
-  if (ls->flags & VCL_SESSION_F_IS_VEP)
-    {
-      VDBG (0, "ERROR: cannot accept on epoll session %u!",
-	    ls->session_index);
-      return VPPCOM_EBADFD;
-    }
-
-  if ((ls->session_state != VCL_STATE_LISTEN)
-      && (!vcl_session_is_connectable_listener (wrk, ls)))
-    {
-      VDBG (0,
-	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
-	    " (%s)",
-	    ls->vpp_handle, ls->session_state,
-	    vcl_session_state_str (ls->session_state));
-      return VPPCOM_EBADFD;
-    }
-  return VPPCOM_OK;
-}
-
 int
 vppcom_unformat_proto (uint8_t * proto, char *proto_str)
 {
@@ -1749,38 +1728,41 @@ vppcom_unformat_proto (uint8_t * proto, char *proto_str)
 }
 
 int
-vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
-		       uint32_t flags)
+vppcom_session_accept (uint32_t ls_handle, vppcom_endpt_t *ep, uint32_t flags)
 {
-  u32 client_session_index = ~0, listen_session_index, accept_flags = 0;
+  u32 client_session_index = ~0, ls_index, accept_flags = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   session_accepted_msg_t accepted_msg;
-  vcl_session_t *listen_session = 0;
-  vcl_session_t *client_session = 0;
+  vcl_session_t *ls, *client_session = 0;
   vcl_session_msg_t *evt;
   u8 is_nonblocking;
-  int rv;
 
 again:
 
-  listen_session = vcl_session_get_w_handle (wrk, listen_session_handle);
-  if (!listen_session)
+  ls = vcl_session_get_w_handle (wrk, ls_handle);
+  if (!ls)
     return VPPCOM_EBADFD;
 
-  listen_session_index = listen_session->session_index;
-  if ((rv = validate_args_session_accept_ (wrk, listen_session)))
-    return rv;
-
-  if (clib_fifo_elts (listen_session->accept_evts_fifo))
+  if ((ls->session_state != VCL_STATE_LISTEN) &&
+      (ls->session_state != VCL_STATE_LISTEN_NO_MQ) &&
+      (!vcl_session_is_connectable_listener (wrk, ls)))
     {
-      clib_fifo_sub2 (listen_session->accept_evts_fifo, evt);
+      VDBG (0, "ERROR: session [0x%llx]: not in listen state! state (%s)",
+	    ls->vpp_handle, vcl_session_state_str (ls->session_state));
+      return VPPCOM_EBADFD;
+    }
+
+  ls_index = ls->session_index;
+
+  if (clib_fifo_elts (ls->accept_evts_fifo))
+    {
+      clib_fifo_sub2 (ls->accept_evts_fifo, evt);
       accept_flags = evt->flags;
       accepted_msg = evt->accepted_msg;
       goto handle;
     }
 
-  is_nonblocking = vcl_session_has_attr (listen_session,
-					 VCL_SESS_ATTR_NONBLOCK);
+  is_nonblocking = vcl_session_has_attr (ls, VCL_SESS_ATTR_NONBLOCK);
   while (1)
     {
       if (svm_msg_q_is_empty (wrk->app_event_queue) && is_nonblocking)
@@ -1793,20 +1775,21 @@ again:
 
 handle:
 
-  client_session_index = vcl_session_accepted_handler (wrk, &accepted_msg,
-						       listen_session_index);
+  client_session_index =
+    vcl_session_accepted_handler (wrk, &accepted_msg, ls_index);
   if (client_session_index == VCL_INVALID_SESSION_INDEX)
     return VPPCOM_ECONNABORTED;
 
-  listen_session = vcl_session_get (wrk, listen_session_index);
+  ls = vcl_session_get (wrk, ls_index);
   client_session = vcl_session_get (wrk, client_session_index);
 
   if (flags & O_NONBLOCK)
     vcl_session_set_attr (client_session, VCL_SESS_ATTR_NONBLOCK);
 
-  VDBG (1, "listener %u [0x%llx]: Got a connect request! session %u [0x%llx],"
-	" flags %d, is_nonblocking %u", listen_session->session_index,
-	listen_session->vpp_handle, client_session_index,
+  VDBG (1,
+	"listener %u [0x%llx]: Got a connect request! session %u [0x%llx],"
+	" flags %d, is_nonblocking %u",
+	ls->session_index, ls->vpp_handle, client_session_index,
 	client_session->vpp_handle, flags,
 	vcl_session_has_attr (client_session, VCL_SESS_ATTR_NONBLOCK));
 
@@ -1825,16 +1808,15 @@ handle:
   VDBG (0,
 	"listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
 	"local: %U:%u",
-	listen_session_handle, listen_session->vpp_handle,
-	client_session_index, client_session->vpp_handle,
-	vcl_format_ip46_address, &client_session->transport.rmt_ip,
+	ls_handle, ls->vpp_handle, client_session_index,
+	client_session->vpp_handle, vcl_format_ip46_address,
+	&client_session->transport.rmt_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.rmt_port),
 	vcl_format_ip46_address, &client_session->transport.lcl_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.lcl_port));
-  vcl_evt (VCL_EVT_ACCEPT, client_session, listen_session,
-	   client_session_index);
+  vcl_evt (VCL_EVT_ACCEPT, client_session, ls, client_session_index);
 
   /*
    * Session might have been closed already
