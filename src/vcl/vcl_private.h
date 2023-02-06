@@ -141,6 +141,7 @@ typedef enum vcl_session_flags_
   VCL_SESSION_F_WR_SHUTDOWN = 1 << 5,
   VCL_SESSION_F_PENDING_DISCONNECT = 1 << 6,
   VCL_SESSION_F_PENDING_FREE = 1 << 7,
+  VCL_SESSION_F_PENDING_LISTEN = 1 << 8,
 } __clib_packed vcl_session_flags_t;
 
 typedef struct vcl_session_
@@ -724,6 +725,7 @@ int vcl_segment_attach (u64 segment_handle, char *name,
 			ssvm_segment_type_t type, int fd);
 void vcl_segment_detach (u64 segment_handle);
 void vcl_segment_detach_segments (u32 *seg_indices);
+void vcl_send_session_listen (vcl_worker_t *wrk, vcl_session_t *s);
 void vcl_send_session_unlisten (vcl_worker_t * wrk, vcl_session_t * s);
 
 int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,

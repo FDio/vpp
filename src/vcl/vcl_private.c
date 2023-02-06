@@ -434,7 +434,9 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
 
   if ((rv = fifo_segment_attach (&vcm->segment_main, a)))
     {
+      clib_rwlock_writer_unlock (&vcm->segment_table_lock);
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
+      os_panic ();
       return rv;
     }
   hash_set (vcm->segment_table, segment_handle, a->new_segment_indices[0]);

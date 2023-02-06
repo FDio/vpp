@@ -51,8 +51,8 @@ vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
     clib_memcpy_fast (c->data, s->ext_config, s->ext_config->len);
 }
 
-static void
-vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
+void
+vcl_send_session_listen (vcl_worker_t *wrk, vcl_session_t *s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_listen_msg_t *mp;
@@ -80,6 +80,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
       clib_mem_free (s->ext_config);
       s->ext_config = 0;
     }
+  s->flags |= VCL_SESSION_F_PENDING_LISTEN;
 }
 
 static void
@@ -569,6 +570,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
     }
 
   VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
+  session->flags &= ~VCL_SESSION_F_PENDING_LISTEN;
   return sid;
 }
 
@@ -1232,7 +1234,7 @@ vppcom_session_unbind (u32 session_handle)
 
   vcl_send_session_unlisten (wrk, session);
 
-  VDBG (1, "session %u [0x%llx]: sending unbind!", session->session_index,
+  VDBG (0, "session %u [0x%llx]: sending unbind!", session->session_index,
 	session->vpp_handle);
   vcl_evt (VCL_EVT_UNBIND, session);
 
@@ -1463,6 +1465,7 @@ vcl_epoll_lt_add (vcl_worker_t *wrk, vcl_session_t *s)
 {
   vcl_session_t *cur, *prev;
 
+  clib_warning ("ADDING LT");
   if (wrk->ep_lt_current == VCL_INVALID_SESSION_INDEX)
     {
       wrk->ep_lt_current = s->session_index;
@@ -1485,6 +1488,8 @@ static void
 vcl_epoll_lt_del (vcl_worker_t *wrk, vcl_session_t *s)
 {
   vcl_session_t *prev, *next;
+
+  clib_warning ("DOING LT WORK lt_next %u", s->vep.lt_next);
 
   if (s->vep.lt_next == s->session_index)
     {
@@ -1696,15 +1701,16 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
 static int
 validate_args_session_accept_ (vcl_worker_t * wrk, vcl_session_t * ls)
 {
-  if (ls->flags & VCL_SESSION_F_IS_VEP)
-    {
-      VDBG (0, "ERROR: cannot accept on epoll session %u!",
-	    ls->session_index);
-      return VPPCOM_EBADFD;
-    }
+  //   if (ls->flags & VCL_SESSION_F_IS_VEP)
+  //     {
+  //       VDBG (0, "ERROR: cannot accept on epoll session %u!",
+  // 	    ls->session_index);
+  //       return VPPCOM_EBADFD;
+  //     }
 
-  if ((ls->session_state != VCL_STATE_LISTEN)
-      && (!vcl_session_is_connectable_listener (wrk, ls)))
+  if ((ls->session_state != VCL_STATE_LISTEN) &&
+      (ls->session_state != VCL_STATE_LISTEN_NO_MQ) &&
+      (!vcl_session_is_connectable_listener (wrk, ls)))
     {
       VDBG (0,
 	    "ERROR: session [0x%llx]: not in listen state! state 0x%x"
@@ -2870,12 +2876,20 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_RX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
-	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
-	  add_evt = 1;
+	  if (!(event->events & EPOLLET))
+	    {
+	      clib_warning ("adding session that needs LT");
+	      vcl_epoll_lt_add (wrk, s);
+	    }
+	  else
+	    {
+	      session_event_t e = { 0 };
+	      e.event_type = SESSION_IO_EVT_RX;
+	      e.session_index = s->session_index;
+	      vec_add1 (wrk->unhandled_evts_vector, e);
+	      s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+	      add_evt = 1;
+	    }
 	}
       if (!add_evt && vcl_session_is_closing (s))
 	{
@@ -2935,6 +2949,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	}
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
+      if (!(s->vep.ev.events & EPOLLET))
+	clib_warning ("adding event with LT configured??");
       txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
       if (txf)
 	{
@@ -3219,6 +3235,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       else if (!(EPOLLET & session_events))
 	{
+	  clib_warning ("NOT EPOLLET, configured %x state %u",
+			s->vep.ev.events, s->session_state);
 	  s = vcl_session_get (wrk, sid);
 	  if (s->vep.lt_next == VCL_INVALID_SESSION_INDEX)
 	    vcl_epoll_lt_add (wrk, s);
