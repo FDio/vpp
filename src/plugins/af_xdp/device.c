@@ -301,7 +301,20 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   int fd;
 
   memset (&umem_config, 0, sizeof (umem_config));
-  umem_config.fill_size = args->rxq_size;
+  /*
+   * Below comments copy from kernel, see detail information in below link,
+   * https://elixir.bootlin.com/linux/v5.15/source/samples/bpf/xdpsock_user.c#L805
+   *
+   * We recommend that you set the fill ring size >= HW RX ring size +
+   * AF_XDP RX ring size. Make sure you fill up the fill ring
+   * with buffers at regular intervals, and you will with this setting
+   * avoid allocation failures in the driver. These are usually quite
+   * expensive since drivers have not been written to assume that
+   * allocation failures are common. For regular sockets, kernel
+   * allocated memory is used that only runs out in OOM situations
+   * that should be rare.
+   */
+  umem_config.fill_size = args->rxq_size * 2;
   umem_config.comp_size = args->txq_size;
   umem_config.frame_size =
     sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
@@ -329,6 +342,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
   memset (&sock_config, 0, sizeof (sock_config));
   sock_config.rx_size = args->rxq_size;
   sock_config.tx_size = args->txq_size;
+  sock_config.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
   sock_config.bind_flags = XDP_USE_NEED_WAKEUP;
   switch (args->mode)
     {
@@ -585,8 +599,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   int ns_fds[2];
   int i, ret;
 
-  args->rxq_size = args->rxq_size ? args->rxq_size : 2 * VLIB_FRAME_SIZE;
-  args->txq_size = args->txq_size ? args->txq_size : 2 * VLIB_FRAME_SIZE;
+  args->rxq_size =
+    args->rxq_size ? args->rxq_size : XSK_RING_CONS__DEFAULT_NUM_DESCS;
+  args->txq_size =
+    args->txq_size ? args->txq_size : XSK_RING_PROD__DEFAULT_NUM_DESCS;
   args->rxq_num = args->rxq_num ? args->rxq_num : 1;
 
   if (!args->linux_ifname)
