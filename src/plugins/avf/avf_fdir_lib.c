@@ -28,7 +28,7 @@
 static inline int
 fls_u32 (u32 x)
 {
-  return (x == 0) ? 0 : 32 - count_leading_zeros (x);
+  return (x == 0) ? 0 : 64 - count_leading_zeros (x);
 }
 
 static inline int
