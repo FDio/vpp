@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "27ba265d_600bf890",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-02-06T00:51:18Z",
+      "side": 1,
+      "message": "Hi Ahamed,(Hi Tetsuya thanks for notice)\n\nencap_src is already optional.\nLet\u0027s actually explain.\n\nhttps://gerrit.fd.io/r/c/vpp/+/37863/5/src/vnet/srv6/sr_policy_rewrite.c#387\nthis see it defines Src Addr, which is defined for Node from the beginning.\n\nhttps://gerrit.fd.io/r/c/vpp/+/37863/5/src/vnet/srv6/sr_policy_rewrite.c#406\nAs you can see, it overwrites the input to this function if it\u0027s not NULL.\n\nIn other words, SrcAddr defined for Node is used as the default value.\nI think this logic applies to both CLI and API.\n\nFeel free to comment further if I\u0027m wrong",
+      "parentUuid": "ff37706c_9e805d7c",
+      "revId": "34da4196ba3099f7f30f140b4385aa9ac3579f01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4bdc817d_5eb8ab0f",
         "filename": "src/vnet/srv6/sr.api",
         "patchSetId": 4
