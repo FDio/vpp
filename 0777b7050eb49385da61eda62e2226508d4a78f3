@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be88294f_a4b3c189",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-06T03:47:33Z",
+      "side": 1,
+      "message": "IMO it is not necessary to provide the per-SA counters (like replay) on a per-node basis. An SA is only used for one of the permutations of ESP/AH and encrypt/decrypt, so it will only ever have counters for one node. The control plane that added the SA should know the context in which the SA is used.",
+      "revId": "0777b7050eb49385da61eda62e2226508d4a78f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
