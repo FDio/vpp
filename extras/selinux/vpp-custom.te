@@ -10,6 +10,8 @@ gen_require(`
     type svirt_t;
     type svirt_image_t;
     type systemd_sysctl_t;
+    type hugetlbfs_t;
+    type sysfs_t;
     class capability sys_admin;
 ')
 
@@ -56,7 +58,7 @@ allow vpp_t self:netlink_socket { bind create setopt };
 
 manage_dirs_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
 manage_files_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
-allow vpp_t vpp_lib_t:file execute;
+allow vpp_t vpp_lib_t:file { execute map };
 files_var_lib_filetrans(vpp_t, vpp_lib_t, {file dir})
 
 manage_dirs_pattern(vpp_t, vpp_log_t, vpp_log_t)
@@ -77,6 +79,7 @@ files_tmp_filetrans(vpp_t, vpp_tmp_t, { dir sock_file file })
 
 manage_dirs_pattern(vpp_t, vpp_tmpfs_t, vpp_tmpfs_t)
 manage_files_pattern(vpp_t, vpp_tmpfs_t, vpp_tmpfs_t)
+allow vpp_t vpp_tmpfs_t:file map;
 fs_tmpfs_filetrans(vpp_t, vpp_tmpfs_t, { dir file })
 
 read_files_pattern(vpp_t, vpp_config_rw_t, vpp_config_rw_t)
@@ -141,4 +144,16 @@ allow vpp_t svirt_image_t:file { read write };
 
 read_files_pattern(systemd_sysctl_t, vpp_config_rw_t, vpp_config_rw_t)
 
+########################################
+#
+# hugetlbfs
+#
 
+allow vpp_t hugetlbfs_t:file map;
+
+########################################
+#
+# dpdk
+#
+
+allow vpp_t sysfs_t:file map;
