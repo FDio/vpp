@@ -2870,12 +2870,19 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_RX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
-	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
-	  add_evt = 1;
+	  if (!(event->events & EPOLLET))
+	    {
+	      vcl_epoll_lt_add (wrk, s);
+	    }
+	  else
+	    {
+	      session_event_t e = { 0 };
+	      e.event_type = SESSION_IO_EVT_RX;
+	      e.session_index = s->session_index;
+	      vec_add1 (wrk->unhandled_evts_vector, e);
+	      s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+	      add_evt = 1;
+	    }
 	}
       if (!add_evt && vcl_session_is_closing (s))
 	{
