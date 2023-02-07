@@ -1,54 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
-
-// TODO remove `configTemplate` once its usage has been replaced everywhere with VppConfig
-const configTemplate = `unix {
-  nodaemon
-  log %[1]s/var/log/vpp/vpp.log
-  full-coredump
-  cli-listen %[1]s/var/run/vpp/cli.sock
-  runtime-dir %[1]s/var/run
-  gid vpp
-}
-
-api-trace {
-  on
-}
-
-api-segment {
-  gid vpp
-}
-
-socksvr {
-  socket-name %[1]s/var/run/vpp/api.sock
-}
-
-statseg {
-  socket-name %[1]s/var/run/vpp/stats.sock
-}
-
-plugins {
-  plugin default { disable }
-
-  plugin unittest_plugin.so { enable }
-  plugin quic_plugin.so { enable }
-  plugin af_packet_plugin.so { enable }
-  plugin hs_apps_plugin.so { enable }
-  plugin http_plugin.so { enable }
-}
-
-`
 
 const vclTemplate = `vcl {
   app-socket-api %[1]s/var/run/app_ns_sockets/%[2]s
@@ -124,29 +84,6 @@ func StartClientApp(ipAddress string, env []string, clnCh chan error, clnRes cha
 		}
 		break
 	}
-}
-
-func waitForSyncFile(fname string) (*JsonResult, error) {
-	var res JsonResult
-
-	for i := 0; i < 360; i++ {
-		f, err := os.Open(fname)
-		if err == nil {
-			defer f.Close()
-
-			data, err := ioutil.ReadFile(fname)
-			if err != nil {
-				return nil, fmt.Errorf("read error: %v", err)
-			}
-			err = json.Unmarshal(data, &res)
-			if err != nil {
-				return nil, fmt.Errorf("json unmarshal error: %v", err)
-			}
-			return &res, nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return nil, fmt.Errorf("no sync file found")
 }
 
 func assertFileSize(f1, f2 string) error {

@@ -25,7 +25,6 @@ func IsVerbose() bool {
 
 type HstSuite struct {
 	suite.Suite
-	teardownSuite func()
 	containers    map[string]*Container
 	volumes       []string
 	netConfigs    []NetConfig
@@ -34,10 +33,6 @@ type HstSuite struct {
 }
 
 func (s *HstSuite) TearDownSuite() {
-	if s.teardownSuite != nil {
-		s.teardownSuite() // TODO remove this after config moved to SetupTest() for each suite
-	}
-
 	s.unconfigureNetworkTopology()
 }
 

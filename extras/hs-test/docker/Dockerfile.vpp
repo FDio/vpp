@@ -20,8 +20,6 @@ COPY \
 COPY vpp-data/bin/* /usr/bin/
 COPY vpp-data/lib/* /usr/lib/
 
-COPY hs-test /usr/local/bin/hs-test
-
 RUN addgroup vpp
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
