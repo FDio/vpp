@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
-	"time"
 )
 
 func (s *NsSuite) TestHttpTps() {
 	iface := s.netInterfaces[clientInterface]
-	client_ip := iface.Ip4AddressString()
+	client_ip := iface.IP4AddressString()
 	port := "8080"
 	finished := make(chan error, 1)
 
@@ -33,7 +31,7 @@ func (s *VethsSuite) TestHttpCli() {
 
 	serverContainer.vppInstance.vppctl("http cli server")
 
-	uri := "http://" + serverVeth.Ip4AddressString() + "/80"
+	uri := "http://" + serverVeth.IP4AddressString() + "/80"
 
 	o := clientContainer.vppInstance.vppctl("http cli client" +
 		" uri " + uri + " query /show/version")
@@ -42,33 +40,21 @@ func (s *VethsSuite) TestHttpCli() {
 	s.assertContains(o, "<html>", "<html> not found in the result!")
 }
 
-func waitForApp(vppInst *VppInstance, appName string, timeout int) error {
-	for i := 0; i < timeout; i++ {
-		o := vppInst.vppctl("show app")
-		if strings.Contains(o, appName) {
-			return nil
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return fmt.Errorf("Timeout while waiting for app '%s'", appName)
-}
-
 func (s *NoTopoSuite) TestNginx() {
 	query := "return_ok"
 	finished := make(chan error, 1)
-	vppCont := s.getContainerByName("vpp")
-	vppInst := NewVppInstance(vppCont)
-	vppInst.actionFuncName = "ConfigureTap"
-	s.assertNil(vppInst.start(), "failed to start vpp")
 
 	nginxCont := s.getContainerByName("nginx")
 	s.assertNil(nginxCont.run())
 
-	err := waitForApp(vppInst, "-app", 5)
+	vpp := s.getContainerByName("vpp").vppInstance
+	err := vpp.waitForApp("-app", 5)
 	s.assertNil(err)
 
+	serverAddress := s.netInterfaces[tapNameVpp].IP4AddressString()
+
 	defer func() { os.Remove(query) }()
-	go startWget(finished, "10.10.10.1", "80", query, "")
+	go startWget(finished, serverAddress, "80", query, "")
 	s.assertNil(<-finished)
 }
 
@@ -78,6 +64,8 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	var args []string
 	var exeName string
 
+	serverAddress := s.netInterfaces[tapNameVpp].IP4AddressString()
+
 	if ab_or_wrk == "ab" {
 		args = []string{"-n", fmt.Sprintf("%d", nRequests), "-c",
 			fmt.Sprintf("%d", nClients)}
@@ -86,28 +74,25 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		} else if mode != "cps" {
 			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
 		}
-		args = append(args, "http://10.10.10.1:80/64B.json")
+		args = append(args, "http://"+serverAddress+":80/64B.json")
 		exeName = "ab"
 	} else {
 		args = []string{"-c", fmt.Sprintf("%d", nClients), "-t", "2", "-d", "30",
-			"http://10.10.10.1:80"}
+			"http://" + serverAddress + ":80"}
 		exeName = "wrk"
 	}
 
-	vppCont := s.getContainerByName("vpp")
-	vppInst := NewVppInstance(vppCont)
-	vppInst.actionFuncName = "ConfigureTap"
-	s.assertNil(vppInst.start(), "failed to start vpp")
+	vpp := s.getContainerByName("vpp").vppInstance
 
 	nginxCont := s.getContainerByName("nginx")
 	s.assertNil(nginxCont.run())
-	err := waitForApp(vppInst, "-app", 5)
+	err := vpp.waitForApp("-app", 5)
 	s.assertNil(err)
 
 	cmd := exec.Command(exeName, args...)
-	fmt.Println(cmd)
+	s.log(cmd)
 	o, _ := cmd.CombinedOutput()
-	fmt.Print(string(o))
+	s.log(string(o))
 	return nil
 }
 
