@@ -33,6 +33,24 @@
       "message": "perftest-2n-icx mrrANDnic_intel-xxv710ANDdrv_af_xdpAND1cAND64bANDeth-l2patch",
       "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a946bd3_befe6f96",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-02-07T13:12:05Z",
+      "side": 1,
+      "message": "May I ask what were the results of the performance tests?\n\nand Verified +2 was cleared again.",
+      "parentUuid": "068d8414_0b25a65a",
+      "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
