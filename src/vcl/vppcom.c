@@ -2773,6 +2773,24 @@ vppcom_epoll_create (void)
   return vcl_session_handle (vep_session);
 }
 
+static void
+vcl_epoll_ctl_add_unhandled_event (vcl_worker_t *wrk, vcl_session_t *s,
+                                   session_evt_type_t evt, u8 is_epollet)
+{
+  if (!is_epollet)
+    {
+      vcl_epoll_lt_add (wrk, s);
+      return;
+    }
+
+  session_event_t e = { 0 };
+  e.session_index = s->session_index;
+  e.event_type = evt;
+  if (evt == SESSION_IO_EVT_RX)
+    s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+  vec_add1 (wrk->unhandled_evts_vector, e);
+}
+
 int
 vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 		  struct epoll_event *event)
@@ -2861,21 +2879,33 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       /* Generate EPOLLOUT if tx fifo not full */
       if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_TX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
+          vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+                                             SESSION_IO_EVT_TX);
+
+          //   session_event_t e = { 0 };
+          //   e.event_type = SESSION_IO_EVT_TX;
+          //   e.session_index = s->session_index;
+          //   vec_add1 (wrk->unhandled_evts_vector, e);
 	  add_evt = 1;
 	}
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_RX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
-	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
-	  add_evt = 1;
+          vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+                                             SESSION_IO_EVT_RX);
+          //   if (!(event->events & EPOLLET))
+          //     {
+          //       vcl_epoll_lt_add (wrk, s);
+          //     }
+          //   else
+          //     {
+          //       session_event_t e = { 0 };
+          //       e.event_type = SESSION_IO_EVT_RX;
+          //       e.session_index = s->session_index;
+          //       vec_add1 (wrk->unhandled_evts_vector, e);
+          //       s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+          //     }
+          add_evt = 1;
 	}
       if (!add_evt && vcl_session_is_closing (s))
 	{
@@ -2918,20 +2948,24 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT) &&
 	  (vcl_session_write_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_TX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
-	}
+	//   session_event_t e = { 0 };
+	//   e.event_type = SESSION_IO_EVT_TX;
+	//   e.session_index = s->session_index;
+	//   vec_add1 (wrk->unhandled_evts_vector, e);
+          vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+                                             SESSION_IO_EVT_TX);
+        }
       /* Generate EPOLLIN if session read ready and event was not on */
       if ((event->events & EPOLLIN) && !(s->vep.ev.events & EPOLLIN) &&
 	  (vcl_session_read_ready (s) > 0))
 	{
-	  session_event_t e = { 0 };
-	  e.event_type = SESSION_IO_EVT_RX;
-	  e.session_index = s->session_index;
-	  vec_add1 (wrk->unhandled_evts_vector, e);
-	  s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
+          vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+                                             SESSION_IO_EVT_RX);
+          //   session_event_t e = { 0 };
+          //   e.event_type = SESSION_IO_EVT_RX;
+          //   e.session_index = s->session_index;
+          //   vec_add1 (wrk->unhandled_evts_vector, e);
+          //   s->flags &= ~VCL_SESSION_F_HAS_RX_EVT;
 	}
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
