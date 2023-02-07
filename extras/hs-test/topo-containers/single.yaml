@@ -1,7 +1,7 @@
 ---
 volumes:
   - volume: &shared-vol
-      host-dir: shared-vol
+      host-dir: /tmp/shared-vol
 
 containers:
   - name: "vpp"

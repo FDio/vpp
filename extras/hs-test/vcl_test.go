@@ -20,7 +20,7 @@ func (s *VethsSuite) TestVclEchoTcp() {
 }
 
 func (s *VethsSuite) testVclEcho(proto string) {
-	serverVethAddress := s.netInterfaces["vppsrv"].Ip4AddressString()
+	serverVethAddress := s.netInterfaces["vppsrv"].IP4AddressString()
 	uri := proto + "://" + serverVethAddress + "/12344"
 
 	echoSrvContainer := s.getContainerByName("server-application")
@@ -62,7 +62,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	s.log("... Running first echo client test, before disconnect.")
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
-	serverVethAddress := serverVeth.Ip4AddressString()
+	serverVethAddress := serverVeth.IP4AddressString()
 
 	echoClnContainer := s.getTransientContainerByName("client-application")
 	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.GetContainerWorkDir(), "2")
@@ -95,13 +95,13 @@ func (s *VethsSuite) TestTcpWithLoss() {
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVpp.vppctl("test echo server uri tcp://%s/20022",
-		serverVeth.Ip4AddressString())
+		serverVeth.IP4AddressString())
 
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
 
 	// Ensure that VPP doesn't abort itself with NSIM enabled
 	// Warning: Removing this ping will make the test fail!
-	clientVpp.vppctl("ping %s", serverVeth.Ip4AddressString())
+	clientVpp.vppctl("ping %s", serverVeth.IP4AddressString())
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
@@ -111,7 +111,7 @@ func (s *VethsSuite) TestTcpWithLoss() {
 
 	// Do echo test from client-vpp container
 	output := clientVpp.vppctl("test echo client uri tcp://%s/20022 mbytes 50",
-		serverVeth.Ip4AddressString())
+		serverVeth.IP4AddressString())
 	s.assertEqual(true, len(output) != 0)
 	s.assertNotContains(output, "failed: timeout")
 	s.log(output)

@@ -9,6 +9,10 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
+var (
+	workDir, _ = os.Getwd()
+)
+
 type Volume struct {
 	hostDir          string
 	containerDir     string
@@ -114,9 +118,7 @@ func (c *Container) GetContainerWorkDir() (res string) {
 }
 
 func (c *Container) getRunCommand() string {
-	syncPath := fmt.Sprintf(" -v %s:/tmp/sync", c.getSyncPath())
 	cmd := "docker run --cap-add=all -d --privileged --network host --rm"
-	cmd += syncPath
 	cmd += c.getVolumesAsCliOption()
 	cmd += c.getEnvVarsAsCliOption()
 	cmd += " --name " + c.name + " " + c.image + " " + c.extraRunningArgs
@@ -185,10 +187,6 @@ func (c *Container) getEnvVarsAsCliOption() string {
 	return cliOption
 }
 
-func (c *Container) getSyncPath() string {
-	return fmt.Sprintf("/tmp/%s/sync", c.name)
-}
-
 func (c *Container) newVppInstance(additionalConfig ...Stanza) (*VppInstance, error) {
 	vppConfig := new(VppConfig)
 	vppConfig.CliSocketFilePath = defaultCliSocketFilePath
@@ -247,30 +245,6 @@ func (c *Container) exec(command string, arguments ...any) string {
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
 	c.Suite().assertNil(err)
 	return string(byteOutput)
-}
-
-func (c *Container) execAction(args string) (string, error) {
-	syncFile := c.getSyncPath() + "/rc"
-	os.Remove(syncFile)
-
-	workDir := c.getWorkDirAsCliOption()
-	cmd := fmt.Sprintf("docker exec -d %s %s hs-test %s",
-		workDir,
-		c.name,
-		args)
-	err := exechelper.Run(cmd)
-	if err != nil {
-		return "", err
-	}
-	res, err := waitForSyncFile(syncFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read sync file while executing 'hs-test %s': %v", args, err)
-	}
-	o := res.StdOutput + res.ErrOutput
-	if res.Code != 0 {
-		return o, fmt.Errorf("cmd resulted in non-zero value %d: %s", res.Code, res.Desc)
-	}
-	return o, err
 }
 
 func (c *Container) stop() error {
