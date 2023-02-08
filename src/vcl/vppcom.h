@@ -66,6 +66,10 @@ extern "C"
 #define VCL_UDP_OPTS_BASE (VPPCOM_PROTO_UDP << 16)
 #define VCL_UDP_SEGMENT	  (VCL_UDP_OPTS_BASE + 0)
 
+/* By convention we'll use 128 for IP, as we don't support IP as protocol */
+#define VCL_IP_OPTS_BASE (128 << 16)
+#define VCL_IP_PKTINFO	 (VCL_IP_OPTS_BASE + 1)
+
   typedef struct vppcom_endpt_tlv_t_
   {
     uint32_t data_type;

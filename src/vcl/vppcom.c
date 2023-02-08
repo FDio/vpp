@@ -3584,7 +3584,9 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 			(*buflen >= sizeof (*ep)) && ep->ip))
 	{
 	  session->transport.is_ip4 = ep->is_ip4;
-	  session->transport.lcl_port = ep->port;
+	  /* If port 0, ignore request */
+	  if (ep->port)
+	    session->transport.lcl_port = ep->port;
 	  vcl_ip_copy_from_ep (&session->transport.lcl_ip, ep);
 	  *buflen = sizeof (*ep);
 	  VDBG (1,
