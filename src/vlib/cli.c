@@ -981,7 +981,7 @@ show_memory_usage (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-  "            [numa-heaps][map]",
+		"            [numa-heaps][map][main-heap]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
