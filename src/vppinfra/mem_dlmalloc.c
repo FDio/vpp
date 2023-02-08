@@ -355,6 +355,7 @@ format_mheap_trace (u8 * s, va_list * va)
   int verbose = va_arg (*va, int);
   int have_traces = 0;
   int i;
+  int n = 0;
 
   clib_spinlock_lock (&tm->lock);
   if (vec_len (tm->traces) > 0 &&
@@ -381,9 +382,10 @@ format_mheap_trace (u8 * s, va_list * va)
 
 	total_objects_traced += t->n_allocations;
 
-	/* When not verbose only report allocations of more than 1k. */
-	if (!verbose && t->n_bytes < 1024)
+	/* When not verbose only report the 50 biggest allocations */
+	if (!verbose && n >= 50)
 	  continue;
+	n++;
 
 	if (t == traces_copy)
 	  s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
