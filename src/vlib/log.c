@@ -70,27 +70,12 @@ last_log_entry ()
     i += lm->size;
   return i;
 }
-
-static vlib_log_class_data_t *
-get_class_data (vlib_log_class_t ci)
-{
-  vlib_log_main_t *lm = &log_main;
-  return vec_elt_at_index (lm->classes, (ci >> 16));
-}
-
-static vlib_log_subclass_data_t *
-get_subclass_data (vlib_log_class_t ci)
-{
-  vlib_log_class_data_t *c = get_class_data (ci);
-  return vec_elt_at_index (c->subclasses, (ci & 0xffff));
-}
-
 u8 *
 format_vlib_log_class (u8 * s, va_list * args)
 {
   vlib_log_class_t ci = va_arg (*args, vlib_log_class_t);
-  vlib_log_class_data_t *c = get_class_data (ci);
-  vlib_log_subclass_data_t *sc = get_subclass_data (ci);
+  vlib_log_class_data_t *c = vnet_log_get_class_data (ci);
+  vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (ci);
 
   if (sc->name)
     return format (s, "%v/%v", c->name, sc->name);
@@ -133,7 +118,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
   vlib_main_t *vm = vlib_get_main ();
   vlib_log_main_t *lm = &log_main;
   vlib_log_entry_t *e;
-  vlib_log_subclass_data_t *sc = get_subclass_data (class);
+  vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (class);
   va_list va;
   f64 t = vlib_time_now (vm);
   f64 delta = t - sc->last_event_timestamp;
@@ -381,9 +366,10 @@ vlib_log_init (vlib_main_t *vm)
     {
       r->class = vlib_log_register_class (r->class_name, r->subclass_name);
       if (r->default_level)
-	get_subclass_data (r->class)->level = r->default_level;
+	vlib_log_get_subclass_data (r->class)->level = r->default_level;
       if (r->default_syslog_level)
-	get_subclass_data (r->class)->syslog_level = r->default_syslog_level;
+	vlib_log_get_subclass_data (r->class)->syslog_level =
+	  r->default_syslog_level;
       r = r->next;
     }
 

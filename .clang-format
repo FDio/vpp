@@ -20,6 +20,7 @@ ForEachMacros:
   - 'vlib_foreach_rx_tx'
   - 'foreach_vlib_main'
   - 'foreach_set_bit_index'
+  - 'foreach_vlib_frame_bitmap_set_bit_index'
   - 'FOREACH_ARRAY_ELT'
   - 'RTE_ETH_FOREACH_DEV'
 
