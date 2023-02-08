@@ -149,6 +149,34 @@ __vlib_add_log_registration_##x (void)		\
   }						\
 __VA_ARGS__  vlib_log_class_registration_t x
 
+static_always_inline vlib_log_class_data_t *
+vnet_log_get_class_data (vlib_log_class_t ci)
+{
+  vlib_log_main_t *lm = &log_main;
+  return vec_elt_at_index (lm->classes, (ci >> 16));
+}
+
+static_always_inline vlib_log_subclass_data_t *
+vlib_log_get_subclass_data (vlib_log_class_t ci)
+{
+  vlib_log_class_data_t *c = vnet_log_get_class_data (ci);
+  return vec_elt_at_index (c->subclasses, (ci & 0xffff));
+}
+
+static_always_inline int
+vlib_log_is_enabled (vlib_log_level_t level, vlib_log_class_t class)
+{
+  vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (class);
+
+  if (level <= sc->level && sc->level != VLIB_LOG_LEVEL_DISABLED)
+    return 1;
+
+  if (level <= sc->syslog_level && sc->syslog_level != VLIB_LOG_LEVEL_DISABLED)
+    return 1;
+
+  return 0;
+}
+
 #endif /* included_vlib_log_h */
 
 /*
