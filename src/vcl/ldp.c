@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 #include <netinet/tcp.h>
-#include <linux/udp.h>
+#include <netinet/udp.h>
 
 #include <vcl/ldp_socket_wrapper.h>
 #include <vcl/ldp.h>
@@ -1679,6 +1679,93 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
   return size;
 }
 
+static int
+ldp_parse_cmsg (vls_handle_t vlsh, const struct msghdr *msg,
+		vppcom_endpt_tlv_t *app_data)
+{
+  struct cmsghdr *cmsg;
+  struct in_pktinfo *pi;
+  vppcom_endpt_t ep;
+  uint32_t ep_len;
+
+  cmsg = CMSG_FIRSTHDR (msg);
+
+  while (cmsg != NULL)
+    {
+      switch (cmsg->cmsg_level)
+	{
+	case SOL_UDP:
+	  switch (cmsg->cmsg_type)
+	    {
+	    case UDP_SEGMENT:
+	      app_data->data_type = VCL_UDP_SEGMENT;
+	      app_data->data_len = sizeof (u16);
+	      app_data->value = *(u16 *) CMSG_DATA (cmsg);
+	      break;
+	    default:
+	      LDBG (1, "SOL_UDP cmsg_type %u not supported", cmsg->cmsg_type);
+	      break;
+	    }
+	  break;
+	case IPPROTO_IP:
+	  switch (cmsg->cmsg_type)
+	    {
+	    case IP_PKTINFO:
+	      pi = (void *) CMSG_DATA (cmsg);
+	      ep.is_ip4 = VPPCOM_IS_IP4;
+	      ep.ip = (u8 *) &pi->ipi_spec_dst;
+	      ep.port = 0;
+	      ep_len = sizeof (ep);
+	      vls_attr (vlsh, VPPCOM_ATTR_SET_LCL_ADDR, (void *) &ep, &ep_len);
+	      break;
+	    default:
+	      LDBG (1, "IPPROTO_IP cmsg_type %u not supported",
+		    cmsg->cmsg_type);
+	      break;
+	    }
+	  break;
+	default:
+	  LDBG (1, "cmsg_level %u not supported", cmsg->cmsg_level);
+	  break;
+	}
+      cmsg = CMSG_NXTHDR ((struct msghdr *) msg, cmsg);
+    }
+  return 0;
+}
+
+static int
+ldp_make_cmsg (vls_handle_t vlsh, struct msghdr *msg)
+{
+  u32 optval, optlen = sizeof (optval);
+  struct cmsghdr *cmsg;
+
+  cmsg = CMSG_FIRSTHDR (msg);
+
+  if (!vls_attr (vlsh, VPPCOM_ATTR_GET_IP_PKTINFO, (void *) &optval,
+		 &optlen) &&
+      optval)
+    {
+      vppcom_endpt_t ep;
+      u8 addr_buf[sizeof (struct in_addr)];
+      u32 size = sizeof (ep);
+
+      ep.ip = addr_buf;
+
+      if (!vls_attr (vlsh, VPPCOM_ATTR_GET_LCL_ADDR, &ep, &size))
+	{
+	  struct in_pktinfo pi = {};
+
+	  clib_memcpy (&pi.ipi_addr, ep.ip, sizeof (struct in_addr));
+	  cmsg->cmsg_level = IPPROTO_IP;
+	  cmsg->cmsg_type = IP_PKTINFO;
+	  cmsg->cmsg_len = CMSG_LEN (sizeof (pi));
+	  clib_memcpy (CMSG_DATA (cmsg), &pi, sizeof (pi));
+	}
+    }
+
+  return 0;
+}
+
 ssize_t
 sendmsg (int fd, const struct msghdr * msg, int flags)
 {
@@ -1690,23 +1777,13 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      vppcom_endpt_tlv_t *p_app_data = 0, app_data;
       struct iovec *iov = msg->msg_iov;
       ssize_t total = 0;
       int i, rv = 0;
-      struct cmsghdr *cmsg;
-      uint16_t *valp;
-      vppcom_endpt_tlv_t _app_data;
-      vppcom_endpt_tlv_t *p_app_data = NULL;
 
-      cmsg = CMSG_FIRSTHDR (msg);
-      if (cmsg && cmsg->cmsg_type == UDP_SEGMENT)
-	{
-	  p_app_data = &_app_data;
-	  valp = (void *) CMSG_DATA (cmsg);
-	  p_app_data->data_type = VCL_UDP_SEGMENT;
-	  p_app_data->data_len = sizeof (*valp);
-	  p_app_data->value = *valp;
-	}
+      if (ldp_parse_cmsg (vlsh, msg, &app_data))
+	p_app_data = &app_data;
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
@@ -1828,7 +1905,11 @@ recvmsg (int fd, struct msghdr * msg, int flags)
 	  size = -1;
 	}
       else
-	size = total;
+	{
+	  if (msg->msg_controllen)
+	    ldp_make_cmsg (vlsh, msg);
+	  size = total;
+	}
     }
   else
     {
@@ -2111,6 +2192,21 @@ setsockopt (int fd, int level, int optname,
 	    default:
 	      LDBG (0, "ERROR: fd %d: setsockopt SOL_SOCKET: vlsh %u "
 		    "optname %d unsupported!", fd, vlsh, optname);
+	      break;
+	    }
+	  break;
+	case SOL_IP:
+	  switch (optname)
+	    {
+	    case IP_PKTINFO:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_IP_PKTINFO, (void *) optval,
+			     &optlen);
+	      break;
+	    default:
+	      LDBG (0,
+		    "ERROR: fd %d: setsockopt SOL_IP: vlsh %u optname %d"
+		    "unsupported!",
+		    fd, vlsh, optname);
 	      break;
 	    }
 	  break;

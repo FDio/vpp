@@ -3584,7 +3584,9 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 			(*buflen >= sizeof (*ep)) && ep->ip))
 	{
 	  session->transport.is_ip4 = ep->is_ip4;
-	  session->transport.lcl_port = ep->port;
+	  /* If port 0, ignore request */
+	  if (ep->port)
+	    session->transport.lcl_port = ep->port;
 	  vcl_ip_copy_from_ep (&session->transport.lcl_ip, ep);
 	  *buflen = sizeof (*ep);
 	  VDBG (1,
@@ -4104,6 +4106,36 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 				 *buflen + sizeof (u32));
       clib_memcpy (session->ext_config->data, buffer, *buflen);
       session->ext_config->len = *buflen;
+      break;
+    case VPPCOM_ATTR_SET_IP_PKTINFO:
+      if (buffer && buflen && (*buflen == sizeof (int)) &&
+	  !vcl_session_has_attr (session, VCL_SESS_ATTR_IP_PKTINFO))
+	{
+	  if (*(int *) buffer)
+	    vcl_session_set_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+	  else
+	    vcl_session_clear_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+
+	  VDBG (2, "VCL_SESS_ATTR_IP_PKTINFO: %d, buflen %d",
+		vcl_session_has_attr (session, VCL_SESS_ATTR_REUSEADDR),
+		*buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_IP_PKTINFO:
+      if (buffer && buflen && (*buflen >= sizeof (int)))
+	{
+	  *(int *) buffer =
+	    vcl_session_has_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+	  *buflen = sizeof (int);
+
+	  VDBG (2, "VCL_SESS_ATTR_IP_PKTINFO: %d, buflen %d", *(int *) buffer,
+		*buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
       break;
 
     default:
