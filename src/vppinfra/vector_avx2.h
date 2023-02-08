@@ -335,6 +335,18 @@ u32x8_scatter_one (u32x8 r, int index, void *p)
   *(u32 *) p = r[index];
 }
 
+#define u32x8_gather_u32(base, indices, scale)                                \
+  (u32x8) _mm256_i32gather_epi32 (base, (__m256i) indices, scale)
+
+#ifdef __AVX512F__
+#define u32x8_scatter_u32(base, indices, v, scale)                            \
+  _mm256_i32scatter_epi32 (base, (__m256i) indices, (__m256i) v, scale)
+#else
+#define u32x8_scatter_u32(base, indices, v, scale)                            \
+  for (u32 i = 0; i < 8; i++)                                                 \
+    *((u32u *) ((u8 *) base + (scale) * (indices)[i])) = (v)[i];
+#endif
+
 static_always_inline u8x32
 u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
 {
@@ -426,6 +438,12 @@ static_always_inline u32x8
 u32x8_splat_u32x4 (u32x4 a)
 {
   return (u32x8) _mm256_broadcastsi128_si256 ((__m128i) a);
+}
+
+static_always_inline u64x4
+u64x4_splat_u64x2 (u64x2 a)
+{
+  return (u64x4) _mm256_broadcastsi128_si256 ((__m128i) a);
 }
 
 static_always_inline u8x32
