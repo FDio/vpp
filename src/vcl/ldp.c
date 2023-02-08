@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 #include <netinet/tcp.h>
-#include <linux/udp.h>
+#include <netinet/udp.h>
 
 #include <vcl/ldp_socket_wrapper.h>
 #include <vcl/ldp.h>
@@ -1556,17 +1556,14 @@ __recv_chk (int fd, void *buf, size_t n, size_t buflen, int flags)
 
 static inline int
 ldp_vls_sendo (vls_handle_t vlsh, const void *buf, size_t n,
-	       vppcom_endpt_tlv_t *ep_tlv, int flags,
+	       vppcom_endpt_tlv_t *app_tlvs, int flags,
 	       __CONST_SOCKADDR_ARG _addr, socklen_t addr_len)
 {
   const struct sockaddr *addr = SOCKADDR_GET_SA (_addr);
   vppcom_endpt_t *ep = 0;
   vppcom_endpt_t _ep;
 
-  if (ep_tlv)
-    {
-      _ep.app_data = *ep_tlv;
-    }
+  _ep.app_tlvs = app_tlvs;
 
   if (addr)
     {
@@ -1679,6 +1676,97 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
   return size;
 }
 
+static int
+ldp_parse_cmsg (vls_handle_t vlsh, const struct msghdr *msg,
+		vppcom_endpt_tlv_t **app_tlvs)
+{
+  uint8_t *ad, *at = (uint8_t *) *app_tlvs;
+  vppcom_endpt_tlv_t *adh;
+  struct in_pktinfo *pi;
+  struct cmsghdr *cmsg;
+
+  cmsg = CMSG_FIRSTHDR (msg);
+
+  while (cmsg != NULL)
+    {
+      switch (cmsg->cmsg_level)
+	{
+	case SOL_UDP:
+	  switch (cmsg->cmsg_type)
+	    {
+	    case UDP_SEGMENT:
+	      vec_add2 (at, adh, sizeof (*adh));
+	      adh->data_type = VCL_UDP_SEGMENT;
+	      adh->data_len = sizeof (uint16_t);
+	      vec_add2 (at, ad, sizeof (uint16_t));
+	      *(uint16_t *) ad = *(uint16_t *) CMSG_DATA (cmsg);
+	      break;
+	    default:
+	      LDBG (1, "SOL_UDP cmsg_type %u not supported", cmsg->cmsg_type);
+	      break;
+	    }
+	  break;
+	case SOL_IP:
+	  switch (cmsg->cmsg_type)
+	    {
+	    case IP_PKTINFO:
+	      vec_add2 (at, adh, sizeof (*adh));
+	      adh->data_type = VCL_IP_PKTINFO;
+	      adh->data_len = sizeof (struct in_addr);
+	      vec_add2 (at, ad, sizeof (struct in_addr));
+	      pi = (void *) CMSG_DATA (cmsg);
+	      clib_memcpy_fast (ad, &pi->ipi_spec_dst,
+				sizeof (struct in_addr));
+	      break;
+	    default:
+	      LDBG (1, "SOL_IP cmsg_type %u not supported", cmsg->cmsg_type);
+	      break;
+	    }
+	  break;
+	default:
+	  LDBG (1, "cmsg_level %u not supported", cmsg->cmsg_level);
+	  break;
+	}
+      cmsg = CMSG_NXTHDR ((struct msghdr *) msg, cmsg);
+    }
+  *app_tlvs = (vppcom_endpt_tlv_t *) at;
+  return 0;
+}
+
+static int
+ldp_make_cmsg (vls_handle_t vlsh, struct msghdr *msg)
+{
+  u32 optval, optlen = sizeof (optval);
+  struct cmsghdr *cmsg;
+
+  cmsg = CMSG_FIRSTHDR (msg);
+
+  if (!vls_attr (vlsh, VPPCOM_ATTR_GET_IP_PKTINFO, (void *) &optval, &optlen))
+    return 0;
+
+  if (optval)
+    {
+      vppcom_endpt_t ep;
+      u8 addr_buf[sizeof (struct in_addr)];
+      u32 size = sizeof (ep);
+
+      ep.ip = addr_buf;
+
+      if (!vls_attr (vlsh, VPPCOM_ATTR_GET_LCL_ADDR, &ep, &size))
+	{
+	  struct in_pktinfo pi = {};
+
+	  clib_memcpy (&pi.ipi_addr, ep.ip, sizeof (struct in_addr));
+	  cmsg->cmsg_level = SOL_IP;
+	  cmsg->cmsg_type = IP_PKTINFO;
+	  cmsg->cmsg_len = CMSG_LEN (sizeof (pi));
+	  clib_memcpy (CMSG_DATA (cmsg), &pi, sizeof (pi));
+	}
+    }
+
+  return 0;
+}
+
 ssize_t
 sendmsg (int fd, const struct msghdr * msg, int flags)
 {
@@ -1690,29 +1778,17 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
   vlsh = ldp_fd_to_vlsh (fd);
   if (vlsh != VLS_INVALID_HANDLE)
     {
+      vppcom_endpt_tlv_t *app_tlvs = 0;
       struct iovec *iov = msg->msg_iov;
       ssize_t total = 0;
       int i, rv = 0;
-      struct cmsghdr *cmsg;
-      uint16_t *valp;
-      vppcom_endpt_tlv_t _app_data;
-      vppcom_endpt_tlv_t *p_app_data = NULL;
 
-      cmsg = CMSG_FIRSTHDR (msg);
-      if (cmsg && cmsg->cmsg_type == UDP_SEGMENT)
-	{
-	  p_app_data = &_app_data;
-	  valp = (void *) CMSG_DATA (cmsg);
-	  p_app_data->data_type = VCL_UDP_SEGMENT;
-	  p_app_data->data_len = sizeof (*valp);
-	  p_app_data->value = *valp;
-	}
+      ldp_parse_cmsg (vlsh, msg, &app_tlvs);
 
       for (i = 0; i < msg->msg_iovlen; ++i)
 	{
-	  rv =
-	    ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, p_app_data,
-			   flags, msg->msg_name, msg->msg_namelen);
+	  rv = ldp_vls_sendo (vlsh, iov[i].iov_base, iov[i].iov_len, app_tlvs,
+			      flags, msg->msg_name, msg->msg_namelen);
 	  if (rv < 0)
 	    break;
 	  else
@@ -1722,6 +1798,8 @@ sendmsg (int fd, const struct msghdr * msg, int flags)
 		break;
 	    }
 	}
+
+      vec_free (app_tlvs);
 
       if (rv < 0 && total == 0)
 	{
@@ -1828,7 +1906,11 @@ recvmsg (int fd, struct msghdr * msg, int flags)
 	  size = -1;
 	}
       else
-	size = total;
+	{
+	  if (msg->msg_controllen)
+	    ldp_make_cmsg (vlsh, msg);
+	  size = total;
+	}
     }
   else
     {
@@ -2111,6 +2193,21 @@ setsockopt (int fd, int level, int optname,
 	    default:
 	      LDBG (0, "ERROR: fd %d: setsockopt SOL_SOCKET: vlsh %u "
 		    "optname %d unsupported!", fd, vlsh, optname);
+	      break;
+	    }
+	  break;
+	case SOL_IP:
+	  switch (optname)
+	    {
+	    case IP_PKTINFO:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_IP_PKTINFO, (void *) optval,
+			     &optlen);
+	      break;
+	    default:
+	      LDBG (0,
+		    "ERROR: fd %d: setsockopt SOL_IP: vlsh %u optname %d"
+		    "unsupported!",
+		    fd, vlsh, optname);
 	      break;
 	    }
 	  break;
