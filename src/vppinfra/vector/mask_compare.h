@@ -80,33 +80,38 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
 }
 
 static_always_inline u64
-clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
+clib_mask_compare_u32_x64 (u32 v, u32 m, u32 *a, u32 n_elts)
 {
   u64 mask = 0;
 #if defined(CLIB_HAVE_VEC512)
   u32x16 v16 = u32x16_splat (v);
+  u32x16 m16 = u32x16_splat (m);
   u32x16u *av = (u32x16u *) a;
-  mask = ((u64) u32x16_is_equal_mask (av[0], v16) |
-	  (u64) u32x16_is_equal_mask (av[1], v16) << 16 |
-	  (u64) u32x16_is_equal_mask (av[2], v16) << 32 |
-	  (u64) u32x16_is_equal_mask (av[3], v16) << 48);
+  mask = ((u64) u32x16_is_equal_mask ((av[0] & m16), v16) |
+	  (u64) u32x16_is_equal_mask ((av[1] & m16), v16) << 16 |
+	  (u64) u32x16_is_equal_mask ((av[2] & m16), v16) << 32 |
+	  (u64) u32x16_is_equal_mask ((av[3] & m16), v16) << 48);
 #elif defined(CLIB_HAVE_VEC256)
   u32x8 v8 = u32x8_splat (v);
+  u32x8 m8 = u32x8_splat (m);
   u32x8u *av = (u32x8u *) a;
-  u32x8 m = { 0, 4, 1, 5, 2, 6, 3, 7 };
+  u32x8 p = { 0, 4, 1, 5, 2, 6, 3, 7 };
   i8x32 c;
 
-  c = i8x32_pack (i16x16_pack ((i32x8) (v8 == av[0]), (i32x8) (v8 == av[1])),
-		  i16x16_pack ((i32x8) (v8 == av[2]), (i32x8) (v8 == av[3])));
-  mask = i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, m));
+  c = i8x32_pack (
+    i16x16_pack ((i32x8) (v8 == (av[0] & m8)), (i32x8) (v8 == (av[1] & m8))),
+    i16x16_pack ((i32x8) (v8 == (av[2] & m8)), (i32x8) (v8 == (av[3] & m8))));
+  mask = i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, p));
 
-  c = i8x32_pack (i16x16_pack ((i32x8) (v8 == av[4]), (i32x8) (v8 == av[5])),
-		  i16x16_pack ((i32x8) (v8 == av[6]), (i32x8) (v8 == av[7])));
-  mask |= (u64) i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, m)) << 32;
+  c = i8x32_pack (
+    i16x16_pack ((i32x8) (v8 == (av[4] & m8)), (i32x8) (v8 == (av[5] & m8))),
+    i16x16_pack ((i32x8) (v8 == (av[6] & m8)), (i32x8) (v8 == (av[7] & m8))));
+  mask |= (u64) i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, p)) << 32;
 
 #elif defined(CLIB_HAVE_VEC128) && defined(__ARM_NEON)
   u32x4 v4 = u32x4_splat (v);
-  u32x4 m = { 1, 2, 4, 8 };
+  u32x4 m4 = u32x4_splat (m);
+  u32x4 s = { 1, 2, 4, 8 };
   u32x4u *av = (u32x4u *) a;
 
   /* compare each u32 elemment with v4, result gives -1 in each element
@@ -116,26 +121,53 @@ clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
      of all elements of the vector which will give us u8 bitmap. */
 
   for (int i = 0; i < 16; i++)
-    mask |= (u64) vaddvq_u32 ((av[i] == v4) & m) << (i * 4);
+    mask |= (u64) vaddvq_u32 ((av[i] & m4 == v4) & s) << (i * 4);
 
 #elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
   u32x4 v4 = u32x4_splat (v);
+  u32x4 m4 = u32x4_splat (m);
   u32x4u *av = (u32x4u *) a;
 
   for (int i = 0; i < 4; i++)
     {
-      i16x8 p1 = i16x8_pack (v4 == av[0], v4 == av[1]);
-      i16x8 p2 = i16x8_pack (v4 == av[2], v4 == av[3]);
+      i16x8 p1 = i16x8_pack (v4 == av[0] & m4, v4 == av[1] & m4);
+      i16x8 p2 = i16x8_pack (v4 == av[2] & m4, v4 == av[3] & m4);
       mask |= (u64) i8x16_msb_mask (i8x16_pack (p1, p2)) << (i * 16);
       av += 4;
     }
 
 #else
   for (int i = 0; i < n_elts; i++)
-    if (a[i] == v)
+    if ((a[i] & m) == v)
       mask |= 1ULL << i;
 #endif
   return mask;
+}
+
+/** \brief Compare masked 32-bit elemments with provied value and return bitmap
+
+    @param v value to compare elements with
+    @param m value used to mask each element of a before comparison
+    @param a array of u32 elements
+    @param mask array of u64 where reuslting mask will be stored
+    @param n_elts number of elements in the array
+    @return none
+*/
+
+static_always_inline void
+clib_mask_compare_masked_u32 (u32 v, u32 m, u32 *a, u64 *bitmap, u32 n_elts)
+{
+  while (n_elts >= 64)
+    {
+      bitmap++[0] = clib_mask_compare_u32_x64 (v, m, a, 64);
+      n_elts -= 64;
+      a += 64;
+    }
+
+  if (PREDICT_TRUE (n_elts == 0))
+    return;
+
+  bitmap[0] = clib_mask_compare_u32_x64 (v, m, a, n_elts) & pow2_mask (n_elts);
 }
 
 /** \brief Compare 32-bit elemments with provied value and return bitmap
@@ -150,17 +182,7 @@ clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
 static_always_inline void
 clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
 {
-  while (n_elts >= 64)
-    {
-      bitmap++[0] = clib_mask_compare_u32_x64 (v, a, 64);
-      n_elts -= 64;
-      a += 64;
-    }
-
-  if (PREDICT_TRUE (n_elts == 0))
-    return;
-
-  bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  clib_mask_compare_masked_u32 (v, 0xffffffff, a, bitmap, n_elts);
 }
 
 static_always_inline u64
