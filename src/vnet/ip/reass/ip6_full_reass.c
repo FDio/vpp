@@ -131,6 +131,8 @@ typedef struct
   // thread which received fragment with offset 0 and which sends out the
   // completed reassembly
   u32 sendout_thread_index;
+
+  u32 feature_start_config_index;
 } ip6_full_reass_t;
 
 typedef struct
@@ -693,11 +695,11 @@ again:
 }
 
 always_inline ip6_full_reass_rc_t
-ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 ip6_full_reass_main_t * rm,
-			 ip6_full_reass_per_thread_t * rt,
-			 ip6_full_reass_t * reass, u32 * bi0, u32 * next0,
-			 u32 * error0, bool is_custom_app)
+ip6_full_reass_finalize (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 ip6_full_reass_main_t *rm,
+			 ip6_full_reass_per_thread_t *rt,
+			 ip6_full_reass_t *reass, u32 *bi0, u32 *next0,
+			 u32 *error0, bool is_custom_app, bool is_feature)
 {
   *bi0 = reass->first_bi;
   *error0 = IP6_ERROR_NONE;
@@ -920,9 +922,25 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, node->node_index, IP6_ERROR_REASS_SUCCESS,
 			       1);
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       IP6_ERROR_REASS_FRAGMENTS_REASSEMBLED,
-			       reass->fragments_n);
+  if (is_feature && reass->feature_start_config_index !=
+		      vnet_get_feature_config_index (
+			vnet_buffer (first_b)->feature_arc_index,
+			vnet_buffer (first_b)->sw_if_index[VLIB_RX]))
+    {
+      *next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+      *error0 = IP6_ERROR_DROP;
+
+      vlib_node_increment_counter (vm, node->node_index, IP6_ERROR_DROP,
+				   reass->fragments_n);
+    }
+  else
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   IP6_ERROR_REASS_FRAGMENTS_REASSEMBLED,
+				   reass->fragments_n);
+
+      *error0 = IP6_ERROR_NONE;
+    }
 
   ip6_full_reass_free (rm, rt, reass);
   reass = NULL;
@@ -964,8 +982,8 @@ ip6_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       ip6_full_reass_per_thread_t *rt,
 		       ip6_full_reass_t *reass, u32 *bi0, u32 *next0,
 		       u32 *error0, ip6_frag_hdr_t *frag_hdr,
-		       bool is_custom_app, u32 *handoff_thread_idx,
-		       int skip_bihash)
+		       bool is_custom_app, bool is_feature,
+		       u32 *handoff_thread_idx, int skip_bihash)
 {
   int consumed = 0;
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
@@ -1014,6 +1032,12 @@ ip6_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
       reass->min_fragment_length = clib_net_to_host_u16 (fip->payload_length);
       consumed = 1;
       reass->fragments_n = 1;
+      if (is_feature)
+	{
+	  reass->feature_start_config_index = vnet_get_feature_config_index (
+	    vnet_buffer (fb)->feature_arc_index,
+	    vnet_buffer (fb)->sw_if_index[VLIB_RX]);
+	}
       goto check_if_done_maybe;
     }
   reass->min_fragment_length =
@@ -1087,7 +1111,7 @@ check_if_done_maybe:
 	reass->memory_owner_thread_index != reass->sendout_thread_index;
       ip6_full_reass_rc_t rc =
 	ip6_full_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
-				 is_custom_app);
+				 is_custom_app, is_feature);
       if (IP6_FULL_REASS_RC_OK == rc && handoff)
 	{
 	  return IP6_FULL_REASS_RC_HANDOFF;
@@ -1322,7 +1346,7 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      u32 counter = ~0;
 	      switch (ip6_full_reass_update (
 		vm, node, rm, rt, reass, &bi0, &next0, &error0, frag_hdr,
-		is_custom_app, &handoff_thread_idx, skip_bihash))
+		is_custom_app, is_feature, &handoff_thread_idx, skip_bihash))
 		{
 		case IP6_FULL_REASS_RC_OK:
 		  /* nothing to do here */
