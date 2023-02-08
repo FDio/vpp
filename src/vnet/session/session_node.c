@@ -1101,6 +1101,8 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
 	  if (transport_connection_is_cless (ctx->tc))
 	    {
 	      ip_copy (&ctx->tc->rmt_ip, &hdr->rmt_ip, ctx->tc->is_ip4);
+	      ip_copy (&ctx->tc->lcl_ip, &hdr->lcl_ip, ctx->tc->is_ip4);
+	      /* Local port assumed to be bound, so not overwriting it */
 	      ctx->tc->rmt_port = hdr->rmt_port;
 	    }
 	  hdr->data_offset += n_bytes_read;
