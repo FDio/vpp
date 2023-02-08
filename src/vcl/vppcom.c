@@ -2228,7 +2228,7 @@ vcl_fifo_is_writeable (svm_fifo_t * f, u32 len, u8 is_dgram)
 
 always_inline int
 vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
-			     size_t n, u16 gso_size, u8 is_flush, u8 is_dgram)
+			     size_t n, u8 is_flush, u8 is_dgram)
 {
   int n_write, is_nonblocking;
   session_evt_type_t et;
@@ -2295,7 +2295,7 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
   if (is_dgram)
     n_write =
       app_send_dgram_raw_gso (tx_fifo, &s->transport, s->vpp_evt_q, buf, n,
-			      gso_size, et, 0 /* do_evt */, SVM_Q_WAIT);
+			      s->gso_size, et, 0 /* do_evt */, SVM_Q_WAIT);
   else
     n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
 				   0 /* do_evt */ , SVM_Q_WAIT);
@@ -2324,7 +2324,7 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
   if (PREDICT_FALSE (!s))
     return VPPCOM_EBADFD;
 
-  return vppcom_session_write_inline (wrk, s, buf, n, 0, 0 /* is_flush */,
+  return vppcom_session_write_inline (wrk, s, buf, n, 0 /* is_flush */,
 				      s->is_dgram ? 1 : 0);
 }
 
@@ -2338,7 +2338,7 @@ vppcom_session_write_msg (uint32_t session_handle, void *buf, size_t n)
   if (PREDICT_FALSE (!s))
     return VPPCOM_EBADFD;
 
-  return vppcom_session_write_inline (wrk, s, buf, n, 0, 1 /* is_flush */,
+  return vppcom_session_write_inline (wrk, s, buf, n, 1 /* is_flush */,
 				      s->is_dgram ? 1 : 0);
 }
 
@@ -4105,6 +4105,36 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       clib_memcpy (session->ext_config->data, buffer, *buflen);
       session->ext_config->len = *buflen;
       break;
+    case VPPCOM_ATTR_SET_IP_PKTINFO:
+      if (buffer && buflen && (*buflen == sizeof (int)) &&
+	  !vcl_session_has_attr (session, VCL_SESS_ATTR_IP_PKTINFO))
+	{
+	  if (*(int *) buffer)
+	    vcl_session_set_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+	  else
+	    vcl_session_clear_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+
+	  VDBG (2, "VCL_SESS_ATTR_IP_PKTINFO: %d, buflen %d",
+		vcl_session_has_attr (session, VCL_SESS_ATTR_REUSEADDR),
+		*buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_IP_PKTINFO:
+      if (buffer && buflen && (*buflen >= sizeof (int)))
+	{
+	  *(int *) buffer =
+	    vcl_session_has_attr (session, VCL_SESS_ATTR_IP_PKTINFO);
+	  *buflen = sizeof (int);
+
+	  VDBG (2, "VCL_SESS_ATTR_IP_PKTINFO: %d, buflen %d", *(int *) buffer,
+		*buflen);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
 
     default:
       rv = VPPCOM_EINVAL;
@@ -4148,13 +4178,33 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
   return rv;
 }
 
+static void
+vcl_handle_ep_app_tlvs (vcl_session_t *s, vppcom_endpt_t *ep)
+{
+  vppcom_endpt_tlv_t *tlv = ep->app_tlvs;
+
+  do
+    {
+      switch (tlv->data_type)
+	{
+	case VCL_UDP_SEGMENT:
+	  s->gso_size = *(u16 *) tlv->data;
+	  break;
+	case VCL_IP_PKTINFO:
+	  clib_memcpy_fast (&s->transport.lcl_ip, (ip4_address_t *) tlv->data,
+			    sizeof (ip4_address_t));
+	}
+      tlv = VCL_EP_NEXT_APP_TLV (ep, tlv);
+    }
+  while (tlv);
+}
+
 int
 vppcom_session_sendto (uint32_t session_handle, void *buffer,
 		       uint32_t buflen, int flags, vppcom_endpt_t * ep)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *s;
-  u16 gso_size = 0;
 
   s = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!s))
@@ -4169,12 +4219,9 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
       s->transport.rmt_port = ep->port;
       vcl_ip_copy_from_ep (&s->transport.rmt_ip, ep);
 
-      vppcom_endpt_tlv_t *p_app_data = &ep->app_data;
+      if (ep->app_tlvs)
+	vcl_handle_ep_app_tlvs (s, ep);
 
-      if (p_app_data && (p_app_data->data_type == VCL_UDP_SEGMENT))
-	{
-	  gso_size = p_app_data->value;
-	}
       /* Session not connected/bound in vpp. Create it by 'connecting' it */
       if (PREDICT_FALSE (s->session_state == VCL_STATE_CLOSED))
 	{
@@ -4198,7 +4245,7 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
       VDBG (2, "handling flags 0x%u (%d) not implemented yet.", flags, flags);
     }
 
-  return (vppcom_session_write_inline (wrk, s, buffer, buflen, gso_size, 1,
+  return (vppcom_session_write_inline (wrk, s, buffer, buflen, 1,
 				       s->is_dgram ? 1 : 0));
 }
 
