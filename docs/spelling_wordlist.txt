@@ -312,6 +312,7 @@ elts
 emacs
 emerg
 emphasise
+ena
 enablement
 encap
 encap
