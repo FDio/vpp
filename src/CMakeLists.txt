@@ -251,7 +251,7 @@ endif()
 ##############################################################################
 
 add_custom_target(run
-  COMMAND ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  COMMAND sudo ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
   COMMENT "Starting VPP..."
   USES_TERMINAL
 )
