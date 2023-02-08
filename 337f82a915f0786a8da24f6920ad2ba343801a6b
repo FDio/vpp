@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9959264e_65ef01b0",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1719,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-08T15:59:04Z",
+      "side": 1,
+      "message": "missing break statement",
+      "revId": "337f82a915f0786a8da24f6920ad2ba343801a6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74dbd3f4_6d6142ce",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1722,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-08T15:59:04Z",
+      "side": 1,
+      "message": "ditto",
+      "revId": "337f82a915f0786a8da24f6920ad2ba343801a6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "894a9f38_4abd99c6",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1726,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-08T15:59:04Z",
+      "side": 1,
+      "message": "ditto",
+      "revId": "337f82a915f0786a8da24f6920ad2ba343801a6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66c8e680_386c55a0",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1755,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-08T15:59:04Z",
+      "side": 1,
+      "message": "ep.ip is already a pointer. So ep.ip instead of \u0026ep.ip here.",
+      "revId": "337f82a915f0786a8da24f6920ad2ba343801a6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
