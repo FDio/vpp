@@ -1,0 +1,228 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2023 Cisco Systems, Inc.
+ */
+
+#ifndef _ENA_H_
+#define _ENA_H_
+
+#include <vppinfra/types.h>
+#include <vppinfra/error_bootstrap.h>
+#include <vppinfra/lock.h>
+
+#include <vlib/log.h>
+#include <vlib/pci/pci.h>
+
+#include <vnet/interface.h>
+
+#include <vnet/devices/devices.h>
+#include <vnet/flow/flow.h>
+#include <ena/ena_defs.h>
+
+extern vlib_log_class_registration_t ena_log;
+extern vlib_log_class_registration_t ena_stats_log;
+
+#define ena_log_err(dev, f, ...)                                              \
+  vlib_log (VLIB_LOG_LEVEL_ERR, ena_log.class, "%U: " f,                      \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
+
+#define ena_log_warn(dev, f, ...)                                             \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, ena_log.class, "%U: " f,                  \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
+
+#define ena_log_info(dev, f, ...)                                             \
+  vlib_log (VLIB_LOG_LEVEL_INFO, ena_log.class, "%U: " f,                     \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
+
+#define ena_log_debug(dev, f, ...)                                            \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_log.class, "%U: " f,                    \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
+
+#define ena_stats_log_debug(dev, f, ...)                                      \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, ena_stats_log.class, "%U: " f,              \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
+
+#define foreach_ena_device_flags                                              \
+  _ (readless)                                                                \
+  _ (va_dma)                                                                  \
+  _ (admin_up)                                                                \
+  _ (error)                                                                   \
+  _ (elog)
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  ena_rx_desc_t *sqes;
+  ena_rx_cdesc_t *cqes;
+  u16 n_desc;
+  u32 *bufs;
+  u32 queue_index;
+} ena_rxq_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  ena_tx_desc_t *sqes;
+  ena_tx_cdesc_t *cqes;
+  u16 n_desc;
+  u32 queue_index;
+  clib_spinlock_t lock;
+} ena_txq_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+#define _(a) u32 a : 1;
+  foreach_ena_device_flags
+#undef _
+    u32 per_interface_next_index;
+
+  u32 dev_instance;
+  u32 sw_if_index;
+  u32 hw_if_index;
+  vlib_pci_dev_handle_t pci_dev_handle;
+  vlib_pci_addr_t pci_addr;
+  u32 numa_node;
+  void *bar0;
+  u8 *name;
+
+  /* mmio */
+  ena_mmio_resp_t *mmio_resp;
+
+  /* admin queue */
+  ena_aq_entry_t *aq_entries;
+  u32 aq_next;
+  ena_acq_entry_t *acq_entries;
+  u16 acq_n_entries;
+  u16 acq_head;
+
+  /* async event notification */
+  ena_aenq_entry_t *aenq_entries;
+
+  ena_host_info_t *host_info;
+  void *debug_area;
+
+  /* queues */
+  ena_rxq_t *rxqs;
+  ena_txq_t *txqs;
+  u16 n_tx_queues;
+  u16 n_rx_queues;
+
+  /* allocations */
+  void **physmem_allocations;
+
+  /* device info */
+  u32 supported_feat_id;
+  u8 mac_addr[6];
+
+  /* error */
+  clib_error_t *err;
+} ena_device_t;
+
+#define ENA_RX_VECTOR_SZ VLIB_FRAME_SIZE
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vlib_buffer_t buffer_template;
+} ena_per_thread_data_t;
+
+typedef struct
+{
+  u16 msg_id_base;
+
+  ena_device_t **devices;
+  ena_per_thread_data_t *per_thread_data;
+} ena_main_t;
+
+extern ena_main_t ena_main;
+
+typedef struct
+{
+  vlib_pci_addr_t addr;
+  u8 *name;
+  u16 rxq_num;
+  u16 txq_num;
+  u16 rxq_size;
+  u16 txq_size;
+  /* return */
+  u32 sw_if_index;
+} ena_create_if_args_t;
+
+clib_error_t *ena_create_if (vlib_main_t *vm, ena_create_if_args_t *args);
+void ena_delete_if (vlib_main_t *vm, u32 dev_instance);
+
+extern vlib_node_registration_t ena_input_node;
+extern vlib_node_registration_t ena_process_node;
+extern vnet_device_class_t ena_device_class;
+
+/* process.c */
+typedef enum
+{
+  ENA_PROCESS_EVENT_UNKNOWN = 0,
+  ENA_PROCESS_EVENT_START,
+} ena_process_event_t;
+
+/* format.c */
+typedef struct
+{
+  char *name;
+  u8 version;
+  u8 data_sz;
+} ena_admin_feature_info_t;
+extern ena_admin_feature_info_t ena_admin_feature_info[];
+
+format_function_t format_ena_device;
+format_function_t format_ena_device_name;
+format_function_t format_ena_input_trace;
+format_function_t format_ena_vf_cap_flags;
+format_function_t format_ena_vlan_supported_caps;
+format_function_t format_ena_vlan_caps;
+format_function_t format_ena_vlan_support;
+format_function_t format_ena_eth_stats;
+format_function_t format_ena_regs;
+format_function_t format_ena_reg_name;
+format_function_t format_ena_aq_feat_id_bitmap;
+format_function_t format_ena_admin_feat_desc;
+
+static_always_inline ena_device_t *
+ena_get_device (u32 dev_instance)
+{
+  return pool_elt_at_index (ena_main.devices, dev_instance)[0];
+}
+
+typedef struct
+{
+  u16 qid;
+  u16 next_index;
+  u32 hw_if_index;
+} ena_input_trace_t;
+
+#define foreach_ena_tx_func_error                                             \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")
+
+typedef enum
+{
+#define _(f, s) ENA_TX_ERROR_##f,
+  foreach_ena_tx_func_error
+#undef _
+    ENA_TX_N_ERROR,
+} ena_tx_func_error_t;
+
+static_always_inline u32
+reg_get (void *regs, u32 off, u8 first, u8 n_bits)
+{
+  u32 v = *(u32u *) (regs + off);
+  v >>= first;
+  v &= pow2_mask (n_bits);
+  return v;
+}
+
+#define _(o, f, l, rn, fn)                                                    \
+  static_always_inline u32 ena_reg_get_##rn##_f_##fn (ena_device_t *ed)       \
+  {                                                                           \
+    return reg_get (ed->bar0, o, f, l);                                       \
+  }
+// foreach_ena_reg_field;
+#undef _
+#endif /* ENA_H */
