@@ -103,16 +103,23 @@ func assertFileSize(f1, f2 string) error {
 	return nil
 }
 
-func startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := NewCommand([]string{"./http_server", addressPort}, netNs)
-	err := cmd.Start()
-	if err != nil {
-		fmt.Println("Failed to start http server")
-		return
+func startHttpServer(running chan struct{}, done chan struct{}, netNs string, addressPorts ...string) {
+	var cmds []*exec.Cmd
+
+	for _, addressPort := range addressPorts {
+		cmd := NewCommand([]string{"./http_server", addressPort}, netNs)
+		err := cmd.Start()
+		if err != nil {
+			fmt.Println("Failed to start http server")
+			return
+		}
+		cmds = append(cmds, cmd)
 	}
 	running <- struct{}{}
 	<-done
-	cmd.Process.Kill()
+	for _, cmd := range cmds {
+		cmd.Process.Kill()
+	}
 }
 
 func startWget(finished chan error, server_ip, port, query, netNs string) {
