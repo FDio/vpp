@@ -52,6 +52,11 @@ plugins {
   plugin http_plugin.so { enable }
 }
 
+logging {
+  default-log-level debug
+  default-syslog-log-level debug
+}
+
 `
 
 const (
@@ -60,10 +65,10 @@ const (
 )
 
 type VppInstance struct {
-	container      *Container
-	additionalConfig  Stanza
-	connection     *core.Connection
-	apiChannel     api.Channel
+	container        *Container
+	additionalConfig Stanza
+	connection       *core.Connection
+	apiChannel       api.Channel
 }
 
 func (vpp *VppInstance) Suite() *HstSuite {
@@ -96,17 +101,17 @@ func (vpp *VppInstance) start() error {
 
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
-                vppConfigTemplate,
-                containerWorkDir,
-                defaultCliSocketFilePath,
-                defaultApiSocketFilePath,
-        )
+		vppConfigTemplate,
+		containerWorkDir,
+		defaultCliSocketFilePath,
+		defaultApiSocketFilePath,
+	)
 	configContent += vpp.additionalConfig.ToString()
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 
 	// Start VPP
-	vpp.container.execServer("vpp -c " + startupFileName)
+	vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 
 	// Connect to VPP and store the connection
 	sockAddress := vpp.container.GetHostWorkDir() + defaultApiSocketFilePath
@@ -152,21 +157,22 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	return string(output)
 }
 
-func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
+func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")
 		if strings.Contains(o, appName) {
-			return nil
+			return
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return fmt.Errorf("timeout while waiting for app '%s'", appName)
+	vpp.Suite().assertNil(1, "timeout while waiting for app '%s'", appName)
+	return
 }
 
 func (vpp *VppInstance) createAfPacket(
 	netInterface NetInterface,
 ) (interface_types.InterfaceIndex, error) {
-        veth := netInterface.(*NetworkInterfaceVeth)
+	veth := netInterface.(*NetworkInterfaceVeth)
 
 	createReq := &af_packet.AfPacketCreateV2{
 		UseRandomHwAddr: true,
@@ -198,14 +204,7 @@ func (vpp *VppInstance) createAfPacket(
 	if veth.AddressWithPrefix() == (AddressWithPrefix{}) {
 		var err error
 		var ip4Address string
-		if veth.peerNetworkNamespace != "" {
-			ip4Address, err = veth.addresser.
-				NewIp4AddressWithNamespace(veth.peerNetworkNamespace)
-		} else {
-			ip4Address, err = veth.addresser.
-				NewIp4Address()
-		}
-		if err == nil {
+		if ip4Address, err = veth.addresser.NewIp4Address(veth.peerNetworkNumber); err == nil {
 			veth.SetAddress(ip4Address)
 		} else {
 			return 0, err
