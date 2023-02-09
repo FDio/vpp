@@ -1,0 +1,32 @@
+---
+volumes:
+  - volume: &shared-vol-proxy
+      host-dir: /tmp/shared-vol-proxy
+  - volume: &shared-vol-server
+      host-dir: /tmp/shared-vol-server
+
+containers:
+  - name: "vpp-proxy"
+    volumes:
+      - <<: *shared-vol-proxy
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+  - name: "nginx-proxy"
+    volumes:
+      - <<: *shared-vol-proxy
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+    image: "hs-test/nginx-ldp"
+    is-optional: true
+  - name: "vpp-server"
+    volumes:
+      - <<: *shared-vol-server
+        container-dir: "/tmp/vpp"
+        is-default-work-dir: true
+  - name: "nginx-server"
+    volumes:
+      - <<: *shared-vol-server
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+    image: "hs-test/nginx-ldp"
+    is-optional: true
