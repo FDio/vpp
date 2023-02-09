@@ -162,15 +162,16 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	return string(output)
 }
 
-func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
+func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")
 		if strings.Contains(o, appName) {
-			return nil
+			return
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return fmt.Errorf("Timeout while waiting for app '%s'", appName)
+	vpp.Suite().assertNil(1, "Timeout while waiting for app '%s'", appName)
+	return
 }
 
 func (vpp *VppInstance) createAfPacket(
@@ -209,14 +210,7 @@ func (vpp *VppInstance) createAfPacket(
 	if veth.AddressWithPrefix() == (AddressWithPrefix{}) {
 		var err error
 		var ip4Address string
-		if veth.peerNetworkNamespace != "" {
-			ip4Address, err = veth.addresser.
-				NewIp4AddressWithNamespace(veth.peerNetworkNamespace)
-		} else {
-			ip4Address, err = veth.addresser.
-				NewIp4Address()
-		}
-		if err == nil {
+		if ip4Address, err = veth.addresser.NewIp4Address(veth.peerNetworkNumber); err == nil {
 			veth.SetAddress(ip4Address)
 		} else {
 			return 0, err
