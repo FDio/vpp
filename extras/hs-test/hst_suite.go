@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultNamespaceName string = "default"
+	defaultNetworkNumber int = 1
 )
 
 func IsPersistent() bool {
@@ -173,7 +173,6 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
 		}
-		s.log(newContainer.getRunCommand())
 		s.containers[newContainer.name] = newContainer
 	}
 }
@@ -250,47 +249,48 @@ func (s *HstSuite) unconfigureNetworkTopology() {
 	}
 }
 
-type NamespaceAddresses struct {
-	namespace         string
+type NetworkAddresses struct {
+	network           int
 	numberOfAddresses int
 }
 
+type AddressCounter = int
+
 type Addresser struct {
-	namespaces []*NamespaceAddresses
-	suite      *HstSuite
+	networks map[int]AddressCounter
+	suite    *HstSuite
 }
 
-func (a *Addresser) AddNamespace(name string) {
-	var newNamespace = &NamespaceAddresses{
-		namespace:         name,
-		numberOfAddresses: 0,
+func (a *Addresser) AddNetwork(networkNumber int) {
+	a.networks[networkNumber] = 1
+}
+
+func (a *Addresser) NewIp4Address(inputNetworkNumber ...int) (string, error) {
+	var networkNumber int = 0
+	if len(inputNetworkNumber) > 0 {
+		networkNumber = inputNetworkNumber[0]
 	}
-	a.namespaces = append(a.namespaces, newNamespace)
-}
 
-func (a *Addresser) NewIp4Address() (string, error) {
-	return a.NewIp4AddressWithNamespace(defaultNamespaceName)
-}
-
-func (a *Addresser) NewIp4AddressWithNamespace(namespace string) (string, error) {
-	for i, val := range a.namespaces {
-		if val.namespace != namespace {
-			continue
-		}
-		if val.numberOfAddresses == 255 {
-			return "", fmt.Errorf("no available IPv4 addresses")
-		}
-		address := fmt.Sprintf("10.10.%v.%v/24", i, val.numberOfAddresses+1)
-		val.numberOfAddresses++
-		return address, nil
+	if _, ok := a.networks[networkNumber]; !ok {
+		a.AddNetwork(networkNumber)
 	}
-	a.AddNamespace(namespace)
-	return a.NewIp4AddressWithNamespace(namespace)
+
+	numberOfAddresses := a.networks[networkNumber]
+
+	if numberOfAddresses == 254 {
+		return "", fmt.Errorf("no available IPv4 addresses")
+	}
+
+	address := fmt.Sprintf("10.10.%v.%v/24", networkNumber, numberOfAddresses)
+	a.networks[networkNumber] = numberOfAddresses + 1
+
+	return address, nil
 }
 
 func NewAddresser(suite *HstSuite) *Addresser {
 	var addresser = new(Addresser)
 	addresser.suite = suite
-	addresser.AddNamespace(defaultNamespaceName)
+	addresser.networks = make(map[int]AddressCounter)
+	addresser.AddNetwork(0)
 	return addresser
 }
