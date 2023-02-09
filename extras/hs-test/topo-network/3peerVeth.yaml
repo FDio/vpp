@@ -1,0 +1,40 @@
+---
+devices:
+  - name: "hst_ns_client"
+    type: "netns"
+
+  - name: "hst_ns_bridge"
+    type: "netns"
+
+  - name: "hst_client"
+    type: "veth"
+    netns: "hst_ns_client"
+    ip4:
+      network: 1
+    peer:
+      name: "hst_peer_client"
+      netns: "hst_ns_bridge"
+
+  - name: "hst_proxy"
+    type: "veth"
+    peer:
+      name: "hst_peer_proxy"
+      netns: "hst_ns_bridge"
+
+  - name: "hst_server"
+    type: "veth"
+    peer:
+      name: "hst_peer_server"
+      netns: "hst_ns_bridge"
+
+  # Bridge has to be placed in a namespace because on Linux,
+  # Docker manipulates iptables rules to provide network isolation.
+  # It sets the policy for the FORWARD chain to DROP.
+  - name: "br"
+    type: "bridge"
+    netns: "hst_ns_bridge"
+    interfaces:
+      - hst_peer_client
+      - hst_peer_proxy
+      - hst_peer_server
+
