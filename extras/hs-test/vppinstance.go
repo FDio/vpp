@@ -52,6 +52,11 @@ plugins {
   plugin http_plugin.so { enable }
 }
 
+logging {
+  default-log-level debug
+  default-syslog-log-level debug
+}
+
 `
 
 const (
@@ -106,7 +111,7 @@ func (vpp *VppInstance) start() error {
 	vpp.container.createFile(startupFileName, configContent)
 
 	// Start VPP
-	vpp.container.execServer("vpp -c " + startupFileName)
+	vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 
 	// Connect to VPP and store the connection
 	sockAddress := vpp.container.GetHostWorkDir() + defaultApiSocketFilePath
@@ -152,15 +157,16 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	return string(output)
 }
 
-func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
+func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")
 		if strings.Contains(o, appName) {
-			return nil
+			return
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return fmt.Errorf("timeout while waiting for app '%s'", appName)
+	vpp.Suite().assertNil(1, "timeout while waiting for app '%s'", appName)
+	return
 }
 
 func (vpp *VppInstance) createAfPacket(
