@@ -11,11 +11,13 @@ devices:
     peer:
       name: "client"
       netns: "client"
-      ip4: true
+      ip4:
+        network: 1
 
   - name: "hst_server_vpp"
     type: "veth"
     peer:
       name: "server"
       netns: "server"
-      ip4: true
+      ip4:
+        network: 2
