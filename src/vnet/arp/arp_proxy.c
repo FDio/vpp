@@ -198,7 +198,7 @@ set_arp_proxy (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table-id %d", &table_id))
+      if (unformat (input, "table-id %u", &table_id))
 	;
       else if (unformat (input, "start %U", unformat_ip4_address, &start))
 	;

@@ -778,7 +778,7 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 	  grp_set = dst_set = 1;
 	  ip46_address_is_ip4 (&dst) ? (ipv4_set = 1) : (ipv6_set = 1);
 	}
-      else if (unformat (line_input, "encap-vrf-id %d", &table_id))
+      else if (unformat (line_input, "encap-vrf-id %u", &table_id))
 	{
 	  encap_fib_index =
 	    fib_table_find (fib_ip_proto (ipv6_set), table_id);
@@ -802,7 +802,7 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
     return parse_error;
 
   if (encap_fib_index == ~0)
-    return clib_error_return (0, "nonexistent encap-vrf-id %d", table_id);
+    return clib_error_return (0, "nonexistent encap-vrf-id %u", table_id);
 
   if (src_set == 0)
     return clib_error_return (0, "tunnel src address not specified");

@@ -36,7 +36,7 @@ format_flow_classify_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   flow_classify_trace_t *t = va_arg (*args, flow_classify_trace_t *);
 
-  s = format (s, "FLOW_CLASSIFY: sw_if_index %d next %d table %d offset %d",
+  s = format (s, "FLOW_CLASSIFY: sw_if_index %d next %d table %u offset %d",
 	      t->sw_if_index, t->next_index, t->table_index, t->offset);
   return s;
 }

@@ -2715,7 +2715,7 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table %d", &table_id))
+      if (unformat (input, "table %u", &table_id))
 	matched = 1;
 #define _(a, b, v)                                                            \
   else if (unformat (input, #a))                                              \
@@ -2740,7 +2740,7 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "no such FIB table %d", table_id);
+      return clib_error_return (0, "no such FIB table %u", table_id);
 
     default:
       clib_warning ("BUG: illegal flow hash config 0x%x", flow_hash_config);

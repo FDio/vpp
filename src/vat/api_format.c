@@ -803,15 +803,15 @@ unformat_fib_path (unformat_input_t *input, va_list *args)
 	{
 	  path->preference = preference;
 	}
-      else if (unformat (input, "%U next-hop-table %d",
-			 unformat_vl_api_ip4_address,
-			 &path->nh.address.ip4, &path->table_id))
+      else if (unformat (input, "%U next-hop-table %u",
+			 unformat_vl_api_ip4_address, &path->nh.address.ip4,
+			 &path->table_id))
 	{
 	  path->proto = FIB_API_PATH_NH_PROTO_IP4;
 	}
-      else if (unformat (input, "%U next-hop-table %d",
-			 unformat_vl_api_ip6_address,
-			 &path->nh.address.ip6, &path->table_id))
+      else if (unformat (input, "%U next-hop-table %u",
+			 unformat_vl_api_ip6_address, &path->nh.address.ip6,
+			 &path->table_id))
 	{
 	  path->proto = FIB_API_PATH_NH_PROTO_IP6;
 	}
@@ -843,13 +843,13 @@ unformat_fib_path (unformat_input_t *input, va_list *args)
 	{
 	  path->flags |= FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED;
 	}
-      else if (unformat (input, "ip4-lookup-in-table %d", &path->table_id))
+      else if (unformat (input, "ip4-lookup-in-table %u", &path->table_id))
 	{
 	  path->type = FIB_API_PATH_TYPE_LOCAL;
 	  path->sw_if_index = ~0;
 	  path->proto = FIB_API_PATH_NH_PROTO_IP4;
 	}
-      else if (unformat (input, "ip6-lookup-in-table %d", &path->table_id))
+      else if (unformat (input, "ip6-lookup-in-table %u", &path->table_id))
 	{
 	  path->type = FIB_API_PATH_TYPE_LOCAL;
 	  path->sw_if_index = ~0;

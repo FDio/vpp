@@ -87,7 +87,7 @@ clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
 	s = format (s, ", NHType Unknow(%d)", ls_mem->nhtype);
     }
 
-  s = format (s, " FIB table %d", ls_mem->fib_table);
+  s = format (s, " FIB table %u", ls_mem->fib_table);
 
   s = format (s, " Drop In %d", ls_mem->drop_in);
 
@@ -108,14 +108,14 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4 fib-table %d",
+      if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4 fib-table %u",
 		    unformat_ip6_address, &sr_prefix, &sr_prefixlen,
 		    &fib_table))
 	{
 	  config = true;
 	  nhtype = SRV6_NHTYPE_IPV4;
 	}
-      else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv6 fib-table %d",
+      else if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv6 fib-table %u",
 			 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
 			 &fib_table))
 	{
@@ -128,7 +128,7 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 	  config = true;
 	  nhtype = SRV6_NHTYPE_NON_IP;
 	}
-      else if (unformat (input, "end.m.gtp6.d %U/%d fib-table %d",
+      else if (unformat (input, "end.m.gtp6.d %U/%d fib-table %u",
 			 unformat_ip6_address, &sr_prefix, &sr_prefixlen,
 			 &fib_table))
 	{

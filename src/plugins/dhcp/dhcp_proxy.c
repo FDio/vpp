@@ -266,14 +266,14 @@ dhcp_vss_show_walk (dhcp_vss_t * vss, u32 rx_table_id, void *ctx)
 	+ ((u32) vss->vpn_id[2]);
       u32 fib_id = ((u32) vss->vpn_id[3] << 24) + ((u32) vss->vpn_id[4] << 16)
 	+ ((u32) vss->vpn_id[5] << 8) + ((u32) vss->vpn_id[6]);
-      vlib_cli_output (vm, " fib_table: %d  oui: %d vpn_index: %d",
+      vlib_cli_output (vm, " fib_table: %u  oui: %d vpn_index: %d",
 		       rx_table_id, oui, fib_id);
     }
   else if (vss->vss_type == VSS_TYPE_ASCII)
-    vlib_cli_output (vm, " fib_table: %d  vpn_id: %s",
-		     rx_table_id, vss->vpn_ascii_id);
+    vlib_cli_output (vm, " fib_table: %u  vpn_id: %s", rx_table_id,
+		     vss->vpn_ascii_id);
   else
-    vlib_cli_output (vm, " fib_table: %d  default global vpn", rx_table_id);
+    vlib_cli_output (vm, " fib_table: %u  default global vpn", rx_table_id);
 
   return (1);
 }

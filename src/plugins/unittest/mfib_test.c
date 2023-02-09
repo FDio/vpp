@@ -1248,9 +1248,8 @@ mfib_test_i (fib_protocol_t PROTO,
 
     mfib_table_unlock(fib_index, PROTO, MFIB_SOURCE_API);
 
-    MFIB_TEST((FIB_NODE_INDEX_INVALID ==
-               mfib_table_find(PROTO, fib_index)),
-              "MFIB table %d gone", fib_index);
+    MFIB_TEST ((FIB_NODE_INDEX_INVALID == mfib_table_find (PROTO, fib_index)),
+	       "MFIB table %u gone", fib_index);
 
     adj_unlock(ai_1);
     adj_unlock(ai_2);

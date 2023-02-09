@@ -94,12 +94,12 @@ clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "end.m.gtp4.e v4src_position %d fib-table %d",
+      if (unformat (input, "end.m.gtp4.e v4src_position %d fib-table %u",
 		    &v4src_position, &fib_table))
 	{
 	  config = true;
 	}
-      else if (unformat (input, "end.m.gtp4.e v4src_addr %U fib-table %d",
+      else if (unformat (input, "end.m.gtp4.e v4src_addr %U fib-table %u",
 			 unformat_ip4_address, &v4src_addr, &fib_table))
 	{
 	  config = true;

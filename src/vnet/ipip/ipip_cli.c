@@ -73,7 +73,7 @@ create_ipip_tunnel_command_fn (vlib_main_t * vm,
 	{
 	  num_m_args++;
 	}
-      else if (unformat (line_input, "outer-table-id %d", &table_id))
+      else if (unformat (line_input, "outer-table-id %u", &table_id))
 	;
       else
 	if (unformat
@@ -375,9 +375,9 @@ create_sixrd_tunnel_command_fn (vlib_main_t * vm,
 	if (unformat
 	    (line_input, "ip4-src %U", unformat_ip4_address, &ip4_src))
 	num_m_args++;
-      else if (unformat (line_input, "ip4-table-id %d", &ip4_table_id))
+      else if (unformat (line_input, "ip4-table-id %u", &ip4_table_id))
 	;
-      else if (unformat (line_input, "ip6-table-id %d", &ip6_table_id))
+      else if (unformat (line_input, "ip6-table-id %u", &ip6_table_id))
 	;
       else
 	{
@@ -398,12 +398,12 @@ create_sixrd_tunnel_command_fn (vlib_main_t * vm,
 
   if (~0 == ip4_fib_index)
     {
-      error = clib_error_return (0, "No such IP4 table %d", ip4_table_id);
+      error = clib_error_return (0, "No such IP4 table %u", ip4_table_id);
       rv = VNET_API_ERROR_NO_SUCH_FIB;
     }
   else if (~0 == ip6_fib_index)
     {
-      error = clib_error_return (0, "No such IP6 table %d", ip6_table_id);
+      error = clib_error_return (0, "No such IP6 table %u", ip6_table_id);
       rv = VNET_API_ERROR_NO_SUCH_FIB;
     }
   else

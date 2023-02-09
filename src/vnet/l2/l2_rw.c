@@ -69,7 +69,7 @@ format_l2_rw_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_rw_trace_t *t = va_arg (*args, l2_rw_trace_t *);
-  return format (s, "l2-rw: sw_if_index %d, table %d, entry %d",
+  return format (s, "l2-rw: sw_if_index %d, table %u, entry %d",
 		 t->sw_if_index, t->classify_table_index,
 		 t->rewrite_entry_index);
 }
@@ -446,7 +446,7 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table %d", &table_index))
+      if (unformat (input, "table %u", &table_index))
 	;
       else if (unformat (input, "miss-index %d", &miss_index))
 	;

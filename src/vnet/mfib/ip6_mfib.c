@@ -652,7 +652,7 @@ ip6_show_mfib (vlib_main_t * vm,
     int verbose, matching;
     ip6_address_t grp, src = {{0}};
     u32 mask = 128, cover;
-    int table_id = -1, fib_index = ~0;
+    u32 table_id = ~0, fib_index = ~0;
 
     verbose = 1;
     matching = 0;
@@ -682,7 +682,7 @@ ip6_show_mfib (vlib_main_t * vm,
             matching = 1;
             mask = 128;
         }
-        else if (unformat (input, "table %d", &table_id))
+        else if (unformat (input, "table %u", &table_id))
             ;
         else if (unformat (input, "index %d", &fib_index))
             ;
@@ -696,7 +696,7 @@ ip6_show_mfib (vlib_main_t * vm,
      {
         ip6_mfib_t *mfib = &mfib_table->v6;
 
-        if (table_id >= 0 && table_id != (int)mfib->table_id)
+        if (table_id != ~0 && table_id != (int)mfib->table_id)
             continue;
         if (fib_index != ~0 && fib_index != (int)mfib->index)
             continue;

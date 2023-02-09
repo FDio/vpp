@@ -913,9 +913,9 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
       if (unformat (input, "server %U",
 		    unformat_ip4_address, &server_addr.ip4))
 	set_server = 1;
-      else if (unformat (input, "server-fib-id %d", &server_table_id))
+      else if (unformat (input, "server-fib-id %u", &server_table_id))
 	;
-      else if (unformat (input, "rx-fib-id %d", &rx_table_id))
+      else if (unformat (input, "rx-fib-id %u", &rx_table_id))
 	;
       else if (unformat (input, "src-address %U",
 			 unformat_ip4_address, &src_addr.ip4))
@@ -1033,7 +1033,7 @@ dhcp_option_82_vss_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table %d", &tbl_id))
+      if (unformat (input, "table %u", &tbl_id))
 	;
       else if (unformat (input, "oui %d", &oui))
 	vss_type = VSS_TYPE_VPN_ID;
@@ -1057,9 +1057,8 @@ dhcp_option_82_vss_fn (vlib_main_t * vm,
     case 0:
       return 0;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0,
-				"option 82 vss for table %d not found in in pool.",
-				tbl_id);
+      return clib_error_return (
+	0, "option 82 vss for table %u not found in in pool.", tbl_id);
     default:
       return clib_error_return (0, "BUG: rv %d", rv);
 

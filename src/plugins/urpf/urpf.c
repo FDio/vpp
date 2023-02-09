@@ -224,7 +224,7 @@ urpf_cli_update (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "%U", unformat_urpf_mode, &mode))
 	;
-      else if (unformat (line_input, "table %d", &table_id))
+      else if (unformat (line_input, "table %u", &table_id))
 	;
       else if (unformat (line_input, "%U", unformat_ip_address_family, &af))
 	;
@@ -339,7 +339,7 @@ urpf_cli_accept (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "table %d", &table_id))
+      if (unformat (line_input, "table %u", &table_id))
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;

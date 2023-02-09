@@ -849,7 +849,7 @@ format_bier_table (u8 *s, va_list *ap)
 
     if (pool_is_free_index(bier_table_pool, bti))
     {
-        return (format(s, "No BIER table %d", bti));
+      return (format (s, "No BIER table %u", bti));
     }
 
     bt = bier_table_get(bti);

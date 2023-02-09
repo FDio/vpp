@@ -1572,7 +1572,7 @@ classify_table_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "match %d", &match))
 	;
-      else if (unformat (input, "table %d", &table_index))
+      else if (unformat (input, "table %u", &table_index))
 	;
       else if (unformat (input, "mask %U", unformat_classify_mask,
 			 &mask, &skip, &match))
@@ -1581,7 +1581,7 @@ classify_table_command_fn (vlib_main_t * vm,
 	memory_size = tmp << 20;
       else if (unformat (input, "memory-size %uG", &tmp))
 	memory_size = tmp << 30;
-      else if (unformat (input, "next-table %d", &next_table_index))
+      else if (unformat (input, "next-table %u", &next_table_index))
 	;
       else if (unformat (input, "miss-next %U", unformat_ip_next_index,
 			 &miss_next_index))
@@ -3162,8 +3162,8 @@ test_classify_churn (test_classify_main_t * tm)
 				       3 /* vectors to match */ );
   tm->table->miss_next_index = IP_LOOKUP_NEXT_DROP;
   tm->table_index = tm->table - tm->classify_main->tables;
-  vlib_cli_output (vm, "Created table %d, buckets %d",
-		   tm->table_index, tm->buckets);
+  vlib_cli_output (vm, "Created table %u, buckets %d", tm->table_index,
+		   tm->buckets);
 
   vlib_cli_output (vm, "Initialize: add %d (approx. half of %d sessions)...",
 		   tm->sessions / 2, tm->sessions);

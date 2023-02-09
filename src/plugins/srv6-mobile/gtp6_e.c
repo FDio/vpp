@@ -83,7 +83,7 @@ clb_unformat_srv6_end_m_gtp6_e (unformat_input_t * input, va_list * args)
   srv6_end_gtp6_e_param_t *ls_mem;
   u32 fib_table;
 
-  if (!unformat (input, "end.m.gtp6.e fib-table %d", &fib_table))
+  if (!unformat (input, "end.m.gtp6.e fib-table %u", &fib_table))
     return 0;
 
   ls_mem = clib_mem_alloc (sizeof *ls_mem);

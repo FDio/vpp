@@ -474,7 +474,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	  ip4_address_t *r4 = ip_interface_address_get_address (lm4, ia);
 	  if (fib4->hash.table_id)
 	    vlib_cli_output (
-	      vm, "  L3 %U/%d ip4 table-id %d fib-idx %d", format_ip4_address,
+	      vm, "  L3 %U/%d ip4 table-id %u fib-idx %d", format_ip4_address,
 	      r4, ia->address_length, fib4->hash.table_id,
 	      ip4_fib_index_from_table_id (fib4->hash.table_id));
 	  else
@@ -490,7 +490,7 @@ show_sw_interfaces (vlib_main_t * vm,
         ({
 	  ip6_address_t *r6 = ip_interface_address_get_address (lm6, ia);
 	  if (fib6->table_id)
-	    vlib_cli_output (vm, "  L3 %U/%d ip6 table-id %d fib-idx %d",
+	    vlib_cli_output (vm, "  L3 %U/%d ip6 table-id %u fib-idx %d",
 			     format_ip6_address, r6, ia->address_length,
 			     fib6->table_id,
 			     ip6_fib_index_from_table_id (fib6->table_id));

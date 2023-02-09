@@ -190,7 +190,7 @@ wg_peer_add_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "endpoint %U", unformat_ip_address, &ip))
 	;
-      else if (unformat (line_input, "table-id %d", &table_id))
+      else if (unformat (line_input, "table-id %u", &table_id))
 	;
       else if (unformat (line_input, "dst-port %d", &portDst))
 	;

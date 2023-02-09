@@ -669,7 +669,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "dst %U", unformat_ip46_address, &dst))
 	;
-      else if (unformat (line_input, "outer-table-id %d", &outer_table_id))
+      else if (unformat (line_input, "outer-table-id %u", &outer_table_id))
 	;
       else if (unformat (line_input, "multipoint"))
 	t_mode = TUNNEL_MODE_MP;

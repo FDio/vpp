@@ -1001,8 +1001,9 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	operation = 2;
       else if (unformat (input, "mod sl index %d", &sl_index))
 	operation = 3;
-      else if (fib_table == (u32) ~ 0
-	       && unformat (input, "fib-table %d", &fib_table));
+      else if (fib_table == (u32) ~0 &&
+	       unformat (input, "fib-table %u", &fib_table))
+	;
       else if (unformat (input, "encap"))
 	is_encap = 1;
       else if (unformat (input, "insert"))

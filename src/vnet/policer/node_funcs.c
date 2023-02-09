@@ -367,7 +367,8 @@ format_policer_classify_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   policer_classify_trace_t *t = va_arg (*args, policer_classify_trace_t *);
 
-  s = format (s, "POLICER_CLASSIFY: sw_if_index %d next %d table %d offset %d"
+  s = format (s,
+	      "POLICER_CLASSIFY: sw_if_index %d next %d table %u offset %d"
 	      " policer_index %d",
 	      t->sw_if_index, t->next_index, t->table_index, t->offset,
 	      t->policer_index);

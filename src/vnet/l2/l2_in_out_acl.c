@@ -61,9 +61,9 @@ format_l2_in_out_acl_trace (u8 * s, u32 is_output, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_in_out_acl_trace_t *t = va_arg (*args, l2_in_out_acl_trace_t *);
 
-  s = format (s, "%s: sw_if_index %d, next_index %d, table %d, offset %d",
-	      is_output ? "OUTACL" : "INACL",
-	      t->sw_if_index, t->next_index, t->table_index, t->offset);
+  s = format (s, "%s: sw_if_index %d, next_index %d, table %u, offset %d",
+	      is_output ? "OUTACL" : "INACL", t->sw_if_index, t->next_index,
+	      t->table_index, t->offset);
   return s;
 }
 

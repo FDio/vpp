@@ -515,7 +515,7 @@ format_vl_api_fib_path (u8 * s, va_list * args)
     s = format (s, " proto %d", ntohl(path->proto));
     s = format (s, " flags %d", ntohl(path->flags));
     s = format (s, " n_labels %d", ntohl(path->n_labels));
-    s = format (s, " table-id %d", ntohl(path->table_id));
+    s = format (s, " table-id %u", ntohl(path->table_id));
     s = format (s, " rpf-id %d", ntohl(path->rpf_id));
 
     return (s);

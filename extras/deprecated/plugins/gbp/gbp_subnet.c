@@ -492,9 +492,8 @@ format_gbp_subnet (u8 * s, va_list * args)
   table_id = fib_table_get_table_id (gs->gs_key->gsk_fib_index,
 				     gs->gs_key->gsk_pfx.fp_proto);
 
-  s = format (s, "[%d] tbl:%d %U %U", gsi, table_id,
-	      format_fib_prefix, &gs->gs_key->gsk_pfx,
-	      format_gbp_subnet_type, gs->gs_type);
+  s = format (s, "[%d] tbl:%u %U %U", gsi, table_id, format_fib_prefix,
+	      &gs->gs_key->gsk_pfx, format_gbp_subnet_type, gs->gs_type);
 
   switch (gs->gs_type)
     {

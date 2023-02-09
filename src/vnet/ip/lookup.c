@@ -246,7 +246,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
     {
       clib_memset (&rpath, 0, sizeof (rpath));
 
-      if (unformat (line_input, "table %d", &table_id))
+      if (unformat (line_input, "table %u", &table_id))
 	;
       else if (unformat (line_input, "count %f", &count))
 	;
@@ -680,7 +680,7 @@ ip_table_bind_cmd (vlib_main_t * vm,
     }
   else if (VNET_API_ERROR_NO_SUCH_FIB == rv)
     {
-      error = clib_error_return (0, "no such table %d", table_id);
+      error = clib_error_return (0, "no such table %u", table_id);
     }
   else if (0 != rv)
     {
@@ -791,7 +791,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "table %d", &table_id))
+      if (unformat (line_input, "table %u", &table_id))
 	;
       else if (unformat (line_input, "del"))
 	is_del = 1;

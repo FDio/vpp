@@ -801,7 +801,7 @@ api_gpe_add_del_native_fwd_rpath (vat_main_t * vam)
 	  is_ip4 = 0;
 	  nh_sw_if_index = ~0;
 	}
-      else if (unformat (i, "table %d", &table_id))
+      else if (unformat (i, "table %u", &table_id))
 	;
       else
 	{

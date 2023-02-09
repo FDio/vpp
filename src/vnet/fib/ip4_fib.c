@@ -368,7 +368,7 @@ ip4_show_fib (vlib_main_t * vm,
 	else if (unformat (input, "%U", unformat_ip4_address, &matching_address))
 	    matching = 1;
 
-	else if (unformat (input, "table %d", &table_id))
+	else if (unformat (input, "table %u", &table_id))
 	    ;
 	else if (unformat (input, "index %d", &user_fib_index))
 	    ;

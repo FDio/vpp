@@ -237,7 +237,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "table %d", &table_id))
+      if (unformat (line_input, "table %u", &table_id))
 	;
       else if (unformat (line_input, "del"))
 	is_del = 1;
@@ -295,9 +295,10 @@ vnet_mpls_local_label (vlib_main_t * vm,
 
       if (FIB_NODE_INDEX_INVALID == fib_index)
       {
-          error = clib_error_return (0, "%U table-id %d does not exist",
-                                     format_fib_protocol, pfx.fp_proto, table_id);
-          goto done;
+	error =
+	  clib_error_return (0, "%U table-id %u does not exist",
+			     format_fib_protocol, pfx.fp_proto, table_id);
+	goto done;
       }
 
       if (is_del)
@@ -328,9 +329,9 @@ vnet_mpls_local_label (vlib_main_t * vm,
 
       if (FIB_NODE_INDEX_INVALID == fib_index)
       {
-          error = clib_error_return (0, "MPLS table-id %d does not exist",
-                                     table_id);
-          goto done;
+	error =
+	  clib_error_return (0, "MPLS table-id %u does not exist", table_id);
+	goto done;
       }
 
       if (is_del)
@@ -352,12 +353,12 @@ vnet_mpls_local_label (vlib_main_t * vm,
 
           if (FIB_NODE_INDEX_INVALID == lfe)
           {
-              error = clib_error_return (0, "Failed to create %U-%U in MPLS table-id %d",
-                                         format_mpls_unicast_label, local_label,
-                                         format_mpls_eos_bit, eos,
-                                         table_id);
-              goto done;
-          }
+	    error = clib_error_return (
+	      0, "Failed to create %U-%U in MPLS table-id %u",
+	      format_mpls_unicast_label, local_label, format_mpls_eos_bit, eos,
+	      table_id);
+	    goto done;
+	  }
       }
   }
 

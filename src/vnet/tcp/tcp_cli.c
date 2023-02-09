@@ -563,7 +563,7 @@ tcp_src_address_fn (vlib_main_t * vm,
 	  memcpy (&v6end, &v6start, sizeof (v6start));
 	  v6set = 1;
 	}
-      else if (unformat (input, "fib-table %d", &table_id))
+      else if (unformat (input, "fib-table %u", &table_id))
 	;
       else
 	break;
@@ -582,7 +582,7 @@ tcp_src_address_fn (vlib_main_t * vm,
 	  break;
 
 	case VNET_API_ERROR_NO_SUCH_FIB:
-	  return clib_error_return (0, "Invalid table-id %d", table_id);
+	  return clib_error_return (0, "Invalid table-id %u", table_id);
 
 	case VNET_API_ERROR_INVALID_ARGUMENT:
 	  return clib_error_return (0, "Invalid address range %U - %U",
@@ -603,7 +603,7 @@ tcp_src_address_fn (vlib_main_t * vm,
 	  break;
 
 	case VNET_API_ERROR_NO_SUCH_FIB:
-	  return clib_error_return (0, "Invalid table-id %d", table_id);
+	  return clib_error_return (0, "Invalid table-id %u", table_id);
 
 	default:
 	  return clib_error_return (0, "error %d", rv);

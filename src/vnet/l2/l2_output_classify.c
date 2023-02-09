@@ -53,9 +53,9 @@ format_l2_output_classify_trace (u8 * s, va_list * args)
   l2_output_classify_trace_t *t =
     va_arg (*args, l2_output_classify_trace_t *);
 
-  s = format (s, "l2-classify: sw_if_index %d, table %d, offset %x, next %d",
-	      t->sw_if_index, t->table_index, t->session_offset,
-	      t->next_index);
+  s =
+    format (s, "l2-classify: sw_if_index %d, table %u, offset %x, next %d",
+	    t->sw_if_index, t->table_index, t->session_offset, t->next_index);
   return s;
 }
 
@@ -585,11 +585,11 @@ int_l2_output_classify_command_fn (vlib_main_t * vm,
       if (unformat (input, "intfc %U", unformat_vnet_sw_interface,
 		    vnm, &sw_if_index))
 	;
-      else if (unformat (input, "ip4-table %d", &ip4_table_index))
+      else if (unformat (input, "ip4-table %u", &ip4_table_index))
 	;
-      else if (unformat (input, "ip6-table %d", &ip6_table_index))
+      else if (unformat (input, "ip6-table %u", &ip6_table_index))
 	;
-      else if (unformat (input, "other-table %d", &other_table_index))
+      else if (unformat (input, "other-table %u", &other_table_index))
 	;
       else
 	break;

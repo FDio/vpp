@@ -181,7 +181,7 @@ unformat_tunnel (unformat_input_t *input, va_list *args)
 
   unformat (input, "src %U", unformat_ip_address, &t->t_src);
   unformat (input, "dst %U", unformat_ip_address, &t->t_dst);
-  unformat (input, "table-id %d", &t->t_table_id);
+  unformat (input, "table-id %u", &t->t_table_id);
   unformat (input, "hop-limit %d", &t->t_hop_limit);
   unformat (input, "%U", unformat_ip_dscp, &t->t_dscp);
   unformat (input, "%U", unformat_tunnel_encap_decap_flags,

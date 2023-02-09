@@ -426,7 +426,7 @@ svs_table_cli (vlib_main_t * vm,
 	fproto = FIB_PROTOCOL_IP4;
       else if (unformat (input, "ip6"))
 	fproto = FIB_PROTOCOL_IP6;
-      else if (unformat (input, "table-id %d", &table_id))
+      else if (unformat (input, "table-id %u", &table_id))
 	;
       else
 	break;
@@ -478,7 +478,7 @@ svs_enable_cli (vlib_main_t * vm,
 	fproto = FIB_PROTOCOL_IP4;
       else if (unformat (input, "ip6"))
 	fproto = FIB_PROTOCOL_IP6;
-      else if (unformat (input, "table-id %d", &table_id))
+      else if (unformat (input, "table-id %u", &table_id))
 	;
       else
 	break;
@@ -523,9 +523,9 @@ svs_route_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "table-id %d", &table_id))
+      else if (unformat (input, "table-id %u", &table_id))
 	;
-      else if (unformat (input, "src-table-id %d", &src_table_id))
+      else if (unformat (input, "src-table-id %u", &src_table_id))
 	;
       else if (unformat (input, "%U/%d",
 			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))

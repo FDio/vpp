@@ -253,25 +253,13 @@ bier_test_mpls_spf (void)
     BIER_TEST(FIB_NODE_INDEX_INVALID == lfei, "1600/0 is not present");
 
     lfei = fib_table_lookup(mpls_fib_index, &pfx_1600_eos);
-    BIER_TEST(!fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
-                                       16,
-                                       &l_o_bt[0],
-                                       &l_o_bt[1],
-                                       &l_o_bt[2],
-                                       &l_o_bt[3],
-                                       &l_o_bt[4],
-                                       &l_o_bt[5],
-                                       &l_o_bt[6],
-                                       &l_o_bt[7],
-                                       &l_o_bt[8],
-                                       &l_o_bt[9],
-                                       &l_o_bt[10],
-                                       &l_o_bt[11],
-                                       &l_o_bt[12],
-                                       &l_o_bt[13],
-                                       &l_o_bt[14],
-                                       &l_o_bt[15]),
-              "1600/1 LB stacks on BIER table %d", bti);
+    BIER_TEST (!fib_test_validate_entry (
+		 lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS, 16, &l_o_bt[0],
+		 &l_o_bt[1], &l_o_bt[2], &l_o_bt[3], &l_o_bt[4], &l_o_bt[5],
+		 &l_o_bt[6], &l_o_bt[7], &l_o_bt[8], &l_o_bt[9], &l_o_bt[10],
+		 &l_o_bt[11], &l_o_bt[12], &l_o_bt[13], &l_o_bt[14],
+		 &l_o_bt[15]),
+	       "1600/1 LB stacks on BIER table %u", bti);
 
     /*
      * modify the table's local label - keep the lock count accurate
@@ -290,25 +278,13 @@ bier_test_mpls_spf (void)
     BIER_TEST(FIB_NODE_INDEX_INVALID == lfei, "1600/1 is deleted");
 
     lfei = fib_table_lookup(mpls_fib_index, &pfx_1601_eos);
-    BIER_TEST(!fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
-                                       16,
-                                       &l_o_bt[0],
-                                       &l_o_bt[1],
-                                       &l_o_bt[2],
-                                       &l_o_bt[3],
-                                       &l_o_bt[4],
-                                       &l_o_bt[5],
-                                       &l_o_bt[6],
-                                       &l_o_bt[7],
-                                       &l_o_bt[8],
-                                       &l_o_bt[9],
-                                       &l_o_bt[10],
-                                       &l_o_bt[11],
-                                       &l_o_bt[12],
-                                       &l_o_bt[13],
-                                       &l_o_bt[14],
-                                       &l_o_bt[15]),
-              "1601/1 LB stacks on BIER table %d", bti);
+    BIER_TEST (!fib_test_validate_entry (
+		 lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS, 16, &l_o_bt[0],
+		 &l_o_bt[1], &l_o_bt[2], &l_o_bt[3], &l_o_bt[4], &l_o_bt[5],
+		 &l_o_bt[6], &l_o_bt[7], &l_o_bt[8], &l_o_bt[9], &l_o_bt[10],
+		 &l_o_bt[11], &l_o_bt[12], &l_o_bt[13], &l_o_bt[14],
+		 &l_o_bt[15]),
+	       "1601/1 LB stacks on BIER table %u", bti);
 
     /*
      * add a route to the table. the via IP route does not exist.

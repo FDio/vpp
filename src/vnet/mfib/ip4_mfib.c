@@ -524,7 +524,7 @@ ip4_show_mfib (vlib_main_t * vm,
             matching = 1;
             mask = 32;
         }
-        else if (unformat (input, "table %d", &table_id))
+        else if (unformat (input, "table %u", &table_id))
             ;
         else if (unformat (input, "index %d", &fib_index))
             ;

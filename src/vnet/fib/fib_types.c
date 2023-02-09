@@ -576,7 +576,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_preference = preference;
         }
-        else if (unformat (input, "%U next-hop-table %d",
+        else if (unformat (input, "%U next-hop-table %u",
                            unformat_ip4_address,
                            &rpath->frp_addr.ip4,
                            &rpath->frp_fib_index))
@@ -592,7 +592,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
                 return 0;
             rpath->frp_fib_index = fi;
         }
-        else if (unformat (input, "%U next-hop-table %d",
+        else if (unformat (input, "%U next-hop-table %u",
                            unformat_ip6_address,
                            &rpath->frp_addr.ip6,
                            &rpath->frp_fib_index))
@@ -629,7 +629,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
             rpath->frp_proto = *payload_proto;
         }
-        else if (unformat (input, "lookup in table %d", &rpath->frp_fib_index))
+        else if (unformat (input, "lookup in table %u", &rpath->frp_fib_index))
         {
             rpath->frp_proto = *payload_proto;
             rpath->frp_sw_if_index = ~0;
@@ -648,7 +648,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_flags |= FIB_ROUTE_PATH_POP_PW_CW;
         }
         else if (unformat (input,
-                           "ip4-lookup-in-table %d",
+                           "ip4-lookup-in-table %u",
                            &rpath->frp_fib_index))
         {
             rpath->frp_proto = DPO_PROTO_IP4;
@@ -659,7 +659,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_fib_index = fi;
         }
         else if (unformat (input,
-                           "ip6-lookup-in-table %d",
+                           "ip6-lookup-in-table %u",
                            &rpath->frp_fib_index))
         {
             rpath->frp_proto = DPO_PROTO_IP6;
@@ -670,7 +670,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_fib_index = fi;
         }
         else if (unformat (input,
-                           "mpls-lookup-in-table %d",
+                           "mpls-lookup-in-table %u",
                            &rpath->frp_fib_index))
         {
             rpath->frp_proto = DPO_PROTO_MPLS;

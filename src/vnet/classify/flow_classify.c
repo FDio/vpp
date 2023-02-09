@@ -114,9 +114,9 @@ set_flow_classify_command_fn (vlib_main_t * vm,
       if (unformat (input, "interface %U", unformat_vnet_sw_interface,
 		    vnm, &sw_if_index))
 	;
-      else if (unformat (input, "ip4-table %d", &ip4_table_index))
+      else if (unformat (input, "ip4-table %u", &ip4_table_index))
 	idx_cnt++;
-      else if (unformat (input, "ip6-table %d", &ip6_table_index))
+      else if (unformat (input, "ip6-table %u", &ip6_table_index))
 	idx_cnt++;
       else if (unformat (input, "del"))
 	is_add = 0;

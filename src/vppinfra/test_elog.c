@@ -281,7 +281,7 @@ test_elog_main (unformat_input_t * input)
 	    } *d;
 
 	    d = ELOG_DATA (em, e);
-	    d->offset = elog_string (em, "string table %d", i);
+	    d->offset = elog_string (em, "string table %u", i);
 	  }
 	}
 

@@ -464,7 +464,7 @@ udp_encap_cli (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "%d", &dst_port))
 	;
-      else if (unformat (line_input, "table-id %d", &table_id))
+      else if (unformat (line_input, "table-id %u", &table_id))
 	;
       else if (unformat (line_input, "src-port-is-entropy"))
 	flags |= UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY;

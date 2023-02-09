@@ -436,7 +436,7 @@ mpls_fib_show (vlib_main_t * vm,
 
 	if (unformat (input, "%d", &label))
 	    continue;
-	else if (unformat (input, "table %d", &table_id))
+	else if (unformat (input, "table %u", &table_id))
 	    ;
 	else
 	    break;

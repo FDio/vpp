@@ -2796,11 +2796,12 @@ macip_acl_print (acl_main_t * am, u32 macip_acl_index)
 		   "MACIP acl_index: %d, count: %d (true len %d) tag {%s} is free pool slot: %d\n",
 		   macip_acl_index, a->count, vec_len (a->rules), a->tag,
 		   free_pool_slot);
+  vlib_cli_output (
+    vm, "  ip4_table_index %u, ip6_table_index %u, l2_table_index %u\n",
+    a->ip4_table_index, a->ip6_table_index, a->l2_table_index);
   vlib_cli_output (vm,
-		   "  ip4_table_index %d, ip6_table_index %d, l2_table_index %d\n",
-		   a->ip4_table_index, a->ip6_table_index, a->l2_table_index);
-  vlib_cli_output (vm,
-		   "  out_ip4_table_index %d, out_ip6_table_index %d, out_l2_table_index %d\n",
+		   "  out_ip4_table_index %u, out_ip6_table_index %u, "
+		   "out_l2_table_index %u\n",
 		   a->out_ip4_table_index, a->out_ip6_table_index,
 		   a->out_l2_table_index);
   for (i = 0; i < vec_len (a->rules); i++)

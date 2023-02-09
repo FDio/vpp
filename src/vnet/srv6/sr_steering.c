@@ -400,8 +400,9 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	       && unformat (input, "via bsid %U",
 			    unformat_ip6_address, &bsid))
 	sr_policy_set = 1;
-      else if (fib_table == (u32) ~ 0
-	       && unformat (input, "fib-table %d", &fib_table));
+      else if (fib_table == (u32) ~0 &&
+	       unformat (input, "fib-table %u", &fib_table))
+	;
       else
 	break;
     }

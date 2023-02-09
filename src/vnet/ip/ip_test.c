@@ -136,13 +136,13 @@ unformat_fib_path (unformat_input_t *input, va_list *args)
 	{
 	  path->preference = preference;
 	}
-      else if (unformat (input, "%U next-hop-table %d",
+      else if (unformat (input, "%U next-hop-table %u",
 			 unformat_vl_api_ip4_address, &path->nh.address.ip4,
 			 &path->table_id))
 	{
 	  path->proto = FIB_API_PATH_NH_PROTO_IP4;
 	}
-      else if (unformat (input, "%U next-hop-table %d",
+      else if (unformat (input, "%U next-hop-table %u",
 			 unformat_vl_api_ip6_address, &path->nh.address.ip6,
 			 &path->table_id))
 	{
@@ -176,13 +176,13 @@ unformat_fib_path (unformat_input_t *input, va_list *args)
 	{
 	  path->flags |= FIB_API_PATH_FLAG_RESOLVE_VIA_ATTACHED;
 	}
-      else if (unformat (input, "ip4-lookup-in-table %d", &path->table_id))
+      else if (unformat (input, "ip4-lookup-in-table %u", &path->table_id))
 	{
 	  path->type = FIB_API_PATH_TYPE_LOCAL;
 	  path->sw_if_index = ~0;
 	  path->proto = FIB_API_PATH_NH_PROTO_IP4;
 	}
-      else if (unformat (input, "ip6-lookup-in-table %d", &path->table_id))
+      else if (unformat (input, "ip6-lookup-in-table %u", &path->table_id))
 	{
 	  path->type = FIB_API_PATH_TYPE_LOCAL;
 	  path->sw_if_index = ~0;
@@ -432,7 +432,7 @@ api_ip_table_add_del (vat_main_t *vam)
 	is_add = 0;
       else if (unformat (i, "add"))
 	is_add = 1;
-      else if (unformat (i, "table %d", &table_id))
+      else if (unformat (i, "table %u", &table_id))
 	;
       else
 	{
@@ -474,7 +474,7 @@ api_ip_table_replace_begin (vat_main_t *vam)
   int ret;
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "table %d", &table_id))
+      if (unformat (i, "table %u", &table_id))
 	;
       else if (unformat (i, "ipv6"))
 	is_ipv6 = 1;
@@ -506,7 +506,7 @@ api_ip_table_flush (vat_main_t *vam)
   int ret;
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "table %d", &table_id))
+      if (unformat (i, "table %u", &table_id))
 	;
       else if (unformat (i, "ipv6"))
 	is_ipv6 = 1;
@@ -1389,7 +1389,7 @@ api_ip_table_replace_end (vat_main_t *vam)
   int ret;
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "table %d", &table_id))
+      if (unformat (i, "table %u", &table_id))
 	;
       else if (unformat (i, "ipv6"))
 	is_ipv6 = 1;
@@ -1433,7 +1433,7 @@ vl_api_ip_table_details_t_handler (vl_api_ip_table_details_t *mp)
 {
   vat_main_t *vam = ip_test_main.vat_main;
 
-  fformat (vam->ofp, "%s; table-id %d, prefix %U/%d", mp->table.name,
+  fformat (vam->ofp, "%s; table-id %u, prefix %U/%d", mp->table.name,
 	   ntohl (mp->table.table_id));
   vam->result_ready = 1;
 }

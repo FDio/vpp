@@ -340,8 +340,8 @@ format_valloc (u8 *s, va_list *va)
 	    }
 	  else if (p[0] != index)
 	    {
-	      s = format (s, "   BUG: baseva in hash table %d not %d!\n",
-			  p[0], index);
+	      s = format (s, "   BUG: baseva in hash table %u not %d!\n", p[0],
+			  index);
 	    }
 	  index = ch->next;
 	}
