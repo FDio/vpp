@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ac3dfb0_cdcdbb8c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-02-09T15:11:56Z",
+      "side": 1,
+      "message": "Sorry for the painful \u0026 tedious patch\nHopefully this will ease one\u0027s life using vppctl",
+      "revId": "d2a87a21a5c21b864b3a5b9b7cf15ac1175fca16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
