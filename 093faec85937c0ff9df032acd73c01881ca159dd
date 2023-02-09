@@ -72,6 +72,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f6af1cb1_9b169066",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2023-02-09T15:57:29Z",
+      "side": 1,
+      "message": "Found that it\u0027s not an issue. We had a problem when next-hop proto was set as V4, but actualy was V6, so DPO was selected according to that. Closing change",
+      "revId": "093faec85937c0ff9df032acd73c01881ca159dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "81df456f_adbae73d",
