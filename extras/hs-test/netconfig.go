@@ -42,16 +42,18 @@ type (
 
 	NetInterfaceBase struct {
 		NetConfigBase
-		addresser  *Addresser
-		ip4address string // this will have form 10.10.10.1/24
-		index      InterfaceIndex
-		hwAddress  MacAddress
+		addresser        *Addresser
+		ip4Address       string // this will have form 10.10.10.1/24
+		index            InterfaceIndex
+		hwAddress        MacAddress
+		networkNamespace string
 	}
 
 	NetworkInterfaceVeth struct {
 		NetInterfaceBase
 		peerNetworkNamespace string
 		peerName             string
+		peerNetworkNumber    int
 		peerIp4Address       string
 	}
 
@@ -86,7 +88,7 @@ func (b *NetConfigBase) Type() string {
 }
 
 func (b *NetInterfaceBase) SetAddress(address string) {
-	b.ip4address = address
+	b.ip4Address = address
 }
 
 func (b *NetInterfaceBase) SetIndex(index InterfaceIndex) {
@@ -98,44 +100,22 @@ func (b *NetInterfaceBase) Index() InterfaceIndex {
 }
 
 func (b *NetInterfaceBase) AddressWithPrefix() AddressWithPrefix {
-	address, _ := ip_types.ParseAddressWithPrefix(b.ip4address)
+	address, _ := ip_types.ParseAddressWithPrefix(b.ip4Address)
 	return address
 }
 
 func (b *NetInterfaceBase) IP4AddressWithPrefix() IP4AddressWithPrefix {
-	IP4Prefix, _ := ip_types.ParseIP4Prefix(b.ip4address)
+	IP4Prefix, _ := ip_types.ParseIP4Prefix(b.ip4Address)
 	IP4AddressWithPrefix := ip_types.IP4AddressWithPrefix(IP4Prefix)
 	return IP4AddressWithPrefix
 }
 
 func (b *NetInterfaceBase) IP4AddressString() string {
-	return strings.Split(b.ip4address, "/")[0]
+	return strings.Split(b.ip4Address, "/")[0]
 }
 
 func (b *NetInterfaceBase) HwAddress() MacAddress {
 	return b.hwAddress
-}
-
-func (iface *NetworkInterfaceVeth) Configure() error {
-	err := AddVethPair(iface.name, iface.peerName)
-	if err != nil {
-		return err
-	}
-
-	if iface.peerNetworkNamespace != "" {
-		err := LinkSetNetns(iface.peerName, iface.peerNetworkNamespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	if iface.peerIp4Address != "" {
-		err = AddAddress(iface.peerName, iface.peerIp4Address, iface.peerNetworkNamespace)
-		if err != nil {
-			return fmt.Errorf("failed to add configure address for %s: %v", iface.peerName, err)
-		}
-	}
-	return nil
 }
 
 func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
@@ -144,12 +124,17 @@ func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
 	veth.addresser = a
 	veth.name = cfg["name"].(string)
 	veth.category = "veth"
+	veth.peerNetworkNumber = defaultNetworkNumber
 
 	if cfg["preset-hw-address"] != nil {
 		veth.hwAddress, err = ethernet_types.ParseMacAddress(cfg["preset-hw-address"].(string))
 		if err != nil {
 			return NetworkInterfaceVeth{}, err
 		}
+	}
+
+	if netns, ok := cfg["netns"]; ok {
+		veth.networkNamespace = netns.(string)
 	}
 
 	peer := cfg["peer"].(NetDevConfig)
@@ -160,15 +145,50 @@ func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
 		veth.peerNetworkNamespace = peer["netns"].(string)
 	}
 
-	if peer["ip4"] != nil && peer["ip4"].(bool) == true {
-		veth.peerIp4Address, err = veth.addresser.
-			NewIp4AddressWithNamespace(veth.peerNetworkNamespace)
+	if peerIp, ok := peer["ip4"]; ok {
+		if n, ok := peerIp.(NetDevConfig)["network"]; ok {
+			veth.peerNetworkNumber = n.(int)
+		}
+		veth.peerIp4Address, err = veth.addresser.NewIp4Address(veth.peerNetworkNumber)
 		if err != nil {
 			return NetworkInterfaceVeth{}, err
 		}
 	}
 
 	return veth, nil
+}
+
+func (iface *NetworkInterfaceVeth) Configure() error {
+	err := AddVethPair(iface.name, iface.peerName)
+	if err != nil {
+		return err
+	}
+
+	if iface.networkNamespace != "" {
+		err := LinkSetNetns(iface.name, iface.networkNamespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	if iface.peerNetworkNamespace != "" {
+		err := LinkSetNetns(iface.peerName, iface.peerNetworkNamespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	if iface.ip4Address != "" {
+		err = AddAddress(iface.Name(), iface.ip4Address, "")
+	}
+
+	if iface.peerIp4Address != "" {
+		err = AddAddress(iface.peerName, iface.peerIp4Address, iface.peerNetworkNamespace)
+		if err != nil {
+			return fmt.Errorf("failed to add configure address for %s: %v", iface.peerName, err)
+		}
+	}
+	return nil
 }
 
 func (iface *NetworkInterfaceVeth) Unconfigure() {
@@ -226,7 +246,11 @@ func NewBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	for _, v := range cfg["interfaces"].([]interface{}) {
 		bridge.interfaces = append(bridge.interfaces, v.(string))
 	}
-	bridge.networkNamespace = cfg["netns"].(string)
+
+	bridge.networkNamespace = ""
+	if netns, ok := cfg["netns"]; ok {
+		bridge.networkNamespace = netns.(string)
+	}
 	return bridge, nil
 }
 
@@ -310,9 +334,13 @@ func AddVethPair(ifName, peerName string) error {
 	cmd := exec.Command("ip", "link", "add", ifName, "type", "veth", "peer", "name", peerName)
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("creating veth pair failed: %v", err)
+		return fmt.Errorf("creating veth pair '%v/%v' failed: %v", ifName, peerName, err)
 	}
 	err = SetDevUp(ifName, "")
+	if err != nil {
+		return fmt.Errorf("set link up failed: %v", err)
+	}
+	err = SetDevUp(peerName, "")
 	if err != nil {
 		return fmt.Errorf("set link up failed: %v", err)
 	}
