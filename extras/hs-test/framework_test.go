@@ -25,3 +25,8 @@ func TestNoTopo(t *testing.T) {
 	var m NoTopoSuite
 	suite.Run(t, &m)
 }
+
+func TestMirroring(t *testing.T) {
+	var m MirroringSuite
+	suite.Run(t, &m)
+}
