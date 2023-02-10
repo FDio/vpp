@@ -487,7 +487,8 @@ typedef struct
 
   struct
   {
-    u32 arc_next;
+    u16 arc_next;
+    u16 feature_config_hash;
     union
     {
       u32 cached_session_index;

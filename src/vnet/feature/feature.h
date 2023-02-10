@@ -81,6 +81,7 @@ typedef struct vnet_feature_config_main_t_
 {
   vnet_config_main_t config_main;
   u32 *config_index_by_sw_if_index;
+  u64 *config_hash_by_sw_if_index;
 } vnet_feature_config_main_t;
 
 typedef struct
@@ -264,6 +265,17 @@ vnet_get_feature_config_index (u8 arc, u32 sw_if_index)
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
   return vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
+}
+
+static_always_inline u64
+vnet_get_feature_config_hash (u8 arc, u32 sw_if_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
+
+  vec_validate_init_empty (cm->config_hash_by_sw_if_index, sw_if_index, ~0);
+
+  return vec_elt (cm->config_hash_by_sw_if_index, sw_if_index);
 }
 
 static_always_inline void *

@@ -214,10 +214,15 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  vnet_feature_next (&arc_next, b0);
 	  vnet_buffer2 (b0)->nat.arc_next = arc_next;
 
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+	  vnet_buffer2 (b0)->nat.feature_config_hash =
+	    vnet_get_feature_config_hash (vnet_buffer (b0)->feature_arc_index,
+					  sw_if_index0);
+
 	  if (ip0->protocol != IP_PROTOCOL_ICMP)
 	    {
 	      /* process leading fragment/whole packet (with L4 header) */
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      rx_fib_index0 =
 		fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						     sw_if_index0);
