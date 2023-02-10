@@ -16,6 +16,23 @@
       "message": "Hi Ahmed-san thank review!\n\nAll unified to encap_src, please confirm:)",
       "revId": "a4fcd7950e00b40ff2d38b52a36c28a4b86fa176",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3107ad4f_c72c9a63",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1776
+      },
+      "writtenOn": "2023-02-10T16:05:59Z",
+      "side": 1,
+      "message": "Many thanks Takeru-san for addressing the review. I believe the code is good now to be merged. ",
+      "revId": "a4fcd7950e00b40ff2d38b52a36c28a4b86fa176",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
