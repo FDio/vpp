@@ -1555,6 +1555,14 @@ fib_entry_get_resolving_interface (fib_node_index_t entry_index)
 
     fib_entry = fib_entry_get(entry_index);
 
+    if (FIB_NODE_INDEX_INVALID == fib_entry->fe_parent)
+    {
+        /*
+         * unlinked entry - consider it not active
+         */
+        return ~0;
+    }
+
     return (fib_path_list_get_resolving_interface(fib_entry->fe_parent));
 }
 
@@ -1564,7 +1572,7 @@ fib_entry_get_any_resolving_interface (fib_node_index_t entry_index)
     const fib_entry_src_t *src;
     fib_entry_t *fib_entry;
     fib_source_t source;
-    u32 sw_if_index;
+    u32 sw_if_index = ~0;
 
     fib_entry = fib_entry_get(entry_index);
 
