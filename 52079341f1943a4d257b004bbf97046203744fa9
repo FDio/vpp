@@ -55,6 +55,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4722a5a9_0f475da5",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 2770
+      },
+      "writtenOn": "2023-02-10T12:29:49Z",
+      "side": 1,
+      "message": "Hi Fan, I was wondering how head doesn\u0027t overflow tail without a check. It seems that it won\u0027t happen as ring size is exactly as max number of available async frames which is VNET_CRYPTO_FRAME_POOL_SIZE. However if I take a look at the implementation of vnet_crypto_async_get_frame, a new async frame is obtained by calling pool_get_aligned. In case pool is exhausted this call will lead to the pool resizing - which would be a disaster, as we operate on pointers, not their indices. So my question is - is it a bug, or we know that in our setup such scenario will not take place - as it is not obvious to me.",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5f435ecd_a326cd0d",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 3
