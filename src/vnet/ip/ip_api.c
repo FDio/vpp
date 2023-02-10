@@ -101,23 +101,26 @@ vl_api_ip_table_dump_t_handler (vl_api_ip_table_dump_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_registration_t *reg;
   fib_table_t *fib_table;
+  u32 fib_index;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, ip4_main.fibs)
-   {
-    send_ip_table_details(am, reg, mp->context, fib_table);
-  }
-  pool_foreach (fib_table, ip6_main.fibs)
-   {
-    /* don't send link locals */
-    if (fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL)
-      continue;
-    send_ip_table_details(am, reg, mp->context, fib_table);
-  }
+  pool_foreach_index (fib_index, ip4_main.fibs)
+    {
+      fib_table = pool_elt_at_index (ip4_main.fibs, fib_index);
+      send_ip_table_details (am, reg, mp->context, fib_table);
+    }
+  pool_foreach_index (fib_index, ip6_main.fibs)
+    {
+      fib_table = pool_elt_at_index (ip6_main.fibs, fib_index);
+      /* don't send link locals */
+      if (fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL)
+	continue;
+      send_ip_table_details (am, reg, mp->context, fib_table);
+    }
   /* *INDENT-ON* */
 }
 
@@ -146,6 +149,9 @@ send_ip_route_details (vpe_api_main_t * am,
   const fib_prefix_t *pfx;
   vl_api_fib_path_t *fp;
   int path_count;
+
+  if (!fib_entry_is_valid (fib_entry_index))
+    return;
 
   rpaths = NULL;
   pfx = fib_entry_get_prefix (fib_entry_index);
@@ -2148,6 +2154,8 @@ ip_api_hookup (vlib_main_t * vm)
     am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2, 1);
   vl_api_set_msg_thread_safe (
     am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2_REPLY, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_DUMP, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_TABLE_DUMP, 1);
 
   return 0;
 }

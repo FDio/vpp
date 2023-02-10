@@ -138,6 +138,12 @@ format_fib_entry (u8 * s, va_list * args)
 
     fei = va_arg (*args, fib_node_index_t);
     level = va_arg (*args, int);
+
+    if (!fib_entry_is_valid (fei))
+      {
+        return format (s, "DELETED\n");
+      }
+
     fib_entry = fib_entry_get(fei);
 
     s = format (s, "%U", format_fib_prefix, &fib_entry->fe_prefix);
@@ -1628,6 +1634,15 @@ fib_entry_is_resolved (fib_node_index_t fib_entry_index)
          */
         return (FIB_BFD_STATE_UP == fed->fd_bfd_state);
     }
+}
+
+/**
+ * Return !0 is the entry is valid
+ */
+int
+fib_entry_is_valid (fib_node_index_t fib_entry_index)
+{
+    return (!pool_is_free_index (fib_entry_pool, fib_entry_index));
 }
 
 void

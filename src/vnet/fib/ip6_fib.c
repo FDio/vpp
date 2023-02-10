@@ -645,10 +645,11 @@ ip6_show_fib (vlib_main_t * vm,
     ip6_fib_t * fib;
     int verbose, matching;
     ip6_address_t matching_address;
-    u32 mask_len  = 128;
-    int table_id = -1, fib_index = ~0;
+    u32 fib_index, mask_len  = 128;
+    int table_id = -1, user_fib_index = ~0;
     int detail = 0;
     int hash = 0;
+    int is_mp_safe = cmd->is_mp_safe;
 
     verbose = 1;
     matching = 0;
@@ -678,11 +679,17 @@ ip6_show_fib (vlib_main_t * vm,
 
 	else if (unformat (input, "table %d", &table_id))
 	    ;
-	else if (unformat (input, "index %d", &fib_index))
+	else if (unformat (input, "index %d", &user_fib_index))
 	    ;
 	else
 	    break;
     }
+
+    /* mp-safe except detail, hash and memory */
+    if (detail || hash)
+        is_mp_safe = 0;
+    if (!is_mp_safe)
+        vlib_worker_thread_barrier_sync (vm);
 
     if (hash)
     {
@@ -694,18 +701,22 @@ ip6_show_fib (vlib_main_t * vm,
                          BV (format_bihash),
                          &ip6_fib_table[IP6_FIB_TABLE_FWDING].ip6_hash,
                          detail);
+
+        if (!is_mp_safe)
+            vlib_worker_thread_barrier_release (vm);
         return (NULL);
     }
 
-    pool_foreach (fib_table, im6->fibs)
+    pool_foreach_index (fib_index, im6->fibs)
      {
         fib_source_t source;
         u8 *s = NULL;
 
+	fib_table = pool_elt_at_index(im6->fibs, fib_index);
 	fib = pool_elt_at_index(im6->v6_fibs, fib_table->ft_index);
 	if (table_id >= 0 && table_id != (int)fib->table_id)
 	    continue;
-	if (fib_index != ~0 && fib_index != (int)fib->index)
+	if (user_fib_index != ~0 && user_fib_index != (int)fib->index)
 	    continue;
         if (fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL)
             continue;
@@ -764,6 +775,9 @@ ip6_show_fib (vlib_main_t * vm,
 	    ip6_fib_table_show_one(fib, vm, &matching_address, mask_len, detail);
 	}
     }
+
+    if (!is_mp_safe)
+        vlib_worker_thread_barrier_release (vm);
 
     return 0;
 }
@@ -867,6 +881,7 @@ VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .path = "show ip6 fib",
     .short_help = "show ip6 fib [summary] [table <table-id>] [index <fib-id>] [<ip6-addr>[/<width>]] [detail]",
     .function = ip6_show_fib,
+    .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 

@@ -340,6 +340,7 @@ ip4_show_fib (vlib_main_t * vm,
     u32 fib_index, matching_mask = 32;
     int i, table_id = -1, user_fib_index = ~0;
     int detail = 0;
+    int is_mp_safe = cmd->is_mp_safe;
 
     verbose = 1;
     matching = mtrie = memory = 0;
@@ -375,6 +376,12 @@ ip4_show_fib (vlib_main_t * vm,
 	else
 	    break;
     }
+
+    /* mp-safe except detail, mtrie and memory */
+    if (detail || mtrie || memory)
+        is_mp_safe = 0;
+    if (!is_mp_safe)
+        vlib_worker_thread_barrier_sync (vm);
 
     pool_foreach_index (fib_index, im4->fibs)
      {
@@ -466,6 +473,9 @@ ip4_show_fib (vlib_main_t * vm,
                                    matching_mask, detail);
 	}
     }
+
+    if (!is_mp_safe)
+      vlib_worker_thread_barrier_release (vm);
 
     if (memory)
     {
@@ -626,5 +636,6 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show ip fib",
     .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie] [detail]",
     .function = ip4_show_fib,
+    .is_mp_safe = 1,
 };
 /* *INDENT-ON* */

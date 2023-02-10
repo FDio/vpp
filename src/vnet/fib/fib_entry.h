@@ -488,6 +488,7 @@ extern u32 fib_entry_get_stats_index(fib_node_index_t fib_entry_index);
  */
 extern fib_node_index_t fib_entry_get_index(const fib_entry_t * fib_entry);
 extern fib_entry_t * fib_entry_get(fib_node_index_t fib_entry_index);
+extern int fib_entry_is_valid(fib_node_index_t fib_entry_index);
 
 /*
  * for testing purposes.
