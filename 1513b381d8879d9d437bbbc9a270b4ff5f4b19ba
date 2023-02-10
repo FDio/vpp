@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fe79be35_9e702284",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-10T18:35:59Z",
+      "side": 1,
+      "message": "docs-only patch -- thus Verified +1 myself, since JJB is not triggered on it.",
+      "revId": "1513b381d8879d9d437bbbc9a270b4ff5f4b19ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
