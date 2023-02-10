@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "6d93d060a8715a42af37e68545840b4372cf9832",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f9df9ed_1acb599f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-10T19:45:16Z",
+      "side": 1,
+      "message": "docs-only patch -- thus Verified +1 myself, since JJB is not triggered on it.",
+      "revId": "6d93d060a8715a42af37e68545840b4372cf9832",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
