@@ -149,6 +149,19 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
       sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
+      vnet_buffer2 (b[0])->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b[0])->feature_arc_index,
+				      sw_if_index0);
+      vnet_buffer2 (b[1])->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b[1])->feature_arc_index,
+				      sw_if_index1);
+      vnet_buffer2 (b[2])->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b[2])->feature_arc_index,
+				      sw_if_index2);
+      vnet_buffer2 (b[3])->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b[3])->feature_arc_index,
+				      sw_if_index3);
+
       rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
       rx_fib_index1 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
       rx_fib_index2 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index2);
@@ -221,6 +234,11 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       vnet_buffer2 (b[0])->nat.arc_next = arc_next0;
 
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+
+      vnet_buffer2 (b[0])->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b[0])->feature_arc_index,
+				      sw_if_index0);
+
       rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
       if (is_in2out)

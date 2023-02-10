@@ -283,6 +283,20 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
     {
       return 0;
     }
+
+  {
+    vnet_config_t *cfg;
+    u32 index;
+
+    index = cm->config_main.config_pool_index_by_user_index[ci];
+    cfg = pool_elt_at_index (cm->config_main.config_pool, index);
+
+    vec_validate_init_empty (cm->config_hash_by_sw_if_index, sw_if_index, ~0);
+
+    cm->config_hash_by_sw_if_index[sw_if_index] = hash_memory (
+      cfg->config_string_vector, vec_len (cfg->config_string_vector), 0);
+  }
+
   cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   /* update feature count */

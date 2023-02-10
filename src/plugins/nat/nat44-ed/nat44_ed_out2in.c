@@ -791,6 +791,15 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       ip0 = vlib_buffer_get_current (b0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+
+      if (vnet_buffer2 (b0)->nat.feature_config_hash !=
+	  (u16) vnet_get_feature_config_hash (
+	    vnet_buffer (b0)->feature_arc_index, sw_if_index0))
+	{
+	  next[0] = NAT_NEXT_DROP;
+	  goto trace0;
+	}
+
       rx_fib_index0 =
 	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
 
