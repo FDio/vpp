@@ -1099,6 +1099,15 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
 	is_output_feature ? tx_sw_if_index0 : rx_sw_if_index0;
       rx_fib_index0 = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 							   rx_sw_if_index0);
+
+      if (vnet_buffer2 (b0)->nat.feature_config_hash !=
+	  (u16) vnet_get_feature_config_hash (
+	    vnet_buffer (b0)->feature_arc_index, rx_sw_if_index0))
+	{
+	  next[0] = NAT_NEXT_DROP;
+	  goto trace0;
+	}
+
       lookup.fib_index = rx_fib_index0;
 
       if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))

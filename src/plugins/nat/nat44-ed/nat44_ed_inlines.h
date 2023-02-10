@@ -597,6 +597,13 @@ nat_pre_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_buffer2 (b0)->nat.arc_next = arc_next0;
       vnet_buffer2 (b1)->nat.arc_next = arc_next1;
 
+      vnet_buffer2 (b0)->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b0)->feature_arc_index,
+				      vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+      vnet_buffer2 (b1)->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b1)->feature_arc_index,
+				      vnet_buffer (b1)->sw_if_index[VLIB_RX]);
+
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	{
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
@@ -631,6 +638,10 @@ nat_pre_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       next0 = def_next;
       vnet_feature_next (&arc_next0, b0);
       vnet_buffer2 (b0)->nat.arc_next = arc_next0;
+
+      vnet_buffer2 (b0)->nat.feature_config_hash =
+	vnet_get_feature_config_hash (vnet_buffer (b0)->feature_arc_index,
+				      vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b0->flags & VLIB_BUFFER_IS_TRACED)))

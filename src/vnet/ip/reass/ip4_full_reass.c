@@ -151,6 +151,8 @@ typedef struct
   // thread which received fragment with offset 0 and which sends out the
   // completed reassembly
   u32 sendout_thread_index;
+
+  u64 feature_config_hash;
 } ip4_full_reass_t;
 
 typedef struct
@@ -618,11 +620,11 @@ again:
 }
 
 always_inline ip4_full_reass_rc_t
-ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 ip4_full_reass_main_t * rm,
-			 ip4_full_reass_per_thread_t * rt,
-			 ip4_full_reass_t * reass, u32 * bi0,
-			 u32 * next0, u32 * error0, bool is_custom)
+ip4_full_reass_finalize (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 ip4_full_reass_main_t *rm,
+			 ip4_full_reass_per_thread_t *rt,
+			 ip4_full_reass_t *reass, u32 *bi0, u32 *next0,
+			 u32 *error0, ip4_full_reass_node_type_t type)
 {
   vlib_buffer_t *first_b = vlib_get_buffer (vm, reass->first_bi);
   vlib_buffer_t *last_b = NULL;
@@ -803,8 +805,9 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (0);
 #endif
     }
+
   *bi0 = reass->first_bi;
-  if (!is_custom)
+  if (type != CUSTOM)
     {
       *next0 = IP4_FULL_REASS_NEXT_INPUT;
     }
@@ -818,12 +821,26 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
    * fragments reassembled */
   vlib_node_increment_counter (vm, node->node_index, IP4_ERROR_REASS_SUCCESS,
 			       1);
+  if (type == FEATURE && reass->feature_config_hash !=
+			   vnet_get_feature_config_hash (
+			     vnet_buffer (first_b)->feature_arc_index,
+			     vnet_buffer (first_b)->sw_if_index[VLIB_RX]))
+    {
+      *next0 = IP4_FULL_REASS_NEXT_DROP;
+      *error0 = IP4_ERROR_DROP;
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       IP4_ERROR_REASS_FRAGMENTS_REASSEMBLED,
-			       reass->fragments_n);
+      vlib_node_increment_counter (vm, node->node_index, IP4_ERROR_DROP,
+				   reass->fragments_n);
+    }
+  else
+    {
+      vlib_node_increment_counter (vm, node->node_index,
+				   IP4_ERROR_REASS_FRAGMENTS_REASSEMBLED,
+				   reass->fragments_n);
 
-  *error0 = IP4_ERROR_NONE;
+      *error0 = IP4_ERROR_NONE;
+    }
+
   ip4_full_reass_free (rm, rt, reass);
   reass = NULL;
   return IP4_REASS_RC_OK;
@@ -917,15 +934,16 @@ ip4_full_reass_remove_range_from_chain (vlib_main_t * vm,
 }
 
 always_inline ip4_full_reass_rc_t
-ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       ip4_full_reass_main_t * rm,
-		       ip4_full_reass_per_thread_t * rt,
-		       ip4_full_reass_t * reass, u32 * bi0, u32 * next0,
-		       u32 * error0, bool is_custom, u32 * handoff_thread_idx)
+ip4_full_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       ip4_full_reass_main_t *rm,
+		       ip4_full_reass_per_thread_t *rt,
+		       ip4_full_reass_t *reass, u32 *bi0, u32 *next0,
+		       u32 *error0, ip4_full_reass_node_type_t type,
+		       u32 *handoff_thread_idx)
 {
   vlib_buffer_t *fb = vlib_get_buffer (vm, *bi0);
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
-  if (is_custom)
+  if (type == CUSTOM)
     {
       // store (error_)next_index before it's overwritten
       reass->next_index = fvnb->ip.reass.next_index;
@@ -964,6 +982,12 @@ ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_full_reass_add_trace (vm, node, reass, *bi0, RANGE_NEW, 0, ~0);
 	}
       *bi0 = ~0;
+      if (type == FEATURE)
+	{
+	  reass->feature_config_hash = vnet_get_feature_config_hash (
+	    vnet_buffer (fb)->feature_arc_index,
+	    vnet_buffer (fb)->sw_if_index[VLIB_RX]);
+	}
       reass->min_fragment_length = clib_net_to_host_u16 (fip->length);
       reass->fragments_n = 1;
       return IP4_REASS_RC_OK;
@@ -1130,9 +1154,8 @@ ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       *handoff_thread_idx = reass->sendout_thread_index;
       int handoff =
 	reass->memory_owner_thread_index != reass->sendout_thread_index;
-      rc =
-	ip4_full_reass_finalize (vm, node, rm, rt, reass, bi0, next0, error0,
-				 is_custom);
+      rc = ip4_full_reass_finalize (vm, node, rm, rt, reass, bi0, next0,
+				    error0, type);
       if (IP4_REASS_RC_OK == rc && handoff)
 	{
 	  rc = IP4_REASS_RC_HANDOFF;
@@ -1257,8 +1280,7 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u32 handoff_thread_idx;
 	  u32 counter = ~0;
 	  switch (ip4_full_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
-					 &error0, CUSTOM == type,
-					 &handoff_thread_idx))
+					 &error0, type, &handoff_thread_idx))
 	    {
 	    case IP4_REASS_RC_OK:
 	      /* nothing to do here */
