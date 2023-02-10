@@ -38,4 +38,3 @@ Past releases
     v17.01
     v16.09
     v16.06
-
