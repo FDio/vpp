@@ -1,0 +1,12 @@
+Release notes for VPP 22.10.1
+=============================
+
+This is bug fix release.
+
+Of particular importance, this release contains the fix for
+`JIRA VPP-2307: CVE-2022-46397 FD.io VPP (Vector Packet Processor) IPSec generates a predictable IV in AES-CBC mode <https://jira.fd.io/browse/VPP-2037>`__
+
+For the full list of fixed issues please refer to:
+
+- fd.io `JIRA <https://jira.fd.io>`__
+- git `commit log <https://git.fd.io/vpp/log/?h=stable/2210>`__
