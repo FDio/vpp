@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f49a5cf1_57f7931f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-02-12T06:11:21Z",
+      "side": 1,
+      "message": "This patchset was updated as https://gerrit.fd.io/r/c/vpp/+/37863 was merged.\n",
+      "revId": "e31042514e48f1bdba74429c09c31ee7383ea789",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
