@@ -158,7 +158,8 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   if (0 != rv)
     goto out;
 
-  vec_validate (rpaths, mp->mr_route.mr_n_paths - 1);
+  if (0 != mp->mr_route.mr_n_paths)
+    vec_validate (rpaths, mp->mr_route.mr_n_paths - 1);
 
   for (ii = 0; ii < mp->mr_route.mr_n_paths; ii++)
     {
@@ -235,7 +236,8 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   fib_route_path_t *rpath, *rpaths = NULL;
   int ii, rv = 0;
 
-  vec_validate (rpaths, mp->mt_tunnel.mt_n_paths - 1);
+  if (0 != mp->mt_tunnel.mt_n_paths)
+    vec_validate (rpaths, mp->mt_tunnel.mt_n_paths - 1);
 
   for (ii = 0; ii < mp->mt_tunnel.mt_n_paths; ii++)
     {
@@ -337,8 +339,11 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   mp->mt_tunnel.mt_is_multicast = ! !(MPLS_TUNNEL_FLAG_MCAST & mt->mt_flags);
   memcpy (mp->mt_tunnel.mt_tag, mt->mt_tag, sizeof (mp->mt_tunnel.mt_tag));
 
-  fib_path_list_walk_w_ext (mt->mt_path_list,
-			    &mt->mt_path_exts, fib_path_encode, &path_ctx);
+  if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
+    {
+      fib_path_list_walk_w_ext (mt->mt_path_list, &mt->mt_path_exts,
+				fib_path_encode, &path_ctx);
+    }
 
   fp = mp->mt_tunnel.mt_paths;
   vec_foreach (rpath, path_ctx.rpaths)
