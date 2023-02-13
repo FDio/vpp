@@ -254,6 +254,10 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
      */
     path_ext = fib_path_ext_list_find_by_path_index(&ctx->mt->mt_path_exts,
                                                     path_index);
+    if (NULL == path_ext)
+      {
+	return (FIB_PATH_LIST_WALK_CONTINUE);
+      }
 
     /*
      * we don't want IP TTL decrements for packets hitting the MPLS labels
@@ -377,8 +381,8 @@ mpls_tunnel_stack (adj_index_t ai)
 
     mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
 
-    if (NULL == mt || FIB_NODE_INDEX_INVALID == mt->mt_path_list)
-        return;
+    if (NULL == mt)
+      return;
 
     if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
     {
@@ -625,19 +629,27 @@ void
 vnet_mpls_tunnel_del (u32 sw_if_index)
 {
     mpls_tunnel_t *mt;
+    vnet_main_t *vnm;
 
     mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
 
     if (NULL == mt)
         return;
 
+    vnm = vnet_get_main ();
+
     if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
-        fib_path_list_child_remove(mt->mt_path_list,
-                                   mt->mt_sibling_index);
+      {
+	fib_path_list_child_remove (mt->mt_path_list, mt->mt_sibling_index);
+	mt->mt_path_list = FIB_NODE_INDEX_INVALID;
+	mt->mt_sibling_index = FIB_NODE_INDEX_INVALID;
+      }
+
     dpo_reset(&mt->mt_l2_lb);
 
-    vnet_reset_interface_l3_output_node (vlib_get_main (), mt->mt_sw_if_index);
-    vnet_delete_hw_interface (vnet_get_main(), mt->mt_hw_if_index);
+    vnet_sw_interface_set_flags (vnm, mt->mt_sw_if_index, 0 /* down */);
+    vnet_reset_interface_l3_output_node (vnm->vlib_main, mt->mt_sw_if_index);
+    vnet_delete_hw_interface (vnm, mt->mt_hw_if_index);
 
     pool_put(mpls_tunnel_pool, mt);
     mpls_tunnel_db[sw_if_index] = ~0;
@@ -726,27 +738,23 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
                                                        FIB_NODE_TYPE_MPLS_TUNNEL,
                                                        mti);
     }
-    else
-    {
-        fib_node_index_t old_pl_index;
+    else if (0 != vec_len (rpaths))
+      {
+	fib_node_index_t old_pl_index;
 
-        old_pl_index = mt->mt_path_list;
+	old_pl_index = mt->mt_path_list;
 
-        mt->mt_path_list =
-            fib_path_list_copy_and_path_add(old_pl_index,
-                                            FIB_PATH_LIST_FLAG_SHARED,
-                                            rpaths);
+	mt->mt_path_list = fib_path_list_copy_and_path_add (
+	  old_pl_index, FIB_PATH_LIST_FLAG_SHARED, rpaths);
 
-        fib_path_list_child_remove(old_pl_index,
-                                   mt->mt_sibling_index);
-        mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
-                                                       FIB_NODE_TYPE_MPLS_TUNNEL,
-                                                       mti);
-        /*
-         * re-resolve all the path-extensions with the new path-list
-         */
-        fib_path_ext_list_resolve(&mt->mt_path_exts, mt->mt_path_list);
-    }
+	fib_path_list_child_remove (old_pl_index, mt->mt_sibling_index);
+	mt->mt_sibling_index = fib_path_list_child_add (
+	  mt->mt_path_list, FIB_NODE_TYPE_MPLS_TUNNEL, mti);
+	/*
+	 * re-resolve all the path-extensions with the new path-list
+	 */
+	fib_path_ext_list_resolve (&mt->mt_path_exts, mt->mt_path_list);
+      }
     vec_foreach(rpath, rpaths)
     {
         fib_path_ext_list_insert(&mt->mt_path_exts,
@@ -779,50 +787,43 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
         /* can't remove a path if we have onoe */
         return (0);
     }
-    else
-    {
-        fib_node_index_t old_pl_index;
+    else if (0 != vec_len (rpaths))
+      {
+	fib_node_index_t old_pl_index;
 
-        old_pl_index = mt->mt_path_list;
+	old_pl_index = mt->mt_path_list;
 
-        fib_path_list_lock(old_pl_index);
-        mt->mt_path_list =
-            fib_path_list_copy_and_path_remove(old_pl_index,
-                                               FIB_PATH_LIST_FLAG_SHARED,
-                                               rpaths);
+	fib_path_list_lock (old_pl_index);
+	mt->mt_path_list = fib_path_list_copy_and_path_remove (
+	  old_pl_index, FIB_PATH_LIST_FLAG_SHARED, rpaths);
 
-        fib_path_list_child_remove(old_pl_index,
-                                   mt->mt_sibling_index);
+	fib_path_list_child_remove (old_pl_index, mt->mt_sibling_index);
 
-        if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
-        {
-            /* no paths left */
-            fib_path_list_unlock(old_pl_index);
-            return (0);
-        }
-        else
-        {
-            mt->mt_sibling_index =
-                fib_path_list_child_add(mt->mt_path_list,
-                                        FIB_NODE_TYPE_MPLS_TUNNEL,
-                                        mti);
-        }
-        /*
-         * find the matching path extension and remove it
-         */
-        fib_path_ext_list_remove(&mt->mt_path_exts,
-                                  FIB_PATH_EXT_MPLS,
-                                  rpaths);
+	if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
+	  {
+	    /* no paths left */
+	    fib_path_list_unlock (old_pl_index);
+	    return (0);
+	  }
+	else
+	  {
+	    mt->mt_sibling_index = fib_path_list_child_add (
+	      mt->mt_path_list, FIB_NODE_TYPE_MPLS_TUNNEL, mti);
+	  }
+	/*
+	 * find the matching path extension and remove it
+	 */
+	fib_path_ext_list_remove (&mt->mt_path_exts, FIB_PATH_EXT_MPLS,
+				  rpaths);
 
-        /*
-         * re-resolve all the path-extensions with the new path-list
-         */
-        fib_path_ext_list_resolve(&mt->mt_path_exts,
-                                  mt->mt_path_list);
+	/*
+	 * re-resolve all the path-extensions with the new path-list
+	 */
+	fib_path_ext_list_resolve (&mt->mt_path_exts, mt->mt_path_list);
 
-        mpls_tunnel_restack(mt);
-        fib_path_list_unlock(old_pl_index);
-   }
+	mpls_tunnel_restack (mt);
+	fib_path_list_unlock (old_pl_index);
+      }
 
     return (fib_path_list_get_n_paths(mt->mt_path_list));
 }
@@ -847,7 +848,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 {
     unformat_input_t _line_input, * line_input = &_line_input;
     vnet_main_t * vnm = vnet_get_main();
-    u8 is_del = 0, l2_only = 0, is_multicast =0;
+    u8 is_del = 0, l2_only = 0, is_multicast = 0;
     fib_route_path_t rpath, *rpaths = NULL;
     u32 sw_if_index = ~0, payload_proto;
     clib_error_t *error = NULL;
@@ -878,13 +879,21 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
         else if (unformat (line_input, "via %U",
                            unformat_fib_route_path,
                            &rpath, &payload_proto))
-            vec_add1(rpaths, rpath);
-        else
-        {
-            error = clib_error_return (0, "unknown input '%U'",
-                                       format_unformat_error, line_input);
-            goto done;
-        }
+	  {
+	    if (0 == vec_len (rpath.frp_label_stack))
+	      {
+		error = clib_error_return (0, "No Output Labels '%U'",
+					   format_unformat_error, line_input);
+		goto done;
+	      }
+	    vec_add1 (rpaths, rpath);
+	  }
+	else
+	  {
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	  }
     }
 
     if (is_del)
@@ -900,13 +909,6 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     }
     else
     {
-        if (0 == vec_len(rpath.frp_label_stack))
-        {
-            error = clib_error_return (0, "No Output Labels '%U'",
-                                       format_unformat_error, line_input);
-            goto done;
-        }
-
         if (~0 == sw_if_index)
         {
             sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast, NULL);
@@ -955,7 +957,10 @@ format_mpls_tunnel (u8 * s, va_list * args)
         }
     }
     s = format(s, "\n via:\n");
-    s = fib_path_list_format(mt->mt_path_list, s);
+    if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
+      {
+	s = fib_path_list_format (mt->mt_path_list, s);
+      }
     s = format(s, "%U", format_fib_path_ext_list, &mt->mt_path_exts);
     s = format(s, "\n");
 
