@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e27d860_723017a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-13T15:33:13Z",
+      "side": 1,
+      "message": "Thanks! Small question about using the same constant for both rx \u0026 tx",
+      "revId": "90802f6ea6d7aa82aa056cd6206ad251865437ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dcd3b30c_c56d82bb",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-13T15:33:13Z",
+      "side": 1,
+      "message": "I see there is also XSK_RING_PROD__DEFAULT_NUM_DESCS, shouldn\u0027t we use that here?",
+      "revId": "90802f6ea6d7aa82aa056cd6206ad251865437ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80fb0c42_9c36b141",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-13T15:33:13Z",
+      "side": 1,
+      "message": "I we end up using XSK_RING_PROD__DEFAULT_NUM_DESCS above, we can use XSK_RING_CONS__DEFAULT_NUM_DESCS directly instead of defining it ourselves",
+      "revId": "90802f6ea6d7aa82aa056cd6206ad251865437ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
