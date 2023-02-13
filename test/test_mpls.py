@@ -1265,6 +1265,11 @@ class TestMPLS(VppTestCase):
             [VppMplsLabel(44), VppMplsLabel(46), VppMplsLabel(33, ttl=255)],
         )
 
+        #
+        # cleanup
+        #
+        mpls_tun.remove_vpp_config()
+
     def test_tunnel_uniform(self):
         """MPLS Tunnel Tests - Uniform"""
 
@@ -1341,6 +1346,97 @@ class TestMPLS(VppTestCase):
                 VppMplsLabel(33, ttl=47),
             ],
         )
+
+        #
+        # cleanup
+        #
+        mpls_tun.remove_vpp_config()
+
+    def test_tunnel_crud(self):
+        """MPLS Tunnel Tests - CRUD"""
+
+        #
+        # Create a tunnel without paths
+        #
+        mpls_tun = VppMPLSTunnelInterface(self, [])
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+        self.assertTrue(mpls_tun.query_vpp_config())
+
+        #
+        # Add an unlabelled route through the new tunnel
+        #
+        route_10_0_0_3 = VppIpRoute(
+            self, "10.0.0.3", 32, [VppRoutePath("0.0.0.0", mpls_tun._sw_if_index)]
+        )
+        route_10_0_0_3.add_vpp_config()
+
+        #
+        # Send stream and check nothing was captured
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(0, timeout=1)
+
+        #
+        # Delete tunnel without paths
+        #
+        mpls_tun.remove_vpp_config()
+        self.assertFalse(mpls_tun.query_vpp_config())
+
+        #
+        # Create a tunnel with one out label
+        #
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [
+                VppRoutePath(
+                    self.pg0.remote_ip4, self.pg0.sw_if_index, labels=[VppMplsLabel(44)]
+                )
+            ],
+        )
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+        self.assertTrue(mpls_tun.query_vpp_config())
+
+        #
+        # Add an unlabelled route through the new tunnel
+        #
+        route_10_0_0_4 = VppIpRoute(
+            self, "10.0.0.4", 32, [VppRoutePath("0.0.0.0", mpls_tun._sw_if_index)]
+        )
+        route_10_0_0_4.add_vpp_config()
+
+        #
+        # Try to delete tunnel without paths
+        #
+        mpls_tun.encoded_paths = []
+        mpls_tun.remove_vpp_config()
+        self.assertTrue(mpls_tun.query_vpp_config())
+
+        #
+        # Send stream and check it was captured
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [VppMplsLabel(44)])
+
+        #
+        # Delete tunnel with all paths via cli, must not crash vpp.
+        # This scenario can't be tested via api - api requires path to be set.
+        #
+        self.vapi.cli("mpls tunnel del mpls-tunnel%d" % mpls_tun.tunnel_index)
+        self.assertFalse(mpls_tun.query_vpp_config())
 
     def test_mpls_tunnel_many(self):
         """MPLS Multiple Tunnels"""
