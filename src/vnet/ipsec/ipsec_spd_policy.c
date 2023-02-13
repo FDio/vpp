@@ -378,7 +378,6 @@ ipsec_fp_get_policy_ports_mask (ipsec_policy_t *policy,
     }
 
   mask->protocol = (policy->protocol == IPSEC_POLICY_PROTOCOL_ANY) ? 0 : ~0;
-  mask->action = 0;
 }
 
 static_always_inline void
@@ -395,6 +394,15 @@ ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
   clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
   clib_memset_u8 (&mask->l3_zero_pad, 0, sizeof (mask->l3_zero_pad));
 
+  if (inbound && (policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT &&
+		  policy->sa_index != INDEX_INVALID))
+    {
+      ipsec_sa_t *s = ipsec_sa_get (policy->sa_index);
+
+      if (ipsec_sa_is_set_IS_TUNNEL (s))
+	goto set_spi_mask;
+    }
+
   /* find bits where start != stop */
   *plmask = *pladdr_start ^ *pladdr_stop;
   *prmask = *praddr_start ^ *praddr_stop;
@@ -409,6 +417,7 @@ ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
   *prmask = clib_host_to_net_u32 (
     mask_out_highest_set_bit_u32 (clib_net_to_host_u32 (*prmask)));
 
+set_spi_mask:
   if (inbound)
     {
       if (policy->type != IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
@@ -435,6 +444,15 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
   u64 *prmask = (u64 *) &mask->ip6_raddr;
 
   clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
+
+  if (inbound && (policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT &&
+		  policy->sa_index != INDEX_INVALID))
+    {
+      ipsec_sa_t *s = ipsec_sa_get (policy->sa_index);
+
+      if (ipsec_sa_is_set_IS_TUNNEL (s))
+	goto set_spi_mask;
+    }
 
   *plmask = (*pladdr_start++ ^ *pladdr_stop++);
 
@@ -468,10 +486,10 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
     }
   else
     *prmask = 0;
-
+set_spi_mask:
   if (inbound)
     {
-      if (policy->type != IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT)
+      if (policy->type != IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT)
 	mask->spi = 0;
 
       mask->protocol = 0;
@@ -508,7 +526,21 @@ ipsec_fp_get_policy_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *tuple,
 	  policy->sa_index != INDEX_INVALID)
 	{
 	  ipsec_sa_t *s = ipsec_sa_get (policy->sa_index);
+
 	  tuple->spi = s->spi;
+	  if (ipsec_sa_is_set_IS_TUNNEL (s))
+	    {
+	      if (tuple->is_ipv6)
+		{
+		  tuple->ip6_laddr = s->tunnel.t_dst.ip.ip6;
+		  tuple->ip6_raddr = s->tunnel.t_src.ip.ip6;
+		}
+	      else
+		{
+		  tuple->laddr = s->tunnel.t_dst.ip.ip4;
+		  tuple->raddr = s->tunnel.t_src.ip.ip4;
+		}
+	    }
 	}
       else
 	tuple->spi = INDEX_INVALID;
@@ -517,7 +549,6 @@ ipsec_fp_get_policy_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *tuple,
     }
 
   tuple->protocol = policy->protocol;
-
   tuple->lport = policy->lport.start;
   tuple->rport = policy->rport.start;
 }
