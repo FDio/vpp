@@ -33,6 +33,24 @@
       "message": "Thanks for the change to bitmap.h. \n\nIt seems questionable to test bitmaps as part of each patch validation. I\u0027m all for code coverage, and so on, but at some point we\u0027re looking for yesterday\u0027s problems.",
       "revId": "23af23bd52dabd633427bfe45a2c1538be52763a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25a5d2ae_3d8404a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-02-14T14:05:30Z",
+      "side": 1,
+      "message": "Thank you, had ~similar thoughts:\ncons: test validation slowdown, vppinfra issues (on next refactor, for example) Highly likely will result in high-level malfunction, which is likely already covered for each test run\nPros: 2s test slowdown only, pool_put_will_expand() and clib_bitmap_will_expand() are not used in vpp codebase, but can be used in some local plugins.\nSo, decided to keep it. If you want, can be decorated as part of coverage tests with config.gcov alike fixed test_pool in test vlib, what do you think about?",
+      "parentUuid": "3a49d6a0_30af7514",
+      "revId": "23af23bd52dabd633427bfe45a2c1538be52763a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
