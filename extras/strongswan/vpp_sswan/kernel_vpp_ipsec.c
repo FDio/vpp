@@ -62,6 +62,14 @@
 
 #define PRIO_BASE 384
 
+/**
+ * Every 2 seconds, the thread responsible for collecting the available
+ * interfaces will be executed.
+ * Retrying 5 times every 1 second ensures that there is enough time to check
+ * if the interface will be available.
+ */
+#define N_RETRY_GET_IF 5
+
 u32 natt_port;
 
 /**
@@ -133,6 +141,11 @@ struct private_kernel_vpp_ipsec_t
    * route-based IPsec
    */
   bool use_tunnel_mode_sa;
+
+  /**
+   * Connections to VPP Stats
+   */
+  stat_client_main_t *sm;
 };
 
 /**
@@ -143,6 +156,7 @@ typedef struct
   /** VPP SA ID */
   uint32_t sa_id;
   uint32_t stat_index;
+  kernel_ipsec_sa_id_t *sa_id_p;
 } sa_t;
 
 /**
@@ -156,6 +170,8 @@ typedef struct
   uint32_t sw_if_index;
   /** Policy count for this SPD */
   refcount_t policy_num;
+  /** Name of the interface the SPD is bound to */
+  char *if_name;
 } spd_t;
 
 /**
@@ -413,9 +429,9 @@ static void
 manage_route (private_kernel_vpp_ipsec_t *this, bool add,
 	      traffic_selector_t *dst_ts, host_t *src, host_t *dst)
 {
-  host_t *dst_net, *gateway;
+  host_t *dst_net = NULL, *gateway = NULL;
   uint8_t prefixlen;
-  char *if_name;
+  char *if_name = NULL;
   route_entry_t *route;
   bool route_exist = FALSE;
 
@@ -433,11 +449,11 @@ manage_route (private_kernel_vpp_ipsec_t *this, bool add,
     {
       if (src->is_anyaddr (src))
 	{
-	  return;
+	  goto error;
 	}
       if (!charon->kernel->get_interface (charon->kernel, src, &if_name))
 	{
-	  return;
+	  goto error;
 	}
     }
   route_exist =
@@ -478,7 +494,7 @@ manage_route (private_kernel_vpp_ipsec_t *this, bool add,
       if (!route_exist)
 	{
 	  DBG2 (DBG_KNL, "del route but it not exist");
-	  return;
+	  goto error;
 	}
       if (ref_put (&route->refs))
 	{
@@ -489,6 +505,14 @@ manage_route (private_kernel_vpp_ipsec_t *this, bool add,
 				     gateway, dst, if_name, 1);
 	}
     }
+error:
+  if (gateway != NULL)
+    gateway->destroy (gateway);
+  if (dst_net != NULL)
+    dst_net->destroy (dst_net);
+  if (if_name != NULL)
+    free (if_name);
+  return;
 }
 
 /**
@@ -796,6 +820,12 @@ bypass_all (bool add, uint32_t spd_id, uint32_t sa_id)
 	    ntohl (rmp->retval));
       goto error;
     }
+  /* address "out" needs to be freed after vec->send */
+  if (out != NULL)
+    {
+      free (out);
+      out = NULL;
+    }
   mp->entry.is_outbound = 1;
   if (vac->send (vac, (char *) mp, sizeof (*mp), &out, &out_len))
     {
@@ -808,6 +838,12 @@ bypass_all (bool add, uint32_t spd_id, uint32_t sa_id)
       DBG1 (DBG_KNL, "%s SPD entry failed rv:%d", add ? "add" : "remove",
 	    ntohl (rmp->retval));
       goto error;
+    }
+  /* address "out" needs to be freed after vec->send */
+  if (out != NULL)
+    {
+      free (out);
+      out = NULL;
     }
   mp->entry.is_outbound = 0;
   mp->entry.protocol = IP_API_PROTO_AH;
@@ -822,6 +858,12 @@ bypass_all (bool add, uint32_t spd_id, uint32_t sa_id)
       DBG1 (DBG_KNL, "%s SPD entry failed rv:%d", add ? "add" : "remove",
 	    ntohl (rmp->retval));
       goto error;
+    }
+  /* address "out" needs to be freed after vec->send */
+  if (out != NULL)
+    {
+      free (out);
+      out = NULL;
     }
   mp->entry.is_outbound = 1;
   if (vac->send (vac, (char *) mp, sizeof (*mp), &out, &out_len))
@@ -885,6 +927,12 @@ bypass_port (bool add, uint32_t spd_id, uint32_t sa_id, uint16_t port)
       DBG1 (DBG_KNL, "%s SPD entry failed rv:%d", add ? "add" : "remove",
 	    ntohl (rmp->retval));
       goto error;
+    }
+  /* address "out" needs to be freed after vec->send */
+  if (out != NULL)
+    {
+      free (out);
+      out = NULL;
     }
   mp->entry.is_outbound = 1;
   if (vac->send (vac, (char *) mp, sizeof (*mp), &out, &out_len))
@@ -954,64 +1002,68 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
 	       kernel_ipsec_policy_id_t *id,
 	       kernel_ipsec_manage_policy_t *data)
 {
-  spd_t *spd;
+  spd_t *spd = NULL;
   char *out = NULL, *interface = NULL;
   int out_len;
   uint32_t sw_if_index, spd_id = ~0, sad_id = ~0;
   status_t rv = FAILED;
   uint32_t priority, auto_priority;
   chunk_t src_from, src_to, dst_from, dst_to;
-  host_t *src, *dst, *addr;
-  vl_api_ipsec_spd_entry_add_del_t *mp;
-  vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
+  host_t *src = NULL, *dst = NULL, *addr = NULL;
+  vl_api_ipsec_spd_entry_add_del_t *mp = NULL;
+  vl_api_ipsec_spd_entry_add_del_reply_t *rmp = NULL;
   bool n_spd = false;
+  vl_api_ipsec_spd_dump_t *mp_dump = NULL;
+  vl_api_ipsec_spd_details_t *rmp_dump = NULL, *tmp = NULL;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
   this->mutex->lock (this->mutex);
-  if (!id->interface)
+  if (id->dir == POLICY_FWD)
     {
-      addr = id->dir == POLICY_IN ? data->dst : data->src;
-      for (int i = 0; i < 5; i++)
-	{
-	  if (!charon->kernel->get_interface (charon->kernel, addr,
-					      &interface))
-	    {
-	      DBG1 (DBG_KNL, "policy no interface %H", addr);
-	      interface = NULL;
-	      sleep (1);
-	    }
-
-	  if (interface)
-	    {
-	      DBG1 (DBG_KNL, "policy have interface %H", addr);
-	      break;
-	    }
-	}
-      if (!interface)
-	goto error;
-      id->interface = interface;
+      DBG1 (DBG_KNL, "policy FWD interface");
+      rv = SUCCESS;
+      goto error;
     }
+  addr = id->dir == POLICY_IN ? data->dst : data->src;
+  for (int i = 0; i < N_RETRY_GET_IF; i++)
+    {
+      if (!charon->kernel->get_interface (charon->kernel, addr, &interface))
+	{
+	  DBG1 (DBG_KNL, "policy no interface %H", addr);
+	  free (interface);
+	  interface = NULL;
+	  sleep (1);
+	}
+
+      if (interface)
+	{
+	  DBG1 (DBG_KNL, "policy have interface %H", addr);
+	  break;
+	}
+    }
+  if (!interface)
+    goto error;
 
   DBG2 (DBG_KNL, "manage policy [%s] interface [%s]", add ? "ADD" : "DEL",
-	id->interface);
+	interface);
 
-  spd = this->spds->get (this->spds, id->interface);
+  spd = this->spds->get (this->spds, interface);
   if (!spd)
     {
       if (!add)
 	{
 	  DBG1 (DBG_KNL, "SPD for %s not found, should not be deleted",
-		id->interface);
+		interface);
 	  goto error;
 	}
-      sw_if_index = get_sw_if_index (id->interface);
+      sw_if_index = get_sw_if_index (interface);
       DBG1 (DBG_KNL, "firstly created, spd for %s found sw_if_index is %d",
-	    id->interface, sw_if_index);
+	    interface, sw_if_index);
       if (sw_if_index == ~0)
 	{
-	  DBG1 (DBG_KNL, "sw_if_index for %s not found", id->interface);
+	  DBG1 (DBG_KNL, "sw_if_index for %s not found", interface);
 	  goto error;
 	}
       spd_id = ref_get (&this->next_spd_id);
@@ -1026,9 +1078,9 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
 		sw_if_index);
 	  goto error;
 	}
-      INIT (spd, .spd_id = spd_id, .sw_if_index = sw_if_index,
-	    .policy_num = 0, );
-      this->spds->put (this->spds, id->interface, spd);
+      INIT (spd, .spd_id = spd_id, .sw_if_index = sw_if_index, .policy_num = 0,
+	    .if_name = strdup (interface), );
+      this->spds->put (this->spds, spd->if_name, spd);
       n_spd = true;
     }
 
@@ -1145,9 +1197,6 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
   mp->entry.remote_port_stop = htons (id->dst_ts->get_to_port (id->dst_ts));
 
   /* check if policy exists in SPD */
-  vl_api_ipsec_spd_dump_t *mp_dump;
-  vl_api_ipsec_spd_details_t *rmp_dump, *tmp;
-
   mp_dump = vl_msg_api_alloc (sizeof (*mp_dump));
   memset (mp_dump, 0, sizeof (*mp_dump));
 
@@ -1216,7 +1265,17 @@ next:
 	  interface_add_del_spd (FALSE, spd->spd_id, spd->sw_if_index);
 	  manage_bypass (FALSE, spd->spd_id, sad_id);
 	  spd_add_del (FALSE, spd->spd_id);
-	  this->spds->remove (this->spds, id->interface);
+	  this->spds->remove (this->spds, interface);
+	  if (spd->if_name)
+	    {
+	      free (spd->if_name);
+	      spd->if_name = NULL;
+	    }
+	  if (spd)
+	    {
+	      free (spd);
+	      spd = NULL;
+	    }
 	}
     }
 
@@ -1229,9 +1288,18 @@ next:
     }
   rv = SUCCESS;
 error:
-  free (out);
-  vl_msg_api_free (mp_dump);
-  vl_msg_api_free (mp);
+  if (out != NULL)
+    free (out);
+  if (mp_dump != NULL)
+    vl_msg_api_free (mp_dump);
+  if (mp != NULL)
+    vl_msg_api_free (mp);
+  if (src != NULL)
+    src->destroy (src);
+  if (dst != NULL)
+    dst->destroy (dst);
+  if (interface != NULL)
+    free (interface);
   this->mutex->unlock (this->mutex);
   return rv;
 }
@@ -1276,6 +1344,15 @@ typedef struct
 } vpp_sa_expired_t;
 
 /**
+ * Clean up expire data
+ */
+static void
+expire_data_destroy (vpp_sa_expired_t *data)
+{
+  free (data);
+}
+
+/**
  * Callback for expiration events
  */
 static job_requeue_t
@@ -1294,6 +1371,10 @@ sa_expired (vpp_sa_expired_t *expired)
 			      FALSE);
     }
 
+  if (id->src)
+    id->src->destroy (id->src);
+  if (id->dst)
+    id->dst->destroy (id->dst);
   free (id);
   this->mutex->unlock (this->mutex);
   return JOB_REQUEUE_NONE;
@@ -1334,8 +1415,9 @@ schedule_expiration (private_kernel_vpp_ipsec_t *this,
       timeout = lifetime->time.life;
     }
 
-  job = callback_job_create ((callback_job_cb_t) sa_expired, expired,
-			     (callback_job_cleanup_t) free, NULL);
+  job =
+    callback_job_create ((callback_job_cb_t) sa_expired, expired,
+			 (callback_job_cleanup_t) expire_data_destroy, NULL);
   lib->scheduler->schedule_job (lib->scheduler, (job_t *) job, timeout);
 }
 
@@ -1554,7 +1636,8 @@ METHOD (kernel_ipsec_t, add_sa, status_t, private_kernel_vpp_ipsec_t *this,
   this->mutex->lock (this->mutex);
   INIT (sa_id, .src = id->src->clone (id->src),
 	.dst = id->dst->clone (id->dst), .spi = id->spi, .proto = id->proto, );
-  INIT (sa, .sa_id = sad_id, .stat_index = ntohl (rmp->stat_index), );
+  INIT (sa, .sa_id = sad_id, .stat_index = ntohl (rmp->stat_index),
+	.sa_id_p = sa_id, );
   DBG4 (DBG_KNL, "put sa by its sa_id %x !!!!!!", sad_id);
   this->sas->put (this->sas, sa_id, sa);
   schedule_expiration (this, data, id);
@@ -1581,31 +1664,48 @@ METHOD (kernel_ipsec_t, query_sa, status_t, private_kernel_vpp_ipsec_t *this,
 {
   status_t rv = FAILED;
   sa_t *sa;
-  u32 *dir;
+  u32 *dir = NULL;
   int i, k;
-  stat_segment_data_t *res;
+  stat_segment_data_t *res = NULL;
   u8 **pattern = 0;
   uint64_t res_bytes = 0;
   uint64_t res_packets = 0;
 
   this->mutex->lock (this->mutex);
   sa = this->sas->get (this->sas, id);
-  this->mutex->unlock (this->mutex);
   if (!sa)
     {
+      this->mutex->unlock (this->mutex);
       DBG1 (DBG_KNL, "SA not found");
       return NOT_FOUND;
     }
 
-  int rv_stat = stat_segment_connect ("/run/vpp/stats.sock");
-  if (rv_stat != 0)
+  if (this->sm == NULL)
     {
-      DBG1 (DBG_KNL, "Not connecting with stats segmentation");
-      return NOT_FOUND;
+      stat_client_main_t *sm = NULL;
+      sm = stat_client_get ();
+
+      if (!sm)
+	{
+	  DBG1 (DBG_KNL, "Not connecting with stats segmentation");
+	  this->mutex->unlock (this->mutex);
+	  return NOT_FOUND;
+	}
+      this->sm = sm;
+      int rv_stat = stat_segment_connect_r ("/run/vpp/stats.sock", this->sm);
+      if (rv_stat != 0)
+	{
+	  stat_client_free (this->sm);
+	  this->sm = NULL;
+	  DBG1 (DBG_KNL, "Not connecting with stats segmentation");
+	  this->mutex->unlock (this->mutex);
+	  return NOT_FOUND;
+	}
     }
+
   vec_add1 (pattern, (u8 *) "/net/ipsec/sa");
-  dir = stat_segment_ls ((u8 **) pattern);
-  res = stat_segment_dump (dir);
+  dir = stat_segment_ls_r ((u8 **) pattern, this->sm);
+  res = stat_segment_dump_r (dir, this->sm);
   /* i-loop for each results find by pattern - here two:
    * 1. /net/ipsec/sa
    * 2. /net/ipsec/sa/lost
@@ -1644,11 +1744,10 @@ METHOD (kernel_ipsec_t, query_sa, status_t, private_kernel_vpp_ipsec_t *this,
 	  break;
 	}
     }
-  stat_segment_data_free (res);
-  stat_segment_disconnect ();
 
   vec_free (pattern);
   vec_free (dir);
+  stat_segment_data_free (res);
 
   if (bytes)
     {
@@ -1663,6 +1762,7 @@ METHOD (kernel_ipsec_t, query_sa, status_t, private_kernel_vpp_ipsec_t *this,
       *time = 0;
     }
 
+  this->mutex->unlock (this->mutex);
   rv = SUCCESS;
   return rv;
 }
@@ -1672,8 +1772,8 @@ METHOD (kernel_ipsec_t, del_sa, status_t, private_kernel_vpp_ipsec_t *this,
 {
   char *out = NULL;
   int out_len;
-  vl_api_ipsec_sad_entry_add_del_t *mp;
-  vl_api_ipsec_sad_entry_add_del_reply_t *rmp;
+  vl_api_ipsec_sad_entry_add_del_t *mp = NULL;
+  vl_api_ipsec_sad_entry_add_del_reply_t *rmp = NULL;
   status_t rv = FAILED;
   sa_t *sa;
 
@@ -1705,11 +1805,20 @@ METHOD (kernel_ipsec_t, del_sa, status_t, private_kernel_vpp_ipsec_t *this,
       goto error;
     }
 
-  vl_msg_api_free (mp);
-  this->sas->remove (this->sas, id);
+  void *temp = this->sas->remove (this->sas, id);
+  if (sa->sa_id_p)
+    {
+      if (sa->sa_id_p->src)
+	sa->sa_id_p->src->destroy (sa->sa_id_p->src);
+      if (sa->sa_id_p->dst)
+	sa->sa_id_p->dst->destroy (sa->sa_id_p->dst);
+      free (sa->sa_id_p);
+    }
+  free (sa);
   rv = SUCCESS;
 error:
   free (out);
+  vl_msg_api_free (mp);
   this->mutex->unlock (this->mutex);
   return rv;
 }
@@ -1719,12 +1828,14 @@ METHOD (kernel_ipsec_t, flush_sas, status_t, private_kernel_vpp_ipsec_t *this)
   enumerator_t *enumerator;
   int out_len;
   char *out;
-  vl_api_ipsec_sad_entry_add_del_t *mp;
+  vl_api_ipsec_sad_entry_add_del_t *mp = NULL;
+  vl_api_ipsec_sad_entry_add_del_reply_t *rmp = NULL;
   sa_t *sa = NULL;
+  status_t rv = FAILED;
 
   this->mutex->lock (this->mutex);
   enumerator = this->sas->create_enumerator (this->sas);
-  while (enumerator->enumerate (enumerator, sa, NULL))
+  while (enumerator->enumerate (enumerator, &sa))
     {
       mp = vl_msg_api_alloc (sizeof (*mp));
       memset (mp, 0, sizeof (*mp));
@@ -1736,16 +1847,38 @@ METHOD (kernel_ipsec_t, flush_sas, status_t, private_kernel_vpp_ipsec_t *this)
       if (vac->send (vac, (char *) mp, sizeof (*mp), &out, &out_len))
 	{
 	  DBG1 (DBG_KNL, "flush_sas failed!!!!");
-	  return FALSE;
+	  goto error;
+	}
+      rmp = (void *) out;
+      if (rmp->retval)
+	{
+	  DBG1 (DBG_KNL, "flush_sas failed!!!! rv: %d", ntohl (rmp->retval));
+	  goto error;
+	}
+      if (sa->sa_id_p)
+	{
+	  if (sa->sa_id_p->src)
+	    sa->sa_id_p->src->destroy (sa->sa_id_p->src);
+	  if (sa->sa_id_p->dst)
+	    sa->sa_id_p->dst->destroy (sa->sa_id_p->dst);
 	}
       free (out);
       vl_msg_api_free (mp);
       this->sas->remove_at (this->sas, enumerator);
+      free (sa->sa_id_p);
+      free (sa);
     }
+  rv = SUCCESS;
+error:
+  if (out != NULL)
+    free (out);
+  if (mp != NULL)
+    vl_msg_api_free (mp);
+
   enumerator->destroy (enumerator);
   this->mutex->unlock (this->mutex);
 
-  return SUCCESS;
+  return rv;
 }
 
 METHOD (kernel_ipsec_t, add_policy, status_t, private_kernel_vpp_ipsec_t *this,
@@ -1792,6 +1925,12 @@ METHOD (kernel_ipsec_t, destroy, void, private_kernel_vpp_ipsec_t *this)
   this->sas->destroy (this->sas);
   this->spds->destroy (this->spds);
   this->routes->destroy (this->routes);
+  if (this->sm)
+    {
+      stat_segment_disconnect_r (this->sm);
+      stat_client_free (this->sm);
+      this->sm = NULL;
+    }
   free (this);
 }
 
@@ -1833,6 +1972,7 @@ kernel_vpp_ipsec_create ()
         .use_tunnel_mode_sa = lib->settings->get_bool(lib->settings,
                             "%s.plugins.kernel-vpp.use_tunnel_mode_sa",
                             TRUE, lib->ns),
+        .sm = NULL,
     );
 
   if (!init_spi (this))
