@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6788f93e_ec766c64",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1522,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-14T01:29:14Z",
+      "side": 1,
+      "message": "Please apply the same change to asf/asfframework.py",
+      "range": {
+        "startLine": 1514,
+        "startChar": 0,
+        "endLine": 1522,
+        "endChar": 36
+      },
+      "revId": "d576383e27b397887c1b1677baf7f8b78feb3c55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
