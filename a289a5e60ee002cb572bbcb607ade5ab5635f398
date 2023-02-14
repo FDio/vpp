@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc3a2427_519f528b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 4118,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-14T18:50:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b54fac18_1a71f9bc",
+      "revId": "a289a5e60ee002cb572bbcb607ade5ab5635f398",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a0345a7e_6bf20627",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-02-14T18:41:33Z",
       "side": 1,
       "message": "Missing break and default statements.",
+      "revId": "a289a5e60ee002cb572bbcb607ade5ab5635f398",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1cd2abab_172c855a",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 4195,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-14T18:50:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a0345a7e_6bf20627",
       "revId": "a289a5e60ee002cb572bbcb607ade5ab5635f398",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
