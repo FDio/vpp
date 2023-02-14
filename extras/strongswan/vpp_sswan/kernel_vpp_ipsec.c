@@ -217,8 +217,8 @@ set_arp (char *ipStr, char *if_name, bool add)
 {
   char *out = NULL;
   int out_len = 0;
-  vl_api_ip_neighbor_add_del_t *mp;
-  vl_api_ip_neighbor_add_del_reply_t *rmp;
+  vl_api_ip_neighbor_add_del_t *mp = NULL;
+  vl_api_ip_neighbor_add_del_reply_t *rmp = NULL;
   int rc = SUCCESS;
   uint32_t sw_if_index = ~0;
 
@@ -231,12 +231,13 @@ set_arp (char *ipStr, char *if_name, bool add)
   unsigned char mac[8] = {
     0,
   };
-  uint32_t addr;
+  uint32_t addr = 0;
 
   if (if_name == NULL || ipStr == NULL)
     {
       DBG2 (DBG_KNL, "para is null\n");
       rc = FAILED;
+      goto error;
     }
   DBG2 (DBG_KNL, "from kernel read mac\n");
 
@@ -250,7 +251,7 @@ set_arp (char *ipStr, char *if_name, bool add)
     }
 
   fp = fopen (file, "rb");
-  while ((nread = getline (&buffer, &len, fp)) != -1)
+  while (fp && ((nread = getline (&buffer, &len, fp)) != -1))
     {
       sscanf (buffer, "%s %*s %*s %s %*s %*s", &buf[0], &buf[1]);
       inet_aton (&buf[0], &addr);
@@ -273,6 +274,7 @@ set_arp (char *ipStr, char *if_name, bool add)
 	    {
 	      DBG1 (DBG_KNL, "vac %s neighbor entry",
 		    add ? "adding" : "removing");
+	      fclose (fp);
 	      goto error;
 	    }
 	  rmp = (void *) out;
@@ -280,17 +282,32 @@ set_arp (char *ipStr, char *if_name, bool add)
 	    {
 	      DBG1 (DBG_KNL, "%s neighbor add rv:%d", add ? "add" : "remove",
 		    ntohl (rmp->retval));
+	      fclose (fp);
 	      goto error;
 	    }
 	  fclose (fp);
+	  free (out);
+	  vl_msg_api_free (mp);
+	  free (buffer);
+
 	  return rc;
 	}
     }
-  return rc;
+
+  if (fp != NULL)
+    {
+      fclose (fp);
+      fp = NULL;
+    }
 
 error:
   free (out);
   vl_msg_api_free (mp);
+  if (buffer != NULL)
+    {
+      free (buffer);
+      buffer = NULL;
+    }
   return rc;
 }
 
