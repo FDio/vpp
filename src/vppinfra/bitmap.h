@@ -208,7 +208,7 @@ clib_bitmap_set (uword * ai, uword i, uword value)
 always_inline u8
 clib_bitmap_will_expand (uword *ai, uword i)
 {
-  return (i / BITS (ai[0])) < vec_max_len (ai);
+  return (i / BITS (ai[0])) >= vec_max_len (ai);
 }
 
 /** Gets the ith bit value from a bitmap
