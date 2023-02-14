@@ -252,18 +252,6 @@ func DelBridge(brName, ns string) error {
 	return nil
 }
 
-func configureBridge(dev NetDevConfig) error {
-	var ifs []string
-	for _, v := range dev["interfaces"].([]interface{}) {
-		ifs = append(ifs, v.(string))
-	}
-	return AddBridge(dev["name"].(string), ifs, dev["netns"].(string))
-}
-
-func configureTap(dev NetDevConfig) error {
-	return AddTap(dev["name"].(string), dev["ip4"].(string))
-}
-
 func SetDevUp(dev, ns string) error {
 	return setDevUpDown(dev, ns, true)
 }

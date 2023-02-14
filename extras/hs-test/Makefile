@@ -8,5 +8,6 @@ docker:
 
 fixstyle:
 	@gofmt -w .
+	@go mod tidy
 
 .PHONY: docker

@@ -130,7 +130,6 @@ func (c *Container) run() error {
 		return fmt.Errorf("run container failed: name is blank")
 	}
 
-	exechelper.Run(fmt.Sprintf("mkdir -p /tmp/%s/sync", c.name))
 	cmd := c.getRunCommand()
 	err := exechelper.Run(cmd)
 	if err != nil {
@@ -148,10 +147,6 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 	c.volumes[hostDir] = volume
 }
 
-func (c *Container) getVolumeByHostDir(hostDir string) Volume {
-	return c.volumes[hostDir]
-}
-
 func (c *Container) getVolumesAsCliOption() string {
 	cliOption := ""
 
@@ -162,13 +157,6 @@ func (c *Container) getVolumesAsCliOption() string {
 	}
 
 	return cliOption
-}
-
-func (c *Container) getWorkDirAsCliOption() string {
-	if _, ok := c.getWorkDirVolume(); ok {
-		return fmt.Sprintf(" --workdir=\"%s\"", c.GetContainerWorkDir())
-	}
-	return ""
 }
 
 func (c *Container) addEnvVar(name string, value string) {
@@ -188,15 +176,12 @@ func (c *Container) getEnvVarsAsCliOption() string {
 }
 
 func (c *Container) newVppInstance(additionalConfig ...Stanza) (*VppInstance, error) {
-	vppConfig := new(VppConfig)
-	vppConfig.CliSocketFilePath = defaultCliSocketFilePath
-	if len(additionalConfig) > 0 {
-		vppConfig.additionalConfig = additionalConfig[0]
-	}
-
 	vpp := new(VppInstance)
 	vpp.container = c
-	vpp.config = vppConfig
+
+	if len(additionalConfig) > 0 {
+		vpp.additionalConfig = additionalConfig[0]
+	}
 
 	c.vppInstance = vpp
 

@@ -35,7 +35,7 @@ api-segment {
 }
 
 socksvr {
-  socket-name %[1]s/var/run/vpp/api.sock
+  socket-name %[1]s%[3]s
 }
 
 statseg {
@@ -61,32 +61,17 @@ const (
 
 type VppInstance struct {
 	container      *Container
-	config         *VppConfig
-	actionFuncName string
+	additionalConfig  Stanza
 	connection     *core.Connection
 	apiChannel     api.Channel
-}
-
-type VppConfig struct {
-	Variant           string
-	CliSocketFilePath string
-	additionalConfig  Stanza
-}
-
-func (vc *VppConfig) getTemplate() string {
-	return fmt.Sprintf(vppConfigTemplate, "%[1]s", vc.CliSocketFilePath)
 }
 
 func (vpp *VppInstance) Suite() *HstSuite {
 	return vpp.container.suite
 }
 
-func (vpp *VppInstance) setCliSocket(filePath string) {
-	vpp.config.CliSocketFilePath = filePath
-}
-
 func (vpp *VppInstance) getCliSocket() string {
-	return fmt.Sprintf("%s%s", vpp.container.GetContainerWorkDir(), vpp.config.CliSocketFilePath)
+	return fmt.Sprintf("%s%s", vpp.container.GetContainerWorkDir(), defaultCliSocketFilePath)
 }
 
 func (vpp *VppInstance) getRunDir() string {
@@ -110,8 +95,13 @@ func (vpp *VppInstance) start() error {
 	vpp.container.exec("mkdir --mode=0700 -p " + vpp.getEtcDir())
 
 	// Create startup.conf inside the container
-	configContent := fmt.Sprintf(vppConfigTemplate, containerWorkDir, vpp.config.CliSocketFilePath)
-	configContent += vpp.config.additionalConfig.ToString()
+	configContent := fmt.Sprintf(
+                vppConfigTemplate,
+                containerWorkDir,
+                defaultCliSocketFilePath,
+                defaultApiSocketFilePath,
+        )
+	configContent += vpp.additionalConfig.ToString()
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 
@@ -170,14 +160,13 @@ func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return fmt.Errorf("Timeout while waiting for app '%s'", appName)
+	return fmt.Errorf("timeout while waiting for app '%s'", appName)
 }
 
 func (vpp *VppInstance) createAfPacket(
 	netInterface NetInterface,
 ) (interface_types.InterfaceIndex, error) {
-	var veth *NetworkInterfaceVeth
-	veth = netInterface.(*NetworkInterfaceVeth)
+        veth := netInterface.(*NetworkInterfaceVeth)
 
 	createReq := &af_packet.AfPacketCreateV2{
 		UseRandomHwAddr: true,
