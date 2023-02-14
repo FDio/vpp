@@ -545,6 +545,7 @@ update_addrs (private_kernel_vpp_net_t *this, iface_t *entry)
   vl_api_ip_address_details_t *rmp, *tmp;
   linked_list_t *addrs;
   host_t *host;
+  enumerator_t *enumerator;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -591,6 +592,13 @@ update_addrs (private_kernel_vpp_net_t *this, iface_t *entry)
   vl_msg_api_free (mp);
   free (out);
 
+  /* clean-up */
+  enumerator = entry->addrs->create_enumerator (entry->addrs);
+  while (enumerator->enumerate (enumerator, &host))
+    {
+      host->destroy (host);
+    }
+  enumerator->destroy (enumerator);
   entry->addrs->destroy (entry->addrs);
   entry->addrs =
     linked_list_create_from_enumerator (addrs->create_enumerator (addrs));
