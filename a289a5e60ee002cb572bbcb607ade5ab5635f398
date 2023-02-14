@@ -16,6 +16,23 @@
       "message": "VCL_SESS_ATTR_REUSEADDR, copy and paste error?",
       "revId": "a289a5e60ee002cb572bbcb607ade5ab5635f398",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0345a7e_6bf20627",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 4195,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-14T18:41:33Z",
+      "side": 1,
+      "message": "Missing break and default statements.",
+      "revId": "a289a5e60ee002cb572bbcb607ade5ab5635f398",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
