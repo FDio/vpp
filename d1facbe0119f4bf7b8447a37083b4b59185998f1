@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3afe3402_51841748",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-14T01:36:43Z",
+      "side": 1,
+      "message": "A blank line needs to be added to the commit msg after the headline.",
+      "revId": "d1facbe0119f4bf7b8447a37083b4b59185998f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
