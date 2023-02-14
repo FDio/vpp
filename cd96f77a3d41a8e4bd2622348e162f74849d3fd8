@@ -16,6 +16,23 @@
       "message": "Will merge when verified",
       "revId": "cd96f77a3d41a8e4bd2622348e162f74849d3fd8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd305ec0_cb84e4e6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-14T01:48:47Z",
+      "side": 1,
+      "message": "This issue appears to have been fixed in a different patch:\nhttps://gerrit.fd.io/r/c/vpp/+/38051\n\nPlease either abandon this patch if that is true or rebase it manually.",
+      "revId": "cd96f77a3d41a8e4bd2622348e162f74849d3fd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
