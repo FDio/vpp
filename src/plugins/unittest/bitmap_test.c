@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdbool.h>
 #include <vlib/vlib.h>
 #include <vppinfra/bitmap.h>
 
@@ -52,12 +53,42 @@ done:
 }
 
 static clib_error_t *
+check_bitmap_will_expand (const char *test_name, uword **bm, uword index,
+			  bool expected_will_expand)
+{
+  uword max_bytes = vec_max_bytes (*bm);
+  bool result;
+
+  result = clib_bitmap_will_expand (*bm, index);
+  if (result != expected_will_expand)
+    {
+      return clib_error_create (
+	"%s failed, wrong "
+	"bitmap's expansion before set (%u != %u expected)",
+	test_name, result, expected_will_expand);
+    }
+
+  *bm = clib_bitmap_set (*bm, index, 1);
+  result = vec_max_bytes (*bm) > max_bytes;
+  if (result != expected_will_expand)
+    {
+      return clib_error_create (
+	"%s failed, wrong "
+	"bitmap's expansion after set (%u != %u expected)",
+	test_name, result, expected_will_expand);
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 test_bitmap_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   uword *bm = 0;
   uword *bm2 = 0;
+  uword *bm3 = 0;
   uword *dup = 0;
 
   /*  bm should look like:
@@ -162,9 +193,28 @@ test_bitmap_command_fn (vlib_main_t * vm,
   if (error != 0)
     goto done;
 
+  error = check_bitmap_will_expand ("clib_bitmap_will_expand 1", &bm, 0, 0);
+  if (error != 0)
+    goto done;
+
+  error = check_bitmap_will_expand ("clib_bitmap_will_expand 2", &bm,
+				    vec_max_len (bm) * BITS (uword) - 1, 0);
+  if (error != 0)
+    goto done;
+
+  error = check_bitmap_will_expand ("clib_bitmap_will_expand 3", &bm,
+				    vec_max_len (bm) * BITS (uword), 1);
+  if (error != 0)
+    goto done;
+
+  error = check_bitmap_will_expand ("clib_bitmap_will_expand 4", &bm3, 0, 1);
+  if (error != 0)
+    goto done;
+
 done:
   vec_free (bm);
   vec_free (bm2);
+  vec_free (bm3);
   vec_free (dup);
 
   return error;

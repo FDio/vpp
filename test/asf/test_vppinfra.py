@@ -8,8 +8,6 @@ from asfframework import VppTestCase, VppTestRunner
 class TestVppinfra(VppTestCase):
     """Vppinfra Unit Test Cases"""
 
-    vpp_worker_count = 1
-
     @classmethod
     def setUpClass(cls):
         super(TestVppinfra, cls).setUpClass()
@@ -25,16 +23,15 @@ class TestVppinfra(VppTestCase):
         super(TestVppinfra, self).tearDown()
 
     def test_bitmap_unittest(self):
-        """Bitmap Code Coverage Test"""
+        """Bitmap unit tests"""
+
         cmds = ["test bitmap"]
 
         for cmd in cmds:
-            r = self.vapi.cli_return_response(cmd)
-            if r.retval != 0:
-                if hasattr(r, "reply"):
-                    self.logger.info(cmd + " FAIL reply " + r.reply)
-                else:
-                    self.logger.info(cmd + " FAIL retval " + str(r.retval))
+            error = self.vapi.cli(cmd)
+            if error:
+                self.logger.critical(error)
+                self.assertNotIn("failed", error)
 
 
 if __name__ == "__main__":
