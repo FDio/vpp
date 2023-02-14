@@ -16,6 +16,23 @@
       "message": "Hi Ben, Your comments were fixed in patchset 2, please help review again, thanks",
       "revId": "680ea686811d714de427d81c8ce8c399fa0a0c1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f342359_ad920410",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-14T13:07:51Z",
+      "side": 1,
+      "message": "Looks good to me, thanks!\nVratko, can we run a CSIT performance test to check performance?",
+      "revId": "680ea686811d714de427d81c8ce8c399fa0a0c1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
