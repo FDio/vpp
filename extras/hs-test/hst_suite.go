@@ -105,6 +105,12 @@ func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArg
 	}
 }
 
+func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
+	if !assert.NotEmpty(s.T(), object, msgAndArgs...) {
+		s.hstFail()
+	}
+}
+
 func (s *HstSuite) log(args ...any) {
 	if IsVerbose() {
 		s.T().Log(args...)

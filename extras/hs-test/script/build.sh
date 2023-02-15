@@ -5,6 +5,18 @@ if [ $(lsb_release -is) != Ubuntu ]; then
 	exit 1
 fi
 
+if [ $(which ab) -z ]; then
+	echo "Host stack test framework requires apache2-utils to be installed"
+        echo "Installing it now"
+        sudo apt install -y apache2-utils
+fi
+
+if [ $(which wrk) -z ]; then
+	echo "Host stack test framework requires wrk to be installed"
+        echo "Installing it now"
+        sudo apt install -y wrk
+fi
+
 source vars
 
 bin=vpp-data/bin
