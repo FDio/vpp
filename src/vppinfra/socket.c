@@ -450,7 +450,11 @@ clib_socket_init (clib_socket_t *s)
 	{
 	  p += 11;
 	  u8 *str = _clib_socket_get_string (&p, 0);
-	  u8 *pathname = format (0, "/var/run/netns/%v%c", str, 0);
+	  u8 *pathname = 0;
+	  if (str[0] == '/')
+	    pathname = format (0, "%v%c", str, 0);
+	  else
+	    pathname = format (0, "/var/run/netns/%v%c", str, 0);
 	  if ((netns_fd = open ((char *) pathname, O_RDONLY)) < 0)
 	    err = clib_error_return_unix (0, "open('%s')", pathname);
 	  vec_free (str);
