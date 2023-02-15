@@ -1226,6 +1226,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
 	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
 			 (u8 *) & ctx->hdr);
+	  /* Zero length dgrams not supported currently */
+	  if (PREDICT_FALSE (ctx->hdr.data_length == 0))
+	    {
+	      svm_fifo_dequeue_drop (ctx->s->tx_fifo, sizeof (ctx->hdr));
+	      ctx->max_len_to_snd = 0;
+	      return;
+	    }
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
 	  len = ctx->hdr.data_length - ctx->hdr.data_offset;
 
@@ -1253,12 +1260,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 		{
 		  svm_fifo_peek (ctx->s->tx_fifo, offset, sizeof (ctx->hdr),
 				 (u8 *) & hdr);
-		  ASSERT (hdr.data_length > hdr.data_offset);
 		  dgram_len = hdr.data_length - hdr.data_offset;
 		  if (offset + sizeof (hdr) + hdr.data_length >
 			ctx->max_dequeue ||
 		      first_dgram_len != dgram_len)
 		    break;
+		  /* Assert here to allow test above with zero length dgrams */
+		  ASSERT (hdr.data_length > hdr.data_offset);
 		  len += dgram_len;
 		  offset += sizeof (hdr) + hdr.data_length;
 		}
