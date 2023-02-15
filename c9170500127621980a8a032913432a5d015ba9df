@@ -33,6 +33,24 @@
       "message": "Should we increment a node error counter to be reported by show error rather than dropping packet silently?",
       "revId": "c9170500127621980a8a032913432a5d015ba9df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85342681_bc553d0c",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1234,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-15T17:51:35Z",
+      "side": 1,
+      "message": "Fair point but instead of node error counter this should probably go to session worker counters, which is still todo. That is, would like to avoid carrying the node pointer through all our functions. So let\u0027s leave it for later.",
+      "parentUuid": "abab5cef_0370a2aa",
+      "revId": "c9170500127621980a8a032913432a5d015ba9df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
