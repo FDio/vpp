@@ -5,6 +5,18 @@ if [ $(lsb_release -is) != Ubuntu ]; then
 	exit 1
 fi
 
+if [ -z $(which ab) ]; then
+	echo "Host stack test framework requires apache2-utils to be installed"
+	echo "It is recommended to run 'sudo make install-dep'"
+	exit 1
+fi
+
+if [ -z $(which wrk) ]; then
+	echo "Host stack test framework requires wrk to be installed"
+	echo "It is recommended to run 'sudo make install-dep'"
+	exit 1
+fi
+
 source vars
 
 bin=vpp-data/bin
