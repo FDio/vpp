@@ -11,6 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+execute_process(
+    COMMAND Python3::Interpreter -c "import ply"
+    RESULT_VARIABLE _rv
+    OUTPUT_QUIET
+)
+
+if (NOT ${_rv} EQUAL 0)
+    message( FATAL_ERROR "The \"ply\" Python3 package is not installed.")
+endif()
+
 install(
   FILES vppapigen.py
   RENAME vppapigen
