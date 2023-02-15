@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "c9170500127621980a8a032913432a5d015ba9df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "abab5cef_0370a2aa",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1234,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-02-15T15:25:42Z",
+      "side": 1,
+      "message": "Should we increment a node error counter to be reported by show error rather than dropping packet silently?",
+      "revId": "c9170500127621980a8a032913432a5d015ba9df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
