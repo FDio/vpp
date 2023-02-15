@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b1fea07_0f02cb78",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-15T21:46:08Z",
+      "side": 1,
+      "message": "does it need to be per-SA or can it be per-worker? It\u0027s a random sequence either way, but per-thread is less memory.",
+      "revId": "0223fd3737598318d8c807364d5e02b142ef328b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
