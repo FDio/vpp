@@ -58,6 +58,10 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
+      {
+	session_t *s = pool_elt_at_index (wrk->sessions, evt->session_index);
+	evt->session_id = s->id;
+      }
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
     case SESSION_CTRL_EVT_CLOSE:
@@ -65,6 +69,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
+      evt->session_id = ((session_t *) data)->id;
       break;
     default:
       clib_warning ("evt unhandled!");
@@ -150,6 +155,11 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	  elt->evt.session_index = tc->s_index;
 	  elt->evt.event_type = SESSION_IO_EVT_TX;
 	  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+	  {
+	    session_t *s =
+	      pool_elt_at_index (wrk->sessions, elt->evt.session_index);
+	    elt->evt.session_id = s->id;
+	  }
 
 	  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
 	    vlib_node_set_interrupt_pending (wrk->vm,
@@ -169,6 +179,10 @@ sesssion_reschedule_tx (transport_connection_t * tc)
   elt = session_evt_alloc_new (wrk);
   elt->evt.session_index = tc->s_index;
   elt->evt.event_type = SESSION_IO_EVT_TX;
+  {
+    session_t *s = pool_elt_at_index (wrk->sessions, elt->evt.session_index);
+    elt->evt.session_id = s->id;
+  }
 
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
@@ -189,6 +203,7 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
       elt = session_evt_alloc_ctrl (wrk);
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
+      elt->evt.session_id = s->id;
       elt->evt.event_type = evt;
 
       if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
@@ -209,6 +224,7 @@ session_alloc (u32 thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+  s->id = wrk->id_generator++;
 
   return s;
 }
