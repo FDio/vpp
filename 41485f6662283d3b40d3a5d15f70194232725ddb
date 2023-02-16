@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "846324fe_13d215fa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-16T16:15:20Z",
+      "side": 1,
+      "message": "Hi Xiaoming. The patch, as is, is a bit too invasive. I understand the issue you\u0027re describing, but the expectation is that session cleanups are slow enough to allow for io events to drain. Control events should not be a problem as we always drain them on dispatch. \n\nCould you provide a bit more details about the crash you\u0027re hitting. Given your previous usage, I suspect you\u0027re using udp so I\u0027m guessing udp connection cleanup is too fast? Are we running into a situation where udp is scheduled for tx but there\u0027s not data in the tx fifo?",
+      "revId": "41485f6662283d3b40d3a5d15f70194232725ddb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
