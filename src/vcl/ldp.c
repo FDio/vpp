@@ -2385,7 +2385,7 @@ static inline int
 ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		 int timeout, const sigset_t * sigmask)
 {
-  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+  ldp_worker_ctx_t *ldpw;
   double time_to_wait = (double) 0, max_time;
   int libc_epfd, rv = 0;
   vls_handle_t ep_vlsh;
@@ -2398,6 +2398,10 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       return -1;
     }
 
+  if (PREDICT_FALSE (vppcom_worker_index () == ~0))
+    vls_register_vcl_worker ();
+
+  ldpw = ldp_worker_get_current ();
   if (epfd == ldpw->vcl_mq_epfd)
     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
