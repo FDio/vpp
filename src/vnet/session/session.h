@@ -173,6 +173,8 @@ typedef struct session_worker_
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
 #endif
+
+  u32 id_generator;
 } session_worker_t;
 
 typedef int (session_fifo_rx_fn) (session_worker_t * wrk,

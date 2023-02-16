@@ -1631,8 +1631,17 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 always_inline session_t *
 session_event_get_session (session_worker_t * wrk, session_event_t * e)
 {
+  session_t *s;
+
   if (PREDICT_FALSE (pool_is_free_index (wrk->sessions, e->session_index)))
     return 0;
+
+  s = pool_elt_at_index (wrk->sessions, e->session_index);
+
+  if (s->id != e->session_id)
+    {
+      return 0;
+    }
 
   ASSERT (session_is_valid (e->session_index, wrk->vm->thread_index));
   return pool_elt_at_index (wrk->sessions, e->session_index);
@@ -1657,19 +1666,19 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_HALF_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_half_close (s);
       break;
     case SESSION_CTRL_EVT_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_close (s);
       break;
     case SESSION_CTRL_EVT_RESET:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_reset (s);
       break;
@@ -1701,8 +1710,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       session_mq_accepted_reply_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_DISCONNECTED_REPLY:
-      session_mq_disconnected_reply_handler (session_evt_ctrl_data (wrk,
-								    elt));
+      session_mq_disconnected_reply_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_RESET_REPLY:
       session_mq_reset_reply_handler (session_evt_ctrl_data (wrk, elt));
@@ -1779,7 +1787,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
     case SESSION_IO_EVT_BUILTIN_TX:
       s = session_get_from_handle_if_valid (e->session_handle);
       wrk->ctx.s = s;
-      if (PREDICT_TRUE (s != 0))
+      if (PREDICT_TRUE (s != 0 && s->id == e->session_id))
 	session_tx_fifo_dequeue_internal (wrk, node, elt, n_tx_packets);
       break;
     default:
@@ -1837,6 +1845,21 @@ session_evt_add_to_list (session_worker_t * wrk, session_event_t * evt)
   else
     {
       elt = session_evt_alloc_new (wrk);
+      switch (evt->event_type)
+	{
+	case SESSION_IO_EVT_RX:
+	case SESSION_IO_EVT_TX:
+	case SESSION_IO_EVT_TX_FLUSH:
+	case SESSION_IO_EVT_BUILTIN_RX:
+	  {
+	    session_t *s =
+	      pool_elt_at_index (wrk->sessions, evt->session_index);
+	    evt->session_id = s->id;
+	  }
+
+	default:
+	  break;
+	}
       clib_memcpy_fast (&elt->evt, evt, sizeof (elt->evt));
     }
 }
