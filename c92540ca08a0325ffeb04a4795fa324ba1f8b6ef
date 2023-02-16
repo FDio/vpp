@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ec41e40_ba203401",
+        "filename": "extras/hs-test/script/build.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-16T03:11:37Z",
+      "side": 1,
+      "message": "Let\u0027s move these to a new install-dep target under hs-test root instead of installing silently. But the error messages keep them here.",
+      "range": {
+        "startLine": 11,
+        "startChar": 8,
+        "endLine": 11,
+        "endChar": 41
+      },
+      "revId": "c92540ca08a0325ffeb04a4795fa324ba1f8b6ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
