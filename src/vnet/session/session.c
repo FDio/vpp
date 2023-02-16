@@ -65,6 +65,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
+      evt->session_id = ((session_t *) data)->id;
       break;
     default:
       clib_warning ("evt unhandled!");
@@ -189,6 +190,7 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
       elt = session_evt_alloc_ctrl (wrk);
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
+      elt->evt.session_id = s->id;
       elt->evt.event_type = evt;
 
       if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
@@ -209,6 +211,7 @@ session_alloc (u32 thread_index)
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
   s->app_index = APP_INVALID_INDEX;
+  s->id = wrk->id_generator++;
 
   return s;
 }

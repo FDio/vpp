@@ -192,6 +192,8 @@ typedef enum session_flags_
 
 typedef struct session_
 {
+  u32 id;
+
   /** Pointers to rx/tx buffers. Once allocated, these do not move */
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
@@ -434,7 +436,11 @@ typedef struct
   union
   {
     u32 session_index;
-    session_handle_t session_handle;
+    struct
+    {
+      u32 session_id;
+      session_handle_t session_handle;
+    };
     session_rpc_args_t rpc_args;
     u32 ctrl_data_index;
     struct

@@ -1657,19 +1657,19 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_HALF_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_half_close (s);
       break;
     case SESSION_CTRL_EVT_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_close (s);
       break;
     case SESSION_CTRL_EVT_RESET:
       s = session_get_from_handle_if_valid (e->session_handle);
-      if (PREDICT_FALSE (!s))
+      if (PREDICT_FALSE (!s || s->id != e->session_id))
 	break;
       session_transport_reset (s);
       break;
@@ -1701,8 +1701,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       session_mq_accepted_reply_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_DISCONNECTED_REPLY:
-      session_mq_disconnected_reply_handler (session_evt_ctrl_data (wrk,
-								    elt));
+      session_mq_disconnected_reply_handler (session_evt_ctrl_data (wrk, elt));
       break;
     case SESSION_CTRL_EVT_RESET_REPLY:
       session_mq_reset_reply_handler (session_evt_ctrl_data (wrk, elt));
