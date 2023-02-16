@@ -60,6 +60,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "791f1905_e6a7846b",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-02-16T09:04:08Z",
+      "side": 1,
+      "message": "get_interface allocates memory to interface string - it is an out variable - if you\u0027ll only set it to NULL you will leak assigned memory.",
+      "parentUuid": "3531e880_c0911161",
+      "range": {
+        "startLine": 1024,
+        "startChar": 12,
+        "endLine": 1024,
+        "endChar": 13
+      },
+      "revId": "9a6dae4339bfca4f04b79619d2c656f9144f0ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9a66c788_eaa0f1ea",
         "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
         "patchSetId": 1
