@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7653eb20_b3fbffcc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-02-16T23:43:37Z",
+      "side": 1,
+      "message": "\nPlease update commit message to:\n\nvpp-swan: fix memory leaks \n\nThis patch fix the memory leaks discovered in the \ncurrent implementation,inlcuding expired data,\nspd dump, and host names.",
+      "revId": "316a0a6406fa5fb4b308f1b479d4320c15d1122a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
