@@ -16,6 +16,125 @@
       "message": "recheck",
       "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b487c7e_3d908d0e",
+        "filename": "src/vnet/dpo/mpls_disposition.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "I\u0027m curious about this: vlib_prefetch_buffer_data(b) must access b-\u003ecurrent_data, so what is the value of vlib_prefetch_buffer_header(b)?\nThe load of b-\u003ecurrent_data will have to fetch the memory pointed to by b.\nSo either we add 1 more pipeline stage to load the header 1 iteration before loading the data, or just prefetch b-\u003edata ? (and hope the headers are in the 64-bytes...)",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9417431b_70521974",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "why is vlib_node_get_runtime (vm, ip4_input_node.index) needed here?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "685fed25_ea4cbd78",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "*ip[2]",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78775430_64f4122a",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "I\u0027m wondering: shouldn\u0027t we just do while (n_left_from \u003e\u003d 12) here instead? That would remove the branch for the prefetch and simplify the code.\nThe drawback is that for less than 12 packets, we\u0027ll fallback to the 2-by-2 code",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0291dc4_10edff04",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "shouldn\u0027t it use arc_enabled instead of always set it to 1?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3558d6d_bfdab16c",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "Same comment: should we just do while(n_left_from \u003e\u003d 6)?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53ef6de8_60466956",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-16T14:30:55Z",
+      "side": 1,
+      "message": "Same comment: arc_enabled instead of 1?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
