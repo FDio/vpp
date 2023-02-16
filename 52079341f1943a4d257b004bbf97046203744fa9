@@ -90,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3d7b89a1_7c48e9d0",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-02-16T21:26:30Z",
+      "side": 1,
+      "message": "I think these lines are correct: in 117 head is used before incrementation - so it has correct value, when we reach 118 head is incremented and may be overflown, but 118 fix that and corrects the head value. Effectively head is from the range [0, VNET_CRYPTO_FRAME_POOL_SIZE - 1]. On the other hand if we would do what you suggest, we would start filling the ring from frames[1] element instead of frames[0] - to me it looks as a matter of choosing convention - or am I missing something?",
+      "parentUuid": "92c9ad9e_d62dbf04",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5f435ecd_a326cd0d",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 3
