@@ -16,6 +16,23 @@
       "message": "perftest-2n-zn2 mrrANDnic_*ANDdrv_rdma_coreAND4cAND64bANDethip4-ip4base",
       "revId": "844a0e8b07010ccdd5af211b91d022aa8d43c934",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b33f9a9_fdf286df",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-02-17T11:33:20Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-zn2/2/ : FAILURE (skipped)\n\nParent passes [2], so it means this is really the cause of recent failures, see [3].\n\n[2] https://gerrit.fd.io/r/c/vpp/+/38258/1#message-e737443473e6333f7af1c751544054f6abde0ab0\n[3] https://jira.fd.io/browse/VPP-2070",
+      "revId": "844a0e8b07010ccdd5af211b91d022aa8d43c934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
