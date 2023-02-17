@@ -178,6 +178,81 @@
 #define AVF_INSET_PFCP_S_FIELD (AVF_PROT_PFCP | AVF_PFCP_S_FIELD)
 #define AVF_INSET_PFCP_SEID    (AVF_PROT_PFCP | AVF_PFCP_S_FIELD | AVF_PFCP_SEID)
 
+#define AVF_ETH_RSS_IPV4	       BIT_ULL (2)
+#define AVF_ETH_RSS_FRAG_IPV4	       BIT_ULL (3)
+#define AVF_ETH_RSS_NONFRAG_IPV4_TCP   BIT_ULL (4)
+#define AVF_ETH_RSS_NONFRAG_IPV4_UDP   BIT_ULL (5)
+#define AVF_ETH_RSS_NONFRAG_IPV4_SCTP  BIT_ULL (6)
+#define AVF_ETH_RSS_NONFRAG_IPV4_OTHER BIT_ULL (7)
+#define AVF_ETH_RSS_IPV6	       BIT_ULL (8)
+#define AVF_ETH_RSS_FRAG_IPV6	       BIT_ULL (9)
+#define AVF_ETH_RSS_NONFRAG_IPV6_TCP   BIT_ULL (10)
+#define AVF_ETH_RSS_NONFRAG_IPV6_UDP   BIT_ULL (11)
+#define AVF_ETH_RSS_NONFRAG_IPV6_SCTP  BIT_ULL (12)
+#define AVF_ETH_RSS_NONFRAG_IPV6_OTHER BIT_ULL (13)
+#define AVF_ETH_RSS_L2_PAYLOAD	       BIT_ULL (14)
+#define AVF_ETH_RSS_IPV6_EX	       BIT_ULL (15)
+#define AVF_ETH_RSS_IPV6_TCP_EX	       BIT_ULL (16)
+#define AVF_ETH_RSS_IPV6_UDP_EX	       BIT_ULL (17)
+#define AVF_ETH_RSS_PORT	       BIT_ULL (18)
+#define AVF_ETH_RSS_VXLAN	       BIT_ULL (19)
+#define AVF_ETH_RSS_GENEVE	       BIT_ULL (20)
+#define AVF_ETH_RSS_NVGRE	       BIT_ULL (21)
+#define AVF_ETH_RSS_GTPU	       BIT_ULL (23)
+#define AVF_ETH_RSS_ETH		       BIT_ULL (24)
+#define AVF_ETH_RSS_S_VLAN	       BIT_ULL (25)
+#define AVF_ETH_RSS_C_VLAN	       BIT_ULL (26)
+#define AVF_ETH_RSS_ESP		       BIT_ULL (27)
+#define AVF_ETH_RSS_AH		       BIT_ULL (28)
+#define AVF_ETH_RSS_L2TPV3	       BIT_ULL (29)
+#define AVF_ETH_RSS_PFCP	       BIT_ULL (30)
+#define AVF_ETH_RSS_PPPOE	       BIT_ULL (31)
+#define AVF_ETH_RSS_ECPRI	       BIT_ULL (32)
+#define AVF_ETH_RSS_MPLS	       BIT_ULL (33)
+#define AVF_ETH_RSS_IPV4_CHKSUM	       BIT_ULL (34)
+#define AVF_ETH_RSS_L4_CHKSUM	       BIT_ULL (35)
+#define AVF_ETH_RSS_L2TPV2	       BIT_ULL (36)
+#define AVF_ETH_RSS_L3_SRC_ONLY	       BIT_ULL (63)
+#define AVF_ETH_RSS_L3_DST_ONLY	       BIT_ULL (62)
+#define AVF_ETH_RSS_L4_SRC_ONLY	       BIT_ULL (61)
+#define AVF_ETH_RSS_L4_DST_ONLY	       BIT_ULL (60)
+#define AVF_ETH_RSS_L2_SRC_ONLY	       BIT_ULL (59)
+#define AVF_ETH_RSS_L2_DST_ONLY	       BIT_ULL (58)
+#define AVF_ETH_RSS_L3_PRE32	       BIT_ULL (57)
+#define AVF_ETH_RSS_L3_PRE40	       BIT_ULL (56)
+#define AVF_ETH_RSS_L3_PRE48	       BIT_ULL (55)
+#define AVF_ETH_RSS_L3_PRE56	       BIT_ULL (54)
+#define AVF_ETH_RSS_L3_PRE64	       BIT_ULL (53)
+#define AVF_ETH_RSS_L3_PRE96	       BIT_ULL (52)
+
+#define foreach_avf_rss_hf                                                    \
+  _ (0, AVF_ETH_RSS_FRAG_IPV4, "ipv4-frag")                                   \
+  _ (1, AVF_ETH_RSS_NONFRAG_IPV4_TCP, "ipv4-tcp")                             \
+  _ (2, AVF_ETH_RSS_NONFRAG_IPV4_UDP, "ipv4-udp")                             \
+  _ (3, AVF_ETH_RSS_NONFRAG_IPV4_SCTP, "ipv4-sctp")                           \
+  _ (4, AVF_ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")                         \
+  _ (5, AVF_ETH_RSS_IPV4, "ipv4")                                             \
+  _ (6, AVF_ETH_RSS_IPV6_TCP_EX, "ipv6-tcp-ex")                               \
+  _ (7, AVF_ETH_RSS_IPV6_UDP_EX, "ipv6-udp-ex")                               \
+  _ (8, AVF_ETH_RSS_FRAG_IPV6, "ipv6-frag")                                   \
+  _ (9, AVF_ETH_RSS_NONFRAG_IPV6_TCP, "ipv6-tcp")                             \
+  _ (10, AVF_ETH_RSS_NONFRAG_IPV6_UDP, "ipv6-udp")                            \
+  _ (11, AVF_ETH_RSS_NONFRAG_IPV6_SCTP, "ipv6-sctp")                          \
+  _ (12, AVF_ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")                        \
+  _ (13, AVF_ETH_RSS_IPV6_EX, "ipv6-ex")                                      \
+  _ (14, AVF_ETH_RSS_IPV6, "ipv6")                                            \
+  _ (15, AVF_ETH_RSS_L2_PAYLOAD, "l2-payload")                                \
+  _ (16, AVF_ETH_RSS_PORT, "port")                                            \
+  _ (17, AVF_ETH_RSS_VXLAN, "vxlan")                                          \
+  _ (18, AVF_ETH_RSS_GENEVE, "geneve")                                        \
+  _ (19, AVF_ETH_RSS_NVGRE, "nvgre")                                          \
+  _ (20, AVF_ETH_RSS_GTPU, "gtpu")                                            \
+  _ (21, AVF_ETH_RSS_ESP, "esp")                                              \
+  _ (60, AVF_ETH_RSS_L4_DST_ONLY, "l4-dst-only")                              \
+  _ (61, AVF_ETH_RSS_L4_SRC_ONLY, "l4-src-only")                              \
+  _ (62, AVF_ETH_RSS_L3_DST_ONLY, "l3-dst-only")                              \
+  _ (63, AVF_ETH_RSS_L3_SRC_ONLY, "l3-src-only")
+
 /* Protocol header type within a packet segment. A segment consists of one or
  * more protocol headers that make up a logical group of protocol headers. Each
  * logical group of protocol headers encapsulates or is encapsulated using/by
@@ -203,6 +278,17 @@ enum virtchnl_proto_hdr_type
   VIRTCHNL_PROTO_HDR_ESP,
   VIRTCHNL_PROTO_HDR_AH,
   VIRTCHNL_PROTO_HDR_PFCP,
+  VIRTCHNL_PROTO_HDR_GTPC,
+  VIRTCHNL_PROTO_HDR_ECPRI,
+  VIRTCHNL_PROTO_HDR_L2TPV2,
+  VIRTCHNL_PROTO_HDR_PPP,
+  /* IPv4 and IPv6 Fragment header types are only associated to
+   * VIRTCHNL_PROTO_HDR_IPV4 and VIRTCHNL_PROTO_HDR_IPV6 respectively,
+   * cannot be used independently.
+   */
+  VIRTCHNL_PROTO_HDR_IPV4_FRAG,
+  VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG,
+  VIRTCHNL_PROTO_HDR_GRE,
 };
 
 /* Protocol header field within a protocol header. */
@@ -225,6 +311,7 @@ enum virtchnl_proto_hdr_field
   VIRTCHNL_PROTO_HDR_IPV4_DSCP,
   VIRTCHNL_PROTO_HDR_IPV4_TTL,
   VIRTCHNL_PROTO_HDR_IPV4_PROT,
+  VIRTCHNL_PROTO_HDR_IPV4_CHKSUM,
   /* IPV6 */
   VIRTCHNL_PROTO_HDR_IPV6_SRC =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_IPV6),
@@ -232,18 +319,34 @@ enum virtchnl_proto_hdr_field
   VIRTCHNL_PROTO_HDR_IPV6_TC,
   VIRTCHNL_PROTO_HDR_IPV6_HOP_LIMIT,
   VIRTCHNL_PROTO_HDR_IPV6_PROT,
+  /* IPV6 Prefix */
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX32_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX32_DST,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX40_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX40_DST,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX48_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX48_DST,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX56_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX56_DST,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX64_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX64_DST,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX96_SRC,
+  VIRTCHNL_PROTO_HDR_IPV6_PREFIX96_DST,
   /* TCP */
   VIRTCHNL_PROTO_HDR_TCP_SRC_PORT =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_TCP),
   VIRTCHNL_PROTO_HDR_TCP_DST_PORT,
+  VIRTCHNL_PROTO_HDR_TCP_CHKSUM,
   /* UDP */
   VIRTCHNL_PROTO_HDR_UDP_SRC_PORT =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_UDP),
   VIRTCHNL_PROTO_HDR_UDP_DST_PORT,
+  VIRTCHNL_PROTO_HDR_UDP_CHKSUM,
   /* SCTP */
   VIRTCHNL_PROTO_HDR_SCTP_SRC_PORT =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_SCTP),
   VIRTCHNL_PROTO_HDR_SCTP_DST_PORT,
+  VIRTCHNL_PROTO_HDR_SCTP_CHKSUM,
   /* GTPU_IP */
   VIRTCHNL_PROTO_HDR_GTPU_IP_TEID =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_GTPU_IP),
@@ -265,6 +368,28 @@ enum virtchnl_proto_hdr_field
   VIRTCHNL_PROTO_HDR_PFCP_S_FIELD =
     PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_PFCP),
   VIRTCHNL_PROTO_HDR_PFCP_SEID,
+  /* GTPC */
+  VIRTCHNL_PROTO_HDR_GTPC_TEID =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_GTPC),
+  /* ECPRI */
+  VIRTCHNL_PROTO_HDR_ECPRI_MSG_TYPE =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_ECPRI),
+  VIRTCHNL_PROTO_HDR_ECPRI_PC_RTC_ID,
+  /* IPv4 Dummy Fragment */
+  VIRTCHNL_PROTO_HDR_IPV4_FRAG_PKID =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_IPV4_FRAG),
+  /* IPv6 Extension Fragment */
+  VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG_PKID =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG),
+  /* GTPU_DWN/UP */
+  VIRTCHNL_PROTO_HDR_GTPU_DWN_QFI =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_DWN),
+  VIRTCHNL_PROTO_HDR_GTPU_UP_QFI =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_GTPU_EH_PDU_UP),
+  /* L2TPv2 */
+  VIRTCHNL_PROTO_HDR_L2TPV2_SESS_ID =
+    PROTO_HDR_FIELD_START (VIRTCHNL_PROTO_HDR_L2TPV2),
+  VIRTCHNL_PROTO_HDR_L2TPV2_LEN_SESS_ID,
 };
 
 struct virtchnl_proto_hdr
@@ -367,6 +492,140 @@ struct virtchnl_rss_cfg
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN (2444, virtchnl_rss_cfg);
+
+struct avf_pattern_match_item
+{
+  enum avf_flow_item_type *pattern_list;
+  u64 input_set_mask;
+  void *meta;
+};
+
+enum avf_flow_item_type
+{
+  AVF_FLOW_ITEM_TYPE_END,
+  AVF_FLOW_ITEM_TYPE_VOID,
+  AVF_FLOW_ITEM_TYPE_INVERT,
+  AVF_FLOW_ITEM_TYPE_ANY,
+  AVF_FLOW_ITEM_TYPE_PORT_ID,
+  AVF_FLOW_ITEM_TYPE_RAW,
+  AVF_FLOW_ITEM_TYPE_ETH,
+  AVF_FLOW_ITEM_TYPE_VLAN,
+  AVF_FLOW_ITEM_TYPE_IPV4,
+  AVF_FLOW_ITEM_TYPE_IPV6,
+  AVF_FLOW_ITEM_TYPE_ICMP,
+  AVF_FLOW_ITEM_TYPE_UDP,
+  AVF_FLOW_ITEM_TYPE_TCP,
+  AVF_FLOW_ITEM_TYPE_SCTP,
+  AVF_FLOW_ITEM_TYPE_VXLAN,
+  AVF_FLOW_ITEM_TYPE_E_TAG,
+  AVF_FLOW_ITEM_TYPE_NVGRE,
+  AVF_FLOW_ITEM_TYPE_MPLS,
+  AVF_FLOW_ITEM_TYPE_GRE,
+  AVF_FLOW_ITEM_TYPE_FUZZY,
+  AVF_FLOW_ITEM_TYPE_GTP,
+  AVF_FLOW_ITEM_TYPE_GTPC,
+  AVF_FLOW_ITEM_TYPE_GTPU,
+  AVF_FLOW_ITEM_TYPE_ESP,
+  AVF_FLOW_ITEM_TYPE_GENEVE,
+  AVF_FLOW_ITEM_TYPE_VXLAN_GPE,
+  AVF_FLOW_ITEM_TYPE_ARP_ETH_IPV4,
+  AVF_FLOW_ITEM_TYPE_IPV6_EXT,
+  AVF_FLOW_ITEM_TYPE_ICMP6,
+  AVF_FLOW_ITEM_TYPE_ICMP6_ND_NS,
+  AVF_FLOW_ITEM_TYPE_ICMP6_ND_NA,
+  AVF_FLOW_ITEM_TYPE_ICMP6_ND_OPT,
+  AVF_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH,
+  AVF_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH,
+  AVF_FLOW_ITEM_TYPE_MARK,
+  AVF_FLOW_ITEM_TYPE_META,
+  AVF_FLOW_ITEM_TYPE_GRE_KEY,
+  AVF_FLOW_ITEM_TYPE_GTP_PSC,
+  AVF_FLOW_ITEM_TYPE_PPPOES,
+  AVF_FLOW_ITEM_TYPE_PPPOED,
+  AVF_FLOW_ITEM_TYPE_PPPOE_PROTO_ID,
+  AVF_FLOW_ITEM_TYPE_NSH,
+  AVF_FLOW_ITEM_TYPE_IGMP,
+  AVF_FLOW_ITEM_TYPE_AH,
+  AVF_FLOW_ITEM_TYPE_HIGIG2,
+  AVF_FLOW_ITEM_TYPE_TAG,
+  AVF_FLOW_ITEM_TYPE_L2TPV3OIP,
+  AVF_FLOW_ITEM_TYPE_PFCP,
+  AVF_FLOW_ITEM_TYPE_ECPRI,
+  AVF_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
+  AVF_FLOW_ITEM_TYPE_GENEVE_OPT,
+  AVF_FLOW_ITEM_TYPE_INTEGRITY,
+  AVF_FLOW_ITEM_TYPE_CONNTRACK,
+  AVF_FLOW_ITEM_TYPE_PORT_REPRESENTOR,
+  AVF_FLOW_ITEM_TYPE_REPRESENTED_PORT,
+  AVF_FLOW_ITEM_TYPE_FLEX,
+  AVF_FLOW_ITEM_TYPE_L2TPV2,
+  AVF_FLOW_ITEM_TYPE_PPP,
+  AVF_FLOW_ITEM_TYPE_GRE_OPTION,
+  AVF_FLOW_ITEM_TYPE_MACSEC,
+  AVF_FLOW_ITEM_TYPE_METER_COLOR,
+};
+
+enum avf_flow_action_type
+{
+  AVF_FLOW_ACTION_TYPE_END,
+  AVF_FLOW_ACTION_TYPE_VOID,
+  AVF_FLOW_ACTION_TYPE_PASSTHRU,
+  AVF_FLOW_ACTION_TYPE_JUMP,
+  AVF_FLOW_ACTION_TYPE_MARK,
+  AVF_FLOW_ACTION_TYPE_FLAG,
+  AVF_FLOW_ACTION_TYPE_QUEUE,
+  AVF_FLOW_ACTION_TYPE_DROP,
+  AVF_FLOW_ACTION_TYPE_COUNT,
+  AVF_FLOW_ACTION_TYPE_RSS,
+  AVF_FLOW_ACTION_TYPE_PF,
+  AVF_FLOW_ACTION_TYPE_VF,
+  AVF_FLOW_ACTION_TYPE_PORT_ID,
+  AVF_FLOW_ACTION_TYPE_METER,
+  AVF_FLOW_ACTION_TYPE_SECURITY,
+  AVF_FLOW_ACTION_TYPE_OF_DEC_NW_TTL,
+  AVF_FLOW_ACTION_TYPE_OF_POP_VLAN,
+  AVF_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
+  AVF_FLOW_ACTION_TYPE_OF_SET_VLAN_VID,
+  AVF_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP,
+  AVF_FLOW_ACTION_TYPE_OF_POP_MPLS,
+  AVF_FLOW_ACTION_TYPE_OF_PUSH_MPLS,
+  AVF_FLOW_ACTION_TYPE_VXLAN_ENCAP,
+  AVF_FLOW_ACTION_TYPE_VXLAN_DECAP,
+  AVF_FLOW_ACTION_TYPE_NVGRE_ENCAP,
+  AVF_FLOW_ACTION_TYPE_NVGRE_DECAP,
+  AVF_FLOW_ACTION_TYPE_RAW_ENCAP,
+  AVF_FLOW_ACTION_TYPE_RAW_DECAP,
+  AVF_FLOW_ACTION_TYPE_SET_IPV4_SRC,
+  AVF_FLOW_ACTION_TYPE_SET_IPV4_DST,
+  AVF_FLOW_ACTION_TYPE_SET_IPV6_SRC,
+  AVF_FLOW_ACTION_TYPE_SET_IPV6_DST,
+  AVF_FLOW_ACTION_TYPE_SET_TP_SRC,
+  AVF_FLOW_ACTION_TYPE_SET_TP_DST,
+  AVF_FLOW_ACTION_TYPE_MAC_SWAP,
+  AVF_FLOW_ACTION_TYPE_DEC_TTL,
+  AVF_FLOW_ACTION_TYPE_SET_TTL,
+  AVF_FLOW_ACTION_TYPE_SET_MAC_SRC,
+  AVF_FLOW_ACTION_TYPE_SET_MAC_DST,
+  AVF_FLOW_ACTION_TYPE_INC_TCP_SEQ,
+  AVF_FLOW_ACTION_TYPE_DEC_TCP_SEQ,
+  AVF_FLOW_ACTION_TYPE_INC_TCP_ACK,
+  AVF_FLOW_ACTION_TYPE_DEC_TCP_ACK,
+  AVF_FLOW_ACTION_TYPE_SET_TAG,
+  AVF_FLOW_ACTION_TYPE_SET_META,
+  AVF_FLOW_ACTION_TYPE_SET_IPV4_DSCP,
+  AVF_FLOW_ACTION_TYPE_SET_IPV6_DSCP,
+  AVF_FLOW_ACTION_TYPE_AGE,
+  AVF_FLOW_ACTION_TYPE_SAMPLE,
+  AVF_FLOW_ACTION_TYPE_SHARED,
+  AVF_FLOW_ACTION_TYPE_MODIFY_FIELD,
+  AVF_FLOW_ACTION_TYPE_INDIRECT,
+  AVF_FLOW_ACTION_TYPE_CONNTRACK,
+  AVF_FLOW_ACTION_TYPE_METER_COLOR,
+  AVF_FLOW_ACTION_TYPE_PORT_REPRESENTOR,
+  AVF_FLOW_ACTION_TYPE_REPRESENTED_PORT,
+  AVF_FLOW_ACTION_TYPE_METER_MARK,
+  AVF_FLOW_ACTION_TYPE_SEND_TO_KERNEL,
+};
 
 enum virtchnl_action
 {
@@ -769,13 +1028,13 @@ struct avf_flow_action_mark
 
 struct avf_flow_action
 {
-  enum virtchnl_action type; /**< Action type. */
+  enum avf_flow_action_type type; /**< Action type. */
   const void *conf;	     /**< Pointer to action configuration object. */
 };
 
 struct avf_flow_item
 {
-  enum virtchnl_proto_hdr_type type; /**< Item type. */
+  enum avf_flow_item_type type; /**< Item type. */
   const void *spec; /**< Pointer to item specification structure. */
   const void *mask; /**< Bit-mask applied to spec and last. */
   int is_generic;   /* indicate if this item is for a generic flow pattern. */
@@ -1060,48 +1319,14 @@ int avf_fdir_parse_action (const struct avf_flow_action actions[],
 			   struct avf_flow_error *error);
 
 /*
- * Parse avf patterns and set pattern fields for RSS.
+ * Parse flow patterns and rss actions, set rss config.
  *
- * @param rss_cfg
- * 	flow config
  * @param avf_items
- * 	pattern items
- * @param error
- * 	save error cause
- *
- * @return
- *	0 = successful.
- *	< 0 = failure
- */
-int avf_rss_parse_pattern (struct virtchnl_rss_cfg *rss_cfg,
-			   struct avf_flow_item avf_items[],
-			   struct avf_flow_error *error);
-
-/*
- * Parse avf patterns and set pattern fields for RSS generic flow.
- *
+ * 	flow pattern
+ * @param avf_actions
+ *  flow actions
  * @param rss_cfg
- * 	flow config
- * @param avf_items
- * 	pattern items
- * @param error
- * 	save error cause
- *
- * @return
- *	0 = successful.
- *	< 0 = failure
- */
-int avf_rss_parse_generic_pattern (struct virtchnl_rss_cfg *rss_cfg,
-				   struct avf_flow_item avf_items[],
-				   struct avf_flow_error *error);
-
-/*
- * Parse RSS flow actions, set actions.
- *
- * @param actions
- * 	flow actions
- * @param rss_cfg
- * 	flow config
+ * 	rss config
  * @param error
  * 	save error cause
  *
@@ -1109,9 +1334,10 @@ int avf_rss_parse_generic_pattern (struct virtchnl_rss_cfg *rss_cfg,
  *  0 = successful.
  *  < 0 = failure
  */
-int avf_rss_parse_action (const struct avf_flow_action actions[],
-			  struct virtchnl_rss_cfg *rss_cfg,
-			  struct avf_flow_error *error);
+int avf_rss_parse_pattern_action (struct avf_flow_item avf_items[],
+				  struct avf_flow_action avf_actions[],
+				  struct virtchnl_rss_cfg *rss_cfg,
+				  struct avf_flow_error *error);
 
 /**
  * Create a RSS rule cfg object.

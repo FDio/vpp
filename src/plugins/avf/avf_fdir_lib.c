@@ -100,7 +100,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
   const struct avf_flow_eth_hdr *eth_spec, *eth_mask;
 
   struct virtchnl_proto_hdr *hdr;
-  enum virtchnl_proto_hdr_type type;
+  enum avf_flow_item_type type;
   u16 ether_type;
   int ret = 0;
 
@@ -112,7 +112,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 
   switch (type)
     {
-    case VIRTCHNL_PROTO_HDR_ETH:
+    case AVF_FLOW_ITEM_TYPE_ETH:
       eth_spec = item->spec;
       eth_mask = item->mask;
 
@@ -160,7 +160,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_IPV4:
+    case AVF_FLOW_ITEM_TYPE_IPV4:
       ipv4_spec = item->spec;
       ipv4_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_IPV4;
@@ -211,7 +211,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_IPV6:
+    case AVF_FLOW_ITEM_TYPE_IPV6:
       ipv6_spec = item->spec;
       ipv6_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_IPV6;
@@ -264,7 +264,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 
       break;
 
-    case VIRTCHNL_PROTO_HDR_UDP:
+    case AVF_FLOW_ITEM_TYPE_UDP:
       udp_spec = item->spec;
       udp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_UDP;
@@ -295,7 +295,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_TCP:
+    case AVF_FLOW_ITEM_TYPE_TCP:
       tcp_spec = item->spec;
       tcp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_TCP;
@@ -329,7 +329,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 
       break;
 
-    case VIRTCHNL_PROTO_HDR_SCTP:
+    case AVF_FLOW_ITEM_TYPE_SCTP:
       sctp_spec = item->spec;
       sctp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_SCTP;
@@ -360,7 +360,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_GTPU_IP:
+    case AVF_FLOW_ITEM_TYPE_GTPU:
       gtp_spec = item->spec;
       gtp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_GTPU_IP;
@@ -387,7 +387,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 
       break;
 
-    case VIRTCHNL_PROTO_HDR_GTPU_EH:
+    case AVF_FLOW_ITEM_TYPE_GTP_PSC:
       gtp_psc_spec = item->spec;
       gtp_psc_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_GTPU_EH;
@@ -405,7 +405,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 
       break;
 
-    case VIRTCHNL_PROTO_HDR_L2TPV3:
+    case AVF_FLOW_ITEM_TYPE_L2TPV3OIP:
       l2tpv3oip_spec = item->spec;
       l2tpv3oip_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_L2TPV3;
@@ -422,7 +422,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_ESP:
+    case AVF_FLOW_ITEM_TYPE_ESP:
       esp_spec = item->spec;
       esp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_ESP;
@@ -439,7 +439,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_AH:
+    case AVF_FLOW_ITEM_TYPE_AH:
       ah_spec = item->spec;
       ah_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_AH;
@@ -456,7 +456,7 @@ avf_fdir_rcfg_set_field (struct avf_fdir_conf *rcfg, int layer,
 	}
       break;
 
-    case VIRTCHNL_PROTO_HDR_PFCP:
+    case AVF_FLOW_ITEM_TYPE_PFCP:
       pfcp_spec = item->spec;
       pfcp_mask = item->mask;
       hdr->type = VIRTCHNL_PROTO_HDR_PFCP;
@@ -683,18 +683,18 @@ avf_fdir_parse_action (const struct avf_flow_action actions[],
 
   struct virtchnl_fdir_rule *rule_cfg = &rcfg->add_fltr.rule_cfg;
 
-  for (; actions->type != VIRTCHNL_ACTION_NONE; actions++, act_idx++)
+  for (; actions->type != AVF_FLOW_ACTION_TYPE_END; actions++, act_idx++)
     {
       switch (actions->type)
 	{
-	case VIRTCHNL_ACTION_PASSTHRU:
+	case AVF_FLOW_ACTION_TYPE_PASSTHRU:
 	  dest_num++;
 	  filter_action = &rule_cfg->action_set.actions[act_idx];
 	  filter_action->type = VIRTCHNL_ACTION_PASSTHRU;
 	  rule_cfg->action_set.count++;
 	  break;
 
-	case VIRTCHNL_ACTION_DROP:
+	case AVF_FLOW_ACTION_TYPE_DROP:
 	  dest_num++;
 	  ret = avf_fdir_rcfg_act_drop (rcfg, act_idx);
 	  if (ret)
@@ -703,7 +703,7 @@ avf_fdir_parse_action (const struct avf_flow_action actions[],
 	  rule_cfg->action_set.count++;
 	  break;
 
-	case VIRTCHNL_ACTION_QUEUE:
+	case AVF_FLOW_ACTION_TYPE_QUEUE:
 	  dest_num++;
 	  act_q = actions->conf;
 
@@ -722,7 +722,7 @@ avf_fdir_parse_action (const struct avf_flow_action actions[],
 	  rule_cfg->action_set.count++;
 	  break;
 
-	case VIRTCHNL_ACTION_Q_REGION:
+	case AVF_FLOW_ACTION_TYPE_RSS:
 	  dest_num++;
 	  filter_action = &rule_cfg->action_set.actions[act_idx];
 	  ret = avf_fdir_parse_action_qregion (rcfg, actions, act_idx, error);
@@ -732,7 +732,7 @@ avf_fdir_parse_action (const struct avf_flow_action actions[],
 	  rule_cfg->action_set.count++;
 	  break;
 
-	case VIRTCHNL_ACTION_MARK:
+	case AVF_FLOW_ACTION_TYPE_MARK:
 	  mark_num++;
 	  act_msk = actions->conf;
 	  rcfg->mark_flag = 1;
@@ -824,7 +824,7 @@ avf_fdir_parse_pattern (struct avf_fdir_conf *rcfg,
   int ret = 0;
   struct avf_flow_item *item;
 
-  for (item = avf_items; item->type != VIRTCHNL_PROTO_HDR_NONE; item++)
+  for (item = avf_items; item->type != AVF_FLOW_ITEM_TYPE_END; item++)
     {
       ret = avf_fdir_rcfg_set_field (rcfg, layer, item, error);
       if (ret)
