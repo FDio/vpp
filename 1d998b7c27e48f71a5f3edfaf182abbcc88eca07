@@ -16,6 +16,23 @@
       "message": "docs-only patch -- thus Verified +1 myself, since JJB is not triggered on it.",
       "revId": "1d998b7c27e48f71a5f3edfaf182abbcc88eca07",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d1881c1_ce77f697",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-02-17T09:06:01Z",
+      "side": 1,
+      "message": "Base comparison for 38242:\nperftest-2n-zn2 mrrANDnic_*ANDdrv_rdma_coreAND4cAND64bANDethip4-ip4base",
+      "revId": "1d998b7c27e48f71a5f3edfaf182abbcc88eca07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
