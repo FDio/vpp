@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fbf70e9e_22021dd5",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 815,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-02-17T08:34:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71dcbbf7_05d5c6b1",
+      "revId": "9a6dae4339bfca4f04b79619d2c656f9144f0ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3531e880_c0911161",
@@ -137,6 +155,24 @@
       "side": 1,
       "message": "According to source code for SWAN:\n\"The enumerate() method takes a variable number of pointer arguments where the enumerated values get written to.\"\nIn this case, only one argument should be passed together with pointer to enumerator.",
       "parentUuid": "9a66c788_eaa0f1ea",
+      "revId": "9a6dae4339bfca4f04b79619d2c656f9144f0ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54e3f626_82584d46",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1824,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-02-17T08:34:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e662a806_e98578ea",
       "revId": "9a6dae4339bfca4f04b79619d2c656f9144f0ae9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
