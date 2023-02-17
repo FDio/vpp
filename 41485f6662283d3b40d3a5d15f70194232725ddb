@@ -16,6 +16,24 @@
       "message": "Hi Xiaoming. The patch, as is, is a bit too invasive. I understand the issue you\u0027re describing, but the expectation is that session cleanups are slow enough to allow for io events to drain. Control events should not be a problem as we always drain them on dispatch. \n\nCould you provide a bit more details about the crash you\u0027re hitting. Given your previous usage, I suspect you\u0027re using udp so I\u0027m guessing udp connection cleanup is too fast? Are we running into a situation where udp is scheduled for tx but there\u0027s not data in the tx fifo?",
       "revId": "41485f6662283d3b40d3a5d15f70194232725ddb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2d1f7d2_f051617a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2023-02-17T01:44:45Z",
+      "side": 1,
+      "message": "It\u0027s not udp connection. In my case, I connect remote server with 10k clients using tls proto in a cli, timeout for each session is 10s and the total time used for 10k clients finish may be 60s, there is also a process node which find and close the timeout session every 1s. I can improve the timeout logic to reduce the chance of session event wrong dispatch, but not sure can completely fix the problem.",
+      "parentUuid": "846324fe_13d215fa",
+      "revId": "41485f6662283d3b40d3a5d15f70194232725ddb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
