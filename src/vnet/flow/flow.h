@@ -108,14 +108,14 @@
 
 #define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
-#define foreach_flow_action \
-  _(0, COUNT, "count") \
-  _(1, MARK, "mark") \
-  _(2, BUFFER_ADVANCE, "buffer-advance") \
-  _(3, REDIRECT_TO_NODE, "redirect-to-node") \
-  _(4, REDIRECT_TO_QUEUE, "redirect-to-queue") \
-  _(5, RSS, "rss") \
-  _(6, DROP, "drop")
+#define foreach_flow_action                                                   \
+  _ (0, COUNT, "count")                                                       \
+  _ (1, MARK, "mark")                                                         \
+  _ (2, BUFFER_ADVANCE, "buffer-advance")                                     \
+  _ (3, REDIRECT_TO_NODE, "redirect-to-node")                                 \
+  _ (4, REDIRECT_TO_QUEUE, "redirect-to-queue")                               \
+  _ (5, RSS, "rss")                                                           \
+  _ (6, DROP, "drop")
 
 typedef enum
 {
