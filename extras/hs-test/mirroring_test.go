@@ -12,7 +12,7 @@ func (s *MirroringSuite) TestMirroring() {
 	const outputFile = "test.data"
 	const srcFile = "10M"
 	serverVeth := s.netInterfaces[mirroringServerInterfaceName].(*NetworkInterfaceVeth)
-	serverNamespace := serverVeth.peerNetworkNamespace
+	serverNamespace := serverVeth.networkNamespace
 	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNamespace, srcFile, srcFile))
 	s.assertNil(err, "failed to run truncate command")
 	defer func() { os.Remove(srcFile) }()
@@ -33,7 +33,7 @@ func (s *MirroringSuite) TestMirroring() {
 	s.log("http server started...")
 
 	proxyAddress := s.netInterfaces[mirroringProxyInterfaceName].IP4AddressString()
-	clientNamespace := s.netInterfaces[mirroringClientInterfaceName].(*NetworkInterfaceVeth).peerNetworkNamespace
+	clientNamespace := s.netInterfaces[mirroringClientInterfaceName].(*NetworkInterfaceVeth).networkNamespace
 
 	testCommand := "wrk -c 20 -t 10 -d 40 http://" + proxyAddress + ":80"
 	testCommand = "ip netns exec " + clientNamespace + " " + testCommand

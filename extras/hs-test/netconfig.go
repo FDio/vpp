@@ -47,6 +47,7 @@ type (
 		index            InterfaceIndex
 		hwAddress        MacAddress
 		networkNamespace string
+		networkNumber    int
 	}
 
 	NetworkInterfaceVeth struct {
@@ -137,6 +138,16 @@ func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
 		veth.networkNamespace = netns.(string)
 	}
 
+	if ip, ok := cfg["ip4"]; ok {
+		if n, ok := ip.(NetDevConfig)["network"]; ok {
+			veth.networkNumber = n.(int)
+		}
+		veth.ip4Address, err = veth.addresser.NewIp4Address(veth.networkNumber)
+		if err != nil {
+			return NetworkInterfaceVeth{}, err
+		}
+	}
+
 	peer := cfg["peer"].(NetDevConfig)
 
 	veth.peerName = peer["name"].(string)
@@ -179,11 +190,19 @@ func (iface *NetworkInterfaceVeth) Configure() error {
 	}
 
 	if iface.ip4Address != "" {
-		err = AddAddress(iface.Name(), iface.ip4Address, "")
+		err = AddAddress(
+			iface.Name(),
+			iface.ip4Address,
+			iface.networkNamespace,
+		)
 	}
 
 	if iface.peerIp4Address != "" {
-		err = AddAddress(iface.peerName, iface.peerIp4Address, iface.peerNetworkNamespace)
+		err = AddAddress(
+			iface.peerName,
+			iface.peerIp4Address,
+			iface.peerNetworkNamespace,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to add configure address for %s: %v", iface.peerName, err)
 		}
