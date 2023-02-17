@@ -225,7 +225,7 @@ stat_vec_combined_init (vlib_counter_t c)
  */
 static stat_segment_data_t
 copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
-	   stat_client_main_t *sm)
+	   stat_client_main_t *sm, bool via_symlink)
 {
   stat_segment_data_t result = { 0 };
   int i;
@@ -235,6 +235,7 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
   assert (sm->shared_header);
 
   result.type = ep->type;
+  result.via_symlink = via_symlink;
   result.name = strdup (name ? name : ep->name);
 
   switch (ep->type)
@@ -289,7 +290,7 @@ copy_data (vlib_stats_entry_t *ep, u32 index2, char *name,
 	ep2 = vec_elt_at_index (sm->directory_vector, ep->index1);
 	/* We do not intend to return the "result", avoid a leak */
 	free (result.name);
-	return copy_data (ep2, ep->index2, ep->name, sm);
+	return copy_data (ep2, ep->index2, ep->name, sm, true);
       }
 
     case STAT_DIR_TYPE_EMPTY:
@@ -424,7 +425,7 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
     {
       /* Collect counter */
       ep = vec_elt_at_index (sm->directory_vector, stats[i]);
-      vec_add1 (res, copy_data (ep, ~0, 0, sm));
+      vec_add1 (res, copy_data (ep, ~0, 0, sm, false));
     }
 
   if (stat_segment_access_end (&sa, sm))
@@ -483,7 +484,7 @@ stat_segment_dump_entry_r (uint32_t index, stat_client_main_t * sm)
 
   /* Collect counter */
   ep = vec_elt_at_index (sm->directory_vector, index);
-  vec_add1 (res, copy_data (ep, ~0, 0, sm));
+  vec_add1 (res, copy_data (ep, ~0, 0, sm, false));
 
   if (stat_segment_access_end (&sa, sm))
     return res;
