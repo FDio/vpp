@@ -34,6 +34,24 @@
       "parentUuid": "8b1fea07_0f02cb78",
       "revId": "0223fd3737598318d8c807364d5e02b142ef328b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c3c2df3_ebaf7d25",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-02-17T09:47:20Z",
+      "side": 1,
+      "message": "Thinking about it again, I think I\u0027m wrong concerning CBC: we do not care if someone discover the PRNG state as it\u0027s then encrypted with the SA key (that\u0027s the whole point :))\nHowever, I think my point still stands for counter mode: without having per SA state, it is hard to enforce that no same IV is generated twice for a given SA.",
+      "parentUuid": "a756b3ab_b2ce6357",
+      "revId": "0223fd3737598318d8c807364d5e02b142ef328b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
