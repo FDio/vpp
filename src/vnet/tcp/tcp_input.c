@@ -2628,12 +2628,15 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  lc = tcp_listener_get (vnet_buffer (b[0])->tcp.connection_index);
 	}
-      else /* We are in TimeWait state*/
+      /* Probably we are in time-wait or closed state */
+      else
 	{
 	  tcp_connection_t *tc;
 	  tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 				   thread_index);
-	  if (tc->state != TCP_STATE_TIME_WAIT)
+
+	  if (tc->state != TCP_STATE_TIME_WAIT &&
+	      tc->state != TCP_STATE_CLOSED)
 	    {
 	      tcp_inc_counter (listen, TCP_ERROR_CREATE_EXISTS, 1);
 	      goto done;
@@ -3349,7 +3352,7 @@ do {                                                       	\
   _(CLOSED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP,
     TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
-  _(CLOSED, TCP_FLAG_SYN, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
+  _ (CLOSED, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN, TCP_ERROR_NONE);
   _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
     TCP_ERROR_CONNECTION_CLOSED);
 #undef _
