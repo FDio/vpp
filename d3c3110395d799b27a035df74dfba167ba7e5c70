@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d05b525_2a8a6195",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2763
+      },
+      "writtenOn": "2023-02-20T01:31:04Z",
+      "side": 1,
+      "message": "Hi Damjan,\n\nCould you help review this patch? Thanks.",
+      "revId": "d3c3110395d799b27a035df74dfba167ba7e5c70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
