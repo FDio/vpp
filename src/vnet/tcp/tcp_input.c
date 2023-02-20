@@ -1428,44 +1428,6 @@ tcp_established_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
-always_inline void
-tcp_node_inc_counter_i (vlib_main_t * vm, u32 tcp4_node, u32 tcp6_node,
-			u8 is_ip4, u32 evt, u32 val)
-{
-  if (is_ip4)
-    vlib_node_increment_counter (vm, tcp4_node, evt, val);
-  else
-    vlib_node_increment_counter (vm, tcp6_node, evt, val);
-}
-
-#define tcp_maybe_inc_counter(node_id, err, count)			\
-{									\
-  if (next0 != tcp_next_drop (is_ip4))					\
-    tcp_node_inc_counter_i (vm, tcp4_##node_id##_node.index,		\
-                            tcp6_##node_id##_node.index, is_ip4, err, 	\
-			    1);						\
-}
-#define tcp_inc_counter(node_id, err, count)				\
-  tcp_node_inc_counter_i (vm, tcp4_##node_id##_node.index,		\
-	                   tcp6_##node_id##_node.index, is_ip4,		\
-	                   err, count)
-#define tcp_maybe_inc_err_counter(cnts, err)				\
-{									\
-  cnts[err] += (next0 != tcp_next_drop (is_ip4));			\
-}
-#define tcp_inc_err_counter(cnts, err, val)				\
-{									\
-  cnts[err] += val;							\
-}
-#define tcp_store_err_counters(node_id, cnts)				\
-{									\
-  int i;								\
-  for (i = 0; i < TCP_N_ERROR; i++)					\
-    if (cnts[i])							\
-      tcp_inc_counter(node_id, i, cnts[i]);				\
-}
-
-
 always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
@@ -2932,6 +2894,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
+  u16 err_counters[TCP_N_ERROR] = { 0 };
 
   tcp_update_time_now (tcp_get_worker (thread_index));
 
@@ -2984,7 +2947,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	      b[0]->error = node->errors[error0];
+	      tcp_inc_err_counter (err_counters, error0, 1);
 	    }
 
 	  if (PREDICT_TRUE (tc1 != 0))
@@ -2996,7 +2959,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      tcp_input_set_error_next (tm, &next[1], &error1, is_ip4);
-	      b[1]->error = node->errors[error1];
+	      tcp_inc_err_counter (err_counters, error1, 1);
 	    }
 	}
 
@@ -3027,7 +2990,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	{
 	  tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
-	  b[0]->error = node->errors[error0];
+	  tcp_inc_err_counter (err_counters, error0, 1);
 	}
 
       b += 1;
@@ -3038,6 +3001,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     tcp_input_trace_frame (vm, node, bufs, frame->n_vectors, is_ip4);
 
+  tcp_store_err_counters (input, err_counters);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
