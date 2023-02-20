@@ -27,6 +27,8 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
+#define ESP_ENCRYPT_UNROLL_COUNT 2
+
 #define foreach_esp_encrypt_next                                              \
   _ (DROP4, "ip4-drop")                                                       \
   _ (DROP6, "ip6-drop")                                                       \
@@ -43,6 +45,53 @@ typedef enum
 #undef _
     ESP_ENCRYPT_N_NEXT,
 } esp_encrypt_next_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u8 *payload;
+  u8 *next_hdr_ptr;
+  u16 payload_len_total, n_bufs;
+  u32 payload_len;
+  u32 hdr_len;
+  u64 ctr_iv_counter;
+  esp_header_t *esp;
+  vlib_buffer_t *lb;
+  dpo_id_t *dpo;
+} esp_encrypt_runtime_data_t;
+
+/* runtime data fields update only when SA changes */
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u8 iv_sz;
+  u8 icv_sz;
+  u16 esp_align;
+  u32 spi;
+  u32 current_sa_packets;
+  u32 current_sa_bytes;
+} esp_encrypt_runtime_sa_data_t;
+
+typedef enum
+{
+  ESP_ENCRYPT_OP_TYPE_CRYPTO = 0,
+  ESP_ENCRYPT_OP_TYPE_INTEG,
+  ESP_ENCRYPT_N_OP_TYPES,
+} esp_encrypt_op_type_t;
+
+typedef enum
+{
+  ESP_ENCRYPT_OP_SB = 0,
+  ESP_ENCRYPT_OP_CHAIN,
+  ESP_ENCRYPT_N_OP_BUF_TYPES,
+} esp_encrypt_op_buf_type_t;
+
+typedef struct
+{
+  u16 n_ops[ESP_ENCRYPT_N_OP_TYPES][ESP_ENCRYPT_N_OP_BUF_TYPES];
+  vnet_crypto_op_t **ops[ESP_ENCRYPT_N_OP_TYPES][ESP_ENCRYPT_N_OP_BUF_TYPES];
+
+} esp_encrypt_runtime_op_data_t;
 
 typedef struct
 {
