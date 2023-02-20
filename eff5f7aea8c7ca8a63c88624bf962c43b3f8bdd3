@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d06fc9f7_b4935310",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2023-02-20T23:47:41Z",
+      "side": 1,
+      "message": "Compilation failed on CentOS 8:\n\n/builddir/build/BUILD/vpp-23.06/src/vcl/ldp.c:1697:11: error: use of undeclared identifier \u0027UDP_SEGMENT\u0027\n            case UDP_SEGMENT:\n\nUDP_SEGMENT is not defined in /usr/include/netinet/udp.h from glibc-headers-2.28-211.el8.x86_64. But in CenOS 9 with glibc-headers-2.34-40.el9_1.1.x86_64 \nUDP_SEGMENT is defined.\n",
+      "revId": "eff5f7aea8c7ca8a63c88624bf962c43b3f8bdd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
