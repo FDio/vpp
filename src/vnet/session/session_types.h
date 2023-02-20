@@ -173,7 +173,8 @@ typedef enum
   _ (IS_MIGRATING, "migrating")                                               \
   _ (UNIDIRECTIONAL, "unidirectional")                                        \
   _ (CUSTOM_FIFO_TUNING, "custom-fifo-tuning")                                \
-  _ (HALF_OPEN, "half-open")
+  _ (HALF_OPEN, "half-open")                                                  \
+  _ (APP_CLOSED, "app-closed")
 
 typedef enum session_flags_bits_
 {
