@@ -1156,6 +1156,7 @@ session_transport_delete_notify (transport_connection_t * tc)
       break;
     case SESSION_STATE_CLOSED:
       session_cleanup_notify (s, SESSION_CLEANUP_TRANSPORT);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
       session_delete (s);
       break;
     default:
@@ -1526,8 +1527,14 @@ session_half_close (session_t *s)
 void
 session_close (session_t * s)
 {
-  if (!s)
+  if (!s || (s->flags & SESSION_F_APP_CLOSED))
     return;
+
+  /* Transports can close and delete their state independent of app closes
+   * and transport initiated state transitions can hide app closes. Instead
+   * of extending the state machine to support separate tracking of app and
+   * transport initiated closes, use a flag. */
+  s->flags |= SESSION_F_APP_CLOSED;
 
   if (s->session_state >= SESSION_STATE_CLOSING)
     {
