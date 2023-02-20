@@ -18,6 +18,35 @@
 
 #include <vnet/tcp/tcp.h>
 
+always_inline void
+tcp_node_inc_counter_i (vlib_main_t *vm, u32 tcp4_node, u32 tcp6_node,
+			u8 is_ip4, u32 evt, u32 val)
+{
+  if (is_ip4)
+    vlib_node_increment_counter (vm, tcp4_node, evt, val);
+  else
+    vlib_node_increment_counter (vm, tcp6_node, evt, val);
+}
+
+#define tcp_inc_counter(node_id, err, count)                                  \
+  tcp_node_inc_counter_i (vm, tcp4_##node_id##_node.index,                    \
+			  tcp6_##node_id##_node.index, is_ip4, err, count)
+#define tcp_maybe_inc_err_counter(cnts, err)                                  \
+  {                                                                           \
+    cnts[err] += (next0 != tcp_next_drop (is_ip4));                           \
+  }
+#define tcp_inc_err_counter(cnts, err, val)                                   \
+  {                                                                           \
+    cnts[err] += val;                                                         \
+  }
+#define tcp_store_err_counters(node_id, cnts)                                 \
+  {                                                                           \
+    int i;                                                                    \
+    for (i = 0; i < TCP_N_ERROR; i++)                                         \
+      if (cnts[i])                                                            \
+	tcp_inc_counter (node_id, i, cnts[i]);                                \
+  }
+
 always_inline tcp_header_t *
 tcp_buffer_hdr (vlib_buffer_t * b)
 {

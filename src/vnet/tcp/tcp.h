@@ -268,6 +268,8 @@ extern vlib_node_registration_t tcp4_rcv_process_node;
 extern vlib_node_registration_t tcp6_rcv_process_node;
 extern vlib_node_registration_t tcp4_listen_node;
 extern vlib_node_registration_t tcp6_listen_node;
+extern vlib_node_registration_t tcp4_input_nolookup_node;
+extern vlib_node_registration_t tcp6_input_nolookup_node;
 
 #define tcp_cfg tcp_main.cfg
 #define tcp_node_index(node_id, is_ip4) 				\
