@@ -172,6 +172,8 @@ replicate_create_i (u32 num_buckets,
 {
     replicate_t *rep;
 
+    ASSERT (num_buckets <= REP_MAX_BUCKETS);
+
     rep = replicate_alloc_i();
     rep->rep_n_buckets = num_buckets;
     rep->rep_proto = rep_proto;
@@ -311,7 +313,8 @@ static inline void
 replicate_set_n_buckets (replicate_t *rep,
                          u32 n_buckets)
 {
-    rep->rep_n_buckets = n_buckets;
+  ASSERT (n_buckets <= REP_MAX_BUCKETS);
+  rep->rep_n_buckets = n_buckets;
 }
 
 void
@@ -330,6 +333,17 @@ replicate_multipath_update (const dpo_id_t *dpo,
     nhs = replicate_multipath_next_hop_fixup(next_hops,
                                              rep->rep_proto);
     n_buckets = vec_len(nhs);
+
+    if (n_buckets > REP_MAX_BUCKETS)
+    {
+      vlib_log_err (replicate_logger,
+                    "Too many paths for replicate, truncating %d -> %d",
+                    n_buckets, REP_MAX_BUCKETS);
+      for (int i = REP_MAX_BUCKETS; i < n_buckets; i++)
+        dpo_reset (&vec_elt (nhs, i).path_dpo);
+      vec_set_len (nhs, REP_MAX_BUCKETS);
+      n_buckets = REP_MAX_BUCKETS;
+    }
 
     if (0 == rep->rep_n_buckets)
     {
