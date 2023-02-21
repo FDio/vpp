@@ -98,6 +98,9 @@ typedef clib_error_t *(vnet_interface_rss_queues_set_t)
   (struct vnet_main_t * vnm, struct vnet_hw_interface_t * hi,
    clib_bitmap_t * bitmap);
 
+typedef clib_error_t *(vnet_interface_rss_hash_key_set_t) (
+  struct vlib_main_t *vnm, struct vnet_hw_interface_t *hi, char *key);
+
 typedef enum
 {
   VNET_FLOW_DEV_OP_ADD_FLOW,
@@ -289,6 +292,9 @@ typedef struct _vnet_device_class
 
   /* Interface to set rss queues of the interface */
   vnet_interface_rss_queues_set_t *set_rss_queues_function;
+
+  /* Function to set rss hash key of the interface */
+  vnet_interface_rss_hash_key_set_t *set_rss_hash_key_function;
 
 } vnet_device_class_t;
 
@@ -743,6 +749,9 @@ typedef struct vnet_hw_interface_t
 
   /* rss queues bitmap */
   clib_bitmap_t *rss_queues;
+
+  /* rss hash key string */
+  u8 *rss_hash_key;
 
   /* trace */
   i32 n_trace;

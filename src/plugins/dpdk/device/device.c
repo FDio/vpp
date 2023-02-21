@@ -580,6 +580,86 @@ done:
   return err;
 }
 
+static u8
+hexa_digit_to_value (char hexa_digit)
+{
+  if ((hexa_digit >= '0') && (hexa_digit <= '9'))
+    return (u8) (hexa_digit - '0');
+  if ((hexa_digit >= 'a') && (hexa_digit <= 'f'))
+    return (u8) ((hexa_digit - 'a') + 10);
+  if ((hexa_digit >= 'A') && (hexa_digit <= 'F'))
+    return (u8) ((hexa_digit - 'A') + 10);
+  /* Invalid hexa digit */
+  return 0xFF;
+}
+
+static clib_error_t *
+dpdk_interface_set_rss_hash_key (struct vlib_main_t *vm,
+				 struct vnet_hw_interface_t *hi,
+				 char *hash_key_str)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hi->dev_instance);
+  clib_error_t *err = 0;
+  u8 hash_key[64];
+  u8 hash_key_size;
+  struct rte_eth_dev_info dev_info;
+  struct rte_eth_rss_conf rss_conf;
+  u8 xdgt0;
+  u8 xdgt1;
+  u32 ret;
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+
+  if (dev_info.hash_key_size > 0 &&
+      dev_info.hash_key_size <= sizeof (hash_key))
+    hash_key_size = dev_info.hash_key_size;
+  else
+    {
+      err = clib_error_return (
+	0, "dev_info did not provide a valid hash key size");
+      goto done;
+    }
+
+  if (strlen (hash_key_str) != (hash_key_size * 2))
+    {
+      err = clib_error_return (0, "hash key length invalid");
+      goto done;
+    }
+
+  for (int i = 0; i < hash_key_size; i++)
+    {
+      xdgt0 = hexa_digit_to_value (hash_key_str[i * 2]);
+      xdgt1 = hexa_digit_to_value (hash_key_str[(i * 2) + 1]);
+      if (xdgt0 == 0xFF || xdgt1 == 0xFF)
+	{
+	  err = clib_error_return (0, "hash key contains invalid hexa digit");
+	  goto done;
+	}
+      hash_key[i] = (u8) ((xdgt0 * 16) + xdgt1);
+    }
+  rss_conf.rss_key = NULL;
+  rss_conf.rss_key_len = 0;
+  ret = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
+  if (ret != 0)
+    {
+      err = clib_error_return (0, "rte_eth_dev_rss_hash_conf_get err %d", ret);
+      goto done;
+    }
+
+  rss_conf.rss_key = hash_key;
+  rss_conf.rss_key_len = hash_key_size;
+  ret = rte_eth_dev_rss_hash_update (xd->port_id, &rss_conf);
+  if (ret != 0)
+    {
+      err = clib_error_return (0, "rte_eth_dev_rss_hash_update err %d", ret);
+      goto done;
+    }
+
+done:
+  return err;
+}
+
 static clib_error_t *
 dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
 			       struct vnet_hw_interface_t *hi,
@@ -741,6 +821,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .flow_ops_function = dpdk_flow_ops_fn,
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
   .rx_mode_change_function = dpdk_interface_rx_mode_change,
+  .set_rss_hash_key_function = dpdk_interface_set_rss_hash_key,
 };
 /* *INDENT-ON* */
 
