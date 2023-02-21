@@ -16,6 +16,24 @@
       "message": "Maybe clean this up and rebase mirroring vpp+nginx on top of this? That way we can merge while we still cleanup the latter.",
       "revId": "df029c36c5836462f9c0c0b6c7eca92f402f4899",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5505cce8_38d8a578",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-21T10:37:10Z",
+      "side": 1,
+      "message": "I\u0027m not sure I understood completely, but I did the following. Took the standalone parts from this and created new patch with those. Then rebased mirroring patch on top of the new patch. And now I\u0027ll abandon this patch.",
+      "parentUuid": "09b11f7a_d6a5d14e",
+      "revId": "df029c36c5836462f9c0c0b6c7eca92f402f4899",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
