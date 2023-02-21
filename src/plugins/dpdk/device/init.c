@@ -514,6 +514,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    dpdk_log_warn ("[%u] Failed to set rss queues", port_id);
 	}
 
+      u8 rss_key[64];
+      struct rte_eth_rss_conf rss_conf = { rss_key, di.hash_key_size, 0 };
+      if (!rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf))
+	{
+	  u8 *s = NULL;
+	  for (u8 i = 0; i < rss_conf.rss_key_len; i++)
+	    s = format (s, "%02X", rss_conf.rss_key[i]);
+	  hi->rss_hash_key = s;
+	}
+
       if (vec_len (xd->errors))
 	dpdk_log_err ("[%u] setup failed Errors:\n  %U", port_id,
 		      format_dpdk_device_errors, xd);

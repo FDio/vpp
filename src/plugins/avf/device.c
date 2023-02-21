@@ -1928,6 +1928,61 @@ avf_program_flow (u32 dev_instance, int is_add, enum virthnl_adv_ops vc_op,
   return avf_process_request (vm, &req);
 }
 
+static u8
+hexa_digit_to_value (char hexa_digit)
+{
+  if ((hexa_digit >= '0') && (hexa_digit <= '9'))
+    return (u8) (hexa_digit - '0');
+  if ((hexa_digit >= 'a') && (hexa_digit <= 'f'))
+    return (u8) ((hexa_digit - 'a') + 10);
+  if ((hexa_digit >= 'A') && (hexa_digit <= 'F'))
+    return (u8) ((hexa_digit - 'A') + 10);
+  /* Invalid hexa digit */
+  return 0xFF;
+}
+
+clib_error_t *
+avf_interface_set_rss_hash_key (struct vlib_main_t *vm,
+				struct vnet_hw_interface_t *hi,
+				char *hash_key_str)
+{
+  avf_device_t *ad = avf_get_device (hi->dev_instance);
+
+  int msg_len = sizeof (virtchnl_rss_key_t) + ad->rss_key_size - 1;
+  u8 msg[msg_len];
+  u8 hash_key[64] = { 0 };
+  virtchnl_rss_key_t *rk;
+  u8 xdgt0;
+  u8 xdgt1;
+
+  if (strlen (hash_key_str) != 2 * ad->rss_key_size)
+    return clib_error_create ("unsupported RSS key size (expected %d, got %d)",
+			      strlen (hash_key_str), 2 * ad->rss_key_size);
+
+  clib_memset (msg, 0, msg_len);
+  rk = (virtchnl_rss_key_t *) msg;
+  rk->vsi_id = ad->vsi_id;
+  rk->key_len = ad->rss_key_size;
+
+  for (int i = 0; i < rk->key_len; i++)
+    {
+      xdgt0 = hexa_digit_to_value (hash_key_str[i * 2]);
+      xdgt1 = hexa_digit_to_value (hash_key_str[(i * 2) + 1]);
+      if (xdgt0 == 0xFF || xdgt1 == 0xFF)
+	return clib_error_create ("hash key contains invalid hexa digit");
+      hash_key[i] = (u8) ((xdgt0 * 16) + xdgt1);
+    }
+
+  memcpy_s (rk->key, rk->key_len, hash_key, rk->key_len);
+
+  avf_log_debug (ad, "config_rss_key: vsi_id %u rss_key_size %u key 0x%U",
+		 rk->vsi_id, rk->key_len, format_hex_bytes_no_wrap, rk->key,
+		 rk->key_len);
+
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_RSS_KEY, msg, msg_len, 0,
+			 0);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (avf_device_class, ) = {
   .name = "Adaptive Virtual Function (AVF) interface",
@@ -1941,6 +1996,7 @@ VNET_DEVICE_CLASS (avf_device_class, ) = {
   .tx_function_n_errors = AVF_TX_N_ERROR,
   .tx_function_error_strings = avf_tx_func_error_strings,
   .flow_ops_function = avf_flow_ops_fn,
+  .set_rss_hash_key_function = avf_interface_set_rss_hash_key,
 };
 /* *INDENT-ON* */
 
