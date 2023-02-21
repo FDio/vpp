@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "09b11f7a_d6a5d14e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-02-21T02:55:51Z",
+      "side": 1,
+      "message": "Maybe clean this up and rebase mirroring vpp+nginx on top of this? That way we can merge while we still cleanup the latter.",
+      "revId": "df029c36c5836462f9c0c0b6c7eca92f402f4899",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
