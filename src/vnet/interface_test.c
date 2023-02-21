@@ -520,6 +520,12 @@ api_sw_interface_set_mac_address (vat_main_t *vam)
 }
 
 static int
+api_sw_interface_set_rss_hash_key (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
 api_sw_interface_set_rx_placement (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
