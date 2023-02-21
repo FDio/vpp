@@ -51,6 +51,23 @@
       "message": "--- vpp/src/vcl/ldp.c\t2023-02-21 00:33:18.929034967 +0200\n+++ vpp/src/vcl/ldp.c\t2023-02-21 12:29:44.788641668 +0200\n@@ -39,6 +39,10 @@\n #include \u003cvppinfra/pool.h\u003e\n #include \u003cvppinfra/hash.h\u003e\n \n+#ifndef UDP_SEGMENT\n+#define UDP_SEGMENT     103     /* Set GSO segmentation size.  */\n+#endif\n+\n #define HAVE_CONSTRUCTOR_ATTRIBUTE\n #ifdef HAVE_CONSTRUCTOR_ATTRIBUTE\n #define CONSTRUCTOR_ATTRIBUTE                       \\\n",
       "revId": "eff5f7aea8c7ca8a63c88624bf962c43b3f8bdd3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83e3e61f_3af53d72",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2023-02-21T13:32:09Z",
+      "side": 1,
+      "message": "This patch fixed compilation on CentOS 8.",
+      "revId": "eff5f7aea8c7ca8a63c88624bf962c43b3f8bdd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
