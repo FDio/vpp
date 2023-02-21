@@ -287,7 +287,21 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
+	{
+	  pool_foreach (vif, mm->interfaces)
+	    if (hw_if_index == vif->hw_if_index)
+	      {
+		found = true;
+		vec_add1 (hw_if_indices, vif->hw_if_index);
+		break;
+	      }
+
+	  if (!found)
+	    {
+	      error = clib_error_return (0, "not tap interface");
+	      goto done;
+	    }
+	}
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
       else
@@ -331,12 +345,27 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int show_descr = 0;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
+  bool found = false;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
 	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
+	{
+	  pool_foreach (vif, mm->interfaces)
+	    if (hw_if_index == vif->hw_if_index)
+	      {
+		found = true;
+		vec_add1 (hw_if_indices, vif->hw_if_index);
+		break;
+	      }
+
+	  if (!found)
+	    {
+	      error = clib_error_return (0, "not tun interface");
+	      goto done;
+	    }
+	}
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
       else
