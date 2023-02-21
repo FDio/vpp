@@ -16,8 +16,10 @@ Anatomy of a test case
 
 **Prerequisites**:
 
-* Tests use *hs-test*'s own docker image, so building it before starting tests is a prerequisite. Run ``sudo make`` to do so
+* Compiled VPP
 * Docker has to be installed and Go has to be in path of both the running user and root
+* Tests use *hs-test*'s own docker image, so building it before starting tests is a prerequisite.
+  Run ``sudo make`` in ``extras/hs-test`` directory to do so
 * Root privileges are required to run tests as it uses Linux ``ip`` command for configuring topology
 
 **Action flow when running a test case**:
@@ -44,23 +46,20 @@ For adding a new suite, please see `Modifying the framework`_ below.
 #. Declare method whose name starts with ``Test`` and specifies its receiver as a pointer to the suite's struct (defined in ``framework_test.go``)
 #. Implement test behaviour inside the test method. This typically includes the following:
 
-  #. Retrieve a running container in which to run some action. Function ``getContainerByName(name string)``
+  #. Retrieve a running container in which to run some action. Method ``getContainerByName``
      from ``HstSuite`` struct serves this purpose
-     an object representing a container and start it with ``run()`` method
-  #. Execute *hs-test* action(s) inside any of the running containers.
-     Function ``execAction(args string)`` from ``container.go`` does this by using ``docker exec`` command to run ``hs-test`` executable.
-     For starting an VPP instance inside a container, the ``VppInstance`` struct can be used instead
-  #. Run arbitrary commands inside the containers with ``exec(cmd string)``
+  #. Interact with VPP through the ``VppInstance`` struct embedded in container. It provides ``vppctl`` method to access debug CLI
+  #. Run arbitrary commands inside the containers with ``exec`` method
   #. Run other external tool with one of the preexisting functions in the ``utils.go`` file.
-     For example, use ``wget`` with ``startWget(..)`` function
+     For example, use ``wget`` with ``startWget`` function
   #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
   #. Verify results of your tests using ``assert`` methods provided by the test suite,
      implemented by HstSuite struct
 
 **Example test case**
 
-Two docker containers, each with its own VPP instance running. One VPP then pings the other.
-This can be put in file ``extras/hs-test/my_test.go`` and run with command ``./test -run TestMySuite``.
+Assumed are two docker containers, each with its own VPP instance running. One VPP then pings the other.
+This can be put in file ``extras/hs-test/my_test.go`` and run with command ``./test -run TestMySuite/TestMyCase``.
 
 ::
 
@@ -71,21 +70,13 @@ This can be put in file ``extras/hs-test/my_test.go`` and run with command ``./t
         )
 
         func (s *MySuite) TestMyCase() {
-                serverVppContainer := s.getContainerByName("server-vpp")
+                clientVpp := s.getContainerByName("client-vpp").vppInstance
 
-                serverVpp := NewVppInstance(serverContainer)
-                serverVpp.set2VethsServer()
-                serverVpp.start()
+                serverVethAddress := s.netInterfaces["server-iface"].AddressString()
 
-                clientVppContainer := s.getContainerByName("client-vpp")
-
-                clientVpp:= NewVppInstance(clientContainer)
-                serverVpp.set2VethsClient()
-                clientVpp.start()
-
-                result, err := clientVpp.vppctl("ping 10.10.10.2")
-                s.assertNil(err, "ping resulted in error")
-                fmt.Println(result)
+                result := clientVpp.vppctl("ping " + serverVethAddress)
+                s.assertNotNil(result)
+                s.log(result)
         }
 
 Modifying the framework
@@ -96,10 +87,10 @@ Modifying the framework
 .. _test-convention:
 
 #. Adding a new suite takes place in ``framework_test.go`` and by creating a new file for the suite.
-   Naming convention for the suite files is ``suite-name-test.go`` where *name* will be replaced
+   Naming convention for the suite files is ``suite_name_test.go`` where *name* will be replaced
    by the actual name
 
-#. Make a ``struct`` with at least ``HstSuite`` struct as its member.
+#. Make a ``struct``, in the suite file, with at least ``HstSuite`` struct as its member.
    HstSuite provides functionality that can be shared for all suites, like starting containers
 
         ::
@@ -108,12 +99,12 @@ Modifying the framework
                         HstSuite
                 }
 
-#. Implement SetupSuite method which testify runs before running the tests.
-   It's important here to call ``setupSuite(s *suite.Suite, topologyName string)`` and assign its result to the suite's ``teardownSuite`` member.
-   Pass the topology name to the function in the form of file name of one of the *yaml* files in ``topo-network`` folder.
+#. In suite file, implement ``SetupSuite`` method which testify runs once before starting any of the tests.
+   It's important here to call ``configureNetworkTopology`` method,
+   pass the topology name to the function in a form of file name of one of the *yaml* files in ``topo-network`` folder.
    Without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
    This will ensure network topology, such as network interfaces and namespaces, will be created.
-   Another important method to call is ``loadContainerTopology(topologyName string)`` which will load
+   Another important method to call is ``loadContainerTopology()`` which will load
    containers and shared volumes used by the suite. This time the name passed to method corresponds
    to file in ``extras/hs-test/topo-containers`` folder
 
@@ -122,12 +113,22 @@ Modifying the framework
                 func (s *MySuite) SetupSuite() {
                         // Add custom setup code here
 
-                        s.teardownSuite = setupSuite(&s.Suite, "myTopology")
+                        s.configureNetworkTopology("myTopology")
                         s.loadContainerTopology("2peerVeth")
                 }
 
+#. In suite file, implement ``SetupTest`` method which gets executed before each test. Starting containers and
+   configuring VPP is usually placed here
+
+        ::
+
+                func (s *MySuite) SetupTest() {
+                        s.SetupVolumes()
+                        s.SetupContainers()
+                }
+
 #. In order for ``go test`` to run this suite, we need to create a normal test function and pass our suite to ``suite.Run``.
-   This is being at the end of ``framework_test.go``
+   These functions are placed at the end of ``framework_test.go``
 
         ::
 
@@ -142,9 +143,9 @@ Modifying the framework
 
 Topology configuration exists as ``yaml`` files in the ``extras/hs-test/topo-network`` and
 ``extras/hs-test/topo-containers`` folders. Processing of a network topology file for a particular test suite
-is started by the ``setupSuite`` function depending on which file's name is passed to it.
-Specified file is loaded by ``LoadTopology()`` function and converted into internal data structures which represent various elements of the topology.
-After parsing the configuration, ``Configure()`` method loops over array of topology elements and configures them one by one.
+is started by the ``configureNetworkTopology`` method depending on which file's name is passed to it.
+Specified file is loaded and converted into internal data structures which represent various elements of the topology.
+After parsing the configuration, framework loops over the elements and configures them one by one on the host system.
 
 These are currently supported types of network elements.
 
@@ -172,22 +173,8 @@ want to communicate there are typically two ways this can be done within *hs-tes
 * Shared folders. Containers are being created with ``-v`` option to create shared `volumes`_ between host system and containers
   or just between containers
 
-**Adding a hs-test action**
-
-Executing more complex or long running jobs is made easier by *hs-test* actions.
-These are functions that compartmentalize configuration and execution together for a specific task.
-For example, starting up VPP or running VCL echo client.
-
-The actions are located in ``extras/hs-test/actions.go``. To add one, create a new method that has its receiver as a pointer to ``Actions`` struct.
-
-Run it from test case with container's method ``execAction(args)`` where ``args`` is the action method's name.
-This then executes the ``hs-test`` binary inside of the container and it then runs selected action.
-Action is specified by its name as first argument for the binary.
-
-*Note*: When ``execAction(args)`` runs some action from a test case, the execution of ``hs-test`` inside the container
-is asynchronous. The action might take many seconds to finish, while the test case execution context continues to run.
-To mitigate this, ``execAction(args)`` waits pre-defined arbitrary number of seconds for a *sync file* to be written by ``hs-test``
-at the end of its run. The test case context and container use Docker volume to share the file.
+Host system connects to VPP instances running in containers using a shared folder
+where binary API socket is accessible by both sides.
 
 **Adding an external tool**
 
@@ -201,8 +188,8 @@ Alternatively copy the executable from host system to the Docker image, similarl
 * Linux tools ``ip``, ``brctl``
 * Standalone programs ``wget``, ``iperf3`` - since these are downloaded when Docker image is made,
   they are reasonably up-to-date automatically
-* Programs in Docker images  - see ``envoyproxy/envoy-contrib`` in ``utils.go``
-* ``http_server`` - homegrown application that listens on specified address and sends a test file in response
+* Programs in Docker images  - ``envoyproxy/envoy-contrib`` and ``nginx``
+* ``http_server`` - homegrown application that listens on specified port and sends a test file in response
 * Non-standard Go libraries - see ``extras/hs-test/go.mod``
 
 Generally, these will be updated on a per-need basis, for example when a bug is discovered
