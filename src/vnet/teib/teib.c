@@ -34,7 +34,7 @@ struct teib_entry_t_
 {
   teib_key_t *te_key;
   fib_prefix_t te_nh;
-  u32 te_fib_index;
+  u32 te_nh_fib_index;
 };
 
 typedef struct teib_db_t_
@@ -83,7 +83,7 @@ teib_entry_get_af (const teib_entry_t * te)
 u32
 teib_entry_get_fib_index (const teib_entry_t * te)
 {
-  return (te->te_fib_index);
+  return (te->te_nh_fib_index);
 }
 
 const ip_address_t *
@@ -101,7 +101,7 @@ teib_entry_get_nh (const teib_entry_t * te)
 void
 teib_entry_adj_stack (const teib_entry_t * te, adj_index_t ai)
 {
-  adj_midchain_delegate_stack (ai, te->te_fib_index, &te->te_nh);
+  adj_midchain_delegate_stack (ai, te->te_nh_fib_index, &te->te_nh);
 }
 
 teib_entry_t *
@@ -139,7 +139,8 @@ teib_entry_find_46 (u32 sw_if_index,
 }
 
 static void
-teib_adj_fib_add (const ip_address_t * ip, u32 sw_if_index, u32 fib_index)
+teib_adj_fib_add (const ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index,
+		  u32 nh_fib_index)
 {
   if (AF_IP6 == ip_addr_version (ip) &&
       ip6_address_is_link_local_unicast (&ip_addr_v6 (ip)))
@@ -155,21 +156,19 @@ teib_adj_fib_add (const ip_address_t * ip, u32 sw_if_index, u32 fib_index)
       fib_prefix_t pfx;
 
       ip_address_to_fib_prefix (ip, &pfx);
-      fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
-				FIB_ENTRY_FLAG_ATTACHED,
-				fib_proto_to_dpo (pfx.fp_proto),
-				&pfx.fp_addr,
-				sw_if_index,
-				~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
-
+      fib_table_entry_path_add (
+	peer_fib_index, &pfx, FIB_SOURCE_ADJ, FIB_ENTRY_FLAG_ATTACHED,
+	fib_proto_to_dpo (pfx.fp_proto), &pfx.fp_addr, sw_if_index,
+	nh_fib_index, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
 
       if (0 == teib_db.td_n_entries[ip_addr_version (ip)]++)
-	fib_table_lock (fib_index, pfx.fp_proto, FIB_SOURCE_ADJ);
+	fib_table_lock (nh_fib_index, pfx.fp_proto, FIB_SOURCE_ADJ);
     }
 }
 
 static void
-teib_adj_fib_remove (ip_address_t * ip, u32 sw_if_index, u32 fib_index)
+teib_adj_fib_remove (ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index,
+		     u32 nh_fib_index)
 {
   if (AF_IP6 == ip_addr_version (ip) &&
       ip6_address_is_link_local_unicast (&ip_addr_v6 (ip)))
@@ -185,14 +184,12 @@ teib_adj_fib_remove (ip_address_t * ip, u32 sw_if_index, u32 fib_index)
       fib_prefix_t pfx;
 
       ip_address_to_fib_prefix (ip, &pfx);
-      fib_table_entry_path_remove (fib_index, &pfx, FIB_SOURCE_ADJ,
-				   fib_proto_to_dpo (pfx.fp_proto),
-				   &pfx.fp_addr,
-				   sw_if_index,
-				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_remove (
+	peer_fib_index, &pfx, FIB_SOURCE_ADJ, fib_proto_to_dpo (pfx.fp_proto),
+	&pfx.fp_addr, sw_if_index, nh_fib_index, 1, FIB_ROUTE_PATH_FLAG_NONE);
 
       if (0 == --teib_db.td_n_entries[ip_addr_version (ip)])
-	fib_table_unlock (fib_index, pfx.fp_proto, FIB_SOURCE_ADJ);
+	fib_table_unlock (nh_fib_index, pfx.fp_proto, FIB_SOURCE_ADJ);
     }
 }
 
@@ -203,15 +200,17 @@ teib_entry_add (u32 sw_if_index,
 {
   fib_protocol_t nh_proto;
   teib_entry_t *te;
-  u32 fib_index;
+  u32 nh_fib_index, peer_fib_index;
   index_t tei;
 
   nh_proto = (AF_IP4 == ip_addr_version (nh) ?
 	      FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
 
-  fib_index = fib_table_find (nh_proto, nh_table_id);
+  peer_fib_index = fib_table_get_index_for_sw_if_index (
+    ip_address_family_to_fib_proto (peer->version), sw_if_index);
+  nh_fib_index = fib_table_find (nh_proto, nh_table_id);
 
-  if (~0 == fib_index)
+  if (~0 == nh_fib_index)
     {
       return (VNET_API_ERROR_NO_SUCH_FIB);
     }
@@ -233,12 +232,13 @@ teib_entry_add (u32 sw_if_index,
       clib_memcpy (te->te_key, &nk, sizeof (*te->te_key));
 
       ip_address_to_fib_prefix (nh, &te->te_nh);
-      te->te_fib_index = fib_index;
+      te->te_nh_fib_index = nh_fib_index;
 
       hash_set_mem (teib_db.td_db, te->te_key, tei);
 
       /* we how have a /32 in the overlay, add an adj-fib */
-      teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, fib_index);
+      teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, peer_fib_index,
+			nh_fib_index);
 
       TEIB_NOTIFY (te, nv_added);
       TEIB_TE_INFO (te, "created");
@@ -262,13 +262,14 @@ teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
     {
       TEIB_TE_INFO (te, "removed");
 
-      u32 fib_index;
+      u32 peer_fib_index, nh_fib_index;
 
-      fib_index = fib_table_get_index_for_sw_if_index
-	(ip_address_family_to_fib_proto (ip_addr_version (peer)),
-	 sw_if_index);
+      peer_fib_index = fib_table_get_index_for_sw_if_index (
+	ip_address_family_to_fib_proto (peer->version), sw_if_index);
+      nh_fib_index = te->te_nh_fib_index;
 
-      teib_adj_fib_remove (&te->te_key->tk_peer, sw_if_index, fib_index);
+      teib_adj_fib_remove (&te->te_key->tk_peer, sw_if_index, peer_fib_index,
+			   nh_fib_index);
 
       hash_unset_mem (teib_db.td_db, te->te_key);
 
@@ -301,7 +302,7 @@ format_teib_entry (u8 * s, va_list * args)
   s = format (s, "%U", format_ip_address,
 	      &te->te_key->tk_peer, IP46_TYPE_ANY);
   s = format (s, " via [%d]:%U",
-	      fib_table_get_table_id (te->te_fib_index, te->te_nh.fp_proto),
+	      fib_table_get_table_id (te->te_nh_fib_index, te->te_nh.fp_proto),
 	      format_fib_prefix, &te->te_nh);
 
   return (s);
@@ -352,8 +353,8 @@ teib_walk_itf_proto (u32 sw_if_index,
 
 typedef struct teib_table_bind_ctx_t_
 {
-  u32 new_fib_index;
-  u32 old_fib_index;
+  u32 new_peer_fib_index;
+  u32 old_peer_fib_index;
 } teib_table_bind_ctx_t;
 
 static walk_rc_t
@@ -364,12 +365,13 @@ teib_walk_table_bind (index_t tei, void *arg)
 
   te = teib_entry_get (tei);
 
-  TEIB_TE_INFO (te, "bind: %d -> %d", ctx->old_fib_index, ctx->new_fib_index);
+  TEIB_TE_INFO (te, "bind: %d -> %d", ctx->old_peer_fib_index,
+		ctx->new_peer_fib_index);
 
-  teib_adj_fib_remove (&te->te_key->tk_peer,
-		       te->te_key->tk_sw_if_index, ctx->old_fib_index);
-  teib_adj_fib_add (&te->te_key->tk_peer,
-		    te->te_key->tk_sw_if_index, ctx->new_fib_index);
+  teib_adj_fib_remove (&te->te_key->tk_peer, te->te_key->tk_sw_if_index,
+		       ctx->old_peer_fib_index, te->te_nh_fib_index);
+  teib_adj_fib_add (&te->te_key->tk_peer, te->te_key->tk_sw_if_index,
+		    ctx->new_peer_fib_index, te->te_nh_fib_index);
 
   return (WALK_CONTINUE);
 }
@@ -380,8 +382,8 @@ teib_table_bind_v4 (ip4_main_t * im,
 		    u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
 {
   teib_table_bind_ctx_t ctx = {
-    .old_fib_index = old_fib_index,
-    .new_fib_index = new_fib_index,
+    .old_peer_fib_index = old_fib_index,
+    .new_peer_fib_index = new_fib_index,
   };
 
   teib_walk_itf_proto (sw_if_index, AF_IP4, teib_walk_table_bind, &ctx);
@@ -393,8 +395,8 @@ teib_table_bind_v6 (ip6_main_t * im,
 		    u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
 {
   teib_table_bind_ctx_t ctx = {
-    .old_fib_index = old_fib_index,
-    .new_fib_index = new_fib_index,
+    .old_peer_fib_index = old_fib_index,
+    .new_peer_fib_index = new_fib_index,
   };
 
   teib_walk_itf_proto (sw_if_index, AF_IP6, teib_walk_table_bind, &ctx);
