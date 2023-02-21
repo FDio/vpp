@@ -1858,6 +1858,36 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 }
 
 clib_error_t *
+vnet_hw_interface_set_rss_hash_key (vlib_main_t *vm, vnet_hw_interface_t *hi,
+				    u8 *key)
+{
+  clib_error_t *error = 0;
+  u8 *old_key = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->set_rss_hash_key_function)
+    error = dev_class->set_rss_hash_key_function (vm, hi, key);
+  else
+    error = clib_error_return (
+      0, "setting rss hash key is not supported on this interface");
+
+  if (!error)
+    {
+      old_key = hi->rss_hash_key;
+      hi->rss_hash_key = format(0, "%U", format_hex_bytes_no_wrap, key, vec_len(key));
+      vec_free (old_key);
+    }
+  else
+    {
+      log_err ("hw_set_rss_hash_key: %U", format_clib_error, error);
+    }
+
+  return error;
+}
+
+clib_error_t *
 vnet_hw_interface_set_rss_queues (vnet_main_t * vnm,
 				  vnet_hw_interface_t * hi,
 				  clib_bitmap_t * bitmap)

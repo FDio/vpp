@@ -228,6 +228,10 @@ format_vnet_hw_interface (u8 * s, va_list * args)
 	}
     }
 
+  if (hi->rss_hash_key)
+    s = format (s, "\n%URSS hash key: %s", format_white_space, indent + 2,
+		hi->rss_hash_key);
+
   if (hi->rss_queues)
     {
       s = format (s, "\n%URSS queues: %U", format_white_space, indent + 2,
