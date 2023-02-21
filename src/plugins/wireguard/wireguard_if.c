@@ -116,20 +116,20 @@ wg_remote_get (const uint8_t public[NOISE_PUBLIC_KEY_LEN])
 }
 
 static uint32_t
-wg_index_set (noise_remote_t * remote)
+wg_index_set (vlib_main_t *vm, noise_remote_t *remote)
 {
   wg_main_t *wmp = &wg_main;
   u32 rnd_seed = (u32) (vlib_time_now (wmp->vlib_main) * 1e6);
   u32 ret =
-    wg_index_table_add (&wmp->index_table, remote->r_peer_idx, rnd_seed);
+    wg_index_table_add (vm, &wmp->index_table, remote->r_peer_idx, rnd_seed);
   return ret;
 }
 
 static void
-wg_index_drop (uint32_t key)
+wg_index_drop (vlib_main_t *vm, uint32_t key)
 {
   wg_main_t *wmp = &wg_main;
-  wg_index_table_del (&wmp->index_table, key);
+  wg_index_table_del (vm, &wmp->index_table, key);
 }
 
 static clib_error_t *

@@ -121,8 +121,8 @@ typedef struct noise_local
   {
     void *u_arg;
     noise_remote_t *(*u_remote_get) (const uint8_t[NOISE_PUBLIC_KEY_LEN]);
-      uint32_t (*u_index_set) (noise_remote_t *);
-    void (*u_index_drop) (uint32_t);
+    uint32_t (*u_index_set) (vlib_main_t *, noise_remote_t *);
+    void (*u_index_drop) (vlib_main_t *, uint32_t);
   } l_upcall;
 } noise_local_t;
 
@@ -148,11 +148,11 @@ void noise_local_init (noise_local_t *, struct noise_upcall *);
 bool noise_local_set_private (noise_local_t *,
 			      const uint8_t[NOISE_PUBLIC_KEY_LEN]);
 
-void noise_remote_init (noise_remote_t *, uint32_t,
+void noise_remote_init (vlib_main_t *, noise_remote_t *, uint32_t,
 			const uint8_t[NOISE_PUBLIC_KEY_LEN], uint32_t);
 
 /* Should be called anytime noise_local_set_private is called */
-void noise_remote_precompute (noise_remote_t *);
+void noise_remote_precompute (vlib_main_t *, noise_remote_t *);
 
 /* Cryptographic functions */
 bool noise_create_initiation (vlib_main_t * vm, noise_remote_t *,
@@ -266,7 +266,7 @@ noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
   struct noise_upcall *u = &local->l_upcall;
   if (*kp)
     {
-      u->u_index_drop ((*kp)->kp_local_index);
+      u->u_index_drop (vm, (*kp)->kp_local_index);
       vnet_crypto_key_del (vm, (*kp)->kp_send_index);
       vnet_crypto_key_del (vm, (*kp)->kp_recv_index);
       clib_mem_free (*kp);

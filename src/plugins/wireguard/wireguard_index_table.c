@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
+#include <vlib/vlib.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/random.h>
 #include <wireguard/wireguard_index_table.h>
 
 u32
-wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx, u32 rnd_seed)
+wg_index_table_add (vlib_main_t *vm, wg_index_table_t *table,
+		    u32 peer_pool_idx, u32 rnd_seed)
 {
   u32 key;
 
@@ -29,19 +31,25 @@ wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx, u32 rnd_seed)
       if (hash_get (table->hash, key))
 	continue;
 
+      vlib_worker_thread_barrier_sync (vm);
       hash_set (table->hash, key, peer_pool_idx);
+      vlib_worker_thread_barrier_release (vm);
       break;
     }
   return key;
 }
 
 void
-wg_index_table_del (wg_index_table_t * table, u32 key)
+wg_index_table_del (vlib_main_t *vm, wg_index_table_t *table, u32 key)
 {
   uword *p;
   p = hash_get (table->hash, key);
   if (p)
-    hash_unset (table->hash, key);
+    {
+      vlib_worker_thread_barrier_sync (vm);
+      hash_unset (table->hash, key);
+      vlib_worker_thread_barrier_release (vm);
+    }
 }
 
 u32 *

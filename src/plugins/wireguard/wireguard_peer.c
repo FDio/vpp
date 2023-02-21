@@ -242,7 +242,7 @@ wg_peer_enable (vlib_main_t *vm, wg_peer_t *peer)
   wg_if = wg_if_get (wg_if_find_by_sw_if_index (peer->wg_sw_if_index));
   clib_memcpy (public_key, peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
 
-  noise_remote_init (&peer->remote, peeri, public_key, wg_if->local_idx);
+  noise_remote_init (vm, &peer->remote, peeri, public_key, wg_if->local_idx);
 
   wg_timers_send_first_handshake (peer);
 }
@@ -484,7 +484,7 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
       return (rv);
     }
 
-  noise_remote_init (&peer->remote, peer - wg_peer_pool, public_key,
+  noise_remote_init (vm, &peer->remote, peer - wg_peer_pool, public_key,
 		     wg_if->local_idx);
   cookie_maker_init (&peer->cookie_maker, public_key);
 
