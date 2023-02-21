@@ -781,6 +781,69 @@ fib_test_validate_entry (fib_node_index_t fei,
 }
 
 static int
+fib_test_multipath_v4 (const test_main_t *tm, const u32 fib_index,
+                       const fib_prefix_t *pfx, const int n_paths,
+                       const int expected_n_buckets)
+{
+    const int path_list_pool_size = fib_path_list_pool_size();
+    const int path_list_db_size = fib_path_list_db_size();
+    const int entry_pool_size = fib_entry_pool_size();
+    fib_route_path_t *r_paths = NULL;
+    const load_balance_t *lb;
+    const dpo_id_t *dpo;
+    u32 fei;
+    int res = 0;
+    int i;
+
+    for (i = 0; i < n_paths; i++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02 + i),
+            },
+            .frp_sw_if_index = tm->hw[0]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+	    .frp_flags = FIB_ROUTE_PATH_ATTACHED,
+        };
+        vec_add1(r_paths, r_path);
+    }
+
+    fib_table_entry_update(fib_index,
+                           pfx,
+                           FIB_SOURCE_API,
+                           FIB_ENTRY_FLAG_NONE,
+                           r_paths);
+
+    fei = fib_table_lookup_exact_match(fib_index, pfx);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "prefix present");
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+
+    lb = load_balance_get(dpo->dpoi_index);
+    FIB_TEST((lb->lb_n_buckets == expected_n_buckets),
+             "prefix lb over %d paths", lb->lb_n_buckets);
+
+    fib_table_entry_delete(fib_index,
+                           pfx,
+                           FIB_SOURCE_API);
+    FIB_TEST(FIB_NODE_INDEX_INVALID ==
+             fib_table_lookup_exact_match(fib_index, pfx), "prefix removed");
+    vec_free(r_paths);
+
+    /*
+     * add-remove test. no change.
+     */
+    FIB_TEST((path_list_db_size == fib_path_list_db_size()),
+             "path list DB population:%d", fib_path_list_db_size());
+    FIB_TEST((path_list_pool_size == fib_path_list_pool_size()),
+             "path list pool size is %d", fib_path_list_pool_size());
+    FIB_TEST((entry_pool_size == fib_entry_pool_size()),
+             "entry pool size is %d", fib_entry_pool_size());
+    return res;
+}
+
+static int
 fib_test_v4 (void)
 {
     /*
@@ -3614,52 +3677,26 @@ fib_test_v4 (void)
     /*
      * A route with multiple paths at once
      */
-    fib_route_path_t *r_paths = NULL;
-
-    for (ii = 0; ii < 4; ii++)
-    {
-        fib_route_path_t r_path = {
-            .frp_proto = DPO_PROTO_IP4,
-            .frp_addr = {
-                .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02 + ii),
-            },
-            .frp_sw_if_index = tm->hw[0]->sw_if_index,
-            .frp_weight = 1,
-            .frp_fib_index = ~0,
-        };
-        vec_add1(r_paths, r_path);
-    }
-
-    fib_table_entry_update(fib_index,
-                           &pfx_4_4_4_4_s_32,
-                           FIB_SOURCE_API,
-                           FIB_ENTRY_FLAG_NONE,
-                           r_paths);
-
-    fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
-    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "4.4.4.4/32 present");
-    dpo = fib_entry_contribute_ip_forwarding(fei);
-
-    lb = load_balance_get(dpo->dpoi_index);
-    FIB_TEST((lb->lb_n_buckets == 4), "4.4.4.4/32 lb over %d paths", lb->lb_n_buckets);
-
-    fib_table_entry_delete(fib_index,
-                           &pfx_4_4_4_4_s_32,
-                           FIB_SOURCE_API);
-    FIB_TEST(FIB_NODE_INDEX_INVALID ==
-             fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32),
-             "4.4.4.4/32 removed");
-    vec_free(r_paths);
+    FIB_TEST(0 ==
+             fib_test_multipath_v4(tm, fib_index, &pfx_4_4_4_4_s_32, 4, 4),
+             "multipath with 4 nexthops");
 
     /*
-     * add-remove test. no change.
+     * A route with lots of multiple paths that will overflow max supported
+     * lb buckets because of normalization
      */
-    FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
-             fib_path_list_db_size());
-    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
-             fib_path_list_pool_size());
-    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
-             fib_entry_pool_size());
+    FIB_TEST(0 ==
+             fib_test_multipath_v4(tm, fib_index, &pfx_4_4_4_4_s_32, 412,
+                                   LB_MAX_BUCKETS),
+             "multipath with too many nexthops");
+
+    /*
+     * A route with more paths than max supported lb buckets
+     */
+    FIB_TEST(0 ==
+             fib_test_multipath_v4 (tm, fib_index, &pfx_4_4_4_4_s_32,
+                                    LB_MAX_BUCKETS + 1, LB_MAX_BUCKETS),
+             "multipath with too many nexthops");
 
     /*
      * A route deag route
@@ -3698,7 +3735,6 @@ fib_test_v4 (void)
     FIB_TEST(FIB_NODE_INDEX_INVALID ==
              fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32),
              "4.4.4.4/32 removed");
-    vec_free(r_paths);
 
     /*
      * A route deag route in a source lookup table
@@ -3737,7 +3773,6 @@ fib_test_v4 (void)
     FIB_TEST(FIB_NODE_INDEX_INVALID ==
              fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32),
              "4.4.4.4/32 removed");
-    vec_free(r_paths);
 
     /*
      * add-remove test. no change.

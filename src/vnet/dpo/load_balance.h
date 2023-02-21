@@ -50,6 +50,12 @@ typedef struct load_balance_main_t_
 extern load_balance_main_t load_balance_main;
 
 /**
+ * The maximum number of buckets that a load-balance object can have
+ * This must not overflow the lb_n_buckets field
+ */
+#define LB_MAX_BUCKETS	8192
+
+/**
  * The number of buckets that a load-balance object can have and still
  * fit in one cache-line
  */
@@ -176,6 +182,10 @@ typedef struct load_balance_t_ {
 
 STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
 	      "A load_balance object size exceeds one cacheline");
+STATIC_ASSERT(LB_MAX_BUCKETS <= CLIB_U16_MAX,
+              "Too many buckets for load_balance object");
+STATIC_ASSERT(LB_MAX_BUCKETS && !(LB_MAX_BUCKETS & (LB_MAX_BUCKETS - 1)),
+              "LB_MAX_BUCKETS must be a power of 2");
 
 /**
  * Flags controlling load-balance formatting/display

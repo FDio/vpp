@@ -244,6 +244,8 @@ load_balance_create_i (u32 num_buckets,
 {
     load_balance_t *lb;
 
+    ASSERT (num_buckets <= LB_MAX_BUCKETS);
+
     lb = load_balance_alloc_i();
     lb->lb_hash_config = fhc;
     lb->lb_n_buckets = num_buckets;
@@ -455,8 +457,9 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
 
     /* Try larger and larger power of 2 sized adjacency blocks until we
        find one where traffic flows to within 1% of specified weights. */
-    for (n_adj = max_pow2 (n_nhs); ; n_adj *= 2)
+    for (n_adj = clib_min(max_pow2 (n_nhs), LB_MAX_BUCKETS); ; n_adj *= 2)
     {
+        ASSERT (n_adj <= LB_MAX_BUCKETS);
         error = 0;
 
         norm = n_adj / ((f64) sum_weight);
@@ -487,10 +490,14 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
 
         nhs[0].path_weight += n_adj_left;
 
-        /* Less than 5% average error per adjacency with this size adjacency block? */
-        if (error <= multipath_next_hop_error_tolerance*n_adj)
+        /* Less than 1% average error per adjacency with this size adjacency block,
+	 * or did we reached the maximum number of buckets we support? */
+        if (error <= multipath_next_hop_error_tolerance*n_adj ||
+            n_adj >= LB_MAX_BUCKETS)
         {
             /* Truncate any next hops with zero weight. */
+            vlib_log_debug(load_balance_logger, "error %f n_adj %d len %d",
+                           error, n_adj, i);
             vec_set_len (nhs, i);
             break;
         }
@@ -622,6 +629,7 @@ static inline void
 load_balance_set_n_buckets (load_balance_t *lb,
                             u32 n_buckets)
 {
+    ASSERT (n_buckets <= LB_MAX_BUCKETS);
     lb->lb_n_buckets = n_buckets;
     lb->lb_n_buckets_minus_1 = n_buckets-1;
 }
@@ -650,8 +658,6 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                                          &nhs,
                                          &sum_of_weights,
                                          multipath_next_hop_error_tolerance);
-
-    ASSERT (n_buckets >= vec_len (raw_nhs));
 
     /*
      * Save the old load-balance map used, and get a new one if required.

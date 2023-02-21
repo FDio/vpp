@@ -41,6 +41,12 @@ typedef struct replicate_main_t_
 extern replicate_main_t replicate_main;
 
 /**
+ * The number of buckets that a replicate object can have
+ * This must not overflow the rep_n_buckets field
+ */
+#define REP_MAX_BUCKETS	1024
+
+/**
  * The number of buckets that a load-balance object can have and still
  * fit in one cache-line
  */
@@ -108,6 +114,8 @@ typedef struct replicate_t_ {
 
 STATIC_ASSERT(sizeof(replicate_t) <= CLIB_CACHE_LINE_BYTES,
 	      "A replicate object size exceeds one cacheline");
+STATIC_ASSERT(REP_MAX_BUCKETS <= CLIB_U16_MAX,
+	      "Too many buckets for replicate object");
 
 /**
  * Flags controlling load-balance formatting/display
