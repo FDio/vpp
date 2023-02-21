@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1d28b78_7b04ab18",
+        "filename": "src/vnet/crypto/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-21T19:47:35Z",
+      "side": 1,
+      "message": "IPSEC specifics should go here. this is generic crypto",
+      "revId": "3bec9736ab25f5c6c185f643434c953e1263cb74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0fd0c0fb_0a1208a6",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-21T19:47:35Z",
+      "side": 1,
+      "message": "extern vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];\n\nis explicit in the size.",
+      "revId": "3bec9736ab25f5c6c185f643434c953e1263cb74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
