@@ -1419,6 +1419,61 @@ VLIB_CLI_COMMAND (set_interface_mac_address_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+set_interface_rss_hash_key_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = ~0;
+  u8 *rss_hash_key = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U %U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index, unformat_hex_string, &rss_hash_key))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (hw_if_index == (u32) ~0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
+
+  if (rss_hash_key == NULL)
+    {
+      error = clib_error_return (0, "please specify valid rss hash key");
+      goto done;
+    }
+
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+
+  error = vnet_hw_interface_set_rss_hash_key (vm, hi, rss_hash_key);
+
+done:
+  unformat_free (line_input);
+  vec_free (rss_hash_key);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_interface_rss_hash_key_cmd, static) = {
+  .path = "set interface rss hash key",
+  .short_help = "set interface rss hash key <interface> <rss-hash-key>",
+  .function = set_interface_rss_hash_key_fn,
+};
+
+static clib_error_t *
 set_tag (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
