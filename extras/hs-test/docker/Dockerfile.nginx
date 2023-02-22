@@ -2,9 +2,9 @@ ARG UBUNTU_VERSION
 
 FROM ubuntu:${UBUNTU_VERSION}
 
-RUN apt-get update
-RUN apt-get install -y nginx
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+ && apt-get install -y nginx \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY vpp-data/lib/* /usr/lib/
 COPY resources/nginx/vcl.conf /vcl.conf
