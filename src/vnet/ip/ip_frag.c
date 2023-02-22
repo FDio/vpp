@@ -42,7 +42,7 @@ format_ip_frag_trace (u8 * s, va_list * args)
   return s;
 }
 
-static u32 running_fragment_id;
+static u16 running_fragment_id;
 
 static void
 frag_set_sw_if_index (vlib_buffer_t * to, vlib_buffer_t * from)
@@ -134,7 +134,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
     }
   else
     {
-      ip_frag_id = (++running_fragment_id);
+      ip_frag_id = clib_atomic_add_fetch (&running_fragment_id, 1);
       ip_frag_offset = 0;
       more = 0;
     }
