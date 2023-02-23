@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab218e59_2b1250ff",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-02-23T20:34:24Z",
+      "side": 1,
+      "message": "This patch needs to be tested on both ubuntu-20.04 and ubuntu-22.04.",
+      "revId": "44cd1b80ffdcefa7743b10c871debbf118fb15ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
