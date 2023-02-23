@@ -34,6 +34,24 @@
       "parentUuid": "f25494a7_54b5182e",
       "revId": "c98f09242b3fd44318a0fa07f2667ecfecfef95b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11da87a2_b858b743",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1022,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-02-23T14:45:44Z",
+      "side": 1,
+      "message": "I understand this is for retry. Could you use a macro with proper name and preferably document the reason behind the magic number (why 5, not 6 or 1000) as comment?",
+      "parentUuid": "a45bab0d_7e49f557",
+      "revId": "c98f09242b3fd44318a0fa07f2667ecfecfef95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
