@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9dbf0a84_ca8b95f6",
+        "filename": "src/vnet/dpo/mpls_disposition.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "i didn\u0027t grok that difference, thanks. i\u0027ll change it back to the old scheme of prefetching b-\u003edata.",
+      "parentUuid": "3b487c7e_3d908d0e",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9417431b_70521974",
@@ -65,6 +83,24 @@
       "writtenOn": "2023-02-16T14:30:55Z",
       "side": 1,
       "message": "why is vlib_node_get_runtime (vm, ip4_input_node.index) needed here?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "997a69bc_acbc7488",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "it isn\u0027t, I will pass \u0027node\u0027.",
+      "parentUuid": "9417431b_70521974",
       "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a7940fe_3af9193c",
+        "filename": "src/vnet/ip/ip4_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "685fed25_ea4cbd78",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "78775430_64f4122a",
@@ -99,6 +153,24 @@
       "writtenOn": "2023-02-16T14:30:55Z",
       "side": 1,
       "message": "I\u0027m wondering: shouldn\u0027t we just do while (n_left_from \u003e\u003d 12) here instead? That would remove the branch for the prefetch and simplify the code.\nThe drawback is that for less than 12 packets, we\u0027ll fallback to the 2-by-2 code",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a39e515_2cce65aa",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "i haven\u0027t measured the difference between those two options. This code is a direct copy from the current IP4 variant. i don\u0027t want to make those changes in this commit.",
+      "parentUuid": "78775430_64f4122a",
       "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +192,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7607ef32_cede8f1c",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "i think it should. this is copied code. i\u0027ll make that change in a separate commit.",
+      "parentUuid": "f0291dc4_10edff04",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e3558d6d_bfdab16c",
@@ -137,6 +227,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "85e57bf4_b33ea46f",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e3558d6d_bfdab16c",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "53ef6de8_60466956",
@@ -150,6 +258,24 @@
       "writtenOn": "2023-02-16T14:30:55Z",
       "side": 1,
       "message": "Same comment: arc_enabled instead of 1?",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd5abe8e_d37f2fd4",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-02-23T01:17:34Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "53ef6de8_60466956",
       "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
