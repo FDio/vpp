@@ -52,6 +52,7 @@ srtp_init_policy (srtp_tc_t *ctx, transport_endpt_cfg_srtp_t *cfg)
     {
       sp = &ctx->srtp_policy[i];
       sp_cfg = &cfg->policies[i];
+      clib_memset (sp, 0, sizeof (*sp));
 
       srtp_crypto_policy_set_rtp_default (&sp->rtp);
       srtp_crypto_policy_set_rtcp_default (&sp->rtcp);
@@ -59,7 +60,6 @@ srtp_init_policy (srtp_tc_t *ctx, transport_endpt_cfg_srtp_t *cfg)
       sp->ssrc.value = sp_cfg->ssrc_value;
       sp->key = clib_mem_alloc (sp_cfg->key_len);
       clib_memcpy (sp->key, sp_cfg->key, sp_cfg->key_len);
-      sp->ekt = 0;
       sp->next = i < 1 ? &ctx->srtp_policy[i + 1] : 0;
       sp->window_size = sp_cfg->window_size;
       sp->allow_repeat_tx = sp_cfg->allow_repeat_tx;
