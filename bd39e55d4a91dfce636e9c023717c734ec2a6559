@@ -16,6 +16,24 @@
       "message": "a per-thread frag-ID would be better to save the atomic operation.",
       "revId": "bd39e55d4a91dfce636e9c023717c734ec2a6559",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b2b5391d_e1b7f18a",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2023-02-23T00:52:19Z",
+      "side": 1,
+      "message": "per-thread frag-ID may be not a good solution:\n1. frag-id only have 16 bit, thread id will waster 6-8 bit, so there may be so many duplicated frag packets in reass node if pps is very hight.\n2. fragment is a heavy operation, the effect of atomic is very small compare to it.",
+      "parentUuid": "b63a1cd4_527a0b15",
+      "revId": "bd39e55d4a91dfce636e9c023717c734ec2a6559",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
