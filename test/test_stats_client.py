@@ -4,13 +4,11 @@ import unittest
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 
-from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 
 
-@tag_fixme_vpp_workers
 class StatsClientTestCase(VppTestCase):
     """Test Stats Client"""
 
