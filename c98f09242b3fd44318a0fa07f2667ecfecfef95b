@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f25494a7_54b5182e",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1022,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-02-23T10:01:48Z",
+      "side": 1,
+      "message": "Why do we need magic number 5?",
+      "revId": "c98f09242b3fd44318a0fa07f2667ecfecfef95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
