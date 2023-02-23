@@ -50,14 +50,14 @@ func testProxyHttpTcp(s *NsSuite) error {
 }
 
 func configureVppProxy(s *NsSuite) error {
-	serverVeth := s.netInterfaces[serverInterface].(*NetworkInterfaceVeth)
+	serverVeth := s.netInterfaces[serverInterface]
 	clientVeth := s.netInterfaces[clientInterface]
 
 	testVppProxy := s.getContainerByName("vpp").vppInstance
 	output := testVppProxy.vppctl(
 		"test proxy server server-uri tcp://%s/555 client-uri tcp://%s/666",
 		clientVeth.IP4AddressString(),
-		serverVeth.PeerIp4AddressString(),
+		serverVeth.Peer().IP4AddressString(),
 	)
 	s.log("proxy configured...", output)
 	return nil

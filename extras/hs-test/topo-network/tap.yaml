@@ -1,4 +1,10 @@
 ---
 devices:
-  - name: "tap0"
+  - name: "hst_tap_host"
     type: "tap"
+    ip4:
+      network: 1
+    peer:
+      name: ""
+      ip4:
+        network: 1

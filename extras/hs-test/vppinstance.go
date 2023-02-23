@@ -172,10 +172,8 @@ func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
 }
 
 func (vpp *VppInstance) createAfPacket(
-	netInterface NetInterface,
+	veth *NetInterface,
 ) (interface_types.InterfaceIndex, error) {
-	veth := netInterface.(*NetworkInterfaceVeth)
-
 	createReq := &af_packet.AfPacketCreateV2{
 		UseRandomHwAddr: true,
 		HostIfName:      veth.Name(),
@@ -206,7 +204,7 @@ func (vpp *VppInstance) createAfPacket(
 	if veth.AddressWithPrefix() == (AddressWithPrefix{}) {
 		var err error
 		var ip4Address string
-		if ip4Address, err = veth.addresser.NewIp4Address(veth.peerNetworkNumber); err == nil {
+		if ip4Address, err = veth.addresser.NewIp4Address(veth.Peer().networkNumber); err == nil {
 			veth.SetAddress(ip4Address)
 		} else {
 			return 0, err
@@ -255,15 +253,15 @@ func (vpp *VppInstance) addAppNamespace(
 }
 
 func (vpp *VppInstance) createTap(
-	hostInterfaceName string,
-	hostIp4Address IP4AddressWithPrefix,
-	vppIp4Address AddressWithPrefix,
+	id uint32,
+	tap *NetInterface,
 ) error {
 	createTapReq := &tapv2.TapCreateV2{
+		ID:               id,
 		HostIfNameSet:    true,
-		HostIfName:       hostInterfaceName,
+		HostIfName:       tap.Name(),
 		HostIP4PrefixSet: true,
-		HostIP4Prefix:    hostIp4Address,
+		HostIP4Prefix:    tap.IP4AddressWithPrefix(),
 	}
 	createTapReply := &tapv2.TapCreateV2Reply{}
 
@@ -276,7 +274,7 @@ func (vpp *VppInstance) createTap(
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
 		SwIfIndex: createTapReply.SwIfIndex,
-		Prefix:    vppIp4Address,
+		Prefix:    tap.Peer().AddressWithPrefix(),
 	}
 	addAddressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
