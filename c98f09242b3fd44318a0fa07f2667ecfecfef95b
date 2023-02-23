@@ -16,6 +16,24 @@
       "message": "Why do we need magic number 5?",
       "revId": "c98f09242b3fd44318a0fa07f2667ecfecfef95b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a45bab0d_7e49f557",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1022,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-02-23T11:15:45Z",
+      "side": 1,
+      "message": "Because if \"get_interface\" won\u0027t find any related interface it will be try again every one second. \nBut the thread in this plugin responsible for look-up for the each interface inside VPP is executed every 2 seconds. So we need to enough time to find potential interface.",
+      "parentUuid": "f25494a7_54b5182e",
+      "revId": "c98f09242b3fd44318a0fa07f2667ecfecfef95b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
