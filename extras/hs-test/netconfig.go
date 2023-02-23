@@ -12,6 +12,7 @@ import (
 )
 
 type (
+	Cmd                  = exec.Cmd
 	MacAddress           = ethernet_types.MacAddress
 	AddressWithPrefix    = ip_types.AddressWithPrefix
 	IP4AddressWithPrefix = ip_types.IP4AddressWithPrefix
@@ -29,18 +30,7 @@ type (
 		category string // what else to call this when `type` is reserved?
 	}
 
-	NetInterface interface {
-		NetConfig
-		SetAddress(string)
-		AddressWithPrefix() AddressWithPrefix
-		IP4AddressWithPrefix() IP4AddressWithPrefix
-		IP4AddressString() string
-		SetIndex(InterfaceIndex)
-		Index() InterfaceIndex
-		HwAddress() MacAddress
-	}
-
-	NetInterfaceBase struct {
+	NetInterface struct {
 		NetConfigBase
 		addresser        *Addresser
 		ip4Address       string // this will have form 10.10.10.1/24
@@ -48,18 +38,7 @@ type (
 		hwAddress        MacAddress
 		networkNamespace string
 		networkNumber    int
-	}
-
-	NetworkInterfaceVeth struct {
-		NetInterfaceBase
-		peerNetworkNamespace string
-		peerName             string
-		peerNetworkNumber    int
-		peerIp4Address       string
-	}
-
-	NetworkInterfaceTap struct {
-		NetInterfaceBase
+		peer             *NetInterface
 	}
 
 	NetworkNamespace struct {
@@ -80,6 +59,181 @@ const (
 	Bridge string = "bridge"
 )
 
+type InterfaceAdder func(n *NetInterface) *Cmd
+
+var (
+	ipCommandMap = map[string]InterfaceAdder{
+		Veth: func(n *NetInterface) *Cmd {
+			return exec.Command("ip", "link", "add", n.name, "type", "veth", "peer", "name", n.peer.name)
+		},
+		Tap: func(n *NetInterface) *Cmd {
+			return exec.Command("ip", "tuntap", "add", n.name, "mode", "tap")
+		},
+	}
+)
+
+func NewNetworkInterface(cfg NetDevConfig, a *Addresser) (*NetInterface, error) {
+	var newInterface *NetInterface = &NetInterface{}
+	var err error
+	newInterface.addresser = a
+	newInterface.name = cfg["name"].(string)
+	newInterface.networkNumber = defaultNetworkNumber
+
+	if interfaceType, ok := cfg["type"]; ok {
+		newInterface.category = interfaceType.(string)
+	}
+
+	if presetHwAddress, ok := cfg["preset-hw-address"]; ok {
+		newInterface.hwAddress, err = ethernet_types.ParseMacAddress(presetHwAddress.(string))
+		if err != nil {
+			return &NetInterface{}, err
+		}
+	}
+
+	if netns, ok := cfg["netns"]; ok {
+		newInterface.networkNamespace = netns.(string)
+	}
+
+	if ip, ok := cfg["ip4"]; ok {
+		if n, ok := ip.(NetDevConfig)["network"]; ok {
+			newInterface.networkNumber = n.(int)
+		}
+		newInterface.ip4Address, err = newInterface.addresser.NewIp4Address(
+			newInterface.networkNumber,
+		)
+		if err != nil {
+			return &NetInterface{}, err
+		}
+	}
+
+	if _, ok := cfg["peer"]; !ok {
+		return newInterface, nil
+	}
+
+	peer := cfg["peer"].(NetDevConfig)
+
+	if newInterface.peer, err = NewNetworkInterface(peer, a); err != nil {
+		return &NetInterface{}, err
+	}
+
+	return newInterface, nil
+}
+
+func (n *NetInterface) ConfigureUpState() error {
+	err := SetDevUp(n.Name(), "")
+	if err != nil {
+		return fmt.Errorf("set link up failed: %v", err)
+	}
+	return nil
+}
+
+func (n *NetInterface) ConfigureNetworkNamespace() error {
+	if n.networkNamespace != "" {
+		err := LinkSetNetns(n.name, n.networkNamespace)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (n *NetInterface) ConfigureAddress() error {
+	if n.ip4Address != "" {
+		if err := AddAddress(
+			n.Name(),
+			n.ip4Address,
+			n.networkNamespace,
+		); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (n *NetInterface) Configure() error {
+	cmd := ipCommandMap[n.Type()](n)
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("creating interface '%v' failed: %v", n.Name(), err)
+	}
+
+	if err := n.ConfigureUpState(); err != nil {
+		return err
+	}
+
+	if err := n.ConfigureNetworkNamespace(); err != nil {
+		return err
+	}
+
+	if err := n.ConfigureAddress(); err != nil {
+		return err
+	}
+
+	if n.peer != nil && n.peer.name != "" {
+		if err := n.Peer().ConfigureUpState(); err != nil {
+			return err
+		}
+
+		if err := n.Peer().ConfigureNetworkNamespace(); err != nil {
+			return err
+		}
+
+		if err := n.Peer().ConfigureAddress(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (n *NetInterface) Unconfigure() {
+	DelLink(n.name)
+}
+
+func (n *NetInterface) Name() string {
+	return n.name
+}
+
+func (n *NetInterface) Type() string {
+	return n.category
+}
+
+func (n *NetInterface) SetAddress(address string) {
+	n.ip4Address = address
+}
+
+func (n *NetInterface) SetIndex(index InterfaceIndex) {
+	n.index = index
+}
+
+func (n *NetInterface) Index() InterfaceIndex {
+	return n.index
+}
+
+func (n *NetInterface) AddressWithPrefix() AddressWithPrefix {
+	address, _ := ip_types.ParseAddressWithPrefix(n.ip4Address)
+	return address
+}
+
+func (n *NetInterface) IP4AddressWithPrefix() IP4AddressWithPrefix {
+	ip4Prefix, _ := ip_types.ParseIP4Prefix(n.ip4Address)
+	ip4AddressWithPrefix := ip_types.IP4AddressWithPrefix(ip4Prefix)
+	return ip4AddressWithPrefix
+}
+
+func (n *NetInterface) IP4AddressString() string {
+	return strings.Split(n.ip4Address, "/")[0]
+}
+
+func (n *NetInterface) HwAddress() MacAddress {
+	return n.hwAddress
+}
+
+func (n *NetInterface) Peer() *NetInterface {
+	return n.peer
+}
+
 func (b *NetConfigBase) Name() string {
 	return b.name
 }
@@ -88,165 +242,10 @@ func (b *NetConfigBase) Type() string {
 	return b.category
 }
 
-func (b *NetInterfaceBase) SetAddress(address string) {
-	b.ip4Address = address
-}
-
-func (b *NetInterfaceBase) SetIndex(index InterfaceIndex) {
-	b.index = index
-}
-
-func (b *NetInterfaceBase) Index() InterfaceIndex {
-	return b.index
-}
-
-func (b *NetInterfaceBase) AddressWithPrefix() AddressWithPrefix {
-	address, _ := ip_types.ParseAddressWithPrefix(b.ip4Address)
-	return address
-}
-
-func (b *NetInterfaceBase) IP4AddressWithPrefix() IP4AddressWithPrefix {
-	IP4Prefix, _ := ip_types.ParseIP4Prefix(b.ip4Address)
-	IP4AddressWithPrefix := ip_types.IP4AddressWithPrefix(IP4Prefix)
-	return IP4AddressWithPrefix
-}
-
-func (b *NetInterfaceBase) IP4AddressString() string {
-	return strings.Split(b.ip4Address, "/")[0]
-}
-
-func (b *NetInterfaceBase) HwAddress() MacAddress {
-	return b.hwAddress
-}
-
-func NewVeth(cfg NetDevConfig, a *Addresser) (NetworkInterfaceVeth, error) {
-	var veth NetworkInterfaceVeth
-	var err error
-	veth.addresser = a
-	veth.name = cfg["name"].(string)
-	veth.category = "veth"
-	veth.peerNetworkNumber = defaultNetworkNumber
-
-	if cfg["preset-hw-address"] != nil {
-		veth.hwAddress, err = ethernet_types.ParseMacAddress(cfg["preset-hw-address"].(string))
-		if err != nil {
-			return NetworkInterfaceVeth{}, err
-		}
-	}
-
-	if netns, ok := cfg["netns"]; ok {
-		veth.networkNamespace = netns.(string)
-	}
-
-	if ip, ok := cfg["ip4"]; ok {
-		if n, ok := ip.(NetDevConfig)["network"]; ok {
-			veth.networkNumber = n.(int)
-		}
-		veth.ip4Address, err = veth.addresser.NewIp4Address(veth.networkNumber)
-		if err != nil {
-			return NetworkInterfaceVeth{}, err
-		}
-	}
-
-	peer := cfg["peer"].(NetDevConfig)
-
-	veth.peerName = peer["name"].(string)
-
-	if peer["netns"] != nil {
-		veth.peerNetworkNamespace = peer["netns"].(string)
-	}
-
-	if peerIp, ok := peer["ip4"]; ok {
-		if n, ok := peerIp.(NetDevConfig)["network"]; ok {
-			veth.peerNetworkNumber = n.(int)
-		}
-		veth.peerIp4Address, err = veth.addresser.NewIp4Address(veth.peerNetworkNumber)
-		if err != nil {
-			return NetworkInterfaceVeth{}, err
-		}
-	}
-
-	return veth, nil
-}
-
-func (iface *NetworkInterfaceVeth) Configure() error {
-	err := AddVethPair(iface.name, iface.peerName)
-	if err != nil {
-		return err
-	}
-
-	if iface.networkNamespace != "" {
-		err := LinkSetNetns(iface.name, iface.networkNamespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	if iface.peerNetworkNamespace != "" {
-		err := LinkSetNetns(iface.peerName, iface.peerNetworkNamespace)
-		if err != nil {
-			return err
-		}
-	}
-
-	if iface.ip4Address != "" {
-		err = AddAddress(
-			iface.Name(),
-			iface.ip4Address,
-			iface.networkNamespace,
-		)
-	}
-
-	if iface.peerIp4Address != "" {
-		err = AddAddress(
-			iface.peerName,
-			iface.peerIp4Address,
-			iface.peerNetworkNamespace,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to add configure address for %s: %v", iface.peerName, err)
-		}
-	}
-	return nil
-}
-
-func (iface *NetworkInterfaceVeth) Unconfigure() {
-	DelLink(iface.name)
-}
-
-func (iface *NetworkInterfaceVeth) PeerIp4AddressString() string {
-	return strings.Split(iface.peerIp4Address, "/")[0]
-}
-
-func NewTap(cfg NetDevConfig, a *Addresser) (NetworkInterfaceTap, error) {
-	var tap NetworkInterfaceTap
-	tap.addresser = a
-	tap.name = cfg["name"].(string)
-	tap.category = "tap"
-	ip4Address, err := tap.addresser.NewIp4Address()
-	if err != nil {
-		return NetworkInterfaceTap{}, err
-	}
-	tap.SetAddress(ip4Address)
-	return tap, nil
-}
-
-func (iface *NetworkInterfaceTap) Configure() error {
-	err := AddTap(iface.name, iface.IP4AddressString())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (iface *NetworkInterfaceTap) Unconfigure() {
-	DelLink(iface.name)
-}
-
 func NewNetNamespace(cfg NetDevConfig) (NetworkNamespace, error) {
 	var networkNamespace NetworkNamespace
 	networkNamespace.name = cfg["name"].(string)
-	networkNamespace.category = "netns"
+	networkNamespace.category = NetNs
 	return networkNamespace, nil
 }
 
@@ -261,7 +260,7 @@ func (ns *NetworkNamespace) Unconfigure() {
 func NewBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	var bridge NetworkBridge
 	bridge.name = cfg["name"].(string)
-	bridge.category = "bridge"
+	bridge.category = Bridge
 	for _, v := range cfg["interfaces"].([]interface{}) {
 		bridge.interfaces = append(bridge.interfaces, v.(string))
 	}
@@ -303,30 +302,6 @@ func SetDevDown(dev, ns string) error {
 	return setDevUpDown(dev, ns, false)
 }
 
-func AddTap(ifName, ifAddress string) error {
-	cmd := exec.Command("ip", "tuntap", "add", ifName, "mode", "tap")
-	o, err := cmd.CombinedOutput()
-	if err != nil {
-		s := fmt.Sprintf("error creating tap %s: %v: %s", ifName, err, string(o))
-		return errors.New(s)
-	}
-
-	cmd = exec.Command("ip", "addr", "add", ifAddress, "dev", ifName)
-	err = cmd.Run()
-	if err != nil {
-		DelLink(ifName)
-		s := fmt.Sprintf("error setting addr for tap %s: %v", ifName, err)
-		return errors.New(s)
-	}
-
-	err = SetDevUp(ifName, "")
-	if err != nil {
-		DelLink(ifName)
-		return err
-	}
-	return nil
-}
-
 func DelLink(ifName string) {
 	cmd := exec.Command("ip", "link", "del", ifName)
 	cmd.Run()
@@ -345,23 +320,6 @@ func setDevUpDown(dev, ns string, isUp bool) error {
 	if err != nil {
 		s := fmt.Sprintf("error bringing %s device %s!", dev, op)
 		return errors.New(s)
-	}
-	return nil
-}
-
-func AddVethPair(ifName, peerName string) error {
-	cmd := exec.Command("ip", "link", "add", ifName, "type", "veth", "peer", "name", peerName)
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("creating veth pair '%v/%v' failed: %v", ifName, peerName, err)
-	}
-	err = SetDevUp(ifName, "")
-	if err != nil {
-		return fmt.Errorf("set link up failed: %v", err)
-	}
-	err = SetDevUp(peerName, "")
-	if err != nil {
-		return fmt.Errorf("set link up failed: %v", err)
 	}
 	return nil
 }

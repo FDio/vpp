@@ -51,7 +51,7 @@ func (s *NoTopoSuite) TestNginx() {
 	err := vpp.waitForApp("-app", 5)
 	s.assertNil(err)
 
-	serverAddress := s.netInterfaces[tapNameVpp].IP4AddressString()
+	serverAddress := s.netInterfaces[tapInterfaceName].Peer().IP4AddressString()
 
 	defer func() { os.Remove(query) }()
 	go startWget(finished, serverAddress, "80", query, "")
@@ -64,7 +64,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	var args []string
 	var exeName string
 
-	serverAddress := s.netInterfaces[tapNameVpp].IP4AddressString()
+	serverAddress := s.netInterfaces[tapInterfaceName].Peer().IP4AddressString()
 
 	if ab_or_wrk == "ab" {
 		args = []string{"-n", fmt.Sprintf("%d", nRequests), "-c",
@@ -78,7 +78,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		exeName = "ab"
 	} else {
 		args = []string{"-c", fmt.Sprintf("%d", nClients), "-t", "2", "-d", "30",
-			"http://" + serverAddress + ":80"}
+			"http://" + serverAddress + ":80/64B.json"}
 		exeName = "wrk"
 	}
 
