@@ -28,7 +28,7 @@ type HstSuite struct {
 	containers    map[string]*Container
 	volumes       []string
 	netConfigs    []NetConfig
-	netInterfaces map[string]NetInterface
+	netInterfaces map[string]*NetInterface
 	addresser     *Addresser
 }
 
@@ -189,7 +189,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 	}
 
 	s.addresser = NewAddresser(s)
-	s.netInterfaces = make(map[string]NetInterface)
+	s.netInterfaces = make(map[string]*NetInterface)
 	for _, elem := range yamlTopo.Devices {
 		switch elem["type"].(string) {
 		case NetNs:
@@ -200,20 +200,11 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 					s.T().Fatalf("network config error: %v", err)
 				}
 			}
-		case Veth:
+		case Veth, Tap:
 			{
-				if veth, err := NewVeth(elem, s.addresser); err == nil {
-					s.netConfigs = append(s.netConfigs, &veth)
-					s.netInterfaces[veth.Name()] = &veth
-				} else {
-					s.T().Fatalf("network config error: %v", err)
-				}
-			}
-		case Tap:
-			{
-				if tap, err := NewTap(elem, s.addresser); err == nil {
-					s.netConfigs = append(s.netConfigs, &tap)
-					s.netInterfaces[tap.Name()] = &tap
+				if netIf, err := NewNetworkInterface(elem, s.addresser); err == nil {
+					s.netConfigs = append(s.netConfigs, netIf)
+					s.netInterfaces[netIf.Name()] = netIf
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
@@ -247,11 +238,6 @@ func (s *HstSuite) unconfigureNetworkTopology() {
 	for _, nc := range s.netConfigs {
 		nc.Unconfigure()
 	}
-}
-
-type NetworkAddresses struct {
-	network           int
-	numberOfAddresses int
 }
 
 type AddressCounter = int
