@@ -4,13 +4,11 @@ import unittest
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 
-from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 
 
-@tag_fixme_vpp_workers
 class StatsClientTestCase(VppTestCase):
     """Test Stats Client"""
 
@@ -22,6 +20,16 @@ class StatsClientTestCase(VppTestCase):
     def tearDownClass(cls):
         super(StatsClientTestCase, cls).tearDownClass()
 
+    def setUp(self):
+        super(StatsClientTestCase, self).setUp()
+        self.create_pg_interfaces([])
+
+    def tearDown(self):
+        super(StatsClientTestCase, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig()
+            i.admin_down()
+
     @classmethod
     def setUpConstants(cls):
         cls.extra_vpp_statseg_config = "per-node-counters on"
@@ -32,7 +40,8 @@ class StatsClientTestCase(VppTestCase):
         """Test set errors"""
         self.assertEqual(self.statistics.set_errors(), {})
         self.assertEqual(
-            self.statistics.get_counter("/err/ethernet-input/no error"), [0]
+            self.statistics.get_counter("/err/ethernet-input/no error"),
+            [0] * (1 + self.vpp_worker_count),
         )
 
     def test_client_fd_leak(self):
@@ -76,9 +85,6 @@ class StatsClientTestCase(VppTestCase):
         if_tx = self.statistics.get_counter("/if/tx")
 
         self.assertEqual(pg1_tx[0]["bytes"], if_tx[0][self.pg1.sw_if_index]["bytes"])
-        for i in self.pg_interfaces:
-            i.unconfig()
-            i.admin_down()
 
     def test_symlink_add_del_interfaces(self):
         """Test symlinks when adding and deleting interfaces"""
@@ -109,19 +115,23 @@ class StatsClientTestCase(VppTestCase):
         rx = self.statistics.get_counter("/interfaces/pg0/rx")
 
         # We wait for nodes symlinks to update (interfaces created/deleted).
-        # ... and packets to be sent
-        self.sleep(0.1)
+        self.virtual_sleep(1)
         vectors = self.statistics.get_counter("/nodes/pg1-tx/vectors")
 
-        self.assertEqual(tx[0]["bytes"] - tx_before_sending[0]["bytes"], bytes_to_send)
-        self.assertEqual(tx[0]["packets"] - tx_before_sending[0]["packets"], 5)
-        self.assertEqual(rx[0]["bytes"] - rx_before_sending[0]["bytes"], bytes_to_send)
-        self.assertEqual(rx[0]["packets"] - rx_before_sending[0]["packets"], 5)
+        rx_bytes = 0
+        rx_packets = 0
+        tx_bytes = 0
+        tx_packets = 0
+        for i in range(1 + self.vpp_worker_count):
+            rx_bytes += rx[i]["bytes"] - rx_before_sending[i]["bytes"]
+            rx_packets += rx[i]["packets"] - rx_before_sending[i]["packets"]
+            tx_bytes += tx[i]["bytes"] - tx_before_sending[i]["bytes"]
+            tx_packets += tx[i]["packets"] - tx_before_sending[i]["packets"]
+        self.assertEqual(tx_bytes, bytes_to_send)
+        self.assertEqual(tx_packets, 5)
+        self.assertEqual(rx_bytes, bytes_to_send)
+        self.assertEqual(rx_packets, 5)
         self.assertEqual(vectors[0], rx[0]["packets"])
-
-        for i in self.pg_interfaces:
-            i.unconfig()
-            i.admin_down()
 
     def test_index_consistency(self):
         """Test index consistency despite changes in the stats"""
