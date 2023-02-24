@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d74f061b_4b58ca79",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 2919
+      },
+      "writtenOn": "2023-02-24T08:23:38Z",
+      "side": 1,
+      "message": "anthoher problem is set mask-\u003eaction twice when direction is outbond, remove one is better",
+      "range": {
+        "startLine": 431,
+        "startChar": 12,
+        "endLine": 431,
+        "endChar": 19
+      },
+      "revId": "3ef8a960f42e8e119ff4d94ecb59e7cd5b4e5415",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
