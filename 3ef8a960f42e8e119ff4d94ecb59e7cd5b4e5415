@@ -22,6 +22,30 @@
       },
       "revId": "3ef8a960f42e8e119ff4d94ecb59e7cd5b4e5415",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "138842b5_1b271f5f",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-02-24T13:10:58Z",
+      "side": 1,
+      "message": "Yes you are right, this call is redundad, as it is repeated in ipsec_fp_get_policy_ports_mask.",
+      "parentUuid": "d74f061b_4b58ca79",
+      "range": {
+        "startLine": 431,
+        "startChar": 12,
+        "endLine": 431,
+        "endChar": 19
+      },
+      "revId": "3ef8a960f42e8e119ff4d94ecb59e7cd5b4e5415",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
