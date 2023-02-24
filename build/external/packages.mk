@@ -102,7 +102,7 @@ endef
 endif
 
 ifneq ($(filter $1,$(VPP_SKIP_EXTERNAL)), $1)
-$(B)/.$1.config.ok: $(B)/.$1.patch.ok $(addsuffix -install,$($1_depends))
+$(B)/.$1.config.ok: $(B)/.$1.patch.ok $(addprefix $(B)/.,$(addsuffix .install.ok,$($1_depends)))
 	$$(call h1,"configuring $1 $($1_version) - log: $$($1_config_log)")
 	@mkdir -p $$($1_build_dir)
 	$$(call $1_config_cmds)
