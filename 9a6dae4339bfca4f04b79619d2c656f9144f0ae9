@@ -124,6 +124,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a861e33d_bd364261",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-02-24T14:20:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b94f5376_871ead3e",
+      "range": {
+        "startLine": 1024,
+        "startChar": 12,
+        "endLine": 1024,
+        "endChar": 13
+      },
+      "revId": "9a6dae4339bfca4f04b79619d2c656f9144f0ae9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9a66c788_eaa0f1ea",
