@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "83116e98_c901e2af",
+        "filename": "src/vnet/crypto/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-02-24T16:44:22Z",
+      "side": 1,
+      "message": "I removed the code in generic crypto. However, this also means we\u0027re not able to report crypto engine errors per-SA for async crypto. If we want to report these stats, we need to do it when dequeuing the crypto frame and hence in the generic crypto code.",
+      "parentUuid": "a1d28b78_7b04ab18",
+      "revId": "3bec9736ab25f5c6c185f643434c953e1263cb74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0fd0c0fb_0a1208a6",
         "filename": "src/vnet/ipsec/ipsec_sa.h",
         "patchSetId": 11
@@ -31,6 +49,24 @@
       "writtenOn": "2023-02-21T19:47:35Z",
       "side": 1,
       "message": "extern vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];\n\nis explicit in the size.",
+      "revId": "3bec9736ab25f5c6c185f643434c953e1263cb74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18e592d4_c43d2237",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-02-24T16:44:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0fd0c0fb_0a1208a6",
       "revId": "3bec9736ab25f5c6c185f643434c953e1263cb74",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
