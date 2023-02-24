@@ -16,6 +16,24 @@
       "message": "Try this:\n  checksum \u003d ip-\u003echecksum - (ip-\u003echecksum \u003d\u003d 0);\n  checksum \u003d checksum - clib_host_to_net_u16 (0x0100);",
       "revId": "2fe4f4a1505fd15d68eddd0adab5e9034014ad02",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b87cc7b_b27558fe",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2061,
+      "author": {
+        "id": 2919
+      },
+      "writtenOn": "2023-02-24T06:39:43Z",
+      "side": 1,
+      "message": "the result is same. but my change have two advantage， one is have the similar logic with  VPP code ip4_ttl_and_checksum_check and kernel code ip_decrease_ttl, more readability , the second is the change is small.  The fixed code have runned in production environment for long time.",
+      "parentUuid": "afec5ce3_d3d3bb57",
+      "revId": "2fe4f4a1505fd15d68eddd0adab5e9034014ad02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
