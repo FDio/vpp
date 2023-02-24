@@ -34,6 +34,24 @@
       "parentUuid": "b63a1cd4_527a0b15",
       "revId": "bd39e55d4a91dfce636e9c023717c734ec2a6559",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "785ef611_6934a125",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2919
+      },
+      "writtenOn": "2023-02-24T07:21:47Z",
+      "side": 1,
+      "message": "Maybe we do not need a  this running_fragment_id, get 16 bits Identification from the original ip header.Identification  is the unique value when the sender sends IP packets, and to copy this field to each partition after the packet is fragmented.",
+      "parentUuid": "b2b5391d_e1b7f18a",
+      "revId": "bd39e55d4a91dfce636e9c023717c734ec2a6559",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
