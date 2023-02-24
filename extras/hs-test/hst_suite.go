@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/edwarnicke/exechelper"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ type HstSuite struct {
 	netConfigs    []NetConfig
 	netInterfaces map[string]NetInterface
 	addresser     *Addresser
+	testIds       map[string]string
 }
 
 func (s *HstSuite) TearDownSuite() {
@@ -109,6 +111,7 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 
 func (s *HstSuite) log(args ...any) {
 	if *IsVerbose {
+                s.T().Helper()
 		s.T().Log(args...)
 	}
 }
@@ -243,6 +246,20 @@ func (s *HstSuite) unconfigureNetworkTopology() {
 	for _, nc := range s.netConfigs {
 		nc.Unconfigure()
 	}
+}
+
+func (s *HstSuite) getTestId() string {
+	testName := s.T().Name()
+
+	if s.testIds == nil {
+		s.testIds = map[string]string{}
+	}
+
+	if _, ok := s.testIds[testName]; !ok {
+		s.testIds[testName] = time.Now().Format(time.RFC3339)
+	}
+
+	return s.testIds[testName]
 }
 
 type NetworkAddresses struct {

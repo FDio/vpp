@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/edwarnicke/exechelper"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 
 const vppConfigTemplate = `unix {
   nodaemon
-  log %[1]s/var/log/vpp/vpp.log
+  log %[1]s%[4]s
   full-coredump
   cli-listen %[1]s%[2]s
   runtime-dir %[1]s/var/run
@@ -52,11 +53,17 @@ plugins {
   plugin http_plugin.so { enable }
 }
 
+logging {
+  default-log-level debug
+  default-syslog-log-level debug
+}
+
 `
 
 const (
 	defaultCliSocketFilePath = "/var/run/vpp/cli.sock"
 	defaultApiSocketFilePath = "/var/run/vpp/api.sock"
+	defaultLogFilePath       = "/var/log/vpp/vpp.log"
 )
 
 type VppInstance struct {
@@ -100,13 +107,14 @@ func (vpp *VppInstance) start() error {
 		containerWorkDir,
 		defaultCliSocketFilePath,
 		defaultApiSocketFilePath,
+		defaultLogFilePath,
 	)
 	configContent += vpp.additionalConfig.ToString()
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 
 	// Start VPP
-	vpp.container.execServer("vpp -c " + startupFileName)
+	vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 
 	// Connect to VPP and store the connection
 	sockAddress := vpp.container.GetHostWorkDir() + defaultApiSocketFilePath
@@ -288,6 +296,15 @@ func (vpp *VppInstance) createTap(
 	}
 
 	return nil
+}
+
+func (vpp *VppInstance) saveLogs() {
+	logTarget := vpp.container.getLogDirPath() + "vppinstance-" + vpp.container.name + ".log"
+	logSource := vpp.container.GetHostWorkDir() + defaultLogFilePath
+	cmd := exec.Command("cp", logSource, logTarget)
+	vpp.Suite().T().Helper()
+	vpp.Suite().log(cmd.String())
+	cmd.Run()
 }
 
 func (vpp *VppInstance) disconnect() {
