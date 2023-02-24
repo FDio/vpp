@@ -9,6 +9,10 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
+const (
+	logDir string = "/tmp/hs-test/"
+)
+
 var (
 	workDir, _ = os.Getwd()
 )
@@ -218,6 +222,7 @@ func (c *Container) execServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + serverCommand
+	c.Suite().T().Helper()
 	c.Suite().log(containerExecCommand)
 	c.Suite().assertNil(exechelper.Run(containerExecCommand))
 }
@@ -226,16 +231,54 @@ func (c *Container) exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + cliCommand
+	c.Suite().T().Helper()
 	c.Suite().log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
 	c.Suite().assertNil(err)
 	return string(byteOutput)
 }
 
+func (c *Container) getLogDirPath() string {
+	testId := c.Suite().getTestId()
+	testName := c.Suite().T().Name()
+	logDirPath := logDir + testName + "/" + testId + "/"
+
+	cmd := exec.Command("mkdir", "-p", logDirPath)
+	if err := cmd.Run(); err != nil {
+		c.Suite().T().Fatalf("mkdir error: %v", err)
+	}
+
+	return logDirPath
+}
+
+func (c *Container) saveLogs() {
+	cmd := exec.Command("docker", "inspect", "--format='{{.State.Status}}'", c.name)
+	if output, _ := cmd.CombinedOutput(); !strings.Contains(string(output), "running") {
+		return
+	}
+
+	testLogFilePath := c.getLogDirPath() + "container-" + c.name + ".log"
+
+	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		c.Suite().T().Fatalf("fetching logs error: %v", err)
+	}
+
+	f, err := os.Create(testLogFilePath)
+	if err != nil {
+		c.Suite().T().Fatalf("file create error: %v", err)
+	}
+	fmt.Fprintf(f, string(output))
+	f.Close()
+}
+
 func (c *Container) stop() error {
 	if c.vppInstance != nil && c.vppInstance.apiChannel != nil {
+		c.vppInstance.saveLogs()
 		c.vppInstance.disconnect()
 	}
 	c.vppInstance = nil
+	c.saveLogs()
 	return exechelper.Run("docker stop " + c.name + " -t 0")
 }
