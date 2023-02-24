@@ -6,6 +6,10 @@ import (
 	"os/exec"
 )
 
+const (
+	query string = "return_ok"
+)
+
 func (s *NsSuite) TestHttpTps() {
 	iface := s.netInterfaces[clientInterface]
 	client_ip := iface.IP4AddressString()
@@ -40,8 +44,7 @@ func (s *VethsSuite) TestHttpCli() {
 	s.assertContains(o, "<html>", "<html> not found in the result!")
 }
 
-func (s *NoTopoSuite) TestNginx() {
-	query := "return_ok"
+func (s *NoTopoSuite) TestNginxAsServer() {
 	finished := make(chan error, 1)
 
 	nginxCont := s.getContainerByName("nginx")
@@ -78,7 +81,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		exeName = "ab"
 	} else {
 		args = []string{"-c", fmt.Sprintf("%d", nClients), "-t", "2", "-d", "30",
-			"http://" + serverAddress + ":80"}
+			"http://" + serverAddress + ":80/" + query}
 		exeName = "wrk"
 	}
 
