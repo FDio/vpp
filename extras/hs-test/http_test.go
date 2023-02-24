@@ -40,7 +40,7 @@ func (s *VethsSuite) TestHttpCli() {
 	s.assertContains(o, "<html>", "<html> not found in the result!")
 }
 
-func (s *NoTopoSuite) TestNginx() {
+func (s *NoTopoSuite) TestNginxAsServer() {
 	query := "return_ok"
 	finished := make(chan error, 1)
 
@@ -78,7 +78,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		exeName = "ab"
 	} else {
 		args = []string{"-c", fmt.Sprintf("%d", nClients), "-t", "2", "-d", "30",
-			"http://" + serverAddress + ":80"}
+			"http://" + serverAddress + ":80/64B.json"}
 		exeName = "wrk"
 	}
 
