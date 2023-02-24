@@ -34,6 +34,24 @@
       "parentUuid": "afec5ce3_d3d3bb57",
       "revId": "2fe4f4a1505fd15d68eddd0adab5e9034014ad02",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "821bd78c_0c2dc3ff",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2061,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2023-02-24T06:50:38Z",
+      "side": 1,
+      "message": "Original code only failed when checksum is 0, we have found the issue a year ago,\nand run in production mode for a year. \nsee: https://gerrit.fd.io/r/c/vpp/+/36018",
+      "parentUuid": "3b87cc7b_b27558fe",
+      "revId": "2fe4f4a1505fd15d68eddd0adab5e9034014ad02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
