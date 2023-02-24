@@ -246,7 +246,7 @@ error:
 
 static_always_inline enum noise_state_crypt
 wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
-		       vnet_crypto_async_frame_t *async_frame,
+		       vnet_crypto_async_frame_t **async_frame,
 		       vlib_buffer_t *b, u8 *payload, u32 payload_len, u32 bi,
 		       u16 next, u16 async_next, noise_remote_t *r,
 		       uint32_t *r_idx, uint64_t *nonce, u8 *iv, f64 time)
@@ -284,8 +284,17 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd,
   clib_memset (iv, 0, 4);
   clib_memcpy (iv + 4, nonce, sizeof (*nonce));
 
+  /* get a frame for this op if we don't yet have one or it's full  */
+  if (NULL == *async_frame || vnet_crypto_async_frame_is_full (*async_frame))
+    {
+      *async_frame = vnet_crypto_async_get_frame (
+	vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_ENC);
+      /* Save the frame to the list we'll submit at the end */
+      vec_add1 (ptd->async_frames, *async_frame);
+    }
+
   /* this always succeeds because we know the frame is not full */
-  wg_output_tun_add_to_frame (vm, async_frame, kp->kp_send_index, payload_len,
+  wg_output_tun_add_to_frame (vm, *async_frame, kp->kp_send_index, payload_len,
 			      payload - b->data, bi, async_next, iv,
 			      payload + payload_len, flag);
 
@@ -479,17 +488,8 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (is_async)
 	{
-	  /* get a frame for this op if we don't yet have one or it's full  */
-	  if (NULL == async_frame ||
-	      vnet_crypto_async_frame_is_full (async_frame))
-	    {
-	      async_frame = vnet_crypto_async_get_frame (
-		vm, VNET_CRYPTO_OP_CHACHA20_POLY1305_TAG16_AAD0_ENC);
-	      /* Save the frame to the list we'll submit at the end */
-	      vec_add1 (ptd->async_frames, async_frame);
-	    }
 	  state = wg_add_to_async_frame (
-	    vm, ptd, async_frame, b[0], plain_data, plain_data_len,
+	    vm, ptd, &async_frame, b[0], plain_data, plain_data_len,
 	    from[b - bufs], next[0], async_next_node, &peer->remote,
 	    &message_data_wg->receiver_index, &message_data_wg->counter,
 	    iv_data, time);
