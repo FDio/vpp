@@ -805,7 +805,10 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
     goto done;
 
   ip4_sw_interface_enable_disable (sw_if_index, !is_del);
-  ip4_mfib_interface_enable_disable (sw_if_index, !is_del);
+  if (!vnet_sw_interface_is_p2p (vnm, sw_if_index))
+    {
+      ip4_mfib_interface_enable_disable (sw_if_index, !is_del);
+    }
 
   /* intf addr routes are added/deleted on admin up/down */
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))
@@ -1090,7 +1093,11 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
         ip4_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
       }));
       /* *INDENT-ON* */
-      ip4_mfib_interface_enable_disable (sw_if_index, 0);
+
+      if (!vnet_sw_interface_is_p2p (vnm, sw_if_index))
+	{
+	  ip4_mfib_interface_enable_disable (sw_if_index, 0);
+	}
 
       if (0 != im4->fib_index_by_sw_if_index[sw_if_index])
 	fib_table_bind (FIB_PROTOCOL_IP4, sw_if_index, 0);
