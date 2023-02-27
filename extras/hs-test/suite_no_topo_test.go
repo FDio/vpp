@@ -4,8 +4,7 @@ const (
 	singleTopoContainerVpp   = "vpp"
 	singleTopoContainerNginx = "nginx"
 
-	tapNameVpp  = "vppTap"
-	tapNameHost = "hostTap"
+	tapNameVpp = "hst_tap"
 )
 
 type NoTopoSuite struct {
@@ -17,15 +16,22 @@ func (s *NoTopoSuite) SetupSuite() {
 
 	s.addresser = NewAddresser(&s.HstSuite)
 
-	var vppTapDevConfig = NetDevConfig{"name": tapNameVpp}
-	vppTap, _ := NewTap(vppTapDevConfig, s.addresser)
-
-	var hostTapDevConfig = NetDevConfig{"name": tapNameHost}
-	hostTap, _ := NewTap(hostTapDevConfig, s.addresser)
+	var tapDevConfig = NetDevConfig{
+		"name": tapNameVpp,
+		"ip4": NetDevConfig{
+			"network": 1,
+		},
+		"peer": NetDevConfig{
+			"name": "peer" + tapNameVpp,
+			"ip4": NetDevConfig{
+				"network": 1,
+			},
+		},
+	}
+	tap, _ := NewVeth(tapDevConfig, s.addresser)
 
 	s.netInterfaces = make(map[string]NetInterface)
-	s.netInterfaces[vppTap.Name()] = &vppTap
-	s.netInterfaces[hostTap.Name()] = &hostTap
+	s.netInterfaces[tap.Name()] = &tap
 }
 
 func (s *NoTopoSuite) SetupTest() {
@@ -43,8 +49,7 @@ func (s *NoTopoSuite) SetupTest() {
 	vpp, _ := container.newVppInstance(startupConfig)
 	vpp.start()
 
-	vppTapAddress := s.netInterfaces[tapNameVpp].AddressWithPrefix()
-	hostTapAddress := s.netInterfaces[tapNameHost].IP4AddressWithPrefix()
+	tapInterface := s.netInterfaces[tapNameVpp].(*NetworkInterfaceVeth)
 
-	vpp.createTap("tap0", hostTapAddress, vppTapAddress)
+	vpp.createTap(tapInterface)
 }

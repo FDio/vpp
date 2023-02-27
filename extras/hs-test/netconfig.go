@@ -218,6 +218,17 @@ func (iface *NetworkInterfaceVeth) PeerIp4AddressString() string {
 	return strings.Split(iface.peerIp4Address, "/")[0]
 }
 
+func (iface *NetworkInterfaceVeth) PeerAddressWithPrefix() AddressWithPrefix {
+	address, _ := ip_types.ParseAddressWithPrefix(iface.peerIp4Address)
+	return address
+}
+
+func (iface *NetworkInterfaceVeth) peerIP4AddressWithPrefix() IP4AddressWithPrefix {
+	IP4Prefix, _ := ip_types.ParseIP4Prefix(iface.peerIp4Address)
+	IP4AddressWithPrefix := ip_types.IP4AddressWithPrefix(IP4Prefix)
+	return IP4AddressWithPrefix
+}
+
 func NewTap(cfg NetDevConfig, a *Addresser) (NetworkInterfaceTap, error) {
 	var tap NetworkInterfaceTap
 	tap.addresser = a
