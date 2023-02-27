@@ -23,6 +23,8 @@ func (s *VethsSuite) SetupSuite() {
 }
 
 func (s *VethsSuite) SetupTest() {
+	s.skipIfUnconfiguring()
+
 	s.SetupVolumes()
 	s.SetupContainers()
 

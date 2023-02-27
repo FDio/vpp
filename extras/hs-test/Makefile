@@ -7,6 +7,10 @@ ifeq ($(PERSIST),)
 PERSIST=false
 endif
 
+ifeq ($(UNCONFIGURE),)
+UNCONFIGURE=false
+endif
+
 ifeq ($(TEST),)
 TEST=all
 endif
@@ -45,7 +49,8 @@ build-vpp-debug:
 
 .PHONY: test
 test: .deps.ok .build.vpp
-	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) --test=$(TEST)
+	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--unconfigure=$(UNCONFIGURE) --test=$(TEST)
 
 build-go:
 	go build ./tools/http_server

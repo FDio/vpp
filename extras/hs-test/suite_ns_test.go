@@ -17,6 +17,7 @@ func (s *NsSuite) SetupSuite() {
 }
 
 func (s *NsSuite) SetupTest() {
+	s.skipIfUnconfiguring()
 	s.SetupVolumes()
 	s.SetupContainers()
 
