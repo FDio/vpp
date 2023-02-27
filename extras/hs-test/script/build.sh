@@ -61,3 +61,4 @@ docker_build () {
 
 docker_build hs-test/vpp vpp
 docker_build hs-test/nginx-ldp nginx
+docker_build hs-test/nginx-server nginx-server
