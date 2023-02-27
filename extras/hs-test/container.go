@@ -121,12 +121,22 @@ func (c *Container) GetContainerWorkDir() (res string) {
 	return
 }
 
-func (c *Container) getRunCommand() string {
-	cmd := "docker run --cap-add=all -d --privileged --network host --rm"
-	cmd += c.getVolumesAsCliOption()
-	cmd += c.getEnvVarsAsCliOption()
-	cmd += " --name " + c.name + " " + c.image + " " + c.extraRunningArgs
-	return cmd
+func (c *Container) getContainerArguments() string {
+	args := "--cap-add=all --privileged --network host --rm"
+	args += c.getVolumesAsCliOption()
+	args += c.getEnvVarsAsCliOption()
+	args += " --name " + c.name + " " + c.image
+	return args
+}
+
+func (c *Container) create() {
+	cmd := "docker create " + c.getContainerArguments()
+	exechelper.Run(cmd)
+}
+
+func (c *Container) start() {
+	cmd := "docker start " + c.name
+	exechelper.Run(cmd)
 }
 
 func (c *Container) run() error {
@@ -134,7 +144,8 @@ func (c *Container) run() error {
 		return fmt.Errorf("run container failed: name is blank")
 	}
 
-	cmd := c.getRunCommand()
+	cmd := "docker run -d " + c.getContainerArguments() + " " + c.extraRunningArgs
+	c.Suite().log(cmd)
 	err := exechelper.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("container run failed: %s", err)
@@ -271,6 +282,14 @@ func (c *Container) saveLogs() {
 	}
 	fmt.Fprintf(f, string(output))
 	f.Close()
+}
+
+func (c *Container) log() string {
+	cmd := "docker logs " + c.name
+	c.Suite().log(cmd)
+	o, err := exechelper.CombinedOutput(cmd)
+	c.Suite().assertNil(err)
+	return string(o)
 }
 
 func (c *Container) stop() error {

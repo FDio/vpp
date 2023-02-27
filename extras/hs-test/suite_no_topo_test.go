@@ -34,5 +34,5 @@ func (s *NoTopoSuite) SetupTest() {
 
 	tapInterface := s.netInterfaces[tapInterfaceName]
 
-	vpp.createTap(1, tapInterface)
+	vpp.createTap(tapInterface)
 }

@@ -1,0 +1,12 @@
+ARG UBUNTU_VERSION
+
+FROM ubuntu:${UBUNTU_VERSION}
+
+RUN apt-get update \
+ && apt-get install -y nginx \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY resources/nginx/nginx_server_mirroring.conf /nginx.conf
+
+
+ENTRYPOINT ["nginx", "-c", "/nginx.conf"]
