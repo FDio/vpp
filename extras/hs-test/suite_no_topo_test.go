@@ -18,6 +18,7 @@ func (s *NoTopoSuite) SetupSuite() {
 }
 
 func (s *NoTopoSuite) SetupTest() {
+	s.skipIfUnconfiguring()
 	s.SetupVolumes()
 	s.SetupContainers()
 

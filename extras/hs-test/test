@@ -5,6 +5,7 @@ source vars
 args=
 single_test=0
 persist_set=0
+unconfigure_set=0
 
 for i in "$@"
 do
@@ -22,6 +23,13 @@ case "${i}" in
             args="$args -verbose"
         fi
         ;;
+    --unconfigure=*)
+        unconfigure="${i#*=}"
+        if [ $unconfigure = "true" ]; then
+            args="$args -unconfigure"
+            unconfigure_set=1
+        fi
+        ;;
     --test=*)
         tc_name="${i#*=}"
         if [ $tc_name != "all" ]; then
@@ -32,7 +40,17 @@ esac
 done
 
 if [ $single_test -eq 0 ] && [ $persist_set -eq 1 ]; then
-    echo "persist flag is not supperted while running all tests!"
+    echo "persist flag is not supported while running all tests!"
+    exit 1
+fi
+
+if [ $unconfigure_set -eq 1 ] && [ $single_test -eq 0 ]; then
+    echo "a single test has to be specified when unconfigure is set"
+    exit 1
+fi
+
+if [ $persist_set -eq 1 ] && [ $unconfigure_set -eq 1 ]; then
+    echo "setting persist flag and unconfigure flag is not allowed"
     exit 1
 fi
 

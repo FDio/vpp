@@ -19,6 +19,7 @@ const (
 
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
+var IsUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 
 type HstSuite struct {
 	suite.Suite
@@ -42,7 +43,14 @@ func (s *HstSuite) TearDownTest() {
 	s.RemoveVolumes()
 }
 
+func (s *HstSuite) skipIfUnconfiguring() {
+	if *IsUnconfiguring {
+		s.skip("skipping to unconfigure")
+	}
+}
+
 func (s *HstSuite) SetupTest() {
+	s.skipIfUnconfiguring()
 	s.SetupVolumes()
 	s.SetupContainers()
 }
@@ -111,7 +119,7 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 
 func (s *HstSuite) log(args ...any) {
 	if *IsVerbose {
-                s.T().Helper()
+		s.T().Helper()
 		s.T().Log(args...)
 	}
 }
@@ -222,6 +230,10 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 
 func (s *HstSuite) configureNetworkTopology(topologyName string) {
 	s.loadNetworkTopology(topologyName)
+
+	if *IsUnconfiguring {
+		return
+	}
 
 	for _, nc := range s.netConfigs {
 		if err := nc.Configure(); err != nil {
