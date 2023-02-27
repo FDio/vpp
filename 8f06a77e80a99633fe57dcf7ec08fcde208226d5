@@ -67,6 +67,23 @@
       "message": "csit-3n-icx-perftest  2cAND64bANDndrpdrANDnic_intel-e810cqANDdrv_vfio_pciAND ethip4udpwireguard8tnlsw-ip4base",
       "revId": "8f06a77e80a99633fe57dcf7ec08fcde208226d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c83fd10_774eff70",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-02-27T11:59:41Z",
+      "side": 1,
+      "message": "csit-3n-snr-perftest  2cAND64bANDndrpdrANDnic_intel-e822cqANDdrv_vfio_pciANDethip4udpwireguard8tnlhwasync-ip4base",
+      "revId": "8f06a77e80a99633fe57dcf7ec08fcde208226d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
