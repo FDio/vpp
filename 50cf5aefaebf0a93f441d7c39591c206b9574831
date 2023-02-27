@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "225ba329_6bcd0e3b",
+        "filename": "extras/hs-test/mirroring_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9b1cdfab_13c4cf1a",
+      "range": {
+        "startLine": 20,
+        "startChar": 2,
+        "endLine": 20,
+        "endChar": 12
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dee65de4_b312dfd4",
@@ -37,6 +61,30 @@
       "writtenOn": "2023-02-27T17:23:18Z",
       "side": 1,
       "message": "Rename to nginx_proxy_mirroring.conf",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 5
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e1db039_6b388c11",
+        "filename": "extras/hs-test/resources/nginx/mirroring_proxy.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dee65de4_b312dfd4",
       "range": {
         "startLine": 1,
         "startChar": 0,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "758de4f4_4c6a43b0",
+        "filename": "extras/hs-test/resources/nginx/nginx.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3f6cfedc_589ebebe",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 16
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "55c9c723_b7c9b655",
@@ -83,6 +155,30 @@
       "writtenOn": "2023-02-27T17:23:18Z",
       "side": 1,
       "message": "server",
+      "range": {
+        "startLine": 64,
+        "startChar": 27,
+        "endLine": 64,
+        "endChar": 37
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "22a0ef79_d82906d9",
+        "filename": "extras/hs-test/script/build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "55c9c723_b7c9b655",
       "range": {
         "startLine": 64,
         "startChar": 27,
@@ -116,6 +212,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0fc6044_4d2ca1ae",
+        "filename": "extras/hs-test/suite_no_topo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "271b85dd_0dee1269",
+      "range": {
+        "startLine": 31,
+        "startChar": 14,
+        "endLine": 31,
+        "endChar": 18
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a5f70c08_4ee06c19",
@@ -129,6 +249,30 @@
       "writtenOn": "2023-02-27T17:23:18Z",
       "side": 1,
       "message": "Rename to nginxProxyAndServer.yaml",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 3
+      },
+      "revId": "50cf5aefaebf0a93f441d7c39591c206b9574831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e8eafe3_fcb2b62c",
+        "filename": "extras/hs-test/topo-containers/doubleNginx.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a5f70c08_4ee06c19",
       "range": {
         "startLine": 1,
         "startChar": 0,

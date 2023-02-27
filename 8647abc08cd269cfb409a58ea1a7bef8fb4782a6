@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50e1bbe7_d9a58b1f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-02-27T20:17:51Z",
+      "side": 1,
+      "message": "I removed the CPU section from VPP config because it is making some test fail on my laptop. The mirroring test still reproduces the issue without it.",
+      "revId": "8647abc08cd269cfb409a58ea1a7bef8fb4782a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
