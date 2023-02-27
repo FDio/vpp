@@ -63,6 +63,10 @@
 #define SOCKADDR_GET_SA(__addr) _addr;
 #endif
 
+#ifndef UDP_SEGMENT
+#define UDP_SEGMENT 103
+#endif
+
 typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
