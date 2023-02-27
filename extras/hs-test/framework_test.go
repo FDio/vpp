@@ -25,3 +25,8 @@ func TestNoTopo(t *testing.T) {
 	var m NoTopoSuite
 	suite.Run(t, &m)
 }
+
+func TestNginx(t *testing.T) {
+	var m NginxSuite
+	suite.Run(t, &m)
+}
