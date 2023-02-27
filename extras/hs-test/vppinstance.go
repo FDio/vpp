@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/edwarnicke/exechelper"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,6 +42,11 @@ socksvr {
 
 statseg {
   socket-name %[1]s/var/run/vpp/stats.sock
+}
+
+cpu {
+  main-core 1
+  corelist-workers 2
 }
 
 plugins {
@@ -160,15 +166,16 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	return string(output)
 }
 
-func (vpp *VppInstance) waitForApp(appName string, timeout int) error {
+func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")
 		if strings.Contains(o, appName) {
-			return nil
+			return
 		}
 		time.Sleep(1 * time.Second)
 	}
-	return fmt.Errorf("timeout while waiting for app '%s'", appName)
+	vpp.Suite().assertNil(1, "Timeout while waiting for app '%s'", appName)
+	return
 }
 
 func (vpp *VppInstance) createAfPacket(
@@ -254,16 +261,19 @@ func (vpp *VppInstance) addAppNamespace(
 	return nil
 }
 
-func (vpp *VppInstance) createTap(
-	hostInterfaceName string,
-	hostIp4Address IP4AddressWithPrefix,
-	vppIp4Address AddressWithPrefix,
-) error {
+func (vpp *VppInstance) createTap(iface *NetworkInterfaceVeth, tapId ...string) error {
+	var id uint32 = 1
+	if len(tapId) > 0 {
+		intId, _ := strconv.Atoi(tapId[0])
+		id = uint32(intId)
+	}
 	createTapReq := &tapv2.TapCreateV2{
+		ID:               id,
 		HostIfNameSet:    true,
-		HostIfName:       hostInterfaceName,
+		HostIfName:       iface.peerName,
+		HostNamespace:    iface.peerNetworkNamespace,
 		HostIP4PrefixSet: true,
-		HostIP4Prefix:    hostIp4Address,
+		HostIP4Prefix:    iface.peerIP4AddressWithPrefix(),
 	}
 	createTapReply := &tapv2.TapCreateV2Reply{}
 
@@ -276,7 +286,7 @@ func (vpp *VppInstance) createTap(
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
 		SwIfIndex: createTapReply.SwIfIndex,
-		Prefix:    vppIp4Address,
+		Prefix:    iface.AddressWithPrefix(),
 	}
 	addAddressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
