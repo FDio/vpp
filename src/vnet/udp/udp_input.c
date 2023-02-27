@@ -161,7 +161,11 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 						 TRANSPORT_PROTO_UDP,
 						 queue_event);
     }
-  ASSERT (wrote0 > 0);
+
+  /* In some rare cases, session_enqueue_dgram_connection can fail because a
+   * chunk cannot be allocated in the RX FIFO */
+  if (PREDICT_FALSE (wrote0 == 0))
+    *error0 = UDP_ERROR_FIFO_NOMEM;
 
 unlock_rx_lock:
 
