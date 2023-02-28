@@ -499,7 +499,7 @@ These commands have the following optional parameters:
 
    512.
 
--  filter - Use the pcap rx / tx / drop trace filter, which must be
+-  filter - Use the pcap trace rx / tx / drop filter, which must be
    configured. Use classify filter pcap… to configure the filter. The
    filter will only be executed if the per-interface or any-interface
    tests fail.
@@ -528,8 +528,8 @@ packet trace capture filtering
 ------------------------------
 
 The “classify filter pcap \| \| trace” debug CLI command constructs an
-arbitrary set of packet classifier tables for use with “pcap rx \| tx \|
-drop trace,” and with the vpp packet tracer on a per-interface or
+arbitrary set of packet classifier tables for use with “pcap trace rx \|
+tx \| drop,” and with the vpp packet tracer on a per-interface or
 system-wide basis.
 
 Packets which match a rule in the classifier table chain will be traced.

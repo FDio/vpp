@@ -2054,7 +2054,7 @@ vlib_enable_disable_pkt_trace_filter (int enable)
 
 /*?
  * Construct an arbitrary set of packet classifier tables for use with
- * "pcap rx | tx trace," and with the vpp packet tracer
+ * "pcap trace rx | tx," and with the vpp packet tracer
  *
  * Packets which match a rule in the classifier table chain
  * will be traced. The tables are automatically ordered so that
@@ -2097,10 +2097,10 @@ vlib_enable_disable_pkt_trace_filter (int enable)
  * @cliexpar
  * Configuring the classify filter
  *
- * Configure a simple classify filter, and configure pcap rx trace to use it:
+ * Configure a simple classify filter, and configure pcap trace rx to use it:
  *
  * @cliexcmd{classify filter rx mask l3 ip4 src match l3 ip4 src 192.168.1.11}
- * <b><em>pcap rx trace on max 100 filter</em></b>
+ * <b><em>pcap trace rx max 100 filter</em></b>
  *
  * Configure another fairly simple filter
  *

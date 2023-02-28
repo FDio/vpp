@@ -17,6 +17,6 @@ packet-generator new {
     }
 }
 
-comment { Pick one, uncomment, and "pcap rx ..." or "trace add pg-input ..." }
+comment { Pick one, uncomment, and "pcap trace rx ..." or "trace add pg-input ..." }
 comment { classify filter trace mask l3 ip4 src match l3 ip4 src 192.168.1.15 }
 comment { classify filter pcap mask l3 ip4 src match l3 ip4 src 192.168.1.15 }
