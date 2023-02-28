@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a611280_63ce112d",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1857,
+      "author": {
+        "id": 2919
+      },
+      "writtenOn": "2023-02-28T02:07:45Z",
+      "side": 1,
+      "message": "free sa an sa_id_p shoule be move after this-\u003esas-\u003eremove_at. Because remove_at will access the address of sa, this may casue crash.",
+      "revId": "396fe653435143f71c290287ffcf7fbf08d92cad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
