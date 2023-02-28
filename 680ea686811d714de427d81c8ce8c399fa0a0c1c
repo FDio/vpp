@@ -50,6 +50,23 @@
       "message": "csit-2n-icx-perftest  64bANDndrpdrANDnic_intel-xxv710ANDdrv_af_xdpANDethip4-ip4base",
       "revId": "680ea686811d714de427d81c8ce8c399fa0a0c1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ec85e6c_c132ed1f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2247
+      },
+      "writtenOn": "2023-02-28T03:08:41Z",
+      "side": 1,
+      "message": "csit-2n-icx-perftest nic_intel-xxv710ANDdrv_af_xdpANDethip4-ip4baseANDndrpdrAND64b",
+      "revId": "680ea686811d714de427d81c8ce8c399fa0a0c1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
