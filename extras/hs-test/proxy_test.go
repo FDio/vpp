@@ -35,7 +35,7 @@ func testProxyHttpTcp(s *NsSuite) error {
 		" --retry-on-http-error=503 --tries=10"+
 		" -O %s %s:555/%s",
 		outputFile,
-		clientVeth.IP4AddressString(),
+		clientVeth.ip4AddressString(),
 		srcFile,
 	)
 	s.log(c)
@@ -56,8 +56,8 @@ func configureVppProxy(s *NsSuite) {
 	testVppProxy := s.getContainerByName("vpp").vppInstance
 	output := testVppProxy.vppctl(
 		"test proxy server server-uri tcp://%s/555 client-uri tcp://%s/666",
-		clientVeth.IP4AddressString(),
-		serverVeth.Peer().IP4AddressString(),
+		clientVeth.ip4AddressString(),
+		serverVeth.peer.ip4AddressString(),
 	)
 	s.log("proxy configured...", output)
 }
@@ -76,7 +76,7 @@ func configureEnvoyProxy(s *NsSuite) {
 	address := struct {
 		Server string
 	}{
-		Server: serverVeth.Peer().IP4AddressString(),
+		Server: serverVeth.peer.ip4AddressString(),
 	}
 	envoyContainer.createConfig(
 		"/etc/envoy/envoy.yaml",
