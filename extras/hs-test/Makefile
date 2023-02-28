@@ -32,6 +32,7 @@ help:
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " VERBOSE=[true|false]     - verbose output"
+	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " TEST=[test-name]         - specific test to run"
 	@echo
 	@echo "List of all tests:"
