@@ -22,15 +22,15 @@ func (s *NginxSuite) SetupSuite() {
 func (s *NginxSuite) SetupTest() {
 	s.skipIfUnconfiguring()
 
-	s.SetupVolumes()
-	s.SetupContainers()
+	s.setupVolumes()
+	s.setupContainers()
 
 	// Setup test conditions
 	var startupConfig Stanza
 	startupConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api").Close()
+		newStanza("session").
+		append("enable").
+		append("use-app-socket-api").close()
 
 	// ... for proxy
 	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
@@ -50,8 +50,8 @@ func (s *NginxSuite) SetupTest() {
 		Proxy  string
 		Server string
 	}{
-		Proxy:  clientInterface.Peer().IP4AddressString(),
-		Server: serverInterface.IP4AddressString(),
+		Proxy:  clientInterface.getPeer().ip4AddressString(),
+		Server: serverInterface.ip4AddressString(),
 	}
 	nginxContainer.createConfig(
 		"/nginx.conf",

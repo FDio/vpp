@@ -14,7 +14,7 @@ type YamlTopology struct {
 	Volumes    []VolumeConfig    `yaml:"volumes"`
 }
 
-func AddAddress(device, address, ns string) error {
+func addAddress(device, address, ns string) error {
 	c := []string{"ip", "addr", "add", address, "dev", device}
 	cmd := appendNetns(c, ns)
 	err := cmd.Run()
