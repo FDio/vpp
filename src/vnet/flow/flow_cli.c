@@ -366,15 +366,16 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   u32 vni = 0;
   u32 queue_start = 0, queue_end = 0;
   vnet_flow_type_t type = VNET_FLOW_TYPE_UNKNOWN;
-  ip4_address_and_mask_t ip4s = { };
-  ip4_address_and_mask_t ip4d = { };
-  ip6_address_and_mask_t ip6s = { };
-  ip6_address_and_mask_t ip6d = { };
-  ip_port_and_mask_t sport = { };
-  ip_port_and_mask_t dport = { };
-  ip_prot_and_mask_t protocol = { };
+  ip4_address_and_mask_t ip4s = {}, in_ip4s = {};
+  ip4_address_and_mask_t ip4d = {}, in_ip4d = {};
+  ip6_address_and_mask_t ip6s = {}, in_ip6s = {};
+  ip6_address_and_mask_t ip6d = {}, in_ip6d = {};
+  ip_port_and_mask_t sport = {}, in_sport = {};
+  ip_port_and_mask_t dport = {}, in_dport = {};
+  ip_prot_and_mask_t protocol = {}, in_proto = {};
   u16 eth_type;
-  bool tcp_udp_port_set = false;
+  bool inner_ip4_set = false, inner_ip6_set = false;
+  bool tcp_udp_port_set = false, inner_port_set = false;
   bool gtpc_set = false;
   bool gtpu_set = false;
   bool vni_set = false;
@@ -415,12 +416,24 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "dst-ip %U",
 			 unformat_ip4_address_and_mask, &ip4d))
 	flow_class = FLOW_IPV4_CLASS;
+      else if (unformat (line_input, "in-src-ip %U",
+			 unformat_ip4_address_and_mask, &in_ip4s))
+	inner_ip4_set = true;
+      else if (unformat (line_input, "in-dst-ip %U",
+			 unformat_ip4_address_and_mask, &in_ip4d))
+	inner_ip4_set = true;
       else if (unformat (line_input, "ip6-src-ip %U",
 			 unformat_ip6_address_and_mask, &ip6s))
 	flow_class = FLOW_IPV6_CLASS;
       else if (unformat (line_input, "ip6-dst-ip %U",
 			 unformat_ip6_address_and_mask, &ip6d))
 	flow_class = FLOW_IPV6_CLASS;
+      else if (unformat (line_input, "in-ip6-src-ip %U",
+			 unformat_ip6_address_and_mask, &in_ip6s))
+	inner_ip6_set = true;
+      else if (unformat (line_input, "in-ip6-dst-ip %U",
+			 unformat_ip6_address_and_mask, &in_ip6d))
+	inner_ip6_set = true;
       else if (unformat (line_input, "src-port %U", unformat_ip_port_and_mask,
 			 &sport))
 	tcp_udp_port_set = true;
@@ -431,6 +444,15 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	if (unformat
 	    (line_input, "proto %U", unformat_ip_protocol_and_mask,
 	     &protocol))
+	;
+      else if (unformat (line_input, "in-src-port %U",
+			 unformat_ip_port_and_mask, &in_sport))
+	inner_port_set = true;
+      else if (unformat (line_input, "in-dst-port %U",
+			 unformat_ip_port_and_mask, &in_dport))
+	inner_port_set = true;
+      else if (unformat (line_input, "in-proto %U",
+			 unformat_ip_protocol_and_mask, &in_proto))
 	;
       else if (unformat (line_input, "gtpc teid %u", &teid))
 	gtpc_set = true;
@@ -592,6 +614,22 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	    type = VNET_FLOW_TYPE_IP4_IPSEC_AH;
 	  else if (tcp_udp_port_set)
 	    type = VNET_FLOW_TYPE_IP4_N_TUPLE;
+	  else if (inner_ip4_set)
+	    {
+	      if (inner_port_set)
+		type = VNET_FLOW_TYPE_IP4_IP4_N_TUPLE;
+	      else
+		type = VNET_FLOW_TYPE_IP4_IP4;
+	      protocol.prot = IP_PROTOCOL_IP_IN_IP;
+	    }
+	  else if (inner_ip6_set)
+	    {
+	      if (inner_port_set)
+		type = VNET_FLOW_TYPE_IP4_IP6_N_TUPLE;
+	      else
+		type = VNET_FLOW_TYPE_IP4_IP6;
+	      protocol.prot = IP_PROTOCOL_IPV6;
+	    }
 	  else
 	    type = VNET_FLOW_TYPE_IP4;
 	  break;
@@ -600,6 +638,22 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	    type = VNET_FLOW_TYPE_IP6_N_TUPLE;
 	  else if (vni_set)
 	    type = VNET_FLOW_TYPE_IP6_VXLAN;
+	  else if (inner_ip4_set)
+	    {
+	      if (inner_port_set)
+		type = VNET_FLOW_TYPE_IP6_IP4_N_TUPLE;
+	      else
+		type = VNET_FLOW_TYPE_IP6_IP4;
+	      protocol.prot = IP_PROTOCOL_IP_IN_IP;
+	    }
+	  else if (inner_ip6_set)
+	    {
+	      if (inner_port_set)
+		type = VNET_FLOW_TYPE_IP6_IP6_N_TUPLE;
+	      else
+		type = VNET_FLOW_TYPE_IP6_IP6;
+	      protocol.prot = IP_PROTOCOL_IPV6;
+	    }
 	  else
 	    type = VNET_FLOW_TYPE_IP6;
 	  break;
@@ -660,6 +714,30 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 	    case IP_PROTOCOL_IPSEC_AH:
 	      flow.ip4_ipsec_esp.spi = spi;
 	      break;
+	    case IP_PROTOCOL_IP_IN_IP:
+	      clib_memcpy (&flow.ip4_ip4.in_src_addr, &in_ip4s,
+			   sizeof (ip4_address_and_mask_t));
+	      clib_memcpy (&flow.ip4_ip4.in_dst_addr, &in_ip4d,
+			   sizeof (ip4_address_and_mask_t));
+	      if (type == VNET_FLOW_TYPE_IP4_IP4_N_TUPLE)
+		{
+		  flow.ip4_ip4.in_protocol.prot = in_proto.prot;
+		  flow.ip4_ip4_n_tuple.in_src_port = in_sport;
+		  flow.ip4_ip4_n_tuple.in_dst_port = in_dport;
+		}
+	      break;
+	    case IP_PROTOCOL_IPV6:
+	      clib_memcpy (&flow.ip4_ip6.in_src_addr, &in_ip6s,
+			   sizeof (ip6_address_and_mask_t));
+	      clib_memcpy (&flow.ip4_ip6.in_dst_addr, &in_ip6d,
+			   sizeof (ip6_address_and_mask_t));
+	      if (type == VNET_FLOW_TYPE_IP4_IP6_N_TUPLE)
+		{
+		  flow.ip4_ip6.in_protocol.prot = in_proto.prot;
+		  flow.ip4_ip6_n_tuple.in_src_port = in_sport;
+		  flow.ip4_ip6_n_tuple.in_dst_port = in_dport;
+		}
+	      break;
 	    default:
 	      break;
 	    }
@@ -692,6 +770,30 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
 
 	      if (type == VNET_FLOW_TYPE_IP6_VXLAN)
 		flow.ip6_vxlan.vni = vni;
+	      break;
+	    case IP_PROTOCOL_IP_IN_IP:
+	      clib_memcpy (&flow.ip6_ip4.in_src_addr, &in_ip4s,
+			   sizeof (ip4_address_and_mask_t));
+	      clib_memcpy (&flow.ip6_ip4.in_dst_addr, &in_ip4d,
+			   sizeof (ip4_address_and_mask_t));
+	      if (type == VNET_FLOW_TYPE_IP6_IP4_N_TUPLE)
+		{
+		  flow.ip6_ip4.in_protocol.prot = in_proto.prot;
+		  flow.ip6_ip4_n_tuple.in_src_port = in_sport;
+		  flow.ip6_ip4_n_tuple.in_dst_port = in_dport;
+		}
+	      break;
+	    case IP_PROTOCOL_IPV6:
+	      clib_memcpy (&flow.ip6_ip6.in_src_addr, &in_ip6s,
+			   sizeof (ip6_address_and_mask_t));
+	      clib_memcpy (&flow.ip6_ip6.in_dst_addr, &in_ip6d,
+			   sizeof (ip6_address_and_mask_t));
+	      if (type == VNET_FLOW_TYPE_IP6_IP6_N_TUPLE)
+		{
+		  flow.ip6_ip6.in_protocol.prot = in_proto.prot;
+		  flow.ip6_ip6_n_tuple.in_src_port = in_sport;
+		  flow.ip6_ip6_n_tuple.in_dst_port = in_dport;
+		}
 	      break;
 	    default:
 	      break;

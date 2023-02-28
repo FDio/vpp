@@ -34,6 +34,14 @@
   _ (IP4_L2TPV3OIP, ip4_l2tpv3oip, "ipv4-l2tpv3oip")                          \
   _ (IP4_IPSEC_ESP, ip4_ipsec_esp, "ipv4-ipsec-esp")                          \
   _ (IP4_IPSEC_AH, ip4_ipsec_ah, "ipv4-ipsec-ah")                             \
+  _ (IP6_IP6, ip6_ip6, "ipv6-ipv6")                                           \
+  _ (IP6_IP4, ip6_ip4, "ipv6-ipv4")                                           \
+  _ (IP4_IP6, ip4_ip6, "ipv4-ipv6")                                           \
+  _ (IP4_IP4, ip4_ip4, "ipv4-ipv4")                                           \
+  _ (IP6_IP6_N_TUPLE, ip6_ip6_n_tuple, "ipv6-ipv6-n-tuple")                   \
+  _ (IP6_IP4_N_TUPLE, ip6_ip4_n_tuple, "ipv6-ipv4-n-tuple")                   \
+  _ (IP4_IP6_N_TUPLE, ip4_ip6_n_tuple, "ipv4-ipv6-n-tuple")                   \
+  _ (IP4_IP4_N_TUPLE, ip4_ip4_n_tuple, "ipv4-ipv4-n-tuple")                   \
   /* l4 flow*/                                                                \
   _ (IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple")                                \
   _ (IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple")                                \
@@ -105,6 +113,42 @@
 #define foreach_flow_entry_ip4_gtpu \
   foreach_flow_entry_ip4_n_tuple \
   _fe(u32, teid)
+
+#define foreach_flow_entry_ip6_ip6                                            \
+  foreach_flow_entry_ip6 _fe (ip6_address_and_mask_t, in_src_addr)            \
+    _fe (ip6_address_and_mask_t, in_dst_addr)                                 \
+      _fe (ip_prot_and_mask_t, in_protocol)
+
+#define foreach_flow_entry_ip6_ip6_n_tuple                                    \
+  foreach_flow_entry_ip6_ip6 _fe (ip_port_and_mask_t, in_src_port)            \
+    _fe (ip_port_and_mask_t, in_dst_port)
+
+#define foreach_flow_entry_ip6_ip4                                            \
+  foreach_flow_entry_ip6 _fe (ip4_address_and_mask_t, in_src_addr)            \
+    _fe (ip4_address_and_mask_t, in_dst_addr)                                 \
+      _fe (ip_prot_and_mask_t, in_protocol)
+
+#define foreach_flow_entry_ip6_ip4_n_tuple                                    \
+  foreach_flow_entry_ip6_ip4 _fe (ip_port_and_mask_t, in_src_port)            \
+    _fe (ip_port_and_mask_t, in_dst_port)
+
+#define foreach_flow_entry_ip4_ip6                                            \
+  foreach_flow_entry_ip4 _fe (ip6_address_and_mask_t, in_src_addr)            \
+    _fe (ip6_address_and_mask_t, in_dst_addr)                                 \
+      _fe (ip_prot_and_mask_t, in_protocol)
+
+#define foreach_flow_entry_ip4_ip6_n_tuple                                    \
+  foreach_flow_entry_ip4_ip6 _fe (ip_port_and_mask_t, in_src_port)            \
+    _fe (ip_port_and_mask_t, in_dst_port)
+
+#define foreach_flow_entry_ip4_ip4                                            \
+  foreach_flow_entry_ip4 _fe (ip4_address_and_mask_t, in_src_addr)            \
+    _fe (ip4_address_and_mask_t, in_dst_addr)                                 \
+      _fe (ip_prot_and_mask_t, in_protocol)
+
+#define foreach_flow_entry_ip4_ip4_n_tuple                                    \
+  foreach_flow_entry_ip4_ip4 _fe (ip_port_and_mask_t, in_src_port)            \
+    _fe (ip_port_and_mask_t, in_dst_port)
 
 #define foreach_flow_entry_generic _fe (generic_pattern_t, pattern)
 
