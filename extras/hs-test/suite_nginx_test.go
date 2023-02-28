@@ -14,6 +14,8 @@ type NginxSuite struct {
 }
 
 func (s *NginxSuite) SetupSuite() {
+	s.skipIfUnconfiguring()
+
 	s.loadNetworkTopology("2taps")
 
 	s.loadContainerTopology("nginxProxyAndServer")
