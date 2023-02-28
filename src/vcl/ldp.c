@@ -155,15 +155,14 @@ ldp_worker_get_current (void)
 static inline void
 ldp_set_app_name (char *app_name)
 {
-  snprintf (ldp->app_name, LDP_APP_NAME_MAX,
-	    "ldp-%d-%s", getpid (), app_name);
+  snprintf (ldp->app_name, LDP_APP_NAME_MAX, "%s-ldp-%d", app_name, getpid ());
 }
 
 static inline char *
 ldp_get_app_name ()
 {
   if (ldp->app_name[0] == '\0')
-    ldp_set_app_name ("app");
+    ldp_set_app_name (program_invocation_short_name);
 
   return ldp->app_name;
 }
