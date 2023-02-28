@@ -20,6 +20,8 @@ func (s *NginxSuite) SetupSuite() {
 }
 
 func (s *NginxSuite) SetupTest() {
+	s.skipIfUnconfiguring()
+
 	s.SetupVolumes()
 	s.SetupContainers()
 
