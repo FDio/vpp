@@ -77,29 +77,29 @@ type VppInstance struct {
 	apiChannel       api.Channel
 }
 
-func (vpp *VppInstance) Suite() *HstSuite {
+func (vpp *VppInstance) getSuite() *HstSuite {
 	return vpp.container.suite
 }
 
 func (vpp *VppInstance) getCliSocket() string {
-	return fmt.Sprintf("%s%s", vpp.container.GetContainerWorkDir(), defaultCliSocketFilePath)
+	return fmt.Sprintf("%s%s", vpp.container.getContainerWorkDir(), defaultCliSocketFilePath)
 }
 
 func (vpp *VppInstance) getRunDir() string {
-	return vpp.container.GetContainerWorkDir() + "/var/run/vpp"
+	return vpp.container.getContainerWorkDir() + "/var/run/vpp"
 }
 
 func (vpp *VppInstance) getLogDir() string {
-	return vpp.container.GetContainerWorkDir() + "/var/log/vpp"
+	return vpp.container.getContainerWorkDir() + "/var/log/vpp"
 }
 
 func (vpp *VppInstance) getEtcDir() string {
-	return vpp.container.GetContainerWorkDir() + "/etc/vpp"
+	return vpp.container.getContainerWorkDir() + "/etc/vpp"
 }
 
 func (vpp *VppInstance) start() error {
 	// Create folders
-	containerWorkDir := vpp.container.GetContainerWorkDir()
+	containerWorkDir := vpp.container.getContainerWorkDir()
 
 	vpp.container.exec("mkdir --mode=0700 -p " + vpp.getRunDir())
 	vpp.container.exec("mkdir --mode=0700 -p " + vpp.getLogDir())
@@ -113,7 +113,7 @@ func (vpp *VppInstance) start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 	)
-	configContent += vpp.additionalConfig.ToString()
+	configContent += vpp.additionalConfig.toString()
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 
@@ -123,7 +123,7 @@ func (vpp *VppInstance) start() error {
 	vpp.container.createFile(vppcliFileName, cliContent)
 	vpp.container.exec("chmod 0755 " + vppcliFileName)
 
-	if *IsVppDebug {
+	if *isVppDebug {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT)
 		cont := make(chan bool, 1)
@@ -145,7 +145,7 @@ func (vpp *VppInstance) start() error {
 	}
 
 	// Connect to VPP and store the connection
-	sockAddress := vpp.container.GetHostWorkDir() + defaultApiSocketFilePath
+	sockAddress := vpp.container.getHostWorkDir() + defaultApiSocketFilePath
 	conn, connEv, err := govpp.AsyncConnect(
 		sockAddress,
 		core.DefaultMaxReconnectAttempts,
@@ -181,9 +181,9 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	vppCliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
 		vpp.container.name, vpp.getCliSocket(), vppCliCommand)
-	vpp.Suite().log(containerExecCommand)
+	vpp.getSuite().log(containerExecCommand)
 	output, err := exechelper.CombinedOutput(containerExecCommand)
-	vpp.Suite().assertNil(err)
+	vpp.getSuite().assertNil(err)
 
 	return string(output)
 }
@@ -196,8 +196,7 @@ func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	vpp.Suite().assertNil(1, "Timeout while waiting for app '%s'", appName)
-	return
+	vpp.getSuite().assertNil(1, "Timeout while waiting for app '%s'", appName)
 }
 
 func (vpp *VppInstance) createAfPacket(
@@ -207,20 +206,20 @@ func (vpp *VppInstance) createAfPacket(
 		UseRandomHwAddr: true,
 		HostIfName:      veth.Name(),
 	}
-	if veth.HwAddress() != (MacAddress{}) {
+	if veth.hwAddress != (MacAddress{}) {
 		createReq.UseRandomHwAddr = false
-		createReq.HwAddr = veth.HwAddress()
+		createReq.HwAddr = veth.hwAddress
 	}
 	createReply := &af_packet.AfPacketCreateV2Reply{}
 
 	if err := vpp.apiChannel.SendRequest(createReq).ReceiveReply(createReply); err != nil {
 		return 0, err
 	}
-	veth.SetIndex(createReply.SwIfIndex)
+        veth.index = createReply.SwIfIndex
 
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
-		SwIfIndex: veth.Index(),
+		SwIfIndex: veth.index,
 		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
 	}
 	upReply := &interfaces.SwInterfaceSetFlagsReply{}
@@ -230,19 +229,19 @@ func (vpp *VppInstance) createAfPacket(
 	}
 
 	// Add address
-	if veth.AddressWithPrefix() == (AddressWithPrefix{}) {
+	if veth.addressWithPrefix() == (AddressWithPrefix{}) {
 		var err error
 		var ip4Address string
-		if ip4Address, err = veth.addresser.NewIp4Address(veth.Peer().networkNumber); err == nil {
-			veth.SetAddress(ip4Address)
+		if ip4Address, err = veth.addresser.newIp4Address(veth.peer.networkNumber); err == nil {
+			veth.ip4Address = ip4Address
 		} else {
 			return 0, err
 		}
 	}
 	addressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
-		SwIfIndex: veth.Index(),
-		Prefix:    veth.AddressWithPrefix(),
+		SwIfIndex: veth.index,
+		Prefix:    veth.addressWithPrefix(),
 	}
 	addressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
@@ -250,7 +249,7 @@ func (vpp *VppInstance) createAfPacket(
 		return 0, err
 	}
 
-	return veth.Index(), nil
+	return veth.index, nil
 }
 
 func (vpp *VppInstance) addAppNamespace(
@@ -294,7 +293,7 @@ func (vpp *VppInstance) createTap(
 		HostIfNameSet:    true,
 		HostIfName:       tap.Name(),
 		HostIP4PrefixSet: true,
-		HostIP4Prefix:    tap.IP4AddressWithPrefix(),
+		HostIP4Prefix:    tap.ip4AddressWithPrefix(),
 	}
 	createTapReply := &tapv2.TapCreateV2Reply{}
 
@@ -307,7 +306,7 @@ func (vpp *VppInstance) createTap(
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
 		SwIfIndex: createTapReply.SwIfIndex,
-		Prefix:    tap.Peer().AddressWithPrefix(),
+		Prefix:    tap.peer.addressWithPrefix(),
 	}
 	addAddressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
@@ -331,10 +330,10 @@ func (vpp *VppInstance) createTap(
 
 func (vpp *VppInstance) saveLogs() {
 	logTarget := vpp.container.getLogDirPath() + "vppinstance-" + vpp.container.name + ".log"
-	logSource := vpp.container.GetHostWorkDir() + defaultLogFilePath
+	logSource := vpp.container.getHostWorkDir() + defaultLogFilePath
 	cmd := exec.Command("cp", logSource, logTarget)
-	vpp.Suite().T().Helper()
-	vpp.Suite().log(cmd.String())
+	vpp.getSuite().T().Helper()
+	vpp.getSuite().log(cmd.String())
 	cmd.Run()
 }
 

@@ -35,7 +35,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func NewContainer(yamlInput ContainerConfig) (*Container, error) {
+func newContainer(yamlInput ContainerConfig) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -93,10 +93,6 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	return container, nil
 }
 
-func (c *Container) Suite() *HstSuite {
-	return c.suite
-}
-
 func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	for _, v := range c.volumes {
 		if v.isDefaultWorkDir {
@@ -108,14 +104,14 @@ func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	return
 }
 
-func (c *Container) GetHostWorkDir() (res string) {
+func (c *Container) getHostWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
 		res = v.hostDir
 	}
 	return
 }
 
-func (c *Container) GetContainerWorkDir() (res string) {
+func (c *Container) getContainerWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
 		res = v.containerDir
 	}
@@ -133,13 +129,13 @@ func (c *Container) getContainerArguments() string {
 
 func (c *Container) create() error {
 	cmd := "docker create " + c.getContainerArguments()
-	c.Suite().log(cmd)
+	c.suite.log(cmd)
 	return exechelper.Run(cmd)
 }
 
 func (c *Container) start() error {
 	cmd := "docker start " + c.name
-	c.Suite().log(cmd)
+	c.suite.log(cmd)
 	return exechelper.Run(cmd)
 }
 
@@ -149,7 +145,7 @@ func (c *Container) run() error {
 	}
 
 	cmd := "docker run -d " + c.getContainerArguments()
-	c.Suite().log(cmd)
+	c.suite.log(cmd)
 	err := exechelper.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("container run failed: %s", err)
@@ -237,30 +233,30 @@ func (c *Container) execServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + serverCommand
-	c.Suite().T().Helper()
-	c.Suite().log(containerExecCommand)
-	c.Suite().assertNil(exechelper.Run(containerExecCommand))
+	c.suite.T().Helper()
+	c.suite.log(containerExecCommand)
+	c.suite.assertNil(exechelper.Run(containerExecCommand))
 }
 
 func (c *Container) exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + cliCommand
-	c.Suite().T().Helper()
-	c.Suite().log(containerExecCommand)
+	c.suite.T().Helper()
+	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.Suite().assertNil(err)
+	c.suite.assertNil(err)
 	return string(byteOutput)
 }
 
 func (c *Container) getLogDirPath() string {
-	testId := c.Suite().getTestId()
-	testName := c.Suite().T().Name()
+	testId := c.suite.getTestId()
+	testName := c.suite.T().Name()
 	logDirPath := logDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
 	if err := cmd.Run(); err != nil {
-		c.Suite().T().Fatalf("mkdir error: %v", err)
+		c.suite.T().Fatalf("mkdir error: %v", err)
 	}
 
 	return logDirPath
@@ -277,22 +273,22 @@ func (c *Container) saveLogs() {
 	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		c.Suite().T().Fatalf("fetching logs error: %v", err)
+		c.suite.T().Fatalf("fetching logs error: %v", err)
 	}
 
 	f, err := os.Create(testLogFilePath)
 	if err != nil {
-		c.Suite().T().Fatalf("file create error: %v", err)
+		c.suite.T().Fatalf("file create error: %v", err)
 	}
-	fmt.Fprintf(f, string(output))
+	fmt.Fprint(f, string(output))
 	f.Close()
 }
 
 func (c *Container) log() string {
 	cmd := "docker logs " + c.name
-	c.Suite().log(cmd)
+	c.suite.log(cmd)
 	o, err := exechelper.CombinedOutput(cmd)
-	c.Suite().assertNil(err)
+	c.suite.assertNil(err)
 	return string(o)
 }
 
@@ -310,14 +306,14 @@ func (c *Container) createConfig(targetConfigName string, templateName string, v
 	template := template.Must(template.ParseFiles(templateName))
 
 	f, err := os.CreateTemp("/tmp/hs-test/", "hst-config")
-	c.Suite().assertNil(err)
+	c.suite.assertNil(err)
 	defer os.Remove(f.Name())
 
 	err = template.Execute(f, values)
-	c.Suite().assertNil(err)
+	c.suite.assertNil(err)
 
 	err = f.Close()
-	c.Suite().assertNil(err)
+	c.suite.assertNil(err)
 
 	c.copy(f.Name(), targetConfigName)
 }
