@@ -2854,9 +2854,8 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
 }
 
 static inline void
-tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
-			   vlib_buffer_t * b, u16 * next,
-			   vlib_node_runtime_t * error_node)
+tcp_input_dispatch_buffer (tcp_main_t *tm, tcp_connection_t *tc,
+			   vlib_buffer_t *b, u16 *next, u16 *err_counters)
 {
   tcp_header_t *tcp;
   u32 error;
@@ -2878,7 +2877,7 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
 
   if (PREDICT_FALSE (error != TCP_ERROR_NONE))
     {
-      b->error = error_node->errors[error];
+      tcp_inc_err_counter (err_counters, error, 1);
       if (error == TCP_ERROR_DISPATCH)
 	clib_warning ("tcp conn %u disp error state %U flags %U",
 		      tc->c_c_index, format_tcp_state, tc->state,
@@ -2933,8 +2932,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
 	  vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
 
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
-	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], node);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
+	  tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], err_counters);
 	}
       else
 	{
@@ -2942,7 +2941,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	      vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
+	      tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0],
+					 err_counters);
 	    }
 	  else
 	    {
@@ -2954,7 +2954,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ASSERT (tcp_lookup_is_valid (tc1, b[1], tcp_buffer_hdr (b[1])));
 	      vnet_buffer (b[1])->tcp.connection_index = tc1->c_c_index;
-	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1], node);
+	      tcp_input_dispatch_buffer (tm, tc1, b[1], &next[1],
+					 err_counters);
 	    }
 	  else
 	    {
@@ -2985,7 +2986,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (tcp_lookup_is_valid (tc0, b[0], tcp_buffer_hdr (b[0])));
 	  vnet_buffer (b[0])->tcp.connection_index = tc0->c_c_index;
-	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], node);
+	  tcp_input_dispatch_buffer (tm, tc0, b[0], &next[0], err_counters);
 	}
       else
 	{
