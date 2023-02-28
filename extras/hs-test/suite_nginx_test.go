@@ -60,5 +60,5 @@ func (s *NginxSuite) SetupTest() {
 	)
 	nginxContainer.start()
 
-	proxyVpp.waitForApp("-app", 5)
+	proxyVpp.waitForApp("nginx-", 5)
 }
