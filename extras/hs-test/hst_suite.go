@@ -20,6 +20,7 @@ const (
 var IsPersistent = flag.Bool("persist", false, "persists topology config")
 var IsVerbose = flag.Bool("verbose", false, "verbose test output")
 var IsUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
+var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 
 type HstSuite struct {
 	suite.Suite

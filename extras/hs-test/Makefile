@@ -15,6 +15,10 @@ ifeq ($(TEST),)
 TEST=all
 endif
 
+ifeq ($(DEBUG),)
+DEBUG=false
+endif
+
 list_tests = @(grep -r ') Test' *_test.go | cut -d '*' -f2 | cut -d '(' -f1 | \
 		tr -d ' ' | tr ')' '/' | sed 's/Suite//')
 
@@ -33,6 +37,7 @@ help:
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " VERBOSE=[true|false]     - verbose output"
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
+	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[test-name]         - specific test to run"
 	@echo
 	@echo "List of all tests:"
@@ -51,7 +56,7 @@ build-vpp-debug:
 .PHONY: test
 test: .deps.ok .build.vpp
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
-		--unconfigure=$(UNCONFIGURE) --test=$(TEST)
+		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST)
 
 build-go:
 	go build ./tools/http_server
