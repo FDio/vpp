@@ -480,7 +480,7 @@ dispatch_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
  * pcap dispatch capture on...
  * @cliexend
  * Example of how to display the status of a tx packet capture in progress:
- * @cliexstart{pcap tx trace status}
+ * @cliexstart{pcap trace tx status}
  * max is 35, dispatch trace to file /tmp/vppTest.pcap
  * pcap tx capture is on: 20 of 35 pkts...
  * @cliexend

@@ -2384,7 +2384,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
  *   packet capture are preserved, so '<em>any</em>' can be used to reset
  *   the interface setting.
  *
- * - <b>filter</b> - Use the pcap rx / tx / drop trace filter, which
+ * - <b>filter</b> - Use the pcap trace rx / tx / drop filter, which
  *   must be configured. Use <b>classify filter pcap...</b> to configure the
  *   filter. The filter will only be executed if the per-interface or
  *   any-interface tests fail.
