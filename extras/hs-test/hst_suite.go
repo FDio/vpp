@@ -17,8 +17,8 @@ const (
 	defaultNetworkNumber int = 1
 )
 
-var IsPersistent = flag.Bool("persist", false, "persists topology config")
-var IsVerbose = flag.Bool("verbose", false, "verbose test output")
+var isPersistent = flag.Bool("persist", false, "persists topology config")
+var isVerbose = flag.Bool("verbose", false, "verbose test output")
 
 type HstSuite struct {
 	suite.Suite
@@ -35,19 +35,19 @@ func (s *HstSuite) TearDownSuite() {
 }
 
 func (s *HstSuite) TearDownTest() {
-	if *IsPersistent {
+	if *isPersistent {
 		return
 	}
-	s.ResetContainers()
-	s.RemoveVolumes()
+	s.resetContainers()
+	s.removeVolumes()
 }
 
 func (s *HstSuite) SetupTest() {
-	s.SetupVolumes()
-	s.SetupContainers()
+	s.setupVolumes()
+	s.setupContainers()
 }
 
-func (s *HstSuite) SetupVolumes() {
+func (s *HstSuite) setupVolumes() {
 	for _, volume := range s.volumes {
 		cmd := "docker volume create --name=" + volume
 		s.log(cmd)
@@ -55,7 +55,7 @@ func (s *HstSuite) SetupVolumes() {
 	}
 }
 
-func (s *HstSuite) SetupContainers() {
+func (s *HstSuite) setupContainers() {
 	for _, container := range s.containers {
 		if container.isOptional == false {
 			container.run()
@@ -110,8 +110,8 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 }
 
 func (s *HstSuite) log(args ...any) {
-	if *IsVerbose {
-                s.T().Helper()
+	if *isVerbose {
+		s.T().Helper()
 		s.T().Log(args...)
 	}
 }
@@ -121,13 +121,13 @@ func (s *HstSuite) skip(args ...any) {
 	s.T().SkipNow()
 }
 
-func (s *HstSuite) ResetContainers() {
+func (s *HstSuite) resetContainers() {
 	for _, container := range s.containers {
 		container.stop()
 	}
 }
 
-func (s *HstSuite) RemoveVolumes() {
+func (s *HstSuite) removeVolumes() {
 	for _, volumeName := range s.volumes {
 		cmd := "docker volume rm " + volumeName
 		exechelper.Run(cmd)
@@ -149,7 +149,7 @@ func (s *HstSuite) getTransientContainerByName(name string) *Container {
 }
 
 func (s *HstSuite) loadContainerTopology(topologyName string) {
-	data, err := ioutil.ReadFile(ContainerTopologyDir + topologyName + ".yaml")
+	data, err := ioutil.ReadFile(containerTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		s.T().Fatalf("read error: %v", err)
 	}
@@ -167,7 +167,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := NewContainer(elem)
+		newContainer, err := newContainer(elem)
 		newContainer.suite = s
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
@@ -177,7 +177,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 }
 
 func (s *HstSuite) loadNetworkTopology(topologyName string) {
-	data, err := ioutil.ReadFile(NetworkTopologyDir + topologyName + ".yaml")
+	data, err := ioutil.ReadFile(networkTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		s.T().Fatalf("read error: %v", err)
 	}
@@ -187,13 +187,13 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 		s.T().Fatalf("unmarshal error: %v", err)
 	}
 
-	s.addresser = NewAddresser(s)
+	s.addresser = newAddresser(s)
 	s.netInterfaces = make(map[string]*NetInterface)
 	for _, elem := range yamlTopo.Devices {
 		switch elem["type"].(string) {
 		case NetNs:
 			{
-				if namespace, err := NewNetNamespace(elem); err == nil {
+				if namespace, err := newNetNamespace(elem); err == nil {
 					s.netConfigs = append(s.netConfigs, &namespace)
 				} else {
 					s.T().Fatalf("network config error: %v", err)
@@ -201,16 +201,16 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 			}
 		case Veth, Tap:
 			{
-				if netIf, err := NewNetworkInterface(elem, s.addresser); err == nil {
+				if netIf, err := newNetworkInterface(elem, s.addresser); err == nil {
 					s.netConfigs = append(s.netConfigs, netIf)
-					s.netInterfaces[netIf.Name()] = netIf
+					s.netInterfaces[netIf.getName()] = netIf
 				} else {
 					s.T().Fatalf("network config error: %v", err)
 				}
 			}
 		case Bridge:
 			{
-				if bridge, err := NewBridge(elem); err == nil {
+				if bridge, err := newBridge(elem); err == nil {
 					s.netConfigs = append(s.netConfigs, &bridge)
 				} else {
 					s.T().Fatalf("network config error: %v", err)
@@ -224,18 +224,18 @@ func (s *HstSuite) configureNetworkTopology(topologyName string) {
 	s.loadNetworkTopology(topologyName)
 
 	for _, nc := range s.netConfigs {
-		if err := nc.Configure(); err != nil {
+		if err := nc.configure(); err != nil {
 			s.T().Fatalf("network config error: %v", err)
 		}
 	}
 }
 
 func (s *HstSuite) unconfigureNetworkTopology() {
-	if *IsPersistent {
+	if *isPersistent {
 		return
 	}
 	for _, nc := range s.netConfigs {
-		nc.Unconfigure()
+		nc.unconfigure()
 	}
 }
 
@@ -260,18 +260,18 @@ type Addresser struct {
 	suite    *HstSuite
 }
 
-func (a *Addresser) AddNetwork(networkNumber int) {
+func (a *Addresser) addNetwork(networkNumber int) {
 	a.networks[networkNumber] = 1
 }
 
-func (a *Addresser) NewIp4Address(inputNetworkNumber ...int) (string, error) {
+func (a *Addresser) newIp4Address(inputNetworkNumber ...int) (string, error) {
 	var networkNumber int = 0
 	if len(inputNetworkNumber) > 0 {
 		networkNumber = inputNetworkNumber[0]
 	}
 
 	if _, ok := a.networks[networkNumber]; !ok {
-		a.AddNetwork(networkNumber)
+		a.addNetwork(networkNumber)
 	}
 
 	numberOfAddresses := a.networks[networkNumber]
@@ -286,10 +286,10 @@ func (a *Addresser) NewIp4Address(inputNetworkNumber ...int) (string, error) {
 	return address, nil
 }
 
-func NewAddresser(suite *HstSuite) *Addresser {
+func newAddresser(suite *HstSuite) *Addresser {
 	var addresser = new(Addresser)
 	addresser.suite = suite
 	addresser.networks = make(map[int]AddressCounter)
-	addresser.AddNetwork(0)
+	addresser.addNetwork(0)
 	return addresser
 }

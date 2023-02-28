@@ -17,17 +17,17 @@ func (s *NsSuite) SetupSuite() {
 }
 
 func (s *NsSuite) SetupTest() {
-	s.SetupVolumes()
-	s.SetupContainers()
+	s.setupVolumes()
+	s.setupContainers()
 
 	// Setup test conditions
 	var startupConfig Stanza
 	startupConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api").
-		Append("evt_qs_memfd_seg").
-		Append("event-queue-length 100000").Close()
+		newStanza("session").
+		append("enable").
+		append("use-app-socket-api").
+		append("evt_qs_memfd_seg").
+		append("event-queue-length 100000").close()
 
 	container := s.getContainerByName("vpp")
 	vpp, _ := container.newVppInstance(startupConfig)
@@ -41,5 +41,5 @@ func (s *NsSuite) SetupTest() {
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
 
-	container.exec("chmod 777 -R %s", container.GetContainerWorkDir())
+	container.exec("chmod 777 -R %s", container.getContainerWorkDir())
 }

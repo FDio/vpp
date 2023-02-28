@@ -8,7 +8,7 @@ import (
 
 func (s *NsSuite) TestHttpTps() {
 	iface := s.netInterfaces[clientInterface]
-	client_ip := iface.IP4AddressString()
+	client_ip := iface.ip4AddressString()
 	port := "8080"
 	finished := make(chan error, 1)
 
@@ -31,7 +31,7 @@ func (s *VethsSuite) TestHttpCli() {
 
 	serverContainer.vppInstance.vppctl("http cli server")
 
-	uri := "http://" + serverVeth.IP4AddressString() + "/80"
+	uri := "http://" + serverVeth.ip4AddressString() + "/80"
 
 	o := clientContainer.vppInstance.vppctl("http cli client" +
 		" uri " + uri + " query /show/version")
@@ -51,7 +51,7 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	err := vpp.waitForApp("-app", 5)
 	s.assertNil(err)
 
-	serverAddress := s.netInterfaces[tapInterfaceName].Peer().IP4AddressString()
+	serverAddress := s.netInterfaces[tapInterfaceName].getPeer().ip4AddressString()
 
 	defer func() { os.Remove(query) }()
 	go startWget(finished, serverAddress, "80", query, "")
@@ -64,7 +64,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	var args []string
 	var exeName string
 
-	serverAddress := s.netInterfaces[tapInterfaceName].Peer().IP4AddressString()
+	serverAddress := s.netInterfaces[tapInterfaceName].getPeer().ip4AddressString()
 
 	if ab_or_wrk == "ab" {
 		args = []string{"-n", fmt.Sprintf("%d", nRequests), "-c",

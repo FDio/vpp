@@ -34,7 +34,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func NewContainer(yamlInput ContainerConfig) (*Container, error) {
+func newContainer(yamlInput ContainerConfig) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -92,7 +92,7 @@ func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	return container, nil
 }
 
-func (c *Container) Suite() *HstSuite {
+func (c *Container) getSuite() *HstSuite {
 	return c.suite
 }
 
@@ -107,14 +107,14 @@ func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	return
 }
 
-func (c *Container) GetHostWorkDir() (res string) {
+func (c *Container) getHostWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
 		res = v.hostDir
 	}
 	return
 }
 
-func (c *Container) GetContainerWorkDir() (res string) {
+func (c *Container) getContainerWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
 		res = v.containerDir
 	}
@@ -222,30 +222,30 @@ func (c *Container) execServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + serverCommand
-	c.Suite().T().Helper()
-	c.Suite().log(containerExecCommand)
-	c.Suite().assertNil(exechelper.Run(containerExecCommand))
+	c.getSuite().T().Helper()
+	c.getSuite().log(containerExecCommand)
+	c.getSuite().assertNil(exechelper.Run(containerExecCommand))
 }
 
 func (c *Container) exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + cliCommand
-	c.Suite().T().Helper()
-	c.Suite().log(containerExecCommand)
+	c.getSuite().T().Helper()
+	c.getSuite().log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.Suite().assertNil(err)
+	c.getSuite().assertNil(err)
 	return string(byteOutput)
 }
 
 func (c *Container) getLogDirPath() string {
-	testId := c.Suite().getTestId()
-	testName := c.Suite().T().Name()
+	testId := c.getSuite().getTestId()
+	testName := c.getSuite().T().Name()
 	logDirPath := logDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
 	if err := cmd.Run(); err != nil {
-		c.Suite().T().Fatalf("mkdir error: %v", err)
+		c.getSuite().T().Fatalf("mkdir error: %v", err)
 	}
 
 	return logDirPath
@@ -262,14 +262,14 @@ func (c *Container) saveLogs() {
 	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		c.Suite().T().Fatalf("fetching logs error: %v", err)
+		c.getSuite().T().Fatalf("fetching logs error: %v", err)
 	}
 
 	f, err := os.Create(testLogFilePath)
 	if err != nil {
-		c.Suite().T().Fatalf("file create error: %v", err)
+		c.getSuite().T().Fatalf("file create error: %v", err)
 	}
-	fmt.Fprintf(f, string(output))
+	fmt.Fprint(f, string(output))
 	f.Close()
 }
 

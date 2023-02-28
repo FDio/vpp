@@ -18,15 +18,15 @@ func (s *NoTopoSuite) SetupSuite() {
 }
 
 func (s *NoTopoSuite) SetupTest() {
-	s.SetupVolumes()
-	s.SetupContainers()
+	s.setupVolumes()
+	s.setupContainers()
 
 	// Setup test conditions
 	var startupConfig Stanza
 	startupConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api").Close()
+		newStanza("session").
+		append("enable").
+		append("use-app-socket-api").close()
 
 	container := s.getContainerByName(singleTopoContainerVpp)
 	vpp, _ := container.newVppInstance(startupConfig)

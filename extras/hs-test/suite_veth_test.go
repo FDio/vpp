@@ -23,16 +23,16 @@ func (s *VethsSuite) SetupSuite() {
 }
 
 func (s *VethsSuite) SetupTest() {
-	s.SetupVolumes()
-	s.SetupContainers()
+	s.setupVolumes()
+	s.setupContainers()
 
 	// Setup test conditions
 
 	var startupConfig Stanza
 	startupConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api").Close()
+		newStanza("session").
+		append("enable").
+		append("use-app-socket-api").close()
 
 	// ... For server
 	serverContainer := s.getContainerByName("server-vpp")

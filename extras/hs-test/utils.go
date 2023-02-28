@@ -20,8 +20,8 @@ const vclTemplate = `vcl {
 }
 `
 
-const NetworkTopologyDir string = "topo-network/"
-const ContainerTopologyDir string = "topo-containers/"
+const networkTopologyDir string = "topo-network/"
+const containerTopologyDir string = "topo-containers/"
 
 type Stanza struct {
 	content string
@@ -42,7 +42,7 @@ type JsonResult struct {
 	StdOutput string
 }
 
-func StartServerApp(running chan error, done chan struct{}, env []string) {
+func startServerApp(running chan error, done chan struct{}, env []string) {
 	cmd := exec.Command("iperf3", "-4", "-s")
 	if env != nil {
 		cmd.Env = env
@@ -58,7 +58,7 @@ func StartServerApp(running chan error, done chan struct{}, env []string) {
 	cmd.Process.Kill()
 }
 
-func StartClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
+func startClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
 	defer func() {
 		clnCh <- nil
 	}()
@@ -104,7 +104,7 @@ func assertFileSize(f1, f2 string) error {
 }
 
 func startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := NewCommand([]string{"./http_server", addressPort}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort}, netNs)
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println("Failed to start http server")
@@ -120,7 +120,7 @@ func startWget(finished chan error, server_ip, port, query, netNs string) {
 		finished <- errors.New("wget error")
 	}()
 
-	cmd := NewCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+	cmd := newCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
 		netNs)
 	o, err := cmd.CombinedOutput()
 	if err != nil {
@@ -133,29 +133,29 @@ func startWget(finished chan error, server_ip, port, query, netNs string) {
 	finished <- nil
 }
 
-func (c *Stanza) NewStanza(name string) *Stanza {
-	c.Append("\n" + name + " {")
+func (c *Stanza) newStanza(name string) *Stanza {
+	c.append("\n" + name + " {")
 	c.pad += 2
 	return c
 }
 
-func (c *Stanza) Append(name string) *Stanza {
+func (c *Stanza) append(name string) *Stanza {
 	c.content += strings.Repeat(" ", c.pad)
 	c.content += name + "\n"
 	return c
 }
 
-func (c *Stanza) Close() *Stanza {
+func (c *Stanza) close() *Stanza {
 	c.content += "}\n"
 	c.pad -= 2
 	return c
 }
 
-func (s *Stanza) ToString() string {
+func (s *Stanza) toString() string {
 	return s.content
 }
 
-func (s *Stanza) SaveToFile(fileName string) error {
+func (s *Stanza) saveToFile(fileName string) error {
 	fo, err := os.Create(fileName)
 	if err != nil {
 		return err
