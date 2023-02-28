@@ -6,6 +6,7 @@ args=
 single_test=0
 persist_set=0
 unconfigure_set=0
+debug_set=0
 
 for i in "$@"
 do
@@ -15,6 +16,13 @@ case "${i}" in
         if [ $persist = "true" ]; then
             args="$args -persist"
             persist_set=1
+        fi
+        ;;
+    --debug=*)
+        debug="${i#*=}"
+        if [ $debug = "true" ]; then
+            args="$args -debug"
+            debug_set=1
         fi
         ;;
     --verbose=*)
@@ -51,6 +59,11 @@ fi
 
 if [ $persist_set -eq 1 ] && [ $unconfigure_set -eq 1 ]; then
     echo "setting persist flag and unconfigure flag is not allowed"
+    exit 1
+fi
+
+if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
+    echo "VPP debug flag is not supperted while running all tests!"
     exit 1
 fi
 
