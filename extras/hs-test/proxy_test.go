@@ -49,7 +49,7 @@ func testProxyHttpTcp(s *NsSuite) error {
 	return nil
 }
 
-func configureVppProxy(s *NsSuite) error {
+func configureVppProxy(s *NsSuite) {
 	serverVeth := s.netInterfaces[serverInterface]
 	clientVeth := s.netInterfaces[clientInterface]
 
@@ -60,24 +60,35 @@ func configureVppProxy(s *NsSuite) error {
 		serverVeth.Peer().IP4AddressString(),
 	)
 	s.log("proxy configured...", output)
-	return nil
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
-	err := configureVppProxy(s)
-	s.assertNil(err)
-	err = testProxyHttpTcp(s)
+	configureVppProxy(s)
+	err := testProxyHttpTcp(s)
 	s.assertNil(err)
 }
 
-func configureEnvoyProxy(s *NsSuite) error {
+func configureEnvoyProxy(s *NsSuite) {
 	envoyContainer := s.getContainerByName("envoy")
-	return envoyContainer.run()
+	envoyContainer.create()
+
+	serverVeth := s.netInterfaces[serverInterface]
+	address := struct {
+		Server string
+	}{
+		Server: serverVeth.Peer().IP4AddressString(),
+	}
+	envoyContainer.createConfig(
+		"/etc/envoy/envoy.yaml",
+		"resources/envoy/proxy.yaml",
+		address,
+	)
+
+	envoyContainer.start()
 }
 
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
-	err := configureEnvoyProxy(s)
-	s.assertNil(err)
-	err = testProxyHttpTcp(s)
+	configureEnvoyProxy(s)
+	err := testProxyHttpTcp(s)
 	s.assertNil(err)
 }

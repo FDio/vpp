@@ -12,8 +12,6 @@ containers:
         is-default-work-dir: true
   - name: "envoy"
     volumes:
-      - host-dir: "$HST_DIR/resources/envoy/proxy.yaml"
-        container-dir: "/etc/envoy/envoy.yaml"
       - <<: *shared-vol
         container-dir: "/tmp/vpp-envoy"
         is-default-work-dir: true

@@ -43,7 +43,19 @@ func (s *NginxSuite) SetupTest() {
 
 	nginxContainer := s.getTransientContainerByName(nginxProxyContainerName)
 	nginxContainer.create()
-	nginxContainer.copy("./resources/nginx/nginx_proxy_mirroring.conf", "/nginx.conf")
+
+	values := struct {
+		Proxy  string
+		Server string
+	}{
+		Proxy:  clientInterface.Peer().IP4AddressString(),
+		Server: serverInterface.IP4AddressString(),
+	}
+	nginxContainer.createConfig(
+		"/nginx.conf",
+		"./resources/nginx/nginx_proxy_mirroring.conf",
+		values,
+	)
 	nginxContainer.start()
 
 	proxyVpp.waitForApp("-app", 5)

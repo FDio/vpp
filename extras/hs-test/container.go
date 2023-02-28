@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"text/template"
 
 	"github.com/edwarnicke/exechelper"
 )
@@ -300,4 +301,20 @@ func (c *Container) stop() error {
 	c.vppInstance = nil
 	c.saveLogs()
 	return exechelper.Run("docker stop " + c.name + " -t 0")
+}
+
+func (c *Container) createConfig(targetConfigName string, templateName string, values any) {
+	template := template.Must(template.ParseFiles(templateName))
+
+	f, err := os.CreateTemp("/tmp/hs-test/", "hst-config")
+	c.Suite().assertNil(err)
+	defer os.Remove(f.Name())
+
+	err = template.Execute(f, values)
+	c.Suite().assertNil(err)
+
+	err = f.Close()
+	c.Suite().assertNil(err)
+
+	c.copy(f.Name(), targetConfigName)
 }
