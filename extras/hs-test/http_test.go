@@ -48,7 +48,7 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	s.assertNil(nginxCont.run())
 
 	vpp := s.getContainerByName("vpp").vppInstance
-	vpp.waitForApp("-app", 5)
+	vpp.waitForApp("nginx-", 5)
 
 	serverAddress := s.netInterfaces[tapInterfaceName].Peer().IP4AddressString()
 
@@ -85,7 +85,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	nginxCont := s.getContainerByName("nginx")
 	s.assertNil(nginxCont.run())
-	vpp.waitForApp("-app", 5)
+	vpp.waitForApp("nginx-", 5)
 
 	cmd := exec.Command(exeName, args...)
 	s.log(cmd)
