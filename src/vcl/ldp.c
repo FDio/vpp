@@ -331,16 +331,16 @@ close (int fd)
       epfd = vls_attr (vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
       if (epfd > 0)
 	{
+	  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
+	  u32 size = sizeof (epfd);
+
 	  LDBG (0, "fd %d: calling libc_close: epfd %u", fd, epfd);
 
-	  rv = libc_close (epfd);
-	  if (rv < 0)
-	    {
-	      u32 size = sizeof (epfd);
-	      epfd = 0;
+	  libc_close (epfd);
+	  ldpw->mq_epfd_added = 0;
 
-	      (void) vls_attr (vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &epfd, &size);
-	    }
+	  epfd = 0;
+	  (void) vls_attr (vlsh, VPPCOM_ATTR_SET_LIBC_EPFD, &epfd, &size);
 	}
       else if (PREDICT_FALSE (epfd < 0))
 	{
