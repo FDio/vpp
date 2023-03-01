@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "714668cd_ee14826a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-03-01T12:31:00Z",
+      "side": 1,
+      "message": "I\u0027m not sure if the types should also start with lower-case letters. What do you guys think?",
+      "revId": "46365c1d355f5f40aa2a223e1c21dea8c88ee89a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
