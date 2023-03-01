@@ -2563,7 +2563,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 			 int maxevents, int timeout, const sigset_t * sigmask)
 {
   ldp_worker_ctx_t *ldpw;
-  int libc_epfd, rv = 0, num_ev;
+  int libc_epfd, rv = 0, num_ev, vcl_wups = 0;
   vls_handle_t ep_vlsh;
 
   ldp_init_check ();
@@ -2647,6 +2647,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       goto done;
     }
 
+epoll_again:
   rv = libc_epoll_pwait (libc_epfd, events, maxevents, timeout, sigmask);
   if (rv <= 0)
     goto done;
@@ -2664,6 +2665,9 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 	  num_ev = vls_epoll_wait (ep_vlsh, &events[rv], maxevents - rv, 0);
 	  if (PREDICT_TRUE (num_ev > 0))
 	    rv += num_ev;
+	  /* Woken up by vcl but no events generated. Accept it once */
+	  if (rv == 0 && vcl_wups++ < 1)
+	    goto epoll_again;
 	  break;
 	}
     }
