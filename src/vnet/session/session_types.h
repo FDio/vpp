@@ -379,6 +379,7 @@ typedef enum
   SESSION_CTRL_EVT_APP_WRK_RPC,
   SESSION_CTRL_EVT_TRANSPORT_ATTR,
   SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY,
+  SESSION_CTRL_EVT_LISTEN_ACCEPT,
 } session_evt_type_t;
 
 #define foreach_session_ctrl_evt                                              \

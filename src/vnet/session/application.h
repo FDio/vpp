@@ -328,6 +328,8 @@ int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
 int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
+int app_worker_listen_stop_accept (app_worker_t *app_wrk, app_listener_t *al);
+int app_worker_listen_start_accept (app_worker_t *app_wrk, app_listener_t *al);
 int app_worker_init_accepted (session_t * s);
 int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
 int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);

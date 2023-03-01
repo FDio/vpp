@@ -131,6 +131,14 @@ typedef struct _vnet_unlisten_args_t
   u32 wrk_map_index;		/**< App's local pool worker index */
 } vnet_unlisten_args_t;
 
+typedef struct _vnet_listen_accept
+{
+  u32 app_index;	   /**< Owning application index */
+  u32 wrk_map_index;	   /**< App's local pool worker index */
+  session_handle_t handle; /**< Listen session handle */
+  u8 is_start;
+} vnet_listen_accept_args_t;
+
 typedef struct _vnet_connect_args
 {
   union
@@ -280,6 +288,7 @@ int vnet_application_detach (vnet_app_detach_args_t * a);
 int vnet_listen (vnet_listen_args_t * a);
 int vnet_connect (vnet_connect_args_t * a);
 int vnet_unlisten (vnet_unlisten_args_t * a);
+int vnet_listen_accept (vnet_listen_accept_args_t *a);
 int vnet_shutdown_session (vnet_shutdown_args_t *a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
@@ -568,6 +577,14 @@ typedef struct session_transport_attr_reply_msg_
   transport_endpt_attr_t attr;
   u8 is_get;
 } __clib_packed session_transport_attr_reply_msg_t;
+
+typedef struct session_listen_accept_msg_
+{
+  u32 client_index;
+  u32 wrk_index;
+  u8 is_start;
+  session_handle_t handle;
+} __clib_packed session_listen_accept_msg_t;
 
 typedef struct app_session_event_
 {

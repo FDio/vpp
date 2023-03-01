@@ -1422,6 +1422,41 @@ vnet_unlisten (vnet_unlisten_args_t * a)
 }
 
 int
+vnet_listen_accept (vnet_listen_accept_args_t *a)
+{
+  app_worker_t *app_wrk;
+  app_listener_t *al;
+  application_t *app;
+
+  ASSERT (vlib_thread_is_main_w_barrier ());
+
+  if (!(app = application_get_if_valid (a->app_index)))
+    return SESSION_E_NOAPP;
+
+  if (!(al = app_listener_get_w_handle (a->handle)))
+    return SESSION_E_NOLISTEN;
+
+  if (al->app_index != app->app_index)
+    {
+      clib_warning ("app doesn't own handle %llu!", a->handle);
+      return SESSION_E_OWNER;
+    }
+  app_wrk = application_get_worker (app, a->wrk_map_index);
+  if (!app_wrk)
+    {
+      clib_warning ("no app %u worker %u", app->app_index, a->wrk_map_index);
+      return SESSION_E_INVALID_APPWRK;
+    }
+
+  if (a->is_start)
+    app_worker_listen_start_accept (app_wrk, al);
+  else
+    app_worker_listen_stop_accept (app_wrk, al);
+
+  return 0;
+}
+
+int
 vnet_shutdown_session (vnet_shutdown_args_t *a)
 {
   app_worker_t *app_wrk;

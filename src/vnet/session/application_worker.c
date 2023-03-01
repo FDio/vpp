@@ -331,6 +331,20 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
 }
 
 int
+app_worker_listen_stop_accept (app_worker_t *app_wrk, app_listener_t *al)
+{
+  clib_bitmap_set_no_check (al->workers, app_wrk->wrk_map_index, 0);
+  return 0;
+}
+
+int
+app_worker_listen_start_accept (app_worker_t *app_wrk, app_listener_t *al)
+{
+  clib_bitmap_set_no_check (al->workers, app_wrk->wrk_map_index, 1);
+  return 0;
+}
+
+int
 app_worker_init_accepted (session_t * s)
 {
   app_worker_t *app_wrk;

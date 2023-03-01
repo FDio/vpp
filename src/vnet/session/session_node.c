@@ -174,6 +174,29 @@ session_mq_listen_uri_handler (session_worker_t *wrk, session_evt_elt_t *elt)
 }
 
 static void
+session_mq_listen_accept_handler (session_worker_t *wrk,
+				  session_evt_elt_t *elt)
+{
+  vnet_listen_accept_args_t _a = {}, *a = &_a;
+  session_listen_accept_msg_t *mp;
+  application_t *app;
+
+  app_check_thread_and_barrier (wrk, elt);
+
+  mp = session_evt_ctrl_data (wrk, elt);
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  a->app_index = app->app_index;
+  a->wrk_map_index = mp->wrk_index;
+  a->handle = mp->handle;
+  a->is_start = mp->is_start;
+
+  vnet_listen_accept (a);
+}
+
+static void
 session_mq_connect_one (session_connect_msg_t *mp)
 {
   vnet_connect_args_t _a, *a = &_a;
@@ -771,6 +794,9 @@ session_wrk_handle_evts_main_rpc (void *args)
 	  break;
 	case SESSION_CTRL_EVT_UNLISTEN:
 	  session_mq_unlisten_handler (fwrk, elt);
+	  break;
+	case SESSION_CTRL_EVT_LISTEN_ACCEPT:
+	  session_mq_listen_accept_handler (fwrk, elt);
 	  break;
 	case SESSION_CTRL_EVT_APP_DETACH:
 	  app_mq_detach_handler (fwrk, elt);
@@ -1681,6 +1707,9 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_UNLISTEN:
       session_mq_unlisten_handler (wrk, elt);
+      break;
+    case SESSION_CTRL_EVT_LISTEN_ACCEPT:
+      session_mq_listen_accept_handler (wrk, elt);
       break;
     case SESSION_CTRL_EVT_CONNECT:
       session_mq_connect_handler (wrk, elt);
