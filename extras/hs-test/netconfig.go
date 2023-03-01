@@ -282,7 +282,7 @@ func (b *NetworkBridge) Unconfigure() {
 
 func DelBridge(brName, ns string) error {
 	err := SetDevDown(brName, ns)
-	if err != err {
+	if err != nil {
 		return err
 	}
 
