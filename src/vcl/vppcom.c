@@ -1465,6 +1465,8 @@ vcl_epoll_lt_add (vcl_worker_t *wrk, vcl_session_t *s)
 {
   vcl_session_t *cur, *prev;
 
+  ASSERT (s->vep.lt_next == VCL_INVALID_SESSION_INDEX);
+
   if (wrk->ep_lt_current == VCL_INVALID_SESSION_INDEX)
     {
       wrk->ep_lt_current = s->session_index;
@@ -1488,10 +1490,13 @@ vcl_epoll_lt_del (vcl_worker_t *wrk, vcl_session_t *s)
 {
   vcl_session_t *prev, *next;
 
+  ASSERT (s->vep.lt_next != VCL_INVALID_SESSION_INDEX);
+
   if (s->vep.lt_next == s->session_index)
     {
       wrk->ep_lt_current = VCL_INVALID_SESSION_INDEX;
       s->vep.lt_next = VCL_INVALID_SESSION_INDEX;
+      s->vep.lt_prev = VCL_INVALID_SESSION_INDEX;
       return;
     }
 
@@ -1505,6 +1510,7 @@ vcl_epoll_lt_del (vcl_worker_t *wrk, vcl_session_t *s)
     wrk->ep_lt_current = s->vep.lt_next;
 
   s->vep.lt_next = VCL_INVALID_SESSION_INDEX;
+  s->vep.lt_prev = VCL_INVALID_SESSION_INDEX;
 }
 
 int
@@ -2761,7 +2767,8 @@ vcl_epoll_ctl_add_unhandled_event (vcl_worker_t *wrk, vcl_session_t *s,
 {
   if (!is_epollet)
     {
-      vcl_epoll_lt_add (wrk, s);
+      if (s->vep.lt_next == VCL_INVALID_SESSION_INDEX)
+	vcl_epoll_lt_add (wrk, s);
       return;
     }
 
