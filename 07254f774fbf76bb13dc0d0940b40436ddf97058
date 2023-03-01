@@ -16,6 +16,23 @@
       "message": "Could you review the patch?",
       "revId": "07254f774fbf76bb13dc0d0940b40436ddf97058",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05ea39ed_28817775",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-03-01T13:20:21Z",
+      "side": 1,
+      "message": "The patch looks good to me.",
+      "revId": "07254f774fbf76bb13dc0d0940b40436ddf97058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
