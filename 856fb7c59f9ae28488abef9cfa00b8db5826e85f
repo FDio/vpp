@@ -46,6 +46,30 @@
       },
       "revId": "856fb7c59f9ae28488abef9cfa00b8db5826e85f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e41c3f4_a5fe9442",
+        "filename": "extras/strongswan/vpp_sswan/README.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-03-01T15:55:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "565848c2_4cc5e779",
+      "range": {
+        "startLine": 23,
+        "startChar": 48,
+        "endLine": 23,
+        "endChar": 56
+      },
+      "revId": "856fb7c59f9ae28488abef9cfa00b8db5826e85f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
