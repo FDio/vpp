@@ -3136,6 +3136,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       session_evt_data = s->vep.ev.data.u64;
 
       break;
+    case SESSION_CTRL_EVT_BOUND:
+      vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
+      break;
     case SESSION_CTRL_EVT_RESET:
       if (!e->postponed)
 	{
