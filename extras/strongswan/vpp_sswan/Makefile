@@ -54,7 +54,7 @@ endif
 SOURCES=$(wildcard *.c)
 OBJECTS=$(SOURCES:.c=.o)
 
-all: pull-swan $(TARGET)
+all: pull-swan install-swan $(TARGET)
 
 pull-swan:
 	@if [ -d "${SWANDIR}" ]; then \
@@ -70,8 +70,14 @@ pull-swan:
 	mv ${CURDIR}/../../../build-root/build-vpp-native/external/strongswan-${VERSION_SSWAN} ${SWANDIR}
 	cd ${SWANDIR} && ./autogen.sh
 	cd ${SWANDIR} && ./configure --prefix=${PREFIX} --sysconfdir=${PREFIX_SYS_CONF} --enable-libipsec --enable-systemd --enable-swanctl --disable-gmp --enable-openssl
+
+install-swan:
+	@if ! [ -f "${SWANDIR}/configure" ]; then \
+	  echo "SSWAN not downloaded, please run "make" or "make pull-swan" first." ; \
+	  exit 1 ; \
+	fi
 	cd ${SWANDIR} && make -j$(nproc)
-#	cd ${SWANDIR} && sudo make install
+	cd ${SWANDIR} && sudo make install
 
 # check if VPP is installed
 ifneq ($(shell test "$(shell ldconfig -p | grep vppinfra.so | awk 'NR==1{print $$1;}')" && echo "yes"), yes)
@@ -103,6 +109,8 @@ install:
 	cp kernel-vpp.conf $(PLUGINCONF)
 
 clean:
+	rm -f ${SWANARCHIVE}/strongswan-${VERSION_SSWAN}.tar.gz
+	rm -rf ${SWANDIR}
 	rm -f *.so *.o
 
 .PHONY: clean install all
