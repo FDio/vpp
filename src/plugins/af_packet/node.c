@@ -306,7 +306,7 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	{
 	  num_pkts = bd->hdr.bh1.num_pkts;
-	  rx_frame_offset = sizeof (block_desc_t);
+	  rx_frame_offset = bd->hdr.bh1.offset_to_first_pkt;
 	  total++;
 
 	  if (TP_STATUS_BLK_TMO & bd->hdr.bh1.block_status)
