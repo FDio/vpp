@@ -899,6 +899,7 @@ vlib_worker_thread_node_refork (void)
   nm = &vm->node_main;
   vm_clone = vlib_get_main ();
   nm_clone = &vm_clone->node_main;
+  nm_clone->node_by_name = nm->node_by_name;
 
   /* Re-clone error heap */
   u64 *old_counters_all_clear = vm_clone->error_main.counters_last_clear;
