@@ -2413,8 +2413,10 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
        * was acquired outside of the LD_PRELOAD process context.
        * In any case, if we get one, punt it to libc_epoll_ctl.
        */
-      LDBG (1, "epfd %d: calling libc_epoll_ctl: op %d, fd %d"
-	    " event %p", epfd, op, fd, event);
+      LDBG (1,
+	    "epfd %d: calling libc_epoll_ctl: op %d, fd %d"
+	    " events 0x%x",
+	    epfd, op, fd, event ? event->events : 0);
 
       rv = libc_epoll_ctl (epfd, op, fd, event);
       goto done;
@@ -2427,8 +2429,10 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 
   if (vlsh != VLS_INVALID_HANDLE)
     {
-      LDBG (1, "epfd %d: calling vls_epoll_ctl: ep_vlsh %d op %d, vlsh %u,"
-	    " event %p", epfd, vep_vlsh, op, vlsh, event);
+      LDBG (1,
+	    "epfd %d: calling vls_epoll_ctl: ep_vlsh %d op %d, vlsh %u,"
+	    " events 0x%x",
+	    epfd, vep_vlsh, op, vlsh, event ? event->events : 0);
 
       rv = vls_epoll_ctl (vep_vlsh, op, vlsh, event);
       if (rv != VPPCOM_OK)
@@ -2566,8 +2570,9 @@ static inline int
 ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
 			 int maxevents, int timeout, const sigset_t * sigmask)
 {
+  int libc_epfd, rv = 0, num_ev, libc_num_ev, vcl_wups = 0;
+  struct epoll_event *libc_evts;
   ldp_worker_ctx_t *ldpw;
-  int libc_epfd, rv = 0, num_ev, vcl_wups = 0;
   vls_handle_t ep_vlsh;
 
   ldp_init_check ();
@@ -2643,7 +2648,11 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
   /* Request to only drain unhandled to prevent libc_epoll_wait starved */
   rv = vls_epoll_wait (ep_vlsh, events, maxevents, -2);
   if (rv > 0)
-    goto done;
+    {
+      timeout = 0;
+      if (rv >= maxevents)
+	goto done;
+    }
   else if (PREDICT_FALSE (rv < 0))
     {
       errno = -rv;
@@ -2652,29 +2661,39 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
     }
 
 epoll_again:
-  rv = libc_epoll_pwait (libc_epfd, events, maxevents, timeout, sigmask);
-  if (rv <= 0)
-    goto done;
-  for (int i = 0; i < rv; i++)
+
+  libc_evts = &events[rv];
+  libc_num_ev =
+    libc_epoll_pwait (libc_epfd, libc_evts, maxevents - rv, timeout, sigmask);
+  if (libc_num_ev <= 0)
     {
-      if (events[i].data.fd == ldpw->vcl_mq_epfd)
+      rv = rv >= 0 ? rv : -1;
+      goto done;
+    }
+
+  for (int i = 0; i < libc_num_ev; i++)
+    {
+      if (libc_evts[i].data.fd == ldpw->vcl_mq_epfd)
 	{
 	  /* We should remove mq epoll fd from events. */
-	  rv--;
-	  if (i != rv)
+	  libc_num_ev--;
+	  if (i != libc_num_ev)
 	    {
-	      events[i].events = events[rv].events;
-	      events[i].data.u64 = events[rv].data.u64;
+	      libc_evts[i].events = libc_evts[libc_num_ev].events;
+	      libc_evts[i].data.u64 = libc_evts[libc_num_ev].data.u64;
 	    }
-	  num_ev = vls_epoll_wait (ep_vlsh, &events[rv], maxevents - rv, 0);
+	  num_ev = vls_epoll_wait (ep_vlsh, &libc_evts[libc_num_ev],
+				   maxevents - libc_num_ev, 0);
 	  if (PREDICT_TRUE (num_ev > 0))
 	    rv += num_ev;
 	  /* Woken up by vcl but no events generated. Accept it once */
-	  if (rv == 0 && vcl_wups++ < 1)
+	  if (rv == 0 && libc_num_ev == 0 && timeout && vcl_wups++ < 1)
 	    goto epoll_again;
 	  break;
 	}
     }
+
+  rv += libc_num_ev;
 
 done:
   return rv;
