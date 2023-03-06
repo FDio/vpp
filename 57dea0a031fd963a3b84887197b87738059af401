@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16b0a465_eeb0d8ab",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1932,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T13:59:49Z",
+      "side": 1,
+      "message": "parsing strings should not be part of device driver, see \u0027unformat_hex_string\u0027 unformat function, use it in the CLI handler, pass vector of bytes to avf_interface_set_rss_hash_key",
+      "revId": "57dea0a031fd963a3b84887197b87738059af401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1381390a_95b21073",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1431,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T13:59:49Z",
+      "side": 1,
+      "message": "not needed anymore, CLI parser assures that there is only single line passed to cli handler...",
+      "revId": "57dea0a031fd963a3b84887197b87738059af401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
