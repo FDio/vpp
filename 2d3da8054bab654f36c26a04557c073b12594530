@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5693625c_3876dd80",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2417,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-03-06T19:35:15Z",
+      "side": 0,
+      "message": "Are you sure you want to drop the event pointer from this debug output?",
+      "range": {
+        "startLine": 2417,
+        "startChar": 5,
+        "endLine": 2417,
+        "endChar": 15
+      },
+      "revId": "2d3da8054bab654f36c26a04557c073b12594530",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27f761f5_6e8e5377",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2431,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-03-06T19:35:15Z",
+      "side": 0,
+      "message": "Are you sure you want to drop the event pointer from this debug output?",
+      "range": {
+        "startLine": 2431,
+        "startChar": 6,
+        "endLine": 2431,
+        "endChar": 15
+      },
+      "revId": "2d3da8054bab654f36c26a04557c073b12594530",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

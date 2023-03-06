@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37d9dcdd_58f02ac6",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2418,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-03-06T19:35:15Z",
+      "side": 1,
+      "message": "0x%x",
+      "range": {
+        "startLine": 2418,
+        "startChar": 14,
+        "endLine": 2418,
+        "endChar": 16
+      },
+      "revId": "fcb5094e92af1ad8ecf59cace07e4fb9ae1c4b0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59aebb0f_9ad822e9",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2434,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-03-06T19:35:15Z",
+      "side": 1,
+      "message": "0x",
+      "range": {
+        "startLine": 2434,
+        "startChar": 14,
+        "endLine": 2434,
+        "endChar": 16
+      },
+      "revId": "fcb5094e92af1ad8ecf59cace07e4fb9ae1c4b0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
