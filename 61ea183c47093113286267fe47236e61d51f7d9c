@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87fcd7fd_873d20cb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:32:43Z",
+      "side": 1,
+      "message": "This is nightmare for anyone who uses LSP enabled editor. Can you simply create single .c file instead of including .h?",
+      "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
