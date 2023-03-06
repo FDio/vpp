@@ -3,14 +3,18 @@ ARG UBUNTU_VERSION
 FROM ubuntu:${UBUNTU_VERSION}
 
 RUN apt-get update \
- && apt-get install -y nginx \
+ && apt-get install -y nginx gdb less \
  && rm -rf /var/lib/apt/lists/*
 
 COPY vpp-data/lib/* /usr/lib/
 COPY resources/nginx/vcl.conf /vcl.conf
 COPY resources/nginx/nginx.conf /nginx.conf
+COPY script/nginx_ldp.sh /usr/bin/nginx_ldp.sh
 
 ENV VCL_CONFIG=/vcl.conf
-ENV LD_PRELOAD=/usr/lib/libvcl_ldpreload.so
+ENV LDP=/usr/lib/libvcl_ldpreload.so
+ENV LDP_DEBUG=0
+ENV VCL_DEBUG=0
+ENV LDP_SID_BIT=8
 
-ENTRYPOINT ["nginx", "-c", "/nginx.conf"]
+ENTRYPOINT ["nginx_ldp.sh", "-c", "/nginx.conf"]
