@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a90a002_811fdee1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:46:09Z",
+      "side": 1,
+      "message": "Isn\u0027t Extended Memory quite ambiguous term?\n\nhttps://en.wikipedia.org/wiki/Extended_memory",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e33bb2ae_7bd6ee9d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:46:09Z",
+      "side": 1,
+      "message": "Sounds like re-inventing hot water. We already have packet buffers which are allocated on multiple threads and we are not calling ioctls() from thread on each alloc...",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
