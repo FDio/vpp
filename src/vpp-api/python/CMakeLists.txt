@@ -11,27 +11,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (CMAKE_VERSION VERSION_LESS 3.12)
-  find_package(PythonInterp 2.7)
-else()
-  find_package(Python3 COMPONENTS Interpreter)
-  set(PYTHONINTERP_FOUND ${Python3_Interpreter_FOUND})
-  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-endif()
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(PYTHONINTERP_FOUND ${Python3_Interpreter_FOUND})
+set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 
-if(PYTHONINTERP_FOUND)
-  install(
-    CODE "
-    execute_process(
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMAND ${PYTHON_EXECUTABLE} ./setup.py
-	install
-	  --root=\$ENV{DESTDIR}/
-	  --prefix=${CMAKE_INSTALL_PREFIX}
-	  --single-version-externally-managed
-	  bdist_egg
-      OUTPUT_QUIET
-    )"
-    COMPONENT vpp-api-python
-  )
-endif()
+install(
+  CODE "
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${PYTHON_EXECUTABLE} ./setup.py
+      install
+	--root=\$ENV{DESTDIR}/
+	--prefix=${CMAKE_INSTALL_PREFIX}
+	--single-version-externally-managed
+	bdist_egg
+    OUTPUT_QUIET
+  )"
+  COMPONENT vpp-api-python
+)
