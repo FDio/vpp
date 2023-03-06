@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "890ff86a_34999bd4",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2417,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-06T21:41:18Z",
+      "side": 0,
+      "message": "Yup, want the events not the pointer to the events",
+      "parentUuid": "5693625c_3876dd80",
+      "range": {
+        "startLine": 2417,
+        "startChar": 5,
+        "endLine": 2417,
+        "endChar": 15
+      },
+      "revId": "2d3da8054bab654f36c26a04557c073b12594530",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "27f761f5_6e8e5377",
@@ -37,6 +61,30 @@
       "writtenOn": "2023-03-06T19:35:15Z",
       "side": 0,
       "message": "Are you sure you want to drop the event pointer from this debug output?",
+      "range": {
+        "startLine": 2431,
+        "startChar": 6,
+        "endLine": 2431,
+        "endChar": 15
+      },
+      "revId": "2d3da8054bab654f36c26a04557c073b12594530",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "79b83c3b_27f6c4ea",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2431,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-06T21:41:18Z",
+      "side": 0,
+      "message": "yup",
+      "parentUuid": "27f761f5_6e8e5377",
       "range": {
         "startLine": 2431,
         "startChar": 6,
