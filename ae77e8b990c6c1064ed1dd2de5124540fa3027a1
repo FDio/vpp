@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "618e7815_08e8bb17",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:25:08Z",
+      "side": 1,
+      "message": "packaging needs to be fixed 1st per debian packaging rules, .so file goes to libmemif_*.deb, headers to libmemeif-dev_*.deb, etc...",
+      "revId": "ae77e8b990c6c1064ed1dd2de5124540fa3027a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
