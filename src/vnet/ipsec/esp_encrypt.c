@@ -264,6 +264,368 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
   return len;
 }
 
+static_always_inline u8 esp_prepare_packet_for_enc (
+  vlib_main_t *vm, int is_tun, vlib_buffer_t **b, vlib_buffer_t **bufs,
+  u32 *from, vlib_node_runtime_t *node, u16 *noop_nexts, u16 drop_next,
+  u16 handoff_next, u16 *n_noop, u32 *noop_bi, esp_encrypt_error_t *err,
+  u32 *sa_index0, u32 *current_sa0_index, u32 thread_index,
+  esp_encrypt_runtime_sa_data_t *st0, esp_encrypt_runtime_data_t *rt0,
+  ipsec_sa_t **sa0, int *is_async, ipsec_main_t *im, u16 buffer_data_size,
+  vnet_link_t lt, u16 *sync_next) __attribute__ ((unused));
+
+static_always_inline u8
+esp_prepare_packet_for_enc (
+  vlib_main_t *vm, int is_tun, vlib_buffer_t **b, vlib_buffer_t **bufs,
+  u32 *from, vlib_node_runtime_t *node, u16 *noop_nexts, u16 drop_next,
+  u16 handoff_next, u16 *n_noop, u32 *noop_bi, esp_encrypt_error_t *err,
+  u32 *sa_index0, u32 *current_sa0_index, u32 thread_index,
+  esp_encrypt_runtime_sa_data_t *st0, esp_encrypt_runtime_data_t *rt0,
+  ipsec_sa_t **sa0, int *is_async, ipsec_main_t *im, u16 buffer_data_size,
+  vnet_link_t lt, u16 *sync_next)
+{
+  *err = ESP_ENCRYPT_ERROR_RX_PKTS;
+  u8 is_chained = ESP_ENCRYPT_OP_SB;
+  if (is_tun)
+    {
+      /* we are on a ipsec tunnel's feature arc */
+      vnet_buffer (b[0])->ipsec.sad_index = *sa_index0 =
+	ipsec_tun_protect_get_sa_out (
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
+
+      if (PREDICT_FALSE (INDEX_INVALID == *sa_index0))
+	{
+	  *err = ESP_ENCRYPT_ERROR_NO_PROTECTION;
+	  esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts,
+			      drop_next);
+	  noop_bi[*n_noop] = from[b - bufs];
+	  *n_noop += 1;
+	  goto end;
+	}
+    }
+  else
+    *sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+
+  if (*sa_index0 != *current_sa0_index)
+    {
+      if (st0->current_sa_packets)
+	vlib_increment_combined_counter (
+	  &ipsec_sa_counters, thread_index, *current_sa0_index,
+	  st0->current_sa_packets, st0->current_sa_bytes);
+      st0->current_sa_packets = st0->current_sa_bytes = 0;
+
+      *sa0 = ipsec_sa_get (*sa_index0);
+
+      if (PREDICT_FALSE (((*sa0)->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+			  (*sa0)->integ_alg == IPSEC_INTEG_ALG_NONE) &&
+			 !ipsec_sa_is_set_NO_ALGO_NO_DROP (*sa0)))
+	{
+	  *err = ESP_ENCRYPT_ERROR_NO_ENCRYPTION;
+	  esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts,
+			      drop_next);
+	  noop_bi[*n_noop] = from[b - bufs];
+	  *n_noop += 1;
+	  goto end;
+	}
+      /* fetch the second cacheline ASAP */
+      clib_prefetch_load ((*sa0)->cacheline1);
+
+      *current_sa0_index = *sa_index0;
+      st0->spi = clib_net_to_host_u32 ((*sa0)->spi);
+      st0->esp_align = (*sa0)->esp_block_align;
+      st0->icv_sz = (*sa0)->integ_icv_size;
+      st0->iv_sz = (*sa0)->crypto_iv_size;
+      *is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (*sa0);
+    }
+
+  if (PREDICT_FALSE (~0 == (*sa0)->thread_index))
+    {
+      /* this is the first packet to use this SA, claim the SA
+       * for this thread. this could happen simultaneously on
+       * another thread */
+      clib_atomic_cmp_and_swap (&(*sa0)->thread_index, ~0,
+				ipsec_sa_assign_thread (thread_index));
+    }
+
+  if (PREDICT_FALSE (thread_index != (*sa0)->thread_index))
+    {
+      vnet_buffer (b[0])->ipsec.thread_index = (*sa0)->thread_index;
+      *err = ESP_ENCRYPT_ERROR_HANDOFF;
+      esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts, handoff_next);
+      noop_bi[*n_noop] = from[b - bufs];
+      *n_noop += 1;
+      goto end;
+    }
+
+  rt0->lb = b[0];
+  rt0->n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
+  if (rt0->n_bufs == 0)
+    {
+      *err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
+      esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts, drop_next);
+      noop_bi[*n_noop] = from[b - bufs];
+      *n_noop += 1;
+      goto end;
+    }
+
+  if (rt0->n_bufs > 1)
+    {
+      /* find last buffer in the chain */
+      while (rt0->lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  rt0->lb = vlib_get_buffer (vm, rt0->lb->next_buffer);
+	}
+
+      is_chained = ESP_ENCRYPT_OP_CHAIN;
+    }
+
+  if (PREDICT_FALSE (esp_seq_advance (*sa0)))
+    {
+      *err = ESP_ENCRYPT_ERROR_SEQ_CYCLED;
+      esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts, drop_next);
+      noop_bi[*n_noop] = from[b - bufs];
+      *n_noop += 1;
+      goto end;
+    }
+
+  /* space for IV */
+  rt0->hdr_len = st0->iv_sz;
+
+  if (ipsec_sa_is_set_IS_TUNNEL (*sa0))
+    {
+      rt0->payload = vlib_buffer_get_current (b[0]);
+      rt0->next_hdr_ptr = esp_add_footer_and_icv (
+	vm, &rt0->lb, st0->esp_align, st0->icv_sz, node, buffer_data_size,
+	vlib_buffer_length_in_chain (vm, b[0]));
+      if (!rt0->next_hdr_ptr)
+	{
+	  *err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
+	  esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts,
+			      drop_next);
+	  noop_bi[*n_noop] = from[b - bufs];
+	  *n_noop += 1;
+	  goto end;
+	}
+      b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      rt0->payload_len = b[0]->current_length;
+      rt0->payload_len_total = vlib_buffer_length_in_chain (vm, b[0]);
+
+      /* ESP header */
+      rt0->hdr_len += sizeof (*rt0->esp);
+      rt0->esp = (esp_header_t *) (rt0->payload - rt0->hdr_len);
+
+      /* optional UDP header */
+      if (ipsec_sa_is_set_UDP_ENCAP (*sa0))
+	{
+	  rt0->hdr_len += sizeof (udp_header_t);
+	  esp_fill_udp_hdr (*sa0,
+			    (udp_header_t *) (rt0->payload - rt0->hdr_len),
+			    rt0->payload_len_total + rt0->hdr_len);
+	}
+
+      /* IP header */
+      if (ipsec_sa_is_set_IS_TUNNEL_V6 (*sa0))
+	{
+	  ip6_header_t *ip6;
+	  u16 len = sizeof (ip6_header_t);
+	  rt0->hdr_len += len;
+	  ip6 = (ip6_header_t *) (rt0->payload - rt0->hdr_len);
+	  clib_memcpy_fast (ip6, &(*sa0)->ip6_hdr, sizeof (ip6_header_t));
+
+	  if (VNET_LINK_IP6 == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_IPV6;
+	      tunnel_encap_fixup_6o6 ((*sa0)->tunnel_flags,
+				      (const ip6_header_t *) rt0->payload,
+				      ip6);
+	    }
+	  else if (VNET_LINK_IP4 == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
+	      tunnel_encap_fixup_4o6 ((*sa0)->tunnel_flags, b[0],
+				      (const ip4_header_t *) rt0->payload,
+				      ip6);
+	    }
+	  else if (VNET_LINK_MPLS == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
+	      tunnel_encap_fixup_mplso6 (
+		(*sa0)->tunnel_flags, b[0],
+		(const mpls_unicast_header_t *) rt0->payload, ip6);
+	    }
+	  else
+	    ASSERT (0);
+
+	  len = rt0->payload_len_total + rt0->hdr_len - len;
+	  ip6->payload_length = clib_net_to_host_u16 (len);
+	  b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	}
+      else
+	{
+	  ip4_header_t *ip4;
+	  u16 len = sizeof (ip4_header_t);
+	  rt0->hdr_len += len;
+	  ip4 = (ip4_header_t *) (rt0->payload - rt0->hdr_len);
+	  clib_memcpy_fast (ip4, &(*sa0)->ip4_hdr, sizeof (ip4_header_t));
+
+	  if (VNET_LINK_IP6 == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_IPV6;
+	      tunnel_encap_fixup_6o4_w_chksum (
+		(*sa0)->tunnel_flags, (const ip6_header_t *) rt0->payload,
+		ip4);
+	    }
+	  else if (VNET_LINK_IP4 == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
+	      tunnel_encap_fixup_4o4_w_chksum (
+		(*sa0)->tunnel_flags, (const ip4_header_t *) rt0->payload,
+		ip4);
+	    }
+	  else if (VNET_LINK_MPLS == lt)
+	    {
+	      *rt0->next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
+	      tunnel_encap_fixup_mplso4_w_chksum (
+		(*sa0)->tunnel_flags,
+		(const mpls_unicast_header_t *) rt0->payload, ip4);
+	    }
+	  else
+	    ASSERT (0);
+
+	  len = rt0->payload_len_total + rt0->hdr_len;
+	  esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
+	}
+
+      rt0->dpo = &(*sa0)->dpo;
+      if (!is_tun)
+	{
+	  sync_next[0] = rt0->dpo->dpoi_next_node;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = rt0->dpo->dpoi_index;
+	}
+      else
+	sync_next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+      b[0]->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+    }
+  else /* transport mode */
+    {
+      u8 *l2_hdr, l2_len, *ip_hdr;
+      u16 ip_len;
+      ip6_ext_header_t *ext_hdr;
+      udp_header_t *udp = 0;
+      u16 udp_len = 0;
+      u8 *old_ip_hdr = vlib_buffer_get_current (b[0]);
+
+      /*
+       * Get extension header chain length. It might be longer than the
+       * buffer's pre_data area.
+       */
+      ip_len = (VNET_LINK_IP6 == lt ?
+			esp_get_ip6_hdr_len ((ip6_header_t *) old_ip_hdr, &ext_hdr) :
+			ip4_header_bytes ((ip4_header_t *) old_ip_hdr));
+      if ((old_ip_hdr - ip_len) < &b[0]->pre_data[0])
+	{
+	  *err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
+	  esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts,
+			      drop_next);
+	  noop_bi[*n_noop] = from[b - bufs];
+	  *n_noop += 1;
+	  goto end;
+	}
+
+      vlib_buffer_advance (b[0], ip_len);
+      rt0->payload = vlib_buffer_get_current (b[0]);
+      rt0->next_hdr_ptr = esp_add_footer_and_icv (
+	vm, &rt0->lb, st0->esp_align, st0->icv_sz, node, buffer_data_size,
+	vlib_buffer_length_in_chain (vm, b[0]));
+      if (!rt0->next_hdr_ptr)
+	{
+	  *err = ESP_ENCRYPT_ERROR_NO_BUFFERS;
+	  esp_set_next_index (b[0], node, *err, *n_noop, noop_nexts,
+			      drop_next);
+	  noop_bi[*n_noop] = from[b - bufs];
+	  *n_noop += 1;
+	  goto end;
+	}
+
+      b[0]->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      rt0->payload_len = b[0]->current_length;
+      rt0->payload_len_total = vlib_buffer_length_in_chain (vm, b[0]);
+
+      /* ESP header */
+      rt0->hdr_len += sizeof (*rt0->esp);
+      rt0->esp = (esp_header_t *) (rt0->payload - rt0->hdr_len);
+
+      /* optional UDP header */
+      if (ipsec_sa_is_set_UDP_ENCAP (*sa0))
+	{
+	  rt0->hdr_len += sizeof (udp_header_t);
+	  udp = (udp_header_t *) (rt0->payload - rt0->hdr_len);
+	}
+
+      /* IP header */
+      rt0->hdr_len += ip_len;
+      ip_hdr = rt0->payload - rt0->hdr_len;
+
+      /* L2 header */
+      if (!is_tun)
+	{
+	  l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	  rt0->hdr_len += l2_len;
+	  l2_hdr = rt0->payload - rt0->hdr_len;
+
+	  /* copy l2 and ip header */
+	  clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	}
+      else
+	l2_len = 0;
+
+      u16 len;
+      len = rt0->payload_len_total + rt0->hdr_len - l2_len;
+
+      if (VNET_LINK_IP6 == lt)
+	{
+	  ip6_header_t *ip6 = (ip6_header_t *) (old_ip_hdr);
+	  if (PREDICT_TRUE (NULL == ext_hdr))
+	    {
+	      *rt0->next_hdr_ptr = ip6->protocol;
+	      ip6->protocol = (udp) ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
+	    }
+	  else
+	    {
+	      *rt0->next_hdr_ptr = ext_hdr->next_hdr;
+	      ext_hdr->next_hdr =
+		(udp) ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
+	    }
+	  ip6->payload_length =
+	    clib_host_to_net_u16 (len - sizeof (ip6_header_t));
+	}
+      else if (VNET_LINK_IP4 == lt)
+	{
+	  ip4_header_t *ip4 = (ip4_header_t *) (old_ip_hdr);
+	  *rt0->next_hdr_ptr = ip4->protocol;
+	  esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, (udp != NULL));
+	}
+
+      clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
+
+      if (udp)
+	{
+	  udp_len = len - ip_len;
+	  esp_fill_udp_hdr ((*sa0), udp, udp_len);
+	}
+
+      sync_next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+    }
+  if (rt0->lb != b[0])
+    {
+      is_chained = ESP_ENCRYPT_OP_CHAIN;
+    }
+  rt0->esp->spi = st0->spi;
+  rt0->esp->seq = clib_net_to_host_u32 ((*sa0)->seq);
+
+end:
+  return is_chained;
+}
+
 /* IPsec IV generation: IVs requirements differ depending of the
  * encryption mode: IVs must be unpredictable for AES-CBC whereas it can
  * be predictable but should never be reused with the same key material
