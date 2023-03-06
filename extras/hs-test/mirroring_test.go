@@ -9,7 +9,7 @@ func (s *NginxSuite) TestMirroring() {
 
 	path := "/64B.json"
 
-	testCommand := "wrk -c 20 -t 10 -d 40 http://" + proxyAddress + ":80" + path
+	testCommand := "wrk -c 20 -t 10 -d 10 http://" + proxyAddress + ":80" + path
 	s.log(testCommand)
 	o, _ := exechelper.Output(testCommand)
 	s.log(string(o))
