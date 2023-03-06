@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6bc72318_79d78ad1",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:04:27Z",
+      "side": 1,
+      "message": "use \u0027+\u0027 instead of u64x8_add\nuse \u0027\u003c\u003c\u0027 instead of *_shift_left",
+      "revId": "aedd746b6894ce887918c2f3864a5a53df4579b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "05cf87e3_9b3349d9",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:04:27Z",
+      "side": 1,
+      "message": "please submit vlib changes as separate patch",
+      "revId": "aedd746b6894ce887918c2f3864a5a53df4579b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
