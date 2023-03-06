@@ -16,6 +16,23 @@
       "message": "Hello, please take a look",
       "revId": "9c23b5fadd3e2e42fc78c863571864439090235f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "39e26b21_ba203add",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:11:10Z",
+      "side": 1,
+      "message": ".clang-format changes should be submitted in separate patch and explained....",
+      "revId": "9c23b5fadd3e2e42fc78c863571864439090235f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
