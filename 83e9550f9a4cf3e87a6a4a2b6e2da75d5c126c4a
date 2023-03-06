@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87c6218d_0a2b6cfc",
+        "filename": "src/vppinfra/test_pool_alloc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:18:29Z",
+      "side": 1,
+      "message": "We use SPDX license header for new files...",
+      "revId": "83e9550f9a4cf3e87a6a4a2b6e2da75d5c126c4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d04b6030_d3076cbe",
+        "filename": "src/vppinfra/test_pool_alloc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:18:29Z",
+      "side": 1,
+      "message": "not needed, since we moved to clang-format",
+      "revId": "83e9550f9a4cf3e87a6a4a2b6e2da75d5c126c4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
