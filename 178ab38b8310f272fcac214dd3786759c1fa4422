@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "69e1f8e0_8d6c98ae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:30:04Z",
+      "side": 1,
+      "message": "please split into 2 patches, where 2nd one just bumps dpdk version, that will ensure that we preserve compatibility with previous dpdk version...",
+      "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
