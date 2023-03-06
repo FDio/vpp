@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f203155_fb7d9306",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T17:05:35Z",
+      "side": 1,
+      "message": "s/DBDMA/CBDMA/",
+      "revId": "5c3bf5f208ad2b7ff6b642e5c71c1a988b9e33a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
