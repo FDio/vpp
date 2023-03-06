@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13ebf153_7ea5f97d",
+        "filename": "src/plugins/avf/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:13:32Z",
+      "side": 1,
+      "message": "remove unformat_user above instead, it is not needed anymore...",
+      "revId": "36082dadad9cf2f2aef7cfac184acd58fa54a107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10dc45d8_375e4ebd",
+        "filename": "src/plugins/avf/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:13:32Z",
+      "side": 1,
+      "message": "remove unformat_user above instead, it is not needed anymore...",
+      "revId": "36082dadad9cf2f2aef7cfac184acd58fa54a107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6725cf89_6c40da94",
+        "filename": "src/plugins/avf/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-06T14:13:32Z",
+      "side": 1,
+      "message": "remove unformat_user above instead, it is not needed anymore...",
+      "revId": "36082dadad9cf2f2aef7cfac184acd58fa54a107",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
