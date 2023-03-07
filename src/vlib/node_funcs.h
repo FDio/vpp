@@ -998,8 +998,11 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
       p->flags = p_flags | VLIB_PROCESS_RESUME_PENDING;
       vec_add1 (nm->data_from_advancing_timing_wheel, x);
       if (delete_from_wheel)
-	TW (tw_timer_stop) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
-			    p->stop_timer_handle);
+	{
+	  TW (tw_timer_stop)
+	  ((TWT (tw_timer_wheel) *) nm->timing_wheel, p->stop_timer_handle);
+	  p->stop_timer_handle = ~0;
+	}
     }
 
   return data_to_be_written_by_caller;
