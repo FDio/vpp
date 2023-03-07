@@ -45,7 +45,7 @@ format_udp_tx_trace (u8 *s, va_list *args)
   udp_connection_t *uc = &t->udp_connection;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U\n%U%U", format_udp_connection, uc, format_white_space,
+  s = format (s, "%U\n%U%U", format_udp_connection, uc, 1, format_white_space,
 	      indent, format_udp_header, &t->udp_header, 128);
 
   return s;
