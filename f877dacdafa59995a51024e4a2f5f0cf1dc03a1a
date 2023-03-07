@@ -228,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "22580b26_612592de",
+        "filename": "src/vnet/ip/ip_input.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-03-07T05:11:31Z",
+      "side": 1,
+      "message": "on more careful inspection i think this (and the old) code is ok. passing arc_enabled above is really intended for the next iteration in the hope that it doesn\u0027t need to be re-evaluated in the case all the interfaces are the same.",
+      "parentUuid": "7607ef32_cede8f1c",
+      "revId": "f877dacdafa59995a51024e4a2f5f0cf1dc03a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e3558d6d_bfdab16c",
