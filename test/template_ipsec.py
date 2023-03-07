@@ -1246,31 +1246,29 @@ class IpsecTra46Tests(IpsecTra4Tests, IpsecTra6Tests):
 class IpsecTun4(object):
     """verify methods for Tunnel v4"""
 
-    def verify_counters4(self, p, count, n_frags=None, worker=None):
-        if not n_frags:
-            n_frags = count
+    def verify_counters4(self, p, enc_count, dec_count, worker=None):
         if hasattr(p, "spd_policy_in_any"):
             pkts = p.spd_policy_in_any.get_stats(worker)["packets"]
             self.assertEqual(
                 pkts,
-                count,
-                "incorrect SPD any policy: expected %d != %d" % (count, pkts),
+                enc_count,
+                "incorrect SPD any policy: expected %d != %d" % (enc_count, pkts),
             )
 
         if hasattr(p, "tun_sa_in"):
             pkts = p.tun_sa_in.get_stats(worker)["packets"]
             self.assertEqual(
-                pkts, count, "incorrect SA in counts: expected %d != %d" % (count, pkts)
+                pkts, dec_count, "incorrect SA in counts: expected %d != %d" % (dec_count, pkts)
             )
             pkts = p.tun_sa_out.get_stats(worker)["packets"]
             self.assertEqual(
                 pkts,
-                n_frags,
-                "incorrect SA out counts: expected %d != %d" % (count, pkts),
+                enc_count,
+                "incorrect SA out counts: expected %d != %d" % (enc_count, pkts),
             )
 
-        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, n_frags)
-        self.assert_packet_counter_equal(self.tun4_decrypt_node_name[0], count)
+        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, enc_count)
+        self.assert_packet_counter_equal(self.tun4_decrypt_node_name[0], dec_count)
 
     def verify_decrypted(self, p, rxs):
         for rx in rxs:
@@ -1463,7 +1461,7 @@ class IpsecTun4(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
 
-        self.verify_counters4(p, count)
+        self.verify_counters4(p, count, count)
 
     def verify_keepalive(self, p):
         # the sizeof Raw is calculated to pad to the minimum ehternet
@@ -1523,21 +1521,21 @@ class IpsecTun4Tests(IpsecTun4):
 class IpsecTun6(object):
     """verify methods for Tunnel v6"""
 
-    def verify_counters6(self, p_in, p_out, count, worker=None):
+    def verify_counters6(self, p_in, p_out, enc_count, dec_count, worker=None):
         if hasattr(p_in, "tun_sa_in"):
             pkts = p_in.tun_sa_in.get_stats(worker)["packets"]
             self.assertEqual(
-                pkts, count, "incorrect SA in counts: expected %d != %d" % (count, pkts)
+                pkts, dec_count, "incorrect SA in counts: expected %d != %d" % (dec_count, pkts)
             )
         if hasattr(p_out, "tun_sa_out"):
             pkts = p_out.tun_sa_out.get_stats(worker)["packets"]
             self.assertEqual(
                 pkts,
-                count,
-                "incorrect SA out counts: expected %d != %d" % (count, pkts),
+                enc_count,
+                "incorrect SA out counts: expected %d != %d" % (enc_count, pkts),
             )
-        self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
-        self.assert_packet_counter_equal(self.tun6_decrypt_node_name[0], count)
+        self.assert_packet_counter_equal(self.tun6_encrypt_node_name, enc_count)
+        self.assert_packet_counter_equal(self.tun6_decrypt_node_name[0], dec_count)
 
     def verify_decrypted6(self, p, rxs):
         for rx in rxs:
@@ -1638,7 +1636,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
-        self.verify_counters6(p_in, p_out, count)
+        self.verify_counters6(p_in, p_out, count, count)
 
     def verify_tun_reass_66(self, p):
         self.vapi.cli("clear errors")
@@ -1673,7 +1671,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
-        self.verify_counters6(p, p, 1)
+        self.verify_counters6(p, p, 1, 1)
         self.vapi.ip_reassembly_enable_disable(
             sw_if_index=self.tun_if.sw_if_index, enable_ip6=False
         )
@@ -1721,7 +1719,7 @@ class IpsecTun6(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
-        self.verify_counters6(p, p, count)
+        self.verify_counters6(p, p, count, count)
 
     def verify_keepalive(self, p):
         # the sizeof Raw is calculated to pad to the minimum ehternet
@@ -1816,8 +1814,7 @@ class IpsecTun6HandoffTests(IpsecTun6):
             self.verify_encrypted6(p, p.vpp_tun_sa, recv_pkts)
 
         # all counts against the first worker that was used
-        self.verify_counters6(p, p, 4 * N_PKTS, worker=0)
-
+        self.verify_counters6(p, p, 2 * N_PKTS, 4 * N_PKTS, worker=0)
 
 class IpsecTun4HandoffTests(IpsecTun4):
     """UT test methods for Tunnel v4 with multiple workers"""
@@ -1860,7 +1857,7 @@ class IpsecTun4HandoffTests(IpsecTun4):
             self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
 
         # all counts against the first worker that was used
-        self.verify_counters4(p, 4 * N_PKTS, worker=0)
+        self.verify_counters4(p, 2 * N_PKTS, 4 * N_PKTS, worker=0)
 
 
 class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
