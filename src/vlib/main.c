@@ -1649,6 +1649,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 			vlib_get_node (vm, te->process_node_index);
 		      vlib_process_t *p =
 			vec_elt (nm->processes, n->runtime_index);
+		      p->stop_timer_handle = ~0;
 		      void *data;
 		      data =
 			vlib_process_signal_event_helper (nm, n, p,
