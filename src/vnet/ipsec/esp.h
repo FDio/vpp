@@ -102,16 +102,16 @@ esp_seq_advance (ipsec_sa_t * sa)
 	  if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
 			     sa->seq_hi == ESP_SEQ_MAX))
 	    return 1;
-	  sa->seq_hi++;
+	  clib_atomic_add_fetch (&sa->seq_hi, 1);
 	}
-      sa->seq++;
+      clib_atomic_add_fetch (&sa->seq, 1);
     }
   else
     {
       if (PREDICT_FALSE (ipsec_sa_is_set_USE_ANTI_REPLAY (sa) &&
 			 sa->seq == ESP_SEQ_MAX))
 	return 1;
-      sa->seq++;
+      clib_atomic_add_fetch (&sa->seq, 1);
     }
 
   return 0;

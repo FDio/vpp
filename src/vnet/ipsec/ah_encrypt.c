@@ -27,7 +27,6 @@
 
 #define foreach_ah_encrypt_next \
   _ (DROP, "error-drop")                           \
-  _ (HANDOFF, "handoff")                           \
   _ (INTERFACE_OUTPUT, "interface-output")
 
 
@@ -164,22 +163,6 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       pd->sa_index = current_sa_index;
       next[0] = AH_ENCRYPT_NEXT_DROP;
-
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
-	{
-	  /* this is the first packet to use this SA, claim the SA
-	   * for this thread. this could happen simultaneously on
-	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
-				    ipsec_sa_assign_thread (thread_index));
-	}
-
-      if (PREDICT_TRUE (thread_index != sa0->thread_index))
-	{
-	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
-	  next[0] = AH_ENCRYPT_NEXT_HANDOFF;
-	  goto next;
-	}
 
       if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	{
@@ -450,7 +433,6 @@ VLIB_REGISTER_NODE (ah4_encrypt_node) = {
   .n_next_nodes = AH_ENCRYPT_N_NEXT,
   .next_nodes = {
     [AH_ENCRYPT_NEXT_DROP] = "ip4-drop",
-    [AH_ENCRYPT_NEXT_HANDOFF] = "ah4-encrypt-handoff",
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
@@ -476,30 +458,10 @@ VLIB_REGISTER_NODE (ah6_encrypt_node) = {
   .n_next_nodes = AH_ENCRYPT_N_NEXT,
   .next_nodes = {
     [AH_ENCRYPT_NEXT_DROP] = "ip6-drop",
-    [AH_ENCRYPT_NEXT_HANDOFF] = "ah6-encrypt-handoff",
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
 /* *INDENT-ON* */
-
-#ifndef CLIB_MARCH_VARIANT
-
-static clib_error_t *
-ah_encrypt_init (vlib_main_t *vm)
-{
-  ipsec_main_t *im = &ipsec_main;
-
-  im->ah4_enc_fq_index =
-    vlib_frame_queue_main_init (ah4_encrypt_node.index, 0);
-  im->ah6_enc_fq_index =
-    vlib_frame_queue_main_init (ah6_encrypt_node.index, 0);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (ah_encrypt_init);
-
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
