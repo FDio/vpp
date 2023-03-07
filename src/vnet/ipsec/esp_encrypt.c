@@ -31,9 +31,6 @@
   _ (DROP4, "ip4-drop")                                                       \
   _ (DROP6, "ip6-drop")                                                       \
   _ (DROP_MPLS, "mpls-drop")                                                  \
-  _ (HANDOFF4, "handoff4")                                                    \
-  _ (HANDOFF6, "handoff6")                                                    \
-  _ (HANDOFF_MPLS, "handoff-mpls")                                            \
   _ (INTERFACE_OUTPUT, "interface-output")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
@@ -603,10 +600,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     (lt == VNET_LINK_IP6 ? ESP_ENCRYPT_NEXT_DROP6 :
 			   (lt == VNET_LINK_IP4 ? ESP_ENCRYPT_NEXT_DROP4 :
 						  ESP_ENCRYPT_NEXT_DROP_MPLS));
-  u16 handoff_next = (lt == VNET_LINK_IP6 ?
-			ESP_ENCRYPT_NEXT_HANDOFF6 :
-			(lt == VNET_LINK_IP4 ? ESP_ENCRYPT_NEXT_HANDOFF4 :
-					       ESP_ENCRYPT_NEXT_HANDOFF_MPLS));
   vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
   u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
   u16 n_async = 0;
@@ -696,24 +689,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
-	}
-
-      if (PREDICT_FALSE (~0 == sa0->thread_index))
-	{
-	  /* this is the first packet to use this SA, claim the SA
-	   * for this thread. this could happen simultaneously on
-	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
-				    ipsec_sa_assign_thread (thread_index));
-	}
-
-      if (PREDICT_FALSE (thread_index != sa0->thread_index))
-	{
-	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
-	  err = ESP_ENCRYPT_ERROR_HANDOFF;
-	  esp_set_next_index (b[0], node, err, n_noop, noop_nexts,
-			      handoff_next);
-	  goto trace;
 	}
 
       lb = b[0];
@@ -1199,9 +1174,6 @@ VLIB_REGISTER_NODE (esp4_encrypt_node) = {
   .next_nodes = { [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
 		  [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
 		  [ESP_ENCRYPT_NEXT_DROP_MPLS] = "mpls-drop",
-		  [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-handoff",
-		  [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-handoff",
-		  [ESP_ENCRYPT_NEXT_HANDOFF_MPLS] = "error-drop",
 		  [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output" },
 };
 /* *INDENT-ON* */
@@ -1290,9 +1262,6 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
     [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_DROP_MPLS] = "mpls-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF_MPLS] = "esp-mpls-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
 };
@@ -1340,9 +1309,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
     [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_DROP_MPLS] = "mpls-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF_MPLS] = "esp-mpls-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
 };
@@ -1390,9 +1356,6 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_node) = {
     [ESP_ENCRYPT_NEXT_DROP4] = "ip4-drop",
     [ESP_ENCRYPT_NEXT_DROP6] = "ip6-drop",
     [ESP_ENCRYPT_NEXT_DROP_MPLS] = "mpls-drop",
-    [ESP_ENCRYPT_NEXT_HANDOFF4] = "esp4-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF6] = "esp6-encrypt-tun-handoff",
-    [ESP_ENCRYPT_NEXT_HANDOFF_MPLS] = "esp-mpls-encrypt-tun-handoff",
     [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "adj-midchain-tx",
   },
 };
@@ -1413,31 +1376,6 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-
-#ifndef CLIB_MARCH_VARIANT
-
-static clib_error_t *
-esp_encrypt_init (vlib_main_t *vm)
-{
-  ipsec_main_t *im = &ipsec_main;
-
-  im->esp4_enc_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_node.index, 0);
-  im->esp6_enc_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_node.index, 0);
-  im->esp4_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_tun_node.index, 0);
-  im->esp6_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_tun_node.index, 0);
-  im->esp_mpls_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp_mpls_encrypt_tun_node.index, 0);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (esp_encrypt_init);
-
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
