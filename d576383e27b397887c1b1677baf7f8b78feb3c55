@@ -22,6 +22,30 @@
       },
       "revId": "d576383e27b397887c1b1677baf7f8b78feb3c55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85156918_3057cf82",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1522,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2023-03-07T20:31:19Z",
+      "side": 1,
+      "message": "I see there is another copy of test framework under a different name with a lot of duplicated code instead of mixin approach.\n\nI would suggest to extract common code instead of forcing contributors into maintaining duplicated code.",
+      "parentUuid": "6788f93e_ec766c64",
+      "range": {
+        "startLine": 1514,
+        "startChar": 0,
+        "endLine": 1522,
+        "endChar": 36
+      },
+      "revId": "d576383e27b397887c1b1677baf7f8b78feb3c55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
