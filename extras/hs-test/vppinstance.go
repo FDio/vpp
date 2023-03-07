@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/edwarnicke/exechelper"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/edwarnicke/exechelper"
 
 	"go.fd.io/govpp"
 	"go.fd.io/govpp/api"
@@ -121,8 +122,7 @@ func (vpp *VppInstance) start() error {
 		signal.Notify(sig, syscall.SIGINT)
 		cont := make(chan bool, 1)
 		go func() {
-			sig := <-sig
-			fmt.Println(sig)
+			<-sig
 			cont <- true
 		}()
 

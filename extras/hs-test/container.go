@@ -127,17 +127,20 @@ func (c *Container) getContainerArguments() string {
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	args += " --name " + c.name + " " + c.image
+	args += " " + c.extraRunningArgs
 	return args
 }
 
-func (c *Container) create() {
+func (c *Container) create() error {
 	cmd := "docker create " + c.getContainerArguments()
-	exechelper.Run(cmd)
+	c.Suite().log(cmd)
+	return exechelper.Run(cmd)
 }
 
-func (c *Container) start() {
+func (c *Container) start() error {
 	cmd := "docker start " + c.name
-	exechelper.Run(cmd)
+	c.Suite().log(cmd)
+	return exechelper.Run(cmd)
 }
 
 func (c *Container) run() error {
@@ -145,7 +148,7 @@ func (c *Container) run() error {
 		return fmt.Errorf("run container failed: name is blank")
 	}
 
-	cmd := "docker run -d " + c.getContainerArguments() + " " + c.extraRunningArgs
+	cmd := "docker run -d " + c.getContainerArguments()
 	c.Suite().log(cmd)
 	err := exechelper.Run(cmd)
 	if err != nil {
