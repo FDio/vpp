@@ -35,6 +35,7 @@
 
 #include <af_packet/af_packet.h>
 #include <vnet/devices/virtio/virtio_std.h>
+#include <vnet/devices/netlink.h>
 
 #define foreach_af_packet_tx_func_error               \
 _(FRAME_NOT_READY, "tx frame not ready")              \
@@ -654,62 +655,24 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, hw->dev_instance);
   u32 hw_flags;
-  int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
-  struct ifreq ifr;
 
-  if (0 > fd)
-    {
-      vlib_log_warn (apm->log_class, "af_packet_%s could not open socket",
-		     apif->host_if_name);
-      return 0;
-    }
-
-  /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
-    goto error;			/* no error */
-
-  /* use host_if_index in case host name has changed */
-  ifr.ifr_ifindex = apif->host_if_index;
-  if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
-    {
-      vlib_log_warn (apm->log_class,
-		     "af_packet_%s ioctl could not retrieve eth name",
-		     apif->host_if_name);
-      goto error;
-    }
+    return 0; /* no error */
 
   apif->is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
-
-  if ((rv = ioctl (fd, SIOCGIFFLAGS, &ifr)) < 0)
-    {
-      vlib_log_warn (apm->log_class, "af_packet_%s error: %d",
-		     apif->is_admin_up ? "up" : "down", rv);
-      goto error;
-    }
 
   if (apif->is_admin_up)
     {
       hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
-      ifr.ifr_flags |= IFF_UP;
+      vnet_netlink_set_link_state (apif->host_if_index, 1);
     }
   else
     {
       hw_flags = 0;
-      ifr.ifr_flags &= ~IFF_UP;
-    }
-
-  if ((rv = ioctl (fd, SIOCSIFFLAGS, &ifr)) < 0)
-    {
-      vlib_log_warn (apm->log_class, "af_packet_%s error: %d",
-		     apif->is_admin_up ? "up" : "down", rv);
-      goto error;
+      vnet_netlink_set_link_state (apif->host_if_index, 0);
     }
 
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
-
-error:
-  if (0 <= fd)
-    close (fd);
 
   return 0;			/* no error */
 }
