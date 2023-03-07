@@ -83,8 +83,7 @@ func configureEnvoyProxy(s *NsSuite) {
 		"resources/envoy/proxy.yaml",
 		address,
 	)
-
-	envoyContainer.start()
+	s.assertNil(envoyContainer.start())
 }
 
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
