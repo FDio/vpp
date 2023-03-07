@@ -235,18 +235,11 @@ typedef struct
   ipsec_per_thread_data_t *ptd;
 
   /** Worker handoff */
-  u32 ah4_enc_fq_index;
   u32 ah4_dec_fq_index;
-  u32 ah6_enc_fq_index;
   u32 ah6_dec_fq_index;
 
-  u32 esp4_enc_fq_index;
   u32 esp4_dec_fq_index;
-  u32 esp6_enc_fq_index;
   u32 esp6_dec_fq_index;
-  u32 esp4_enc_tun_fq_index;
-  u32 esp6_enc_tun_fq_index;
-  u32 esp_mpls_enc_tun_fq_index;
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
