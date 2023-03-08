@@ -65,7 +65,7 @@ void
   /* socket filename */
   mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
 
-  rv = vnet_api_error (memif_socket_filename_add_del (
+  rv = vnet_get_api_error_and_free (memif_socket_filename_add_del (
     is_add, socket_id, (char *) mp->socket_filename));
 
 reply:
@@ -99,7 +99,7 @@ vl_api_memif_socket_filename_add_del_v2_t_handler (
   if (mp->is_add && socket_id == (u32) ~0)
     socket_id = memif_get_unused_socket_id ();
 
-  rv = vnet_api_error (
+  rv = vnet_get_api_error_and_free (
     memif_socket_filename_add_del (mp->is_add, socket_id, socket_filename));
 
   vec_free (socket_filename);
@@ -190,7 +190,7 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
       args.hw_addr_set = 1;
     }
 
-  rv = vnet_api_error (memif_create_if (vm, &args));
+  rv = vnet_get_api_error_and_free (memif_create_if (vm, &args));
 
   vec_free (args.secret);
 
@@ -227,7 +227,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
   else
     {
       mif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
-      rv = vnet_api_error (memif_delete_if (vm, mif));
+      rv = vnet_get_api_error_and_free (memif_delete_if (vm, mif));
     }
 
   REPLY_MACRO (VL_API_MEMIF_DELETE_REPLY);
