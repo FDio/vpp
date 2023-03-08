@@ -347,7 +347,7 @@ format_dpdk_burst_fn (u8 *s, va_list *args)
   dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
   vlib_rx_or_tx_t dir = va_arg (*args, vlib_rx_or_tx_t);
   void *p;
-  Dl_info info = { 0 };
+  clib_elf_symbol_t sym;
 
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
 #define rte_eth_fp_ops rte_eth_devices
@@ -356,10 +356,14 @@ format_dpdk_burst_fn (u8 *s, va_list *args)
   p = (dir == VLIB_TX) ? rte_eth_fp_ops[xd->port_id].tx_pkt_burst :
 			 rte_eth_fp_ops[xd->port_id].rx_pkt_burst;
 
-  if (dladdr (p, &info) == 0 || info.dli_sname == 0)
-    return format (s, "(not available)");
-
-  return format (s, "%s", info.dli_sname);
+  if (clib_elf_symbol_by_address (pointer_to_uword (p), &sym))
+    {
+      return format (s, "%s", clib_elf_symbol_name (&sym));
+    }
+  else
+    {
+      return format (s, "(not available)");
+    }
 }
 
 static u8 *
