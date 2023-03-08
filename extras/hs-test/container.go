@@ -321,3 +321,10 @@ func (c *Container) createConfig(targetConfigName string, templateName string, v
 
 	c.copy(f.Name(), targetConfigName)
 }
+
+func init() {
+	cmd := exec.Command("mkdir", "-p", logDir)
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+}
