@@ -42,6 +42,14 @@ vnet_api_error (clib_error_t *err)
   return err->code;
 }
 
+static_always_inline vnet_api_error_t
+vnet_get_api_error_and_free (clib_error_t *err)
+{
+  vnet_api_error_t rv = vnet_api_error (err);
+  clib_error_free (err);
+  return rv;
+}
+
 #endif /* included_vnet_api_errno_h */
 
 /*
