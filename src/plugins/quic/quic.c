@@ -1158,9 +1158,8 @@ quic_update_timer (quic_ctx_t * ctx)
 	  quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
 	  if (svm_fifo_set_event (quic_session->tx_fifo))
 	    {
-	      rv = session_send_io_evt_to_thread_custom (quic_session,
-							 quic_session->thread_index,
-							 SESSION_IO_EVT_BUILTIN_TX);
+	      rv = session_send_io_evt_to_thread_custom (
+		quic_session, quic_session->thread_index, SESSION_IO_EVT_TX);
 	      if (PREDICT_FALSE (rv))
 		QUIC_ERR ("Failed to enqueue builtin_tx %d", rv);
 	    }
