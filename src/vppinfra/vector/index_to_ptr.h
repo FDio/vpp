@@ -92,7 +92,7 @@ clib_index_to_ptr_u32 (u32 *indices, void *base, u8 shift, void **ptrs,
 	  indices += 16;
 	  n_elts -= 16;
 	}
-      if (n_elts > 8)
+      if (n_elts >= 8)
 	{
 	  b0 = u64x8_from_u32x8 (u32x8_load_unaligned (indices));
 	  u64x8_store_unaligned ((b0 << shift) + off, ptrs);
@@ -100,6 +100,9 @@ clib_index_to_ptr_u32 (u32 *indices, void *base, u8 shift, void **ptrs,
 	  indices += 8;
 	  n_elts -= 8;
 	}
+
+      if (n_elts == 0)
+	return;
 
       b0 = u64x8_from_u32x8 (u32x8_load_unaligned (indices + n_elts - 8));
       u64x8_store_unaligned ((b0 << shift) + off, ptrs + n_elts - 8);
