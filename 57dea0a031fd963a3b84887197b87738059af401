@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3aa95308_1d4034f1",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1932,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-08T08:32:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "16b0a465_eeb0d8ab",
+      "revId": "57dea0a031fd963a3b84887197b87738059af401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1381390a_95b21073",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-03-06T13:59:49Z",
       "side": 1,
       "message": "not needed anymore, CLI parser assures that there is only single line passed to cli handler...",
+      "revId": "57dea0a031fd963a3b84887197b87738059af401",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a49e336b_6b524519",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1431,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-08T08:32:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1381390a_95b21073",
       "revId": "57dea0a031fd963a3b84887197b87738059af401",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
