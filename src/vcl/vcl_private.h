@@ -159,21 +159,17 @@ typedef struct vcl_session_
   svm_fifo_t *ct_tx_fifo;
   vcl_session_msg_t *accept_evts_fifo;
 
-  u64 vpp_handle;
   u64 parent_handle;
   u32 listener_index;		/**< index of parent listener (if any) */
   int n_accepted_sessions;	/**< sessions accepted by this listener */
   vppcom_epoll_t vep;
   u32 attributes;		/**< see @ref vppcom_session_attr_t */
   int libc_epfd;
-  u32 vrf;
-  u16 gso_size;
 
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
 
   transport_endpt_ext_cfg_t *ext_config;
-  u8 dscp;
 
   i32 vpp_error;
 

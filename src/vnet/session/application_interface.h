@@ -299,15 +299,19 @@ typedef struct app_session_transport_
   u8 is_ip4;			/**< set if uses ip4 networking */
 } app_session_transport_t;
 
-#define foreach_app_session_field					\
-  _(svm_fifo_t, *rx_fifo)		/**< rx fifo */			\
-  _(svm_fifo_t, *tx_fifo)		/**< tx fifo */			\
-  _(session_type_t, session_type)	/**< session type */		\
-  _(volatile u8, session_state)		/**< session state */		\
-  _(u32, session_index)			/**< index in owning pool */	\
-  _(app_session_transport_t, transport)	/**< transport info */		\
-  _(svm_msg_q_t, *vpp_evt_q)		/**< vpp event queue  */	\
-  _(u8, is_dgram)			/**< flag for dgram mode */	\
+#define foreach_app_session_field                                             \
+  _ (svm_fifo_t, *rx_fifo)		 /**< rx fifo */                      \
+  _ (svm_fifo_t, *tx_fifo)		 /**< tx fifo */                      \
+  _ (svm_msg_q_t, *vpp_evt_q)		 /**< vpp event queue  */             \
+  _ (session_handle_t, vpp_handle)	 /**< vpp session handle */           \
+  _ (u32, session_index)		 /**< index in owning pool */         \
+  _ (session_type_t, session_type)	 /**< session type */                 \
+  _ (volatile u8, session_state)	 /**< session state */                \
+  _ (u8, is_dgram)			 /**< flag for dgram mode */          \
+  _ (app_session_transport_t, transport) /**< transport info */               \
+  _ (u32, vrf)				 /**< vpp fib table */                \
+  _ (u16, gso_size)			 /**< app requested gso size */       \
+  _ (u8, dscp)				 /**< app requested dscp */
 
 typedef struct
 {
