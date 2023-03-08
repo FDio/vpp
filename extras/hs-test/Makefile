@@ -82,12 +82,16 @@ build-debug: .deps.ok build-vpp-debug build-go
 .PHONY: install-deps
 install-deps:
 	@rm -f .deps.ok
-	@apt update -y \
-	   && apt install -y apt-transport-https ca-certificates curl software-properties-common \
-	   && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
-	   && echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
-	   && apt update \
-	   && apt install -y golang docker-ce apache2-utils wrk bridge-utils
+	@apt-get update \
+		&& apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
+		&& apt-get install -y golang apache2-utils wrk bridge-utils
+	@if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
+		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
+		echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
+			| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
+		apt-get update; \
+	fi
+	@apt-get install -y docker-ce
 	@touch .deps.ok
 
 .PHONY: fixstyle
