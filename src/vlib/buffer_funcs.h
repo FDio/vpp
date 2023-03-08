@@ -788,9 +788,16 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       vlib_buffer_t *b[8];
       u32 bi, sum = 0, flags, next;
 
+#if defined(CLIB_HAVE_VEC512)
+      if (n_buffers < 8)
+#else
       if (n_buffers < 4)
+#endif
 	goto one_by_one;
 
+#if defined(CLIB_HAVE_VEC512)
+      vlib_get_buffers (vm, buffers, b, 8);
+#else
       vlib_get_buffers (vm, buffers, b, 4);
 
       if (n_buffers >= 12)
@@ -801,8 +808,33 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  vlib_prefetch_buffer_header (b[6], LOAD);
 	  vlib_prefetch_buffer_header (b[7], LOAD);
 	}
+#endif
 
-#if defined(CLIB_HAVE_VEC128)
+#if defined(CLIB_HAVE_VEC512)
+      u8x16 p0, p1, p2, p3, p4, p5, p6, p7, r;
+      p0 = u8x16_load_unaligned (b[0]);
+      p1 = u8x16_load_unaligned (b[1]);
+      p2 = u8x16_load_unaligned (b[2]);
+      p3 = u8x16_load_unaligned (b[3]);
+      p4 = u8x16_load_unaligned (b[4]);
+      p5 = u8x16_load_unaligned (b[5]);
+      p6 = u8x16_load_unaligned (b[6]);
+      p7 = u8x16_load_unaligned (b[7]);
+
+      r = p0 ^ bpi_vec.as_u8x16[0];
+      r |= p1 ^ bpi_vec.as_u8x16[0];
+      r |= p2 ^ bpi_vec.as_u8x16[0];
+      r |= p3 ^ bpi_vec.as_u8x16[0];
+      r |= p4 ^ bpi_vec.as_u8x16[0];
+      r |= p5 ^ bpi_vec.as_u8x16[0];
+      r |= p6 ^ bpi_vec.as_u8x16[0];
+      r |= p7 ^ bpi_vec.as_u8x16[0];
+      r &= bpi_mask.as_u8x16[0];
+      r |=
+	(p0 | p1 | p2 | p3 | p4 | p5 | p6 | p7) & flags_refs_mask.as_u8x16[0];
+
+      sum = !u8x16_is_all_zero (r);
+#elif defined(CLIB_HAVE_VEC128)
       u8x16 p0, p1, p2, p3, r;
       p0 = u8x16_load_unaligned (b[0]);
       p1 = u8x16_load_unaligned (b[1]);
@@ -836,6 +868,36 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       if (sum)
 	goto one_by_one;
 
+#if defined(CLIB_HAVE_VEC512)
+      vlib_buffer_copy_indices (queue + n_queue, buffers, 8);
+      vlib_buffer_copy_template (b[0], &bt);
+      vlib_buffer_copy_template (b[1], &bt);
+      vlib_buffer_copy_template (b[2], &bt);
+      vlib_buffer_copy_template (b[3], &bt);
+      vlib_buffer_copy_template (b[4], &bt);
+      vlib_buffer_copy_template (b[5], &bt);
+      vlib_buffer_copy_template (b[6], &bt);
+      vlib_buffer_copy_template (b[7], &bt);
+      n_queue += 8;
+
+      vlib_buffer_validate (vm, b[0]);
+      vlib_buffer_validate (vm, b[1]);
+      vlib_buffer_validate (vm, b[2]);
+      vlib_buffer_validate (vm, b[3]);
+      vlib_buffer_validate (vm, b[4]);
+      vlib_buffer_validate (vm, b[5]);
+      vlib_buffer_validate (vm, b[6]);
+      vlib_buffer_validate (vm, b[7]);
+
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[4]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[5]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[6]);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[7]);
+#else
       vlib_buffer_copy_indices (queue + n_queue, buffers, 4);
       vlib_buffer_copy_template (b[0], &bt);
       vlib_buffer_copy_template (b[1], &bt);
@@ -852,14 +914,20 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
+#endif
 
       if (n_queue >= queue_size)
 	{
 	  vlib_buffer_pool_put (vm, buffer_pool_index, queue, n_queue);
 	  n_queue = 0;
 	}
+#if defined(CLIB_HAVE_VEC512)
+      buffers += 8;
+      n_buffers -= 8;
+#else
       buffers += 4;
       n_buffers -= 4;
+#endif
       continue;
 
     one_by_one:
