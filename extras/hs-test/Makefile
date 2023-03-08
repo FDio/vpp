@@ -19,6 +19,14 @@ ifeq ($(DEBUG),)
 DEBUG=false
 endif
 
+ifeq ($(UBUNTU_CODENAME),)
+UBUNTU_CODENAME=$(shell grep '^UBUNTU_CODENAME=' /etc/os-release | cut -f2- -d=)
+endif
+
+ifeq ($(ARCH),)
+ARCH=$(shell dpkg --print-architecture)
+endif
+
 list_tests = @(grep -r ') Test' *_test.go | cut -d '*' -f2 | cut -d '(' -f1 | \
 		tr -d ' ' | tr ')' '/' | sed 's/Suite//')
 
@@ -62,23 +70,27 @@ build-go:
 	go build ./tools/http_server
 
 build: .deps.ok build-vpp-release build-go
-	@rm .build.vpp || exit 0
+	@rm -f .build.vpp
 	bash ./script/build.sh release
 	@touch .build.vpp
 
 build-debug: .deps.ok build-vpp-debug build-go
-	@rm .build.vpp || exit 0
+	@rm -f .build.vpp
 	bash ./script/build.sh debug
 	@touch .build.vpp
 
 .PHONY: install-deps
 install-deps:
-	@rm .deps.ok || exit 0
-	@apt update -y && apt install -y golang docker-ce apache2-utils wrk bridge-utils
+	@rm -f .deps.ok
+	@apt update -y \
+	   && apt install -y apt-transport-https ca-certificates curl software-properties-common \
+	   && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+	   && echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
+	   && apt update \
+	   && apt install -y golang docker-ce apache2-utils wrk bridge-utils
 	@touch .deps.ok
 
 .PHONY: fixstyle
 fixstyle:
 	@gofmt -w .
 	@go mod tidy
-
