@@ -187,12 +187,16 @@ ip4_arp_inline (vlib_main_t * vm,
 	      /* resolve the packet's destination */
 	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
 	      resolve0 = ip0->dst_address;
-	      src0 = adj0->sub_type.glean.rx_pfx.fp_addr.ip4;
 	    }
 	  else
+	    /* resolve the incomplete adj */
+	    resolve0 = adj0->sub_type.nbr.next_hop.ip4;
+
+	  if (is_glean && adj0->sub_type.glean.rx_pfx.fp_len)
+	    /* the glean is for a connected, local prefix */
+	    src0 = adj0->sub_type.glean.rx_pfx.fp_addr.ip4;
+	  else
 	    {
-	      /* resolve the incomplete adj */
-	      resolve0 = adj0->sub_type.nbr.next_hop.ip4;
 	      /* Src IP address in ARP header. */
 	      if (!fib_sas4_get (sw_if_index0, &resolve0, &src0) &&
 		  !ip4_sas_by_sw_if_index (sw_if_index0, &resolve0, &src0))
