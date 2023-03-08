@@ -3093,7 +3093,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       session_events = s->vep.ev.events;
       /* Generate EPOLLOUT because there's no connected event */
-      if (!(EPOLLOUT & session_events))
+      if (!(EPOLLOUT & session_events) || !s->tx_fifo)
 	break;
       /* We didn't have a fifo when the event was added */
       svm_fifo_add_want_deq_ntf (
