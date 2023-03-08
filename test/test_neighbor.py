@@ -2069,6 +2069,28 @@ class ARPTestCase(VppTestCase):
         for rx in rxs:
             self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.2", "10.0.1.128")
 
+        # apply an attached prefix to the interface
+        # since there's no local address in this prefix,
+        # any other address is used
+        p3 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg1.remote_ip4, dst="10.0.2.128")
+            / Raw(b"0x5" * 100)
+        )
+
+        VppIpRoute(
+            self,
+            "10.0.2.0",
+            24,
+            [VppRoutePath("0.0.0.0", self.pg1.sw_if_index)],
+        ).add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg0, [p3], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(
+                rx, self.pg1.local_mac, self.pg1.local_ip4, "10.0.2.128"
+            )
+
         # cleanup
         conn3.remove_vpp_config()
         conn2.remove_vpp_config()

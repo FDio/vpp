@@ -534,7 +534,11 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
     else if (fib_route_path_is_attached(path))
     {
         path->frp_flags |= FIB_ROUTE_PATH_GLEAN;
-        fib_prefix_normalize(prefix, &path->frp_connected);
+        /*
+         * attached prefixes are not suitable as the source of ARP requests
+         * so don't save the prefix in the glean adj
+         */
+        clib_memset(&path->frp_connected, 0, sizeof(path->frp_connected));
     }
     if (*eflags & FIB_ENTRY_FLAG_DROP)
     {
