@@ -230,7 +230,11 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 {
   const u64 cmd_eop = AVF_TXD_CMD_EOP;
   u16 n_free_desc, n_desc_left, n_packets_left = n_packets;
+#if defined CLIB_HAVE_VEC512
+  vlib_buffer_t *b[8];
+#else
   vlib_buffer_t *b[4];
+#endif
   avf_tx_desc_t *d = txq->tmp_descs;
   u32 *tb = txq->tmp_bufs;
 
@@ -241,11 +245,30 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 
   while (n_packets_left && n_desc_left)
     {
+#if defined CLIB_HAVE_VEC512
+      u32 flags;
+      u64x8 or_flags_vec512;
+      u64x8 flags_mask_vec512;
+#else
       u32 flags, or_flags;
+#endif
 
+#if defined CLIB_HAVE_VEC512
+      if (n_packets_left < 8 || n_desc_left < 8)
+#else
       if (n_packets_left < 8 || n_desc_left < 4)
+#endif
 	goto one_by_one;
 
+#if defined CLIB_HAVE_VEC512
+      u64x8 base_ptr = u64x8_splat (vm->buffer_main->buffer_mem_start);
+      u32x8 buf_indices = u32x8_load_unaligned (buffers);
+
+      *(u64x8 *) &b = base_ptr + u64x8_from_u32x8 (
+				   buf_indices << CLIB_LOG2_CACHE_LINE_BYTES);
+
+      or_flags_vec512 = u64x8_i64gather (u64x8_load_unaligned (b), 0, 1);
+#else
       vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
       vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
       vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
@@ -257,12 +280,37 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
       b[3] = vlib_get_buffer (vm, buffers[3]);
 
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
+#endif
 
+#if defined CLIB_HAVE_VEC512
+      flags_mask_vec512 = u64x8_splat (
+	VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO);
+      if (PREDICT_FALSE (
+	    !u64x8_is_all_zero (or_flags_vec512 & flags_mask_vec512)))
+#else
       if (PREDICT_FALSE (or_flags &
 			 (VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_OFFLOAD |
 			  VNET_BUFFER_F_GSO)))
+#endif
 	goto one_by_one;
 
+#if defined CLIB_HAVE_VEC512
+      vlib_buffer_copy_indices (tb, buffers, 8);
+      avf_tx_fill_data_desc (vm, d + 0, b[0], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 1, b[1], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 2, b[2], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 3, b[3], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 4, b[4], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 5, b[5], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 6, b[6], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 7, b[7], cmd_eop, use_va_dma);
+
+      buffers += 8;
+      n_packets_left -= 8;
+      n_desc_left -= 8;
+      d += 8;
+      tb += 8;
+#else
       vlib_buffer_copy_indices (tb, buffers, 4);
 
       avf_tx_fill_data_desc (vm, d + 0, b[0], cmd_eop, use_va_dma);
@@ -275,6 +323,8 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
       n_desc_left -= 4;
       d += 4;
       tb += 4;
+#endif
+
       continue;
 
     one_by_one:
