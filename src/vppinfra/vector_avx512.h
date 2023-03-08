@@ -99,6 +99,9 @@ u16x32_msb_mask (u16x32 v)
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
 
+#define u64x8_i64gather(index, base, scale)                                   \
+  (u64x8) _mm512_i64gather_epi64 ((__m512i) index, base, scale)
+
 /* 512-bit packs */
 #define _(f, t, fn)                                                           \
   always_inline t t##_pack (f lo, f hi)                                       \
