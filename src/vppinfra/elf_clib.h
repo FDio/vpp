@@ -130,6 +130,7 @@ typedef struct
 /* Returns 1 if found; otherwise zero. */
 uword clib_elf_symbol_by_name (char *name, clib_elf_symbol_t * result);
 uword clib_elf_symbol_by_address (uword address, clib_elf_symbol_t * result);
+const char *clib_elf_symbol_name (clib_elf_symbol_t *result);
 
 format_function_t format_clib_elf_symbol, format_clib_elf_symbol_with_address;
 

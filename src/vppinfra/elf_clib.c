@@ -325,14 +325,27 @@ clib_elf_symbol_by_name (char *by_name, clib_elf_symbol_t * s)
   return symbol_by_address_or_name (by_name, /* by_address */ 0, s);
 }
 
-uword
-clib_elf_symbol_by_address (uword by_address, clib_elf_symbol_t * s)
+__clib_export uword
+clib_elf_symbol_by_address (uword by_address, clib_elf_symbol_t *s)
 {
   return symbol_by_address_or_name ( /* by_name */ 0, by_address, s);
 }
 
-u8 *
-format_clib_elf_symbol (u8 * s, va_list * args)
+__clib_export const char *
+clib_elf_symbol_name (clib_elf_symbol_t *s)
+{
+  clib_elf_main_t *cem = &clib_elf_main;
+  elf_main_t *em;
+  elf_symbol_table_t *t;
+
+  em = vec_elt_at_index (cem->elf_mains, s->elf_main_index);
+  t = vec_elt_at_index (em->symbol_tables, s->symbol_table_index);
+
+  return (const char *) elf_symbol_name (t, &s->symbol);
+}
+
+__clib_export u8 *
+format_clib_elf_symbol (u8 *s, va_list *args)
 {
   clib_elf_main_t *cem = &clib_elf_main;
   clib_elf_symbol_t *sym = va_arg (*args, clib_elf_symbol_t *);
