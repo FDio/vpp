@@ -117,6 +117,12 @@ func (vpp *VppInstance) start() error {
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 
+	// create wrapper script for vppctl with proper CLI socket path
+	cliContent := "#!/usr/bin/bash\nvppctl -s " + vpp.getRunDir() + "/cli.sock"
+	vppcliFileName := "/usr/bin/vppcli"
+	vpp.container.createFile(vppcliFileName, cliContent)
+	vpp.container.exec("chmod 0755 " + vppcliFileName)
+
 	if *IsVppDebug {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT)
