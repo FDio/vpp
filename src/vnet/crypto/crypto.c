@@ -284,8 +284,6 @@ vnet_crypto_register_enqueue_handler (vlib_main_t *vm, u32 engine_index,
   vnet_crypto_async_op_data_t *otd = cm->async_opt_data + opt;
   vec_validate_aligned (cm->enqueue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS,
 			CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->dequeue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS,
-			CLIB_CACHE_LINE_BYTES);
 
   if (!enqueue_hdl)
     return;
@@ -527,41 +525,6 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   return index;
 }
 
-clib_error_t *
-crypto_dispatch_enable_disable (int is_enable)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 skip_master = vlib_num_workers () > 0, i;
-  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
-  u8 state_change = 0;
-
-  CLIB_MEMORY_STORE_BARRIER ();
-  if (is_enable && cm->async_refcnt > 0)
-    {
-      state_change = 1;
-      state =
-	cm->dispatch_mode ==
-	VNET_CRYPTO_ASYNC_DISPATCH_POLLING ? VLIB_NODE_STATE_POLLING :
-	VLIB_NODE_STATE_INTERRUPT;
-    }
-
-  if (!is_enable && cm->async_refcnt == 0)
-    {
-      state_change = 1;
-      state = VLIB_NODE_STATE_DISABLED;
-    }
-
-  if (state_change)
-    for (i = skip_master; i < tm->n_vlib_mains; i++)
-      {
-	vlib_main_t *ovm = vlib_get_main_by_index (i);
-	if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
-	  vlib_node_set_state (ovm, cm->crypto_node_index, state);
-      }
-  return 0;
-}
-
 static_always_inline void
 crypto_set_active_async_engine (vnet_crypto_async_op_data_t * od,
 				vnet_crypto_async_op_id_t id, u32 ei)
@@ -573,7 +536,6 @@ crypto_set_active_async_engine (vnet_crypto_async_op_data_t * od,
     {
       od->active_engine_index_async = ei;
       cm->enqueue_handlers[id] = ce->enqueue_handlers[id];
-      cm->dequeue_handlers[id] = ce->dequeue_handler;
     }
 }
 
@@ -584,9 +546,6 @@ vnet_crypto_set_async_handler2 (char *alg_name, char *engine)
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_alg_data_t *ad;
   int i;
-
-  if (cm->async_refcnt)
-    return -EBUSY;
 
   p = hash_get_mem (cm->async_alg_index_by_name, alg_name);
   if (!p)
@@ -647,77 +606,9 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
 void
 vnet_crypto_request_async_mode (int is_enable)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 skip_master = vlib_num_workers () > 0, i;
-  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
-  u8 state_change = 0;
-
-  CLIB_MEMORY_STORE_BARRIER ();
-  if (is_enable && cm->async_refcnt == 0)
-    {
-      state_change = 1;
-      state =
-	cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_POLLING ?
-	VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_INTERRUPT;
-    }
-  if (!is_enable && cm->async_refcnt == 1)
-    {
-      state_change = 1;
-      state = VLIB_NODE_STATE_DISABLED;
-    }
-
-  if (state_change)
-    {
-
-      for (i = skip_master; i < tm->n_vlib_mains; i++)
-	{
-	  vlib_main_t *ovm = vlib_get_main_by_index (i);
-	  if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
-	    vlib_node_set_state (ovm, cm->crypto_node_index, state);
-	}
-
       if (is_enable)
 	vnet_crypto_update_cm_dequeue_handlers ();
-    }
-
-  if (is_enable)
-    cm->async_refcnt += 1;
-  else if (cm->async_refcnt > 0)
-    cm->async_refcnt -= 1;
 }
-
-void
-vnet_crypto_set_async_dispatch_mode (u8 mode)
-{
-  vnet_crypto_main_t *cm = &crypto_main;
-  u32 skip_master = vlib_num_workers () > 0, i;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
-
-  CLIB_MEMORY_STORE_BARRIER ();
-  cm->dispatch_mode = mode;
-  if (mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
-    {
-      state =
-	cm->async_refcnt == 0 ?
-	VLIB_NODE_STATE_DISABLED : VLIB_NODE_STATE_INTERRUPT;
-    }
-  else if (mode == VNET_CRYPTO_ASYNC_DISPATCH_POLLING)
-    {
-      state =
-	cm->async_refcnt == 0 ?
-	VLIB_NODE_STATE_DISABLED : VLIB_NODE_STATE_POLLING;
-    }
-
-  for (i = skip_master; i < tm->n_vlib_mains; i++)
-    {
-      vlib_main_t *ovm = vlib_get_main_by_index (i);
-      if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
-	vlib_node_set_state (ovm, cm->crypto_node_index, state);
-    }
-}
-
 int
 vnet_crypto_is_set_async_handler (vnet_crypto_async_op_id_t op)
 {
@@ -813,7 +704,6 @@ vnet_crypto_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_crypto_thread_t *ct = 0;
 
-  cm->dispatch_mode = VNET_CRYPTO_ASYNC_DISPATCH_POLLING;
   cm->engine_index_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));

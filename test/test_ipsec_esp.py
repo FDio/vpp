@@ -822,11 +822,6 @@ class TestIpsecEspAsync(TemplateIpsecEsp):
         self.p_async.spd.remove_vpp_config()
         self.p_async.sa.remove_vpp_config()
 
-        # async mode should have been disabled now that there are
-        # no async SAs. there's no API for this, so a reluctant
-        # screen scrape.
-        self.assertTrue("DISABLED" in self.vapi.cli("sh crypto async status"))
-
 
 class TestIpsecEspHandoff(
     TemplateIpsecEsp, IpsecTun6HandoffTests, IpsecTun4HandoffTests
