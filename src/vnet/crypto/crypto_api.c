@@ -46,8 +46,6 @@ vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
   vl_api_crypto_set_async_dispatch_reply_t *rmp;
   int rv = 0;
 
-  vnet_crypto_set_async_dispatch_mode ((u8) mp->mode);
-
   REPLY_MACRO (VL_API_CRYPTO_SET_ASYNC_DISPATCH_REPLY);
 }
 
