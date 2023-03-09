@@ -485,7 +485,7 @@ ipsec_init (vlib_main_t * vm)
     vm, im, "crypto engine backend", "esp4-encrypt", "esp4-encrypt-tun",
     "esp4-decrypt", "esp4-decrypt-tun", "esp6-encrypt", "esp6-encrypt-tun",
     "esp6-decrypt", "esp6-decrypt-tun", "esp-mpls-encrypt-tun",
-    ipsec_check_esp_support, NULL, crypto_dispatch_enable_disable);
+    ipsec_check_esp_support, NULL, NULL);
   im->esp_default_backend = idx;
 
   rv = ipsec_select_esp_backend (im, idx);

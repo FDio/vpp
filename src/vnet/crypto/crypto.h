@@ -467,12 +467,8 @@ typedef struct
   uword *alg_index_by_name;
   uword *async_alg_index_by_name;
   vnet_crypto_async_alg_data_t *async_algs;
-  u32 async_refcnt;
   vnet_crypto_async_next_node_t *next_nodes;
   u32 crypto_node_index;
-#define VNET_CRYPTO_ASYNC_DISPATCH_POLLING 0
-#define VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT 1
-  u8 dispatch_mode;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
@@ -500,20 +496,14 @@ u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
 				vnet_crypto_key_index_t index_crypto,
 				vnet_crypto_key_index_t index_integ);
 
-clib_error_t *crypto_dispatch_enable_disable (int is_enable);
-
 int vnet_crypto_set_async_handler2 (char *alg_name, char *engine);
 
 int vnet_crypto_is_set_async_handler (vnet_crypto_async_op_id_t opt);
 
 void vnet_crypto_request_async_mode (int is_enable);
 
-void vnet_crypto_set_async_dispatch_mode (u8 mode);
-
 vnet_crypto_async_alg_t vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 					       vnet_crypto_alg_t integ_alg);
-
-clib_error_t *crypto_dispatch_enable_disable (int is_enable);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
@@ -593,7 +583,8 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 i = vlib_num_workers () > 0;
+  u32 i;
+  vlib_node_t *n;
 
   frame->state = VNET_CRYPTO_FRAME_STATE_PENDING;
   frame->enqueue_thread_index = vm->thread_index;
@@ -608,9 +599,10 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
 
   if (PREDICT_TRUE (ret == 0))
     {
-      if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
+      n = vlib_get_node (vm, cm->crypto_node_index);
+      if (n->state == VLIB_NODE_STATE_INTERRUPT)
 	{
-	  for (; i < tm->n_vlib_mains; i++)
+	  for (i = 0; i < tm->n_vlib_mains; i++)
 	    vlib_node_set_interrupt_pending (vlib_get_main_by_index (i),
 					     cm->crypto_node_index);
 	}
