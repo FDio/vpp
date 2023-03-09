@@ -973,7 +973,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       tap_create_if_args_t args = {
 	.num_rx_queues = clib_max (1, vlib_num_workers ()),
 	.num_tx_queues = 1,
-	.id = hw->hw_if_index,
+	.id = ~0,
 	.sw_if_index = ~0,
 	.rx_ring_sz = 256,
 	.tx_ring_sz = 256,
