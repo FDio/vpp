@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f7f5ed8_74cc7d54",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1941,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "113fcae2_731c471f",
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4ffc8b9d_2dd41c4c",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "84ae5994_5a7b90df",
+        "filename": "src/plugins/avf/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1951,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4ffc8b9d_2dd41c4c",
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "567c9bb7_087be84b",
@@ -48,6 +84,30 @@
       "writtenOn": "2023-03-08T13:17:35Z",
       "side": 1,
       "message": "please use vnet_error() instead, so later API handlers can deal with meaningful return code.",
+      "range": {
+        "startLine": 597,
+        "startChar": 12,
+        "endLine": 597,
+        "endChar": 29
+      },
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4fcb7b3a_ff96749e",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "I am not clear about the difference between vnet_error() and clib_error_return(), it seems that vnet_error() can categorize errors with the enum \"VNET_ERROR_*\" while clib_error_return() does not, am I right?\n\nIf so, should I use vnet_error() only in the future?",
+      "parentUuid": "567c9bb7_087be84b",
       "range": {
         "startLine": 597,
         "startChar": 12,
@@ -126,6 +186,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f8fae1b_d9e49c38",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 517,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "394ba45b_7712b5e7",
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aeb5e112_ee94d2bc",
@@ -143,6 +221,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30d18cf5_b141221a",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1878,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "aeb5e112_ee94d2bc",
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3e27cd12_20e6c7f0",
@@ -156,6 +252,24 @@
       "writtenOn": "2023-03-08T13:17:35Z",
       "side": 1,
       "message": "Isn\u0027t hi-\u003erss_hash_key byte array, not string?",
+      "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd696bcd_292c89d4",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-03-09T08:39:04Z",
+      "side": 1,
+      "message": "hi-\u003erss_hash_key is actually a string whose content is the hash key entered by user",
+      "parentUuid": "3e27cd12_20e6c7f0",
       "revId": "0078de5ca9f2a471fe35128e56e7919d9bcb64c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
