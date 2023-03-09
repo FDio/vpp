@@ -93,8 +93,6 @@ typedef struct
   add_del_sa_sess_cb_t add_del_sa_sess_cb;
   /* check support function */
   check_support_cb_t check_support_cb;
-  /* enable or disable function */
-  enable_disable_cb_t enable_disable_cb;
   u32 esp4_encrypt_node_index;
   u32 esp4_decrypt_node_index;
   u32 esp4_encrypt_next_index;
@@ -381,8 +379,7 @@ u32 ipsec_register_esp_backend (
   const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
   const char *esp_mpls_encrypt_tun_node_name,
   check_support_cb_t esp_check_support_cb,
-  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
-  enable_disable_cb_t enable_disable_cb);
+  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);

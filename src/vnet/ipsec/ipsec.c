@@ -275,8 +275,7 @@ ipsec_register_esp_backend (
   const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
   const char *esp_mpls_encrypt_node_tun_name,
   check_support_cb_t esp_check_support_cb,
-  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
-  enable_disable_cb_t enable_disable_cb)
+  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb)
 {
   ipsec_esp_backend_t *b;
 
@@ -307,7 +306,6 @@ ipsec_register_esp_backend (
 
   b->check_support_cb = esp_check_support_cb;
   b->add_del_sa_sess_cb = esp_add_del_sa_sess_cb;
-  b->enable_disable_cb = enable_disable_cb;
 
   return b - im->esp_backends;
 }
@@ -358,18 +356,6 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   if (pool_is_free_index (im->esp_backends, backend_idx))
     return VNET_API_ERROR_INVALID_VALUE;
 
-  /* disable current backend */
-  if (im->esp_current_backend != ~0)
-    {
-      ipsec_esp_backend_t *cb = pool_elt_at_index (im->esp_backends,
-						   im->esp_current_backend);
-      if (cb->enable_disable_cb)
-	{
-	  if ((cb->enable_disable_cb) (0) != 0)
-	    return -1;
-	}
-    }
-
   ipsec_esp_backend_t *b = pool_elt_at_index (im->esp_backends, backend_idx);
   im->esp_current_backend = backend_idx;
   im->esp4_encrypt_node_index = b->esp4_encrypt_node_index;
@@ -388,11 +374,6 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp6_encrypt_tun_node_index = b->esp6_encrypt_tun_node_index;
   im->esp_mpls_encrypt_tun_node_index = b->esp_mpls_encrypt_tun_node_index;
 
-  if (b->enable_disable_cb)
-    {
-      if ((b->enable_disable_cb) (1) != 0)
-	return -1;
-    }
   return 0;
 }
 
@@ -401,8 +382,6 @@ ipsec_set_async_mode (u32 is_enabled)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
-
-  vnet_crypto_request_async_mode (is_enabled);
 
   im->async_mode = is_enabled;
 
@@ -482,7 +461,7 @@ ipsec_init (vlib_main_t * vm)
     vm, im, "crypto engine backend", "esp4-encrypt", "esp4-encrypt-tun",
     "esp4-decrypt", "esp4-decrypt-tun", "esp6-encrypt", "esp6-encrypt-tun",
     "esp6-decrypt", "esp6-decrypt-tun", "esp-mpls-encrypt-tun",
-    ipsec_check_esp_support, NULL, crypto_dispatch_enable_disable);
+    ipsec_check_esp_support, NULL);
   im->esp_default_backend = idx;
 
   rv = ipsec_select_esp_backend (im, idx);
