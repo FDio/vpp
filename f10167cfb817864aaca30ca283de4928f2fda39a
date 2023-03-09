@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "edaf65be_285e1bcc",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-09T07:14:33Z",
+      "side": 1,
+      "message": "agree. In current case, the mapped memory is shared from/to another process. Maybe it\u0027s more accurate to describe it as shared memory.",
+      "parentUuid": "0a90a002_811fdee1",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e33bb2ae_7bd6ee9d",
         "filename": "/COMMIT_MSG",
         "patchSetId": 3
@@ -31,6 +49,24 @@
       "writtenOn": "2023-03-06T17:46:09Z",
       "side": 1,
       "message": "Sounds like re-inventing hot water. We already have packet buffers which are allocated on multiple threads and we are not calling ioctls() from thread on each alloc...",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de2826ab_09d61d49",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-09T07:14:33Z",
+      "side": 1,
+      "message": "This new function is for session layer mapped memory in worker thread. This kind of memory is allocated and managed by session node. If session layer require dma accerlation, vfio mapping is required if sva support not available. I think a static inline function can fullfill the need.",
+      "parentUuid": "e33bb2ae_7bd6ee9d",
       "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
