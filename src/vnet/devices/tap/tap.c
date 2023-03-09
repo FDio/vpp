@@ -85,7 +85,7 @@ virtio_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
   return 0;
 }
 
-#define TAP_MAX_INSTANCE 1024
+#define TAP_MAX_INSTANCE 8192
 
 static void
 tap_free (vlib_main_t * vm, virtio_if_t * vif)
@@ -162,7 +162,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   else
     {
-      args->id = clib_bitmap_first_clear (tm->tap_ids);
+      args->id = clib_bitmap_next_clear (tm->tap_ids, args->auto_id_offset %
+							TAP_MAX_INSTANCE);
     }
 
   if (args->id > TAP_MAX_INSTANCE)

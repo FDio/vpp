@@ -42,6 +42,7 @@ typedef enum
 typedef struct
 {
   u32 id;
+  u32 auto_id_offset;
   u8 mac_addr_set;
   mac_address_t mac_addr;
   u16 num_rx_queues;
