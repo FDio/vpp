@@ -135,8 +135,11 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_crypto_async_free_frame (vm, cf);
 	}
       /* signal enqueue-thread to dequeue the processed frame (n_elts>0) */
-      if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT
-	  && n_elts > 0)
+      if (n_elts > 0 &&
+	  ((node->state == VLIB_NODE_STATE_POLLING &&
+	    (node->flags &
+	     VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)) ||
+	   node->state == VLIB_NODE_STATE_INTERRUPT))
 	{
 	  vlib_node_set_interrupt_pending (
 	    vlib_get_main_by_index (enqueue_thread_idx),
@@ -161,8 +164,6 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   u32 n_dispatched = 0, n_cache = 0, index;
   vec_foreach_index (index, cm->dequeue_handlers)
     {
-      if (PREDICT_FALSE (cm->dequeue_handlers[index] == 0))
-	continue;
       n_cache = crypto_dequeue_frame (
 	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
     }
@@ -171,6 +172,17 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
 				     n_cache);
 
+  /* if there are still pending tasks and node in interrupt mode,
+  sending current thread signal to dequeue next loop */
+  if (pool_elts (ct->frame_pool) > 0 &&
+      ((node->state == VLIB_NODE_STATE_POLLING &&
+	(node->flags &
+	 VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)) ||
+       node->state == VLIB_NODE_STATE_INTERRUPT))
+    {
+      vlib_node_set_interrupt_pending (vm, node->node_index);
+    }
+
   return n_dispatched;
 }
 
@@ -178,7 +190,8 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   .name = "crypto-dispatch",
   .type = VLIB_NODE_TYPE_INPUT,
-  .state = VLIB_NODE_STATE_DISABLED,
+  .flags = VLIB_NODE_FLAG_ADAPTIVE_MODE,
+  .state = VLIB_NODE_STATE_INTERRUPT,
   .format_trace = format_crypto_dispatch_trace,
 
   .n_errors = ARRAY_LEN(vnet_crypto_async_error_strings),
