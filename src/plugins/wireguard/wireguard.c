@@ -30,8 +30,6 @@ wg_async_post_next_t wg_decrypt_async_next;
 void
 wg_set_async_mode (u32 is_enabled)
 {
-  vnet_crypto_request_async_mode (is_enabled);
-
   if (is_enabled)
     wg_op_mode_set_ASYNC ();
   else

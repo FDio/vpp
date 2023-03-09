@@ -386,7 +386,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
     {
       if (ipsec_sa_is_set_IS_ASYNC (sa))
 	{
-	  vnet_crypto_request_async_mode (1);
 	  sa->crypto_op_data = sa->async_op_data.data;
 	}
       else
@@ -485,7 +484,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
 
   if (ipsec_sa_is_set_IS_ASYNC (sa))
     {
-      vnet_crypto_request_async_mode (0);
       if (!ipsec_sa_is_set_IS_AEAD (sa))
 	vnet_crypto_key_del (vm, sa->async_op_data.linked_key_index);
     }

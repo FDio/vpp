@@ -36,6 +36,7 @@ enum crypto_op_class_type:u8
 
 autoreply define crypto_set_async_dispatch
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_crypto_dispatch_mode_t mode;

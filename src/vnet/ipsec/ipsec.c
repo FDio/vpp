@@ -402,8 +402,6 @@ ipsec_set_async_mode (u32 is_enabled)
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
-  vnet_crypto_request_async_mode (is_enabled);
-
   im->async_mode = is_enabled;
 
   /* change SA crypto op data */
@@ -485,7 +483,7 @@ ipsec_init (vlib_main_t * vm)
     vm, im, "crypto engine backend", "esp4-encrypt", "esp4-encrypt-tun",
     "esp4-decrypt", "esp4-decrypt-tun", "esp6-encrypt", "esp6-encrypt-tun",
     "esp6-decrypt", "esp6-decrypt-tun", "esp-mpls-encrypt-tun",
-    ipsec_check_esp_support, NULL, crypto_dispatch_enable_disable);
+    ipsec_check_esp_support, NULL, NULL);
   im->esp_default_backend = idx;
 
   rv = ipsec_select_esp_backend (im, idx);
