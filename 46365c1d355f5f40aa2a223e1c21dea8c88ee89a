@@ -33,6 +33,42 @@
       "message": "Also I just found in documentation that idiomatic way of naming getters is to export them.\n\n\u003e  If you have a field called owner (lower case, unexported), the getter method should be called Owner (upper case, exported), not GetOwner.\n\nDo we agree on exporting all getters?",
       "revId": "46365c1d355f5f40aa2a223e1c21dea8c88ee89a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91ac0b7a_febbcb58",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-03-09T16:40:25Z",
+      "side": 1,
+      "message": "We agreed to remove getters when it\u0027s returning just the field.",
+      "parentUuid": "113cd66e_ebca9767",
+      "revId": "46365c1d355f5f40aa2a223e1c21dea8c88ee89a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "78a14df2_df716bc2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2855
+      },
+      "writtenOn": "2023-03-09T16:40:25Z",
+      "side": 1,
+      "message": "We agreed to keep types with capital letter.",
+      "parentUuid": "714668cd_ee14826a",
+      "revId": "46365c1d355f5f40aa2a223e1c21dea8c88ee89a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
