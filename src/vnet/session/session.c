@@ -728,8 +728,10 @@ session_enqueue_notify_inline (session_t * s)
   app_worker_t *app_wrk;
   u32 session_index;
   u8 n_subscribers;
+  u32 thread_index;
 
   session_index = s->session_index;
+  thread_index = s->thread_index;
   n_subscribers = svm_fifo_n_subscribers (s->rx_fifo);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
@@ -753,7 +755,7 @@ session_enqueue_notify_inline (session_t * s)
 
   if (PREDICT_FALSE (n_subscribers))
     {
-      s = session_get (session_index, vlib_get_thread_index ());
+      s = session_get (session_index, thread_index);
       return session_notify_subscribers (app_wrk->app_index, s,
 					 s->rx_fifo, SESSION_IO_EVT_RX);
     }
