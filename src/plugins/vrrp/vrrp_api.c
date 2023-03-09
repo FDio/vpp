@@ -472,7 +472,7 @@ vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
     if (!vec_len (vr->config.peer_addrs))
       continue;
 
-    send_vrrp_vr_details (vr, reg, mp->context);
+    send_vrrp_vr_peer_details (vr, reg, mp->context);
 
   }
   /* *INDENT-ON* */
