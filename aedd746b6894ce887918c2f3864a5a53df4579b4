@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ae190b8_e704eed7",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 2783
+      },
+      "writtenOn": "2023-03-09T03:07:47Z",
+      "side": 1,
+      "message": "yes, updated in Patchset 3.\nThanks!",
+      "parentUuid": "6bc72318_79d78ad1",
+      "revId": "aedd746b6894ce887918c2f3864a5a53df4579b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "05cf87e3_9b3349d9",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-03-06T14:04:27Z",
       "side": 1,
       "message": "please submit vlib changes as separate patch",
+      "revId": "aedd746b6894ce887918c2f3864a5a53df4579b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a7f3bf6_1baa282c",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 2783
+      },
+      "writtenOn": "2023-03-09T03:07:47Z",
+      "side": 1,
+      "message": "submit the vlib patch as https://gerrit.fd.io/r/c/vpp/+/38452.\nThanks!",
+      "parentUuid": "05cf87e3_9b3349d9",
       "revId": "aedd746b6894ce887918c2f3864a5a53df4579b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
