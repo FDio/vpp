@@ -139,8 +139,7 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
     if (vec_len (err))
       fail = 1;
 
-    vlib_cli_output (vm, "%-60v%s%v", s, vec_len (err) ? "FAIL: " : "OK",
-		     err);
+    vlib_cli_output (vm, "%-65v%s%v", s, vec_len (err) ? "FAIL: " : "OK", err);
     if (tm->verbose)
       {
 	if (tm->verbose == 2)
