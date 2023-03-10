@@ -2281,12 +2281,17 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
     et = SESSION_IO_EVT_TX_FLUSH;
 
   if (is_dgram)
-    n_write =
-      app_send_dgram_raw_gso (tx_fifo, &s->transport, s->vpp_evt_q, buf, n,
-			      s->gso_size, et, 0 /* do_evt */, SVM_Q_WAIT);
+    {
+      et = vcl_session_dgram_tx_evt (s, et);
+      n_write =
+	app_send_dgram_raw_gso (tx_fifo, &s->transport, s->vpp_evt_q, buf, n,
+				s->gso_size, et, 0 /* do_evt */, SVM_Q_WAIT);
+    }
   else
-    n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
-				   0 /* do_evt */ , SVM_Q_WAIT);
+    {
+      n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
+				     0 /* do_evt */, SVM_Q_WAIT);
+    }
 
   if (svm_fifo_set_event (s->tx_fifo))
     app_send_io_evt_to_vpp (
@@ -2682,7 +2687,7 @@ vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_handle)
   u32 sh = vep_handle;
   vcl_session_t *s;
 
-  if (VPPCOM_DEBUG <= 2)
+  if (VPPCOM_DEBUG <= 3)
     return;
 
   s = vcl_session_get_w_handle (wrk, vep_handle);
