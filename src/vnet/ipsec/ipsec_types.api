@@ -37,6 +37,9 @@ enum ipsec_crypto_alg
   IPSEC_API_CRYPTO_ALG_DES_CBC,
   IPSEC_API_CRYPTO_ALG_3DES_CBC,
   IPSEC_API_CRYPTO_ALG_CHACHA20_POLY1305 [backwards_compatible],
+  IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_128 [backwards_compatible],
+  IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_192 [backwards_compatible],
+  IPSEC_API_CRYPTO_ALG_AES_NULL_GMAC_256 [backwards_compatible],
 };
 
 /*

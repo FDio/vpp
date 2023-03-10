@@ -562,6 +562,30 @@ ipsec_init (vlib_main_t * vm)
   a->iv_size = 8;
   a->icv_size = 16;
 
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_128_NULL_GMAC_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_128_NULL_GMAC_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_128_GCM;
+  a->iv_size = 8;
+  a->block_align = 1;
+  a->icv_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_192_NULL_GMAC_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_192_NULL_GMAC_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_192_GCM;
+  a->iv_size = 8;
+  a->block_align = 1;
+  a->icv_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256;
+  a->enc_op_id = VNET_CRYPTO_OP_AES_256_NULL_GMAC_ENC;
+  a->dec_op_id = VNET_CRYPTO_OP_AES_256_NULL_GMAC_DEC;
+  a->alg = VNET_CRYPTO_ALG_AES_256_GCM;
+  a->iv_size = 8;
+  a->block_align = 1;
+  a->icv_size = 16;
+
   vec_validate (im->integ_algs, IPSEC_INTEG_N_ALG - 1);
   ipsec_main_integ_alg_t *i;
 

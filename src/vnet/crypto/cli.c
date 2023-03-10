@@ -145,7 +145,7 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
       "Chained");
 
   for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
-    vlib_cli_output (vm, "%-16U%U", format_vnet_crypto_alg, i,
+    vlib_cli_output (vm, "%-20U%U", format_vnet_crypto_alg, i,
 		     format_vnet_crypto_handlers, i);
 
   return 0;
