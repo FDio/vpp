@@ -333,7 +333,7 @@ session_evt_ctrl_data (session_worker_t * wrk, session_evt_elt_t * elt)
 static inline void
 session_evt_ctrl_data_free (session_worker_t * wrk, session_evt_elt_t * elt)
 {
-  ASSERT (elt->evt.event_type > SESSION_IO_EVT_BUILTIN_TX);
+  ASSERT (elt->evt.event_type >= SESSION_CTRL_EVT_RPC);
   pool_put_index (wrk->ctrl_evts_data, elt->evt.ctrl_data_index);
 }
 
