@@ -59,7 +59,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_index = *(u32 *) data;
       break;
-    case SESSION_IO_EVT_BUILTIN_TX:
+    case SESSION_IO_EVT_TX_MAIN:
     case SESSION_CTRL_EVT_CLOSE:
     case SESSION_CTRL_EVT_RESET:
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);

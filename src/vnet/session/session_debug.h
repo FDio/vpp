@@ -70,28 +70,28 @@ typedef enum session_evt_to_grp_
 #undef _
 } session_evt_to_grp_e;
 
-#define foreach_session_events                         		\
-_(CLK_UPDATE_TIME, 1, 1, "Time Update Time") 			\
-_(CLK_MQ_DEQ, 1, 1, "Time MQ Dequeue") 	          		\
-_(CLK_CTRL_EVTS, 1, 1, "Time Ctrl Events")			\
-_(CLK_NEW_IO_EVTS, 1, 1, "Time New IO Events")			\
-_(CLK_OLD_IO_EVTS, 1, 1, "Time Old IO Events")			\
-_(CLK_TOTAL, 1, 1, "Time Total in Node")			\
-_(CLK_START, 1, 1, "Time Since Last Reset")			\
-								\
-_(CNT_MQ_EVTS, 1, 0, "# of MQ Events Processed" )     		\
-_(CNT_CTRL_EVTS, 1, 0, "# of Ctrl Events Processed" )		\
-_(CNT_NEW_EVTS, 1, 0, "# of New Events Processed" )    		\
-_(CNT_OLD_EVTS, 1, 0, "# of Old Events Processed" )    		\
-_(CNT_IO_EVTS, 1, 0, "# of Events Processed" )      		\
-_(CNT_NODE_CALL, 1, 0, "# of Node Calls")               	\
-								\
-_(BASE_OFFSET_IO_EVTS, 0, 0, "NULL")                  		\
-_(SESSION_IO_EVT_RX, 1, 0, "# of IO Event RX")          	\
-_(SESSION_IO_EVT_TX,  1, 0, "# of IO Event TX")                 \
-_(SESSION_IO_EVT_TX_FLUSH, 1, 0, "# of IO Event TX Flush")      \
-_(SESSION_IO_EVT_BUILTIN_RX, 1, 0, "# of IO Event BuiltIn RX")	\
-_(SESSION_IO_EVT_BUILTIN_TX, 1, 0, "# of IO Event BuiltIn TX")	\
+#define foreach_session_events                                                \
+  _ (CLK_UPDATE_TIME, 1, 1, "Time Update Time")                               \
+  _ (CLK_MQ_DEQ, 1, 1, "Time MQ Dequeue")                                     \
+  _ (CLK_CTRL_EVTS, 1, 1, "Time Ctrl Events")                                 \
+  _ (CLK_NEW_IO_EVTS, 1, 1, "Time New IO Events")                             \
+  _ (CLK_OLD_IO_EVTS, 1, 1, "Time Old IO Events")                             \
+  _ (CLK_TOTAL, 1, 1, "Time Total in Node")                                   \
+  _ (CLK_START, 1, 1, "Time Since Last Reset")                                \
+                                                                              \
+  _ (CNT_MQ_EVTS, 1, 0, "# of MQ Events Processed")                           \
+  _ (CNT_CTRL_EVTS, 1, 0, "# of Ctrl Events Processed")                       \
+  _ (CNT_NEW_EVTS, 1, 0, "# of New Events Processed")                         \
+  _ (CNT_OLD_EVTS, 1, 0, "# of Old Events Processed")                         \
+  _ (CNT_IO_EVTS, 1, 0, "# of Events Processed")                              \
+  _ (CNT_NODE_CALL, 1, 0, "# of Node Calls")                                  \
+                                                                              \
+  _ (BASE_OFFSET_IO_EVTS, 0, 0, "NULL")                                       \
+  _ (SESSION_IO_EVT_RX, 1, 0, "# of IO Event RX")                             \
+  _ (SESSION_IO_EVT_TX, 1, 0, "# of IO Event TX")                             \
+  _ (SESSION_IO_EVT_TX_FLUSH, 1, 0, "# of IO Event TX Flush")                 \
+  _ (SESSION_IO_EVT_BUILTIN_RX, 1, 0, "# of IO Event BuiltIn RX")             \
+  _ (SESSION_IO_EVT_TX_MAIN, 1, 0, "# of IO Event TX Main")
 
 typedef enum
 {

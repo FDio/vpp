@@ -660,6 +660,13 @@ vcl_session_clear_attr (vcl_session_t * s, u8 attr)
   s->attributes &= ~(1 << attr);
 }
 
+static inline session_evt_type_t
+vcl_session_dgram_tx_evt (vcl_session_t *s, session_evt_type_t et)
+{
+  return ((s->flags & VCL_SESSION_F_CONNECTED) != 0) ? et :
+							     SESSION_IO_EVT_TX_MAIN;
+}
+
 /*
  * Helpers
  */
