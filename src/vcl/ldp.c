@@ -194,31 +194,9 @@ ldp_alloc_workers (void)
   pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
 }
 
-static int
-ldp_init (void)
+static void
+ldp_init_cfg (void)
 {
-  ldp_worker_ctx_t *ldpw;
-  int rv;
-
-  ASSERT (!ldp->init);
-
-  ldp->init = 1;
-  ldp->vcl_needs_real_epoll = 1;
-  rv = vls_app_create (ldp_get_app_name ());
-  if (rv != VPPCOM_OK)
-    {
-      ldp->vcl_needs_real_epoll = 0;
-      if (rv == VPPCOM_EEXIST)
-	return 0;
-      LDBG (2, "\nERROR: ldp_init: vppcom_app_create()"
-	    " failed!  rv = %d (%s)\n", rv, vppcom_retval_str (rv));
-      ldp->init = 0;
-      return rv;
-    }
-  ldp->vcl_needs_real_epoll = 0;
-  ldp_alloc_workers ();
-  ldpw = ldp_worker_get_current ();
-
   char *env_var_str = getenv (LDP_ENV_DEBUG);
   if (env_var_str)
     {
@@ -298,12 +276,39 @@ ldp_init (void)
     {
       ldp->transparent_tls = 1;
     }
+}
 
-  /* *INDENT-OFF* */
+static int
+ldp_init (void)
+{
+  ldp_worker_ctx_t *ldpw;
+  int rv;
+
+  ASSERT (!ldp->init);
+
+  ldp_init_cfg ();
+  ldp->init = 1;
+  ldp->vcl_needs_real_epoll = 1;
+  rv = vls_app_create (ldp_get_app_name ());
+  if (rv != VPPCOM_OK)
+    {
+      ldp->vcl_needs_real_epoll = 0;
+      if (rv == VPPCOM_EEXIST)
+	return 0;
+      LDBG (2,
+	    "\nERROR: ldp_init: vppcom_app_create()"
+	    " failed!  rv = %d (%s)\n",
+	    rv, vppcom_retval_str (rv));
+      ldp->init = 0;
+      return rv;
+    }
+  ldp->vcl_needs_real_epoll = 0;
+  ldp_alloc_workers ();
+  ldpw = ldp_worker_get_current ();
+
   pool_foreach (ldpw, ldp->workers)  {
     clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
   }
-  /* *INDENT-ON* */
 
   LDBG (0, "LDP initialization: done!");
 
