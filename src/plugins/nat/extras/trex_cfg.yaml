@@ -5,8 +5,8 @@
   interfaces: ['04:00.0', '04:00.1']
   c: 4
   port_info:
-      - ip: 172.16.1.2
-        default_gw: 172.16.1.1
+      - ip: 173.16.1.2
+        default_gw: 173.16.1.1
       - ip: 172.16.2.2
         default_gw: 172.16.2.1
 
