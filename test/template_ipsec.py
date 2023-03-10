@@ -122,7 +122,7 @@ class IPsecIPv6Params:
 
 
 def mk_scapy_crypt_key(p):
-    if p.crypt_algo in ("AES-GCM", "AES-CTR"):
+    if p.crypt_algo in ("AES-GCM", "AES-CTR", "AES-NULL-GMAC"):
         return p.crypt_key + struct.pack("!I", p.salt)
     else:
         return p.crypt_key
@@ -342,7 +342,7 @@ class IpsecTra4(object):
         return count
 
     def get_hash_failed_counts(self, p):
-        if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
+        if ESP == self.encryption_type and p.crypt_algo in ("AES-GCM", "AES-NULL-GMAC"):
             hash_failed_node_name = (
                 "/err/%s/decryption_failed" % self.tra4_decrypt_node_name[p.async_mode]
             )
