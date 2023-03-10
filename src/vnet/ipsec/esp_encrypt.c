@@ -415,6 +415,12 @@ esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	      op->aad_len = esp_aad_fill (op->aad, esp, sa0, seq_hi);
 	      op->tag = payload + crypto_len;
 	      op->tag_len = 16;
+	      if (PREDICT_FALSE (ipsec_sa_is_set_IS_NULL_GMAC (sa0)))
+		{
+		  /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
+		  crypto_start -= iv_sz;
+		  crypto_len += iv_sz;
+		}
 	    }
 	  else
 	    {
@@ -522,6 +528,12 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 	  /* constuct aad in a scratch space in front of the nonce */
 	  aad = (u8 *) nonce - sizeof (esp_aead_t);
 	  esp_aad_fill (aad, esp, sa, sa->seq_hi);
+	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_NULL_GMAC (sa)))
+	    {
+	      /* RFC-4543 ENCR_NULL_AUTH_AES_GMAC: IV is part of AAD */
+	      crypto_start_offset -= iv_sz;
+	      crypto_total_len += iv_sz;
+	    }
 	}
       else
 	{
