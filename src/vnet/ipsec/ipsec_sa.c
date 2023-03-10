@@ -136,6 +136,13 @@ ipsec_sa_set_crypto_alg (ipsec_sa_t * sa, ipsec_crypto_alg_t crypto_alg)
     {
       ipsec_sa_set_IS_CTR (sa);
     }
+  else if (IPSEC_CRYPTO_ALG_IS_NULL_GMAC (crypto_alg))
+    {
+      sa->integ_icv_size = im->crypto_algs[crypto_alg].icv_size;
+      ipsec_sa_set_IS_CTR (sa);
+      ipsec_sa_set_IS_AEAD (sa);
+      ipsec_sa_set_IS_NULL_GMAC (sa);
+    }
 }
 
 void
@@ -416,7 +423,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   err = ipsec_check_support_cb (im, sa);
   if (err)
     {
-      clib_warning ("%s", err->what);
+      clib_warning ("%v", err->what);
       pool_put (ipsec_sa_pool, sa);
       return VNET_API_ERROR_UNIMPLEMENTED;
     }
