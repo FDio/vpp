@@ -1776,11 +1776,13 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       app_wrk = app_worker_get (s->app_wrk_index);
       app_worker_builtin_rx (app_wrk, s);
       break;
-    case SESSION_IO_EVT_BUILTIN_TX:
-      s = session_get_from_handle_if_valid (e->session_handle);
+    case SESSION_IO_EVT_TX_MAIN:
+      s = session_get_if_valid (e->session_index, 0 /* main thread */);
+      if (PREDICT_FALSE (!s))
+	break;
       wrk->ctx.s = s;
       if (PREDICT_TRUE (s != 0))
-	session_tx_fifo_dequeue_internal (wrk, node, elt, n_tx_packets);
+	(smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);
