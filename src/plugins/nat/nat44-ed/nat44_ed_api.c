@@ -1202,7 +1202,7 @@ vl_api_nat44_ed_add_del_vrf_table_t_handler (
   vl_api_nat44_ed_add_del_vrf_table_reply_t *rmp;
   int rv = nat44_ed_add_del_vrf_table (clib_net_to_host_u32 (mp->table_vrf_id),
 				       mp->is_add);
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_TABLE);
+  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_TABLE_REPLY);
 }
 
 static void
@@ -1214,7 +1214,7 @@ vl_api_nat44_ed_add_del_vrf_route_t_handler (
   int rv =
     nat44_ed_add_del_vrf_route (clib_net_to_host_u32 (mp->table_vrf_id),
 				clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
-  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_ROUTE);
+  REPLY_MACRO (VL_API_NAT44_ED_ADD_DEL_VRF_ROUTE_REPLY);
 }
 
 static void
@@ -1230,13 +1230,13 @@ nat44_ed_vrf_tables_send_details (vl_api_registration_t *rp, u32 context,
   mp = vl_msg_api_alloc_zero (sizeof (*mp) +
 			      sizeof (mp->vrf_ids[0]) * vec_len (t->routes));
   mp->_vl_msg_id =
-    ntohs (VL_API_NAT44_ED_VRF_TABLES_DETAILS + sm->msg_id_base);
+    clib_net_to_host_u16 (VL_API_NAT44_ED_VRF_TABLES_DETAILS + sm->msg_id_base);
   mp->context = context;
-  mp->n_vrf_ids = clib_host_to_net_u32 (vec_len (t->routes));
-
+  mp->n_vrf_ids = clib_net_to_host_u32 (vec_len (t->routes));
+  mp->table_vrf_id = clib_net_to_host_u32 (t->table_vrf_id);
   pool_foreach (r, t->routes)
     {
-      vec_add1 (vrf_ids, r->vrf_id);
+      vec_add1 (vrf_ids, clib_net_to_host_u32 (r->vrf_id));
     }
 
   // copy the records
