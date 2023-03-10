@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f092223_dc11e1cf",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-10T16:01:13Z",
+      "side": 1,
+      "message": "avf: 512-bit SIMD version of avf_tx_prepare()",
+      "revId": "2ee384e7ac7d498cfe18a9a370353c2c1f2496a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e0c98f1_2fa1583f",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-10T16:01:13Z",
+      "side": 1,
+      "message": "Last time I was looking SIMD gather instruction was more expensive than doing independent reads. Can you confirm this is not the case anymore?",
+      "revId": "2ee384e7ac7d498cfe18a9a370353c2c1f2496a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
