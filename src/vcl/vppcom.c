@@ -2409,11 +2409,17 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	sid = e->session_index;
       if (sid == VCL_INVALID_SESSION_INDEX)
 	break;
-      if (sid < n_bits && write_map)
-	{
-	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
-	  *bits_set += 1;
-	}
+      if (!(sid < n_bits && write_map))
+	break;
+      clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
+      *bits_set += 1;
+      s = vcl_session_get (wrk, sid);
+      if (!s->tx_fifo)
+	break;
+      /* We didn't have a fifo when the event was added */
+      svm_fifo_add_want_deq_ntf (
+	(vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo),
+	SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
@@ -2623,7 +2629,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
 	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
 	  bits_set++;
 	}
-      else
+      else if (s->tx_fifo)
 	{
 	  svm_fifo_t *txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
 	  svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF);
