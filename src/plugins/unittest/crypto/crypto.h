@@ -61,6 +61,10 @@ typedef struct
 extern crypto_test_main_t crypto_test_main;
 
 #define TEST_DATA(n) { .data = (u8 *) n, .length = sizeof (n)}
+#define TEST_DATA_STR(n)                                                      \
+  {                                                                           \
+    .data = (u8 *) n, .length = sizeof (n) - 1                                \
+  }
 #define TEST_DATA_CHUNK(s,off,n) { .data = (u8 *) s + off, .length = n}
 
 #define UNITTEST_REGISTER_CRYPTO_TEST(x)                                     \

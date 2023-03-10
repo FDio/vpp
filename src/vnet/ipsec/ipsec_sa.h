@@ -39,7 +39,10 @@
   _ (9, AES_GCM_256, "aes-gcm-256")                                           \
   _ (10, DES_CBC, "des-cbc")                                                  \
   _ (11, 3DES_CBC, "3des-cbc")                                                \
-  _ (12, CHACHA20_POLY1305, "chacha20-poly1305")
+  _ (12, CHACHA20_POLY1305, "chacha20-poly1305")                              \
+  _ (13, AES_NULL_GMAC_128, "aes-null-gmac-128")                              \
+  _ (14, AES_NULL_GMAC_192, "aes-null-gmac-192")                              \
+  _ (15, AES_NULL_GMAC_256, "aes-null-gmac-256")
 
 typedef enum
 {
@@ -48,6 +51,11 @@ typedef enum
 #undef _
     IPSEC_CRYPTO_N_ALG,
 } __clib_packed ipsec_crypto_alg_t;
+
+#define IPSEC_CRYPTO_ALG_IS_NULL_GMAC(_alg)                                   \
+  ((_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_128) ||                            \
+   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_192) ||                            \
+   (_alg == IPSEC_CRYPTO_ALG_AES_NULL_GMAC_256))
 
 #define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
   (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
@@ -112,7 +120,8 @@ typedef struct ipsec_key_t_
   _ (128, IS_AEAD, "aead")                                                    \
   _ (256, IS_CTR, "ctr")                                                      \
   _ (512, IS_ASYNC, "async")                                                  \
-  _ (1024, NO_ALGO_NO_DROP, "no-algo-no-drop")
+  _ (1024, NO_ALGO_NO_DROP, "no-algo-no-drop")                                \
+  _ (2048, IS_NULL_GMAC, "null-gmac")
 
 typedef enum ipsec_sad_flags_t_
 {
