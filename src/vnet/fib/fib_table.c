@@ -1157,7 +1157,7 @@ fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
         }
         else
         {
-            fib_table->ft_desc = format(NULL, "%U-VRF:%d",
+            fib_table->ft_desc = format(NULL, "%U-VRF:%07d",
                                         format_fib_protocol, proto,
                                         table_id);
         }
