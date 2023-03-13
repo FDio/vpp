@@ -40,24 +40,35 @@ typedef enum transport_service_type_
   TRANSPORT_N_SERVICES
 } transport_service_type_t;
 
+/*
+ * IS_TX_PACED : Connection sending is paced
+ * NO_LOOKUP: Don't register connection in lookup. Does not apply to local
+ * 	      apps and transports using the network layer (udp/tcp)
+ * DESCHED: Connection descheduled by the session layer
+ * CLESS: Connection is "connection less". Some important implications of that
+ *        are that connections are not pinned to workers and listeners will
+ *        have fifos associated to them
+ */
+#define foreach_transport_connection_flag                                     \
+  _ (IS_TX_PACED, "tx_paced")                                                 \
+  _ (NO_LOOKUP, "no_lookup")                                                  \
+  _ (DESCHED, "descheduled")                                                  \
+  _ (CLESS, "connectionless")
+
+typedef enum transport_connection_flags_bits_
+{
+#define _(sym, str) TRANSPORT_CONNECTION_F_BIT_##sym,
+  foreach_transport_connection_flag
+#undef _
+} transport_connection_flags_bits_t;
+
 typedef enum transport_connection_flags_
 {
-  TRANSPORT_CONNECTION_F_IS_TX_PACED = 1 << 0,
-  /**
-   * Don't register connection in lookup. Does not apply to local apps
-   * and transports using the network layer (udp/tcp)
-   */
-  TRANSPORT_CONNECTION_F_NO_LOOKUP = 1 << 1,
-  /**
-   * Connection descheduled by the session layer.
-   */
-  TRANSPORT_CONNECTION_F_DESCHED = 1 << 2,
-  /**
-   * Connection is "connection less". Some important implications of that
-   * are that connections are not pinned to workers and listeners will
-   * have fifos associated to them
-   */
-  TRANSPORT_CONNECTION_F_CLESS = 1 << 3,
+#define _(sym, str)                                                           \
+  TRANSPORT_CONNECTION_F_##sym = 1 << TRANSPORT_CONNECTION_F_BIT_##sym,
+  foreach_transport_connection_flag
+#undef _
+    TRANSPORT_CONNECTION_N_FLAGS
 } transport_connection_flags_t;
 
 typedef struct _spacer
@@ -176,6 +187,7 @@ typedef enum _transport_proto
 
 u8 *format_transport_proto (u8 * s, va_list * args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);
+u8 *format_transport_flags (u8 *s, va_list *args);
 u8 *format_transport_connection (u8 * s, va_list * args);
 u8 *format_transport_listen_connection (u8 * s, va_list * args);
 u8 *format_transport_half_open_connection (u8 * s, va_list * args);
