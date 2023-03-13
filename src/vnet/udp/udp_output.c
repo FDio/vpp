@@ -51,6 +51,16 @@ format_udp_tx_trace (u8 *s, va_list *args)
   return s;
 }
 
+always_inline udp_connection_t *
+udp_output_get_connection (vlib_buffer_t *b, u32 thread_index)
+{
+  if (PREDICT_FALSE (vnet_buffer (b)->tcp.flags & UDP_CONN_F_LISTEN))
+    return udp_listener_get (vnet_buffer (b)->tcp.connection_index);
+
+  return udp_connection_get (vnet_buffer (b)->tcp.connection_index,
+			     thread_index);
+}
+
 static void
 udp46_output_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  u32 *to_next, u32 n_bufs)
@@ -67,8 +77,7 @@ udp46_output_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (!(b->flags & VLIB_BUFFER_IS_TRACED))
 	continue;
       uh = vlib_buffer_get_current (b);
-      uc = udp_connection_get (vnet_buffer (b)->tcp.connection_index,
-			       vm->thread_index);
+      uc = udp_output_get_connection (b, vm->thread_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       clib_memcpy_fast (&t->udp_header, uh, sizeof (t->udp_header));
       clib_memcpy_fast (&t->udp_connection, uc, sizeof (t->udp_connection));
@@ -93,16 +102,6 @@ udp_output_handle_packet (udp_connection_t *uc0, vlib_buffer_t *b0,
 
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = uc0->c_fib_index;
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = uc0->sw_if_index;
-}
-
-always_inline udp_connection_t *
-udp_output_get_connection (vlib_buffer_t *b, u32 thread_index)
-{
-  if (PREDICT_FALSE (vnet_buffer (b)->tcp.flags & UDP_CONN_F_LISTEN))
-    return udp_listener_get (vnet_buffer (b)->tcp.connection_index);
-
-  return udp_connection_get (vnet_buffer (b)->tcp.connection_index,
-			     thread_index);
 }
 
 always_inline uword
