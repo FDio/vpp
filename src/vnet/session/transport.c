@@ -607,10 +607,6 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
   /* Only support active opens from one of ctrl threads */
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
 
-  /* Cleanup freelist if need be */
-  if (vec_len (tm->lcl_endpts_freelist))
-    transport_cleanup_freelist ();
-
   /* Search for first free slot */
   for (tries = 0; tries < limit; tries++)
     {
@@ -698,6 +694,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 				ip46_address_t * lcl_addr, u16 * lcl_port)
 {
   transport_endpoint_t *rmt = (transport_endpoint_t *) rmt_cfg;
+  transport_main_t *tm = &tp_main;
   session_error_t error;
   int port;
 
@@ -717,6 +714,10 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
       clib_memcpy_fast (lcl_addr, &rmt_cfg->peer.ip,
 			sizeof (rmt_cfg->peer.ip));
     }
+
+  /* Cleanup freelist if need be */
+  if (vec_len (tm->lcl_endpts_freelist))
+    transport_cleanup_freelist ();
 
   /*
    * Allocate source port
