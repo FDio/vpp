@@ -69,6 +69,35 @@ format_transport_proto_short (u8 * s, va_list * args)
   return s;
 }
 
+const char *transport_flags_str[] = {
+#define _(sym, str) str,
+  foreach_transport_connection_flag
+#undef _
+};
+
+u8 *
+format_transport_flags (u8 *s, va_list *args)
+{
+  transport_connection_flags_t flags;
+  int i, last = -1;
+
+  flags = va_arg (*args, transport_connection_flags_t);
+
+  for (i = 0; i < TRANSPORT_CONNECTION_N_FLAGS; i++)
+    if (flags & (1 << i))
+      last = i;
+
+  for (i = 0; i < last; i++)
+    {
+      if (flags & (1 << i))
+	s = format (s, "%s, ", transport_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", transport_flags_str[last]);
+
+  return s;
+}
+
 u8 *
 format_transport_connection (u8 * s, va_list * args)
 {
@@ -93,8 +122,8 @@ format_transport_connection (u8 * s, va_list * args)
       if (transport_connection_is_tx_paced (tc))
 	s = format (s, "%Upacer: %U\n", format_white_space, indent,
 		    format_transport_pacer, &tc->pacer, tc->thread_index);
-      s = format (s, "%Utransport: flags 0x%x\n", format_white_space, indent,
-		  tc->flags);
+      s = format (s, "%Utransport: flags: %U\n", format_white_space, indent,
+		  format_transport_flags, tc->flags);
     }
   return s;
 }
