@@ -114,6 +114,12 @@ clib_socket_is_connected (clib_socket_t * sock)
   return sock->fd > 0;
 }
 
+always_inline int
+clib_socket_name_is_abstract (const u8 * name)
+{
+  /* Treat everything that starts with @ as an abstract socket. */
+  return (name[0] == '@');
+}
 
 always_inline int
 clib_socket_rx_end_of_file (clib_socket_t * s)

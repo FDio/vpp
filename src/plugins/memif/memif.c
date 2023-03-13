@@ -705,7 +705,14 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
 
-  if (sock_filename[0] != '/')
+  if (clib_socket_name_is_abstract (sock_filename))
+    {
+      /* Abstract socket */
+      if (sock_filename[1] == 0)
+	return VNET_API_ERROR_INVALID_ARGUMENT;
+      sock_filename = format (0, "%s%c", sock_filename, 0);
+    }
+  else if (sock_filename[0] != '/')
     {
       clib_error_t *error;
 
@@ -890,7 +897,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
       /* If we are creating listener make sure file doesn't exist or if it
        * exists thn delete it if it is old socket file */
-      if (args->is_master && (stat ((char *) msf->filename, &file_stat) == 0))
+      if (args->is_master && !clib_socket_name_is_abstract (msf->filename) &&
+	  (stat ((char *) msf->filename, &file_stat) == 0))
 	{
 	  if (S_ISSOCK (file_stat.st_mode))
 	    {
@@ -1021,7 +1029,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  goto error;
 	}
 
-      if (stat ((char *) msf->filename, &file_stat) == -1)
+      if (!clib_socket_name_is_abstract (msf->filename) &&
+	  stat ((char *) msf->filename, &file_stat) == -1)
 	{
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_8;
 	  goto error;

@@ -86,11 +86,41 @@ find_free_port (word sock)
   return port < 1 << 16 ? port : -1;
 }
 
+/**
+ * Unformat the socket config (and potential netns). Syntax is as follows :
+ * config=@netns:ns0@memif
+ * > socket_name=memif ; netns=ns0
+ */
+static clib_error_t *
+clib_unformat_abstract_socket_name (char *config, u8 ** socket_name,
+				    u8 ** namespace)
+{
+  unformat_input_t _input, *input = &_input;
+  clib_error_t *error = 0;
+
+  unformat_init_string (input, config, strlen (config));
+  /* namespace is a cstring, socket_name a vec */
+  if (unformat (input, "@netns:%s@%v", namespace, socket_name))
+    ;
+  else if (unformat (input, "@%v", socket_name))
+    *namespace = NULL;
+  else
+    {
+      error =
+	clib_error_return (0, "unknow abstract socket format `%s'", config);
+      goto done;
+    }
+
+done:
+  unformat_free (input);
+  return error;
+}
+
 /* Convert a config string to a struct sockaddr and length for use
    with bind or connect. */
 static clib_error_t *
-socket_config (char *config,
-	       void *addr, socklen_t * addr_len, u32 ip4_default_address)
+socket_config (char *config, void *addr, socklen_t * addr_len,
+	       u32 ip4_default_address, u8 ** namespace)
 {
   clib_error_t *error = 0;
 
@@ -107,6 +137,30 @@ socket_config (char *config,
       *addr_len = sizeof (su[0]);
     }
 
+  /* Treat everything that starts with @ as an abstract socket. */
+  else if (clib_socket_name_is_abstract ((u8 *) config))
+    {
+      struct sockaddr_un *su = addr;
+      u8 *socket_name = NULL;
+      su->sun_family = PF_LOCAL;
+
+      if ((error = clib_unformat_abstract_socket_name (config, &socket_name,
+						       namespace)))
+	goto done;
+
+      /* socket_name should be smaller than dst (minus heading 0) */
+      if (sizeof (su->sun_path) - 1 < vec_len (socket_name))
+	{
+	  error = clib_error_return (0, "socket name too long `%s'", config);
+	  goto done;
+	}
+
+      clib_memcpy (&su->sun_path[1], socket_name, vec_len (socket_name));
+      su->sun_path[0] = '\0';
+      *addr_len = sizeof (su->sun_family) + 1 + vec_len (socket_name);
+
+      vec_free (socket_name);
+    }
   /* Hostname or hostname:port or port. */
   else
     {
@@ -380,6 +434,34 @@ socket_init_funcs (clib_socket_t * s)
     s->recvmsg_func = default_socket_recvmsg;
 }
 
+static int
+clib_netns_open (u8 * netns_u8)
+{
+  char *netns = (char *) netns_u8;
+  u8 *s = 0;
+  int fd;
+
+  if ((NULL) == netns)
+    s = format (0, "/proc/self/ns/net");
+  else if (strncmp (netns, "pid:", 4) == 0)
+    s = format (0, "/proc/%u/ns/net%c", atoi (netns + 4), 0);
+  else if (netns[0] == '/')
+    s = format (0, "%s%c", netns, 0);
+  else
+    s = format (0, "/var/run/netns/%s%c", netns, 0);
+
+  fd = open ((char *) s, O_RDONLY);
+  vec_free (s);
+  return fd;
+}
+
+static int
+clib_setns (int nfd)
+{
+  return setns (nfd, CLONE_NEWNET);
+}
+
+
 __clib_export clib_error_t *
 clib_socket_init (clib_socket_t * s)
 {
@@ -392,12 +474,36 @@ clib_socket_init (clib_socket_t * s)
   int socket_type, rv;
   clib_error_t *error = 0;
   word port;
+  int old_netns_fd = -1, nfd = -1;
+  u8 *namespace = NULL;
 
   error = socket_config (s->config, &addr.sa, &addr_len,
-			 (s->flags & CLIB_SOCKET_F_IS_SERVER
-			  ? INADDR_LOOPBACK : INADDR_ANY));
+			 (s->flags & CLIB_SOCKET_F_IS_SERVER ? INADDR_LOOPBACK
+			  : INADDR_ANY), &namespace);
   if (error)
     goto done;
+
+  if (namespace != NULL)
+    {
+      if ((old_netns_fd = clib_netns_open (NULL /* self */ )) < 0)
+	{
+	  error = clib_error_return_unix (0, "get current netns failed");
+	  goto done;
+	}
+
+      if ((nfd = clib_netns_open (namespace)) == -1)
+	{
+	  error =
+	    clib_error_return_unix (0, "clib_netns_open '%s'", namespace);
+	  goto done;
+	}
+
+      if (clib_setns (nfd) == -1)
+	{
+	  error = clib_error_return_unix (0, "setns '%s'", namespace);
+	  goto done;
+	}
+    }
 
   socket_init_funcs (s);
 
@@ -514,11 +620,22 @@ clib_socket_init (clib_socket_t * s)
 	}
     }
 
-  return error;
-
 done:
-  if (s->fd > 0)
+  if (error && s->fd > 0)
     close (s->fd);
+
+  if (old_netns_fd != -1)
+    {
+      if (clib_setns (old_netns_fd))
+	clib_warning ("Cannot setns to original netns");
+
+      close (old_netns_fd);
+    }
+
+  if (nfd != -1)
+    close (nfd);
+
+  vec_free (namespace);
   return error;
 }
 
