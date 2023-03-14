@@ -480,6 +480,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 {
   segment_manager_t *sm;
   svm_fifo_t *rxf, *txf;
+  int rv;
 
   if (s->session_state == SESSION_STATE_LISTENING)
     return application_change_listener_owner (s, app_wrk);
@@ -496,8 +497,8 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
   s->tx_fifo = 0;
 
   sm = app_worker_get_connect_segment_manager (app_wrk);
-  if (app_worker_alloc_session_fifos (sm, s))
-    return -1;
+  if ((rv = app_worker_alloc_session_fifos (sm, s)))
+    return rv;
 
   if (!svm_fifo_is_empty_cons (rxf))
     svm_fifo_clone (s->rx_fifo, rxf);

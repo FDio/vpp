@@ -105,8 +105,8 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   /* Not configured for addition of new segments and not first */
   if (!props->add_segment && !segment_size)
     {
-      clib_warning ("cannot allocate new segment");
-      return VNET_API_ERROR_INVALID_VALUE;
+      SESSION_DBG ("cannot allocate new segment");
+      return SESSION_E_INVALID;
     }
 
   /*
@@ -418,7 +418,7 @@ segment_manager_init_first (segment_manager_t * sm)
 	  fs_index = segment_manager_add_segment (sm, max_seg_size, 0);
 	  if (fs_index < 0)
 	    {
-	      clib_warning ("Failed to preallocate segment %d", i);
+	      SESSION_DBG ("Failed to preallocate segment %d", i);
 	      return fs_index;
 	    }
 
@@ -440,7 +440,7 @@ segment_manager_init_first (segment_manager_t * sm)
   fs_index = segment_manager_add_segment (sm, first_seg_size, 0);
   if (fs_index < 0)
     {
-      clib_warning ("Failed to allocate segment");
+      SESSION_DBG ("Failed to allocate segment");
       return fs_index;
     }
 
@@ -458,7 +458,7 @@ segment_manager_init_first (segment_manager_t * sm)
       for (; i < fs->n_slices; i++)
 	{
 	  if (fifo_segment_prealloc_fifo_hdrs (fs, i, hdrs_per_slice))
-	    return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
+	    return SESSION_E_SEG_CREATE;
 	}
     }
 
@@ -807,7 +807,7 @@ sm_lock_and_alloc_segment_and_fifos (segment_manager_t *sm,
 					props->tx_fifo_size, rx_fifo, tx_fifo);
   if (rv)
     {
-      clib_warning ("Added a segment, still can't allocate a fifo");
+      SESSION_DBG ("Added a segment, still can't allocate a fifo");
       rv = SESSION_E_SEG_NO_SPACE2;
       goto done;
     }
