@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f2c8bb2c_d08a036e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-14T07:55:25Z",
+      "side": 1,
+      "message": "New review 38475 created for this patch. So abandon this one.",
+      "revId": "ac1b8a54a2eeec1e4a6176ca5f1b289c386d4524",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
