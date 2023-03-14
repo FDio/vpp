@@ -391,9 +391,21 @@ ipsec_fp_ip4_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
   u32 *praddr_start = (u32 *) &policy->raddr.start.ip4;
   u32 *praddr_stop = (u32 *) &policy->raddr.stop.ip4;
   u32 *prmask = (u32 *) &mask->raddr;
+  ipsec_sa_t *s = policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ?
+			  ipsec_sa_get (policy->sa_index) :
+			  NULL;
 
   clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
   clib_memset_u8 (&mask->l3_zero_pad, 0, sizeof (mask->l3_zero_pad));
+
+  if (s && inbound && ipsec_sa_is_set_IS_TUNNEL (s))
+    {
+      *plmask = 0;
+      *prmask = 0;
+      mask->spi = 0;
+      mask->protocol = 0;
+      return;
+    }
 
   /* find bits where start != stop */
   *plmask = *pladdr_start ^ *pladdr_stop;
@@ -433,8 +445,20 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
   u64 *praddr_start = (u64 *) &policy->raddr.start;
   u64 *praddr_stop = (u64 *) &policy->raddr.stop;
   u64 *prmask = (u64 *) &mask->ip6_raddr;
+  ipsec_sa_t *s = policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ?
+			  ipsec_sa_get (policy->sa_index) :
+			  NULL;
 
   clib_memset_u8 (mask, 0xff, sizeof (ipsec_fp_5tuple_t));
+
+  if (s && inbound && ipsec_sa_is_set_IS_TUNNEL (s))
+    {
+      *plmask = 0;
+      *prmask = 0;
+      mask->spi = 0;
+      mask->protocol = 0;
+      return;
+    }
 
   *plmask = (*pladdr_start++ ^ *pladdr_stop++);
 
@@ -487,27 +511,44 @@ static_always_inline void
 ipsec_fp_get_policy_5tuple (ipsec_policy_t *policy, ipsec_fp_5tuple_t *tuple,
 			    bool inbound)
 {
+  ipsec_sa_t *s = policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
+		      policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT ?
+			  ipsec_sa_get (policy->sa_index) :
+			  NULL;
+
   memset (tuple, 0, sizeof (*tuple));
   tuple->is_ipv6 = policy->is_ipv6;
   if (tuple->is_ipv6)
     {
-      tuple->ip6_laddr = policy->laddr.start.ip6;
-      tuple->ip6_raddr = policy->raddr.start.ip6;
+      if (s && inbound && ipsec_sa_is_set_IS_TUNNEL (s))
+	{
+	  tuple->ip6_laddr = s->tunnel.t_dst.ip.ip6;
+	  tuple->ip6_raddr = s->tunnel.t_src.ip.ip6;
+	}
+      else
+	{
+	  tuple->ip6_laddr = policy->laddr.start.ip6;
+	  tuple->ip6_raddr = policy->raddr.start.ip6;
+	}
     }
   else
     {
-      tuple->laddr = policy->laddr.start.ip4;
-      tuple->raddr = policy->raddr.start.ip4;
+      if (s && inbound && ipsec_sa_is_set_IS_TUNNEL (s))
+	{
+	  tuple->laddr = s->tunnel.t_dst.ip.ip4;
+	  tuple->raddr = s->tunnel.t_src.ip.ip4;
+	}
+      else
+	{
+	  tuple->laddr = policy->laddr.start.ip4;
+	  tuple->raddr = policy->raddr.start.ip4;
+	}
     }
 
   if (inbound)
     {
-
-      if ((policy->type == IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT ||
-	   policy->type == IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT) &&
-	  policy->sa_index != INDEX_INVALID)
+      if (s)
 	{
-	  ipsec_sa_t *s = ipsec_sa_get (policy->sa_index);
 	  tuple->spi = s->spi;
 	}
       else
