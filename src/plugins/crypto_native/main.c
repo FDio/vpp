@@ -75,7 +75,8 @@ crypto_native_init (vlib_main_t * vm)
 
   if (0);
 #if __x86_64__
-  else if (crypto_native_aes_cbc_init_icl && clib_cpu_supports_vaes ())
+  else if (crypto_native_aes_cbc_init_icl && clib_cpu_supports_vaes () &&
+	   clib_cpu_supports_avx512f ())
     error = crypto_native_aes_cbc_init_icl (vm);
   else if (crypto_native_aes_cbc_init_skx && clib_cpu_supports_avx512f ())
     error = crypto_native_aes_cbc_init_skx (vm);
@@ -97,7 +98,8 @@ crypto_native_init (vlib_main_t * vm)
 #if __x86_64__
   if (clib_cpu_supports_pclmulqdq ())
     {
-      if (crypto_native_aes_gcm_init_icl && clib_cpu_supports_vaes ())
+      if (crypto_native_aes_gcm_init_icl && clib_cpu_supports_vaes () &&
+	  clib_cpu_supports_avx512f ())
 	error = crypto_native_aes_gcm_init_icl (vm);
       else if (crypto_native_aes_gcm_init_skx && clib_cpu_supports_avx512f ())
 	error = crypto_native_aes_gcm_init_skx (vm);
