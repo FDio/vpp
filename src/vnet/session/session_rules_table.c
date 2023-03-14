@@ -19,6 +19,7 @@
 #include <vnet/session/mma_template.c>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/transport.h>
+#include <vnet/session/session_types.h>
 
 u32
 session_rule_tag_key_index (u32 ri, u8 is_ip4)
@@ -386,7 +387,7 @@ session_rules_table_lookup6 (session_rules_table_t * srt,
  * @param srt table where rule should be added
  * @param args rule arguments
  *
- * @return 0 if success, clib_error_t error otherwise
+ * @return 0 if success, session_error_t error otherwise
  */
 int
 session_rules_table_add_del (session_rules_table_t * srt,
@@ -398,7 +399,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 
   ri_from_tag = session_rules_table_rule_for_tag (srt, args->tag);
   if (args->is_add && ri_from_tag != SESSION_RULES_TABLE_INVALID_INDEX)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (fib_proto == FIB_PROTOCOL_IP4)
     {
@@ -509,7 +510,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 	}
     }
   else
-    return VNET_API_ERROR_INVALID_VALUE_2;
+    return SESSION_E_INVALID;
   return 0;
 }
 
