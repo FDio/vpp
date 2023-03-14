@@ -125,6 +125,10 @@ static dpdk_driver_t dpdk_drivers[] = {
     .n_tx_desc = 256,
     .mq_mode_none = 1,
     .enable_rxq_int = 1,
+  },
+  {
+    .drivers = DPDK_DRIVERS ({ "net_gve", "Google vNIC" }),
+    .interface_name_prefix = "VirtualFunctionEthernet",
   }
 };
 
