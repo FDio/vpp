@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "28461c6b_3d116014",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-14T12:27:42Z",
+      "side": 1,
+      "message": "VFIO part is aiming for supporting native device driver. As discussed in community call, so special requirement for native dma device supporting.  I suggest to abandon related patches. How about your idea?",
+      "parentUuid": "edaf65be_285e1bcc",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e33bb2ae_7bd6ee9d",
         "filename": "/COMMIT_MSG",
         "patchSetId": 3
