@@ -279,6 +279,7 @@ set(test_files
   test/array_mask.c
   test/compress.c
   test/count_equal.c
+  test/crc32c.c
   test/index_to_ptr.c
   test/ip_csum.c
   test/mask_compare.c
