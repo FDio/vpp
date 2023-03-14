@@ -325,6 +325,121 @@ static void vl_api_memif_create_reply_t_handler
   vam->regenerate_interface_table = 1;
 }
 
+/* memif-create_v2 API */
+static int
+api_memif_create_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_memif_create_v2_t *mp;
+  u32 id = 0;
+  u32 socket_id = 0;
+  u8 *secret = 0;
+  u8 role = 1;
+  u32 ring_size = 0;
+  u8 use_dma = 0;
+  u32 buffer_size = 0;
+  u8 hw_addr[6] = { 0 };
+  u32 rx_queues = MEMIF_DEFAULT_RX_QUEUES;
+  u32 tx_queues = MEMIF_DEFAULT_TX_QUEUES;
+  int ret;
+  u8 mode = MEMIF_INTERFACE_MODE_ETHERNET;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &id))
+	;
+      else if (unformat (i, "socket-id %u", &socket_id))
+	;
+      else if (unformat (i, "secret %s", &secret))
+	;
+      else if (unformat (i, "ring_size %u", &ring_size))
+	;
+      else if (unformat (i, "buffer_size %u", &buffer_size))
+	;
+      else if (unformat (i, "master"))
+	role = 0;
+      else if (unformat (i, "use_dma %u", &use_dma))
+	;
+      else if (unformat (i, "slave %U", unformat_memif_queues, &rx_queues,
+			 &tx_queues))
+	role = 1;
+      else if (unformat (i, "mode ip"))
+	mode = MEMIF_INTERFACE_MODE_IP;
+      else if (unformat (i, "hw_addr %U", unformat_ethernet_address, hw_addr))
+	;
+      else
+	{
+	  clib_warning ("unknown input '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (socket_id == ~0)
+    {
+      errmsg ("invalid socket-id\n");
+      return -99;
+    }
+
+  if (!is_pow2 (ring_size))
+    {
+      errmsg ("ring size must be power of 2\n");
+      return -99;
+    }
+
+  if (rx_queues > 255 || rx_queues < 1)
+    {
+      errmsg ("rx queue must be between 1 - 255\n");
+      return -99;
+    }
+
+  if (tx_queues > 255 || tx_queues < 1)
+    {
+      errmsg ("tx queue must be between 1 - 255\n");
+      return -99;
+    }
+
+  M2 (MEMIF_CREATE, mp, strlen ((char *) secret));
+
+  mp->mode = mode;
+  mp->id = clib_host_to_net_u32 (id);
+  mp->role = role;
+  mp->use_dma = use_dma;
+  mp->ring_size = clib_host_to_net_u32 (ring_size);
+  mp->buffer_size = clib_host_to_net_u16 (buffer_size & 0xffff);
+  mp->socket_id = clib_host_to_net_u32 (socket_id);
+  if (secret != 0)
+    {
+      char *p = (char *) &mp->secret;
+      p += vl_api_vec_to_api_string (secret, (vl_api_string_t *) p);
+      vec_free (secret);
+    }
+  memcpy (mp->hw_addr, hw_addr, 6);
+  mp->rx_queues = rx_queues;
+  mp->tx_queues = tx_queues;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+/* memif-create_v2 reply handler */
+static void
+vl_api_memif_create_v2_reply_t_handler (vl_api_memif_create_reply_t *mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created memif with sw_if_index %d\n",
+	       ntohl (mp->sw_if_index));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
 /* memif-delete API */
 static int
 api_memif_delete (vat_main_t * vam)

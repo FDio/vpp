@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -127,6 +127,56 @@ define memif_create
     @param sw_if_index - software index of the newly created interface
 */
 define memif_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Create memory interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param role - role of the interface in the connection (master/slave)
+    @param mode - interface mode
+    @param rx_queues - number of rx queues (only valid for slave)
+    @param tx_queues - number of tx queues (only valid for slave)
+    @param id - 32bit integer used to authenticate and match opposite sides
+           of the connection
+    @param socket_id - socket filename id to be used for connection
+           establishment
+    @param ring_size - the number of entries of RX/TX rings
+    @param buffer_size - size of the buffer allocated for each ring entry
+    @param no_zero_copy - if true, disable zero copy
+    @param use_dma - if true, use dma accelerate memory copy
+    @param hw_addr - interface MAC address
+    @param secret - optional, default is "", max length 24
+*/
+define memif_create_v2
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_memif_role_t role; /* 0 = master, 1 = slave */
+  vl_api_memif_mode_t mode; /* 0 = ethernet, 1 = ip, 2 = punt/inject */
+  u8 rx_queues; /* optional, default is 1 */
+  u8 tx_queues; /* optional, default is 1 */
+  u32 id; /* optional, default is 0 */
+  u32 socket_id; /* optional, default is 0, "/var/vpp/memif.sock" */
+  u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
+  u16 buffer_size; /* optional, default is 2048 bytes */
+  bool no_zero_copy; /* disable zero copy */
+  bool use_dma; /* use dma acceleration */
+  vl_api_mac_address_t hw_addr; /* optional, randomly generated if zero */
+  string secret[24]; /* optional, default is "", max length 24 */
+  option vat_help = "[id <id>] [socket-id <id>] [ring_size <size>] [buffer_size <size>] [hw_addr <mac_address>] [secret <string>] [mode ip] <master|slave>";
+};
+
+/** \brief Create memory interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index of the newly created interface
+*/
+define memif_create_v2_reply
 {
   u32 context;
   i32 retval;
