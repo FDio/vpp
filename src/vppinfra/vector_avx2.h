@@ -213,6 +213,16 @@ u32x8_hxor (u32x8 v)
   return v4[0];
 }
 
+static_always_inline u8x32
+u8x32_xor3 (u8x32 a, u8x32 b, u8x32 c)
+{
+#if __AVX512F__
+  return (u8x32) _mm256_ternarylogic_epi32 ((__m256i) a, (__m256i) b,
+					    (__m256i) c, 0x96);
+#endif
+  return a ^ b ^ c;
+}
+
 static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {
@@ -389,6 +399,12 @@ u64x4_transpose (u64x4 a[8])
   a[1] = u64x4_permute_lanes (r[1], r[3], 0x20);
   a[2] = u64x4_permute_lanes (r[0], r[2], 0x31);
   a[3] = u64x4_permute_lanes (r[1], r[3], 0x31);
+}
+
+static_always_inline u8x32
+u8x32_splat_u8x16 (u8x16 a)
+{
+  return (u8x32) _mm256_broadcastsi128_si256 ((__m128i) a);
 }
 
 #endif /* included_vector_avx2_h */
