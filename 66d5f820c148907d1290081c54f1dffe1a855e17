@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e34183c4_70793161",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-14T09:26:14Z",
+      "side": 1,
+      "message": "Abandon this review as https://gerrit.fd.io/r/c/vpp/+/38477 has been created.",
+      "revId": "66d5f820c148907d1290081c54f1dffe1a855e17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
