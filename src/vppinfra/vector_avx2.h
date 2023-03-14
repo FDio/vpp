@@ -213,6 +213,16 @@ u32x8_hxor (u32x8 v)
   return v4[0];
 }
 
+static_always_inline u8x32
+u8x32_xor3 (u8x32 a, u8x32 b, u8x32 c)
+{
+#if __AVX512F__
+  return (u8x32) _mm256_ternarylogic_epi32 ((__m256i) a, (__m256i) b,
+					    (__m256i) c, 0x96);
+#endif
+  return a ^ b ^ c;
+}
+
 static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {

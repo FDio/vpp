@@ -26,7 +26,7 @@
 #pragma GCC optimize ("O3")
 #endif
 
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
 #define NUM_HI 32
 #else
 #define NUM_HI 8
@@ -38,7 +38,7 @@ typedef struct
   const u8x16 Hi[NUM_HI];
   /* extracted AES key */
   const u8x16 Ke[15];
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
   const u8x64 Ke4[15];
 #endif
 } aes_gcm_key_data_t;
@@ -63,7 +63,6 @@ typedef enum
 
 static const u32x4 ctr_inv_1 = { 0, 0, 0, 1 << 24 };
 
-#ifndef __VAES__
 static_always_inline void
 aes_gcm_enc_first_round (u8x16 * r, aes_gcm_counter_t * ctr, u8x16 k,
 			 int n_blocks)
@@ -107,7 +106,6 @@ aes_gcm_enc_last_round (u8x16 * r, u8x16 * d, u8x16 const *k,
   for (int i = 0; i < n_blocks; i++)
     d[i] ^= aes_enc_last_round (r[i], k[rounds]);
 }
-#endif
 
 static_always_inline u8x16
 aes_gcm_ghash_blocks (u8x16 T, aes_gcm_key_data_t * kd,
@@ -163,11 +161,10 @@ aes_gcm_ghash (u8x16 T, aes_gcm_key_data_t * kd, u8x16u * in, u32 n_left)
   return T;
 }
 
-#ifndef __VAES__
-static_always_inline u8x16
-aes_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
-	      aes_gcm_counter_t * ctr, u8x16u * inv, u8x16u * outv,
-	      int rounds, int n, int last_block_bytes, aes_gcm_flags_t f)
+static_always_inline __clib_unused u8x16
+aes_gcm_calc (u8x16 T, aes_gcm_key_data_t *kd, u8x16 *d,
+	      aes_gcm_counter_t *ctr, u8x16u *inv, u8x16u *outv, int rounds,
+	      int n, int last_block_bytes, aes_gcm_flags_t f)
 {
   u8x16 r[n];
   ghash_data_t _gd = { }, *gd = &_gd;
@@ -258,9 +255,9 @@ aes_gcm_calc (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   return T;
 }
 
-static_always_inline u8x16
-aes_gcm_calc_double (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
-		     aes_gcm_counter_t * ctr, u8x16u * inv, u8x16u * outv,
+static_always_inline __clib_unused u8x16
+aes_gcm_calc_double (u8x16 T, aes_gcm_key_data_t *kd, u8x16 *d,
+		     aes_gcm_counter_t *ctr, u8x16u *inv, u8x16u *outv,
 		     int rounds, aes_gcm_flags_t f)
 {
   u8x16 r[4];
@@ -396,9 +393,9 @@ aes_gcm_calc_double (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   return ghash_final (gd);
 }
 
-static_always_inline u8x16
-aes_gcm_ghash_last (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
-		    int n_blocks, int n_bytes)
+static_always_inline __clib_unused u8x16
+aes_gcm_ghash_last (u8x16 T, aes_gcm_key_data_t *kd, u8x16 *d, int n_blocks,
+		    int n_bytes)
 {
   ghash_data_t _gd, *gd = &_gd;
   u8x16 *Hi = (u8x16 *) kd->Hi + NUM_HI - n_blocks;
@@ -417,9 +414,8 @@ aes_gcm_ghash_last (u8x16 T, aes_gcm_key_data_t * kd, u8x16 * d,
   ghash_reduce2 (gd);
   return ghash_final (gd);
 }
-#endif
 
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
 static const u32x16 ctr_inv_1234 = {
   0, 0, 0, 1 << 24, 0, 0, 0, 2 << 24, 0, 0, 0, 3 << 24, 0, 0, 0, 4 << 24,
 };
@@ -757,7 +753,7 @@ aes_gcm_enc (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
   if (n_left == 0)
     return T;
 
-#if __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
   u8x64 d4[4];
   if (n_left < 256)
     {
@@ -939,7 +935,7 @@ aes_gcm_dec (u8x16 T, aes_gcm_key_data_t * kd, aes_gcm_counter_t * ctr,
 	     u8x16u * inv, u8x16u * outv, u32 n_left, int rounds)
 {
   aes_gcm_flags_t f = AES_GCM_F_WITH_GHASH | AES_GCM_F_DECRYPT;
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
   u8x64 d4[4] = { };
 
   while (n_left >= 512)
@@ -1045,7 +1041,7 @@ aes_gcm (u8x16u *in, u8x16u *out, u8x16u *addt, u8 *ivp, u8x16u *tag,
   Y0.as_u64x2[0] = *(u64u *) ivp;
   Y0.as_u32x4[2] = *(u32u *) (ivp + 8);
   Y0.as_u32x4 += ctr_inv_1;
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
   ctr->Y4 = u32x16_splat_u32x4 (Y0.as_u32x4) + ctr_inv_1234;
 #else
   ctr->Y = Y0.as_u32x4 + ctr_inv_1;
@@ -1177,7 +1173,7 @@ aes_gcm_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   H = aes_encrypt_block (u8x16_splat (0), kd->Ke, ks);
   H = u8x16_reflect (H);
   ghash_precompute (H, (u8x16 *) kd->Hi, NUM_HI);
-#ifdef __VAES__
+#if defined(__VAES__) && defined(__AVX512F__)
   u8x64 *Ke4 = (u8x64 *) kd->Ke4;
   for (int i = 0; i < AES_KEY_ROUNDS (ks) + 1; i++)
     Ke4[i] = u8x64_splat_u8x16 (kd->Ke[i]);
@@ -1201,8 +1197,8 @@ foreach_aes_gcm_handler_type;
 #undef _
 
 clib_error_t *
-#ifdef __VAES__
-crypto_native_aes_gcm_init_icl (vlib_main_t * vm)
+#if defined(__VAES__) && defined(__AVX512F__)
+crypto_native_aes_gcm_init_icl (vlib_main_t *vm)
 #elif __AVX512F__
 crypto_native_aes_gcm_init_skx (vlib_main_t * vm)
 #elif __AVX2__
