@@ -257,7 +257,7 @@ ghash_mul (u8x16 a, u8x16 b)
   return ghash_final (gd);
 }
 
-#ifdef __VPCLMULQDQ__
+#if defined(__VPCLMULQDQ__) && defined(__AVX512F__)
 
 static const u8x64 ghash4_poly2 = {
   0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
