@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3e34084f_128f30d1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-14T12:29:02Z",
+      "side": 1,
+      "message": "Sorry, typo.\nno special requirement for native dma device supporting.",
+      "parentUuid": "28461c6b_3d116014",
+      "revId": "f10167cfb817864aaca30ca283de4928f2fda39a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e33bb2ae_7bd6ee9d",
         "filename": "/COMMIT_MSG",
         "patchSetId": 3
