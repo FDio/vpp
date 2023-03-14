@@ -186,6 +186,37 @@ adj_glean_update_rewrite_walk (adj_index_t ai,
     return (ADJ_WALK_RC_CONTINUE);
 }
 
+static void
+adj_glean_walk_proto (fib_protocol_t proto,
+                      u32 sw_if_index,
+                      adj_walk_cb_t cb,
+                      void *data)
+{
+    adj_index_t ai, *aip, *ais = NULL;
+    ip46_address_t *conn;
+
+    if (vec_len(adj_gleans[proto]) <= sw_if_index ||
+        NULL == adj_gleans[proto][sw_if_index])
+        return;
+
+    /*
+     * Walk first to collect the indices
+     * then walk the collection. This is safe
+     * to modifications of the hash table
+     */
+    hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
+    ({
+        vec_add1(ais, ai);
+    }));
+
+    vec_foreach(aip, ais)
+    {
+        if (ADJ_WALK_RC_STOP == cb(*aip, data))
+            return;
+    }
+    vec_free(ais);
+}
+
 void
 adj_glean_walk (u32 sw_if_index,
                 adj_walk_cb_t cb,
@@ -195,29 +226,7 @@ adj_glean_walk (u32 sw_if_index,
 
     FOR_EACH_FIB_IP_PROTOCOL(proto)
     {
-        adj_index_t ai, *aip, *ais = NULL;
-        ip46_address_t *conn;
-
-        if (vec_len(adj_gleans[proto]) <= sw_if_index ||
-            NULL == adj_gleans[proto][sw_if_index])
-            continue;
-
-        /*
-         * Walk first to collect the indices
-         * then walk the collection. This is safe
-         * to modifications of the hash table
-         */
-        hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
-        ({
-            vec_add1(ais, ai);
-        }));
-
-        vec_foreach(aip, ais)
-        {
-            if (ADJ_WALK_RC_STOP == cb(*aip, data))
-                break;
-        }
-        vec_free(ais);
+      adj_glean_walk_proto (proto, sw_if_index, cb, data);
     }
 }
 
@@ -445,7 +454,7 @@ adj_glean_table_bind (fib_protocol_t fproto,
         },
     };
 
-    adj_glean_walk (sw_if_index, adj_glean_start_backwalk, &bw_ctx);
+    adj_glean_walk_proto (fproto, sw_if_index, adj_glean_start_backwalk, &bw_ctx);
 }
 
 
