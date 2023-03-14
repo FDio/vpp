@@ -92,7 +92,7 @@ parse_uri (char *uri, session_endpoint_cfg_t * sep)
   if (!unformat (input, "%U", unformat_vnet_uri, sep))
     {
       unformat_free (input);
-      return VNET_API_ERROR_INVALID_VALUE;
+      return SESSION_E_INVALID;
     }
   unformat_free (input);
 
@@ -134,13 +134,13 @@ vnet_unbind_uri (vnet_unlisten_args_t * a)
 
   app = application_get (a->app_index);
   if (!app)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   table_index = application_session_table (app, fib_ip_proto (!sep.is_ip4));
   listener = session_lookup_listener (table_index,
 				      (session_endpoint_t *) & sep);
   if (!listener)
-    return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
+    return SESSION_E_IP_NOT_INUSE;
   a->handle = listen_session_get_handle (listener);
   return vnet_unlisten (a);
 }

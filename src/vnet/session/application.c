@@ -785,15 +785,15 @@ application_alloc_and_init (app_init_args_t * a)
     {
       clib_warning ("mq eventfds can only be used if socket transport is "
 		    "used for binary api");
-      return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+      return SESSION_E_NOSUPPORT;
     }
 
   if (!application_verify_cfg (seg_type))
-    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+    return SESSION_E_NOSUPPORT;
 
   if (opts[APP_OPTIONS_PREALLOC_FIFO_PAIRS] &&
       opts[APP_OPTIONS_PREALLOC_FIFO_HDRS])
-    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+    return SESSION_E_NOSUPPORT;
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
@@ -1058,7 +1058,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 
   app = application_get (a->app_index);
   if (!app)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (a->is_add)
     {
@@ -1081,11 +1081,11 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
     {
       wrk_map = app_worker_map_get (app, a->wrk_map_index);
       if (!wrk_map)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       app_wrk = app_worker_get (wrk_map->wrk_index);
       if (!app_wrk)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       application_api_table_del (app_wrk->api_client_index);
       if (appns_sapi_enabled ())
@@ -1111,12 +1111,12 @@ app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
 
   *app_ns_index = app_namespace_index_from_id (namespace_id);
   if (*app_ns_index == APP_NAMESPACE_INVALID_INDEX)
-    return VNET_API_ERROR_APP_INVALID_NS;
+    return SESSION_E_INVALID_NS;
   app_ns = app_namespace_get (*app_ns_index);
   if (!app_ns)
-    return VNET_API_ERROR_APP_INVALID_NS;
+    return SESSION_E_INVALID_NS;
   if (app_ns->ns_secret != secret)
-    return VNET_API_ERROR_APP_WRONG_NS_SECRET;
+    return SESSION_E_WRONG_NS_SECRET;
   return 0;
 }
 
@@ -1157,10 +1157,10 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   else if (a->name)
     app = application_lookup_name (a->name);
   else
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (app)
-    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
+    return SESSION_E_ALREADY_ATTACHED;
 
   /* Socket api sets the name and validates namespace prior to attach */
   if (!a->use_sock_api)
@@ -1223,7 +1223,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
   if (!app)
     {
       clib_warning ("app not attached");
-      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      return SESSION_E_NOAPP;
     }
 
   app_interface_check_thread_and_barrier (vnet_application_detach, a);
@@ -2074,7 +2074,7 @@ vnet_app_del_cert_key_pair (u32 index)
   u32 *app_index;
 
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
-    return (VNET_API_ERROR_INVALID_VALUE);
+    return SESSION_E_INVALID;
 
   vec_foreach (app_index, ckpair->app_interests)
   {

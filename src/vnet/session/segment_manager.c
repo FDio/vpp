@@ -106,7 +106,7 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
   if (!props->add_segment && !segment_size)
     {
       clib_warning ("cannot allocate new segment");
-      return VNET_API_ERROR_INVALID_VALUE;
+      return SESSION_E_INVALID;
     }
 
   /*
@@ -458,7 +458,7 @@ segment_manager_init_first (segment_manager_t * sm)
       for (; i < fs->n_slices; i++)
 	{
 	  if (fifo_segment_prealloc_fifo_hdrs (fs, i, hdrs_per_slice))
-	    return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
+	    return SESSION_E_SEG_CREATE;
 	}
     }
 

@@ -1322,14 +1322,14 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
   int rv = 0;
 
   if (!app_ns)
-    return VNET_API_ERROR_APP_INVALID_NS;
+    return SESSION_E_INVALID_NS;
 
   if (args->scope > 3)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (args->transport_proto != TRANSPORT_PROTO_TCP
       && args->transport_proto != TRANSPORT_PROTO_UDP)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if ((args->scope & SESSION_RULE_SCOPE_GLOBAL) || args->scope == 0)
     {

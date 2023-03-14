@@ -94,8 +94,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
       if (a->sw_if_index != APP_NAMESPACE_INVALID_INDEX
 	  && !vnet_get_sw_interface_or_null (vnet_get_main (),
 					     a->sw_if_index))
-	return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-
+	return SESSION_E_INVALID_SW_IF_INDEX;
 
       if (a->sw_if_index != APP_NAMESPACE_INVALID_INDEX)
 	{
@@ -108,7 +107,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	}
       if (a->sw_if_index == APP_NAMESPACE_INVALID_INDEX
 	  && a->ip4_fib_id == APP_NAMESPACE_INVALID_INDEX)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       app_ns = app_namespace_get_from_id (a->ns_id);
       if (!app_ns)
@@ -153,11 +152,11 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
     {
       ns_index = app_namespace_index_from_id (a->ns_id);
       if (ns_index == APP_NAMESPACE_INVALID_INDEX)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       app_ns = app_namespace_get (ns_index);
       if (!app_ns)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       application_namespace_cleanup (app_ns);
 

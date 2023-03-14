@@ -486,11 +486,14 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
   _ (NOAPP, "app not attached")                                               \
   _ (PORTINUSE, "lcl port in use")                                            \
   _ (IPINUSE, "ip in use")                                                    \
+  _ (IP_NOT_INUSE, "ip not in use")                                           \
   _ (ALREADY_LISTENING, "ip port pair already listened on")                   \
+  _ (ALREADY_ATTACHED, "app already attached")                                \
   _ (INVALID, "invalid value")                                                \
   _ (INVALID_RMT_IP, "invalid remote ip")                                     \
   _ (INVALID_APPWRK, "invalid app worker")                                    \
   _ (INVALID_NS, "invalid namespace")                                         \
+  _ (INVALID_SW_IF_INDEX, "invalid sw_if_index")                              \
   _ (SEG_NO_SPACE, "Couldn't allocate a fifo pair")                           \
   _ (SEG_NO_SPACE2, "Created segment, couldn't allocate a fifo pair")         \
   _ (SEG_CREATE, "Couldn't create a new segment")                             \
@@ -506,6 +509,7 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
   _ (NOCRYPTOENG, "no crypto engine")                                         \
   _ (NOCRYPTOCKP, "cert key pair not found ")                                 \
   _ (LOCAL_CONNECT, "could not connect with local scope")                     \
+  _ (WRONG_NS_SECRET, "wrong app ns secret")                                  \
   _ (TRANSPORT_NO_REG, "transport was not registered")
 
 typedef enum session_error_p_

@@ -529,6 +529,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
     {
       clib_warning ("attach returned: %d", rv);
       vec_free (a->namespace_id);
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
   vec_free (a->namespace_id);
@@ -743,6 +744,8 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
 	  rv = VNET_API_ERROR_UNSPECIFIED;
 	}
     }
+  else
+    rv = VNET_API_ERROR_UNSPECIFIED;
   vec_free (ns_id);
 
   /* *INDENT-OFF* */
@@ -794,6 +797,8 @@ vl_api_app_namespace_add_del_v2_t_handler (
 	  rv = VNET_API_ERROR_UNSPECIFIED;
 	}
     }
+  else
+    rv = VNET_API_ERROR_UNSPECIFIED;
   vec_free (ns_id);
   vec_free (netns);
 
@@ -842,6 +847,8 @@ vl_api_app_namespace_add_del_v3_t_handler (
 	  rv = VNET_API_ERROR_UNSPECIFIED;
 	}
     }
+  else
+    rv = VNET_API_ERROR_UNSPECIFIED;
   vec_free (ns_id);
   vec_free (netns);
   vec_free (sock_name);
@@ -879,7 +886,10 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
 
   rv = vnet_session_rule_add_del (&args);
   if (rv)
-    clib_warning ("rule add del returned: %d", rv);
+    {
+      clib_warning ("rule add del returned: %d", rv);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
   vec_free (table_args->tag);
   REPLY_MACRO (VL_API_SESSION_RULE_ADD_DEL_REPLY);
 }

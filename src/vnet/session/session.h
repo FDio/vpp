@@ -40,6 +40,11 @@ typedef enum
     SESSION_N_ERROR,
 } session_input_error_t;
 
+typedef struct session_wrk_stats_
+{
+  u32 api_errors[SESSION_N_ERRORS];
+} session_wrk_stats_t;
+
 typedef struct session_tx_context_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -169,11 +174,16 @@ typedef struct session_worker_
   u16 batch_num;
   vlib_dma_batch_t *batch;
 
+  session_wrk_stats_t stats;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
 #endif
 } session_worker_t;
+
+#define session_is_session_error(_err)                                        \
+  (-(_err) >= 0 && -(_err) <= SESSION_N_ERRORS)
 
 typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
 				  vlib_node_runtime_t * node,
@@ -730,6 +740,23 @@ always_inline u8
 session_main_is_enabled ()
 {
   return session_main.is_enabled == 1;
+}
+
+always_inline void
+session_worker_stat_api_error_inc (session_worker_t *wrk, int error, int value)
+{
+  if (session_is_session_error (error))
+    wrk->stats.api_errors[-error] += value;
+  else
+    clib_warning ("unknown session counter");
+}
+
+always_inline void
+session_stat_api_error_inc (int error, int value)
+{
+  session_worker_t *wrk;
+  wrk = session_main_get_worker (vlib_get_thread_index ());
+  session_worker_stat_api_error_inc (wrk, error, value);
 }
 
 #define session_cli_return_if_not_enabled()				\
