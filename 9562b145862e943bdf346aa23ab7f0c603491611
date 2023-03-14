@@ -68,6 +68,24 @@
       "message": "Also, I will convert this change into test-only change - I submitted the code fix via https://gerrit.fd.io/r/c/vpp/+/38485 - since that one is a much smaller change.",
       "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c92571c_78b330e8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-14T20:07:56Z",
+      "side": 1,
+      "message": "array should be fine...\n\nAlso note that I created infra test suite which allows testing code for multiple CPU variants including perfromance. (src/vppinfra/vector/test) It is targeted to responsible adults and it is not run automatically...",
+      "parentUuid": "e4b4d825_468cebaf",
+      "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
