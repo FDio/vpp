@@ -808,8 +808,8 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
       || (!rmt->is_ip4 && vec_len (tcp_cfg.ip6_src_addrs)))
     rv = tcp_alloc_custom_local_endpoint (&lcl_addr, &lcl_port, rmt);
   else
-    rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_TCP,
-					 rmt, &lcl_addr, &lcl_port);
+    rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_TCP, rmt, &lcl_addr,
+					 &lcl_port);
 
   if (rv)
     return rv;

@@ -734,7 +734,18 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
       port = clib_net_to_host_u16 (rmt_cfg->peer.port);
       *lcl_port = port;
 
-      return transport_endpoint_mark_used (proto, lcl_addr, port);
+      if (!transport_endpoint_mark_used (proto, lcl_addr, port))
+	return 0;
+
+      /* IP:port pair already in use, check if 6-tuple available */
+      if (session_lookup_connection (rmt->fib_index, lcl_addr, &rmt->ip, port,
+				     rmt->port, proto, rmt->is_ip4))
+	return SESSION_E_PORTINUSE;
+
+      /* 6-tuple is available so increment lcl endpoint refcount */
+      transport_share_local_endpoint (proto, lcl_addr, port);
+
+      return 0;
     }
 
   return 0;
