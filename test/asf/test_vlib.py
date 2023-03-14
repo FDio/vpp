@@ -223,6 +223,33 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 
+class TestVlibCrc32c(VppTestCase):
+    """Vlib CRC32C Test Cases"""
+
+    vpp_worker_count = 1
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestVlibCrc32c, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVlibCrc32c, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestVlibCrc32c, self).setUp()
+
+    def tearDown(self):
+        super(TestVlibCrc32c, self).tearDown()
+
+    def test_crc32c(self):
+        """CRC32C sanity Test"""
+
+        output = self.vapi.cli("test crc32c")
+        self.logger.info(output)
+        self.assertEquals(output.find("FAIL"), -1)
+
+
 class TestVlibFrameLeak(VppTestCase):
     """Vlib Frame Leak Test Cases"""
 
