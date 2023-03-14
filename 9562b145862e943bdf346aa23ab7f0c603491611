@@ -33,6 +33,24 @@
       "message": "Instead of pulling in 3rd party software implementation, can you simply follow the same pattern we have for crypto, i.e. src/plugins/unittest/crypto/sha.c ?",
       "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e4b4d825_468cebaf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-03-14T13:29:27Z",
+      "side": 1,
+      "message": "Do I need to create the whole infra with registrations, or simply creating an array of N precalculated values is okay ?",
+      "parentUuid": "84995aa6_f7d4421e",
+      "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
