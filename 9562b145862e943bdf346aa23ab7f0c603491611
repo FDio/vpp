@@ -16,6 +16,23 @@
       "message": "Not sure if these new unit tests have a lot of business being always run... I suppose the chances of (1) adding new platform (2) having a wrong intrinsic are pretty slim... but on the other hand they are trivially quick, so maybe worth it...",
       "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84995aa6_f7d4421e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-03-14T12:00:31Z",
+      "side": 1,
+      "message": "Instead of pulling in 3rd party software implementation, can you simply follow the same pattern we have for crypto, i.e. src/plugins/unittest/crypto/sha.c ?",
+      "revId": "9562b145862e943bdf346aa23ab7f0c603491611",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
