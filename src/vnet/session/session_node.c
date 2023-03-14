@@ -139,7 +139,7 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
     a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
 
   if ((rv = vnet_listen (a)))
-    clib_warning ("listen returned: %U", format_session_error, rv);
+    session_worker_stat_api_error_inc (wrk, rv, 1);
 
   app_wrk = application_get_worker (app, mp->wrk_index);
   mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
@@ -179,6 +179,7 @@ session_mq_connect_one (session_connect_msg_t *mp)
   vnet_connect_args_t _a, *a = &_a;
   app_worker_t *app_wrk;
   application_t *app;
+  session_worker_t *wrk;
   int rv;
 
   app = application_lookup (mp->client_index);
@@ -211,7 +212,8 @@ session_mq_connect_one (session_connect_msg_t *mp)
 
   if ((rv = vnet_connect (a)))
     {
-      clib_warning ("connect returned: %U", format_session_error, rv);
+      wrk = session_main_get_worker (vlib_get_thread_index ());
+      session_worker_stat_api_error_inc (wrk, rv, 1);
       app_wrk = application_get_worker (app, mp->wrk_index);
       mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
@@ -320,7 +322,8 @@ session_mq_connect_uri_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   a->app_index = app->app_index;
   if ((rv = vnet_connect_uri (a)))
     {
-      clib_warning ("connect_uri returned: %d", rv);
+      wrk = session_main_get_worker (vlib_get_thread_index ());
+      session_worker_stat_api_error_inc (wrk, rv, 1);
       app_wrk = application_get_worker (app, 0 /* default wrk only */ );
       mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
@@ -402,7 +405,10 @@ session_mq_unlisten_handler (session_worker_t *wrk, session_evt_elt_t *elt)
   a->wrk_map_index = mp->wrk_index;
 
   if ((rv = vnet_unlisten (a)))
-    clib_warning ("unlisten returned: %d", rv);
+    {
+      wrk = session_main_get_worker (vlib_get_thread_index ());
+      session_worker_stat_api_error_inc (wrk, rv, 1);
+    }
 
   app_wrk = application_get_worker (app, a->wrk_map_index);
   if (!app_wrk)

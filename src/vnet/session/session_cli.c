@@ -868,6 +868,61 @@ VLIB_CLI_COMMAND (session_enable_disable_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+show_session_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
+{
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  vec_foreach (wrk, smm->wrk)
+    {
+      vlib_cli_output (vm, "Thread %u:\n", wrk - smm->wrk);
+#define _(name, str)                                                          \
+  if (wrk->stats.api_errors[SESSION_EP_##name])                               \
+    vlib_cli_output (vm, " %lu %s", wrk->stats.api_errors[SESSION_EP_##name], \
+		     str);
+      foreach_session_error
+#undef _
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_session_stats_command, static) = {
+  .path = "show session stats",
+  .short_help = "show session stats",
+  .function = show_session_stats_fn,
+};
+
+static clib_error_t *
+clear_session_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  session_main_t *smm = &session_main;
+  session_worker_t *wrk;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  vec_foreach (wrk, smm->wrk)
+    {
+      clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (clear_session_stats_command, static) = {
+  .path = "clear session stats",
+  .short_help = "clear session stats",
+  .function = clear_session_stats_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
