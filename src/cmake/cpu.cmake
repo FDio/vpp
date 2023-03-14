@@ -126,6 +126,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     OFF
   )
 
+  add_vpp_march_variant(adl
+    FLAGS -march=alderlake -mtune=alderlake -mprefer-vector-width=256
+    OFF
+  )
+
   if (GNU_ASSEMBLER_AVX512_BUG)
      message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
   else()
@@ -135,6 +140,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 
     add_vpp_march_variant(icl
       FLAGS -march=icelake-client -mtune=icelake-client -mprefer-vector-width=512
+    )
+
+    add_vpp_march_variant(spr
+      FLAGS -march=sapphirerapids -mtune=sapphirerapids -mprefer-vector-width=512
+      OFF
     )
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
