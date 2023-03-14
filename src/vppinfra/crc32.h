@@ -52,7 +52,7 @@ clib_crc32c_u64 (u32 last, u64 data)
 static_always_inline u32
 clib_crc32c_u8 (u32 last, u8 data)
 {
-  return __crc32cd (last, data);
+  return __crc32cb (last, data);
 }
 
 static_always_inline u32
