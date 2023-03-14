@@ -138,6 +138,7 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (avx512_vpopcntdq, 7, ecx, 14)                                            \
   _ (movdiri, 7, ecx, 27)                                                     \
   _ (movdir64b, 7, ecx, 28)                                                   \
+  _ (enqcmd, 7, ecx, 29)                                                      \
   _ (avx512_fp16, 7, edx, 23)                                                 \
   _ (invariant_tsc, 0x80000007, edx, 8)
 
@@ -239,10 +240,26 @@ clib_cpu_supports_aes ()
 }
 
 static inline int
+clib_cpu_march_priority_spr ()
+{
+  if (clib_cpu_supports_enqcmd ())
+    return 300;
+  return -1;
+}
+
+static inline int
 clib_cpu_march_priority_icl ()
 {
   if (clib_cpu_supports_avx512_bitalg ())
     return 200;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_adl ()
+{
+  if (clib_cpu_supports_movdiri () && clib_cpu_supports_avx2 ())
+    return 150;
   return -1;
 }
 
@@ -258,7 +275,7 @@ static inline int
 clib_cpu_march_priority_trm ()
 {
   if (clib_cpu_supports_movdiri ())
-    return 60;
+    return 40;
   return -1;
 }
 
