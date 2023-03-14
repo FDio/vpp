@@ -48,7 +48,7 @@ aes_enc_round (u8x16 a, u8x16 k)
 #endif
 }
 
-#if defined (__VAES__)
+#if defined(__VAES__) && defined(__AVX512F__)
 static_always_inline u8x64
 aes_enc_round_x4 (u8x64 a, u8x64 k)
 {
@@ -71,6 +71,32 @@ static_always_inline u8x64
 aes_dec_last_round_x4 (u8x64 a, u8x64 k)
 {
   return (u8x64) _mm512_aesdeclast_epi128 ((__m512i) a, (__m512i) k);
+}
+#endif
+
+#ifdef __VAES__
+static_always_inline u8x32
+aes_enc_round_x2 (u8x32 a, u8x32 k)
+{
+  return (u8x32) _mm256_aesenc_epi128 ((__m256i) a, (__m256i) k);
+}
+
+static_always_inline u8x32
+aes_enc_last_round_x2 (u8x32 a, u8x32 k)
+{
+  return (u8x32) _mm256_aesenclast_epi128 ((__m256i) a, (__m256i) k);
+}
+
+static_always_inline u8x32
+aes_dec_round_x2 (u8x32 a, u8x32 k)
+{
+  return (u8x32) _mm256_aesdec_epi128 ((__m256i) a, (__m256i) k);
+}
+
+static_always_inline u8x32
+aes_dec_last_round_x2 (u8x32 a, u8x32 k)
+{
+  return (u8x32) _mm256_aesdeclast_epi128 ((__m256i) a, (__m256i) k);
 }
 #endif
 
