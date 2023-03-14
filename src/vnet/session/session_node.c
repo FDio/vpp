@@ -1936,6 +1936,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (wrk->trans_head == ((wrk->trans_tail + 1) & (wrk->trans_size - 1)))
 	return 0;
       wrk->batch = vlib_dma_batch_new (vm, wrk->config_index);
+      if (!wrk->batch)
+	return 0;
     }
 
   /*
