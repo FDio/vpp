@@ -16,6 +16,24 @@
       "message": "s/DBDMA/CBDMA/",
       "revId": "5c3bf5f208ad2b7ff6b642e5c71c1a988b9e33a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d41d0eb_20d9918c",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-15T05:54:35Z",
+      "side": 1,
+      "message": "After evaluation, there\u0027s no performance gain in memif workload on ICX server.\nI\u0027d like to drop supporting of CBDMA device. No more need to manually do vfio mapping for native DMA device as DSA has SVA capability.",
+      "parentUuid": "4f203155_fb7d9306",
+      "revId": "5c3bf5f208ad2b7ff6b642e5c71c1a988b9e33a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
