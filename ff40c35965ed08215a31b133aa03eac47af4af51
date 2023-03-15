@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eca19c1c_7bd8683d",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-03-15T12:48:59Z",
+      "side": 1,
+      "message": "I was thinking we\u0027ll have also these kind of stats, but I\u0027ll remove it.",
+      "parentUuid": "8d52b553_16cf3956",
+      "revId": "ff40c35965ed08215a31b133aa03eac47af4af51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "40531305_22d16990",
@@ -48,6 +66,30 @@
       "writtenOn": "2023-03-15T04:49:33Z",
       "side": 1,
       "message": "Almost feels like we want a function that grabs the session worker for us, otherwise we\u0027ll just fill the code with lines like the one above. For instance, session_stat_api_error_inc vs session_worker_stat_api_error_inc. The former is the one that grabs the worker by itself",
+      "range": {
+        "startLine": 326,
+        "startChar": 6,
+        "endLine": 326,
+        "endChar": 39
+      },
+      "revId": "ff40c35965ed08215a31b133aa03eac47af4af51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3612a06_776c3033",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-03-15T12:48:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "40531305_22d16990",
       "range": {
         "startLine": 326,
         "startChar": 6,
