@@ -103,6 +103,7 @@ set(PYENV PYTHONPYCACHEPREFIX=${CMAKE_BINARY_DIR}/CMakeFiles/__pycache__)
 
 if (CMAKE_BUILD_TYPE)
   add_compile_options(-g -Werror -Wall)
+  add_link_options(-Wl,-z,relro,-z,now)
 endif()
 
 if (compiler_flag_no_address_of_packed_member)
