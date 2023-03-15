@@ -5,7 +5,7 @@
 #ifdef __x86_64__
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector/test/test.h>
+#include <vppinfra/test/test.h>
 #include <vppinfra/vector/mask_compare.h>
 
 __test_funct_fn void

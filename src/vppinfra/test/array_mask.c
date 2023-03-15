@@ -3,7 +3,7 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector/test/test.h>
+#include <vppinfra/test/test.h>
 #include <vppinfra/vector/array_mask.h>
 
 __test_funct_fn void
