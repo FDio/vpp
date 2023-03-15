@@ -593,6 +593,18 @@ u64x8_transpose (u64x8 m[8])
   m[7] = (u64x8) _mm512_permutex2var_epi64 (x, pm4, y);
 }
 
+static_always_inline u8x64
+u8x64_load_partial (u8 *data, uword n)
+{
+  return u8x64_mask_load_zero (data, pow2_mask (n));
+}
+
+static_always_inline void
+u8x64_store_partial (u8x64 r, u8 *data, uword n)
+{
+  u8x64_mask_store (r, data, pow2_mask (n));
+}
+
 #endif /* included_vector_avx512_h */
 /*
  * fd.io coding-style-patch-verification: ON
