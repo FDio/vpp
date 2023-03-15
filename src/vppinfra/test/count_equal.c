@@ -3,7 +3,7 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector/test/test.h>
+#include <vppinfra/test/test.h>
 #include <vppinfra/vector/count_equal.h>
 
 #define foreach_clib_count_equal(type)                                        \

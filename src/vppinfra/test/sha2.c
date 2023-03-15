@@ -3,7 +3,7 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector/test/test.h>
+#include <vppinfra/test/test.h>
 #include <vppinfra/sha2.h>
 
 typedef struct

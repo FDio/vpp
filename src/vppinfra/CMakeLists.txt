@@ -273,29 +273,29 @@ if(VPP_BUILD_VPPINFRA_TESTS)
       LINK_LIBRARIES vppinfra Threads::Threads
       )
   endforeach()
+endif(VPP_BUILD_VPPINFRA_TESTS)
 
 set(test_files
-  vector/test/array_mask.c
-  vector/test/compress.c
-  vector/test/count_equal.c
-  vector/test/index_to_ptr.c
-  vector/test/ip_csum.c
-  vector/test/mask_compare.c
-  vector/test/memcpy_x86_64.c
-  vector/test/sha2.c
-  vector/test/toeplitz.c
+  test/array_mask.c
+  test/compress.c
+  test/count_equal.c
+  test/index_to_ptr.c
+  test/ip_csum.c
+  test/mask_compare.c
+  test/memcpy_x86_64.c
+  test/sha2.c
+  test/toeplitz.c
 )
 
-add_vpp_executable(test_vector_funcs
+add_vpp_executable(test_infra
   SOURCES
-  vector/test/test.c
+  test/test.c
   ${test_files}
   LINK_LIBRARIES vppinfra
 )
 
-vpp_library_set_multiarch_sources(test_vector_funcs
+vpp_library_set_multiarch_sources(test_infra
   SOURCES
   ${test_files}
 )
 
-endif(VPP_BUILD_VPPINFRA_TESTS)

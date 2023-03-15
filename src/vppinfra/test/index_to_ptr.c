@@ -3,7 +3,7 @@
  */
 
 #include <vppinfra/format.h>
-#include <vppinfra/vector/test/test.h>
+#include <vppinfra/test/test.h>
 #include <vppinfra/vector/index_to_ptr.h>
 
 typedef void (wrapper_fn) (u32 *indices, void *base, u8 shift, void **ptrs,
