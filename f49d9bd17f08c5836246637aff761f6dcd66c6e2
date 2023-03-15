@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c83a9c0_a7deb236",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-15T06:01:40Z",
+      "side": 1,
+      "message": "Maybe message channel is more suitable for this purpose. As discussed in community call, supporting for native device is not must have. I\u0027d like to postpone related patches until there\u0027s a demand for native dma device.",
+      "parentUuid": "888dfb03_ed4e585a",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 1
+      },
+      "revId": "f49d9bd17f08c5836246637aff761f6dcd66c6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "676f03fc_20aaf8d9",
@@ -37,6 +61,30 @@
       "writtenOn": "2022-12-13T21:20:38Z",
       "side": 1,
       "message": "Move these under if. Or maybe better, add a set of dma specific functions and that wrap calls to vfio_* functions.",
+      "range": {
+        "startLine": 278,
+        "startChar": 0,
+        "endLine": 279,
+        "endChar": 37
+      },
+      "revId": "f49d9bd17f08c5836246637aff761f6dcd66c6e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10e739f4_4519c3e2",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 2415
+      },
+      "writtenOn": "2023-03-15T06:01:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "676f03fc_20aaf8d9",
       "range": {
         "startLine": 278,
         "startChar": 0,
