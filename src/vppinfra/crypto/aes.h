@@ -138,37 +138,6 @@ aes_byte_mask (u8x16 x, u8 n_bytes)
 }
 
 static_always_inline u8x16
-aes_load_partial (u8x16u * p, int n_bytes)
-{
-  ASSERT (n_bytes <= 16);
-#ifdef __AVX512F__
-  __m128i zero = { };
-  return (u8x16) _mm_mask_loadu_epi8 (zero, (1 << n_bytes) - 1, p);
-#else
-  u8x16 v = {};
-  CLIB_ASSUME (n_bytes < 16);
-  clib_memcpy_fast (&v, p, n_bytes);
-  return v;
-#endif
-}
-
-static_always_inline void
-aes_store_partial (void *p, u8x16 r, int n_bytes)
-{
-#if __aarch64__
-  clib_memcpy_fast (p, &r, n_bytes);
-#else
-#ifdef __AVX512F__
-  _mm_mask_storeu_epi8 (p, (1 << n_bytes) - 1, (__m128i) r);
-#else
-  u8x16 mask = u8x16_splat (n_bytes) > byte_mask_scale;
-  _mm_maskmoveu_si128 ((__m128i) r, (__m128i) mask, p);
-#endif
-#endif
-}
-
-
-static_always_inline u8x16
 aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
