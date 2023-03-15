@@ -24,7 +24,9 @@
   _ (hsw, "Intel Haswell")                                                    \
   _ (trm, "Intel Tremont")                                                    \
   _ (skx, "Intel Skylake (server) / Cascade Lake")                            \
-  _ (icl, "Intel Ice Lake")
+  _ (icl, "Intel Ice Lake")                                                   \
+  _ (adl, "Intel Alder Lake")                                                 \
+  _ (spr, "Intel Sapphire Rapids")
 #elif defined(__aarch64__)
 #define foreach_march_variant                                                 \
   _ (octeontx2, "Marvell Octeon TX2")                                         \
