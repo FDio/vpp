@@ -223,6 +223,16 @@ u8x32_xor3 (u8x32 a, u8x32 b, u8x32 c)
   return a ^ b ^ c;
 }
 
+static_always_inline u8x32
+u8x32_reflect_u8x16 (u8x32 x)
+{
+  static const u8x32 mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+  };
+  return (u8x32) _mm256_shuffle_epi8 ((__m256i) x, (__m256i) mask);
+}
+
 static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {
@@ -332,6 +342,11 @@ u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
 				     (__m256i) mask);
 }
 
+#define u8x32_word_shift_left(a, n)                                           \
+  (u8x32) _mm256_bslli_epi128 ((__m256i) a, n)
+#define u8x32_word_shift_right(a, n)                                          \
+  (u8x32) _mm256_bsrli_epi128 ((__m256i) a, n)
+
 #define u32x8_permute_lanes(a, b, m) \
   (u32x8) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)
 #define u64x4_permute_lanes(a, b, m) \
@@ -405,6 +420,46 @@ static_always_inline u8x32
 u8x32_splat_u8x16 (u8x16 a)
 {
   return (u8x32) _mm256_broadcastsi128_si256 ((__m128i) a);
+}
+
+static_always_inline u32x8
+u32x8_splat_u32x4 (u32x4 a)
+{
+  return (u32x8) _mm256_broadcastsi128_si256 ((__m128i) a);
+}
+
+static_always_inline u8x32
+u8x32_load_partial (u8 *data, uword n)
+{
+#if defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  return u8x32_mask_load_zero (data, pow2_mask (n));
+#else
+  u8x32 r = {};
+  if (n > 16)
+    {
+      r = u8x32_insert_lo (r, *(u8x16u *) data);
+      r = u8x32_insert_hi (r, u8x16_load_partial (data + 16, n - 16));
+    }
+  else
+    r = u8x32_insert_lo (r, u8x16_load_partial (data, n));
+  return r;
+#endif
+}
+
+static_always_inline void
+u8x32_store_partial (u8x32 r, u8 *data, uword n)
+{
+#if defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u8x32_mask_store (r, data, pow2_mask (n));
+#else
+  if (n > 16)
+    {
+      *(u8x16u *) data = u8x32_extract_lo (r);
+      u8x16_store_partial (u8x32_extract_hi (r), data + 16, n - 16);
+    }
+  else
+    u8x16_store_partial (u8x32_extract_lo (r), data, n);
+#endif
 }
 
 #endif /* included_vector_avx2_h */
