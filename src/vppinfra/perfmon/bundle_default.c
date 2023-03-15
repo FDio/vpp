@@ -24,25 +24,21 @@ format_perfmon_bundle_default (u8 *s, va_list *args)
     case 1:
       return format (s, "%5.2f", (f64) d[2] / d[0]);
     case 2:
-      if (c->n_ops > 1)
-	return format (s, "%8.2f", (f64) d[0] / c->n_ops);
-      else
-	return format (s, "%8u", d[0]);
+      return format (s, "%8u", d[0]);
     case 3:
-      if (c->n_ops > 1)
-	return format (s, "%8.2f", (f64) d[2] / c->n_ops);
-      else
-	return format (s, "%8u", d[2]);
+      return format (s, "%8.2f", (f64) d[0] / c->n_ops);
     case 4:
-      if (c->n_ops > 1)
-	return format (s, "%9.2f", (f64) d[3] / c->n_ops);
-      else
-	return format (s, "%9u", d[3]);
+      return format (s, "%8u", d[2]);
     case 5:
-      if (c->n_ops > 1)
-	return format (s, "%10.2f", (f64) d[4] / c->n_ops);
-      else
-	return format (s, "%10u", d[4]);
+      return format (s, "%8.2f", (f64) d[2] / c->n_ops);
+    case 6:
+      return format (s, "%9u", d[3]);
+    case 7:
+      return format (s, "%9.2f", (f64) d[3] / c->n_ops);
+    case 8:
+      return format (s, "%10u", d[4]);
+    case 9:
+      return format (s, "%10.2f", (f64) d[4] / c->n_ops);
     default:
       return s;
     }
@@ -59,6 +55,7 @@ CLIB_PERFMON_BUNDLE (default) = {
   .config[4] = PERF_COUNT_HW_BRANCH_MISSES,
   .n_events = 5,
   .format_fn = format_perfmon_bundle_default,
-  .column_headers = CLIB_STRING_ARRAY ("Freq", "IPC", "Clks/Op", "Inst/Op",
-				       "Brnch/Op", "BrMiss/Op"),
+  .column_headers = CLIB_STRING_ARRAY ("Freq", "IPC", "Clks", "Clks/Op",
+				       "Inst", "Inst/Op", "Brnch", "Brnch/Op",
+				       "BrMiss", "BrMiss/Op"),
 };
