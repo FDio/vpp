@@ -41,7 +41,7 @@ aes_block_load (u8 * p)
 static_always_inline u8x16
 aes_enc_round (u8x16 a, u8x16 k)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesenc_si128 ((__m128i) a, (__m128i) k);
 #elif defined (__ARM_FEATURE_CRYPTO)
   return vaesmcq_u8 (vaeseq_u8 (a, u8x16_splat (0))) ^ k;
@@ -103,7 +103,7 @@ aes_dec_last_round_x2 (u8x32 a, u8x32 k)
 static_always_inline u8x16
 aes_enc_last_round (u8x16 a, u8x16 k)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesenclast_si128 ((__m128i) a, (__m128i) k);
 #elif defined (__ARM_FEATURE_CRYPTO)
   return vaeseq_u8 (a, u8x16_splat (0)) ^ k;
@@ -181,7 +181,7 @@ aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
 static_always_inline u8x16
 aes_inv_mix_column (u8x16 a)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesimc_si128 ((__m128i) a);
 #elif defined (__ARM_FEATURE_CRYPTO)
   return vaesimcq_u8 (a);
