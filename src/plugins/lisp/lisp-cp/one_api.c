@@ -44,7 +44,6 @@ static u32 one_base_msg_id;
 #define REPLY_DETAILS(t, body)                                  	\
 do {                                                            	\
     vl_api_registration_t * reg;                             		\
-    rv = vl_msg_api_pd_handler (mp, rv);                        	\
     reg = vl_api_client_index_to_registration (mp->client_index);	\
     if (!reg)								\
       return;								\
@@ -1363,7 +1362,6 @@ vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
 {
   vl_api_one_stats_details_t *rmp;
   lisp_api_stats_t *stats, *stat;
-  u8 rv = 0;
 
   stats = vnet_lisp_get_stats ();
   vec_foreach (stat, stats)

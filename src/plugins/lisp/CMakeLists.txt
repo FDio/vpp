@@ -72,8 +72,20 @@ add_vpp_plugin(lisp
 
 add_vpp_plugin(lisp_unittest
   SOURCES
-  lisp-cp/lisp_msg_serdes.c
-  lisp-cp/control_main.c
   lisp-cp/lisp_types.c
+  lisp-cp/control.c
+  lisp-cp/control_main.c
+  lisp-cp/gid_dictionary.c
+  lisp-cp/lisp_cp_dpo.c
+  lisp-cp/lisp_msg_serdes.c
+  lisp-cp/packets.c
+  lisp-gpe/lisp_gpe.c
+  lisp-gpe/decap.c
+  lisp-gpe/interface.c
+  lisp-gpe/lisp_gpe_adjacency.c
+  lisp-gpe/lisp_gpe_fwd_entry.c
+  lisp-gpe/lisp_gpe_tenant.c
+  lisp-gpe/lisp_gpe_tunnel.c
+  lisp-gpe/lisp_gpe_sub_interface.c
   test/lisp_cp_test.c
 )

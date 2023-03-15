@@ -211,6 +211,9 @@ class TestLispUT(VppTestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.extra_vpp_plugin_config.append(
+            "plugin lisp_plugin.so { disable } plugin lisp_unittest_plugin.so { enable }"
+        )
         super(TestLispUT, cls).setUpClass()
 
     @classmethod

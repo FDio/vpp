@@ -165,6 +165,16 @@ if (VPP_ENABLE_SANITIZE_ADDR)
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
+# RELRO
+##############################################################################
+
+option(VPP_ENABLE_RELRO "Enable RELRO" ON)
+
+if (VPP_ENABLE_RELRO)
+  add_link_options(-Wl,-z,relro,-z,now)
+endif (VPP_ENABLE_RELRO)
+
+##############################################################################
 # trajectory trace
 ##############################################################################
 
