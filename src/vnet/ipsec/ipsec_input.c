@@ -339,6 +339,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       u32 next32, pi0;
       ip4_header_t *ip0;
       esp_header_t *esp0 = NULL;
+      udp_header_t *udp0 = NULL;
       ah_header_t *ah0;
       ip4_ipsec_config_t *c0;
       ipsec_spd_t *spd0;
@@ -348,6 +349,8 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       ipsec_policy_t *policies[1];
       ipsec_fp_5tuple_t tuples[1];
       bool ip_v6 = true;
+      ipsec_sa_t *sa0 = 0;
+      u32 sa_index0 = 0;
 
       if (n_left_from > 2)
 	{
@@ -362,17 +365,82 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
       ip0 = vlib_buffer_get_current (b[0]);
+      esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
       if (PREDICT_TRUE
 	  (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
 	   || ip0->protocol == IP_PROTOCOL_UDP))
 	{
 
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  // esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 	  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_UDP))
 	    {
-	      /* FIXME Skip, if not a UDP encapsulated packet */
+	    udp_encp_esp:
+	      search_flow_cache = im->input_flow_cache_flag;
 	      esp0 = (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
+	      if (search_flow_cache) // attempt to match policy in flow cache
+		{
+		  p0 = ipsec4_input_spd_find_flow_cache_entry (
+		    im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		    IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
+		}
+	      else
+		{
+		  p0 = ipsec_input_protect_policy_match (
+		    spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
+		    clib_net_to_host_u32 (ip0->dst_address.as_u32),
+		    clib_net_to_host_u32 (esp0->spi));
+		  if (p0 != NULL)
+		    {
+		      sa_index0 = ipsec_sa_find_and_lock (p0->sa_id);
+		      sa0 = ipsec_sa_get (sa_index0);
+		      ipsec_sa_unlock (sa_index0);
+		    }
+		}
+	      /* FIXME Skip, if not a UDP encapsulated packet */
+	      if ((sa0 != NULL) &&
+		  (clib_net_to_host_u16 (udp0->dst_port) ==
+		   clib_host_to_net_u16 (sa0->udp_hdr.dst_port)))
+		{
+		  clib_warning ("packet received UDP NAT ESP SRC %u DST %u "
+				"lenght %u  checsum %u protocol %x",
+				clib_net_to_host_u16 (udp0->src_port),
+				clib_net_to_host_u16 (udp0->dst_port),
+				clib_net_to_host_u16 (udp0->length),
+				clib_net_to_host_u16 (udp0->checksum),
+				ip0->protocol);
+		  has_space0 = vlib_buffer_has_space (
+		    b[0], (clib_address_t) (esp0 + 1) - (clib_address_t) ip0);
+
+		  if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
+		    {
+		      ipsec_matched += 1;
+		      pi0 = p0 - im->policies;
+		      vlib_increment_combined_counter (
+			&ipsec_spd_policy_counters, thread_index, pi0, 1,
+			clib_net_to_host_u16 (ip0->length));
+		      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+		      next[0] = im->esp4_decrypt_next_index;
+		      vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
+		      goto trace0;
+		    }
+		  else
+		    {
+		      p0 = 0;
+		      pi0 = ~0;
+		    };
+		  if (search_flow_cache && p0 == NULL)
+		    {
+		      search_flow_cache = false;
+		      goto udp_encp_esp;
+		    }
+		}
+	      else
+		{
+		  // if UDP non ESP encap packet, just forward it.
+		  goto ipsec_bypassed;
+		}
 	    }
 
 	  // if flow cache is enabled, first search through flow cache for a
@@ -687,6 +755,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	}
       else
 	{
+	ipsec_bypassed:
 	  ipsec_unprocessed += 1;
 	}
       n_left_from -= 1;
