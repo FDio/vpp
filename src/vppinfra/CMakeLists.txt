@@ -128,6 +128,11 @@ set(VPPINFRA_HEADERS
   clib.h
   cpu.h
   crc32.h
+  crypto/sha2.h
+  crypto/ghash.h
+  crypto/aes.h
+  crypto/aes_cbc.h
+  crypto/aes_gcm.h
   dlist.h
   dlmalloc.h
   elf_clib.h
@@ -168,7 +173,6 @@ set(VPPINFRA_HEADERS
   random_isaac.h
   rbtree.h
   serialize.h
-  sha2.h
   smp.h
   socket.h
   sparse_vec.h
@@ -278,6 +282,8 @@ if(VPP_BUILD_VPPINFRA_TESTS)
 endif(VPP_BUILD_VPPINFRA_TESTS)
 
 set(test_files
+  test/aes_cbc.c
+  test/aes_gcm.c
   test/array_mask.c
   test/compress.c
   test/count_equal.c

@@ -231,6 +231,61 @@ __asm__ ("eor3 %0.16b,%1.16b,%2.16b,%3.16b": "=w" (r): "0" (a), "w" (b), "w" (c)
   return a ^ b ^ c;
 }
 
+static_always_inline u8x16
+u8x16_load_partial (u8 *data, uword n)
+{
+  u8x16 r = {};
+  if (n > 7)
+    {
+      u64x2 r;
+      r[1] = *(u64u *) (data + n - 8);
+      r >>= (16 - n) * 8;
+      r[0] = *(u64u *) data;
+      return (u8x16) r;
+    }
+  else if (n > 3)
+    {
+      u32x4 r = {};
+      r[1] = *(u32u *) (data + n - 4);
+      r >>= (8 - n) * 8;
+      r[0] = *(u32u *) data;
+      return (u8x16) r;
+    }
+  else if (n > 1)
+    {
+      u16x8 r = {};
+      r[1] = *(u16u *) (data + n - 2);
+      r >>= (4 - n) * 8;
+      r[0] = *(u16u *) data;
+      return (u8x16) r;
+    }
+  else if (n > 0)
+    r[0] = *data;
+  return r;
+}
+
+static_always_inline void
+u8x16_store_partial (u8x16 r, u8 *data, uword n)
+{
+  if (n > 7)
+    {
+      *(u64u *) (data + n - 8) = ((u64x2) r)[1] << ((16 - n) * 8);
+      *(u64u *) data = ((u64x2) r)[0];
+    }
+  else if (n > 3)
+    {
+      *(u32u *) (data + n - 4) = ((u32x4) r)[1] << ((8 - n) * 8);
+      *(u32u *) data = ((u32x4) r)[0];
+    }
+  else if (n > 1)
+    {
+      *(u16u *) (data + n - 2) = ((u16x8) r)[1] << ((4 - n) * 8);
+      *(u16u *) data = ((u16x8) r)[0];
+    }
+  else if (n > 0)
+    data[0] = r[0];
+}
+
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
