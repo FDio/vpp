@@ -223,6 +223,16 @@ u8x32_xor3 (u8x32 a, u8x32 b, u8x32 c)
   return a ^ b ^ c;
 }
 
+static_always_inline u8x32
+u8x32_reflect_u8x16 (u8x32 x)
+{
+  static const u8x32 mask = {
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+  };
+  return (u8x32) _mm256_shuffle_epi8 ((__m256i) x, (__m256i) mask);
+}
+
 static_always_inline u16x16
 u16x16_mask_last (u16x16 v, u8 n_last)
 {
@@ -331,6 +341,11 @@ u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
   return (u8x32) _mm256_blendv_epi8 ((__m256i) v1, (__m256i) v2,
 				     (__m256i) mask);
 }
+
+#define u8x32_word_shift_left(a, n)                                           \
+  (u8x32) _mm256_bslli_epi128 ((__m256i) a, n)
+#define u8x32_word_shift_right(a, n)                                          \
+  (u8x32) _mm256_bsrli_epi128 ((__m256i) a, n)
 
 #define u32x8_permute_lanes(a, b, m) \
   (u32x8) _mm256_permute2x128_si256 ((__m256i) a, (__m256i) b, m)

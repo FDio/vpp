@@ -172,7 +172,7 @@ ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
   /* a0 * b0 */
   gd->lo = gmul_lo_lo (a, b);
   /* a0 * b1 ^ a1 * b0 */
-  gd->mid = (gmul_hi_lo (a, b) ^ gmul_lo_hi (a, b));
+  gd->mid = gmul_hi_lo (a, b) ^ gmul_lo_hi (a, b);
 
   /* set gd->pending to 0 so next invocation of ghash_mul_next(...) knows that
      there is no pending data in tmp_lo and tmp_hi */
@@ -306,7 +306,7 @@ ghash4_mul_first (ghash4_data_t * gd, u8x64 a, u8x64 b)
 {
   gd->hi = gmul4_hi_hi (a, b);
   gd->lo = gmul4_lo_lo (a, b);
-  gd->mid = (gmul4_hi_lo (a, b) ^ gmul4_lo_hi (a, b));
+  gd->mid = gmul4_hi_lo (a, b) ^ gmul4_lo_hi (a, b);
   gd->pending = 0;
 }
 
@@ -383,6 +383,123 @@ ghash4_final (ghash4_data_t * gd)
 }
 #endif
 
+#if defined(__VPCLMULQDQ__)
+
+static const u8x32 ghash2_poly2 = {
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0xc2, 0x01, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+};
+
+typedef struct
+{
+  u8x32 hi, lo, mid, tmp_lo, tmp_hi;
+  int pending;
+} ghash2_data_t;
+
+static_always_inline u8x32
+gmul2_lo_lo (u8x32 a, u8x32 b)
+{
+  return (u8x32) _mm256_clmulepi64_epi128 ((__m256i) a, (__m256i) b, 0x00);
+}
+
+static_always_inline u8x32
+gmul2_hi_lo (u8x32 a, u8x32 b)
+{
+  return (u8x32) _mm256_clmulepi64_epi128 ((__m256i) a, (__m256i) b, 0x01);
+}
+
+static_always_inline u8x32
+gmul2_lo_hi (u8x32 a, u8x32 b)
+{
+  return (u8x32) _mm256_clmulepi64_epi128 ((__m256i) a, (__m256i) b, 0x10);
+}
+
+static_always_inline u8x32
+gmul2_hi_hi (u8x32 a, u8x32 b)
+{
+  return (u8x32) _mm256_clmulepi64_epi128 ((__m256i) a, (__m256i) b, 0x11);
+}
+
+static_always_inline void
+ghash2_mul_first (ghash2_data_t *gd, u8x32 a, u8x32 b)
+{
+  gd->hi = gmul2_hi_hi (a, b);
+  gd->lo = gmul2_lo_lo (a, b);
+  gd->mid = gmul2_hi_lo (a, b) ^ gmul2_lo_hi (a, b);
+  gd->pending = 0;
+}
+
+static_always_inline void
+ghash2_mul_next (ghash2_data_t *gd, u8x32 a, u8x32 b)
+{
+  u8x32 hi = gmul2_hi_hi (a, b);
+  u8x32 lo = gmul2_lo_lo (a, b);
+
+  if (gd->pending)
+    {
+      /* there is peding data from previous invocation so we can XOR */
+      gd->hi = u8x32_xor3 (gd->hi, gd->tmp_hi, hi);
+      gd->lo = u8x32_xor3 (gd->lo, gd->tmp_lo, lo);
+      gd->pending = 0;
+    }
+  else
+    {
+      /* there is no peding data from previous invocation so we postpone XOR */
+      gd->tmp_hi = hi;
+      gd->tmp_lo = lo;
+      gd->pending = 1;
+    }
+  gd->mid = u8x32_xor3 (gd->mid, gmul2_hi_lo (a, b), gmul2_lo_hi (a, b));
+}
+
+static_always_inline void
+ghash2_reduce (ghash2_data_t *gd)
+{
+  u8x32 r;
+
+  /* Final combination:
+     gd->lo ^= gd->mid << 64
+     gd->hi ^= gd->mid >> 64 */
+
+  u8x32 midl = u8x32_word_shift_left (gd->mid, 8);
+  u8x32 midr = u8x32_word_shift_right (gd->mid, 8);
+
+  if (gd->pending)
+    {
+      gd->lo = u8x32_xor3 (gd->lo, gd->tmp_lo, midl);
+      gd->hi = u8x32_xor3 (gd->hi, gd->tmp_hi, midr);
+    }
+  else
+    {
+      gd->lo ^= midl;
+      gd->hi ^= midr;
+    }
+
+  r = gmul2_hi_lo (ghash2_poly2, gd->lo);
+  gd->lo ^= u8x32_word_shift_left (r, 8);
+}
+
+static_always_inline void
+ghash2_reduce2 (ghash2_data_t *gd)
+{
+  gd->tmp_lo = gmul2_lo_lo (ghash2_poly2, gd->lo);
+  gd->tmp_hi = gmul2_lo_hi (ghash2_poly2, gd->lo);
+}
+
+static_always_inline u8x16
+ghash2_final (ghash2_data_t *gd)
+{
+  u8x32 r;
+
+  r = u8x32_xor3 (gd->hi, u8x32_word_shift_right (gd->tmp_lo, 4),
+		  u8x32_word_shift_left (gd->tmp_hi, 4));
+
+  /* horizontal XOR of 2 128-bit lanes */
+  return u8x32_extract_hi (r) ^ u8x32_extract_lo (r);
+}
+#endif
+
 static_always_inline void
 ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 {
@@ -398,9 +515,7 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 #else
   r32[3] = r32[0];
 #endif
-  /* *INDENT-OFF* */
   r32 = r32 == (u32x4) {1, 0, 0, 1};
-  /* *INDENT-ON* */
   Hi[n - 1] = H = H ^ ((u8x16) r32 & ghash_poly);
 
   /* calculate H^(i + 1) */
@@ -410,10 +525,3 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 
 #endif /* __ghash_h__ */
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
