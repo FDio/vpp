@@ -4,7 +4,7 @@
 Go api (govpp)
 ==============
 
-If you are writing a Control plane in GO that interfaces with VPP, `GoVPP <https://github.com/FDio/govpp>`__ is the library that will allow you to connect to VPP, and program it through its binary API socket.
+If you are writing a Go application that needs to control and manage VPP, the `GoVPP <https://github.com/FDio/govpp>`__ is a toolset providing a client library that will allow you to connect to VPP and interact with VPP binary API, Stats API and more.
 
 Components involved
 ===================
@@ -37,6 +37,7 @@ Generating the API bindings from the VPP source
 
 
 .. note::
+
     The two options are similar but specify two different things. The output-dir option sets the directory where the generated bindings will be stored. The import prefix sets the go package name to be used in the generated bindings, this will be the string to be used in your ``import ( "" )`` in go. Both can or can not match depending on your ``go.mod``.
 
 
@@ -52,11 +53,11 @@ Generating the API bindings from the VPP package
     # First install the binary API generator
     #   It will be installed to $GOPATH/bin/binapi-generator
     #   or $HOME/go/bin/binapi-generator
-    go install git.fd.io/govpp.git/cmd/binapi-generator@latest
+    go install go.fd.io/govpp/cmd/binapi-generator@latest
 
     # Run the binapi-generator
     $GOPATH/bin/binapi-generator \
-      --input-dir=/usr/share/vpp/api/ \
+      --input=/usr/share/vpp/api/ \
       --output-dir=$HOME/myproject/vppbinapi \
       --import-prefix=mygit.com/myproject/vppbinapi
 
@@ -94,7 +95,7 @@ Once you have your go bindings in ``$HOME/myproject/vppbinapi``, you can start b
 
     cd "$HOME/myproject"
     go mod init mygit.com/myproject
-    go get git.fd.io/govpp.git@latest
+    go get go.fd.io/govpp@latest
 
 * Create ``main.go`` in ``$HOME/myproject`` like below :
 
@@ -106,15 +107,15 @@ Once you have your go bindings in ``$HOME/myproject/vppbinapi``, you can start b
         "os"
         "fmt"
 
-        "git.fd.io/govpp.git"
-        "git.fd.io/govpp.git/api"
+        "go.fd.io/govpp"
+        "go.fd.io/govpp/api"
 
         "mygit.com/myproject/vppbinapi/af_packet"
         interfaces "mygit.com/myproject/vppbinapi/interface"
         "mygit.com/myproject/vppbinapi/interface_types"
     )
 
-    func CreateHostInterface (ch api.Channel, ifName string) (uint32, error) {
+    func CreateHostInterface(ch api.Channel, ifName string) (uint32, error) {
         response := &af_packet.AfPacketCreateReply{}
         request := &af_packet.AfPacketCreate{HostIfName: ifName}
         err := ch.SendRequest(request).ReceiveReply(response)

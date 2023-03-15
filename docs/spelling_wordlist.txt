@@ -1130,6 +1130,7 @@ tmpl
 Tollet
 toolchain
 toolchains
+toolset
 tos
 tp
 tps
