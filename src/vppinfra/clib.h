@@ -74,6 +74,8 @@
 
 #define BITS(x)		(8*sizeof(x))
 #define ARRAY_LEN(x)	(sizeof (x)/sizeof (x[0]))
+#define FOREACH_ARRAY_ELT(a, b)                                               \
+  for (typeof ((b)[0]) *(a) = (b); (a) - (b) < ARRAY_LEN (b); (a)++)
 
 #define _STRUCT_FIELD(t,f) (((t *) 0)->f)
 #define STRUCT_OFFSET_OF(t,f) offsetof(t, f)
