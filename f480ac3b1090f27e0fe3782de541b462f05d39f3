@@ -16,6 +16,24 @@
       "message": "Hi Ole,\nCould you please review this patch? It adds codegen of new rpc style, like:\n```\n  rpc lcp_itf_pair_get returns lcp_itf_pair_get_reply\n    stream lcp_itf_pair_details;\n```\n\n0. to vapi.hpp - new template class Service, which is basically a combination of Reply and Dump classes\n1. to с vapi - codegen of endianess methods for stream types\n2. to cpp vapi - codegen of new template\n\nHowever, it doesn\u0027t add the full support for C vapi, only for C++ (which I\u0027m extensively using). I hope that smb else will add the same thing for C vapi.",
       "revId": "f480ac3b1090f27e0fe3782de541b462f05d39f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "194b1e43_01cfb02b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-03-16T10:23:49Z",
+      "side": 1,
+      "message": "Just realized I was wrong about c vapi, it doesn\u0027t add anything to it :) everything was generated properly.",
+      "parentUuid": "32f36a48_d183cc70",
+      "revId": "f480ac3b1090f27e0fe3782de541b462f05d39f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
