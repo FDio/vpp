@@ -238,7 +238,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
 	    {
-	      if (v->kvp[k].key[0] == ~0ULL && v->kvp[k].value[0] == ~0ULL)
+	      if (BV (clib_bihash_is_free) (&v->kvp[k]))
 		continue;
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];

@@ -410,6 +410,7 @@ BV (clib_bihash_get_bucket) (BVT (clib_bihash) * h, u64 hash)
 static inline int BV (clib_bihash_search_inline_with_hash)
   (BVT (clib_bihash) * h, u64 hash, BVT (clib_bihash_kv) * key_result)
 {
+  BVT (clib_bihash_kv) rv;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
@@ -455,7 +456,10 @@ static inline int BV (clib_bihash_search_inline_with_hash)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, key_result->key))
 	{
-	  *key_result = v->kvp[i];
+	  rv = v->kvp[i];
+	  if (BV (clib_bihash_is_free) (&rv))
+	    return -1;
+	  *key_result = rv;
 	  return 0;
 	}
     }
@@ -509,6 +513,7 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   (BVT (clib_bihash) * h,
    u64 hash, BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
+  BVT (clib_bihash_kv) rv;
   BVT (clib_bihash_value) * v;
   BVT (clib_bihash_bucket) * b;
   int i, limit;
@@ -556,7 +561,10 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{
-	  *valuep = v->kvp[i];
+	  rv = v->kvp[i];
+	  if (BV (clib_bihash_is_free) (&rv))
+	    return -1;
+	  *valuep = rv;
 	  return 0;
 	}
     }
