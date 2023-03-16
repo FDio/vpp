@@ -4,7 +4,7 @@
 
 #include <vppinfra/format.h>
 #include <vppinfra/test/test.h>
-#include <vppinfra/sha2.h>
+#include <vppinfra/crypto/sha2.h>
 
 typedef struct
 {
