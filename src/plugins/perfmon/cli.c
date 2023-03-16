@@ -68,7 +68,7 @@ unformat_perfmon_active_type (unformat_input_t *input, va_list *args)
     }
 
   vec_free (str);
-  return bundle_type ? 1 : 0;
+  return 1;
 }
 
 uword
@@ -560,11 +560,9 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
       if (!bundle_type)
 	return clib_error_return (0, "please specify a valid type");
     }
-  else /* otherwise just use the default  */
+  /* otherwise just use the default  */
+  else if (!bundle_type)
     {
-      if (bundle_type && !(b->type_flags & bundle_type))
-	return clib_error_return (0, "please specify a valid type");
-
       bundle_type =
 	(perfmon_bundle_type_t) count_trailing_zeros (b->type_flags);
     }
