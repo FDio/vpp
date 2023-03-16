@@ -13,6 +13,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
+from statistics import variance
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
 from util import ppp, pr, ip4_range
@@ -2313,14 +2314,17 @@ class TestNAT44ED(VppTestCase):
             raise
 
     def test_outside_address_distribution(self):
-        """Outside address distribution based on source address"""
+        """NAT44ED outside address distribution based on source address"""
 
+        addresses = 65
         x = 100
-        nat_addresses = []
 
-        for i in range(1, x):
+        nat_addresses = []
+        nat_distribution = {}
+        for i in range(1, addresses):
             a = "10.0.0.%d" % i
             nat_addresses.append(a)
+            nat_distribution[a] = set()
 
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
@@ -2359,16 +2363,11 @@ class TestNAT44ED(VppTestCase):
             self.assertTrue(info is not None)
             self.assertEqual(packet_index, info.index)
             p_sent = info.data
-            packed = socket.inet_aton(p_sent[IP].src)
-            numeric = struct.unpack("!L", packed)[0]
-            numeric = socket.htonl(numeric)
-            a = nat_addresses[(numeric - 1) % len(nat_addresses)]
-            self.assertEqual(
-                a,
-                p_recvd[IP].src,
-                "Invalid packet (src IP %s translated to %s, but expected %s)"
-                % (p_sent[IP].src, p_recvd[IP].src, a),
-            )
+            self.assertIn(p_recvd[IP].src, nat_distribution)
+            nat_distribution[p_recvd[IP].src].add(p_sent[IP].src)
+
+        var = variance(map(len, nat_distribution.values()), x / addresses)
+        self.assertLess(var, 0.33, msg="Bad outside address distribution")
 
     def test_dynamic_edge_ports(self):
         """NAT44ED dynamic translation test: edge ports"""
