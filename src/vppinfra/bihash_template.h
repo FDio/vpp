@@ -456,6 +456,8 @@ static inline int BV (clib_bihash_search_inline_with_hash)
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, key_result->key))
 	{
 	  *key_result = v->kvp[i];
+	  if (BV (clib_bihash_is_free) (key_result))
+	    return -1;
 	  return 0;
 	}
     }
@@ -557,6 +559,8 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{
 	  *valuep = v->kvp[i];
+	  if (BV (clib_bihash_is_free) (valuep))
+	    return -1;
 	  return 0;
 	}
     }
