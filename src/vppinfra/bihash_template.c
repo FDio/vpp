@@ -165,19 +165,23 @@ static void BV (clib_bihash_instantiate) (BVT (clib_bihash) * h)
 
   if (BIHASH_KVP_AT_BUCKET_LEVEL)
     {
-      int i;
+      int i, j;
       BVT (clib_bihash_bucket) * b;
 
       b = h->buckets;
 
       for (i = 0; i < h->nbuckets; i++)
 	{
+	  BVT (clib_bihash_kv) * v;
 	  b->offset = BV (clib_bihash_get_offset) (h, (void *) (b + 1));
 	  b->refcnt = 1;
 	  /* Mark all elements free */
-	  clib_memset_u8 ((b + 1), 0xff, BIHASH_KVP_PER_PAGE *
-			  sizeof (BVT (clib_bihash_kv)));
-
+	  v = (void *) (b + 1);
+	  for (j = 0; j < BIHASH_KVP_PER_PAGE; j++)
+	    {
+	      BV (clib_bihash_mark_free) (v);
+	      v++;
+	    }
 	  /* Compute next bucket start address */
 	  b = (void *) (((uword) b) + sizeof (*b) +
 			(BIHASH_KVP_PER_PAGE *
@@ -459,6 +463,7 @@ static
 BVT (clib_bihash_value) *
 BV (value_alloc) (BVT (clib_bihash) * h, u32 log2_pages)
 {
+  int i;
   BVT (clib_bihash_value) * rv = 0;
 
   ASSERT (h->alloc_lock[0]);
@@ -478,12 +483,15 @@ BV (value_alloc) (BVT (clib_bihash) * h, u32 log2_pages)
 
 initialize:
   ASSERT (rv);
-  /*
-   * Latest gcc complains that the length arg is zero
-   * if we replace (1<<log2_pages) with vec_len(rv).
-   * No clue.
-   */
-  clib_memset_u8 (rv, 0xff, sizeof (*rv) * (1 << log2_pages));
+
+  BVT (clib_bihash_kv) * v;
+  v = (BVT (clib_bihash_kv) *) rv;
+
+  for (i = 0; i < BIHASH_KVP_PER_PAGE * (1 << log2_pages); i++)
+    {
+      BV (clib_bihash_mark_free) (v);
+      v++;
+    }
   return rv;
 }
 
@@ -713,6 +721,12 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
   ASSERT (h->instantiated != 0);
 #endif
 
+  /*
+   * Debug image: make sure that an item being added doesn't accidentally
+   * look like a free item.
+   */
+  ASSERT ((is_add && BV (clib_bihash_is_free) (add_v)) == 0);
+
   b = BV (clib_bihash_get_bucket) (h, hash);
 
   BV (clib_bihash_lock_bucket) (b);
@@ -769,6 +783,8 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
        */
       for (i = 0; i < limit; i++)
 	{
+	  if (BV (clib_bihash_is_free) (&(v->kvp[i])))
+	    continue;
 	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
 	      /* Add but do not overwrite? */
@@ -830,10 +846,13 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
     {
       for (i = 0; i < limit; i++)
 	{
+	  /* no sense even looking at this one */
+	  if (BV (clib_bihash_is_free) (&(v->kvp[i])))
+	    continue;
 	  /* Found the key? Kill it... */
 	  if (BV (clib_bihash_key_compare) (v->kvp[i].key, add_v->key))
 	    {
-	      clib_memset_u8 (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
+	      BV (clib_bihash_mark_free) (&(v->kvp[i]));
 	      /* Is the bucket empty? */
 	      if (PREDICT_TRUE (b->refcnt > 1))
 		{
@@ -848,8 +867,13 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
 		      b->linear_search = 0;
 		      b->log2_pages = 0;
 		      /* Clean up the bucket-level kvp array */
-		      clib_memset_u8 ((b + 1), 0xff, BIHASH_KVP_PER_PAGE *
-				      sizeof (BVT (clib_bihash_kv)));
+		      BVT (clib_bihash_kv) *v = (void *) (b + 1);
+		      int j;
+		      for (j = 0; j < BIHASH_KVP_PER_PAGE; j++)
+			{
+			  BV (clib_bihash_mark_free) (v);
+			  v++;
+			}
 		      CLIB_MEMORY_STORE_BARRIER ();
 		      BV (clib_bihash_unlock_bucket) (b);
 		      BV (clib_bihash_increment_stat) (h, BIHASH_STAT_del, 1);

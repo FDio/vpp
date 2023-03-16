@@ -247,6 +247,59 @@ test_bihash_threads (test_main_t * tm)
   return 0;
 }
 
+static clib_error_t *
+test_bihash_vanilla_overwrite (test_main_t *tm)
+{
+  int i;
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
+
+  h = &tm->hash;
+
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", tm->nbuckets, 0x30000000 /* base_addr */, tm->hash_memory_size);
+#else
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+#endif
+
+  for (i = 0; i < 100; i++)
+    {
+      kv.key = 12345;
+      kv.value = i;
+
+      BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
+    }
+
+  fformat (stdout, "End of run, should one item...\n");
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
+  BV (clib_bihash_free) (h);
+  return 0;
+}
+
+static clib_error_t *
+test_bihash_value_assert (test_main_t *tm)
+{
+  BVT (clib_bihash) * h;
+  BVT (clib_bihash_kv) kv;
+
+  h = &tm->hash;
+
+#if BIHASH_32_64_SVM
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", tm->nbuckets, 0x30000000 /* base_addr */, tm->hash_memory_size);
+#else
+  BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
+#endif
+
+  kv.key = 12345;
+  kv.value = 0xFEEDFACE8BADF00DULL;
+
+  fformat (stderr, "The following add should ASSERT...\n");
+  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
+
+  return 0;
+}
 
 static clib_error_t *
 test_bihash (test_main_t * tm)
@@ -514,6 +567,10 @@ test_bihash_main (test_main_t * tm)
 	tm->verbose = 1;
       else if (unformat (i, "stale-overwrite"))
 	which = 3;
+      else if (unformat (i, "overwrite"))
+	which = 4;
+      else if (unformat (i, "value-assert"))
+	which = 5;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, i);
@@ -540,6 +597,14 @@ test_bihash_main (test_main_t * tm)
 
     case 3:
       error = test_bihash_stale_overwrite (tm);
+      break;
+
+    case 4:
+      error = test_bihash_vanilla_overwrite (tm);
+      break;
+
+    case 5:
+      error = test_bihash_value_assert (tm);
       break;
 
     default:
