@@ -68,6 +68,23 @@
       "message": "perftest-2n-skx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch",
       "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d64caeaa_87ef9980",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-03-16T10:33:01Z",
+      "side": 1,
+      "message": "perftest-2n-tx2 mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2patch\n",
+      "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
