@@ -399,11 +399,16 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
 		IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
+	      if (PREDICT_FALSE (!p0))
+		{
+		  goto policy_linear_search;
+		}
 	    }
 
 	  else // linear search if flow cache is not enabled,
 	       // or flow cache search just failed
 	    {
+	    policy_linear_search:
 	      p0 = ipsec_input_protect_policy_match (
 		spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
 		clib_net_to_host_u32 (ip0->dst_address.as_u32),
