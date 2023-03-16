@@ -253,8 +253,6 @@ test_clib_toeplitz_hash (clib_error_t *err)
 
 done:
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (bigkey);
-  test_mem_free (bigdata);
   return err;
 }
 
@@ -272,8 +270,6 @@ perftest_fixed_12byte (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (data);
-  test_mem_free (res);
 }
 
 void __test_perf_fn
@@ -290,8 +286,6 @@ perftest_fixed_36byte (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (data);
-  test_mem_free (res);
 }
 
 void __test_perf_fn
@@ -314,9 +308,6 @@ perftest_variable_size (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (data);
-  test_mem_free (res);
-  test_mem_free (key);
 }
 
 REGISTER_TEST (clib_toeplitz_hash) = {
@@ -430,11 +421,6 @@ test_clib_toeplitz_hash_x4 (clib_error_t *err)
 
 done:
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (bigkey);
-  test_mem_free (bigdata0);
-  test_mem_free (bigdata1);
-  test_mem_free (bigdata2);
-  test_mem_free (bigdata3);
   return err;
 }
 
@@ -459,14 +445,6 @@ perftest_fixed_12byte_x4 (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (d0);
-  test_mem_free (d1);
-  test_mem_free (d2);
-  test_mem_free (d3);
-  test_mem_free (h0);
-  test_mem_free (h1);
-  test_mem_free (h2);
-  test_mem_free (h3);
 }
 
 void __test_perf_fn
@@ -490,14 +468,6 @@ perftest_fixed_36byte_x4 (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (d0);
-  test_mem_free (d1);
-  test_mem_free (d2);
-  test_mem_free (d3);
-  test_mem_free (h0);
-  test_mem_free (h1);
-  test_mem_free (h2);
-  test_mem_free (h3);
 }
 
 void __test_perf_fn
@@ -527,15 +497,6 @@ perftest_variable_size_x4 (test_perf_t *tp)
   test_perf_event_disable (tp);
 
   clib_toeplitz_hash_key_free (k);
-  test_mem_free (key);
-  test_mem_free (d0);
-  test_mem_free (d1);
-  test_mem_free (d2);
-  test_mem_free (d3);
-  test_mem_free (h0);
-  test_mem_free (h1);
-  test_mem_free (h2);
-  test_mem_free (h3);
 }
 
 REGISTER_TEST (clib_toeplitz_hash_x4) = {

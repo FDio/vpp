@@ -57,6 +57,7 @@ typedef struct
   u8 *filter;
   u8 *bundle;
   f64 ref_clock;
+  void **allocated_mem;
 } test_main_t;
 extern test_main_t test_main;
 
@@ -102,6 +103,5 @@ test_perf_event_disable (test_perf_t *t)
 void *test_mem_alloc (uword size);
 void *test_mem_alloc_and_fill_inc_u8 (uword size, u8 start, u8 mask);
 void *test_mem_alloc_and_splat (uword elt_size, uword n_elts, void *elt);
-void test_mem_free (void *p);
 
 #endif
