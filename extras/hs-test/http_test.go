@@ -89,8 +89,9 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	cmd := exec.Command(exeName, args...)
 	s.log(cmd)
-	o, _ := cmd.CombinedOutput()
+	o, err := cmd.CombinedOutput()
 	s.log(string(o))
+	s.assertNil(err)
 	s.assertNotEmpty(o)
 	return nil
 }
