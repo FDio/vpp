@@ -43,11 +43,16 @@ typedef struct
   u64 value;
 } clib_bihash_kv_24_8_t;
 
+static inline void
+clib_bihash_mark_free_24_8 (clib_bihash_kv_24_8_t *v)
+{
+  v->value = 0xFEEDFACE8BADF00DULL;
+}
+
 static inline int
 clib_bihash_is_free_24_8 (const clib_bihash_kv_24_8_t * v)
 {
-  /* Free values are clib_memset to 0xff, check a bit... */
-  if (v->key[0] == ~0ULL && v->value == ~0ULL)
+  if (v->value == 0xFEEDFACE8BADF00DULL)
     return 1;
   return 0;
 }

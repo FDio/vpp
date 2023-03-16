@@ -1149,7 +1149,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
 	    {
-	      if (v->kvp[k].key == ~0ULL && v->kvp[k].value == ~0ULL)
+	      if (BV (clib_bihash_is_free) (&v->kvp[k]))
 		continue;
 
 	      l2fib_entry_key_t key = {.raw = v->kvp[k].key };
