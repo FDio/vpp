@@ -29,66 +29,6 @@ VPP_JSON_DIR_PLUGIN = (
 API_FILE_SUFFIX = "*.api.json"
 
 
-def Main(argv):
-    file_flag = False
-    operation = None
-    try:
-        opts, args = getopt.getopt(
-            argv,
-            "hf:p:a:i:I:",
-            [
-                "help=",
-                "add",
-                "del",
-                "file=",
-                "pattern=",
-                "actions=",
-                "interface=",
-                "flow-index=",
-            ],
-        )
-    except getopt.GetoptError:
-        print(
-            "flow_create.py --add|del -f <file> -p <pattern> -a <actions> -i <interface> -I <flow-index>"
-        )
-        sys.exit()
-    for opt, arg in opts:
-        if opt == "-h":
-            print(
-                "flow_create.py --add|del -f <file> -p <pattern> -a <actions> -i <interface> -I <flow-index>"
-            )
-            sys.exit()
-        elif opt == "--add":
-            operation = "add"
-        elif opt == "--del":
-            operation = "del"
-        elif opt in ("-f", "--file"):
-            actions = ""
-            json_file = arg
-            file_flag = True
-        elif opt in ("-p", "--pattern") and not file_flag:
-            pattern = arg
-        elif opt in ("-a", "--actions"):
-            actions = arg
-        elif opt in ("-i", "--interface"):
-            iface = arg
-        elif opt in ("-I", "--flow-index"):
-            flow_index = arg
-
-    if operation == None:
-        print("Error: Please choose the operation: add or del")
-        sys.exit()
-
-    if operation == "add":
-        if not file_flag:
-            result = packetforge.Forge(pattern, actions, False)
-        else:
-            result = packetforge.Forge(json_file, actions, True)
-        return result, int(iface), operation, None
-    elif operation == "del":
-        return None, int(iface), operation, int(flow_index)
-
-
 def load_json_api_files(suffix=API_FILE_SUFFIX):
     jsonfiles = []
     json_dir = VPP_JSON_DIR
@@ -113,16 +53,91 @@ def connect_vpp(jsonfiles):
     return vpp
 
 
-if __name__ == "__main__":
+def Main(argv):
+    file_flag = False
+    operation = None
+    actions = ""
+    iface = ""
+    try:
+        opts, args = getopt.getopt(
+            argv,
+            "hf:p:a:i:I:",
+            [
+                "help",
+                "add",
+                "del",
+                "show",
+                "file=",
+                "pattern=",
+                "actions=",
+                "interface=",
+                "flow-index=",
+            ],
+        )
+    except getopt.GetoptError:
+        print(
+            "flow_create.py --add|del|show -f <file> -p <pattern> -a <actions> -i <interface> -I <flow-index>"
+        )
+        sys.exit()
+    for opt, arg in opts:
+        if opt == "-h":
+            print(
+                "flow_create.py --add|del|show -f <file> -p <pattern> -a <actions> -i <interface> -I <flow-index>"
+            )
+            sys.exit()
+        elif opt == "--add":
+            operation = "add"
+        elif opt == "--del":
+            operation = "del"
+        elif opt == "--show":
+            operation = "show"
+        elif opt in ("-f", "--file"):
+            json_file = arg
+            file_flag = True
+        elif opt in ("-p", "--pattern") and not file_flag:
+            pattern = arg
+        elif opt in ("-a", "--actions"):
+            actions = arg
+        elif opt in ("-i", "--interface"):
+            iface = arg
+        elif opt in ("-I", "--flow-index"):
+            flow_index = arg
+
+    if operation == None:
+        print("Error: Please choose the operation: add or del")
+        sys.exit()
+
+    if operation == "show":
+        if not file_flag:
+            result = packetforge.Forge(pattern, actions, False, True)
+        else:
+            result = packetforge.Forge(json_file, actions, True, True)
+        return result, None, operation, None, None
+
     # Python API need json definitions to interpret messages
     vpp = connect_vpp(load_json_api_files())
-    print(vpp.api.show_version())
-
-    # Parse the arguments
-    my_flow, iface, operation, del_flow_index = Main(sys.argv[1:])
 
     # set inteface states
-    vpp.api.sw_interface_set_flags(sw_if_index=iface, flags=1)
+    vpp.api.sw_interface_set_flags(sw_if_index=int(iface), flags=1)
+
+    if operation == "add":
+        if not file_flag:
+            result = packetforge.Forge(pattern, actions, False, False)
+        else:
+            result = packetforge.Forge(json_file, actions, True, False)
+        return result, int(iface), operation, None, vpp
+    elif operation == "del":
+        return None, int(iface), operation, int(flow_index), vpp
+
+
+if __name__ == "__main__":
+    # Parse the arguments
+    my_flow, iface, operation, del_flow_index, vpp = Main(sys.argv[1:])
+
+    # if operation is show, just show spec and mask, then exit
+    if operation == "show":
+        print(my_flow)
+        sys.exit()
 
     if operation == "add":
         # add flow
@@ -155,3 +170,4 @@ if __name__ == "__main__":
 # command example:
 # python flow_create.py --add -p "mac()/ipv4(src=1.1.1.1,dst=2.2.2.2)/udp()" -a "redirect-to-queue 3" -i 1
 # python flow_create.py --del -i 1 -I 0
+# python flow_create.py --show -p "mac()/ipv4(src=1.1.1.1,dst=2.2.2.2)/udp()"

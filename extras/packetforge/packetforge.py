@@ -21,7 +21,7 @@ import os
 parsegraph_path = os.getcwd() + "/parsegraph"
 
 
-def Forge(pattern, actions, file_flag):
+def Forge(pattern, actions, file_flag, show_result_only):
     pg = ParseGraph.Create(parsegraph_path)
     if pg == None:
         print("error: create parsegraph failed")
@@ -54,13 +54,21 @@ def Forge(pattern, actions, file_flag):
 
     # create generic flow
     my_flow = {
-        "type": VppEnum.vl_api_flow_type_v2_t.FLOW_TYPE_GENERIC_V2,
         "flow": {
             "generic": {
                 "pattern": {"spec": bytes(spec.encode()), "mask": bytes(mask.encode())}
             }
         },
     }
+
+    if show_result_only:
+        return my_flow
+
+    my_flow.update(
+        {
+            "type": VppEnum.vl_api_flow_type_v2_t.FLOW_TYPE_GENERIC_V2,
+        }
+    )
 
     # update actions entry
     my_flow = GetAction(actions, my_flow)
