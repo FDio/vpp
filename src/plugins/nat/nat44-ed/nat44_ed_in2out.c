@@ -155,7 +155,9 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 {
   if (vec_len (sm->addresses) > 0)
     {
-      u32 s_addr_offset = s_addr.as_u32 % vec_len (sm->addresses);
+      u32 s_addr_offset = (s_addr.as_u32 + (s_addr.as_u32 >> 8) +
+			   (s_addr.as_u32 >> 16) + (s_addr.as_u32 >> 24)) %
+			  vec_len (sm->addresses);
       snat_address_t *a, *ja = 0, *ra = 0, *ba = 0;
       int i;
 
