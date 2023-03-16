@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "803b2ced8749324e1bd9b9f37452ac4e88d48281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fbfcd3b0_cc2a8cbd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-03-16T12:23:32Z",
+      "side": 1,
+      "message": "I wanted to enable multi-worker Wireguard tests in this patch but the problem being fixed here isn\u0027t the only reason why they were disabled. \"Test events\" passes now but there are other test failures in multi-worker Wireguard tests.",
+      "revId": "803b2ced8749324e1bd9b9f37452ac4e88d48281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
