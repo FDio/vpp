@@ -346,7 +346,7 @@ vl_api_want_wireguard_peer_events_t_handler (
   REPLY_MACRO (VL_API_WANT_WIREGUARD_PEER_EVENTS_REPLY);
 }
 
-void
+static void
 wg_api_send_peer_event (vl_api_registration_t *rp, index_t peer_index,
 			wg_peer_flags flags)
 {
@@ -360,10 +360,16 @@ wg_api_send_peer_event (vl_api_registration_t *rp, index_t peer_index,
   vl_api_send_msg (rp, (u8 *) mp);
 }
 
-void
-wg_api_peer_event (index_t peeri, wg_peer_flags flags)
+typedef struct
 {
-  wg_peer_t *peer = wg_peer_get (peeri);
+  index_t peeri;
+  wg_peer_flags flags;
+} wg_api_peer_event_args_t;
+
+static void
+wg_api_peer_event_cb (wg_api_peer_event_args_t *args)
+{
+  wg_peer_t *peer = wg_peer_get (args->peeri);
   vpe_client_registration_t *api_client;
   vl_api_registration_t *rp;
 
@@ -372,9 +378,21 @@ wg_api_peer_event (index_t peeri, wg_peer_flags flags)
       rp = vl_api_client_index_to_registration (api_client->client_index);
       if (rp)
 	{
-	  wg_api_send_peer_event (rp, peeri, flags);
+	  wg_api_send_peer_event (rp, args->peeri, args->flags);
 	}
     };
+}
+
+void
+wg_api_peer_event (index_t peeri, wg_peer_flags flags)
+{
+  wg_api_peer_event_args_t args = {
+    .peeri = peeri,
+    .flags = flags,
+  };
+
+  vl_api_rpc_call_main_thread (wg_api_peer_event_cb, (u8 *) &args,
+			       sizeof (args));
 }
 
 static void
