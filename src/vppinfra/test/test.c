@@ -39,6 +39,9 @@ test_funct (test_main_t *tm)
 	    goto next;
 	  err = (r->fn) (0);
 	  fformat (stdout, "%-50s %s\n", r->name, err ? "FAIL" : "PASS");
+	  for (int i = 0; i < vec_len (tm->allocated_mem); i++)
+	    clib_mem_free (tm->allocated_mem[i]);
+	  vec_free (tm->allocated_mem);
 	  if (err)
 	    {
 	      clib_error_report (err);
@@ -141,6 +144,9 @@ test_perf (test_main_t *tm)
 		      clib_perfmon_reset (ctx);
 		      pt->fn (pt);
 		      clib_perfmon_capture (ctx, pt->n_ops, "%0s", pt->name);
+		      for (int i = 0; i < vec_len (tm->allocated_mem); i++)
+			clib_mem_free (tm->allocated_mem[i]);
+		      vec_free (tm->allocated_mem);
 		    }
 		}
 	      while ((++pt)->fn);
@@ -209,6 +215,7 @@ test_mem_alloc (uword size)
   size = round_pow2 (size, CLIB_CACHE_LINE_BYTES);
   rv = clib_mem_alloc_aligned (size, CLIB_CACHE_LINE_BYTES);
   clib_memset_u8 (rv, 0, size);
+  vec_add1 (test_main.allocated_mem, rv);
   return rv;
 }
 
@@ -221,6 +228,7 @@ test_mem_alloc_and_fill_inc_u8 (uword size, u8 start, u8 mask)
   rv = clib_mem_alloc_aligned (size, CLIB_CACHE_LINE_BYTES);
   for (uword i = 0; i < size; i++)
     rv[i] = ((u8) i + start) & mask;
+  vec_add1 (test_main.allocated_mem, rv);
   return rv;
 }
 
@@ -239,11 +247,7 @@ test_mem_alloc_and_splat (uword elt_size, uword n_elts, void *elt)
 
   if (data_size < alloc_size)
     clib_memset_u8 (e, 0, alloc_size - data_size);
+  vec_add1 (test_main.allocated_mem, rv);
   return rv;
 }
 
-void
-test_mem_free (void *p)
-{
-  clib_mem_free (p);
-}

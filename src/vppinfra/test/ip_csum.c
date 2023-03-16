@@ -110,7 +110,6 @@ test_clib_ip_csum (clib_error_t *err)
 	}
     }
 done:
-  test_mem_free (buf);
   return err;
 }
 
@@ -125,9 +124,6 @@ perftest_ip4_hdr (test_perf_t *tp)
   for (int i = 0; i < n; i++)
     res[i] = clib_ip_csum (data + i * 20, 20);
   test_perf_event_disable (tp);
-
-  test_mem_free (data);
-  test_mem_free (res);
 }
 
 void __test_perf_fn
@@ -142,9 +138,6 @@ perftest_tcp_payload (test_perf_t *tp)
   for (int i = 0; i < n; i++)
     res[i] = clib_ip_csum (data + i * lenp[0], lenp[0]);
   test_perf_event_disable (tp);
-
-  test_mem_free (data);
-  test_mem_free (res);
 }
 
 void __test_perf_fn
@@ -157,9 +150,6 @@ perftest_byte (test_perf_t *tp)
   test_perf_event_enable (tp);
   res[0] = clib_ip_csum (data, np[0]);
   test_perf_event_disable (tp);
-
-  test_mem_free (data);
-  test_mem_free (res);
 }
 
 REGISTER_TEST (clib_ip_csum) = {

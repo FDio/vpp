@@ -305,10 +305,6 @@ check_digest (clib_error_t *err, int tc, u8 *calculated, const u8 *expected,
     test_perf_event_enable (tp);                                              \
     clib_hmac_sha##bits (key, *kl, data, *np, digest);                        \
     test_perf_event_disable (tp);                                             \
-                                                                              \
-    test_mem_free (key);                                                      \
-    test_mem_free (data);                                                     \
-    test_mem_free (digest);                                                   \
   }                                                                           \
   REGISTER_TEST (clib_hmac_sha##bits) = {                                     \
     .name = "clib_hmac_sha" #bits,                                            \
