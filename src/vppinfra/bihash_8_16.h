@@ -44,13 +44,19 @@ typedef struct
   u64 value[2];			/**< the value */
 } clib_bihash_kv_8_16_t;
 
+static inline void
+clib_bihash_mark_free_8_16 (clib_bihash_kv_8_16_t *v)
+{
+  v->value[0] = 0xFEEDFACE8BADF00DULL;
+}
+
 /** Decide if a clib_bihash_kv_8_16_t instance is free
     @param v- pointer to the (key,value) pair
 */
 static inline int
 clib_bihash_is_free_8_16 (clib_bihash_kv_8_16_t * v)
 {
-  if (v->key == ~0ULL && v->value[0] == ~0ULL && v->value[1] == ~0ULL)
+  if (v->value[0] == 0xFEEDFACE8BADF00DULL)
     return 1;
   return 0;
 }
