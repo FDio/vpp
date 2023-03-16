@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9c6f531_affbf92d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-16T14:11:58Z",
+      "side": 1,
+      "message": "Another thing we need to do is to find all internal places where errors are dismissed, e.g., app_worker_alloc_session_fifos",
+      "revId": "42d91b59d5fb88953e7a7c5e2a7cdac56d7c6c09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94d259e3_7f03d599",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 753,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-16T14:11:58Z",
+      "side": 1,
+      "message": "Hm, where do we still have bapi errors?",
+      "revId": "42d91b59d5fb88953e7a7c5e2a7cdac56d7c6c09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
