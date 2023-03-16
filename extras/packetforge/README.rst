@@ -51,6 +51,14 @@ Users can create their own json files according to examples and Spec.
 
 ::
 
+     $ python flow_create.py --show -p "mac()/ipv4(src=1.1.1.1,dst=2.2.2.2)/udp()"
+
+This command can show the forging result of spec and mask only, without invoving
+VPP. No need to configure actions and interfaces. Users can get the binary string
+of spec and mask from a flow pattern if needed.
+
+::
+
       $ show flow entry
 
 It is a vnet/flow command, used in VPP CLI. It can show the added flow rules
