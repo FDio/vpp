@@ -42,7 +42,7 @@ from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_object import VppObject
 from vpp_papi import VppEnum
-from framework import is_distro_ubuntu2204, is_distro_debian11, tag_fixme_vpp_debug
+from framework import is_distro_ubuntu2204, is_distro_debian11
 from framework import VppTestCase
 from re import compile
 import unittest
@@ -2511,7 +2511,6 @@ class TestWg(VppTestCase):
         wg0.remove_vpp_config()
 
 
-@tag_fixme_vpp_debug
 class WireguardHandoffTests(TestWg):
     """Wireguard Tests in multi worker setup"""
 
