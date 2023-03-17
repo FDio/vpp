@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7eab2ee_f71c9c1d",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 780,
+      "author": {
+        "id": 2935
+      },
+      "writtenOn": "2023-03-17T03:15:50Z",
+      "side": 1,
+      "message": "Missing argument here?",
+      "revId": "d13327a5149bf5312b96a7abdd609ce9942ac7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9695bbe8_b22852ec",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 2935
+      },
+      "writtenOn": "2023-03-17T03:15:50Z",
+      "side": 1,
+      "message": "`key_result`, especially the key part, will still be modified even if the clib_bihash_is_free check fail.\n\nbihash documents says it\u0027s fine to use the same kvp for search_kv and return_kv. This will make the problem bigger in this case, as the key will be destoryed in search_kv.\n\nMaybe we could make a temporary variable to hold v-\u003ekvp[i], then check and overwrite *key_result with that variable instead?",
+      "revId": "d13327a5149bf5312b96a7abdd609ce9942ac7cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
