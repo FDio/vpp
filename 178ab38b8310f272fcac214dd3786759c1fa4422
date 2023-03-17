@@ -153,6 +153,23 @@
       "message": " perftest-2n-icx  mrrANDnic_intel-xl710ANDdrv_vfio_pciAND1cAND78bANDaes_gcm\n",
       "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "17963e39_3284256d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-03-17T07:57:33Z",
+      "side": 1,
+      "message": "csit-3n-icx-perftest nic_intel-xxv710ANDipsecswANDfastpathANDtnl_40000ANDdrv_vfio_pciANDndrpdrAND64b",
+      "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
