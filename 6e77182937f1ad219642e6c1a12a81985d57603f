@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38fa1948_260d15c4",
+        "filename": "extras/packetforge/flow_create.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 2247
+      },
+      "writtenOn": "2023-03-17T02:56:37Z",
+      "side": 1,
+      "message": "If only show spec and mask, can it be possible not to rely on VPP?",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 42
+      },
+      "revId": "6e77182937f1ad219642e6c1a12a81985d57603f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
