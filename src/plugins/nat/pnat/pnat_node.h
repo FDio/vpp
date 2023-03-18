@@ -63,6 +63,8 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
     if (t->instructions & PNAT_INSTR_SOURCE_ADDRESS) {
         csumd = ip_csum_sub_even(csumd, ip->src_address.as_u32);
         csumd = ip_csum_add_even(csumd, t->post_sa.as_u32);
+        if (0 == ip->checksum)
+            ip->checksum = ip4_header_checksum(ip);
         ip->src_address = t->post_sa;
     }
 
