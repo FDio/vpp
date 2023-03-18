@@ -213,8 +213,12 @@ udp46_local_inline (vlib_main_t * vm,
 	  next0 = (error0 == 0) ? vec_elt (next_by_dst_port, i0) : next0;
 	  next1 = (error1 == 0) ? vec_elt (next_by_dst_port, i1) : next1;
 
-	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
-			     next0 == UDP_NO_NODE_SET))
+	  if (PREDICT_FALSE (error0 != 0))
+	    {
+	      b0->error = node->errors[error0];
+	    }
+	  else if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
+				  next0 == UDP_NO_NODE_SET))
 	    {
 	      udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 	    }
@@ -225,8 +229,12 @@ udp46_local_inline (vlib_main_t * vm,
 	      vlib_buffer_advance (b0, sizeof (*h0));
 	    }
 
-	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
-			     next1 == UDP_NO_NODE_SET))
+	  if (PREDICT_FALSE (error1 != 0))
+	    {
+	      b1->error = node->errors[error1];
+	    }
+	  else if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
+				  next1 == UDP_NO_NODE_SET))
 	    {
 	      udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 	    }
