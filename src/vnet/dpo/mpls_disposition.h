@@ -88,11 +88,18 @@ extern u8* format_mpls_disp_dpo(u8 *s, va_list *args);
  * Encapsulation violation for fast data-path access
  */
 extern mpls_disp_dpo_t *mpls_disp_dpo_pool;
+extern clib_rwlock_t mpls_disp_dpo_pool_lock;
 
 static inline mpls_disp_dpo_t *
 mpls_disp_dpo_get (index_t index)
 {
-    return (pool_elt_at_index(mpls_disp_dpo_pool, index));
+  mpls_disp_dpo_t *mmd;
+
+  clib_rwlock_reader_lock (&mpls_disp_dpo_pool_lock);
+  mmd = pool_elt_at_index (mpls_disp_dpo_pool, index);
+  clib_rwlock_reader_unlock (&mpls_disp_dpo_pool_lock);
+
+  return (mmd);
 }
 
 extern void mpls_disp_dpo_module_init(void);
