@@ -23,14 +23,21 @@
  * pool of all MPLS Label DPOs
  */
 mpls_disp_dpo_t *mpls_disp_dpo_pool;
+clib_rwlock_t mpls_disp_dpo_pool_lock;
 
 static mpls_disp_dpo_t *
 mpls_disp_dpo_alloc (void)
 {
     mpls_disp_dpo_t *mdd;
 
-    pool_get_aligned(mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
-    clib_memset(mdd, 0, sizeof(*mdd));
+    if (vlib_num_workers ())
+      {
+	clib_rwlock_writer_lock (&mpls_disp_dpo_pool_lock);
+	pool_get_aligned_zero (mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
+	clib_rwlock_writer_unlock (&mpls_disp_dpo_pool_lock);
+      }
+    else
+      pool_get_aligned_zero (mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
 
     dpo_reset(&mdd->mdd_dpo);
 
@@ -125,7 +132,14 @@ mpls_disp_dpo_unlock (dpo_id_t *dpo)
     if (0 == mdd->mdd_locks)
     {
 	dpo_reset(&mdd->mdd_dpo);
-	pool_put(mpls_disp_dpo_pool, mdd);
+	if (vlib_num_workers ())
+	  {
+	    clib_rwlock_writer_lock (&mpls_disp_dpo_pool_lock);
+	    pool_put (mpls_disp_dpo_pool, mdd);
+	    clib_rwlock_writer_unlock (&mpls_disp_dpo_pool_lock);
+	  }
+	else
+	  pool_put (mpls_disp_dpo_pool, mdd);
     }
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -548,9 +562,10 @@ const static char* const * const mpls_label_disp_uniform_nodes[DPO_PROTO_NUM] =
 void
 mpls_disp_dpo_module_init(void)
 {
-    dpo_register(DPO_MPLS_DISPOSITION_PIPE, &mdd_vft,
-                 mpls_label_disp_pipe_nodes);
-    dpo_register(DPO_MPLS_DISPOSITION_UNIFORM, &mdd_vft,
-                 mpls_label_disp_uniform_nodes);
+  clib_rwlock_init (&mpls_disp_dpo_pool_lock);
+  dpo_register (DPO_MPLS_DISPOSITION_PIPE, &mdd_vft,
+		mpls_label_disp_pipe_nodes);
+  dpo_register (DPO_MPLS_DISPOSITION_UNIFORM, &mdd_vft,
+		mpls_label_disp_uniform_nodes);
 }
 #endif /* CLIB_MARCH_VARIANT */
