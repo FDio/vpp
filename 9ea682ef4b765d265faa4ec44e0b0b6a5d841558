@@ -16,6 +16,23 @@
       "message": "please do not merge pending performance check out",
       "revId": "9ea682ef4b765d265faa4ec44e0b0b6a5d841558",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f0bcd82_1f653913",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-18T01:55:28Z",
+      "side": 1,
+      "message": "TCP 1M connections scale test doesn\u0027t show any regressions",
+      "revId": "9ea682ef4b765d265faa4ec44e0b0b6a5d841558",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
