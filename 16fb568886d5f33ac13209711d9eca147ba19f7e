@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "085791e6_67f2c4de",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-03-18T18:51:45Z",
+      "side": 1,
+      "message": "Hello, this is simplified version of https://gerrit.fd.io/r/c/vpp/+/37264 looping over the all addresses, which is questionable and hash seems not necessary in favor of vector by fib index.",
+      "revId": "16fb568886d5f33ac13209711d9eca147ba19f7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
