@@ -241,10 +241,17 @@ static void vl_api_##nn##_t_handler (                                   \
 static clib_error_t *
 vpe_api_hookup (vlib_main_t * vm)
 {
+  api_main_t *am = vlibapi_get_main ();
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   msg_id_base = setup_message_id_table ();
+
+  /* Mark messages as mp safe */
+  vl_api_set_msg_thread_safe (am, msg_id_base + VL_API_SHOW_VERSION, 1);
+  vl_api_set_msg_thread_safe (am, msg_id_base + VL_API_SHOW_VPE_SYSTEM_TIME,
+			      1);
 
   return 0;
 }

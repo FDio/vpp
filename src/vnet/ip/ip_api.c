@@ -2133,17 +2133,21 @@ ip_api_hookup (vlib_main_t * vm)
   api_main_t *am = vlibapi_get_main ();
 
   /*
-   * Mark the route add/del API as MP safe
-   */
-  vl_api_set_msg_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL, 1);
-  vl_api_set_msg_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_REPLY, 1);
-  vl_api_set_msg_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_V2, 1);
-  vl_api_set_msg_thread_safe (am, VL_API_IP_ROUTE_ADD_DEL_V2_REPLY, 1);
-
-  /*
    * Set up the (msg_name, crc, message-id) table
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
+
+  /*
+   * Mark the route add/del API as MP safe
+   */
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL,
+			      1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_REPLY, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_ADD_DEL_V2_REPLY, 1);
 
   return 0;
 }
