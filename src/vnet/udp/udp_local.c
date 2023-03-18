@@ -125,9 +125,8 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  udp_header_t *h0 = 0, *h1 = 0;
-	  u32 i0, i1, dst_port0, dst_port1;
+	  u32 i0, i1, next0, next1;
 	  u32 advance0, advance1;
-	  u32 error0, next0, error1, next1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -169,72 +168,106 @@ udp46_local_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (b0->current_length < advance0 + sizeof (*h0)))
 	    {
-	      error0 = UDP_ERROR_LENGTH_ERROR;
+	      b0->error = node->errors[UDP_ERROR_LENGTH_ERROR];
 	      next0 = UDP_LOCAL_NEXT_DROP;
 	    }
 	  else
 	    {
 	      vlib_buffer_advance (b0, advance0);
 	      h0 = vlib_buffer_get_current (b0);
-	      error0 = UDP_ERROR_NONE;
 	      next0 = UDP_LOCAL_NEXT_PUNT;
 	      if (PREDICT_FALSE (clib_net_to_host_u16 (h0->length) >
 				 vlib_buffer_length_in_chain (vm, b0)))
 		{
-		  error0 = UDP_ERROR_LENGTH_ERROR;
+		  b0->error = node->errors[UDP_ERROR_LENGTH_ERROR];
 		  next0 = UDP_LOCAL_NEXT_DROP;
 		}
 	    }
 
 	  if (PREDICT_FALSE (b1->current_length < advance1 + sizeof (*h1)))
 	    {
-	      error1 = UDP_ERROR_LENGTH_ERROR;
+	      b1->error = node->errors[UDP_ERROR_LENGTH_ERROR];
 	      next1 = UDP_LOCAL_NEXT_DROP;
 	    }
 	  else
 	    {
 	      vlib_buffer_advance (b1, advance1);
 	      h1 = vlib_buffer_get_current (b1);
-	      error1 = UDP_ERROR_NONE;
 	      next1 = UDP_LOCAL_NEXT_PUNT;
 	      if (PREDICT_FALSE (clib_net_to_host_u16 (h1->length) >
 				 vlib_buffer_length_in_chain (vm, b1)))
 		{
-		  error1 = UDP_ERROR_LENGTH_ERROR;
+		  b1->error = node->errors[UDP_ERROR_LENGTH_ERROR];
 		  next1 = UDP_LOCAL_NEXT_DROP;
 		}
 	    }
 
 	  /* Index sparse array with network byte order. */
-	  dst_port0 = (error0 == 0) ? h0->dst_port : 0;
-	  dst_port1 = (error1 == 0) ? h1->dst_port : 0;
-	  sparse_vec_index2 (next_by_dst_port, dst_port0, dst_port1, &i0,
-			     &i1);
-	  next0 = (error0 == 0) ? vec_elt (next_by_dst_port, i0) : next0;
-	  next1 = (error1 == 0) ? vec_elt (next_by_dst_port, i1) : next1;
+	  if (PREDICT_TRUE (next0 == UDP_LOCAL_NEXT_PUNT &&
+			    next1 == UDP_LOCAL_NEXT_PUNT))
+	    {
+	      sparse_vec_index2 (next_by_dst_port, h0->dst_port, h1->dst_port,
+				 &i0, &i1);
+	      next0 = vec_elt (next_by_dst_port, i0);
+	      next1 = vec_elt (next_by_dst_port, i1);
 
-	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
-			     next0 == UDP_NO_NODE_SET))
-	    {
-	      udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
-	    }
-	  else
-	    {
-	      b0->error = node->errors[UDP_ERROR_NONE];
-	      // advance to the payload
-	      vlib_buffer_advance (b0, sizeof (*h0));
-	    }
+	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
+				 next0 == UDP_NO_NODE_SET))
+		{
+		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
+		}
+	      else
+		{
+		  b0->error = node->errors[UDP_ERROR_NONE];
+		  // advance to the payload
+		  vlib_buffer_advance (b0, sizeof (*h0));
+		}
 
-	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
-			     next1 == UDP_NO_NODE_SET))
-	    {
-	      udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
+	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
+				 next1 == UDP_NO_NODE_SET))
+		{
+		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
+		}
+	      else
+		{
+		  b1->error = node->errors[UDP_ERROR_NONE];
+		  // advance to the payload
+		  vlib_buffer_advance (b1, sizeof (*h1));
+		}
 	    }
-	  else
+	  else if (next0 == UDP_LOCAL_NEXT_PUNT)
 	    {
-	      b1->error = node->errors[UDP_ERROR_NONE];
-	      // advance to the payload
-	      vlib_buffer_advance (b1, sizeof (*h1));
+	      i0 = sparse_vec_index (next_by_dst_port, h0->dst_port);
+	      next0 = vec_elt (next_by_dst_port, i0);
+
+	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
+				 next0 == UDP_NO_NODE_SET))
+		{
+		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
+		}
+	      else
+		{
+		  b0->error = node->errors[UDP_ERROR_NONE];
+		  // advance to the payload
+		  vlib_buffer_advance (b0, sizeof (*h0));
+		}
+	    }
+	  else if (next1 == UDP_LOCAL_NEXT_PUNT)
+	    {
+	      i1 = sparse_vec_index (next_by_dst_port, h1->dst_port);
+	      next1 = vec_elt (next_by_dst_port, i1);
+
+	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
+				 next1 == UDP_NO_NODE_SET))
+		{
+		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
+		}
+	      else
+		{
+		  b1->error = node->errors[UDP_ERROR_NONE];
+		  // advance to the payload
+		  vlib_buffer_advance (b1, sizeof (*h1));
+		}
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
