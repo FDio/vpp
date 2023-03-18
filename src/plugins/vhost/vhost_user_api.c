@@ -335,14 +335,17 @@ static clib_error_t *
 vhost_user_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
-  /* Mark CREATE_VHOST_USER_IF as mp safe */
-  vl_api_set_msg_thread_safe (am, VL_API_CREATE_VHOST_USER_IF, 1);
-  vl_api_set_msg_thread_safe (am, VL_API_CREATE_VHOST_USER_IF_V2, 1);
 
   /*
    * Set up the (msg_name, crc, message-id) table
    */
   REPLY_MSG_ID_BASE = setup_message_id_table ();
+
+  /* Mark CREATE_VHOST_USER_IF as mp safe */
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_CREATE_VHOST_USER_IF, 1);
+  vl_api_set_msg_thread_safe (
+    am, REPLY_MSG_ID_BASE + VL_API_CREATE_VHOST_USER_IF_V2, 1);
 
   return 0;
 }
