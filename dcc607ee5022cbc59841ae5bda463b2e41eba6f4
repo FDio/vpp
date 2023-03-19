@@ -22,6 +22,30 @@
       },
       "revId": "dcc607ee5022cbc59841ae5bda463b2e41eba6f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f256e955_97ef8f4e",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-03-19T16:06:21Z",
+      "side": 1,
+      "message": "Thanks :) It\u0027s actually \"elvis operator\", gcc extension introduced in ~2.95.3 (2001), supported by clang as well, mostly used in linux kernel and gnu userspace therefore. Usually usage of elvis operator is questionable due portability considerations, but since I\u0027ve found it\u0027s already used in vnet/tcp and plugins/af_xdp, guess, not additional harm was introduced.",
+      "parentUuid": "74d37ccc_2aeafc9f",
+      "range": {
+        "startLine": 336,
+        "startChar": 47,
+        "endLine": 336,
+        "endChar": 48
+      },
+      "revId": "dcc607ee5022cbc59841ae5bda463b2e41eba6f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
