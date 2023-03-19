@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74d37ccc_2aeafc9f",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2023-03-19T12:16:33Z",
+      "side": 1,
+      "message": "I guess that the compiler gods decided to make ?: legal, you get a prize for showing me something I had never seen before. I\u0027ve been writing C-code since 1972.\n\nAnyhow, here\u0027s a chunk of code from ParseExpr.cpp in clang:\n\n        // Special case handling of \"X ? Y : Z\" where Y is empty:\n        //   logical-OR-expression \u0027?\u0027 \u0027:\u0027 conditional-expression   [GNU]\n        TernaryMiddle \u003d nullptr;\n        Diag(Tok, diag::ext_gnu_conditional_expr);",
+      "range": {
+        "startLine": 336,
+        "startChar": 47,
+        "endLine": 336,
+        "endChar": 48
+      },
+      "revId": "dcc607ee5022cbc59841ae5bda463b2e41eba6f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
