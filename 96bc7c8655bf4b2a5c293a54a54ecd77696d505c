@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c596b10_e70436cf",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-19T22:56:35Z",
+      "side": 1,
+      "message": "Looks like we\u0027ll need two branches here, fast path when no parse errors are hit (error0+ error1 \u003d\u003d 0) and sparse_vec_index2 is used and slow path with individual checks. Let me know if you\u0027d like to try implementing that.",
+      "range": {
+        "startLine": 209,
+        "startChar": 0,
+        "endLine": 214,
+        "endChar": 66
+      },
+      "revId": "96bc7c8655bf4b2a5c293a54a54ecd77696d505c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
