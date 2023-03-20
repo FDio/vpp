@@ -292,6 +292,16 @@ session_cleanup_half_open (session_handle_t ho_handle)
 {
   session_t *ho = session_get_from_handle (ho_handle);
 
+  /* Cleanup half-open session table */
+  if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+    {
+      transport_connection_t *tc;
+      tc = transport_get_half_open (session_get_transport_proto (ho),
+				    ho->connection_index);
+      if (tc && !(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	session_lookup_del_half_open (tc);
+    }
+
   /* App transports can migrate their half-opens */
   if (ho->flags & SESSION_F_IS_MIGRATING)
     {
@@ -317,9 +327,10 @@ session_half_open_free (session_t *ho)
 {
   app_worker_t *app_wrk;
 
-  ASSERT (vlib_get_thread_index () <= 1);
-  app_wrk = app_worker_get (ho->app_wrk_index);
-  app_worker_del_half_open (app_wrk, ho);
+  ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
+  app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
+  if (app_wrk)
+    app_worker_del_half_open (app_wrk, ho);
   session_free (ho);
 }
 
@@ -333,10 +344,19 @@ session_half_open_free_rpc (void *args)
 void
 session_half_open_delete_notify (transport_connection_t *tc)
 {
+  session_t *ho = ho_session_get (tc->s_index);
+
+  /* Cleanup hanf open lookup table if need be */
+  if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+    {
+      if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+	session_lookup_del_half_open (tc);
+    }
+
   /* Notification from ctrl thread accepted without rpc */
   if (tc->thread_index == transport_cl_thread ())
     {
-      session_half_open_free (ho_session_get (tc->s_index));
+      session_half_open_free (ho);
     }
   else
     {
@@ -887,6 +907,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   session_lookup_del_half_open (tc);
 
   ho = ho_session_get (tc->s_index);
+  session_set_state (ho, SESSION_STATE_TRANSPORT_CLOSING);
   opaque = ho->opaque;
   app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
   if (!app_wrk)
