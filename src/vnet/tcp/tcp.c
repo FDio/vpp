@@ -489,6 +489,14 @@ tcp_session_reset (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
   tc = tcp_connection_get (conn_index, thread_index);
+
+  /* For half-opens just cleanup */
+  if (tc->state == TCP_STATE_SYN_SENT)
+    {
+      tcp_connection_cleanup (tc);
+      return;
+    }
+
   tcp_send_reset (tc);
   tcp_connection_timers_reset (tc);
   tcp_cong_recovery_off (tc);
