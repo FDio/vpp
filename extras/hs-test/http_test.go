@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 )
 
 func (s *NsSuite) TestHttpTps() {
@@ -60,26 +59,8 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	nRequests := 1000000
 	nClients := 2000
-	var args []string
-	var exeName string
 
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
-
-	if ab_or_wrk == "ab" {
-		args = []string{"-n", fmt.Sprintf("%d", nRequests), "-c",
-			fmt.Sprintf("%d", nClients)}
-		if mode == "rps" {
-			args = append(args, "-k")
-		} else if mode != "cps" {
-			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
-		}
-		args = append(args, "http://"+serverAddress+":80/64B.json")
-		exeName = "ab"
-	} else {
-		args = []string{"-c", fmt.Sprintf("%d", nClients), "-t", "2", "-d", "30",
-			"http://" + serverAddress + ":80/64B.json"}
-		exeName = "wrk"
-	}
 
 	vpp := s.getContainerByName("vpp").vppInstance
 
@@ -87,12 +68,28 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	s.assertNil(nginxCont.run())
 	vpp.waitForApp("nginx-", 5)
 
-	cmd := exec.Command(exeName, args...)
-	s.log(cmd)
-	o, err := cmd.CombinedOutput()
-	s.log(string(o))
-	s.assertNil(err)
-	s.assertNotEmpty(o)
+	if ab_or_wrk == "ab" {
+		abCont := s.getContainerByName("ab")
+		args := fmt.Sprintf("-n %d -c %d", nRequests, nClients)
+		if mode == "rps" {
+			args += " -k"
+		} else if mode != "cps" {
+			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
+		}
+		args += " http://" + serverAddress + ":80/64B.json"
+		abCont.extraRunningArgs = args
+		o, err := abCont.combinedOutput()
+		s.log(o, err)
+		s.assertNil(err)
+	} else {
+		wrkCont := s.getContainerByName("wrk")
+		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
+			serverAddress)
+		wrkCont.extraRunningArgs = args
+		o, err := wrkCont.combinedOutput()
+		s.log(o)
+		s.assertNil(err)
+	}
 	return nil
 }
 
