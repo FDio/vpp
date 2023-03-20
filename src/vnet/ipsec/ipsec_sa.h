@@ -283,6 +283,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 		       ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
 		       ipsec_sa_flags_t flags, u32 salt, u16 src_port,
 		       u16 dst_port, const tunnel_t *tun, u32 *sa_out_index);
+extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
 extern index_t ipsec_sa_find_and_lock (u32 id);
 extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
