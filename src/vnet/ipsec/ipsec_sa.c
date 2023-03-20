@@ -521,6 +521,32 @@ ipsec_sa_del (ipsec_sa_t * sa)
   pool_put (ipsec_sa_pool, sa);
 }
 
+int
+ipsec_sa_bind (u32 id, u32 worker, bool bind)
+{
+  ipsec_main_t *im = &ipsec_main;
+  uword *p;
+  ipsec_sa_t *sa;
+
+  p = hash_get (im->sa_index_by_sa_id, id);
+  if (!p)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  sa = ipsec_sa_get (p[0]);
+
+  if (!bind)
+    {
+      sa->thread_index = ~0;
+      return 0;
+    }
+
+  if (worker >= vlib_num_workers ())
+    return VNET_API_ERROR_INVALID_WORKER;
+
+  sa->thread_index = vlib_get_worker_thread_index (worker);
+  return 0;
+}
+
 void
 ipsec_sa_unlock (index_t sai)
 {
@@ -618,19 +644,18 @@ ipsec_sa_fib_node_get (fib_node_index_t index)
 }
 
 static ipsec_sa_t *
-ipsec_sa_from_fib_node (fib_node_t * node)
+ipsec_sa_from_fib_node (fib_node_t *node)
 {
   ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
-  return ((ipsec_sa_t *) (((char *) node) -
-			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
-
+  return (
+    (ipsec_sa_t *) (((char *) node) - STRUCT_OFFSET_OF (ipsec_sa_t, node)));
 }
 
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-ipsec_sa_last_lock_gone (fib_node_t * node)
+ipsec_sa_last_lock_gone (fib_node_t *node)
 {
   /*
    * The ipsec SA is a root of the graph. As such
@@ -643,7 +668,7 @@ ipsec_sa_last_lock_gone (fib_node_t * node)
  * Function definition to backwalk a FIB node
  */
 static fib_node_back_walk_rc_t
-ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+ipsec_sa_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   ipsec_sa_stack (ipsec_sa_from_fib_node (node));
 
