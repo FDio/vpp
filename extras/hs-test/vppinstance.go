@@ -215,7 +215,7 @@ func (vpp *VppInstance) createAfPacket(
 	if err := vpp.apiChannel.SendRequest(createReq).ReceiveReply(createReply); err != nil {
 		return 0, err
 	}
-        veth.index = createReply.SwIfIndex
+	veth.index = createReply.SwIfIndex
 
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
