@@ -730,9 +730,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       struct ibv_cq_init_attr_ex cqa = {};
       struct ibv_cq_ex *cqex;
       struct mlx5dv_cq_init_attr dvcq = {};
-      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE |
-		       MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
-      dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
       dvcq.cqe_size = 64;
       cqa.cqe = n_desc;
       if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
