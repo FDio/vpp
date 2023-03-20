@@ -53,6 +53,8 @@ typedef struct ct_worker_
   ct_cleanup_req_t *pending_cleanups; /**< Fifo of pending indices */
   u8 have_connects;		      /**< Set if connect rpc pending */
   u8 have_cleanups;		      /**< Set if cleanup rpc pending */
+  clib_spinlock_t pending_connects_lock; /**< Lock for pending connects */
+  u32 *new_connects;			 /**< Burst of connects to be done */
 } ct_worker_t;
 
 typedef struct ct_main_
@@ -65,6 +67,9 @@ typedef struct ct_main_
   clib_rwlock_t app_segs_lock;		/**< RW lock for seg contexts */
   uword *app_segs_ctxs_table;		/**< App handle to segment pool map */
   ct_segments_ctx_t *app_seg_ctxs;	/**< Pool of ct segment contexts */
+  u32 **fwrk_pending_connects;		/**< First wrk pending half-opens */
+  u32 fwrk_thread;			/**< First worker thread */
+  u8 fwrk_have_flush;			/**< Flag for connect flush rpc */
 } ct_main_t;
 
 static ct_main_t ct_main;
@@ -124,11 +129,18 @@ ct_half_open_alloc (void)
 
   clib_spinlock_lock (&cm->ho_reuseable_lock);
   vec_foreach (hip, cm->ho_reusable)
-    pool_put_index (cm->wrk[0].connections, *hip);
+    pool_put_index (cm->wrk[cm->fwrk_thread].connections, *hip);
   vec_reset_length (cm->ho_reusable);
   clib_spinlock_unlock (&cm->ho_reuseable_lock);
 
-  return ct_connection_alloc (0);
+  return ct_connection_alloc (cm->fwrk_thread);
+}
+
+static ct_connection_t *
+ct_half_open_get (u32 ho_index)
+{
+  ct_main_t *cm = &ct_main;
+  return ct_connection_get (ho_index, cm->fwrk_thread);
 }
 
 void
@@ -646,7 +658,7 @@ ct_accept_one (u32 thread_index, u32 ho_index)
   cct = ct_connection_alloc (thread_index);
   cct_index = cct->c_c_index;
 
-  ho = ct_connection_get (ho_index, 0);
+  ho = ct_half_open_get (ho_index);
 
   /* Unlikely but half-open session and transport could have been freed */
   if (PREDICT_FALSE (!ho))
@@ -740,39 +752,88 @@ ct_accept_one (u32 thread_index, u32 ho_index)
 static void
 ct_accept_rpc_wrk_handler (void *rpc_args)
 {
-  u32 thread_index, ho_index, n_connects, i, n_pending;
+  u32 thread_index, n_connects, i, n_pending;
   const u32 max_connects = 32;
   ct_worker_t *wrk;
+  u8 need_rpc = 0;
 
   thread_index = pointer_to_uword (rpc_args);
   wrk = ct_worker_get (thread_index);
 
-  /* Sub without lock as main enqueues with worker barrier */
+  /* Connects could be handled without worker barrier so grab lock */
+  clib_spinlock_lock (&wrk->pending_connects_lock);
+
   n_pending = clib_fifo_elts (wrk->pending_connects);
   n_connects = clib_min (n_pending, max_connects);
+  vec_validate (wrk->new_connects, n_connects);
 
   for (i = 0; i < n_connects; i++)
-    {
-      clib_fifo_sub1 (wrk->pending_connects, ho_index);
-      ct_accept_one (thread_index, ho_index);
-    }
+    clib_fifo_sub1 (wrk->pending_connects, wrk->new_connects[i]);
 
   if (n_pending == n_connects)
     wrk->have_connects = 0;
   else
+    need_rpc = 1;
+
+  clib_spinlock_unlock (&wrk->pending_connects_lock);
+
+  for (i = 0; i < n_connects; i++)
+    ct_accept_one (thread_index, wrk->new_connects[i]);
+
+  if (need_rpc)
     session_send_rpc_evt_to_thread_force (
       thread_index, ct_accept_rpc_wrk_handler,
       uword_to_pointer (thread_index, void *));
 }
 
-static int
-ct_connect (app_worker_t * client_wrk, session_t * ll,
-	    session_endpoint_cfg_t * sep)
+static void
+ct_fwrk_flush_connects (void *rpc_args)
 {
-  u32 thread_index, ho_index;
+  u32 thread_index, fwrk_index, n_workers;
   ct_main_t *cm = &ct_main;
-  ct_connection_t *ho;
   ct_worker_t *wrk;
+  u8 need_rpc;
+
+  fwrk_index = pointer_to_uword (rpc_args);
+  ASSERT (fwrk_index == cm->fwrk_thread);
+  n_workers = vec_len (cm->fwrk_pending_connects);
+
+  for (thread_index = fwrk_index; thread_index < n_workers; thread_index++)
+    {
+      wrk = ct_worker_get (thread_index);
+
+      /* Connects can be done without worker barrier, grab dst worker lock */
+      if (thread_index != fwrk_index)
+	clib_spinlock_lock (&wrk->pending_connects_lock);
+
+      clib_fifo_add (wrk->pending_connects,
+		     cm->fwrk_pending_connects[thread_index],
+		     vec_len (cm->fwrk_pending_connects[thread_index]));
+      if (!wrk->have_connects)
+	{
+	  wrk->have_connects = 1;
+	  need_rpc = 1;
+	}
+
+      if (thread_index != fwrk_index)
+	clib_spinlock_unlock (&wrk->pending_connects_lock);
+
+      vec_reset_length (cm->fwrk_pending_connects[thread_index]);
+
+      if (need_rpc)
+	session_send_rpc_evt_to_thread_force (
+	  thread_index, ct_accept_rpc_wrk_handler,
+	  uword_to_pointer (thread_index, void *));
+    }
+
+  cm->fwrk_have_flush = 0;
+}
+
+static void
+ct_program_connect_to_wrk (u32 ho_index)
+{
+  ct_main_t *cm = &ct_main;
+  u32 thread_index;
 
   /* Simple round-robin policy for spreading sessions over workers. We skip
    * thread index 0, i.e., offset the index by 1, when we have workers as it
@@ -780,6 +841,25 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
    * main thread */
   cm->n_sessions += 1;
   thread_index = cm->n_workers ? (cm->n_sessions % cm->n_workers) + 1 : 0;
+
+  /* Pospone flushing of connect request to dst worker until after session
+   * layer fully initializes the half-open session. */
+  vec_add1 (cm->fwrk_pending_connects[thread_index], ho_index);
+  if (!cm->fwrk_have_flush)
+    {
+      session_send_rpc_evt_to_thread_force (
+	cm->fwrk_thread, ct_fwrk_flush_connects,
+	uword_to_pointer (thread_index, void *));
+      cm->fwrk_have_flush = 1;
+    }
+}
+
+static int
+ct_connect (app_worker_t *client_wrk, session_t *ll,
+	    session_endpoint_cfg_t *sep)
+{
+  ct_connection_t *ho;
+  u32 ho_index;
 
   /*
    * Alloc and init client half-open transport
@@ -801,21 +881,10 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   ho->actual_tp = sep->original_tp;
 
   /*
-   * Accept connection on thread selected above. Connected reply comes
+   * Program connect on a worker, connected reply comes
    * after server accepts the connection.
    */
-
-  wrk = ct_worker_get (thread_index);
-
-  /* Worker barrier held, add without additional lock */
-  clib_fifo_add1 (wrk->pending_connects, ho_index);
-  if (!wrk->have_connects)
-    {
-      wrk->have_connects = 1;
-      session_send_rpc_evt_to_thread_force (
-	thread_index, ct_accept_rpc_wrk_handler,
-	uword_to_pointer (thread_index, void *));
-    }
+  ct_program_connect_to_wrk (ho_index);
 
   return ho_index;
 }
@@ -853,9 +922,9 @@ ct_listener_get (u32 ct_index)
 }
 
 static transport_connection_t *
-ct_half_open_get (u32 ct_index)
+ct_session_half_open_get (u32 ct_index)
 {
-  return (transport_connection_t *) ct_connection_get (ct_index, 0);
+  return (transport_connection_t *) ct_half_open_get (ct_index);
 }
 
 static void
@@ -877,7 +946,10 @@ ct_session_cleanup (u32 conn_index, u32 thread_index)
 static void
 ct_cleanup_ho (u32 ho_index)
 {
-  ct_connection_free (ct_connection_get (ho_index, 0));
+  ct_connection_t *ho;
+
+  ho = ct_half_open_get (ho_index);
+  ct_connection_free (ho);
 }
 
 static int
@@ -1179,7 +1251,7 @@ format_ct_half_open (u8 *s, va_list *args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 verbose = va_arg (*args, u32);
-  ct_connection_t *ct = ct_connection_get (ho_index, 0);
+  ct_connection_t *ct = ct_half_open_get (ho_index);
   s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_ct_connection_id, ct);
   if (verbose)
     s = format (s, "%-" SESSION_CLI_STATE_LEN "s", "HALF-OPEN");
@@ -1230,11 +1302,16 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
 {
   vlib_thread_main_t *vtm = &vlib_thread_main;
   ct_main_t *cm = &ct_main;
+  ct_worker_t *wrk;
 
   cm->n_workers = vlib_num_workers ();
+  cm->fwrk_thread = transport_cl_thread ();
   vec_validate (cm->wrk, vtm->n_vlib_mains);
+  vec_foreach (wrk, cm->wrk)
+    clib_spinlock_init (&wrk->pending_connects_lock);
   clib_spinlock_init (&cm->ho_reuseable_lock);
   clib_rwlock_init (&cm->app_segs_lock);
+  vec_validate (cm->fwrk_pending_connects, cm->n_workers);
   return 0;
 }
 
@@ -1245,7 +1322,7 @@ static const transport_proto_vft_t cut_thru_proto = {
   .stop_listen = ct_stop_listen,
   .get_connection = ct_session_get,
   .get_listener = ct_listener_get,
-  .get_half_open = ct_half_open_get,
+  .get_half_open = ct_session_half_open_get,
   .cleanup = ct_session_cleanup,
   .cleanup_ho = ct_cleanup_ho,
   .connect = ct_session_connect,
