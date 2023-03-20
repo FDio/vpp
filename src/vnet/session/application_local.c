@@ -53,6 +53,8 @@ typedef struct ct_worker_
   ct_cleanup_req_t *pending_cleanups; /**< Fifo of pending indices */
   u8 have_connects;		      /**< Set if connect rpc pending */
   u8 have_cleanups;		      /**< Set if cleanup rpc pending */
+  clib_spinlock_t pending_connects_lock; /**< Lock for pending connects */
+  u32 *new_connects;			 /**< Burst of connects to be done */
 } ct_worker_t;
 
 typedef struct ct_main_
@@ -740,22 +742,22 @@ ct_accept_one (u32 thread_index, u32 ho_index)
 static void
 ct_accept_rpc_wrk_handler (void *rpc_args)
 {
-  u32 thread_index, ho_index, n_connects, i, n_pending;
+  u32 thread_index, n_connects, i, n_pending;
   const u32 max_connects = 32;
   ct_worker_t *wrk;
 
   thread_index = pointer_to_uword (rpc_args);
   wrk = ct_worker_get (thread_index);
 
-  /* Sub without lock as main enqueues with worker barrier */
+  /* Connects could be handled by first worker so grab lock */
+  clib_spinlock_lock (&wrk->pending_connects_lock);
+
   n_pending = clib_fifo_elts (wrk->pending_connects);
   n_connects = clib_min (n_pending, max_connects);
+  vec_validate (wrk->new_connects, n_connects);
 
   for (i = 0; i < n_connects; i++)
-    {
-      clib_fifo_sub1 (wrk->pending_connects, ho_index);
-      ct_accept_one (thread_index, ho_index);
-    }
+    clib_fifo_sub1 (wrk->pending_connects, wrk->new_connects[i]);
 
   if (n_pending == n_connects)
     wrk->have_connects = 0;
@@ -763,6 +765,11 @@ ct_accept_rpc_wrk_handler (void *rpc_args)
     session_send_rpc_evt_to_thread_force (
       thread_index, ct_accept_rpc_wrk_handler,
       uword_to_pointer (thread_index, void *));
+
+  clib_spinlock_unlock (&wrk->pending_connects_lock);
+
+  for (i = 0; i < n_connects; i++)
+    ct_accept_one (thread_index, wrk->new_connects[i]);
 }
 
 static int
@@ -807,7 +814,9 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 
   wrk = ct_worker_get (thread_index);
 
-  /* Worker barrier held, add without additional lock */
+  /* Connects can be done by first worker, grab dst worker lock */
+  clib_spinlock_lock (&wrk->pending_connects_lock);
+
   clib_fifo_add1 (wrk->pending_connects, ho_index);
   if (!wrk->have_connects)
     {
@@ -816,6 +825,8 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 	thread_index, ct_accept_rpc_wrk_handler,
 	uword_to_pointer (thread_index, void *));
     }
+
+  clib_spinlock_unlock (&wrk->pending_connects_lock);
 
   return ho_index;
 }
@@ -1230,9 +1241,12 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
 {
   vlib_thread_main_t *vtm = &vlib_thread_main;
   ct_main_t *cm = &ct_main;
+  ct_worker_t *wrk;
 
   cm->n_workers = vlib_num_workers ();
   vec_validate (cm->wrk, vtm->n_vlib_mains);
+  vec_foreach (wrk, cm->wrk)
+    clib_spinlock_init (&wrk->pending_connects_lock);
   clib_spinlock_init (&cm->ho_reuseable_lock);
   clib_rwlock_init (&cm->app_segs_lock);
   return 0;
