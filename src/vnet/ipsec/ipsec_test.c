@@ -288,6 +288,18 @@ api_ipsec_sad_entry_del (vat_main_t *vat)
   return -1;
 }
 
+static int
+api_ipsec_sad_bind (vat_main_t *vat)
+{
+  return -1;
+}
+
+static int
+api_ipsec_sad_unbind (vat_main_t *vat)
+{
+  return -1;
+}
+
 static void
 vl_api_ipsec_sad_entry_add_del_v2_reply_t_handler (
   vl_api_ipsec_sad_entry_add_del_v2_reply_t *mp)
@@ -431,6 +443,17 @@ api_ipsec_sa_dump (vat_main_t *vam)
 
   W (ret);
   return ret;
+}
+
+static void
+vl_api_ipsec_sa_v4_details_t_handler (vl_api_ipsec_sa_v4_details_t *mp)
+{
+}
+
+static int
+api_ipsec_sa_v4_dump (vat_main_t *mp)
+{
+  return -1;
 }
 
 static void
