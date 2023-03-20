@@ -201,6 +201,29 @@ autoreply define ipsec_sad_entry_del
   u32 id;
 };
 
+
+/** \brief An API to bind an SAD entry to a specific worker
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_id - the id of the SA to bind
+    @param worker - the worker's index to which the SA will be bound to
+ */
+autoreply define ipsec_sad_bind
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+  u32 worker;
+};
+
+autoreply define ipsec_sad_unbind
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
+
 /** \brief An API to update the tunnel parameters and the ports associated with an SA
 
     Used in the NAT-T case when the NAT data changes
@@ -430,6 +453,12 @@ define ipsec_sa_v3_dump
   u32 context;
   u32 sa_id;
 };
+define ipsec_sa_v4_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
 
 /** \brief IPsec security association database response
     @param context - sender context which was passed in the request
@@ -477,6 +506,18 @@ define ipsec_sa_v3_details {
   u64 last_seq_inbound;
   u64 replay_window;
 
+  u32 stat_index;
+};
+define ipsec_sa_v4_details {
+  u32 context;
+  vl_api_ipsec_sad_entry_v3_t entry;
+
+  vl_api_interface_index_t sw_if_index;
+  u64 seq_outbound;
+  u64 last_seq_inbound;
+  u64 replay_window;
+
+  u32 thread_index;
   u32 stat_index;
 };
 

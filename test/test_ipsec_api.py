@@ -4,9 +4,13 @@ from framework import VppTestCase, VppTestRunner
 from template_ipsec import TemplateIpsec, IPsecIPv4Params
 from vpp_papi import VppEnum
 
+from vpp_ipsec import VppIpsecSA
+
 
 class IpsecApiTestCase(VppTestCase):
     """IPSec API tests"""
+
+    vpp_worker_count = 2
 
     @classmethod
     def setUpClass(cls):
@@ -114,6 +118,40 @@ class IpsecApiTestCase(VppTestCase):
             },
         )
         self.vapi.ipsec_select_backend(protocol=self.vpp_ah_protocol, index=0)
+
+    def __check_sa_binding(self, sa_id, thread_index):
+        found_sa = False
+        sa_dumps = self.vapi.ipsec_sa_v4_dump()
+        for dump in sa_dumps:
+            if dump.entry.sad_id == sa_id:
+                self.assertEqual(dump.thread_index, thread_index)
+                found_sa = True
+                break
+
+        if not found_sa:
+            self.fail("SA not found in VPP")
+
+    def test_sa_worker_bind(self):
+        """Bind an SA to a worker"""
+        sa = VppIpsecSA(
+            self,
+            self.ipv4_params.scapy_tun_sa_id,
+            self.ipv4_params.scapy_tun_spi,
+            self.ipv4_params.auth_algo_vpp_id,
+            self.ipv4_params.auth_key,
+            self.ipv4_params.crypt_algo_vpp_id,
+            self.ipv4_params.crypt_key,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
+        sa.add_vpp_config()
+
+        self.__check_sa_binding(sa.id, 0xFFFF)
+
+        self.vapi.ipsec_sad_bind(sa_id=sa.id, worker=1)
+
+        self.__check_sa_binding(sa.id, 2)
+
+        sa.remove_vpp_config()
 
 
 if __name__ == "__main__":
