@@ -27,6 +27,7 @@ type Volume struct {
 type Container struct {
 	suite            *HstSuite
 	isOptional       bool
+	runDetached      bool
 	name             string
 	image            string
 	extraRunningArgs string
@@ -63,6 +64,12 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 		container.isOptional = isOptional.(bool)
 	} else {
 		container.isOptional = false
+	}
+
+	if runDetached, ok := yamlInput["run-detached"]; ok {
+		container.runDetached = runDetached.(bool)
+	} else {
+		container.runDetached = true
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
@@ -119,7 +126,7 @@ func (c *Container) getContainerWorkDir() (res string) {
 }
 
 func (c *Container) getContainerArguments() string {
-	args := "--cap-add=all --privileged --network host --rm"
+	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host --rm"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	args += " --name " + c.name + " " + c.image
@@ -139,19 +146,38 @@ func (c *Container) start() error {
 	return exechelper.Run(cmd)
 }
 
-func (c *Container) run() error {
+func (c *Container) prepareCommand() (string, error) {
 	if c.name == "" {
-		return fmt.Errorf("run container failed: name is blank")
+		return "", fmt.Errorf("run container failed: name is blank")
 	}
 
-	cmd := "docker run -d " + c.getContainerArguments()
+	cmd := "docker run "
+	if c.runDetached {
+		cmd += " -d"
+	}
+	cmd += " " + c.getContainerArguments()
+
 	c.suite.log(cmd)
-	err := exechelper.Run(cmd)
+	return cmd, nil
+}
+
+func (c *Container) combinedOutput() (string, error) {
+	cmd, err := c.prepareCommand()
 	if err != nil {
-		return fmt.Errorf("container run failed: %s", err)
+		return "", err
 	}
 
-	return nil
+	byteOutput, err := exechelper.CombinedOutput(cmd)
+	return string(byteOutput), err
+}
+
+func (c *Container) run() error {
+	cmd, err := c.prepareCommand()
+	if err != nil {
+		return err
+	}
+
+	return exechelper.Run(cmd)
 }
 
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {

@@ -16,3 +16,11 @@ containers:
         is-default-work-dir: true
     image: "hs-test/nginx-ldp"
     is-optional: true
+  - name: "ab"
+    image: "jordi/ab"
+    is-optional: true
+    run-detached: false
+  - name: "wrk"
+    image: "skandyla/wrk"
+    is-optional: true
+    run-detached: false
