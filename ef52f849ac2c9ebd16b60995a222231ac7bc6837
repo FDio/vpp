@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76ddf54f_4761e486",
+        "filename": "src/vpp-api/python/vpp_papi/tests/test_vpp_serializer.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-03-21T02:38:37Z",
+      "side": 1,
+      "message": "Did you intentionally leave out assertEqual(len(b), size) for the new tests?",
+      "range": {
+        "startLine": 433,
+        "startChar": 8,
+        "endLine": 433,
+        "endChar": 35
+      },
+      "revId": "ef52f849ac2c9ebd16b60995a222231ac7bc6837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
