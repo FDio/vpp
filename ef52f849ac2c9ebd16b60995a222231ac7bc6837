@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f1ab4a7_6484775f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-03-21T08:37:24Z",
+      "side": 1,
+      "message": "didn’t notice unresolved comment, will wait for Dave to merge ",
+      "revId": "ef52f849ac2c9ebd16b60995a222231ac7bc6837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "76ddf54f_4761e486",
