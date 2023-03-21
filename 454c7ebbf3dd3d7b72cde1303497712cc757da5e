@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d269b458_afda0913",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Just for consistency, declare rv at the start of the function.",
+      "range": {
+        "startLine": 639,
+        "startChar": 2,
+        "endLine": 639,
+        "endChar": 9
+      },
+      "revId": "454c7ebbf3dd3d7b72cde1303497712cc757da5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

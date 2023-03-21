@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f1d84be_0575b5b3",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Let\u0027s make this a SESSION_DBG now that we have proper counters",
+      "range": {
+        "startLine": 108,
+        "startChar": 6,
+        "endLine": 108,
+        "endChar": 51
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ecc542a3_518fdcf0",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Just errors, to avoid confusion with binary api errors",
+      "range": {
+        "startLine": 45,
+        "startChar": 6,
+        "endLine": 45,
+        "endChar": 10
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93b5267a_0a471959",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Still need this? Maybe just move the check in caller?",
+      "range": {
+        "startLine": 185,
+        "startChar": 1,
+        "endLine": 185,
+        "endChar": 41
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6830275_8dac6c0a",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 746,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "As per above, let\u0027s drop api here.",
+      "range": {
+        "startLine": 746,
+        "startChar": 20,
+        "endLine": 746,
+        "endChar": 24
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57e87f43_88f19486",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 755,
+        "startChar": 13,
+        "endLine": 755,
+        "endChar": 17
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14249adf_f02f671b",
+        "filename": "src/vnet/session/session_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 893,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Do we still have these?",
+      "range": {
+        "startLine": 892,
+        "startChar": 0,
+        "endLine": 893,
+        "endChar": 71
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ff410e6_e391dd64",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Oh well, let\u0027s just pass wrk from caller ...",
+      "range": {
+        "startLine": 213,
+        "startChar": 33,
+        "endLine": 213,
+        "endChar": 36
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb24e806_4653ca7c",
+        "filename": "src/vnet/session/session_rules_table.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "Keep the bin api return code here.",
+      "range": {
+        "startLine": 402,
+        "startChar": 0,
+        "endLine": 402,
+        "endChar": 4
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb93d80a_080d3382",
+        "filename": "src/vnet/session/session_rules_table.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-03-21T19:53:37Z",
+      "side": 1,
+      "message": "ditto",
+      "range": {
+        "startLine": 513,
+        "startChar": 11,
+        "endLine": 513,
+        "endChar": 28
+      },
+      "revId": "291bb223802ee65e4bb592096d4bdbc7d72d820d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
