@@ -294,6 +294,7 @@ add_vpp_executable(test_infra
   test/test.c
   ${test_files}
   LINK_LIBRARIES vppinfra
+  NO_INSTALL
 )
 
 vpp_library_set_multiarch_sources(test_infra
