@@ -1714,19 +1714,6 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   return 0;
 }
 
-static void
-vl_api_application_tls_cert_add_t_handler (
-  vl_api_application_tls_cert_add_t *mp)
-{
-  /* deprecated */
-}
-
-static void
-vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *mp)
-{
-  /* deprecated */
-}
-
 #include <vnet/session/session.api.c>
 static clib_error_t *
 session_api_hookup (vlib_main_t *vm)
