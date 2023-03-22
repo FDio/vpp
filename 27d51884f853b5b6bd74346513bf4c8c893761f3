@@ -16,6 +16,23 @@
       "message": "this is a silent change of API behavior \nfor which we have been \ndinged multiple times - \nit will break all the clients using this api… \nespecially if the current behavior might be used by downstream clients - and from what I am seeing these APIs are not marked as experimental - so to me it is a violation of our api compatibility…\n\nthis should be discussed further first…",
       "revId": "27d51884f853b5b6bd74346513bf4c8c893761f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7285cfc8_b1d1d390",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-03-22T13:18:51Z",
+      "side": 1,
+      "message": "to clarify: my -2 is temporary to ensure we discuss this on the list. With release manager hat on, it looks like a \"breaking fix\" that at most can go into master - and even then (because the APIs are not marked as \"experimental\" violates our commitments to users...)",
+      "revId": "27d51884f853b5b6bd74346513bf4c8c893761f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
