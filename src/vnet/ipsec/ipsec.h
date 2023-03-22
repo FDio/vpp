@@ -64,7 +64,7 @@ typedef union
     ip4_address_t ip4_src_addr;
     ip4_address_t ip4_dest_addr;
     ipsec_spd_policy_type_t policy_type;
-    u8 pad[4];
+    u32 spi;
   }; // 16 bytes total
   ipsec4_hash_kv_16_8_t kv_16_8;
 } ipsec4_inbound_spd_tuple_t;

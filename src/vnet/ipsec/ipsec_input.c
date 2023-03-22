@@ -76,6 +76,7 @@ format_ipsec_input_trace (u8 * s, va_list * args)
 
 always_inline void
 ipsec4_input_spd_add_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
+				       u32 spi,
 				       ipsec_spd_policy_type_t policy_type,
 				       u32 pol_id)
 {
@@ -122,6 +123,7 @@ ipsec4_input_spd_add_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
 
 always_inline ipsec_policy_t *
 ipsec4_input_spd_find_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
+					u32 spi,
 					ipsec_spd_policy_type_t policy_type)
 {
   ipsec_policy_t *p = NULL;
@@ -129,7 +131,8 @@ ipsec4_input_spd_find_flow_cache_entry (ipsec_main_t *im, u32 sa, u32 da,
   u64 hash;
   ipsec4_inbound_spd_tuple_t ip4_tuple = { .ip4_src_addr = (ip4_address_t) sa,
 					   .ip4_dest_addr = (ip4_address_t) da,
-					   .policy_type = policy_type };
+					   .policy_type = policy_type,
+					   .spi = spi };
 
   hash = ipsec4_hash_16_8 (&ip4_tuple.kv_16_8);
   hash &= (im->ipsec4_in_spd_hash_num_buckets - 1);
@@ -204,7 +207,8 @@ ipsec_input_policy_match (ipsec_spd_t *spd, u32 sa, u32 da,
     if (im->input_flow_cache_flag)
       {
 	/* Add an Entry in Flow cache */
-	ipsec4_input_spd_add_flow_cache_entry (im, sa, da, policy_type, *i);
+	ipsec4_input_spd_add_flow_cache_entry (im, sa, da, ~0, policy_type,
+					       *i);
       }
     return p;
   }
@@ -255,7 +259,7 @@ ipsec_input_protect_policy_match (ipsec_spd_t *spd, u32 sa, u32 da, u32 spi)
       {
 	/* Add an Entry in Flow cache */
 	ipsec4_input_spd_add_flow_cache_entry (
-	  im, sa, da, IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT, *i);
+	  im, sa, da, spi, IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT, *i);
       }
 
     return p;
@@ -398,6 +402,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		clib_net_to_host_u32 (esp0->spi),
 		IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
 	    }
 
@@ -447,7 +452,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  else if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		im, ip0->src_address.as_u32, ip0->dst_address.as_u32, ~0,
 		IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
 	    }
 
@@ -490,7 +495,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	    if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		im, ip0->src_address.as_u32, ip0->dst_address.as_u32, ~0,
 		IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
 	    }
 
@@ -559,6 +564,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
 		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		clib_net_to_host_u32 (ah0->spi),
 		IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
 	    }
 
@@ -597,7 +603,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		im, ip0->src_address.as_u32, ip0->dst_address.as_u32, ~0,
 		IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
 	    }
 
@@ -629,7 +635,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  if (search_flow_cache)
 	    {
 	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+		im, ip0->src_address.as_u32, ip0->dst_address.as_u32, ~0,
 		IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
 	    }
 
