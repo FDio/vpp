@@ -179,6 +179,8 @@ reconnect:
       for (i = 0; i < vec_len (dir); i++)
 	{
 	  char *n = stat_segment_index_to_name (dir[i]);
+	  if (!n)
+	    continue;
 	  printf ("%s\n", n);
 	  free (n);
 	}
