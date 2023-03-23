@@ -89,7 +89,7 @@
  * u8x16 Hi[4];
  * ghash_precompute (H, Hi, 4);
  *
- * ghash_data_t _gd, *gd = &_gd;
+ * ghash_ctx_t _gd, *gd = &_gd;
  * ghash_mul_first (gd, GH ^ b0, Hi[3]);
  * ghash_mul_next (gd, b1, Hi[2]);
  * ghash_mul_next (gd, b2, Hi[1]);
@@ -154,7 +154,7 @@ typedef struct
   u8x32 hi2, lo2, mid2, tmp_lo2, tmp_hi2;
   u8x64 hi4, lo4, mid4, tmp_lo4, tmp_hi4;
   int pending;
-} ghash_data_t;
+} ghash_ctx_t;
 
 static const u8x16 ghash_poly = {
   0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -167,7 +167,7 @@ static const u8x16 ghash_poly2 = {
 };
 
 static_always_inline void
-ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
+ghash_mul_first (ghash_ctx_t *gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
   gd->hi = gmul_hi_hi (a, b);
@@ -182,7 +182,7 @@ ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
 }
 
 static_always_inline void
-ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
+ghash_mul_next (ghash_ctx_t *gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
   u8x16 hi = gmul_hi_hi (a, b);
@@ -211,7 +211,7 @@ ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
 }
 
 static_always_inline void
-ghash_reduce (ghash_data_t * gd)
+ghash_reduce (ghash_ctx_t *gd)
 {
   u8x16 r;
 
@@ -236,14 +236,14 @@ ghash_reduce (ghash_data_t * gd)
 }
 
 static_always_inline void
-ghash_reduce2 (ghash_data_t * gd)
+ghash_reduce2 (ghash_ctx_t *gd)
 {
   gd->tmp_lo = gmul_lo_lo (ghash_poly2, gd->lo);
   gd->tmp_hi = gmul_lo_hi (ghash_poly2, gd->lo);
 }
 
 static_always_inline u8x16
-ghash_final (ghash_data_t * gd)
+ghash_final (ghash_ctx_t *gd)
 {
   return u8x16_xor3 (gd->hi, u8x16_word_shift_right (gd->tmp_lo, 4),
 		     u8x16_word_shift_left (gd->tmp_hi, 4));
@@ -252,7 +252,7 @@ ghash_final (ghash_data_t * gd)
 static_always_inline u8x16
 ghash_mul (u8x16 a, u8x16 b)
 {
-  ghash_data_t _gd, *gd = &_gd;
+  ghash_ctx_t _gd, *gd = &_gd;
   ghash_mul_first (gd, a, b);
   ghash_reduce (gd);
   ghash_reduce2 (gd);
@@ -297,7 +297,7 @@ gmul4_hi_hi (u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-ghash4_mul_first (ghash_data_t *gd, u8x64 a, u8x64 b)
+ghash4_mul_first (ghash_ctx_t *gd, u8x64 a, u8x64 b)
 {
   gd->hi4 = gmul4_hi_hi (a, b);
   gd->lo4 = gmul4_lo_lo (a, b);
@@ -306,7 +306,7 @@ ghash4_mul_first (ghash_data_t *gd, u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-ghash4_mul_next (ghash_data_t *gd, u8x64 a, u8x64 b)
+ghash4_mul_next (ghash_ctx_t *gd, u8x64 a, u8x64 b)
 {
   u8x64 hi = gmul4_hi_hi (a, b);
   u8x64 lo = gmul4_lo_lo (a, b);
@@ -329,7 +329,7 @@ ghash4_mul_next (ghash_data_t *gd, u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-ghash4_reduce (ghash_data_t *gd)
+ghash4_reduce (ghash_ctx_t *gd)
 {
   u8x64 r;
 
@@ -356,14 +356,14 @@ ghash4_reduce (ghash_data_t *gd)
 }
 
 static_always_inline void
-ghash4_reduce2 (ghash_data_t *gd)
+ghash4_reduce2 (ghash_ctx_t *gd)
 {
   gd->tmp_lo4 = gmul4_lo_lo (ghash4_poly2, gd->lo4);
   gd->tmp_hi4 = gmul4_lo_hi (ghash4_poly2, gd->lo4);
 }
 
 static_always_inline u8x16
-ghash4_final (ghash_data_t *gd)
+ghash4_final (ghash_ctx_t *gd)
 {
   u8x64 r;
   u8x32 t;
@@ -410,7 +410,7 @@ gmul2_hi_hi (u8x32 a, u8x32 b)
 }
 
 static_always_inline void
-ghash2_mul_first (ghash_data_t *gd, u8x32 a, u8x32 b)
+ghash2_mul_first (ghash_ctx_t *gd, u8x32 a, u8x32 b)
 {
   gd->hi2 = gmul2_hi_hi (a, b);
   gd->lo2 = gmul2_lo_lo (a, b);
@@ -419,7 +419,7 @@ ghash2_mul_first (ghash_data_t *gd, u8x32 a, u8x32 b)
 }
 
 static_always_inline void
-ghash2_mul_next (ghash_data_t *gd, u8x32 a, u8x32 b)
+ghash2_mul_next (ghash_ctx_t *gd, u8x32 a, u8x32 b)
 {
   u8x32 hi = gmul2_hi_hi (a, b);
   u8x32 lo = gmul2_lo_lo (a, b);
@@ -442,7 +442,7 @@ ghash2_mul_next (ghash_data_t *gd, u8x32 a, u8x32 b)
 }
 
 static_always_inline void
-ghash2_reduce (ghash_data_t *gd)
+ghash2_reduce (ghash_ctx_t *gd)
 {
   u8x32 r;
 
@@ -469,14 +469,14 @@ ghash2_reduce (ghash_data_t *gd)
 }
 
 static_always_inline void
-ghash2_reduce2 (ghash_data_t *gd)
+ghash2_reduce2 (ghash_ctx_t *gd)
 {
   gd->tmp_lo2 = gmul2_lo_lo (ghash2_poly2, gd->lo2);
   gd->tmp_hi2 = gmul2_lo_hi (ghash2_poly2, gd->lo2);
 }
 
 static_always_inline u8x16
-ghash2_final (ghash_data_t *gd)
+ghash2_final (ghash_ctx_t *gd)
 {
   u8x32 r;
 
