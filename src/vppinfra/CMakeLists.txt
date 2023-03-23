@@ -158,7 +158,6 @@ set(VPPINFRA_HEADERS
   os.h
   pcap.h
   pcap_funcs.h
-  pcg.h
   perfmon/perfmon.h
   pmalloc.h
   pool.h
