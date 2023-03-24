@@ -260,7 +260,7 @@ func (s *HstSuite) getTestId() string {
 	}
 
 	if _, ok := s.testIds[testName]; !ok {
-		s.testIds[testName] = time.Now().Format(time.RFC3339)
+		s.testIds[testName] = time.Now().Format("2006-01-02_15-04-05")
 	}
 
 	return s.testIds[testName]
