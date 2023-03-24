@@ -1885,7 +1885,7 @@ session_wrk_update_state (session_worker_t *wrk)
 
   if (wrk->state == SESSION_WRK_POLLING)
     {
-      if (clib_llist_elts (wrk->event_elts) == 4 &&
+      if (clib_llist_elts (wrk->event_elts) == 5 &&
 	  vlib_last_vectors_per_main_loop (vm) < 1)
 	{
 	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
@@ -1895,7 +1895,7 @@ session_wrk_update_state (session_worker_t *wrk)
     }
   else if (wrk->state == SESSION_WRK_INTERRUPT)
     {
-      if (clib_llist_elts (wrk->event_elts) > 4 ||
+      if (clib_llist_elts (wrk->event_elts) > 5 ||
 	  vlib_last_vectors_per_main_loop (vm) > 1)
 	{
 	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
