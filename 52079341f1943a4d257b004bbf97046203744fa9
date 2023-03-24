@@ -108,6 +108,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8e51b31d_dae95915",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-03-24T10:00:09Z",
+      "side": 1,
+      "message": "Sorry for the late reply. You are right. The implementation is ok - although I\u0027d say it is worth changing a bit since the code caused the confusion for me (maybe you as well) in the first place.\n\nring-\u003ehead should not be directly used as index - as the rest of vpp implementations, we shall use it to derive index number by mask it only.",
+      "parentUuid": "3d7b89a1_7c48e9d0",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "5f435ecd_a326cd0d",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 3
