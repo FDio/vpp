@@ -235,6 +235,7 @@ autoreply define nat44_ed_add_del_vrf_route {
 define nat44_ed_vrf_tables_dump {
   u32 client_index;
   u32 context;
+  option deprecated;
 };
 
 /** \brief NAT44-ED inter VRF NAT routing table details response
@@ -248,6 +249,31 @@ define nat44_ed_vrf_tables_details {
   u32 table_vrf_id;
   u32 n_vrf_ids;
   u32 vrf_ids[n_vrf_ids];
+  option deprecated;
+};
+
+/** \brief Dump NAT44-ED inter VRF NAT routing tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_vrf_tables_v2_dump {
+  u32 client_index;
+  u32 context;
+  option status="in_progress";
+};
+
+/** \brief NAT44-ED inter VRF NAT routing table details response
+    @param context - sender context, to match reply w/ request
+    @param table_vrf_id - id of the VRF NAT routing table
+    @param n_vrf_ids - number of vrf_ids
+    @param vrf_ids - ids of resolving destination (tx) VRFs
+*/
+define nat44_ed_vrf_tables_v2_details {
+  u32 context;
+  u32 table_vrf_id;
+  u32 n_vrf_ids;
+  u32 vrf_ids[n_vrf_ids];
+  option status="in_progress";
 };
 
 /** \brief Set TCP MSS rewriting configuration
