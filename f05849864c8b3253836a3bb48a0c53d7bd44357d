@@ -16,6 +16,24 @@
       "message": "The commit message is missing \u0027Type: docs\u0027 per https://github.com/FDio/vpp/blob/master/.git_commit_template.txt",
       "revId": "f05849864c8b3253836a3bb48a0c53d7bd44357d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8cae853c_e0f385e8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1162
+      },
+      "writtenOn": "2023-03-27T08:05:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3eaad4a0_cab0217e",
+      "revId": "f05849864c8b3253836a3bb48a0c53d7bd44357d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
