@@ -673,10 +673,6 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
       if (rv == 0)
 	return listen_session_get ((u32) kv4.value);
     }
-  else
-    {
-      kv4.key[0] = 0;
-    }
 
   /*
    * Zero out port and check if we have a proxy set up for our ip
@@ -685,6 +681,17 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
     return listen_session_get ((u32) kv4.value);
+
+  /*
+   * Zero out ip and check if we have a catch all proxy
+   */
+  if (use_wildcard)
+    {
+      kv4.key[0] = 0;
+      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+      if (rv == 0)
+	return listen_session_get ((u32) kv4.value);
+    }
 
   return 0;
 }
