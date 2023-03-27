@@ -256,6 +256,23 @@
       "message": "perftest-3n-icx  nic_intel-xxv710ANDipsecswANDfastpathANDtnl_40000ANDdrv_vfio_pciANDndrpdrAND64b",
       "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c0dc990_3a772cc0",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-03-27T12:19:55Z",
+      "side": 1,
+      "message": "Here VPP will be create sessions for each cmt-cryptodev_inst, but only the last session will be known and also save inside:\nckey-\u003ekeys[numa_node][CRYPTODEV_OP_TYPE_ENCRYPT] \u003d sessions[CRYPTODEV_OP_TYPE_ENCRYPT];\nso it\u0027s means that for another sessions vpp lost pointers and won\u0027t be able to freed these sessions inside function \"cryptodev_session_del()\" - memory leak?",
+      "revId": "178ab38b8310f272fcac214dd3786759c1fa4422",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
