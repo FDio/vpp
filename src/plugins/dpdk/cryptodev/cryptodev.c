@@ -336,7 +336,7 @@ allocate_session_pools (u32 numa_node,
   u8 *name;
   clib_error_t *error = NULL;
 
-  name = format (0, "vcryptodev_sess_pool_%u_%u\n", numa_node, len);
+  name = format (0, "vcrypto_sess_pool_%u_%04x%c", numa_node, len, 0);
   sess_pools_elt->sess_pool = rte_cryptodev_sym_session_pool_create (
     (char *) name, CRYPTODEV_NB_SESSION, 0, 0, 0, numa_node);
 
@@ -347,7 +347,7 @@ allocate_session_pools (u32 numa_node,
     }
   vec_free (name);
 
-  name = format (0, "cryptodev_sess_pool_%u_%u\n", numa_node, len);
+  name = format (0, "crypto_sess_pool_%u_%04x%c", numa_node, len, 0);
   sess_pools_elt->sess_priv_pool = rte_mempool_create (
     (char *) name, CRYPTODEV_NB_SESSION * (cmt->drivers_cnt), cmt->sess_sz, 0,
     0, NULL, NULL, NULL, NULL, numa_node, 0);
