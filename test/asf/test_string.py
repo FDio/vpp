@@ -50,7 +50,7 @@ class TestString(VppTestCase):
         ]
 
         for name in names:
-            error = self.vapi.cli("test string " + name)
+            error = self.vapi.cli("test crash")
             if error.find("failed") != -1:
                 self.logger.critical("FAILURE in the " + name + " test")
                 self.assertNotIn("failed", error)
