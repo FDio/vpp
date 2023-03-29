@@ -34,7 +34,7 @@
   _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
   _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                    \
   _ (COOKIE_SEND, "Failed during sending Cookie")                             \
-  _ (TOO_BIG, "Packet too big")                                               \
+  _ (NO_BUFFERS, "No buffers")                                                \
   _ (UNDEFINED, "Undefined error")                                            \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
 
@@ -340,6 +340,7 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
 {
   next[0] = WG_INPUT_NEXT_PUNT;
   noise_keypair_t *kp;
+  vlib_buffer_t *lb;
 
   if ((kp = wg_get_active_keypair (&peer->remote, data->receiver_index)) ==
       NULL)
@@ -350,11 +351,16 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
       return -1;
     }
 
-  u16 encr_len = b->current_length - sizeof (message_data_t);
+  lb = b;
+  /* Find last buffer in the chain */
+  while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+    lb = vlib_get_buffer (vm, lb->next_buffer);
+
+  u16 encr_len = vlib_buffer_length_in_chain (vm, b) - sizeof (message_data_t);
   u16 decr_len = encr_len - NOISE_AUTHTAG_LEN;
 
   vlib_buffer_advance (b, sizeof (message_data_t));
-  b->current_length = decr_len;
+  vlib_buffer_chain_increase_length (b, lb, -NOISE_AUTHTAG_LEN);
   vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
 
   /* Keepalive packet has zero length */
@@ -433,9 +439,75 @@ wg_input_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 }
 
+static_always_inline void
+wg_input_process_chained_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vnet_crypto_op_t *ops, vlib_buffer_t *b[],
+			      u16 *nexts, vnet_crypto_op_chunk_t *chunks,
+			      u16 drop_next)
+{
+  u32 n_fail, n_ops = vec_len (ops);
+  vnet_crypto_op_t *op = ops;
+
+  if (n_ops == 0)
+    return;
+
+  n_fail = n_ops - vnet_crypto_process_chained_ops (vm, op, chunks, n_ops);
+
+  while (n_fail)
+    {
+      ASSERT (op - ops < n_ops);
+
+      if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	{
+	  u32 bi = op->user_data;
+	  b[bi]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
+	  nexts[bi] = drop_next;
+	  n_fail--;
+	}
+      op++;
+    }
+}
+
+static_always_inline void
+wg_input_chain_crypto (vlib_main_t *vm, wg_per_thread_data_t *ptd,
+		       vlib_buffer_t *b, vlib_buffer_t *lb, u8 *start,
+		       u32 start_len, u16 *n_ch)
+{
+  vnet_crypto_op_chunk_t *ch;
+  vlib_buffer_t *cb = b;
+  u32 n_chunks = 1;
+
+  vec_add2 (ptd->chunks, ch, 1);
+  ch->len = start_len;
+  ch->src = ch->dst = start;
+  cb = vlib_get_buffer (vm, cb->next_buffer);
+
+  while (1)
+    {
+      vec_add2 (ptd->chunks, ch, 1);
+      n_chunks += 1;
+      if (lb == cb)
+	ch->len = cb->current_length - NOISE_AUTHTAG_LEN;
+      else
+	ch->len = cb->current_length;
+
+      ch->src = ch->dst = vlib_buffer_get_current (cb);
+
+      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+
+      cb = vlib_get_buffer (vm, cb->next_buffer);
+    }
+
+  if (n_ch)
+    *n_ch = n_chunks;
+}
+
 always_inline void
-wg_prepare_sync_dec_op (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
-			u8 *src, u32 src_len, u8 *dst, u8 *aad, u32 aad_len,
+wg_prepare_sync_dec_op (vlib_main_t *vm, wg_per_thread_data_t *ptd,
+			vlib_buffer_t *b, vlib_buffer_t *lb,
+			vnet_crypto_op_t **crypto_ops, u8 *src, u32 src_len,
+			u8 *dst, u8 *aad, u32 aad_len,
 			vnet_crypto_key_index_t key_index, u32 bi, u8 *iv)
 {
   vnet_crypto_op_t _op, *op = &_op;
@@ -445,16 +517,28 @@ wg_prepare_sync_dec_op (vlib_main_t *vm, vnet_crypto_op_t **crypto_ops,
   vnet_crypto_op_init (op, VNET_CRYPTO_OP_CHACHA20_POLY1305_DEC);
 
   op->tag_len = NOISE_AUTHTAG_LEN;
-  op->tag = src + src_len;
-  op->src = !src ? src_ : src;
-  op->len = src_len;
-  op->dst = dst;
+  op->tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
   op->key_index = key_index;
   op->aad = aad;
   op->aad_len = aad_len;
   op->iv = iv;
   op->user_data = bi;
   op->flags |= VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+
+  if (b != lb)
+    {
+      /* Chained buffers */
+      op->flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+      op->chunk_index = vec_len (ptd->chunks);
+      wg_input_chain_crypto (vm, ptd, b, lb, src, src_len + NOISE_AUTHTAG_LEN,
+			     &op->n_chunks);
+    }
+  else
+    {
+      op->src = !src ? src_ : src;
+      op->len = src_len;
+      op->dst = dst;
+    }
 }
 
 static_always_inline void
@@ -485,10 +569,10 @@ static_always_inline enum noise_state_crypt
 wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 		  vnet_crypto_op_t **crypto_ops,
 		  vnet_crypto_async_frame_t **async_frame, vlib_buffer_t *b,
-		  u32 buf_idx, noise_remote_t *r, uint32_t r_idx,
-		  uint64_t nonce, uint8_t *src, size_t srclen, uint8_t *dst,
-		  u32 from_idx, u8 *iv, f64 time, u8 is_async,
-		  u16 async_next_node)
+		  vlib_buffer_t *lb, u32 buf_idx, noise_remote_t *r,
+		  uint32_t r_idx, uint64_t nonce, uint8_t *src, size_t srclen,
+		  size_t srclen_total, uint8_t *dst, u32 from_idx, u8 *iv,
+		  f64 time, u8 is_async, u16 async_next_node)
 {
   noise_keypair_t *kp;
   enum noise_state_crypt ret = SC_FAILED;
@@ -516,6 +600,12 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 
   if (is_async)
     {
+      u8 flags = VNET_CRYPTO_OP_FLAG_HMAC_CHECK;
+      u8 *tag = vlib_buffer_get_tail (lb) - NOISE_AUTHTAG_LEN;
+
+      if (b != lb)
+	flags |= VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+
       if (NULL == *async_frame ||
 	  vnet_crypto_async_frame_is_full (*async_frame))
 	{
@@ -525,14 +615,14 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 	  vec_add1 (ptd->async_frames, *async_frame);
 	}
 
-      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen,
-			     src - b->data, buf_idx, async_next_node, iv,
-			     src + srclen, VNET_CRYPTO_OP_FLAG_HMAC_CHECK);
+      wg_input_add_to_frame (vm, *async_frame, kp->kp_recv_index, srclen_total,
+			     src - b->data, buf_idx, async_next_node, iv, tag,
+			     flags);
     }
   else
     {
-      wg_prepare_sync_dec_op (vm, crypto_ops, src, srclen, dst, NULL, 0,
-			      kp->kp_recv_index, from_idx, iv);
+      wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst,
+			      NULL, 0, kp->kp_recv_index, from_idx, iv);
     }
 
   /* If we've received the handshake confirming data packet then move the
@@ -605,8 +695,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left_from = frame->n_vectors;
 
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  vlib_buffer_t *lb;
   u32 thread_index = vm->thread_index;
-  vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
+  vnet_crypto_op_t **crypto_ops;
   const u16 drop_next = WG_INPUT_NEXT_PUNT;
   message_type_t header_type;
   vlib_buffer_t *data_bufs[VLIB_FRAME_SIZE];
@@ -620,6 +711,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   vec_reset_length (ptd->crypto_ops);
+  vec_reset_length (ptd->chained_crypto_ops);
+  vec_reset_length (ptd->chunks);
   vec_reset_length (ptd->async_frames);
 
   f64 time = clib_time_now (&vm->clib_time) + vm->time_offset;
@@ -655,6 +748,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  message_data_t *data = vlib_buffer_get_current (b[0]);
 	  u8 *iv_data = b[0]->pre_data;
 	  u32 buf_idx = from[b - bufs];
+	  u32 n_bufs;
 	  peer_idx = wg_index_table_lookup (&wmp->index_table,
 					    data->receiver_index);
 
@@ -701,21 +795,63 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto next;
 	    }
 
-	  u16 encr_len = b[0]->current_length - sizeof (message_data_t);
-	  u16 decr_len = encr_len - NOISE_AUTHTAG_LEN;
-	  if (PREDICT_FALSE (decr_len >= WG_DEFAULT_DATA_SIZE))
+	  lb = b[0];
+	  n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
+	  if (n_bufs == 0)
 	    {
-	      b[0]->error = node->errors[WG_INPUT_ERROR_TOO_BIG];
+	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
+	      b[0]->error = node->errors[WG_INPUT_ERROR_NO_BUFFERS];
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
 	      goto out;
 	    }
 
-	  enum noise_state_crypt state_cr = wg_input_process (
-	    vm, ptd, crypto_ops, &async_frame, b[0], buf_idx, &peer->remote,
-	    data->receiver_index, data->counter, data->encrypted_data,
-	    decr_len, data->encrypted_data, n_data, iv_data, time, is_async,
-	    async_next_node);
+	  if (n_bufs > 1)
+	    {
+	      vlib_buffer_t *before_last = b[0];
+
+	      /* Find last and before last buffer in the chain */
+	      while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  before_last = lb;
+		  lb = vlib_get_buffer (vm, lb->next_buffer);
+		}
+
+	      /* Ensure auth tag is contiguous and not splitted into two last
+	       * buffers */
+	      if (PREDICT_FALSE (lb->current_length < NOISE_AUTHTAG_LEN))
+		{
+		  u32 len_diff = NOISE_AUTHTAG_LEN - lb->current_length;
+
+		  before_last->current_length -= len_diff;
+		  if (before_last == b[0])
+		    before_last->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+
+		  vlib_buffer_advance (lb, (signed) -len_diff);
+
+		  clib_memcpy_fast (vlib_buffer_get_current (lb),
+				    vlib_buffer_get_tail (before_last),
+				    len_diff);
+		}
+	    }
+
+	  u16 encr_len = b[0]->current_length - sizeof (message_data_t);
+	  u16 decr_len = encr_len - NOISE_AUTHTAG_LEN;
+	  u16 encr_len_total =
+	    vlib_buffer_length_in_chain (vm, b[0]) - sizeof (message_data_t);
+	  u16 decr_len_total = encr_len_total - NOISE_AUTHTAG_LEN;
+
+	  if (lb != b[0])
+	    crypto_ops = &ptd->chained_crypto_ops;
+	  else
+	    crypto_ops = &ptd->crypto_ops;
+
+	  enum noise_state_crypt state_cr =
+	    wg_input_process (vm, ptd, crypto_ops, &async_frame, b[0], lb,
+			      buf_idx, &peer->remote, data->receiver_index,
+			      data->counter, data->encrypted_data, decr_len,
+			      decr_len_total, data->encrypted_data, n_data,
+			      iv_data, time, is_async, async_next_node);
 
 	  if (PREDICT_FALSE (state_cr == SC_FAILED))
 	    {
@@ -796,6 +932,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   /* decrypt packets */
   wg_input_process_ops (vm, node, ptd->crypto_ops, data_bufs, data_nexts,
 			drop_next);
+  wg_input_process_chained_ops (vm, node, ptd->chained_crypto_ops, data_bufs,
+				data_nexts, ptd->chunks, drop_next);
 
   /* process after decryption */
   b = data_bufs;
