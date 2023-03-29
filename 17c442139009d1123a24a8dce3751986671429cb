@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "017f2d03_2e734b82",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-03-29T13:30:33Z",
+      "side": 1,
+      "message": "consider cryptodev_sp_%u_%04x%c",
+      "revId": "17c442139009d1123a24a8dce3751986671429cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
