@@ -19,13 +19,8 @@ from framework import (
     VppTestCase,
     get_testcase_doc_name,
     get_test_description,
-    PASS,
-    FAIL,
-    ERROR,
-    SKIP,
-    TEST_RUN,
-    SKIP_CPU_SHORTAGE,
 )
+from test_result_code import TestResultCode
 from debug import spawn_gdb
 from log import (
     get_parallel_logger,
@@ -70,12 +65,8 @@ StreamQueueManager.register("StreamQueue", StreamQueue)
 class TestResult(dict):
     def __init__(self, testcase_suite, testcases_by_id=None):
         super(TestResult, self).__init__()
-        self[PASS] = []
-        self[FAIL] = []
-        self[ERROR] = []
-        self[SKIP] = []
-        self[SKIP_CPU_SHORTAGE] = []
-        self[TEST_RUN] = []
+        for trc in list(TestResultCode):
+            self[trc] = []
         self.crashed = False
         self.testcase_suite = testcase_suite
         self.testcases = [testcase for testcase in testcase_suite]
@@ -83,13 +74,19 @@ class TestResult(dict):
 
     def was_successful(self):
         return (
-            0 == len(self[FAIL]) == len(self[ERROR])
-            and len(self[PASS] + self[SKIP] + self[SKIP_CPU_SHORTAGE])
+            0
+            == len(self[TestResultCode.FAIL])
+            == len(self[TestResultCode.ERROR])
+            == len(self[TestResultCode.UNEXPECTED_PASS])
+            and len(self[TestResultCode.PASS])
+            + len(self[TestResultCode.SKIP])
+            + len(self[TestResultCode.SKIP_CPU_SHORTAGE])
+            + len(self[TestResultCode.EXPECTED_FAIL])
             == self.testcase_suite.countTestCases()
         )
 
     def no_tests_run(self):
-        return 0 == len(self[TEST_RUN])
+        return 0 == len(self[TestResultCode.TEST_RUN])
 
     def process_result(self, test_id, result):
         self[result].append(test_id)
@@ -98,7 +95,13 @@ class TestResult(dict):
         rerun_ids = set([])
         for testcase in self.testcase_suite:
             tc_id = testcase.id()
-            if tc_id not in self[PASS] + self[SKIP] + self[SKIP_CPU_SHORTAGE]:
+            if (
+                tc_id
+                not in self[TestResultCode.PASS]
+                + self[TestResultCode.SKIP]
+                + self[TestResultCode.SKIP_CPU_SHORTAGE]
+                + self[TestResultCode.EXPECTED_FAIL]
+            ):
                 rerun_ids.add(tc_id)
         if rerun_ids:
             return suite_from_failed(self.testcase_suite, rerun_ids)
@@ -518,7 +521,7 @@ def run_forked(testcase_suites):
                         pass
                     wrapped_testcase_suite.result.crashed = True
                     wrapped_testcase_suite.result.process_result(
-                        wrapped_testcase_suite.last_test_id, ERROR
+                        wrapped_testcase_suite.last_test_id, TestResultCode.ERROR
                     )
                     stop_run = (
                         process_finished_testsuite(
@@ -735,20 +738,15 @@ class AllResults(dict):
         super(AllResults, self).__init__()
         self.all_testcases = 0
         self.results_per_suite = []
-        self[PASS] = 0
-        self[FAIL] = 0
-        self[ERROR] = 0
-        self[SKIP] = 0
-        self[SKIP_CPU_SHORTAGE] = 0
-        self[TEST_RUN] = 0
+        for trc in list(TestResultCode):
+            self[trc] = 0
         self.rerun = []
         self.testsuites_no_tests_run = []
 
     def add_results(self, result):
         self.results_per_suite.append(result)
-        result_types = [PASS, FAIL, ERROR, SKIP, TEST_RUN, SKIP_CPU_SHORTAGE]
-        for result_type in result_types:
-            self[result_type] += len(result[result_type])
+        for trc in list(TestResultCode):
+            self[trc] += len(result[trc])
 
     def add_result(self, result):
         retval = 0
@@ -785,19 +783,29 @@ class AllResults(dict):
         indent_results(
             [
                 f"Scheduled tests: {self.all_testcases}",
-                f"Executed tests: {self[TEST_RUN]}",
-                f"Passed tests: {colorize(self[PASS], GREEN)}",
-                f"Skipped tests: {colorize(self[SKIP], YELLOW)}"
-                if self[SKIP]
+                f"Executed tests: {self[TestResultCode.TEST_RUN]}",
+                f"Passed tests: {colorize(self[TestResultCode.PASS], GREEN)}",
+                f"Expected failures: {colorize(self[TestResultCode.EXPECTED_FAIL], GREEN)}"
+                if self[TestResultCode.EXPECTED_FAIL]
+                else None,
+                f"Skipped tests: {colorize(self[TestResultCode.SKIP], YELLOW)}"
+                if self[TestResultCode.SKIP]
                 else None,
                 f"Not Executed tests: {colorize(self.not_executed, RED)}"
                 if self.not_executed
                 else None,
-                f"Failures: {colorize(self[FAIL], RED)}" if self[FAIL] else None,
-                f"Errors: {colorize(self[ERROR], RED)}" if self[ERROR] else None,
+                f"Failures: {colorize(self[TestResultCode.FAIL], RED)}"
+                if self[TestResultCode.FAIL]
+                else None,
+                f"Unexpected passes: {colorize(self[TestResultCode.UNEXPECTED_PASS], RED)}"
+                if self[TestResultCode.UNEXPECTED_PASS]
+                else None,
+                f"Errors: {colorize(self[TestResultCode.ERROR], RED)}"
+                if self[TestResultCode.ERROR]
+                else None,
                 "Tests skipped due to lack of CPUS: "
-                f"{colorize(self[SKIP_CPU_SHORTAGE], YELLOW)}"
-                if self[SKIP_CPU_SHORTAGE]
+                f"{colorize(self[TestResultCode.SKIP_CPU_SHORTAGE], YELLOW)}"
+                if self[TestResultCode.SKIP_CPU_SHORTAGE]
                 else None,
             ]
         )
@@ -805,43 +813,28 @@ class AllResults(dict):
         if self.all_failed > 0:
             print("FAILURES AND ERRORS IN TESTS:")
             for result in self.results_per_suite:
-                failed_testcase_ids = result[FAIL]
-                errored_testcase_ids = result[ERROR]
                 old_testcase_name = None
-                if failed_testcase_ids:
-                    for failed_test_id in failed_testcase_ids:
+                for tr_code, headline in (
+                    (TestResultCode.FAIL, "FAILURE"),
+                    (TestResultCode.ERROR, "ERROR"),
+                    (TestResultCode.UNEXPECTED_PASS, "UNEXPECTED PASS"),
+                ):
+                    if not result[tr_code]:
+                        continue
+
+                    for failed_test_id in result[tr_code]:
                         new_testcase_name, test_name = result.get_testcase_names(
                             failed_test_id
                         )
                         if new_testcase_name != old_testcase_name:
                             print(
-                                "  Testcase name: {}".format(
-                                    colorize(new_testcase_name, RED)
-                                )
+                                f"  Testcase name: {colorize(new_testcase_name, RED)}"
                             )
                             old_testcase_name = new_testcase_name
                         print(
-                            "    FAILURE: {} [{}]".format(
-                                colorize(test_name, RED), failed_test_id
-                            )
+                            f"    {headline}: {colorize(test_name, RED)} [{failed_test_id}]"
                         )
-                if errored_testcase_ids:
-                    for errored_test_id in errored_testcase_ids:
-                        new_testcase_name, test_name = result.get_testcase_names(
-                            errored_test_id
-                        )
-                        if new_testcase_name != old_testcase_name:
-                            print(
-                                "  Testcase name: {}".format(
-                                    colorize(new_testcase_name, RED)
-                                )
-                            )
-                            old_testcase_name = new_testcase_name
-                        print(
-                            "      ERROR: {} [{}]".format(
-                                colorize(test_name, RED), errored_test_id
-                            )
-                        )
+
         if self.testsuites_no_tests_run:
             print("TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:")
             tc_classes = set()
@@ -851,7 +844,7 @@ class AllResults(dict):
             for tc_class in tc_classes:
                 print("  {}".format(colorize(tc_class, RED)))
 
-        if self[SKIP_CPU_SHORTAGE]:
+        if self[TestResultCode.SKIP_CPU_SHORTAGE]:
             print()
             print(
                 colorize(
@@ -865,11 +858,15 @@ class AllResults(dict):
 
     @property
     def not_executed(self):
-        return self.all_testcases - self[TEST_RUN]
+        return self.all_testcases - self[TestResultCode.TEST_RUN]
 
     @property
     def all_failed(self):
-        return self[FAIL] + self[ERROR]
+        return (
+            self[TestResultCode.FAIL]
+            + self[TestResultCode.ERROR]
+            + self[TestResultCode.UNEXPECTED_PASS]
+        )
 
 
 def parse_results(results):
