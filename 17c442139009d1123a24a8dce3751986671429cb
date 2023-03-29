@@ -16,6 +16,24 @@
       "message": "consider cryptodev_sp_%u_%04x%c",
       "revId": "17c442139009d1123a24a8dce3751986671429cb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb9c9017_e5836bb9",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-03-29T14:31:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "017f2d03_2e734b82",
+      "revId": "17c442139009d1123a24a8dce3751986671429cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
