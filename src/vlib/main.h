@@ -377,7 +377,13 @@ always_inline void
 vlib_panic_with_error (vlib_main_t * vm, clib_error_t * error)
 {
   vm->main_loop_error = error;
-  clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
+  if (vm->main_loop_exit_set)
+    clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
+  else
+    {
+      clib_warning ("panic: %U", format_clib_error, error);
+      abort ();
+    }
 }
 
 #define vlib_panic_with_msg(vm,args...) \
