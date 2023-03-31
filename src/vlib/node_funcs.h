@@ -1404,6 +1404,22 @@ vlib_frame_bitmap_init (uword *bmp, u32 n_first_bits_set)
 }
 
 static_always_inline void
+vlib_frame_bitmap_set_bit_at_index (uword *bmp, uword bit_index)
+{
+  bmp += bit_index / uword_bits;
+  bit_index %= uword_bits;
+  bmp[0] |= 1 << bit_index;
+}
+
+static_always_inline void
+_vlib_frame_bitmap_clear_bit_at_index (uword *bmp, uword bit_index)
+{
+  bmp += bit_index / uword_bits;
+  bit_index %= uword_bits;
+  bmp[0] &= ~((uword) 1 << bit_index);
+}
+
+static_always_inline void
 vlib_frame_bitmap_clear (uword *bmp)
 {
   u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
