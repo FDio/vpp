@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4af79af8_5ba5bd98",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2457
+      },
+      "writtenOn": "2023-04-03T10:05:53Z",
+      "side": 1,
+      "message": "csit-3n-alt-perftest 1cAND64bANDmrrANDxl710ANDdrv_vfio_pciANDethip4vxlan-l2bdbasemaclrn",
+      "revId": "c5ff2df25f4d08f7fb19c3843a2ad6f5d67dca86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
