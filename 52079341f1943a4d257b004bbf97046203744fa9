@@ -124,6 +124,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5803f942_95a77a65",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-04-03T08:45:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8e51b31d_dae95915",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5f435ecd_a326cd0d",
@@ -155,6 +173,24 @@
       "side": 1,
       "message": "Frame is not dropped, it is still on the ring and will be enqueued once there is a space for it. \nIt is feasible to enqueue frames partially and worth testing (I wouldn\u0027t expect big gains out of it though). Unfortunately it has to be done by someone else as I\u0027m no longer part of IPSec stack team.",
       "parentUuid": "5f435ecd_a326cd0d",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b11e6310_9bda1e6f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-04-03T08:45:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0c2f8eff_6d0b36cd",
       "revId": "52079341f1943a4d257b004bbf97046203744fa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
