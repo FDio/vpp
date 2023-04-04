@@ -794,12 +794,14 @@ ct_fwrk_flush_connects (void *rpc_args)
   ct_worker_t *wrk;
   u8 need_rpc;
 
-  fwrk_index = pointer_to_uword (rpc_args);
-  ASSERT (fwrk_index == cm->fwrk_thread);
+  fwrk_index = cm->fwrk_thread;
   n_workers = vec_len (cm->fwrk_pending_connects);
 
   for (thread_index = fwrk_index; thread_index < n_workers; thread_index++)
     {
+      if (!vec_len (cm->fwrk_pending_connects[thread_index]))
+	continue;
+
       wrk = ct_worker_get (thread_index);
 
       /* Connects can be done without worker barrier, grab dst worker lock */
