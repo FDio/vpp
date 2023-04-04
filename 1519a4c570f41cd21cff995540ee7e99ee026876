@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82b3457d_888fedd5",
+        "filename": "test/test_mpls.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-04-04T01:52:44Z",
+      "side": 1,
+      "message": "please don\u0027t use the CLI in the UT. maybe save the paths on line 1417 and then restore.",
+      "revId": "1519a4c570f41cd21cff995540ee7e99ee026876",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
