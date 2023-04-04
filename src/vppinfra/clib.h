@@ -197,6 +197,15 @@
   decl __attribute ((destructor));		\
   decl
 
+always_inline uword
+pow2_mask (uword x)
+{
+#ifdef __BMI2__
+  return _bzhi_u64 (-1ULL, x);
+#endif
+  return ((uword) 1 << x) - (uword) 1;
+}
+
 #include <vppinfra/bitops.h>
 
 always_inline uword
@@ -234,15 +243,6 @@ min_log2_u64 (u64 x)
       l += min_log2 (x);
       return l;
     }
-}
-
-always_inline uword
-pow2_mask (uword x)
-{
-#ifdef __BMI2__
-  return _bzhi_u64 (-1ULL, x);
-#endif
-  return ((uword) 1 << x) - (uword) 1;
 }
 
 always_inline uword

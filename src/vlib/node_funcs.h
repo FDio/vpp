@@ -1406,17 +1406,26 @@ vlib_frame_bitmap_init (uword *bmp, u32 n_first_bits_set)
 static_always_inline void
 vlib_frame_bitmap_set_bit_at_index (uword *bmp, uword bit_index)
 {
-  bmp += bit_index / uword_bits;
-  bit_index %= uword_bits;
-  bmp[0] |= 1 << bit_index;
+  uword_bitmap_set_bits_at_index (bmp, bit_index, 1);
 }
 
 static_always_inline void
 _vlib_frame_bitmap_clear_bit_at_index (uword *bmp, uword bit_index)
 {
-  bmp += bit_index / uword_bits;
-  bit_index %= uword_bits;
-  bmp[0] &= ~((uword) 1 << bit_index);
+  uword_bitmap_clear_bits_at_index (bmp, bit_index, 1);
+}
+
+static_always_inline void
+vlib_frame_bitmap_set_bits_at_index (uword *bmp, uword bit_index, uword n_bits)
+{
+  uword_bitmap_set_bits_at_index (bmp, bit_index, n_bits);
+}
+
+static_always_inline void
+vlib_frame_bitmap_clear_bits_at_index (uword *bmp, uword bit_index,
+				       uword n_bits)
+{
+  uword_bitmap_clear_bits_at_index (bmp, bit_index, n_bits);
 }
 
 static_always_inline void
@@ -1451,35 +1460,24 @@ vlib_frame_bitmap_and (uword *bmp, uword *bmp2)
     bmp++[0] &= bmp2++[0];
 }
 
-static_always_inline u32
+static_always_inline uword
 vlib_frame_bitmap_count_set_bits (uword *bmp)
 {
-  u32 n_left = VLIB_FRAME_BITMAP_N_UWORDS;
-  u32 count = 0;
-  while (n_left--)
-    count += count_set_bits (bmp++[0]);
-  return count;
+  return uword_bitmap_count_set_bits (bmp, VLIB_FRAME_BITMAP_N_UWORDS);
 }
 
 static_always_inline uword
 vlib_frame_bitmap_is_bit_set (uword *bmp, uword bit_index)
 {
-  bmp += bit_index / uword_bits;
-  bit_index %= uword_bits;
-  return (bmp[0] >> bit_index) & 1;
+  return uword_bitmap_is_bit_set (bmp, bit_index);
 }
 
-static_always_inline int
+static_always_inline uword
 vlib_frame_bitmap_find_first_set (uword *bmp)
 {
-  uword *b = bmp;
-  while (b[0] == 0)
-    {
-      ASSERT (b - bmp < VLIB_FRAME_BITMAP_N_UWORDS);
-      b++;
-    }
-
-  return (b - bmp) * uword_bits + get_lowest_set_bit_index (b[0]);
+  uword rv = uword_bitmap_find_first_set (bmp);
+  ASSERT (rv < VLIB_FRAME_BITMAP_N_UWORDS * uword_bits);
+  return rv;
 }
 
 #define foreach_vlib_frame_bitmap_set_bit_index(i, v)                         \
