@@ -1615,10 +1615,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
 	    ed = ELOG_DATA (&vlib_global_main.elog_main, es);
 
-	  nm->data_from_advancing_timing_wheel =
-	    TW (tw_timer_expire_timers_vec)
-	    ((TWT (tw_timer_wheel) *) nm->timing_wheel, vlib_time_now (vm),
-	     nm->data_from_advancing_timing_wheel);
+	  TW (tw_timer_expire_timers)
+	  ((TWT (tw_timer_wheel) *) nm->timing_wheel, vlib_time_now (vm));
 
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
 
@@ -1848,6 +1846,23 @@ vl_api_get_elog_trace_api_messages (void)
   return 0;
 }
 
+static void
+process_expired_timer_cb (u32 *expired_timer_handles)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_main_t *nm = &vm->node_main;
+  u32 *handle;
+
+  vec_foreach (handle, expired_timer_handles)
+    {
+      u32 pi = vlib_timing_wheel_data_get_index (*handle);
+      vlib_process_t *p = vec_elt (nm->processes, pi);
+
+      p->stop_timer_handle = ~0;
+    }
+  vec_append (nm->data_from_advancing_timing_wheel, expired_timer_handles);
+}
+
 /* Main function. */
 int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
@@ -1953,10 +1968,10 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vec_set_len (nm->data_from_advancing_timing_wheel, 0);
 
   /* Create the process timing wheel */
-  TW (tw_timer_wheel_init) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
-			    0 /* no callback */ ,
-			    10e-6 /* timer period 10us */ ,
-			    ~0 /* max expirations per call */ );
+  TW (tw_timer_wheel_init)
+  ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+   process_expired_timer_cb /* callback */, 10e-6 /* timer period 10us */,
+   ~0 /* max expirations per call */);
 
   vec_validate (vm->pending_rpc_requests, 0);
   vec_set_len (vm->pending_rpc_requests, 0);
