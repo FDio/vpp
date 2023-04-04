@@ -805,6 +805,14 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
 
+  if (hw->hw_class_index != ethernet_hw_interface_class.index &&
+      host_if_type == LCP_ITF_HOST_TAP)
+    {
+      LCP_ITF_PAIR_ERR (
+	"pair_create: don't create TAP for non-eth interface; use tun");
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
   /*
    * Use interface-specific netns if supplied.
    * Otherwise, use netns if defined, otherwise use the OS default.
