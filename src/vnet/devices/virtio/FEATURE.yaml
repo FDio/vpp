@@ -1,6 +1,6 @@
 ---
 name: Virtio PCI Device
-maintainer: sykazmi@cisco.com sluong@cisco.com
+maintainer: mohsin.kazmi14@gmail.com sluong@cisco.com
 features:
   - Driver mode to emulate PCI interface presented to VPP from
     the host interface.
