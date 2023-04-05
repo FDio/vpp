@@ -52,6 +52,24 @@
       "parentUuid": "5bd71fc5_d4cac488",
       "revId": "ad49579b889a17b3c39b91591c16baa647b3c40f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "46f61de9_d07c4605",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2785
+      },
+      "writtenOn": "2023-04-05T15:20:22Z",
+      "side": 1,
+      "message": "Hi Filip:\n  I have finished the unit test, but I haven’t found a good way to get the worker assigned for static mapping. So I created 10 out2in sessions and judged their workers to determine whether the worker acquisition is correct. Before my commit, all sessions will be assigned to worker 0. Do you have any suggestions?",
+      "parentUuid": "04ef65e4_c9ae84a4",
+      "revId": "ad49579b889a17b3c39b91591c16baa647b3c40f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
