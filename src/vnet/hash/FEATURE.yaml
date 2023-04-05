@@ -1,6 +1,6 @@
 ---
 name: Hash infrastructure
-maintainer: Mohsin Kazmi <sykazmi@cisco.com>, Damjan Marion <damarion@cisco.com>
+maintainer: Mohsin Kazmi <mohsin.kazmi14@gmail.com>, Damjan Marion <damarion@cisco.com>
 features:
   - Ethernet
   - IP

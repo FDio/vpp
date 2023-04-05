@@ -1,6 +1,6 @@
 ---
 name: Tap Device
-maintainer: damarion@cisco.com sluong@cisco.com sykazmi@cisco.com
+maintainer: damarion@cisco.com sluong@cisco.com mohsin.kazmi14@gmail.com
 features:
   - Virtio
   - Persistence

@@ -107,7 +107,7 @@ F:	src/vnet/devices/
 AF PACKET Drivers
 I:	af_packet
 Y:	src/plugins/af_packet/FEATURE.yaml
-M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 F:	src/plugins/af_packet
 
 VNET TAP Drivers
@@ -115,7 +115,7 @@ I:	tap
 Y:	src/vnet/devices/tap/FEATURE.yaml
 M:	Damjan Marion <damarion@cisco.com>
 M:	Steven Luong <sluong@cisco.com>
-M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 F:	src/vnet/devices/tap/
 
 VNET Vhost User Driver
@@ -127,7 +127,7 @@ F:	src/plugins/vhost
 VNET Native Virtio Drivers
 I:	virtio
 Y:	src/vnet/devices/virtio/FEATURE.yaml
-M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/virtio/
 
@@ -248,7 +248,7 @@ F:	src/vnet/gre/
 VNET GSO
 I:	gso
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
-M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 F:	src/vnet/gso/
 
 Plugin - MAP
@@ -358,7 +358,7 @@ F:	src/vnet/flow/
 
 VNET Hash
 I:	hash
-M:	Mohsin Kazmi <sykazmi@cisco.com>
+M:	Mohsin Kazmi <mohsin.kazmi14@gmail.com>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/hash/
 
