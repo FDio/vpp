@@ -138,6 +138,24 @@
       "parentUuid": "5945f2b7_eacea2d8",
       "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ba099fc_befb4a72",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-04-06T07:18:21Z",
+      "side": 1,
+      "message": "I test with Mellanox ConnectX-5 nic, kernel 5.10.\nBefore my patch, it was particularly easy to cause packets loss.\n\n```\ntransmit queue 6 timed out\n```\nThis looks like the kernel NIC queue has timed out sending packets. BTW, has this ever happened before?",
+      "parentUuid": "d92836e1_4d2c9bfd",
+      "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
