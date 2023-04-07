@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0b812d8_09d83850",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-04-07T11:44:45Z",
+      "side": 1,
+      "message": "I think it is too early to get esp header here - at this moment you have no idea with which protocol you are dealing with",
+      "revId": "05faaa30e2b579ff8a2c697a7ea321eb90aad6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17d15c4d_b5248347",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-04-07T11:44:45Z",
+      "side": 1,
+      "message": "I\u0027ve asked you to do UDP processing in a separate exclusive branch for UDP. Please do that.",
+      "revId": "05faaa30e2b579ff8a2c697a7ea321eb90aad6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
