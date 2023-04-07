@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fce7aa6_6275b75c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-07T22:47:27Z",
+      "side": 1,
+      "message": "Something similar is done for tcp timers so this looks reasonable. Let us know if testing confirms this is the bug you were chasing.",
+      "revId": "9aa4ac55b0a205e333e567f87c3cc9379af2363c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
