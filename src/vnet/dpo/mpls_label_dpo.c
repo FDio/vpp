@@ -398,22 +398,22 @@ mpls_label_imposition_inline (vlib_main_t * vm,
 
             /* Prefetch next iteration. */
             {
-                vlib_buffer_t * p2, * p3, *p4, *p5;
+	      vlib_buffer_t *p4, *p5, *p6, *p7;
 
-                p2 = vlib_get_buffer (vm, from[2]);
-                p3 = vlib_get_buffer (vm, from[3]);
-                p4 = vlib_get_buffer (vm, from[4]);
-                p5 = vlib_get_buffer (vm, from[5]);
+	      p4 = vlib_get_buffer (vm, from[4]);
+	      p5 = vlib_get_buffer (vm, from[5]);
+	      p6 = vlib_get_buffer (vm, from[6]);
+	      p7 = vlib_get_buffer (vm, from[7]);
 
-                vlib_prefetch_buffer_header (p2, STORE);
-                vlib_prefetch_buffer_header (p3, STORE);
-                vlib_prefetch_buffer_header (p4, STORE);
-                vlib_prefetch_buffer_header (p5, STORE);
+	      vlib_prefetch_buffer_header (p4, STORE);
+	      vlib_prefetch_buffer_header (p5, STORE);
+	      vlib_prefetch_buffer_header (p6, STORE);
+	      vlib_prefetch_buffer_header (p7, STORE);
 
-                CLIB_PREFETCH (p2->data, sizeof (hdr0[0]), STORE);
-                CLIB_PREFETCH (p3->data, sizeof (hdr0[0]), STORE);
-                CLIB_PREFETCH (p4->data, sizeof (hdr0[0]), STORE);
-                CLIB_PREFETCH (p5->data, sizeof (hdr0[0]), STORE);
+	      CLIB_PREFETCH (p4->data, sizeof (hdr0[0]), STORE);
+	      CLIB_PREFETCH (p5->data, sizeof (hdr0[0]), STORE);
+	      CLIB_PREFETCH (p6->data, sizeof (hdr0[0]), STORE);
+	      CLIB_PREFETCH (p7->data, sizeof (hdr0[0]), STORE);
             }
 
             from += 4;
