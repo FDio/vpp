@@ -84,6 +84,7 @@ mpls_label_dpo_create (fib_mpls_label_t *label_stack,
 
     mld = mpls_label_dpo_alloc();
     mld->mld_flags = flags;
+    mld->mld_payload_proto = payload_proto;
     dtype = mpls_label_dpo_types[flags];
 
     if (MPLS_LABEL_DPO_MAX_N_LABELS < vec_len(label_stack))
@@ -92,13 +93,12 @@ mpls_label_dpo_create (fib_mpls_label_t *label_stack,
         dpo_stack(dtype,
                   mld->mld_payload_proto,
                   &mld->mld_dpo,
-                  drop_dpo_get(DPO_PROTO_MPLS));
+                  drop_dpo_get(mld->mld_payload_proto));
     }
     else
     {
         mld->mld_n_labels = vec_len(label_stack);
         mld->mld_n_hdr_bytes = mld->mld_n_labels * sizeof(mld->mld_hdr[0]);
-        mld->mld_payload_proto = payload_proto;
 
         /*
          * construct label rewrite headers for each value passed.
