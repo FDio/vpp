@@ -25,7 +25,7 @@ vlib_log_main_t log_main = {
   .default_syslog_log_level = VLIB_LOG_LEVEL_WARNING,
   .unthrottle_time = 3,
   .size = 512,
-  .add_to_elog = 1,
+  .add_to_elog = 0,
   .default_rate_limit = 50,
 };
 
