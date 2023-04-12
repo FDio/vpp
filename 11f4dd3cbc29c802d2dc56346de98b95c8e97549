@@ -16,6 +16,24 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/12/ : SUCCESS\n\nNow the performance is good.",
       "revId": "11f4dd3cbc29c802d2dc56346de98b95c8e97549",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b9c81b4_55769f78",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-04-12T15:01:48Z",
+      "side": 1,
+      "message": "Thanks!",
+      "parentUuid": "2856d608_64fef373",
+      "revId": "11f4dd3cbc29c802d2dc56346de98b95c8e97549",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
