@@ -133,6 +133,7 @@ set(VPPINFRA_HEADERS
   crypto/aes.h
   crypto/aes_cbc.h
   crypto/aes_gcm.h
+  crypto/poly1305.h
   dlist.h
   dlmalloc.h
   elf_clib.h
@@ -284,6 +285,7 @@ endif(VPP_BUILD_VPPINFRA_TESTS)
 set(test_files
   test/aes_cbc.c
   test/aes_gcm.c
+  test/poly1305.c
   test/array_mask.c
   test/compress.c
   test/count_equal.c
