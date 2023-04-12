@@ -36,6 +36,7 @@ _(proc-type)                                    \
 _(file-prefix)                                  \
 _(vdev)                                         \
 _(log-level)                                    \
+_(block)                                        \
 _(iova-mode)                                    \
 _(base-virtaddr)
 /* clang-format on */
