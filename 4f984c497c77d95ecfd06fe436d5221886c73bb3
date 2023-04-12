@@ -16,6 +16,24 @@
       "message": "It will be more common for the gateway to be in the same address family, so this should be reversed. You should call rtnl_route_nh_get_gateway() first and then call rtnl_route_nh_get_via() if nothing was returned. Otherwise, most of the time both functions are going to get called when usually only rtnl_route_nh_get_gateway() will be needed.",
       "revId": "4f984c497c77d95ecfd06fe436d5221886c73bb3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23b2b542_71ab8967",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-04-12T19:09:37Z",
+      "side": 1,
+      "message": "That makes sense. I updated the patch.",
+      "parentUuid": "c0f30090_5ee1eb3c",
+      "revId": "4f984c497c77d95ecfd06fe436d5221886c73bb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
