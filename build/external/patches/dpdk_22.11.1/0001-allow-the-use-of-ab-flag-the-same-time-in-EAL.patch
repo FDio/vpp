@@ -1,0 +1,54 @@
+From baa172f1a9e370a0549a31840c3cd148046d1d84 Mon Sep 17 00:00:00 2001
+From: Xinyao Cai <xinyao.cai@intel.com>
+Date: Tue, 18 Apr 2023 16:37:17 +0800
+Subject: [PATCH] allow the use of -a and -b flag the same time in EAL
+ parameters.
+
+---
+ lib/eal/common/eal_common_options.c | 14 --------------
+ 1 file changed, 14 deletions(-)
+
+diff --git a/lib/eal/common/eal_common_options.c b/lib/eal/common/eal_common_options.c
+index 0305933698..0d8f9c5a38 100644
+--- a/lib/eal/common/eal_common_options.c
++++ b/lib/eal/common/eal_common_options.c
+@@ -1623,24 +1623,15 @@ int
+ eal_parse_common_option(int opt, const char *optarg,
+ 			struct internal_config *conf)
+ {
+-	static int b_used;
+-	static int a_used;
+-
+ 	switch (opt) {
+ 	case 'b':
+-		if (a_used)
+-			goto ba_conflict;
+ 		if (eal_option_device_add(RTE_DEVTYPE_BLOCKED, optarg) < 0)
+ 			return -1;
+-		b_used = 1;
+ 		break;
+ 
+ 	case 'a':
+-		if (b_used)
+-			goto ba_conflict;
+ 		if (eal_option_device_add(RTE_DEVTYPE_ALLOWED, optarg) < 0)
+ 			return -1;
+-		a_used = 1;
+ 		break;
+ 	/* coremask */
+ 	case 'c': {
+@@ -1929,11 +1920,6 @@ eal_parse_common_option(int opt, const char *optarg,
+ 	}
+ 
+ 	return 0;
+-
+-ba_conflict:
+-	RTE_LOG(ERR, EAL,
+-		"Options allow (-a) and block (-b) can't be used at the same time\n");
+-	return -1;
+ }
+ 
+ static void
+-- 
+2.34.1
+

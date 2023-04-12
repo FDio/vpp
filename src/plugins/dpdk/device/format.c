@@ -384,6 +384,16 @@ format_dpdk_rte_device (u8 *s, va_list *args)
   if (!d)
     return format (s, "not available");
 
+#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
+  s =
+    format (s, "name: %s, numa: %d", rte_dev_name (d), rte_dev_numa_node (d));
+
+  if (rte_dev_driver (d))
+    s = format (s, ", driver: %s", rte_driver_name (rte_dev_driver (d)));
+
+  if (rte_dev_bus (d))
+    s = format (s, ", bus: %s", rte_bus_name (rte_dev_bus (d)));
+#else
   s = format (s, "name: %s, numa: %d", d->name, d->numa_node);
 
   if (d->driver)
@@ -391,6 +401,7 @@ format_dpdk_rte_device (u8 *s, va_list *args)
 
   if (d->bus)
     s = format (s, ", bus: %s", d->bus->name);
+#endif
 
   return s;
 }
@@ -421,9 +432,15 @@ format_dpdk_device (u8 * s, va_list * args)
 	      format_white_space, indent + 2, format_dpdk_link_status, xd);
   s = format (s, "%Uflags: %U\n",
 	      format_white_space, indent + 2, format_dpdk_device_flags, xd);
+#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
+  if (rte_dev_devargs (di.device) && rte_dev_devargs (di.device)->args)
+    s = format (s, "%UDevargs: %s\n", format_white_space, indent + 2,
+		rte_dev_devargs (di.device)->args);
+#else
   if (di.device->devargs && di.device->devargs->args)
     s = format (s, "%UDevargs: %s\n",
 		format_white_space, indent + 2, di.device->devargs->args);
+#endif
   s = format (s,
 	      "%Urx: queues %d (max %d), desc %d "
 	      "(min %d max %d align %d)\n",
