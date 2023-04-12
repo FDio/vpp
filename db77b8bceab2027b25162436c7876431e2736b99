@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "306b5bff_81d390e1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-04-12T12:25:41Z",
+      "side": 1,
+      "message": "This patch takes the place of the previous DPDK bumping patch (https://gerrit.fd.io/r/c/vpp/+/37840).\n\nthe two patch share the same code base and the old one is obsolete because it\u0027s too messy to review.",
+      "revId": "db77b8bceab2027b25162436c7876431e2736b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
