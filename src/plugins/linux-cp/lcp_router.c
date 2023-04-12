@@ -1022,10 +1022,11 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
       path->frp_preference = ctx->preference;
 
       addr = rtnl_route_nh_get_gateway (rnh);
+      if (!addr)
+	addr = rtnl_route_nh_get_via (rnh);
 
       if (addr)
-	fproto = lcp_router_mk_addr46 (rtnl_route_nh_get_gateway (rnh),
-				       &path->frp_addr);
+	fproto = lcp_router_mk_addr46 (addr, &path->frp_addr);
       else
 	fproto = ctx->route_proto;
 
