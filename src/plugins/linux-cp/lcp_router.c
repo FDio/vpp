@@ -1021,18 +1021,20 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
       path->frp_weight = rtnl_route_nh_get_weight (rnh);
       path->frp_preference = ctx->preference;
 
-      addr = rtnl_route_nh_get_gateway (rnh);
+      addr = rtnl_route_nh_get_via (rnh);
+      if (!addr) {
+        addr = rtnl_route_nh_get_gateway (rnh);
+      }
 
       if (addr)
-	fproto = lcp_router_mk_addr46 (rtnl_route_nh_get_gateway (rnh),
-				       &path->frp_addr);
+        fproto = lcp_router_mk_addr46 (addr, &path->frp_addr);
       else
-	fproto = ctx->route_proto;
+        fproto = ctx->route_proto;
 
       path->frp_proto = fib_proto_to_dpo (fproto);
 
       if (ctx->is_mcast)
-	path->frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
+        path->frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
 
       LCP_ROUTER_DBG (" path:[%U]", format_fib_route_path, path);
     }
