@@ -57,12 +57,8 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 #endif /* ! CLIB_LINUX_KERNEL */
 
-#if defined (__x86_64__)
-#ifndef __COVERITY__
-typedef signed int i128 __attribute__ ((mode (TI)));
-typedef unsigned int u128 __attribute__ ((mode (TI)));
-#endif
-#endif
+typedef signed __int128 i128;
+typedef unsigned __int128 u128;
 
 #if (defined(i386) || (defined(_mips) && __mips != 64) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__) || defined(__TMS320C6X__))
 typedef signed int i32;

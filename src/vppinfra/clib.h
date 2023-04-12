@@ -339,6 +339,44 @@ extract_bits (uword x, int start, int count)
   _x < 0 ? -_x : _x;				\
 })
 
+static_always_inline u64
+u64_add_with_carry (u64 *carry, u64 a, u64 b)
+{
+#if defined(__x86_64__)
+  unsigned long long v;
+  *carry = _addcarry_u64 (*carry, a, b, &v);
+  return (u64) v;
+#elif defined(__clang__)
+  unsigned long long c;
+  u64 rv = __builtin_addcll (a, b, *carry, &c);
+  *carry = c;
+  return rv;
+#else
+  u64 rv = a + b + *carry;
+  *carry = rv < a;
+  return rv;
+#endif
+}
+
+static_always_inline u64
+u64_sub_with_borrow (u64 *borrow, u64 x, u64 y)
+{
+#if defined(__x86_64__)
+  unsigned long long v;
+  *borrow = _subborrow_u64 (*borrow, x, y, &v);
+  return (u64) v;
+#elif defined(__clang__)
+  unsigned long long b;
+  u64 rv = __builtin_subcll (x, y, *borrow, &b);
+  *borrow = b;
+  return rv;
+#else
+  unsigned long long rv = x - (y + *borrow);
+  *borrow = rv >= x;
+  return rv;
+#endif
+}
+
 /* Standard standalone-only function declarations. */
 #ifndef CLIB_UNIX
 void clib_standalone_init (void *memory, uword memory_bytes);
