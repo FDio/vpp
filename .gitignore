@@ -129,3 +129,15 @@ compile_commands.json
 /extras/hs-test/hs-test
 /extras/hs-test/http_server
 /extras/hs-test/.build.vpp
+
+# ./configure
+/CMakeFiles
+/bin
+/lib
+/.ninja_deps
+/.ninja_log
+/CMakeCache.txt
+/build.ninja
+/cmake_install.cmake
+/startup.conf
+/startup.vpp
