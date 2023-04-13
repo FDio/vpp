@@ -16,6 +16,24 @@
       "message": "please don\u0027t use the CLI in the UT. maybe save the paths on line 1417 and then restore.",
       "revId": "1519a4c570f41cd21cff995540ee7e99ee026876",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16331c7f_f8bf4f14",
+        "filename": "test/test_mpls.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-04-13T20:24:11Z",
+      "side": 1,
+      "message": "Hi, Neale, cli is used by a reason - only cli allows to delete tunnel w/o paths specified, and this case was actually crashing. Test for deleting tunnel with all the paths is handled in cleanup sections - different codepath. What if to keep cli call to test related codepath, and write exact comment about?",
+      "parentUuid": "82b3457d_888fedd5",
+      "revId": "1519a4c570f41cd21cff995540ee7e99ee026876",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
