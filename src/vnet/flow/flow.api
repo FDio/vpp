@@ -26,6 +26,8 @@ import "vnet/flow/flow_types.api";
 */
 define flow_add
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_flow_rule_t flow;
@@ -52,6 +54,8 @@ define flow_add_v2
 */
 define flow_add_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   u32 flow_index;
