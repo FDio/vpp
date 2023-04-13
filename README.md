@@ -53,8 +53,7 @@ consult the [VPP wiki](https://wiki.fd.io/view/VPP) for more complete
 documentation.
 
 In particular, readers are recommended to take a look at [Pulling, Building,
-Running, Hacking, Pushing](https://wiki.fd.io/view/VPP/Pulling,_Building,_Run
-ning,_Hacking_and_Pushing_VPP_Code) which provides extensive step-by-step
+Running, Hacking, Pushing](https://wiki.fd.io/view/VPP/Pulling,_Building,_Running,_Hacking_and_Pushing_VPP_Code) which provides extensive step-by-step
 coverage of the topic.
 
 For the impatient, some salient information is distilled below.
