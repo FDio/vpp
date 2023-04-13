@@ -622,6 +622,7 @@ typedef punt_redirect
 autoreply define ip_punt_redirect
 {
   option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_punt_redirect_t punt;
@@ -630,6 +631,8 @@ autoreply define ip_punt_redirect
 
 define ip_punt_redirect_dump
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -638,6 +641,8 @@ define ip_punt_redirect_dump
 
 define ip_punt_redirect_details
 {
+  option deprecated;
+
   u32 context;
   vl_api_punt_redirect_t punt;
 };
