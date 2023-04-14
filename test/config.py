@@ -122,7 +122,8 @@ parser.add_argument(
 )
 
 filter_help_string = """\
-expression consists of 3 string selectors separated by '.' separators:
+expression consists of one or more filters separated by commas (',')
+filter consists of 3 string selectors separated by dots ('.')
 
     <file>.<class>.<function>
 
@@ -142,6 +143,8 @@ examples:
    test_add_bfd from test_bfd.py/BFDAPITestCase
 4. '.*.test_add_bfd' selects all test functions named test_add_bfd
    from all files/classes
+5. 'bfd,ip4,..test_icmp_error' selects all test functions in test_bfd.py,
+   test_ip4.py and all test functions named 'test_icmp_error' in all files
 """
 parser.add_argument(
     "--filter", action="store", metavar="FILTER_EXPRESSION", help=filter_help_string
