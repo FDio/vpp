@@ -631,7 +631,7 @@ def parse_test_filter(test_filter):
         if "." in f:
             parts = f.split(".")
             if len(parts) > 3:
-                raise Exception("Unrecognized %s option: %s" % (test_option, f))
+                raise Exception(f"Invalid test filter: {test_filter}")
             if len(parts) > 2:
                 if parts[2] not in ("*", ""):
                     filter_func_name = parts[2]
@@ -677,21 +677,40 @@ def filter_tests(tests, filter_cb):
 
 
 class FilterByTestOption:
-    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
-        self.filter_file_name = filter_file_name
-        self.filter_class_name = filter_class_name
-        self.filter_func_name = filter_func_name
+    def __init__(self, filters):
+        self.filters = filters
 
     def __call__(self, file_name, class_name, func_name):
-        if self.filter_file_name:
-            fn_match = fnmatch.fnmatch(file_name, self.filter_file_name)
-            if not fn_match:
+        def test_one(
+            filter_file_name,
+            filter_class_name,
+            filter_func_name,
+            file_name,
+            class_name,
+            func_name,
+        ):
+            if filter_file_name:
+                fn_match = fnmatch.fnmatch(file_name, filter_file_name)
+                if not fn_match:
+                    return False
+            if filter_class_name and class_name != filter_class_name:
                 return False
-        if self.filter_class_name and class_name != self.filter_class_name:
-            return False
-        if self.filter_func_name and func_name != self.filter_func_name:
-            return False
-        return True
+            if filter_func_name and func_name != filter_func_name:
+                return False
+            return True
+
+        for filter_file_name, filter_class_name, filter_func_name in self.filters:
+            if test_one(
+                filter_file_name,
+                filter_class_name,
+                filter_func_name,
+                file_name,
+                class_name,
+                func_name,
+            ):
+                return True
+
+        return False
 
 
 class FilterByClassList:
@@ -938,14 +957,17 @@ if __name__ == "__main__":
     descriptions = True
 
     print("Running tests using custom test runner.")
-    filter_file, filter_class, filter_func = parse_test_filter(config.filter)
+    filters = [(parse_test_filter(f)) for f in config.filter.split(",")]
 
     print(
-        "Selected filters: file=%s, class=%s, function=%s"
-        % (filter_file, filter_class, filter_func)
+        "Selected filters: ",
+        "|".join(
+            f"file={filter_file}, class={filter_class}, function={filter_func}"
+            for filter_file, filter_class, filter_func in filters
+        ),
     )
 
-    filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
+    filter_cb = FilterByTestOption(filters)
 
     cb = SplitToSuitesCallback(filter_cb)
     for d in config.test_src_dir:
