@@ -167,6 +167,7 @@ define ipsec_spd_details {
 define ipsec_sad_entry_add_del
 {
   option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add;
@@ -175,6 +176,8 @@ define ipsec_sad_entry_add_del
 
 define ipsec_sad_entry_add_del_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add;
@@ -249,6 +252,7 @@ autoreply define ipsec_sad_entry_update
 define ipsec_sad_entry_add_del_reply
 {
   option deprecated;
+
   u32 context;
   i32 retval;
   u32 stat_index;
@@ -256,6 +260,8 @@ define ipsec_sad_entry_add_del_reply
 
 define ipsec_sad_entry_add_del_v2_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   u32 stat_index;
@@ -437,12 +443,15 @@ define ipsec_itf_details
 define ipsec_sa_dump
 {
   option deprecated;
+
   u32 client_index;
   u32 context;
   u32 sa_id;
 };
 define ipsec_sa_v2_dump
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   u32 sa_id;
@@ -474,6 +483,7 @@ define ipsec_sa_v4_dump
 */
 define ipsec_sa_details {
   option deprecated;
+
   u32 context;
   vl_api_ipsec_sad_entry_t entry;
 
@@ -486,6 +496,8 @@ define ipsec_sa_details {
   u32 stat_index;
 };
 define ipsec_sa_v2_details {
+  option deprecated;
+
   u32 context;
   vl_api_ipsec_sad_entry_v2_t entry;
 
