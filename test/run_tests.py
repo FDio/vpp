@@ -430,7 +430,7 @@ def run_forked(testcase_suites):
     stop_run = False
 
     try:
-        while wrapped_testcase_suites:
+        while wrapped_testcase_suites or testcase_suites:
             finished_testcase_suites = set()
             for wrapped_testcase_suite in wrapped_testcase_suites:
                 while wrapped_testcase_suite.result_parent_end.poll():
@@ -551,14 +551,16 @@ def run_forked(testcase_suites):
                     while testcase_suites:
                         results.append(TestResult(testcase_suites.pop(0)))
                 elif testcase_suites:
-                    a_suite = testcase_suites.pop(0)
+                    a_suite = testcase_suites[0]
                     while a_suite and a_suite.is_tagged_run_solo:
+                        testcase_suites.pop(0)
                         solo_testcase_suites.append(a_suite)
                         if testcase_suites:
-                            a_suite = testcase_suites.pop(0)
+                            a_suite = testcase_suites[0]
                         else:
                             a_suite = None
                     if a_suite and can_run_suite(a_suite):
+                        testcase_suites.pop(0)
                         run_suite(a_suite)
                 if solo_testcase_suites and tests_running == 0:
                     a_suite = solo_testcase_suites.pop(0)
