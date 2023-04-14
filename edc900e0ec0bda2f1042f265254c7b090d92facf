@@ -16,6 +16,23 @@
       "message": "Hi Matthew,\nCould you please take a look at this patch?",
       "revId": "edc900e0ec0bda2f1042f265254c7b090d92facf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9714e3b3_87c1720b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-04-14T15:01:48Z",
+      "side": 1,
+      "message": "Auto-selection of IDs seems like it might cause problems in the opposite direction of the one you\u0027re solving here. You might attempt to create a tap with a given instance/ID number and find that you can\u0027t because that ID was used by a tap the was implicitly created for use with a linux-cp pair.\n\nE.g. if you have a management system that maintains a persistent DB of configurations and applies them to VPP, you might have taps 0,1,2 allocated implicitly when pairs are created for 3 physical NICs. Then you might explicitly configure tap 3 for some purpose. Then you add some tunnel, bond, and loopback interfaces and create pairs for those and taps 4,5,6 are allocated. If you restart/reboot and configurations are applied from the persistent DB in a different order than when they were configured interactively, you might have the tunnel, bond, and loopback interfaces created and have pairs allocated for them before the tap is created and when the system attempts to create the explicitly configured tap, the ID 3 will be in use already by the tap created for one of those pairs.\n\nIt would be more deterministic to select an ID for tap being created for a pair by adding the hw_if_index to some large offset (e.g. \u0027.id \u003d 99000 + hw-\u003ehw_if_index,\u0027). Then the linux-cp taps are allocated from some predictable range and you can safely use the lower ID values that people are more likely to use (0, 1, 10, 100, etc) when explicitly creating taps without worrying about conflict.",
+      "revId": "edc900e0ec0bda2f1042f265254c7b090d92facf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
