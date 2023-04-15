@@ -20,6 +20,8 @@ echo SUDOCMD: $SUDOCMD
 if [ "$(uname)" <> "Darwin" ]; then
     OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
     OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+    OS_VER_MAJOR=$(echo ${OS_VERSION_ID} | cut -f1 -d.)
+    OS_VER_MINOR=$(echo ${OS_VERSION_ID} | grep -q '\.' && echo ${OS_VERSION_ID} | cut -f2 -d.)
 fi
 
 KERNEL_OS=`uname -o`
@@ -33,6 +35,8 @@ echo KERNEL_RELEASE: $KERNEL_RELEASE
 echo KERNEL_VERSION: $KERNEL_VERSION
 echo OS_ID: $OS_ID
 echo OS_VERSION_ID: $OS_ID
+echo OS_VER_MAJOR: $OS_VER_MAJOR
+echo OS_VER_MINOR: $OS_VER_MINOR
 
 # Install dependencies
 cd $VPP_DIR
