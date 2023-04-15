@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func (s *NsSuite) TestHttpTps() {
@@ -56,6 +57,16 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	s.assertNil(<-finished)
 }
 
+func parseString(s, pattern string) string {
+	temp := strings.Split(s, "\n")
+	for _, item := range temp {
+		if strings.Contains(item, pattern) {
+			return item
+		}
+	}
+	return ""
+}
+
 func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	nRequests := 1000000
 	nClients := 2000
@@ -79,7 +90,8 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		args += " http://" + serverAddress + ":80/64B.json"
 		abCont.extraRunningArgs = args
 		o, err := abCont.combinedOutput()
-		s.log(o, err)
+		rps := parseString(o, "Requests per second:")
+		s.log(rps, err)
 		s.assertNil(err)
 	} else {
 		wrkCont := s.getContainerByName("wrk")
@@ -87,7 +99,8 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 			serverAddress)
 		wrkCont.extraRunningArgs = args
 		o, err := wrkCont.combinedOutput()
-		s.log(o)
+		rps := parseString(o, "requests")
+		s.log(rps, err)
 		s.assertNil(err)
 	}
 	return nil
