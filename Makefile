@@ -52,6 +52,8 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_VER_MAJOR = $(shell echo $(OS_VERSION_ID) | cut -f1 -d.)
+OS_VER_MINOR = $(shell echo $(OS_VERSION_ID) | grep -q '\.' && echo $(OS_VERSION_ID) | cut -f2 -d.)
 endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
@@ -135,13 +137,23 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(OS_ID),rocky)
 	RPM_DEPENDS += yum-utils
-	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
+	RPM_DEPENDS += cmake
 	RPM_DEPENDS += python3-ply  # for vppapigen
 	RPM_DEPENDS += python3-virtualenv python3-jsonschema
-	RPM_DEPENDS += infiniband-diags llvm clang cmake
+	RPM_DEPENDS += infiniband-diags
 	RPM_DEPENDS_GROUPS = 'Development Tools'
+	ifeq ($(OS_VER_MAJOR),8)
+		RPM_DEPENDS += compat-openssl10
+		RPM_DEPENDS += python2-devel python36-devel
+		RPM_DEPENDS += libarchive
+		RPM_DEPENDS += libibumad
+		RPM_DEPENDS += libpcap-devel llvm-toolset
+	else ifeq ($(OS_VER_MAJOR),9)
+		RPM_DEPENDS += subunit subunit-devel
+		RPM_DEPENDS += python3-devel  # needed for python3 -m pip install psutil
+		RPM_DEPENDS += llvm clang
+	endif
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += compat-openssl10 openssl-devel
@@ -317,45 +329,73 @@ bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
 .PHONY: install-dep
-install-dep:
-ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+install-dep: install-dep-$(OS_ID)
+	git config commit.template .git_commit_template.txt
+
+.PHONY: install-dep-ubuntu install-dep-debian
+install-dep-ubuntu install-dep-debian:
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
-else ifneq ("$(wildcard /etc/redhat-release)","")
-ifeq ($(OS_ID),rhel)
+
+.PHONY: install-dep-rhel
+install-dep-rhel:
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
-else ifeq ($(OS_ID),rocky)
-	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
-	@sudo -E dnf config-manager --set-enabled \
-          $(shell dnf repolist all 2>/dev/null|grep -i crb|cut -d' ' -f1|grep -v source)
-	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
-	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
-else ifeq ($(OS_ID)-$(OS_VERSION_ID),centos-8)
+
+.PHONY: install-dep-rocky
+install-dep-rocky:
+ifeq ($(OS_VER_MAJOR),8)
 	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
 	@sudo -E dnf config-manager --set-enabled \
           $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1|grep -v source)
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install --skip-broken $(CONFIRM) $(RPM_DEPENDS)
-else ifeq ($(OS_ID),centos)
+else ifeq ($(OS_VER_MAJOR),9)
+	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
+	@sudo -E dnf config-manager --set-enabled \
+          $(shell dnf repolist all 2>/dev/null|grep -i crb|cut -d' ' -f1|grep -v source)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
+else
+	$(error "$(OS_ID) 8 and 9 are the only supported versions.")
+endif
+
+.PHONY: install-dep-centos
+install-dep-centos:
+ifeq ($(OS_VER_MAJOR),8)
+	@sudo -E dnf install $(CONFIRM) dnf-plugins-core epel-release
+	@sudo -E dnf config-manager --set-enabled \
+          $(shell dnf repolist all 2>/dev/null|grep -i powertools|cut -d' ' -f1|grep -v source)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install --skip-broken $(CONFIRM) $(RPM_DEPENDS)
+else
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=base-debuginfo $(RPM_DEPENDS_DEBUG)
-else ifeq ($(OS_ID),fedora)
+endif
+
+.PHONY: install-dep-fedora
+install-dep-fedora:
 	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
-endif
-else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION_ID)),$(OS_ID)-$(OS_VERSION_ID))
+
+.PHONY: install-dep-opensuse-leap
+install-dep-opensuse-leap:
+ifeq ($(filter 15.3 15.4 ,$(OS_VERSION_ID)),$(OS_VERSION_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
-else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE-leap systems")
 endif
-	git config commit.template .git_commit_template.txt
+
+.PHONY: install-dep-unsupported
+install-dep-unsupported:
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE-leap systems")
+
+install-dep-%:
+	@$(MAKE) install-dep-unsupported
 
 .PHONY: install-deps
 install-deps: install-dep
