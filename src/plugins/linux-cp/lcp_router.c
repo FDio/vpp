@@ -15,6 +15,7 @@
 
 #include <sys/socket.h>
 #include <linux/if.h>
+#include <linux/mpls.h>
 
 //#include <vlib/vlib.h>
 #include <vlib/unix/plugin.h>
@@ -27,6 +28,7 @@
 #include <netlink/route/link.h>
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
+#include <netlink/route/nexthop.h>
 #include <netlink/route/addr.h>
 #include <netlink/route/link/vlan.h>
 
@@ -1031,6 +1033,34 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 	fproto = ctx->route_proto;
 
       path->frp_proto = fib_proto_to_dpo (fproto);
+
+
+#ifdef NL_CAPABILITY_VERSION_3_6_0
+      addr = rtnl_route_nh_get_encap_mpls_dst (rnh);
+      if (addr)
+        {
+          struct mpls_label *maddr = nl_addr_get_binary_addr (addr);
+          int label_count = 0;
+          path->frp_eos = MPLS_NON_EOS; /* TODO: is this correct? */
+          while (1)
+            {
+                u32 entry = ntohl (maddr[label_count++].entry);
+                u32 label = (entry & MPLS_LS_LABEL_MASK) >> MPLS_LS_LABEL_SHIFT;
+                u8 exp = (entry & MPLS_LS_TC_MASK) >> MPLS_LS_TC_SHIFT;
+                u8 ttl = (entry & MPLS_LS_TTL_MASK) >> MPLS_LS_TTL_SHIFT;
+
+                fib_mpls_label_t fml = {
+                  .fml_value = label,
+                  .fml_exp = exp,
+                  .fml_ttl = ttl,
+                };
+                vec_add1(path->frp_label_stack, fml);
+
+                if (entry & MPLS_LS_S_MASK) break;
+            }
+          LCP_ROUTER_DBG (" has encap mpls, %d labels", label_count);
+        }
+#endif
 
       if (ctx->is_mcast)
 	path->frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
