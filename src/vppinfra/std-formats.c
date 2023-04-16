@@ -456,6 +456,72 @@ format_hexdump (u8 * s, va_list * args)
 }
 
 __clib_export u8 *
+format_hexdump_u16 (u8 *s, va_list *args)
+{
+  u16 *data = va_arg (*args, u16 *);
+  u32 len = va_arg (*args, u32);
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  for (int i = 0; i < len; i++)
+    {
+      if (i % 8 == 0)
+	{
+	  s = format (s, "%s%U%05x: ", i ? "\n" : "", format_white_space,
+		      i ? indent : 0, i * 2);
+	}
+      s = format (s, " %04lx", data[i]);
+    }
+  return s;
+}
+
+__clib_export u8 *
+format_hexdump_u32 (u8 *s, va_list *args)
+{
+  u32 *data = va_arg (*args, u32 *);
+  u32 len = va_arg (*args, u32);
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  for (int i = 0; i < len; i++)
+    {
+      if (i % 4 == 0)
+	{
+	  s = format (s, "%s%U%05x: ", i ? "\n" : "", format_white_space,
+		      i ? indent : 0, i * 4);
+	}
+      s = format (s, " %08lx", data[i]);
+    }
+  return s;
+}
+
+__clib_export u8 *
+format_hexdump_u64 (u8 *s, va_list *args)
+{
+  u64 *data = va_arg (*args, u64 *);
+  u32 len = va_arg (*args, u32);
+  u32 indent = format_get_indent (s);
+
+  if (!len)
+    return s;
+
+  for (int i = 0; i < len; i++)
+    {
+      if (i % 2 == 0)
+	{
+	  s = format (s, "%s%U%05x: ", i ? "\n" : "", format_white_space,
+		      i ? indent : 0, i * 8);
+	}
+      s = format (s, " %016lx", data[i]);
+    }
+  return s;
+}
+
+__clib_export u8 *
 format_uword_bitmap (u8 *s, va_list *args)
 {
   uword *bitmap = va_arg (*args, uword *);

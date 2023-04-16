@@ -321,6 +321,9 @@ u8 *format_c_identifier (u8 * s, va_list * va);
 
 /* Format hexdump with both hex and printable chars - compatible with text2pcap */
 u8 *format_hexdump (u8 * s, va_list * va);
+u8 *format_hexdump_u16 (u8 *s, va_list *va);
+u8 *format_hexdump_u32 (u8 *s, va_list *va);
+u8 *format_hexdump_u64 (u8 *s, va_list *va);
 
 /* Format bitmap of array of uword numbers */
 u8 *format_uword_bitmap (u8 *s, va_list *va);
