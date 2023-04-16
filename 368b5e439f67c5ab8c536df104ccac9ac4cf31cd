@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eacbb375_fdda55b2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-04-16T20:51:54Z",
+      "side": 1,
+      "message": "Keep in mind that this feature is unfinished and broken at the moment.\nIt also requires libnl 3.6.0+, so Debian bookworm/Ubuntu kinetic are required at least.",
+      "revId": "368b5e439f67c5ab8c536df104ccac9ac4cf31cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
