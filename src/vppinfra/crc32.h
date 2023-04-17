@@ -100,7 +100,7 @@ clib_crc32c (u8 *s, int len)
 }
 #else
 
-u32
+static_always_inline u32
 _clib_crc32c (u32 crc, const u8 *p, uword len)
 {
   static const u32 clib_crc32c_table[256] = {
@@ -164,7 +164,7 @@ _clib_crc32c (u32 crc, const u8 *p, uword len)
   return crc;
 }
 
-u32
+static_always_inline u32
 clib_crc32c (const u8 *p, uword len)
 {
   return _clib_crc32c (0, p, len);
