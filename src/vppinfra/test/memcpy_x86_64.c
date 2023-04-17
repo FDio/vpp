@@ -6,7 +6,7 @@
 
 #include <vppinfra/format.h>
 #include <vppinfra/test/test.h>
-#include <vppinfra/vector/mask_compare.h>
+#include <vppinfra/memcpy_x86_64.h>
 
 __test_funct_fn void
 wrapper (u8 *dst, u8 *src, uword n)

@@ -131,6 +131,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     OFF
   )
 
+  add_vpp_march_variant(scalar
+    FLAGS -march=core2 -mno-mmx -mno-sse
+    OFF
+  )
+
   if (GNU_ASSEMBLER_AVX512_BUG)
      message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
   else()

@@ -21,6 +21,7 @@
 
 #if defined(__x86_64__)
 #define foreach_march_variant                                                 \
+  _ (scalar, "Generic (SIMD disabled)")                                       \
   _ (hsw, "Intel Haswell")                                                    \
   _ (trm, "Intel Tremont")                                                    \
   _ (skx, "Intel Skylake (server) / Cascade Lake")                            \
@@ -239,6 +240,12 @@ clib_cpu_supports_aes ()
 #else
   return 0;
 #endif
+}
+
+static inline int
+clib_cpu_march_priority_scalar ()
+{
+  return 1;
 }
 
 static inline int
