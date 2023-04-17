@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "51e9eeaa_1e25516d",
+        "filename": "src/plugins/tracedump/tracedump.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-04-17T12:16:05Z",
+      "side": 1,
+      "message": "I think the default value is always 0, you must precise it only for non-zero values?",
+      "parentUuid": "d59bba16_504f17d1",
+      "revId": "fddd89787004c520505c7688c27efc431b310d7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "284b851f_0879ea93",
         "filename": "src/plugins/tracedump/tracedump.c",
         "patchSetId": 2
