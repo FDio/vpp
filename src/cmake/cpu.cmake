@@ -136,6 +136,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     OFF
   )
 
+  add_vpp_march_variant(znver3
+    FLAGS -march=znver3 -mtune=znver3 -mprefer-vector-width=256
+    OFF
+  )
+
   if (GNU_ASSEMBLER_AVX512_BUG)
      message(WARNING "AVX-512 multiarch variant(s) disabled due to GNU Assembler bug")
   else()
@@ -149,6 +154,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 
     add_vpp_march_variant(spr
       FLAGS -march=sapphirerapids -mtune=sapphirerapids -mprefer-vector-width=512
+      OFF
+    )
+
+    add_vpp_march_variant(znver4
+      FLAGS -march=znver4 -mtune=znver4 -mprefer-vector-width=512
       OFF
     )
   endif()
