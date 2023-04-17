@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db246778_9ee9c3ca",
+        "filename": "src/vnet/ipsec/ipsec_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-04-17T07:29:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07928689_7b991bcf",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c3e6017f_11733793",
@@ -224,6 +242,24 @@
       "side": 1,
       "message": "I changed this so the old u64 and the new bitmap use the same convention of having sequence numbers grow in direction of the MSB. This way, it is easier to format the window when calling ipsec_sa_anti_replay_get_64b_window, without the need to reverse all the bits.\n\nI took care of applying this change everywhere the old u64 is used.",
       "parentUuid": "0c7ce9ae_8b433c08",
+      "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83371436_c737b305",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-04-17T07:29:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d185528_dbe6219d",
       "revId": "11f3f89cfd58b03ff19edca4cc26ae750377bfd7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
