@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d59bba16_504f17d1",
+        "filename": "src/plugins/tracedump/tracedump.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-04-17T10:24:11Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we default to 0 for the position?",
+      "revId": "fddd89787004c520505c7688c27efc431b310d7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "284b851f_0879ea93",
+        "filename": "src/plugins/tracedump/tracedump.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-04-17T10:24:11Z",
+      "side": 1,
+      "message": "I think the only feature we are missing from v1 is that if one only wants to clear the cache, he will not get a reply from VPP confirming that it went well.\nMaybe, we could add another API for that to get feature parity with v1?",
+      "revId": "fddd89787004c520505c7688c27efc431b310d7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
