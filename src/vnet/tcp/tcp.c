@@ -1609,7 +1609,6 @@ tcp_init (vlib_main_t * vm)
   pi = ip_get_protocol_info (im, IP_PROTOCOL_TCP);
   if (pi == 0)
     return clib_error_return (0, "TCP protocol info AWOL");
-  pi->format_header = format_tcp_header;
   pi->unformat_pg_edit = unformat_pg_tcp_header;
 
   /* Register as transport with session layer */

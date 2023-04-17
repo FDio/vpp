@@ -233,14 +233,14 @@ format_tcp_connection_id (u8 * s, va_list * args)
     return s;
   if (tc->c_is_ip4)
     {
-      s = format (s, "[%d:%d][%s] %U:%d->%U:%d", tc->c_thread_index,
+      s = format (s, "[%d:%d][%s] %U:%d -> %U:%d", tc->c_thread_index,
 		  tc->c_s_index, "T", format_ip4_address, &tc->c_lcl_ip4,
 		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip4_address,
 		  &tc->c_rmt_ip4, clib_net_to_host_u16 (tc->c_rmt_port));
     }
   else
     {
-      s = format (s, "[%d:%d][%s] %U:%d->%U:%d", tc->c_thread_index,
+      s = format (s, "[%d:%d][%s] %U:%d -> %U:%d", tc->c_thread_index,
 		  tc->c_s_index, "T", format_ip6_address, &tc->c_lcl_ip6,
 		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip6_address,
 		  &tc->c_rmt_ip6, clib_net_to_host_u16 (tc->c_rmt_port));

@@ -2824,14 +2824,17 @@ tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   for (i = 0; i < n_bufs; i++)
     {
-      if (bs[i]->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
-	  tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
-				   vm->thread_index);
-	  tcp = vlib_buffer_get_current (bs[i]);
-	  tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
-	}
+      if (!(bs[i]->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
+
+      t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
+      if (vnet_buffer (bs[i])->tcp.flags == TCP_STATE_ESTABLISHED)
+	tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
+				 vm->thread_index);
+      else
+	tc = 0;
+      tcp = tcp_buffer_hdr (bs[i]);
+      tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
     }
 }
 
