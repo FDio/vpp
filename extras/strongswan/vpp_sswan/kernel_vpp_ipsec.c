@@ -1598,8 +1598,10 @@ METHOD (kernel_ipsec_t, add_sa, status_t, private_kernel_vpp_ipsec_t *this,
     }
   if (data->encap)
     {
-      DBG1 (DBG_KNL, "UDP encap!!!!!!!!!!!!!!!!!!!!");
+      DBG1 (DBG_KNL, "UDP encap");
       flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
+      mp->entry.udp_src_port = htons (natt_port);
+      mp->entry.udp_dst_port = htons (natt_port);
     }
   mp->entry.flags = htonl (flags);
 
