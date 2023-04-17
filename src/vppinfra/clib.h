@@ -181,7 +181,7 @@
 /* Full memory barrier (read and write). */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
 
-#if __x86_64__
+#if __SSE__
 #define CLIB_MEMORY_STORE_BARRIER() __builtin_ia32_sfence ()
 #else
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
