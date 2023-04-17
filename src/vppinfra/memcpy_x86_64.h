@@ -38,13 +38,16 @@ clib_memcpy8 (void *d, void *s)
   *(u64u *) d = *(u64u *) s;
 }
 
-#ifdef CLIB_HAVE_VEC128
 static_always_inline void
 clib_memcpy16 (void *d, void *s)
 {
+#ifdef CLIB_HAVE_VEC128
   *(u8x16u *) d = *(u8x16u *) s;
-}
+#else
+  clib_memcpy8 (d, s);
+  clib_memcpy8 (d + 8, s + 8);
 #endif
+}
 
 #ifdef CLIB_HAVE_VEC256
 static_always_inline void
