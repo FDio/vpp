@@ -1356,9 +1356,13 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   tcp_connection_t *tc = &t->tcp_connection;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U state %U\n%U%U", format_tcp_connection_id, tc,
-	      format_tcp_state, tc->state, format_white_space, indent,
-	      format_tcp_header, &t->tcp_header, 128);
+  if (!tc->c_lcl_port)
+    s = format (s, "no tcp connection\n%U%U", format_white_space, indent,
+		format_tcp_header, &t->tcp_header, 128);
+  else
+    s = format (s, "%U state %U\n%U%U", format_tcp_connection_id, tc,
+		format_tcp_state, tc->state, format_white_space, indent,
+		format_tcp_header, &t->tcp_header, 128);
 
   return s;
 }
@@ -1702,27 +1706,6 @@ tcp_lookup_listener (vlib_buffer_t * b, u32 fib_index, int is_ip4)
     return 0;
 }
 
-static void
-tcp46_syn_sent_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
-			    u32 *from, u32 n_bufs)
-{
-  tcp_connection_t *tc = 0;
-  tcp_rx_trace_t *t;
-  vlib_buffer_t *b;
-  int i;
-
-  for (i = 0; i < n_bufs; i++)
-    {
-      b = vlib_get_buffer (vm, from[i]);
-      if (!(b->flags & VLIB_BUFFER_IS_TRACED))
-	continue;
-      tc =
-	tcp_half_open_connection_get (vnet_buffer (b)->tcp.connection_index);
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-      tcp_set_rx_trace_data (t, tc, tcp_buffer_hdr (b), b, 1);
-    }
-}
-
 always_inline void
 tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
 {
@@ -1757,6 +1740,33 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
     tc->cfg_flags |= TCP_CFG_F_TSO;
 }
 
+static void
+tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_buffer_t **bs, u32 n_bufs, u8 is_ip4)
+{
+  tcp_connection_t *tc;
+  tcp_header_t *tcp;
+  tcp_rx_trace_t *t;
+  u8 flags;
+  int i;
+
+  for (i = 0; i < n_bufs; i++)
+    {
+      if (!(bs[i]->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
+
+      t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
+      flags = vnet_buffer (bs[i])->tcp.flags;
+      if (flags == TCP_STATE_ESTABLISHED || flags == TCP_STATE_SYN_SENT)
+	tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
+				 vm->thread_index);
+      else
+	tc = 0;
+      tcp = tcp_buffer_hdr (bs[i]);
+      tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
+    }
+}
+
 always_inline uword
 tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       vlib_frame_t *frame, int is_ip4)
@@ -1768,11 +1778,11 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
 
-  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    tcp46_syn_sent_trace_frame (vm, node, from, n_left_from);
-
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    tcp_input_trace_frame (vm, node, bufs, n_left_from, is_ip4);
 
   while (n_left_from > 0)
     {
@@ -2812,28 +2822,6 @@ typedef enum _tcp_input_next
   _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
-
-static void
-tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_buffer_t ** bs, u32 n_bufs, u8 is_ip4)
-{
-  tcp_connection_t *tc;
-  tcp_header_t *tcp;
-  tcp_rx_trace_t *t;
-  int i;
-
-  for (i = 0; i < n_bufs; i++)
-    {
-      if (bs[i]->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
-	  tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
-				   vm->thread_index);
-	  tcp = vlib_buffer_get_current (bs[i]);
-	  tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
-	}
-    }
-}
 
 static void
 tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
