@@ -316,12 +316,12 @@ static void validate_packet(vlib_main_t *vm, char *name, u32 bi,
             clib_warning("Received: IP: %U UDP: %U", format_ip4_header, ip,
                          sizeof(*ip), format_udp_header, udp, sizeof(*udp));
             udp = ip4_next_header(expected_ip);
-            clib_warning("%U", format_hexdump, ip, b->current_length);
+            clib_warning("%U", format_hexdump, ip, (uword)b->current_length);
             clib_warning("Expected: IP: %U UDP: %U", format_ip4_header,
                          expected_ip, sizeof(*ip), format_udp_header, udp,
                          sizeof(*udp));
             clib_warning("%U", format_hexdump, expected_ip,
-                         expected_b->current_length);
+                         (uword)expected_b->current_length);
         } else if (ip->protocol == IP_PROTOCOL_TCP) {
             tcp_header_t *tcp = ip4_next_header(ip);
             clib_warning("Received IP: %U TCP: %U", format_ip4_header, ip,

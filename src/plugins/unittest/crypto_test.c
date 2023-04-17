@@ -147,26 +147,33 @@ print_results (vlib_main_t * vm, unittest_crypto_test_registration_t ** rv,
 	  fail = 1;
 
 	if (exp_ct && fail)
-	  vlib_cli_output (vm, "Expected ciphertext:\n%U"
+	  vlib_cli_output (vm,
+			   "Expected ciphertext:\n%U"
 			   "\nCalculated ciphertext:\n%U",
-			   format_hexdump, exp_ct->data, exp_ct->length,
-			   format_hexdump, op->dst, exp_ct->length);
+			   format_hexdump, exp_ct->data,
+			   (uword) exp_ct->length, format_hexdump, op->dst,
+			   (uword) exp_ct->length);
 	if (exp_pt && fail)
-	  vlib_cli_output (vm, "Expected plaintext:\n%U"
+	  vlib_cli_output (vm,
+			   "Expected plaintext:\n%U"
 			   "\nCalculated plaintext:\n%U",
-			   format_hexdump, exp_pt->data, exp_pt->length,
-			   format_hexdump, op->dst, exp_pt->length);
-	if (r->tag.length && fail)
-	  vlib_cli_output (vm, "Expected tag:\n%U"
+			   format_hexdump, exp_pt->data,
+			   (uword) exp_pt->length, format_hexdump, op->dst,
+			   (uword) exp_pt->length);
+	if (exp_tag && fail)
+	  vlib_cli_output (vm,
+			   "Expected tag:\n%U"
 			   "\nCalculated tag:\n%U",
-			   format_hexdump, r->tag.data, r->tag.length,
-			   format_hexdump, op->tag, op->tag_len);
+			   format_hexdump, exp_tag->data,
+			   (uword) exp_tag->length, format_hexdump, op->tag,
+			   (uword) op->tag_len);
 	if (exp_digest && fail)
-	  vlib_cli_output (vm, "Expected digest:\n%U"
+	  vlib_cli_output (vm,
+			   "Expected digest:\n%U"
 			   "\nCalculated Digest:\n%U",
 			   format_hexdump, exp_digest->data,
-			   exp_digest->length, format_hexdump, op->digest,
-			   op->digest_len);
+			   (uword) exp_digest->length, format_hexdump,
+			   op->digest, (uword) op->digest_len);
       }
   }
   vec_free (err);

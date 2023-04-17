@@ -1503,7 +1503,7 @@ bfd_echo_input_format_trace (u8 * s, va_list * args)
   if (t->len > STRUCT_SIZE_OF (bfd_pkt_t, head))
     {
       s = format (s, "BFD ECHO:\n");
-      s = format (s, "    data: %U", format_hexdump, t->data, t->len);
+      s = format (s, "    data: %U", format_hexdump, t->data, (uword) t->len);
     }
 
   return s;

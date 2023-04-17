@@ -263,11 +263,12 @@ check_digest (clib_error_t *err, int tc, u8 *calculated, const u8 *expected,
 	      u8 len)
 {
   if (memcmp (expected, calculated, len) != 0)
-    err = clib_error_return (err,
-			     "Bad HMAC SHA%u digest for test case "
-			     "%u:\nExpected:\n%U\nCalculated:\n%U\n",
-			     len * 8, tc, format_hexdump, expected, len,
-			     format_hexdump, calculated, len);
+    err =
+      clib_error_return (err,
+			 "Bad HMAC SHA%u digest for test case "
+			 "%u:\nExpected:\n%U\nCalculated:\n%U\n",
+			 len * 8, tc, format_hexdump, expected, (uword) len,
+			 format_hexdump, calculated, (uword) len);
   return err;
 }
 

@@ -786,7 +786,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	      s = format (s, "%u: %U\n", bi, format_hexdump,
-			  vlib_buffer_get_current (b), b->current_length);
+			  vlib_buffer_get_current (b), (uword)b->current_length);
 	      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 		{
 		  bi = b->next_buffer;

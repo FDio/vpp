@@ -636,10 +636,10 @@ format_dpdk_rx_trace (u8 * s, va_list * va)
     {
       s = format (s, "\n%UPacket Dump%s", format_white_space, indent + 2,
 		  t->mb.data_len > sizeof (t->data) ? " (truncated)" : "");
-      s = format (s, "\n%U%U", format_white_space, indent + 4,
-		  format_hexdump, &t->data,
-		  t->mb.data_len >
-		  sizeof (t->data) ? sizeof (t->data) : t->mb.data_len);
+      s = format (
+	s, "\n%U%U", format_white_space, indent + 4, format_hexdump, &t->data,
+	(uword) (t->mb.data_len > sizeof (t->data) ? sizeof (t->data) :
+							   t->mb.data_len));
     }
   f = node->format_buffer;
   if (!f)

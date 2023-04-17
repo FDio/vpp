@@ -216,15 +216,16 @@ test_clib_poly1305 (clib_error_t *err)
     {
       clib_poly1305 (tc->key, tc->msg, tc->len, out);
       if (memcmp (out, tc->out, 16) != 0)
-	err = clib_error_return (
-	  err,
-	  "\ntest:     %s"
-	  "\nkey:      %U"
-	  "\ndata:     %U"
-	  "\nexp out:  %U"
-	  "\ncalc out: %U\n",
-	  tc->name, format_hexdump, tc->key, 32, format_hexdump, tc->msg,
-	  tc->len, format_hexdump, tc->out, 16, format_hexdump, out, 16);
+	err = clib_error_return (err,
+				 "\ntest:     %s"
+				 "\nkey:      %U"
+				 "\ndata:     %U"
+				 "\nexp out:  %U"
+				 "\ncalc out: %U\n",
+				 tc->name, format_hexdump, tc->key, (uword) 32,
+				 format_hexdump, tc->msg, (uword) tc->len,
+				 format_hexdump, tc->out, (uword) 16,
+				 format_hexdump, out, (uword) 16);
     }
   return err;
 }
