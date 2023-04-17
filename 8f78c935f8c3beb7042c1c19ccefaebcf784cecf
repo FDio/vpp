@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "594700fe_dced90b0",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1612,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-17T18:13:17Z",
+      "side": 0,
+      "message": "This is used if host stack is not enabled so we need to keep it, at least when host stack is not on",
+      "revId": "8f78c935f8c3beb7042c1c19ccefaebcf784cecf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

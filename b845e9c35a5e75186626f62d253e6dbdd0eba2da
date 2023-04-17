@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c801ebc1_26c79e92",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-17T18:13:17Z",
+      "side": 1,
+      "message": "Quick reply",
+      "revId": "b845e9c35a5e75186626f62d253e6dbdd0eba2da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca0a1800_acece943",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-17T18:13:17Z",
+      "side": 1,
+      "message": "Any particular reason for the change? There might be code out there that parses this and I can\u0027t remember why I decided to keep it as a no-space string ...",
+      "range": {
+        "startLine": 236,
+        "startChar": 40,
+        "endLine": 236,
+        "endChar": 44
+      },
+      "revId": "b845e9c35a5e75186626f62d253e6dbdd0eba2da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
