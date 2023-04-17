@@ -414,7 +414,7 @@ __clib_export u8 *
 format_hexdump (u8 * s, va_list * args)
 {
   u8 *data = va_arg (*args, u8 *);
-  uword len = va_arg (*args, uword);
+  u32 len = va_arg (*args, u32);
   int i, index = 0;
   const int line_len = 16;
   u8 *line_hex = 0;
