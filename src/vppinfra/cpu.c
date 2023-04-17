@@ -93,13 +93,34 @@ format_cpu_uarch (u8 * s, va_list * args)
 #if __x86_64__
   u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
   u8 model, family, stepping;
+  u8 amd_vendor = 0;
+
+  if (__get_cpuid (0, &eax, &ebx, &ecx, &edx) == 0)
+    return format (s, "unknown (missing cpuid)");
+
+  if (amd_vendor (ebx, ecx, edx))
+    amd_vendor = 1;
 
   if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)
     return format (s, "unknown (missing cpuid)");
 
-  model = ((eax >> 4) & 0x0f) | ((eax >> 12) & 0xf0);
-  family = (eax >> 8) & 0x0f;
   stepping = eax & 0x0f;
+  if (amd_vendor)
+    {
+      family = ((eax >> 8) & 0x0f);
+      model = ((eax >> 4) & 0x0f);
+      if (family >= 0xf)
+	{
+	  family = family + ((eax >> 20) & 0xf);
+	  model = (model | ((eax >> 12) & 0xf0));
+	}
+      return format (s, "Zen (family 0x%02x model 0x%02x)", family, model);
+    }
+  else
+    {
+      model = ((eax >> 4) & 0x0f) | ((eax >> 12) & 0xf0);
+      family = (eax >> 8) & 0x0f;
+    }
 
 #define _(f,m,a,c) if ((model == m) && (family == f)) return \
 format(s, "[0x%x] %s ([0x%02x] %s) stepping 0x%x", f, a, m, c, stepping);

@@ -39,6 +39,10 @@
 #define foreach_march_variant
 #endif
 
+#define amd_vendor(t1, t2, t3)                                                \
+  ((t1 == 0x68747541) && /* htuA */                                           \
+   (t2 == 0x444d4163) && /* DMAc */                                           \
+   (t3 == 0x69746e65))	 /* itne */
 typedef enum
 {
   CLIB_MARCH_VARIANT_TYPE = 0,
