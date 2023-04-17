@@ -75,6 +75,18 @@ typedef enum _tcp_state_next
     TCP_STATE_N_NEXT,
 } tcp_state_next_t;
 
+typedef enum _tcp_input_next
+{
+  TCP_INPUT_NEXT_DROP,
+  TCP_INPUT_NEXT_LISTEN,
+  TCP_INPUT_NEXT_RCV_PROCESS,
+  TCP_INPUT_NEXT_SYN_SENT,
+  TCP_INPUT_NEXT_ESTABLISHED,
+  TCP_INPUT_NEXT_RESET,
+  TCP_INPUT_NEXT_PUNT,
+  TCP_INPUT_N_NEXT
+} tcp_input_next_t;
+
 #define tcp_next_output(is_ip4) (is_ip4 ? TCP_NEXT_TCP4_OUTPUT          \
                                         : TCP_NEXT_TCP6_OUTPUT)
 
@@ -1356,9 +1368,13 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   tcp_connection_t *tc = &t->tcp_connection;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U state %U\n%U%U", format_tcp_connection_id, tc,
-	      format_tcp_state, tc->state, format_white_space, indent,
-	      format_tcp_header, &t->tcp_header, 128);
+  if (!tc->c_lcl_port)
+    s = format (s, "no tcp connection\n%U%U", format_white_space, indent,
+		format_tcp_header, &t->tcp_header, 128);
+  else
+    s = format (s, "%U state %U\n%U%U", format_tcp_connection_id, tc,
+		format_tcp_state, tc->state, format_white_space, indent,
+		format_tcp_header, &t->tcp_header, 128);
 
   return s;
 }
@@ -1755,6 +1771,45 @@ tcp_check_tx_offload (tcp_connection_t * tc, int is_ipv4)
   hw_if = vnet_get_sup_hw_interface (vnm, sw_if_idx);
   if (hw_if->caps & VNET_HW_IF_CAP_TCP_GSO)
     tc->cfg_flags |= TCP_CFG_F_TSO;
+}
+
+static void
+tcp_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_buffer_t **bs, u16 *nexts, u32 n_bufs, u8 is_ip4)
+{
+  tcp_connection_t *tc;
+  tcp_header_t *tcp;
+  tcp_rx_trace_t *t;
+  u8 flags;
+  int i;
+
+  for (i = 0; i < n_bufs; i++)
+    {
+      if (!(bs[i]->flags & VLIB_BUFFER_IS_TRACED))
+	continue;
+
+      t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
+      if (nexts[i] == TCP_INPUT_NEXT_DROP || nexts[i] == TCP_INPUT_NEXT_PUNT ||
+	  nexts[i] == TCP_INPUT_NEXT_RESET)
+	{
+	  tc = 0;
+	}
+      else
+	{
+	  flags = vnet_buffer (bs[i])->tcp.flags;
+
+	  if (flags == TCP_STATE_LISTEN)
+	    tc = tcp_listener_get (vnet_buffer (bs[i])->tcp.connection_index);
+	  else if (flags == TCP_STATE_SYN_SENT)
+	    tc = tcp_half_open_connection_get (
+	      vnet_buffer (bs[i])->tcp.connection_index);
+	  else
+	    tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
+				     vm->thread_index);
+	}
+      tcp = tcp_buffer_hdr (bs[i]);
+      tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
+    }
 }
 
 always_inline uword
@@ -2781,18 +2836,6 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
 };
 /* *INDENT-ON* */
 
-typedef enum _tcp_input_next
-{
-  TCP_INPUT_NEXT_DROP,
-  TCP_INPUT_NEXT_LISTEN,
-  TCP_INPUT_NEXT_RCV_PROCESS,
-  TCP_INPUT_NEXT_SYN_SENT,
-  TCP_INPUT_NEXT_ESTABLISHED,
-  TCP_INPUT_NEXT_RESET,
-  TCP_INPUT_NEXT_PUNT,
-  TCP_INPUT_N_NEXT
-} tcp_input_next_t;
-
 #define foreach_tcp4_input_next                 \
   _ (DROP, "ip4-drop")                          \
   _ (LISTEN, "tcp4-listen")                     \
@@ -2812,28 +2855,6 @@ typedef enum _tcp_input_next
   _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
-
-static void
-tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_buffer_t ** bs, u32 n_bufs, u8 is_ip4)
-{
-  tcp_connection_t *tc;
-  tcp_header_t *tcp;
-  tcp_rx_trace_t *t;
-  int i;
-
-  for (i = 0; i < n_bufs; i++)
-    {
-      if (bs[i]->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  t = vlib_add_trace (vm, node, bs[i], sizeof (*t));
-	  tc = tcp_connection_get (vnet_buffer (bs[i])->tcp.connection_index,
-				   vm->thread_index);
-	  tcp = vlib_buffer_get_current (bs[i]);
-	  tcp_set_rx_trace_data (t, tc, tcp, bs[i], is_ip4);
-	}
-    }
-}
 
 static void
 tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
@@ -3001,7 +3022,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    tcp_input_trace_frame (vm, node, bufs, frame->n_vectors, is_ip4);
+    tcp_input_trace_frame (vm, node, bufs, nexts, frame->n_vectors, is_ip4);
 
   tcp_store_err_counters (input, err_counters);
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
