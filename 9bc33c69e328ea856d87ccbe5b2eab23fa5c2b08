@@ -16,6 +16,41 @@
       "message": "This is going to significantly grow size of binaries so wonder how different those AMD variants are to the intel ones. Maybe we can come up with neutral naming and concentrate on ISA differences...\n\nI\u0027m fine to merge this patch as it is if you put OFF keyword, same like I did for sapphirerapids....",
       "revId": "9bc33c69e328ea856d87ccbe5b2eab23fa5c2b08",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8479aa0d_86efd357",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2657
+      },
+      "writtenOn": "2023-04-17T16:44:43Z",
+      "side": 1,
+      "message": "Done!",
+      "parentUuid": "e08c9840_c61f2d3d",
+      "revId": "9bc33c69e328ea856d87ccbe5b2eab23fa5c2b08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbb9cbe8_7533bd49",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2657
+      },
+      "writtenOn": "2023-04-17T16:44:43Z",
+      "side": 1,
+      "message": "Done!",
+      "revId": "9bc33c69e328ea856d87ccbe5b2eab23fa5c2b08",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
