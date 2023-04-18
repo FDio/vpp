@@ -16,6 +16,24 @@
       "message": "How they calculate max_mtu?",
       "revId": "4c292a70385e7a1fc667439aca576dcac207c4c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65ceaf3a_0b99db95",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2692
+      },
+      "writtenOn": "2023-04-18T06:30:27Z",
+      "side": 1,
+      "message": "I guess I\u0027ve put it wrongly. I\u0027ve meant that it\u0027s not taken from defined adapter max as for hardware adapters, but from virtual device capability. And if ethernet default MTU is not set in VPP config dpdk plugin code will try to set it to default 9000 which will result in error. I\u0027ll rephrase the commit message.",
+      "parentUuid": "ba83cab5_0f67eaa8",
+      "revId": "4c292a70385e7a1fc667439aca576dcac207c4c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
