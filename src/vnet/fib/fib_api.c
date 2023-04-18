@@ -20,6 +20,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/bier/bier_disp_table.h>
+#include <vnet/udp/udp_encap.h>
 #include <vpp/api/types.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/ip/ip_format_fns.h>
@@ -213,6 +214,10 @@ fib_api_path_decode (vl_api_fib_path_t *in,
     case FIB_API_PATH_TYPE_UDP_ENCAP:
         out->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
         out->frp_udp_encap_id = ntohl(in->nh.obj_id);
+        if (!udp_encap_is_valid (out->frp_udp_encap_id))
+        {
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+        }
         break;
     case FIB_API_PATH_TYPE_BIER_IMP:
         out->frp_flags |= FIB_ROUTE_PATH_BIER_IMP;

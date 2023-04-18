@@ -139,11 +139,15 @@ class TestUdpEncap(VppTestCase):
         udp_encap_4 = VppUdpEncap(
             self, self.pg0.local_ip4, self.pg0.remote_ip4, 334, 444
         )
+        udp_encap_5 = VppUdpEncap(
+            self, self.pg0.local_ip4, self.pg0.remote_ip4, 335, 445
+        )
         udp_encap_0.add_vpp_config()
         udp_encap_1.add_vpp_config()
         udp_encap_2.add_vpp_config()
         udp_encap_3.add_vpp_config()
         udp_encap_4.add_vpp_config()
+        udp_encap_5.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh udp encap"))
 
@@ -152,6 +156,13 @@ class TestUdpEncap(VppTestCase):
         self.assertTrue(find_udp_encap(self, udp_encap_0))
         self.assertTrue(find_udp_encap(self, udp_encap_1))
         self.assertTrue(find_udp_encap(self, udp_encap_4))
+        self.assertTrue(find_udp_encap(self, udp_encap_5))
+
+        # Test removal of absent encap
+        udp_encap_5.remove_vpp_config()
+        self.assertFalse(find_udp_encap(self, udp_encap_5))
+        with self.vapi.assert_negative_api_retval():
+            udp_encap_5.remove_vpp_config()
 
         #
         # Routes via each UDP encap object - all combinations of v4 and v6.
@@ -183,6 +194,22 @@ class TestUdpEncap(VppTestCase):
                     0xFFFFFFFF,
                     type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
                     next_hop_id=udp_encap_4.id,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
+                )
+            ],
+            table_id=1,
+        )
+        # specific route to match encap4, to test absent encap
+        route_4o4_3 = VppIpRoute(
+            self,
+            "1.1.0.3",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap_5.id,
                     proto=FibPathProto.FIB_PATH_NH_PROTO_IP4,
                 )
             ],
@@ -235,6 +262,8 @@ class TestUdpEncap(VppTestCase):
         route_6o4.add_vpp_config()
         route_4o4.add_vpp_config()
         route_4o4_2.add_vpp_config()
+        with self.vapi.assert_negative_api_retval():
+            route_4o4_3.add_vpp_config()
 
         #
         # 4o4 encap
