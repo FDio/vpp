@@ -133,4 +133,10 @@ udp_encap_get (index_t uei)
 {
   return (pool_elt_at_index (udp_encap_pool, uei));
 }
+
+always_inline uword
+udp_encap_is_valid (index_t uei)
+{
+  return !pool_is_free_index (udp_encap_pool, uei);
+}
 #endif
