@@ -63,6 +63,53 @@
       },
       "revId": "b845e9c35a5e75186626f62d253e6dbdd0eba2da",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8cfef0b7_4e8f565e",
+        "filename": "src/vnet/tcp/tcp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-18T18:33:47Z",
+      "side": 1,
+      "message": "This affects `show session verbose` so let\u0027s keep it as is for now. Might decide to refactor this at a later time",
+      "parentUuid": "d9175557_16ed5085",
+      "range": {
+        "startLine": 236,
+        "startChar": 40,
+        "endLine": 236,
+        "endChar": 44
+      },
+      "revId": "b845e9c35a5e75186626f62d253e6dbdd0eba2da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b44e9e4e_e80dcdd5",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1758,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-18T18:33:47Z",
+      "side": 1,
+      "message": "We need to support half-opens as well, i.e., syn-sent lower",
+      "range": {
+        "startLine": 1758,
+        "startChar": 0,
+        "endLine": 1758,
+        "endChar": 66
+      },
+      "revId": "b845e9c35a5e75186626f62d253e6dbdd0eba2da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
