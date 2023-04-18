@@ -30,10 +30,14 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
-			u32 context)
+send_udp_encap_details (index_t uei, vl_api_registration_t *reg, u32 context)
 {
   vl_api_udp_encap_details_t *mp;
+  udp_encap_t *ue;
+
+  if (!udp_encap_is_valid (uei))
+    return;
+  ue = udp_encap_get (uei);
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -71,7 +75,7 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 
   mp->udp_encap.table_id =
     htonl (fib_table_get_table_id (ue->ue_fib_index, ue->ue_ip_proto));
-  mp->udp_encap.id = htonl (ue - udp_encap_pool);
+  mp->udp_encap.id = htonl (uei);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -80,17 +84,17 @@ static void
 vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t *mp)
 {
   vl_api_registration_t *reg;
-  udp_encap_t *ue;
+  index_t uei;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (ue, udp_encap_pool)
-   {
-    send_udp_encap_details(ue, reg, mp->context);
-  }
+  pool_foreach_index (uei, udp_encap_pool)
+    {
+      send_udp_encap_details (uei, reg, mp->context);
+    }
   /* *INDENT-ON* */
 }
 
@@ -142,10 +146,18 @@ static void
 vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t *mp)
 {
   vl_api_udp_encap_del_reply_t *rmp;
+  index_t uei = ntohl (mp->id);
   int rv = 0;
 
-  udp_encap_unlock (ntohl (mp->id));
+  if (!udp_encap_is_valid (uei))
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto done;
+    }
 
+  udp_encap_unlock (uei);
+
+done:
   REPLY_MACRO (VL_API_UDP_ENCAP_DEL_REPLY);
 }
 

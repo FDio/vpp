@@ -62,12 +62,30 @@ udp_encap_add_and_lock (fib_protocol_t proto,
   udp_encap_t *ue;
   u8 pfx_len = 0;
   index_t uei;
+  u8 need_barrier_sync;
+  vlib_main_t *vm = vlib_get_main ();
+  ASSERT (vm->thread_index == 0);
+
+  need_barrier_sync = pool_get_will_expand (udp_encap_pool);
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_sync (vm);
 
   pool_get_aligned_zero (udp_encap_pool, ue, CLIB_CACHE_LINE_BYTES);
   uei = ue - udp_encap_pool;
 
+  if (need_barrier_sync == 0)
+    {
+      need_barrier_sync = vlib_validate_combined_counter_will_expand (
+	&(udp_encap_counters), uei);
+      if (need_barrier_sync)
+	vlib_worker_thread_barrier_sync (vm);
+    }
+
   vlib_validate_combined_counter (&(udp_encap_counters), uei);
   vlib_zero_combined_counter (&(udp_encap_counters), uei);
+
+  if (need_barrier_sync)
+    vlib_worker_thread_barrier_release (vm);
 
   fib_node_init (&ue->ue_fib_node, FIB_NODE_TYPE_UDP_ENCAP);
   fib_node_lock (&ue->ue_fib_node);
@@ -218,6 +236,8 @@ format_udp_encap_i (u8 * s, va_list * args)
   vlib_counter_t to;
   udp_encap_t *ue;
 
+  if (!udp_encap_is_valid (uei))
+    return format(s, "udp-encap:[%d]: invalid", uei);
   ue = udp_encap_get (uei);
 
   // FIXME
