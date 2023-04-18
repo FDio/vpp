@@ -70,7 +70,7 @@ vl_api_lb_add_del_vip_t_handler
   lb_main_t *lbm = &lb_main;
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
-  lb_vip_add_args_t args;
+  lb_vip_add_args_t args = {};
 
   /* if port == 0, it means all-port VIP */
   if (mp->port == 0)
@@ -133,7 +133,7 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
   lb_main_t *lbm = &lb_main;
   vl_api_lb_conf_reply_t *rmp;
   int rv = 0;
-  lb_vip_add_args_t args;
+  lb_vip_add_args_t args = {};
 
   /* if port == 0, it means all-port VIP */
   if (mp->port == 0)
