@@ -28,9 +28,9 @@ enum lb_encap_type
   LB_API_ENCAP_TYPE_GRE4 = 0,
   LB_API_ENCAP_TYPE_GRE6 = 1,
   LB_API_ENCAP_TYPE_L3DSR = 2,
-  LB_API_ENCAP_TYPE_NAT4 = 3 ,
-  LB_API_ENCAP_TYPE_NAT6 =4,
-  LB_API_ENCAP_N_TYPES =5,
+  LB_API_ENCAP_TYPE_NAT4 = 3,
+  LB_API_ENCAP_TYPE_NAT6 = 4,
+  LB_API_ENCAP_N_TYPES = 5,
 };
 
 /* Lookup types */
@@ -38,8 +38,8 @@ enum lb_lkp_type_t
 {
   LB_API_LKP_SAME_IP_PORT = 0,
   LB_API_LKP_DIFF_IP_PORT = 1,
-  LB_API_LKP_ALL_PORT_IP =2,
-  LB_API_LKP_N_TYPES =3,
+  LB_API_LKP_ALL_PORT_IP = 2,
+  LB_API_LKP_N_TYPES = 3,
 };
 
 enum lb_vip_type
