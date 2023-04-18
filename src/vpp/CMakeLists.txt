@@ -28,6 +28,12 @@ add_custom_target(vpp_version_h
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
 )
 
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp/app
+  COMPONENT vpp-dev
+)
+
 ##############################################################################
 # vpp binary
 ##############################################################################
