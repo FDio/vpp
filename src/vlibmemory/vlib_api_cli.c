@@ -683,7 +683,7 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       return 0;
     }
 
-  if (clib_arch_is_little_endian)
+  if (clib_arch_is_little_endian && (m->endian_handler != NULL))
     {
       u32 msg_length = vec_len (msg);
       vec_validate (tmpbuf, msg_length - 1);
