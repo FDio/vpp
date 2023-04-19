@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bef376e5_507d7c68",
+        "filename": "build/external/patches/dpdk_22.11.1/0001-make-bus-unregister-function-visible.patch",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-04-19T12:15:03Z",
+      "side": 1,
+      "message": "The function rte_bus_unregister is used to disable DSA devices through the \"no-dsa\" configuration parameter of VPP.\n\nI removed the \"no-dsa\" code to eliminate the call to the internal DPDK function, and I also discovered that the \"blacklist\" configuration parameter can achieve the same result of \"no-dsa\" by passing -b EAL parameters to DPDK.\n\nUnfortunately, DPDK currently does not support using -a and -b in EAL parameters at the same time and the -a parameter is almost mandatory to use in VPP DPDK plugin. However, we believe that this limitation is outdated because using -a and -b with devices of different buses (PCI and DSA) at the same time does not conflict, and we plan to submit a DPDK patch to remove the limitation.",
+      "parentUuid": "97602006_8cd6a89b",
+      "revId": "db77b8bceab2027b25162436c7876431e2736b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aa470886_86187e3e",
@@ -65,6 +83,24 @@
       "writtenOn": "2023-04-17T11:01:35Z",
       "side": 1,
       "message": "I would not recommend chopping the code like this... hard to review and maintain. \n\nPlease considering changing to the following\n#if ...\nsess_pools_elt-\u003esess_pool \u003d one_way\n#else ...\nsess_pools_elt-\u003esess_pool \u003d the_other_way\n#endif",
+      "revId": "db77b8bceab2027b25162436c7876431e2736b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c349118c_3ee9d66c",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 345,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-04-19T12:15:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aa470886_86187e3e",
       "revId": "db77b8bceab2027b25162436c7876431e2736b99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ef2a763_a7d6e6ec",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 768,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-04-19T12:15:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "78e27432_a7196926",
+      "revId": "db77b8bceab2027b25162436c7876431e2736b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "60b51cb9_1ab63ba4",
@@ -99,6 +153,24 @@
       "writtenOn": "2023-04-17T11:01:35Z",
       "side": 1,
       "message": "The change looks great! \nBut for future maintenance purpose, please consider change to \n\n#if RTE_VERSION \u003e\u003d RTE_VERSION_NUM(22, 11, 0, 0)\ntypedef void cryptodev_session_t\n#else\ntypedef struct rte_cryptodev_sym_session cryptodev_session_t\n#endif",
+      "revId": "db77b8bceab2027b25162436c7876431e2736b99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "100fd273_3706f75f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-04-19T12:15:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "60b51cb9_1ab63ba4",
       "revId": "db77b8bceab2027b25162436c7876431e2736b99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
