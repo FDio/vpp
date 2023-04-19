@@ -315,7 +315,24 @@ typedef struct
 _(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
 _(NO_FREE_SLOTS, "no free tx slots") \
 _(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+_(COMPLETION, "tx completion errors") \
+_(COMPLETION0, "tx completion errors 0") \
+_(COMPLETION1, "tx completion errors 1") \
+_(COMPLETION2, "tx completion errors 2") \
+_(COMPLETION3, "tx completion errors 3") \
+_(COMPLETION4, "tx completion errors 4") \
+_(COMPLETION5, "tx completion errors 5") \
+_(COMPLETION6, "tx completion errors 6") \
+_(COMPLETION7, "tx completion errors 7") \
+_(COMPLETION8, "tx completion errors 8") \
+_(COMPLETION9, "tx completion errors 9") \
+_(COMPLETION10, "tx completion errors 10") \
+_(COMPLETION11, "tx completion errors 11") \
+_(COMPLETION12, "tx completion errors 12") \
+_(COMPLETION13, "tx completion errors 13") \
+_(COMPLETION14, "tx completion errors 14") \
+_(COMPLETION15, "tx completion errors 15") \
+_(COMPLETIONX, "tx completion errors X")
 
 typedef enum
 {
