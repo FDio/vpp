@@ -726,6 +726,7 @@ rpc_api_hookup (vlib_main_t *vm)
     .id = VL_API_##N,                                                         \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
+    .endian = vl_api_##n##_t_endian,                                          \
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
