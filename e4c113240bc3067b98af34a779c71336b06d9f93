@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0dd15caa_18ac29c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-04-19T10:37:04Z",
+      "side": 1,
+      "message": "perftest-2n-spr mrrANDNIC_Mellanox-CX7VEATANDDRV_RDMA_COREAND1cAND64bANDeth-l2patch",
+      "revId": "e4c113240bc3067b98af34a779c71336b06d9f93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
