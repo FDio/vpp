@@ -54,7 +54,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
 	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
 	break;
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION1, 1);
       idx++;
       cur = cqes + (idx & cq_mask);
     }
@@ -362,13 +362,13 @@ rdma_device_output_free_ibverb (vlib_main_t * vm,
   if (n <= 0)
     {
       if (PREDICT_FALSE (n < 0))
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION2, 1);
       return;
     }
 
   while (PREDICT_FALSE (IBV_WC_SUCCESS != wc[n - 1].status))
     {
-      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION3, 1);
       n--;
       if (0 == n)
 	return;
