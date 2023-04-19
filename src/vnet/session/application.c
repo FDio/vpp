@@ -189,6 +189,7 @@ app_listener_alloc_and_init (application_t * app,
 	{
 	  ls = session_get_from_handle (lh);
 	  session_free (ls);
+	  app_listener_free (app, app_listener);
 	  return rv;
 	}
 
@@ -223,6 +224,7 @@ app_listener_alloc_and_init (application_t * app,
 	{
 	  ls = listen_session_get_from_handle (lh);
 	  session_free (ls);
+	  app_listener_free (app, app_listener);
 	  return rv;
 	}
       ls = listen_session_get_from_handle (lh);
