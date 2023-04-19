@@ -136,6 +136,7 @@ add_vpp_plugin(dpdk
   device/flow.c
   device/format.c
   device/init.c
+  device/inline_crypto.c
   device/node.c
   ${DPDK_CRYPTODEV_OP_SOURCE}
   ${DPDK_CRYPTODEV_SOURCE}

@@ -789,11 +789,13 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index, is_del, sa_in, sa_out, *sa_ins = NULL;
+  u32 inl_sw_if_index;
   ip_address_t peer = { };
   vnet_main_t *vnm;
 
   is_del = 0;
   sw_if_index = ~0;
+  inl_sw_if_index = ~0;
   vnm = vnet_get_main ();
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -812,6 +814,9 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "%U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
+      else if (unformat (line_input, "inline %U",
+			 unformat_vnet_sw_interface, vnm, &inl_sw_if_index))
+	;
       else if (unformat (line_input, "%U", unformat_ip_address, &peer))
 	;
       else
@@ -820,7 +825,8 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
     }
 
   if (!is_del)
-    ipsec_tun_protect_update (sw_if_index, &peer, sa_out, sa_ins);
+    ipsec_tun_protect_update_inl (sw_if_index, inl_sw_if_index, &peer, sa_out,
+                                  sa_ins);
   else
     ipsec_tun_protect_del (sw_if_index, &peer);
 

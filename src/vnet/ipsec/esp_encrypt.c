@@ -379,6 +379,12 @@ esp_encrypt_chain_integ (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 }
 
 always_inline void
+esp_prepare_inline_op (ipsec_sa_t *sa0, u8 *payload, u8 iv_sz)
+{
+  esp_generate_iv (sa0, payload, iv_sz);
+}
+
+always_inline void
 esp_prepare_sync_op (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 		     vnet_crypto_op_t **crypto_ops,
 		     vnet_crypto_op_t **integ_ops, ipsec_sa_t *sa0, u32 seq_hi,
@@ -600,6 +606,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
   vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   int is_async = im->async_mode;
+  int is_inline = 0;
   vnet_crypto_async_op_id_t async_op = ~0;
   u16 drop_next =
     (lt == VNET_LINK_IP6 ? ESP_ENCRYPT_NEXT_DROP6 :
@@ -701,6 +708,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
+	  is_inline = ipsec_sa_is_set_IS_INLINE (sa0);
 	}
 
       if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
@@ -1007,6 +1015,13 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   esp, payload, payload_len, iv_sz, icv_sz,
 				   from[b - bufs], sync_next[0], hdr_len,
 				   async_next_node, lb);
+	}
+      else if (is_inline)
+	{
+          vnet_buffer_offload_flags_set (b[0],
+                                         VNET_BUFFER_OFFLOAD_F_INLINE_CRYPTO);
+          b[0]->flags |= VNET_BUFFER_F_IS_IP4;
+          esp_prepare_inline_op (sa0, payload, iv_sz);
 	}
       else
 	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, sa0, sa0->seq_hi,

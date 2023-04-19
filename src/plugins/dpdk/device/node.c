@@ -339,6 +339,23 @@ dpdk_process_lro_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
     }
 }
 
+static_always_inline void
+dpdk_process_rx_sec_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
+			     uword n_rx_packets)
+{
+  vlib_buffer_t *b0;
+  uword n;
+
+  for (n = 0; n < n_rx_packets; n++)
+    {
+      b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+      if ((ptd->flags[n] & (RTE_MBUF_F_RX_SEC_OFFLOAD |
+                            RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) ==
+          RTE_MBUF_F_RX_SEC_OFFLOAD)
+        vnet_buffer_offload_flags_set (b0, VNET_BUFFER_OFFLOAD_F_INLINE_CRYPTO);
+    }
+}
+
 static_always_inline u32
 dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
@@ -405,6 +422,9 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 
   if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_LRO)))
     dpdk_process_lro_offload (xd, ptd, n_rx_packets);
+
+  if (PREDICT_FALSE (or_flags & RTE_MBUF_F_RX_SEC_OFFLOAD))
+    dpdk_process_rx_sec_offload (xd, ptd, n_rx_packets);
 
   if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_L4_CKSUM_BAD) &&
 		     (xd->buffer_flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT)))

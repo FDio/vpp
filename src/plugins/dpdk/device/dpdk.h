@@ -28,6 +28,9 @@
 #include <rte_ethdev.h>
 #include <rte_version.h>
 #include <rte_net.h>
+#include <rte_cryptodev.h>
+#include <rte_crypto_sym.h>
+#include <rte_security.h>
 
 #include <vnet/devices/devices.h>
 
@@ -127,6 +130,7 @@ typedef union
   struct
   {
     u16 disable_multi_seg : 1;
+    u16 enable_inline_crypto : 1;
     u16 enable_lro : 1;
     u16 enable_tso : 1;
     u16 enable_tcp_udp_checksum : 1;
@@ -147,6 +151,15 @@ typedef union
 } dpdk_port_conf_t;
 
 STATIC_ASSERT_SIZEOF (dpdk_port_conf_t, 24);
+
+typedef struct
+{
+  struct rte_flow **sa_index_to_flow;
+  struct rte_security_session **sa_index_to_session;
+  struct rte_mempool *session_pool;
+  struct rte_mempool *session_priv_pool;
+  struct rte_security_ctx *security_ctx;
+} dpdk_inline_crypto_t;
 
 typedef struct
 {
@@ -178,6 +191,8 @@ typedef struct
   dpdk_driver_t *driver;
   u8 *name;
   const char *if_desc;
+
+  dpdk_inline_crypto_t inline_crypto;
 
   /* number of sub-interfaces */
   u16 num_subifs;
@@ -450,6 +465,9 @@ void dpdk_cli_reference (void);
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
 void dpdk_buffer_poison_trajectory_all (void);
 #endif
+
+int dpdk_inline_crypto_device_setup (dpdk_device_t * xd);
+void dpdk_inline_crypto_init (void);
 
 #endif /* __included_dpdk_h__ */
 

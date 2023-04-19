@@ -1002,6 +1002,8 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
 
+  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_INLINE_CRYPTO);
+
   if (PREDICT_FALSE (n_lost))
     vlib_increment_simple_counter (&ipsec_sa_err_counters[IPSEC_SA_ERROR_LOST],
 				   vm->thread_index, pd->sa_index, n_lost);
@@ -1024,6 +1026,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
   u16 async_nexts[VLIB_FRAME_SIZE], *async_next = async_nexts;
   u16 noop_nexts[VLIB_FRAME_SIZE], n_noop = 0;
+  u16 n_inline = 0;
   u32 sync_bi[VLIB_FRAME_SIZE];
   u32 noop_bi[VLIB_FRAME_SIZE];
   esp_decrypt_packet_data_t pkt_data[VLIB_FRAME_SIZE], *pd = pkt_data;
@@ -1036,6 +1039,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_crypto_op_t **crypto_ops;
   vnet_crypto_op_t **integ_ops;
   int is_async = im->async_mode;
+  int is_inline = 0;
   vnet_crypto_async_op_id_t async_op = ~0;
   vnet_crypto_async_frame_t *async_frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   esp_decrypt_error_t err;
@@ -1098,6 +1102,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  cpd.flags = sa0->flags;
 	  cpd.sa_index = current_sa_index;
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
+	  is_inline =
+            vnet_buffer (b[0])->oflags & VNET_BUFFER_OFFLOAD_F_INLINE_CRYPTO;
 	}
 
       if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
@@ -1198,6 +1204,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		ESP_DECRYPT_NEXT_DROP, current_sa_index);
 	    }
 	}
+      else if (is_inline)
+        n_inline++;
       else
 	esp_decrypt_prepare_sync_op (
 	  vm, node, ptd, &crypto_ops, &integ_ops, op, sa0, payload, len,
@@ -1252,7 +1260,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
 
-  if (n_sync)
+  if (n_sync - n_inline)
     {
       esp_process_ops (vm, node, ptd->integ_ops, sync_bufs, sync_nexts,
 		       ESP_DECRYPT_ERROR_INTEG_ERROR);

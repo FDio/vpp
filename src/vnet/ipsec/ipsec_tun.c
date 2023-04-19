@@ -503,11 +503,15 @@ ipsec_tun_protect_config (ipsec_main_t * im,
 
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
     ipsec_sa_set_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
+  if (INDEX_INVALID != itp->itp_inl_sw_if_index)
+    ipsec_sa_set_IS_INLINE (ipsec_sa_get (itp->itp_out_sa));
 
   /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
     ipsec_sa_lock(sai);
+    if (INDEX_INVALID != itp->itp_inl_sw_if_index)
+      ipsec_sa_set_IS_INLINE (ipsec_sa_get (sai));
   }));
   ipsec_tun_protect_set_crypto_addr(itp);
   /* *INDENT-ON* */
@@ -563,9 +567,24 @@ ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t * itp,
     ip46_address_reset (&itp->itp_tun.dst);
 }
 
+/* TODO: Make a list of callbacks and lock it. */
+static ipsec_tun_protect_cb_t itp_cb;
+
+void
+ipsec_tun_protect_register_callback (ipsec_tun_protect_cb_t fn)
+{
+  itp_cb = fn;
+}
+
+static int
+ipsec_tun_protect_notify (ipsec_tun_protect_t * itp, u8 is_add)
+{
+  return (NULL == itp_cb) ? VNET_API_ERROR_INVALID_VALUE : itp_cb(itp, is_add);
+}
+
 int
-ipsec_tun_protect_update (u32 sw_if_index,
-			  const ip_address_t * nh, u32 sa_out, u32 * sas_in)
+ipsec_tun_protect_update_inl (u32 sw_if_index, u32 inl_sw_if_index,
+			      const ip_address_t * nh, u32 sa_out, u32 * sas_in)
 {
   ipsec_tun_protect_t *itp;
   u32 itpi, ii, *saip;
@@ -627,6 +646,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
       pool_get_zero (ipsec_tun_protect_pool, itp);
 
       itp->itp_sw_if_index = sw_if_index;
+      itp->itp_inl_sw_if_index = inl_sw_if_index;
       itp->itp_ai = ADJ_INDEX_INVALID;
 
       itp->itp_n_sa_in = vec_len (sas_in);
@@ -696,6 +716,15 @@ ipsec_tun_protect_update (u32 sw_if_index,
        *    of the tunnel we are protecting, else it's dropped.
        */
       ipsec_tun_protect_config (im, itp, sa_out, sas_in);
+
+      if (INDEX_INVALID != itp->itp_inl_sw_if_index) {
+        rv = ipsec_tun_protect_notify (itp, 1);
+        if (rv)
+          {
+            ipsec_tun_protect_unconfig (im, itp);
+            goto out;
+          }
+      }
     }
   else
     {
@@ -735,6 +764,10 @@ ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh)
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
   itp = ipsec_tun_protect_get (itpi);
+
+  if (ipsec_tun_protect_notify (itp, 0) < 0)
+    return (VNET_API_ERROR_BUG);
+
   ipsec_tun_protect_unconfig (im, itp);
 
   if (ADJ_INDEX_INVALID != itp->itp_ai)

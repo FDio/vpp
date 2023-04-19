@@ -25,6 +25,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/cryptodev/cryptodev.h>
@@ -1023,6 +1024,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "telemetry"))
 	conf->enable_telemetry = 1;
 
+      else if (unformat (input, "enable-inline-crypto"))
+        dm->default_port_conf.enable_inline_crypto = 1;
+
       else if (unformat (input, "enable-tcp-udp-checksum"))
 	{
 	  dm->default_port_conf.enable_tcp_udp_checksum = 1;
@@ -1357,6 +1361,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   /* main thread 1st */
   if ((error = dpdk_buffer_pools_create (vm)))
     return error;
+
+  if (dm->default_port_conf.enable_inline_crypto)
+    dpdk_inline_crypto_init ();
 
   return 0;
 }

@@ -115,6 +115,7 @@ typedef struct ipsec_tun_protect_t_
   index_t itp_in_sas[ITP_MAX_N_SA_IN];
 
   u32 itp_sw_if_index;
+  u32 itp_inl_sw_if_index;
 
   ipsec_ep_t itp_crypto;
 
@@ -144,9 +145,18 @@ typedef struct ipsec_tun_protect_t_
   }                                                        \
 }
 
-extern int ipsec_tun_protect_update (u32 sw_if_index,
-				     const ip_address_t * nh,
-				     u32 sa_out, u32 * sa_ins);
+extern int ipsec_tun_protect_update_inl (u32 sw_if_index,
+                                         u32 inl_sw_if_index,
+				         const ip_address_t * nh,
+				         u32 sa_out, u32 * sa_ins);
+always_inline int
+ipsec_tun_protect_update (u32 sw_if_index,
+			  const ip_address_t * nh,
+			  u32 sa_out, u32 * sa_ins)
+{
+  return ipsec_tun_protect_update_inl (sw_if_index, INDEX_INVALID, nh, sa_out,
+                                       sa_ins);
+}
 
 extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh);
 
@@ -165,6 +175,9 @@ extern void ipsec_tun_unregister_nodes (ip_address_family_t af);
 
 extern void ipsec_tun_table_init (ip_address_family_t af, uword table_size,
 				  u32 n_buckets);
+
+typedef int (*ipsec_tun_protect_cb_t) (ipsec_tun_protect_t * itp, u8 is_add);
+extern void ipsec_tun_protect_register_callback (ipsec_tun_protect_cb_t fn);
 
 /*
  * DP API

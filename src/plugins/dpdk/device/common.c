@@ -121,9 +121,25 @@ dpdk_device_setup (dpdk_device_t * xd)
   if (xd->conf.disable_rx_scatter)
     rxo &= ~RTE_ETH_RX_OFFLOAD_SCATTER;
 
+  if (xd->conf.enable_inline_crypto)
+    {
+      rxo |= RTE_ETH_RX_OFFLOAD_SECURITY;
+      txo |= RTE_ETH_TX_OFFLOAD_SECURITY;
+    }
+
   /* mask unsupported offloads */
   rxo &= dev_info.rx_offload_capa;
   txo &= dev_info.tx_offload_capa;
+
+  if ((rxo & RTE_ETH_RX_OFFLOAD_SECURITY) &&
+      (txo & RTE_ETH_TX_OFFLOAD_SECURITY))
+    {
+      if (dpdk_inline_crypto_device_setup (xd))
+        {
+          rxo &= ~RTE_ETH_RX_OFFLOAD_SECURITY;
+          txo &= ~RTE_ETH_TX_OFFLOAD_SECURITY;
+        }
+    }
 
   dpdk_log_debug ("[%u] Supported RX offloads: %U", xd->port_id,
 		  format_dpdk_rx_offload_caps, dev_info.rx_offload_capa);

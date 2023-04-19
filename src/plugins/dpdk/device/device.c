@@ -193,13 +193,40 @@ dpdk_prefetch_buffer (vlib_main_t * vm, struct rte_mbuf *mb)
 }
 
 static_always_inline void
+dpdk_process_tx_sec_offload (dpdk_inline_crypto_t * ic, vlib_buffer_t * b,
+                             struct rte_mbuf * mb, u64 * ol_flags)
+{
+  struct rte_security_session *session;
+  u32 sa_index;
+
+  sa_index = vnet_buffer (b)->ipsec.sad_index;
+  if (ic->security_ctx == NULL || sa_index == ~0)
+    return;
+
+  vec_validate_init_empty(ic->sa_index_to_session, sa_index, NULL);
+  session = ic->sa_index_to_session[sa_index];
+  if (session)
+  {
+    *ol_flags |= (RTE_MBUF_F_TX_SEC_OFFLOAD | RTE_MBUF_F_TX_TUNNEL_ESP |
+                  RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4);
+
+    /* TODO: Set this properly. */
+    mb->tx_offload = rte_mbuf_tx_offload(14, 20, 0, 0, 20, 0, 0);
+
+    if (rte_security_set_pkt_metadata (ic->security_ctx, session, mb, NULL))
+      /* Only fails on null parameters */
+      ;
+  }
+}
+
+static_always_inline void
 dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
 			struct rte_mbuf *mb)
 {
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 tso = b->flags & VNET_BUFFER_F_GSO, max_pkt_len;
   u32 ip_cksum, tcp_cksum, udp_cksum, outer_hdr_len = 0;
-  u32 outer_ip_cksum, vxlan_tunnel;
+  u32 outer_ip_cksum, vxlan_tunnel, inline_crypto;
   u64 ol_flags;
   vnet_buffer_oflags_t oflags = 0;
 
@@ -213,6 +240,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   udp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
   outer_ip_cksum = oflags & VNET_BUFFER_OFFLOAD_F_OUTER_IP_CKSUM;
   vxlan_tunnel = oflags & VNET_BUFFER_OFFLOAD_F_TNL_VXLAN;
+  inline_crypto = oflags & VNET_BUFFER_OFFLOAD_F_INLINE_CRYPTO;
 
   ol_flags = is_ip4 ? RTE_MBUF_F_TX_IPV4 : RTE_MBUF_F_TX_IPV6;
   ol_flags |= ip_cksum ? RTE_MBUF_F_TX_IP_CKSUM : 0;
@@ -255,6 +283,9 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
 	ol_flags |=
 	  (tcp_cksum ? RTE_MBUF_F_TX_TCP_SEG : RTE_MBUF_F_TX_UDP_SEG);
     }
+
+  if (inline_crypto)
+    dpdk_process_tx_sec_offload (&xd->inline_crypto, b, mb, &ol_flags);
 
   mb->ol_flags |= ol_flags;
 
