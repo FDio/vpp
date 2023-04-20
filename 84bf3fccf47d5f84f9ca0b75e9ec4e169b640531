@@ -156,6 +156,24 @@
       "parentUuid": "d92836e1_4d2c9bfd",
       "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd704683_37108130",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1461
+      },
+      "writtenOn": "2023-04-20T06:48:07Z",
+      "side": 1,
+      "message": "Without apply this patch,  did not see this error info.",
+      "parentUuid": "3ba099fc_befb4a72",
+      "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
