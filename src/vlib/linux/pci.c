@@ -55,6 +55,7 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include <linux/vfio.h>
+#include <limits.h>
 #include <sys/eventfd.h>
 
 #define SYSFS_DEVICES_PCI "/sys/devices/pci"
