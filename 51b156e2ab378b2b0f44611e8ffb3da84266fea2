@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56e8d0a3_3b80f9c2",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2023-04-20T21:24:19Z",
+      "side": 1,
+      "message": "You should be able to remove the #define __USE_GNU and #include \u003cdlfcn.h\u003e",
+      "revId": "51b156e2ab378b2b0f44611e8ffb3da84266fea2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
