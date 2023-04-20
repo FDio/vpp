@@ -16,6 +16,23 @@
       "message": "perftest-3n-snr mrrANDnic_*ANDdrv_vfio_pciAND2cAND1518bANDethip4udpwireguard1tnlsw-ip4base",
       "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "57c5b175_26c21dca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-04-20T15:21:54Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/1/ : SUCCESS (skipped)\n\nThat only proves nothing got broken. I still have to prepare a CSIT patch to actually apply the new CLI command (and see if performance becomes stable).",
+      "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
