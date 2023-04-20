@@ -751,8 +751,8 @@ noise_tai64n_now (uint8_t output[NOISE_TIMESTAMP_LEN])
   unix_nanosec &= REJECT_INTERVAL_MASK;
 
   /* https://cr.yp.to/libtai/tai64.html */
-  sec = htobe64 (0x400000000000000aULL + unix_sec);
-  nsec = htobe32 (unix_nanosec);
+  sec = clib_host_to_big_u64 (0x400000000000000aULL + unix_sec);
+  nsec = clib_host_to_big_u32 (unix_nanosec);
 
   /* memcpy to output buffer, assuming output could be unaligned. */
   clib_memcpy (output, &sec, sizeof (sec));
