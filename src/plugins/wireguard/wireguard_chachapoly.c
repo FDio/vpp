@@ -72,11 +72,11 @@ wg_xchacha20poly1305_encrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
   u64 h_nonce;
 
   clib_memcpy (&h_nonce, nonce + 16, sizeof (h_nonce));
-  h_nonce = le64toh (h_nonce);
+  h_nonce = clib_little_to_host_u64 (h_nonce);
   hchacha20 (derived_key, nonce, key);
 
   for (i = 0; i < (sizeof (derived_key) / sizeof (derived_key[0])); i++)
-    (derived_key[i]) = htole32 ((derived_key[i]));
+    (derived_key[i]) = clib_host_to_little_u32 ((derived_key[i]));
 
   uint32_t key_idx;
 
@@ -102,11 +102,11 @@ wg_xchacha20poly1305_decrypt (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst,
   u64 h_nonce;
 
   clib_memcpy (&h_nonce, nonce + 16, sizeof (h_nonce));
-  h_nonce = le64toh (h_nonce);
+  h_nonce = clib_little_to_host_u64 (h_nonce);
   hchacha20 (derived_key, nonce, key);
 
   for (i = 0; i < (sizeof (derived_key) / sizeof (derived_key[0])); i++)
-    (derived_key[i]) = htole32 ((derived_key[i]));
+    (derived_key[i]) = clib_host_to_little_u32 ((derived_key[i]));
 
   uint32_t key_idx;
 
