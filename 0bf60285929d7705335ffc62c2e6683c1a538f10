@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8cbf57b_21c30175",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-04-20T07:49:15Z",
+      "side": 1,
+      "message": "Hi Damjan!\nI recently worked with perfmon, and I ran into a small issue when enabling a bundle while specifying its type.\nThis commit solves this.",
+      "revId": "0bf60285929d7705335ffc62c2e6683c1a538f10",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
