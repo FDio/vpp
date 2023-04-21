@@ -439,6 +439,90 @@ session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
     b->total_length_not_including_first_buffer -= n_bytes_to_drop;
 }
 
+void
+session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
+		     u32 len)
+{
+  if (s->flags & SESSION_F_CUSTOM_FIFO_TUNING)
+    {
+      app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+      app_worker_session_fifo_tuning (app_wrk, s, f, act, len);
+      if (CLIB_ASSERT_ENABLE)
+	{
+	  segment_manager_t *sm;
+	  sm = segment_manager_get (f->segment_manager);
+	  ASSERT (f->shr->size >= 4096);
+	  ASSERT (f->shr->size <= sm->max_fifo_size);
+	}
+    }
+}
+
+always_inline int
+session_rx_dsa_copy (session_worker_t *wrk, svm_fifo_t *f, session_t *s,
+		     vlib_buffer_t *b, u32 offset)
+{
+  u32 n_segs = 2;
+  svm_fifo_seg_t data_fs[n_segs];
+  int n_fs, enqueued = 0;
+  u16 n_transfers = 0;
+  vlib_main_t *vm = wrk->vm;
+
+  u8 *data = vlib_buffer_get_current (b);
+
+  u32 max_enq = svm_fifo_max_enqueue_prod (f);
+  if (!max_enq)
+    return 0;
+  if (!offset)
+    n_fs = svm_fifo_provision_chunks (f, data_fs, n_segs, b->current_length);
+  else
+    n_fs = svm_fifo_provision_chunks_with_offset (f, data_fs, n_segs,
+						  b->current_length, offset);
+  if (n_fs < 0)
+    return 0;
+
+  while (n_transfers < n_fs)
+    {
+      wrk->rx_batch_num++;
+      // printf("data_len %d b->current_length %d n_fs %d",
+      // data_fs[n_transfers].len, b->current_length, n_fs);
+      vlib_dma_batch_add (vm, wrk->rx_batch, data_fs[n_transfers].data, data,
+			  data_fs[n_transfers].len);
+      data += data_fs[n_transfers].len;
+      enqueued += data_fs[n_transfers].len;
+      n_transfers++;
+    }
+  if (!offset)
+    svm_fifo_enqueue_nocopy (f, enqueued);
+  // printf("enqueue %d", enqueued);
+  return enqueued;
+}
+
+always_inline int
+session_rx_copy_data (session_worker_t *wrk, svm_fifo_t *f, session_t *s,
+		      vlib_buffer_t *b, u32 offset)
+{
+  int enqueued = 0;
+  //  clib_warning("dma %d  rx dma %d ", wrk->dma_enabled,
+  //  wrk->rx_dma_enabled);
+  if (!offset)
+    {
+      if (PREDICT_TRUE (!wrk->rx_dma_enabled))
+	enqueued =
+	  svm_fifo_enqueue (f, b->current_length, vlib_buffer_get_current (b));
+      else
+	enqueued = session_rx_dsa_copy (wrk, f, s, b, 0);
+    }
+  else
+    {
+      if (PREDICT_TRUE (!wrk->rx_dma_enabled))
+	enqueued = svm_fifo_enqueue_with_offset (f, offset, b->current_length,
+						 vlib_buffer_get_current (b));
+      else
+	enqueued = session_rx_dsa_copy (wrk, f, s, b, offset);
+    }
+  return enqueued;
+}
+
 /**
  * Enqueue buffer chain tail
  */
@@ -452,6 +536,8 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
   u8 *data;
   u32 written = 0;
   int rv = 0;
+  session_worker_t *wrk;
+  wrk = session_main_get_worker (s->thread_index);
 
   if (is_in_order && offset)
     {
@@ -474,7 +560,7 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 	continue;
       if (is_in_order)
 	{
-	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
+	  rv = session_rx_copy_data (wrk, s->rx_fifo, s, chain_b, 0);
 	  if (rv == len)
 	    {
 	      written += rv;
@@ -497,7 +583,9 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 	}
       else
 	{
-	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
+	  //	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len,
+	  // data);
+	  rv = session_rx_copy_data (wrk, s->rx_fifo, s, chain_b, offset);
 	  if (rv)
 	    {
 	      clib_warning ("failed to enqueue multi-buffer seg");
@@ -515,23 +603,6 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
   return 0;
 }
 
-void
-session_fifo_tuning (session_t * s, svm_fifo_t * f,
-		     session_ft_action_t act, u32 len)
-{
-  if (s->flags & SESSION_F_CUSTOM_FIFO_TUNING)
-    {
-      app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-      app_worker_session_fifo_tuning (app_wrk, s, f, act, len);
-      if (CLIB_ASSERT_ENABLE)
-	{
-	  segment_manager_t *sm;
-	  sm = segment_manager_get (f->segment_manager);
-	  ASSERT (f->shr->size >= 4096);
-	  ASSERT (f->shr->size <= sm->max_fifo_size);
-	}
-    }
-}
 
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
@@ -556,12 +627,12 @@ session_enqueue_stream_connection (transport_connection_t * tc,
   int enqueued = 0, rv, in_order_off;
 
   s = session_get (tc->s_index, tc->thread_index);
-
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo,
-				   b->current_length,
-				   vlib_buffer_get_current (b));
+      session_worker_t *wrk = session_main_get_worker (s->thread_index);
+      enqueued = session_rx_copy_data (wrk, s->rx_fifo, s, b, 0);
+      // enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
+      // vlib_buffer_get_current(b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
 			 && enqueued >= 0))
 	{
@@ -573,9 +644,11 @@ session_enqueue_stream_connection (transport_connection_t * tc,
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
-					 b->current_length,
-					 vlib_buffer_get_current (b));
+      //    rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
+      //				 b->current_length,
+      //				 vlib_buffer_get_current (b));
+      session_worker_t *wrk = session_main_get_worker (s->thread_index);
+      rv = session_rx_copy_data (wrk, s->rx_fifo, s, b, offset);
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
 	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
       /* if something was enqueued, report even this as success for ooo
@@ -2063,7 +2136,7 @@ session_node_enable_dma (u8 is_en, int n_vlibs)
       if (is_en)
 	{
 	  if (config_index >= 0)
-	    wrk->dma_enabled = true;
+	    wrk->dma_enabled = 0;
 	  wrk->dma_trans = (session_dma_transfer *) clib_mem_alloc (
 	    sizeof (session_dma_transfer) * DMA_TRANS_SIZE);
 	  bzero (wrk->dma_trans,
@@ -2077,6 +2150,201 @@ session_node_enable_dma (u8 is_en, int n_vlibs)
       wrk->trans_head = 0;
       wrk->trans_tail = 0;
       wrk->trans_size = DMA_TRANS_SIZE;
+    }
+}
+
+#include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_inlines.h>
+
+void
+session_tcp_handle_rst (tcp_connection_t *tc)
+{
+  switch (tc->rst_state)
+    {
+    case TCP_STATE_SYN_RCVD:
+      /* Cleanup everything. App wasn't notified yet */
+      session_transport_delete_notify (&tc->connection);
+      tcp_connection_cleanup (tc);
+      break;
+    case TCP_STATE_SYN_SENT:
+      session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
+      tcp_connection_cleanup (tc);
+      break;
+    case TCP_STATE_ESTABLISHED:
+      session_transport_reset_notify (&tc->connection);
+      session_transport_closed_notify (&tc->connection);
+      break;
+    case TCP_STATE_CLOSE_WAIT:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_FIN_WAIT_2:
+    case TCP_STATE_CLOSING:
+    case TCP_STATE_LAST_ACK:
+      session_transport_closed_notify (&tc->connection);
+      break;
+    case TCP_STATE_CLOSED:
+    case TCP_STATE_TIME_WAIT:
+      break;
+    default:
+      TCP_DBG ("reset state: %u", tc->state);
+    }
+}
+
+void
+session_tcp_handle_disconnects (tcp_worker_ctx_t *wrk)
+{
+  u32 thread_index, *pending_disconnects, *pending_resets;
+  tcp_connection_t *tc;
+  int i;
+
+  if (vec_len (wrk->pending_disconnects))
+    {
+      thread_index = wrk->vm->thread_index;
+      pending_disconnects = wrk->pending_disconnects;
+      for (i = 0; i < vec_len (pending_disconnects); i++)
+	{
+	  tc = tcp_connection_get (pending_disconnects[i], thread_index);
+	  tcp_disconnect_pending_off (tc);
+	  session_transport_closing_notify (&tc->connection);
+	}
+      vec_set_len (wrk->pending_disconnects, 0);
+    }
+
+  if (vec_len (wrk->pending_resets))
+    {
+      thread_index = wrk->vm->thread_index;
+      pending_resets = wrk->pending_resets;
+      for (i = 0; i < vec_len (pending_resets); i++)
+	{
+	  tc = tcp_connection_get (pending_resets[i], thread_index);
+	  tcp_disconnect_pending_off (tc);
+	  session_tcp_handle_rst (tc);
+	}
+      vec_set_len (wrk->pending_resets, 0);
+    }
+}
+
+void
+session_tcp_handle_postponed_dequeues (tcp_worker_ctx_t *wrk)
+{
+  u32 thread_index = wrk->vm->thread_index;
+  u32 *pending_deq_acked;
+  tcp_connection_t *tc;
+  int i;
+
+  if (!vec_len (wrk->pending_deq_acked))
+    return;
+
+  pending_deq_acked = wrk->pending_deq_acked;
+  for (i = 0; i < vec_len (pending_deq_acked); i++)
+    {
+      tc = tcp_connection_get (pending_deq_acked[i], thread_index);
+      tc->flags &= ~TCP_CONN_DEQ_PENDING;
+
+      if (PREDICT_FALSE (!tc->burst_acked))
+	continue;
+
+      /* Dequeue the newly ACKed bytes */
+      session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
+      tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+
+      if (tcp_is_descheduled (tc))
+	tcp_reschedule (tc);
+
+      /* If everything has been acked, stop retransmit timer
+       * otherwise update. */
+      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+
+      /* Update pacer based on our new cwnd estimate */
+      tcp_connection_tx_pacer_update (tc);
+
+      tc->burst_acked = 0;
+    }
+  vec_set_len (wrk->pending_deq_acked, 0);
+}
+
+void
+session_rx_dma_completion_cb (vlib_main_t *vm, struct vlib_dma_batch *batch)
+{
+  session_worker_t *wrk;
+  wrk = session_main_get_worker (vm->thread_index);
+  session_rx_dma_info *rx_dma_info;
+  // clib_warning ("free in cb \n");
+  rx_dma_info = &wrk->rx_dma_info[wrk->rx_trans_head];
+  // clib_warning ("wrk->trans_head %d, from 0x%x  %d", wrk->rx_trans_head,
+  // rx_dma_info->from, rx_dma_info->n_vectors );
+
+  // clib_warning ("vlib_buffer_index %d", rx_dma_info->from[0]);
+  vlib_buffer_free (vm, rx_dma_info->from, rx_dma_info->n_vectors);
+  // clib_warning ("wrk->trans_head %d, from 0x%x  %d", wrk->rx_trans_head,
+  // rx_dma_info->from, rx_dma_info->n_vectors );
+  wrk->rx_trans_head++;
+  if (wrk->rx_trans_head == wrk->rx_trans_size)
+    wrk->rx_trans_head = 0;
+  session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, vm->thread_index);
+  u32 thread_index = vm->thread_index;
+  tcp_worker_ctx_t *twrk = tcp_get_worker (thread_index);
+  session_tcp_handle_postponed_dequeues (twrk);
+  session_tcp_handle_disconnects (twrk);
+
+  return;
+}
+
+static void
+session_rx_prepare_dma_args (vlib_dma_config_t *args)
+{
+  args->max_transfers = DMA_TRANS_SIZE;
+  args->max_transfer_size = 65536;
+  args->features = 0;
+  args->sw_fallback = 1;
+  args->barrier_before_last = 1;
+  args->callback_fn = session_rx_dma_completion_cb;
+}
+
+static void
+session_node_rx_enable_dma (u8 is_en, int n_vlibs)
+{
+  vlib_dma_config_t rx_args;
+  session_rx_prepare_dma_args (&rx_args);
+  session_worker_t *wrk;
+  vlib_main_t *vm;
+
+  int config_index = -1;
+
+  if (is_en)
+    {
+      vm = vlib_get_main_by_index (0);
+      config_index = vlib_dma_config_add (vm, &rx_args);
+    }
+  else
+    {
+      vm = vlib_get_main_by_index (0);
+      wrk = session_main_get_worker (0);
+      if (wrk->rx_config_index >= 0)
+	vlib_dma_config_del (vm, wrk->rx_config_index);
+    }
+  int i;
+  for (i = 0; i < n_vlibs; i++)
+    {
+      vm = vlib_get_main_by_index (i);
+      wrk = session_main_get_worker (vm->thread_index);
+      wrk->rx_config_index = config_index;
+      if (is_en)
+	{
+	  if (config_index >= 0)
+	    wrk->rx_dma_enabled = 1;
+	  wrk->rx_dma_info = (session_rx_dma_info *) clib_mem_alloc (
+	    sizeof (session_rx_dma_info) * DMA_TRANS_SIZE);
+	  bzero (wrk->rx_dma_info,
+		 sizeof (session_rx_dma_info) * DMA_TRANS_SIZE);
+	}
+      else
+	{
+	  if (wrk->rx_dma_info)
+	    clib_mem_free (wrk->rx_dma_info);
+	}
+      wrk->rx_trans_head = 0;
+      wrk->rx_trans_tail = 0;
+      wrk->rx_trans_size = DMA_TRANS_SIZE;
     }
 }
 
@@ -2122,7 +2390,10 @@ session_node_enable_disable (u8 is_en)
     application_enable_rx_mqs_nodes (is_en);
 
   if (sm->dma_enabled)
-    session_node_enable_dma (is_en, n_vlibs);
+    {
+      session_node_enable_dma (is_en, n_vlibs);
+      session_node_rx_enable_dma (is_en, n_vlibs);
+    }
 }
 
 clib_error_t *
