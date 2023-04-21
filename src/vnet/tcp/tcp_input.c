@@ -19,6 +19,7 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/session/session.h>
+#include <vlib/dma/dma.h>
 #include <math.h>
 
 static vlib_error_desc_t tcp_input_error_counters[] = {
@@ -1462,7 +1463,21 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
+  session_worker_t *swrk = session_main_get_worker (vm->thread_index);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_trans_head ==
+	  ((swrk->rx_trans_tail + 1) & (swrk->rx_trans_size - 1)))
+	return 0;
+      swrk->rx_batch = vlib_dma_batch_new (vm, swrk->rx_config_index);
 
+      session_rx_dma_info *rx_dma_info =
+	&swrk->rx_dma_info[swrk->rx_trans_tail];
+      clib_memcpy_fast (rx_dma_info->from, from,
+			n_left_from * sizeof (from[0]));
+      rx_dma_info->n_vectors = frame->n_vectors;
+    }
+  u8 need_free = 1;
   while (n_left_from > 0)
     {
       u32 error = TCP_ERROR_ACK_OK;
@@ -1516,13 +1531,28 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b += 1;
     }
 
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-					      thread_index);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_batch_num)
+	{
+	  vlib_dma_batch_set_cookie (vm, swrk->rx_batch, swrk->rx_trans_tail);
+	  swrk->rx_batch_num = 0;
+	  swrk->rx_trans_tail++;
+	  if (swrk->rx_trans_tail == swrk->rx_trans_size)
+	    swrk->rx_trans_tail = 0;
+	  need_free = 0;
+	}
+      vlib_dma_batch_submit (vm, swrk->rx_batch);
+    }
+  else
+    errors =
+      session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   err_counters[TCP_ERROR_MSG_QUEUE_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, from, frame->n_vectors);
+  if (need_free)
+    vlib_buffer_free (vm, from, frame->n_vectors);
 
   return frame->n_vectors;
 }
@@ -1829,6 +1859,22 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
 
+  u8 need_free = 1;
+
+  session_worker_t *swrk = session_main_get_worker (vm->thread_index);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_trans_head ==
+	  ((swrk->rx_trans_tail + 1) & (swrk->rx_trans_size - 1)))
+	return 0;
+      swrk->rx_batch = vlib_dma_batch_new (vm, swrk->rx_config_index);
+
+      session_rx_dma_info *rx_dma_info =
+	&swrk->rx_dma_info[swrk->rx_trans_tail];
+      clib_memcpy_fast (rx_dma_info->from, from,
+			n_left_from * sizeof (from[0]));
+      rx_dma_info->n_vectors = frame->n_vectors;
+    }
   while (n_left_from > 0)
     {
       u32 ack, seq, error = TCP_ERROR_NONE;
@@ -2051,12 +2097,27 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_inc_counter (syn_sent, error, 1);
     }
 
-  errors =
-    session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
-  tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
-  vlib_buffer_free (vm, from, frame->n_vectors);
-  tcp_handle_disconnects (wrk);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_batch_num)
+	{
+	  vlib_dma_batch_set_cookie (vm, swrk->rx_batch, swrk->rx_trans_tail);
+	  swrk->rx_batch_num = 0;
+	  swrk->rx_trans_tail++;
+	  if (swrk->rx_trans_tail == swrk->rx_trans_size)
+	    swrk->rx_trans_tail = 0;
+	  need_free = 0;
+	}
+      vlib_dma_batch_submit (vm, swrk->rx_batch);
+    }
+  else
+    errors =
+      session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
 
+  tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
+  if (need_free)
+    vlib_buffer_free (vm, from, frame->n_vectors);
+  tcp_handle_disconnects (wrk);
   return frame->n_vectors;
 }
 
@@ -2142,7 +2203,7 @@ always_inline uword
 tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlib_frame_t *frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, errors, n_left_from, *from, max_deq;
+  u32 thread_index = vm->thread_index, errors = 0, n_left_from, *from, max_deq;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
 
@@ -2154,7 +2215,21 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
+  u8 need_free = 1;
+  session_worker_t *swrk = session_main_get_worker (vm->thread_index);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_trans_head ==
+	  ((swrk->rx_trans_tail + 1) & (swrk->rx_trans_size - 1)))
+	return 0;
+      swrk->rx_batch = vlib_dma_batch_new (vm, swrk->rx_config_index);
 
+      session_rx_dma_info *rx_dma_info =
+	&swrk->rx_dma_info[swrk->rx_trans_tail];
+      clib_memcpy_fast (rx_dma_info->from, from,
+			n_left_from * sizeof (from[0]));
+      rx_dma_info->n_vectors = frame->n_vectors;
+    }
   while (n_left_from > 0)
     {
       u32 error = TCP_ERROR_NONE;
@@ -2412,7 +2487,6 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       /* 6: check the URG bit TODO */
-
       /* 7: process the segment text */
       switch (tc->state)
 	{
@@ -2514,14 +2588,28 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_left_from -= 1;
       tcp_inc_counter (rcv_process, error, 1);
     }
-
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-					      thread_index);
+  if (PREDICT_FALSE (swrk->rx_dma_enabled))
+    {
+      if (swrk->rx_batch_num)
+	{
+	  // clib_warning("rcv rx_batch_num %d", swrk->rx_batch_num);
+	  vlib_dma_batch_set_cookie (vm, swrk->rx_batch, swrk->rx_trans_tail);
+	  swrk->rx_batch_num = 0;
+	  swrk->rx_trans_tail++;
+	  if (swrk->rx_trans_tail == swrk->rx_trans_size)
+	    swrk->rx_trans_tail = 0;
+	  need_free = 0;
+	}
+      vlib_dma_batch_submit (vm, swrk->rx_batch);
+    }
+  else
+    errors =
+      session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, from, frame->n_vectors);
-
+  if (need_free)
+    vlib_buffer_free (vm, from, frame->n_vectors);
   return frame->n_vectors;
 }
 
@@ -2623,7 +2711,6 @@ syn_during_timewait (tcp_connection_t *tc, vlib_buffer_t *b, u32 *iss)
 {
   int paws_reject = tcp_segment_check_paws (tc);
   u32 tw_iss;
-
   *iss = 0;
   /* Check that the SYN arrived out of window. We accept it */
   if (!paws_reject &&
