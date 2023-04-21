@@ -1526,10 +1526,6 @@ tcp_main_enable (vlib_main_t * vm)
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
 
-  tm->ipl_next_node[0] = vlib_node_get_next (vm, session_queue_node.index,
-					     ip4_lookup_node.index);
-  tm->ipl_next_node[1] = vlib_node_get_next (vm, session_queue_node.index,
-					     ip6_lookup_node.index);
   return error;
 }
 
