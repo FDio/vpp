@@ -98,6 +98,12 @@ typedef struct
   u16 *pending_tx_nexts;
 } session_dma_transfer;
 
+typedef struct
+{
+  u32 from[256];
+  u32 n_vectors;
+} session_rx_dma_info;
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -175,6 +181,14 @@ typedef struct session_worker_
   vlib_dma_batch_t *batch;
 
   session_wrk_stats_t stats;
+  int rx_config_index;
+  u8 rx_dma_enabled;
+  session_rx_dma_info *rx_dma_info;
+  u16 rx_trans_head;
+  u16 rx_trans_tail;
+  u16 rx_trans_size;
+  u16 rx_batch_num;
+  vlib_dma_batch_t *rx_batch;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
