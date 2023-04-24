@@ -69,7 +69,7 @@ func parseString(s, pattern string) string {
 
 func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	nRequests := 1000000
-	nClients := 2000
+	nClients := 1000
 
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
 
@@ -87,6 +87,8 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		} else if mode != "cps" {
 			return fmt.Errorf("invalid mode %s; expected cps/rps", mode)
 		}
+		// don't exit on socket receive errors
+		args += " -r"
 		args += " http://" + serverAddress + ":80/64B.json"
 		abCont.extraRunningArgs = args
 		o, err := abCont.combinedOutput()
