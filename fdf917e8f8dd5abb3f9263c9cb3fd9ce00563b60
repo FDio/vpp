@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4c55b62_5cb5d056",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-04-24T14:49:55Z",
+      "side": 0,
+      "message": "why those code need to be removed?",
+      "revId": "fdf917e8f8dd5abb3f9263c9cb3fd9ce00563b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
