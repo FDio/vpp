@@ -458,6 +458,11 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
       u32 tail, head;
       u8 found = 0;
 
+      u8 recheck_queues =
+	crypto_main.dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT;
+
+    run_half_queues:
+
       /* get a pending frame to process */
       if (ptd->self_crypto_enabled)
 	{
@@ -568,6 +573,11 @@ crypto_sw_scheduler_process_aead (vlib_main_t *vm,
 	  return f;
 	}
 
+      if (!found && recheck_queues)
+	{
+	  recheck_queues = 0;
+	  goto run_half_queues;
+	}
       return 0;
     }
 
