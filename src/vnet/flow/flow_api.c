@@ -328,7 +328,7 @@ vl_api_flow_add_v2_t_handler (vl_api_flow_add_v2_t *mp)
   flow.buffer_advance = ntohl (f->buffer_advance);
   flow.queue_index = ntohl (f->queue_index);
   flow.queue_num = ntohl (f->queue_num);
-  flow.rss_types = ntohl (f->rss_types);
+  flow.rss_types = clib_net_to_host_u64 (f->rss_types);
   flow.rss_fun = ntohl (f->rss_fun);
 
   switch (flow.type)
