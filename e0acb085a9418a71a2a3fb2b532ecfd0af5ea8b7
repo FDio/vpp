@@ -50,6 +50,23 @@
       "message": "In the meantime, can you please add an .api file with an API message doing this (possibly with sw_if_index or hw_if_index instead of the human-readable interface name as an argument)?\nCLI is for manual debugging only, while this feature will be used in production, so it should be covered by [1].\n\n[1] https://wiki.fd.io/view/VPP/ApiChangeProcess",
       "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7a04b2f_e67bfd3f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-04-25T15:27:00Z",
+      "side": 1,
+      "message": "RSS is etherent feature, so it should be part of ethernet code (src/vnet/ethernet), not vnet_hw_interface.",
+      "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
