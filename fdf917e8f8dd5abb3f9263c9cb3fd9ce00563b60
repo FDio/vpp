@@ -34,6 +34,24 @@
       "parentUuid": "f4c55b62_5cb5d056",
       "revId": "fdf917e8f8dd5abb3f9263c9cb3fd9ce00563b60",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10a2f9df_4add8f01",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-04-25T14:42:30Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "347ed9d9_190dd323",
+      "revId": "fdf917e8f8dd5abb3f9263c9cb3fd9ce00563b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
