@@ -33,6 +33,24 @@
       "message": "Maybe this change should take place in a separate commit for clarity?",
       "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2fd7ca6f_907f6d72",
+        "filename": "extras/libmemif/examples/common/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-04-25T15:22:24Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "b31e0400_c1bfaf62",
+      "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
