@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b66041aa_855f636e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-04-25T15:20:46Z",
+      "side": 1,
+      "message": "what about doing opposite?, changing format function to use u32...",
+      "revId": "c6c198f2df7fbab87d5c8eba3f76b7720d75d97a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
