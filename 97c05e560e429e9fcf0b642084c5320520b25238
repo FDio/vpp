@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "22c2382d_456abd80",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-04-25T11:33:18Z",
+      "side": 1,
+      "message": "Looks great, but can we change the default desc number in a separate commit?",
+      "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b31e0400_c1bfaf62",
+        "filename": "extras/libmemif/examples/common/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-04-25T11:33:18Z",
+      "side": 1,
+      "message": "Maybe this change should take place in a separate commit for clarity?",
+      "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
