@@ -16,6 +16,24 @@
       "message": "what about doing opposite?, changing format function to use u32...",
       "revId": "c6c198f2df7fbab87d5c8eba3f76b7720d75d97a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf66730b_c2143e36",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-04-25T15:37:27Z",
+      "side": 1,
+      "message": "Agreed, at least we would benefit from integer promotion for most cases...\nLet me change that",
+      "parentUuid": "b66041aa_855f636e",
+      "revId": "c6c198f2df7fbab87d5c8eba3f76b7720d75d97a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
