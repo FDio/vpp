@@ -33,6 +33,24 @@
       "message": "It seems like this code should maybe be earlier. Possibly in an \u0027else if (recheck_queues)\u0027 at line 549.\n\nAt a high level, the function seems to be doing something like this:\n\n1. Iterate all threads looking for a crypto frame that needs to be processed in the per-thread queue for a particular operation (encrypt or decrypt)\n2. If a crypto frame was found, process the operations in it. Record the thread_index that owns the frame in enqueue_thread_idx and the number of operations that were processed in nb_elts_processed.\n3. Look for a completed frame on the current thread\u0027s queue for a particular operation.\n4. If a completed frame was found, return it so it can be processed by crypto-dispatch.\n5. (New code) - if no frame was found in step 1, goto 1 and repeat the search for a crypto frame. Look in the per-thread queues for the other operation this time.\n\nIf no frame is found for a given operation in step 1, but a frame of completed operations for the current thread is found in step 3, I think you will return and never make it to the new code in step 5.",
       "revId": "62d99af0e63ce429a2e12336d4edc26aa3a3231f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d2aaf61_840237c5",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2023-04-25T16:27:26Z",
+      "side": 1,
+      "message": "crypto_sw_scheduler_dequeue() is called by crypto_dequeue_frame() @src/vnet/crypto/node.c from a loop\nwhile (cf || n_elts)\n{  ...// no breaks from loop\n   cf \u003d (hdl) (vm, \u0026n_elts, \u0026enqueue_thread_idx);\n   *n_total +\u003d n_elts;\n}\nand (cf !\u003d NULL) found in step 3. will make the worker to run through step 1. again anyway",
+      "parentUuid": "2e492570_ce702b23",
+      "revId": "62d99af0e63ce429a2e12336d4edc26aa3a3231f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
