@@ -354,6 +354,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  vlib_prefetch_buffer_data (b[1], LOAD);
 	}
 
+      if (PREDICT_FALSE (vnet_buffer (b[0])->ipsec.sad_index != 0))
+	{
+	  goto next_pkt;
+	};
+
       b[0]->flags |= VNET_BUFFER_F_IS_IP4;
       b[0]->flags &= ~VNET_BUFFER_F_IS_IP6;
       c0 = vnet_feature_next_with_data (&next32, b[0], sizeof (c0[0]));
@@ -689,6 +694,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	{
 	  ipsec_unprocessed += 1;
 	}
+    next_pkt:
       n_left_from -= 1;
       b += 1;
       next += 1;
