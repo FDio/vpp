@@ -30,6 +30,8 @@ service {
  * Create a client registration 
  */
 define memclnt_create {
+  option deprecated;
+
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */
     u64 input_queue;            /* client's queue */
@@ -38,6 +40,8 @@ define memclnt_create {
 };
 
 define memclnt_create_reply {
+  option deprecated;
+
     u32 context;                /* opaque value from the create request */
     i32 response;               /* Non-negative = success */
     u64 handle;                 /* handle by which vlib knows this client */
