@@ -1078,6 +1078,8 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto next;
 	}
 
+      b[0]->flags |= VNET_BUFFER_F_AH_ESP_DECRYPTED;
+
       if (vnet_buffer (b[0])->ipsec.sad_index != current_sa_index)
 	{
 	  if (current_sa_pkts)

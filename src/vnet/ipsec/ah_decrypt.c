@@ -325,6 +325,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	+ pd->icv_padding_len;
       vlib_buffer_advance (b[0], pd->ip_hdr_size + ah_hdr_len);
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      b[0]->flags |= VNET_BUFFER_F_AH_ESP_DECRYPTED;
 
       if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	{			/* tunnel mode */
