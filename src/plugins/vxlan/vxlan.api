@@ -32,6 +32,8 @@ import "vnet/ip/ip_types.api";
 */
 define vxlan_add_del_tunnel
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add [default=true];
@@ -60,6 +62,8 @@ define vxlan_add_del_tunnel
 */
 define vxlan_add_del_tunnel_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add [default=true];
@@ -108,12 +112,16 @@ define vxlan_add_del_tunnel_v3
 
 define vxlan_add_del_tunnel_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
 };
 define vxlan_add_del_tunnel_v2_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
@@ -127,6 +135,8 @@ define vxlan_add_del_tunnel_v3_reply
 
 define vxlan_tunnel_dump
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -140,6 +150,8 @@ define vxlan_tunnel_v2_dump
 
 define vxlan_tunnel_details
 {
+  option deprecated;
+
   u32 context;
   vl_api_interface_index_t sw_if_index;
   u32 instance;
