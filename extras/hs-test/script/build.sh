@@ -62,3 +62,9 @@ docker_build () {
 docker_build hs-test/vpp vpp
 docker_build hs-test/nginx-ldp nginx
 docker_build hs-test/nginx-server nginx-server
+
+# cleanup detached images
+images=$(docker images --filter "dangling=true" -q --no-trunc)
+if [ "$images" != "" ]; then
+    docker rmi $images
+fi
