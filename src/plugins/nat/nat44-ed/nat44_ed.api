@@ -522,6 +522,8 @@ define nat44_ed_output_interface_details
     @param tag - opaque string tag
 */
 autoreply define nat44_add_del_static_mapping {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add;
@@ -829,6 +831,8 @@ define nat44_user_details {
     @param vrf_id - VRF_ID
 */
 define nat44_user_session_dump {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_ip4_address_t ip_address;
@@ -857,6 +861,8 @@ define nat44_user_session_dump {
                                twice-nat session)
 */
 define nat44_user_session_details {
+  option deprecated;
+
   u32 context;
   vl_api_ip4_address_t outside_ip_address;
   u16 outside_port;
@@ -880,6 +886,8 @@ define nat44_user_session_details {
     @param vrf_id - VRF_ID
 */
 define nat44_user_session_v2_dump {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   vl_api_ip4_address_t ip_address;
@@ -910,6 +918,8 @@ define nat44_user_session_v2_dump {
                           is active
 */
 define nat44_user_session_v2_details {
+  option deprecated;
+
   u32 context;
   vl_api_ip4_address_t outside_ip_address;
   u16 outside_port;
