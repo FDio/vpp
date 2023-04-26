@@ -359,6 +359,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       c0 = vnet_feature_next_with_data (&next32, b[0], sizeof (c0[0]));
       next[0] = (u16) next32;
 
+      if (PREDICT_FALSE (b[0]->flags & VNET_BUFFER_F_AH_ESP_DECRYPTED))
+	{
+	  goto next_pkt;
+	};
+
       spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
       ip0 = vlib_buffer_get_current (b[0]);
@@ -689,6 +694,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	{
 	  ipsec_unprocessed += 1;
 	}
+    next_pkt:
       n_left_from -= 1;
       b += 1;
       next += 1;
@@ -785,6 +791,11 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	  b0->flags |= VNET_BUFFER_F_IS_IP6;
 	  b0->flags &= ~VNET_BUFFER_F_IS_IP4;
 	  c0 = vnet_feature_next_with_data (&next0, b0, sizeof (c0[0]));
+
+	  if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_AH_ESP_DECRYPTED))
+	    {
+	      goto next_pkt;
+	    };
 
 	  spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
@@ -898,6 +909,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	      tr->policy_index = pi0;
 	    }
 
+	next_pkt:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}

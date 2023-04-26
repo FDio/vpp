@@ -65,15 +65,16 @@
   _ (16, IS_DVR, "dvr", 1)                                                    \
   _ (17, QOS_DATA_VALID, "qos-data-valid", 0)                                 \
   _ (18, GSO, "gso", 0)                                                       \
-  _ (19, AVAIL1, "avail1", 1)                                                 \
-  _ (20, AVAIL2, "avail2", 1)                                                 \
-  _ (21, AVAIL3, "avail3", 1)                                                 \
-  _ (22, AVAIL4, "avail4", 1)                                                 \
-  _ (23, AVAIL5, "avail5", 1)                                                 \
-  _ (24, AVAIL6, "avail6", 1)                                                 \
-  _ (25, AVAIL7, "avail7", 1)                                                 \
-  _ (26, AVAIL8, "avail8", 1)                                                 \
-  _ (27, AVAIL9, "avail9", 1)
+  _ (19, AH_ESP_DECRYPTED, "ah-esp-decrypted", 1)                             \
+  _ (20, AVAIL1, "avail1", 1)                                                 \
+  _ (21, AVAIL2, "avail2", 1)                                                 \
+  _ (22, AVAIL3, "avail3", 1)                                                 \
+  _ (23, AVAIL4, "avail4", 1)                                                 \
+  _ (24, AVAIL5, "avail5", 1)                                                 \
+  _ (25, AVAIL6, "avail6", 1)                                                 \
+  _ (26, AVAIL7, "avail7", 1)                                                 \
+  _ (27, AVAIL8, "avail8", 1)                                                 \
+  _ (28, AVAIL9, "avail9", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
