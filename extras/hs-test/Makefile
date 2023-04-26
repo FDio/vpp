@@ -79,6 +79,9 @@ build-debug: .deps.ok build-vpp-debug build-go
 	bash ./script/build.sh debug
 	@touch .build.vpp
 
+.deps.ok:
+	@sudo make install-deps
+
 .PHONY: install-deps
 install-deps:
 	@rm -f .deps.ok
