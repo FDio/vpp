@@ -359,6 +359,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       c0 = vnet_feature_next_with_data (&next32, b[0], sizeof (c0[0]));
       next[0] = (u16) next32;
 
+      if (PREDICT_FALSE (vnet_buffer (b[0])->ipsec.sad_index != 0))
+	{
+	  goto next_pkt;
+	};
+
       spd0 = pool_elt_at_index (im->spds, c0->spd_index);
 
       ip0 = vlib_buffer_get_current (b[0]);
@@ -689,6 +694,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	{
 	  ipsec_unprocessed += 1;
 	}
+    next_pkt:
       n_left_from -= 1;
       b += 1;
       next += 1;
