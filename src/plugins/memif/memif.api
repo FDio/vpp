@@ -43,6 +43,8 @@ enum memif_mode
 */
 autoreply define memif_socket_filename_add_del
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add;		/* 0 = remove, 1 = add association */
@@ -104,6 +106,8 @@ define memif_socket_filename_add_del_v2_reply
 */
 define memif_create
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
 
@@ -128,6 +132,8 @@ define memif_create
 */
 define memif_create_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
