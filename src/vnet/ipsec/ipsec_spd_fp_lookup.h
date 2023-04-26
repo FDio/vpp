@@ -196,13 +196,16 @@ ipsec_fp_in_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_in_match_5tuple (policy, match)))
+		      if (single_rule_in_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
-			  if (policies[i] == 0)
-			    counter++;
-			  policies[i] = policy;
+			  if (last_priority[i] < policy->priority)
+			    {
+			      last_priority[i] = policy->priority;
+			      if (policies[i] == 0)
+				counter++;
+			      policies[i] = policy;
+			    }
+			  break;
 			}
 		    }
 		}
@@ -291,13 +294,16 @@ ipsec_fp_in_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_in_match_5tuple (policy, match)))
+		      if (single_rule_in_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
-			  if (policies[i] == 0)
-			    counter++;
-			  policies[i] = policy;
+			  if (last_priority[i] < policy->priority)
+			    {
+			      last_priority[i] = policy->priority;
+			      if (policies[i] == 0)
+				counter++;
+			      policies[i] = policy;
+			    }
+			  break;
 			}
 		    }
 		}
@@ -418,6 +424,7 @@ ipsec_fp_out_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 			      policies[i] = policy;
 			      ids[i] = *policy_id;
 			    }
+			  break;
 			}
 		    }
 		}
@@ -511,14 +518,17 @@ ipsec_fp_out_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_out_match_5tuple (policy, match)))
+		      if (single_rule_out_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
-			  if (policies[i] == 0)
-			    counter++;
-			  policies[i] = policy;
-			  ids[i] = *policy_id;
+			  if (last_priority[i] < policy->priority)
+			    {
+			      last_priority[i] = policy->priority;
+			      if (policies[i] == 0)
+				counter++;
+			      policies[i] = policy;
+			      ids[i] = *policy_id;
+			    }
+			  break;
 			}
 		    }
 		}
