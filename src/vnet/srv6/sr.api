@@ -291,6 +291,8 @@ define sr_localsids_with_packet_stats_details
 */
 define sr_policies_dump
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
 };
