@@ -144,6 +144,8 @@ autoendian define tap_create_v3_reply
 */
 define tap_create_v2
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   u32 id [default=0xffffffff];
@@ -181,6 +183,8 @@ define tap_create_v2
 */
 define tap_create_v2_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
