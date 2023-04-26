@@ -139,6 +139,8 @@ define rdma_create_v3
 
 define rdma_create_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
@@ -152,6 +154,8 @@ define rdma_create_reply
 
 define rdma_create_v2_reply
 {
+  option deprecated;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
