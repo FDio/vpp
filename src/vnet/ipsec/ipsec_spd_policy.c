@@ -617,17 +617,24 @@ ipsec_fp_ip4_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
     }
   else
     {
+      u32 i;
+      u32 *old_fp_policies_ids = result_val->fp_policies_ids;
 
-      if (vec_max_len (result_val->fp_policies_ids) !=
-	  vec_len (result_val->fp_policies_ids))
+      vec_foreach_index (i, result_val->fp_policies_ids)
 	{
-	  /* no need to resize */
-	  vec_add1 (result_val->fp_policies_ids, policy_index);
+	  ipsec_policy_t *p =
+	    pool_elt_at_index (im->policies, result_val->fp_policies_ids[i]);
+
+	  if (p->priority <= policy->priority)
+	    {
+	      break;
+	    }
 	}
-      else
-	{
-	  vec_add1 (result_val->fp_policies_ids, policy_index);
 
+      vec_insert_elts (result_val->fp_policies_ids, &policy_index, 1, i);
+
+      if (result_val->fp_policies_ids != old_fp_policies_ids)
+	{
 	  res = clib_bihash_add_del_16_8 (bihash_table, &result, 1);
 
 	  if (res != 0)
@@ -721,17 +728,24 @@ ipsec_fp_ip6_add_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
     }
   else
     {
+      u32 i;
+      u32 *old_fp_policies_ids = result_val->fp_policies_ids;
 
-      if (vec_max_len (result_val->fp_policies_ids) !=
-	  vec_len (result_val->fp_policies_ids))
+      vec_foreach_index (i, result_val->fp_policies_ids)
 	{
-	  /* no need to resize */
-	  vec_add1 (result_val->fp_policies_ids, policy_index);
+	  ipsec_policy_t *p =
+	    pool_elt_at_index (im->policies, result_val->fp_policies_ids[i]);
+
+	  if (p->priority <= policy->priority)
+	    {
+	      break;
+	    }
 	}
-      else
-	{
-	  vec_add1 (result_val->fp_policies_ids, policy_index);
 
+      vec_insert_elts (result_val->fp_policies_ids, &policy_index, 1, i);
+
+      if (result_val->fp_policies_ids != old_fp_policies_ids)
+	{
 	  res = clib_bihash_add_del_40_8 (bihash_table, &result, 1);
 
 	  if (res != 0)
@@ -806,7 +820,7 @@ ipsec_fp_ip6_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
 	      clib_bihash_add_del_40_8 (bihash_table, &result, 0);
 	    }
 	  else
-	    vec_del1 (result_val->fp_policies_ids, ii);
+	    vec_delete (result_val->fp_policies_ids, 1, ii);
 
 	  vec_foreach_index (imt, fp_spd->fp_mask_ids[policy->type])
 	    {
@@ -870,7 +884,7 @@ ipsec_fp_ip4_del_policy (ipsec_main_t *im, ipsec_spd_fp_t *fp_spd,
 	      clib_bihash_add_del_16_8 (bihash_table, &result, 0);
 	    }
 	  else
-	    vec_del1 (result_val->fp_policies_ids, ii);
+	    vec_delete (result_val->fp_policies_ids, 1, ii);
 
 	  vec_foreach_index (imt, fp_spd->fp_mask_ids[policy->type])
 	    {
