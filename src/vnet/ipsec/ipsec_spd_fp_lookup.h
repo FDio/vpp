@@ -137,7 +137,6 @@ static_always_inline u32
 ipsec_fp_in_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 				ipsec_policy_t **policies, u32 n)
 {
-  u32 last_priority[n];
   u32 i = 0;
   u32 counter = 0;
   ipsec_fp_mask_type_entry_t *mte;
@@ -159,7 +158,6 @@ ipsec_fp_in_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 
   /* clear the list of matched policies pointers */
   clib_memset (policies, 0, n * sizeof (*policies));
-  clib_memset (last_priority, 0, n * sizeof (u32));
   n_left = n;
   while (n_left)
     {
@@ -196,13 +194,12 @@ ipsec_fp_in_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_in_match_5tuple (policy, match)))
+		      if (single_rule_in_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
 			  if (policies[i] == 0)
 			    counter++;
 			  policies[i] = policy;
+			  break;
 			}
 		    }
 		}
@@ -212,10 +209,8 @@ ipsec_fp_in_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		  ASSERT (vec_len (result_val->fp_policies_ids) == 1);
 		  policy_id = result_val->fp_policies_ids;
 		  policy = im->policies + *policy_id;
-		  if ((last_priority[i] < policy->priority) &&
-		      (single_rule_in_match_5tuple (policy, match)))
+		  if (single_rule_in_match_5tuple (policy, match))
 		    {
-		      last_priority[i] = policy->priority;
 		      if (policies[i] == 0)
 			counter++;
 		      policies[i] = policy;
@@ -236,7 +231,6 @@ ipsec_fp_in_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 				ipsec_policy_t **policies, u32 n)
 
 {
-  u32 last_priority[n];
   u32 i = 0;
   u32 counter = 0;
   ipsec_fp_mask_type_entry_t *mte;
@@ -258,7 +252,6 @@ ipsec_fp_in_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 
   /* clear the list of matched policies pointers */
   clib_memset (policies, 0, n * sizeof (*policies));
-  clib_memset (last_priority, 0, n * sizeof (u32));
   n_left = n;
   while (n_left)
     {
@@ -291,13 +284,12 @@ ipsec_fp_in_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_in_match_5tuple (policy, match)))
+		      if (single_rule_in_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
 			  if (policies[i] == 0)
 			    counter++;
 			  policies[i] = policy;
+			  break;
 			}
 		    }
 		}
@@ -307,10 +299,8 @@ ipsec_fp_in_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		  ASSERT (vec_len (result_val->fp_policies_ids) == 1);
 		  policy_id = result_val->fp_policies_ids;
 		  policy = im->policies + *policy_id;
-		  if ((last_priority[i] < policy->priority) &&
-		      (single_rule_in_match_5tuple (policy, match)))
+		  if (single_rule_in_match_5tuple (policy, match))
 		    {
-		      last_priority[i] = policy->priority;
 		      if (policies[i] == 0)
 			counter++;
 		      policies[i] = policy;
@@ -347,7 +337,6 @@ ipsec_fp_out_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 				 ipsec_policy_t **policies, u32 *ids, u32 n)
 
 {
-  u32 last_priority[n];
   u32 i = 0;
   u32 counter = 0;
   ipsec_fp_mask_type_entry_t *mte;
@@ -371,7 +360,6 @@ ipsec_fp_out_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 
   /*clear the list of matched policies pointers */
   clib_memset (policies, 0, n * sizeof (*policies));
-  clib_memset (last_priority, 0, n * sizeof (u32));
   n_left = n;
   while (n_left)
     {
@@ -410,14 +398,11 @@ ipsec_fp_out_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 
 		      if (single_rule_out_match_5tuple (policy, match))
 			{
-			  if (last_priority[i] < policy->priority)
-			    {
-			      last_priority[i] = policy->priority;
 			      if (policies[i] == 0)
 				counter++;
 			      policies[i] = policy;
 			      ids[i] = *policy_id;
-			    }
+			      break;
 			}
 		    }
 		}
@@ -429,14 +414,10 @@ ipsec_fp_out_ip6_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		  policy = im->policies + *policy_id;
 		  if (single_rule_out_match_5tuple (policy, match))
 		    {
-		      if (last_priority[i] < policy->priority)
-			{
-			  last_priority[i] = policy->priority;
 			  if (policies[i] == 0)
 			    counter++;
 			  policies[i] = policy;
 			  ids[i] = *policy_id;
-			}
 		    }
 		}
 	    }
@@ -453,7 +434,6 @@ ipsec_fp_out_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 				 ipsec_policy_t **policies, u32 *ids, u32 n)
 
 {
-  u32 last_priority[n];
   u32 i = 0;
   u32 counter = 0;
   ipsec_fp_mask_type_entry_t *mte;
@@ -477,7 +457,6 @@ ipsec_fp_out_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 
   /* clear the list of matched policies pointers */
   clib_memset (policies, 0, n * sizeof (*policies));
-  clib_memset (last_priority, 0, n * sizeof (u32));
   n_left = n;
   while (n_left)
     {
@@ -511,14 +490,13 @@ ipsec_fp_out_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		    {
 		      policy = im->policies + *policy_id;
 
-		      if ((last_priority[i] < policy->priority) &&
-			  (single_rule_out_match_5tuple (policy, match)))
+		      if (single_rule_out_match_5tuple (policy, match))
 			{
-			  last_priority[i] = policy->priority;
 			  if (policies[i] == 0)
 			    counter++;
 			  policies[i] = policy;
 			  ids[i] = *policy_id;
+			  break;
 			}
 		    }
 		}
@@ -528,10 +506,8 @@ ipsec_fp_out_ip4_policy_match_n (void *spd_fp, ipsec_fp_5tuple_t *tuples,
 		  ASSERT (vec_len (result_val->fp_policies_ids) == 1);
 		  policy_id = result_val->fp_policies_ids;
 		  policy = im->policies + *policy_id;
-		  if ((last_priority[i] < policy->priority) &&
-		      (single_rule_out_match_5tuple (policy, match)))
+		  if (single_rule_out_match_5tuple (policy, match))
 		    {
-		      last_priority[i] = policy->priority;
 		      if (policies[i] == 0)
 			counter++;
 		      policies[i] = policy;
