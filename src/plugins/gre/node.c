@@ -17,21 +17,21 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 #include <vnet/mpls/mpls.h>
 #include <vppinfra/sparse_vec.h>
 
-#define foreach_gre_input_next			\
-_(PUNT, "error-punt")                           \
-_(DROP, "error-drop")                           \
-_(ETHERNET_INPUT, "ethernet-input")             \
-_(IP4_INPUT, "ip4-input")                       \
-_(IP6_INPUT, "ip6-input")			\
-_(MPLS_INPUT, "mpls-input")
+#define foreach_gre_input_next                                                \
+  _ (PUNT, "error-punt")                                                      \
+  _ (DROP, "error-drop")                                                      \
+  _ (ETHERNET_INPUT, "ethernet-input")                                        \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (MPLS_INPUT, "mpls-input")
 
 typedef enum
 {
-#define _(s,n) GRE_INPUT_NEXT_##s,
+#define _(s, n) GRE_INPUT_NEXT_##s,
   foreach_gre_input_next
 #undef _
     GRE_INPUT_N_NEXT,
@@ -45,20 +45,19 @@ typedef struct
   ip46_address_t dst;
 } gre_rx_trace_t;
 
-extern u8 *format_gre_rx_trace (u8 * s, va_list * args);
+extern u8 *format_gre_rx_trace (u8 *s, va_list *args);
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_gre_rx_trace (u8 * s, va_list * args)
+format_gre_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gre_rx_trace_t *t = va_arg (*args, gre_rx_trace_t *);
 
-  s = format (s, "GRE: tunnel %d len %d src %U dst %U",
-	      t->tunnel_id, clib_net_to_host_u16 (t->length),
-	      format_ip46_address, &t->src, IP46_TYPE_ANY,
-	      format_ip46_address, &t->dst, IP46_TYPE_ANY);
+  s = format (s, "GRE: tunnel %d len %d src %U dst %U", t->tunnel_id,
+	      clib_net_to_host_u16 (t->length), format_ip46_address, &t->src,
+	      IP46_TYPE_ANY, format_ip46_address, &t->dst, IP46_TYPE_ANY);
   return s;
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -71,12 +70,11 @@ typedef struct
 } gre_input_runtime_t;
 
 always_inline void
-gre_trace (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b,
-	   u32 tun_sw_if_index, const ip6_header_t * ip6,
-	   const ip4_header_t * ip4, int is_ipv6)
+gre_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+	   u32 tun_sw_if_index, const ip6_header_t *ip6,
+	   const ip4_header_t *ip4, int is_ipv6)
 {
-  gre_rx_trace_t *tr = vlib_add_trace (vm, node,
-				       b, sizeof (*tr));
+  gre_rx_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
   tr->tunnel_id = tun_sw_if_index;
   if (is_ipv6)
     {
@@ -97,14 +95,14 @@ gre_trace (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b,
 }
 
 always_inline void
-gre_tunnel_get (const gre_main_t * gm, vlib_node_runtime_t * node,
-		vlib_buffer_t * b, u16 * next, const gre_tunnel_key_t * key,
-		gre_tunnel_key_t * cached_key, u32 * tun_sw_if_index,
-		u32 * cached_tun_sw_if_index, int is_ipv6)
+gre_tunnel_get (const gre_main_t *gm, vlib_node_runtime_t *node,
+		vlib_buffer_t *b, u16 *next, const gre_tunnel_key_t *key,
+		gre_tunnel_key_t *cached_key, u32 *tun_sw_if_index,
+		u32 *cached_tun_sw_if_index, int is_ipv6)
 {
   const uword *p;
-  p = is_ipv6 ? hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6)
-    : hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
+  p = is_ipv6 ? hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6) :
+		      hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
   if (PREDICT_FALSE (!p))
     {
       *next = GRE_INPUT_NEXT_DROP;
@@ -124,8 +122,7 @@ gre_tunnel_get (const gre_main_t * gm, vlib_node_runtime_t * node,
 }
 
 always_inline uword
-gre_input (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * frame,
+gre_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	   const int is_ipv6)
 {
   gre_main_t *gm = &gre_main;
@@ -217,23 +214,23 @@ gre_input (vlib_main_t * vm,
       type[0] = ni[0].tunnel_type;
       type[1] = ni[1].tunnel_type;
 
-      b[0]->error = nidx[0] == SPARSE_VEC_INVALID_INDEX
-	? node->errors[GRE_ERROR_UNKNOWN_PROTOCOL]
-	: node->errors[GRE_ERROR_NONE];
-      b[1]->error = nidx[1] == SPARSE_VEC_INVALID_INDEX
-	? node->errors[GRE_ERROR_UNKNOWN_PROTOCOL]
-	: node->errors[GRE_ERROR_NONE];
+      b[0]->error = nidx[0] == SPARSE_VEC_INVALID_INDEX ?
+			    node->errors[GRE_ERROR_UNKNOWN_PROTOCOL] :
+			    node->errors[GRE_ERROR_NONE];
+      b[1]->error = nidx[1] == SPARSE_VEC_INVALID_INDEX ?
+			    node->errors[GRE_ERROR_UNKNOWN_PROTOCOL] :
+			    node->errors[GRE_ERROR_NONE];
 
       version[0] = clib_net_to_host_u16 (gre[0]->flags_and_version);
       version[1] = clib_net_to_host_u16 (gre[1]->flags_and_version);
       version[0] &= GRE_VERSION_MASK;
       version[1] &= GRE_VERSION_MASK;
 
-      b[0]->error = version[0]
-	? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[0]->error;
+      b[0]->error =
+	version[0] ? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[0]->error;
       next[0] = version[0] ? GRE_INPUT_NEXT_DROP : next[0];
-      b[1]->error = version[1]
-	? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[1]->error;
+      b[1]->error =
+	version[1] ? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[1]->error;
       next[1] = version[1] ? GRE_INPUT_NEXT_DROP : next[1];
 
       len[0] = vlib_buffer_length_in_chain (vm, b[0]);
@@ -242,27 +239,23 @@ gre_input (vlib_main_t * vm,
       /* always search for P2P types in the DP */
       if (is_ipv6)
 	{
-	  gre_mk_key6 (&ip6[0]->dst_address,
-		       &ip6[0]->src_address,
-		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
-	  gre_mk_key6 (&ip6[1]->dst_address,
-		       &ip6[1]->src_address,
-		       vnet_buffer (b[1])->ip.fib_index,
-		       type[1], TUNNEL_MODE_P2P, 0, &key[1].gtk_v6);
+	  gre_mk_key6 (&ip6[0]->dst_address, &ip6[0]->src_address,
+		       vnet_buffer (b[0])->ip.fib_index, type[0],
+		       TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
+	  gre_mk_key6 (&ip6[1]->dst_address, &ip6[1]->src_address,
+		       vnet_buffer (b[1])->ip.fib_index, type[1],
+		       TUNNEL_MODE_P2P, 0, &key[1].gtk_v6);
 	  matched[0] = gre_match_key6 (&cached_key.gtk_v6, &key[0].gtk_v6);
 	  matched[1] = gre_match_key6 (&cached_key.gtk_v6, &key[1].gtk_v6);
 	}
       else
 	{
-	  gre_mk_key4 (ip4[0]->dst_address,
-		       ip4[0]->src_address,
-		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
-	  gre_mk_key4 (ip4[1]->dst_address,
-		       ip4[1]->src_address,
-		       vnet_buffer (b[1])->ip.fib_index,
-		       type[1], TUNNEL_MODE_P2P, 0, &key[1].gtk_v4);
+	  gre_mk_key4 (ip4[0]->dst_address, ip4[0]->src_address,
+		       vnet_buffer (b[0])->ip.fib_index, type[0],
+		       TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
+	  gre_mk_key4 (ip4[1]->dst_address, ip4[1]->src_address,
+		       vnet_buffer (b[1])->ip.fib_index, type[1],
+		       TUNNEL_MODE_P2P, 0, &key[1].gtk_v4);
 	  matched[0] = gre_match_key4 (&cached_key.gtk_v4, &key[0].gtk_v4);
 	  matched[1] = gre_match_key4 (&cached_key.gtk_v4, &key[1].gtk_v4);
 	}
@@ -271,33 +264,27 @@ gre_input (vlib_main_t * vm,
       tun_sw_if_index[1] = cached_tun_sw_if_index;
       if (PREDICT_FALSE (!matched[0]))
 	gre_tunnel_get (gm, node, b[0], &next[0], &key[0], &cached_key,
-			&tun_sw_if_index[0], &cached_tun_sw_if_index,
-			is_ipv6);
+			&tun_sw_if_index[0], &cached_tun_sw_if_index, is_ipv6);
       if (PREDICT_FALSE (!matched[1]))
 	gre_tunnel_get (gm, node, b[1], &next[1], &key[1], &cached_key,
-			&tun_sw_if_index[1], &cached_tun_sw_if_index,
-			is_ipv6);
+			&tun_sw_if_index[1], &cached_tun_sw_if_index, is_ipv6);
 
       if (PREDICT_TRUE (next[0] > GRE_INPUT_NEXT_DROP))
 	{
-	  vlib_increment_combined_counter (&gm->vnet_main->
-					   interface_main.combined_sw_if_counters
-					   [VNET_INTERFACE_COUNTER_RX],
-					   vm->thread_index,
-					   tun_sw_if_index[0],
-					   1 /* packets */ ,
-					   len[0] /* bytes */ );
+	  vlib_increment_combined_counter (
+	    &gm->vnet_main->interface_main
+	       .combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX],
+	    vm->thread_index, tun_sw_if_index[0], 1 /* packets */,
+	    len[0] /* bytes */);
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = tun_sw_if_index[0];
 	}
       if (PREDICT_TRUE (next[1] > GRE_INPUT_NEXT_DROP))
 	{
-	  vlib_increment_combined_counter (&gm->vnet_main->
-					   interface_main.combined_sw_if_counters
-					   [VNET_INTERFACE_COUNTER_RX],
-					   vm->thread_index,
-					   tun_sw_if_index[1],
-					   1 /* packets */ ,
-					   len[1] /* bytes */ );
+	  vlib_increment_combined_counter (
+	    &gm->vnet_main->interface_main
+	       .combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX],
+	    vm->thread_index, tun_sw_if_index[1], 1 /* packets */,
+	    len[1] /* bytes */);
 	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = tun_sw_if_index[1];
 	}
 
@@ -366,51 +353,46 @@ gre_input (vlib_main_t * vm,
       next[0] = ni[0].next_index;
       type[0] = ni[0].tunnel_type;
 
-      b[0]->error = nidx[0] == SPARSE_VEC_INVALID_INDEX
-	? node->errors[GRE_ERROR_UNKNOWN_PROTOCOL]
-	: node->errors[GRE_ERROR_NONE];
+      b[0]->error = nidx[0] == SPARSE_VEC_INVALID_INDEX ?
+			    node->errors[GRE_ERROR_UNKNOWN_PROTOCOL] :
+			    node->errors[GRE_ERROR_NONE];
 
       version[0] = clib_net_to_host_u16 (gre[0]->flags_and_version);
       version[0] &= GRE_VERSION_MASK;
 
-      b[0]->error = version[0]
-	? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[0]->error;
+      b[0]->error =
+	version[0] ? node->errors[GRE_ERROR_UNSUPPORTED_VERSION] : b[0]->error;
       next[0] = version[0] ? GRE_INPUT_NEXT_DROP : next[0];
 
       len[0] = vlib_buffer_length_in_chain (vm, b[0]);
 
       if (is_ipv6)
 	{
-	  gre_mk_key6 (&ip6[0]->dst_address,
-		       &ip6[0]->src_address,
-		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
+	  gre_mk_key6 (&ip6[0]->dst_address, &ip6[0]->src_address,
+		       vnet_buffer (b[0])->ip.fib_index, type[0],
+		       TUNNEL_MODE_P2P, 0, &key[0].gtk_v6);
 	  matched[0] = gre_match_key6 (&cached_key.gtk_v6, &key[0].gtk_v6);
 	}
       else
 	{
-	  gre_mk_key4 (ip4[0]->dst_address,
-		       ip4[0]->src_address,
-		       vnet_buffer (b[0])->ip.fib_index,
-		       type[0], TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
+	  gre_mk_key4 (ip4[0]->dst_address, ip4[0]->src_address,
+		       vnet_buffer (b[0])->ip.fib_index, type[0],
+		       TUNNEL_MODE_P2P, 0, &key[0].gtk_v4);
 	  matched[0] = gre_match_key4 (&cached_key.gtk_v4, &key[0].gtk_v4);
 	}
 
       tun_sw_if_index[0] = cached_tun_sw_if_index;
       if (PREDICT_FALSE (!matched[0]))
 	gre_tunnel_get (gm, node, b[0], &next[0], &key[0], &cached_key,
-			&tun_sw_if_index[0], &cached_tun_sw_if_index,
-			is_ipv6);
+			&tun_sw_if_index[0], &cached_tun_sw_if_index, is_ipv6);
 
       if (PREDICT_TRUE (next[0] > GRE_INPUT_NEXT_DROP))
 	{
-	  vlib_increment_combined_counter (&gm->vnet_main->
-					   interface_main.combined_sw_if_counters
-					   [VNET_INTERFACE_COUNTER_RX],
-					   vm->thread_index,
-					   tun_sw_if_index[0],
-					   1 /* packets */ ,
-					   len[0] /* bytes */ );
+	  vlib_increment_combined_counter (
+	    &gm->vnet_main->interface_main
+	       .combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX],
+	    vm->thread_index, tun_sw_if_index[0], 1 /* packets */,
+	    len[0] /* bytes */);
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = tun_sw_if_index[0];
 	}
 
@@ -427,30 +409,27 @@ gre_input (vlib_main_t * vm,
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
-  vlib_node_increment_counter (vm,
-			       is_ipv6 ? gre6_input_node.index :
-			       gre4_input_node.index, GRE_ERROR_PKTS_DECAP,
-			       n_left_from);
+  vlib_node_increment_counter (
+    vm, is_ipv6 ? gre6_input_node.index : gre4_input_node.index,
+    GRE_ERROR_PKTS_DECAP, n_left_from);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (gre4_input_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+VLIB_NODE_FN (gre4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return gre_input (vm, node, from_frame, /* is_ip6 */ 0);
 }
 
-VLIB_NODE_FN (gre6_input_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+VLIB_NODE_FN (gre6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return gre_input (vm, node, from_frame, /* is_ip6 */ 1);
 }
 
 static char *gre_error_strings[] = {
-#define gre_error(n,s) s,
+#define gre_error(n, s) s,
 #include "error.def"
 #undef gre_error
 };
@@ -466,7 +445,7 @@ VLIB_REGISTER_NODE (gre4_input_node) = {
 
   .n_next_nodes = GRE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [GRE_INPUT_NEXT_##s] = n,
+#define _(s, n) [GRE_INPUT_NEXT_##s] = n,
     foreach_gre_input_next
 #undef _
   },
@@ -488,7 +467,7 @@ VLIB_REGISTER_NODE (gre6_input_node) = {
 
   .n_next_nodes = GRE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [GRE_INPUT_NEXT_##s] = n,
+#define _(s, n) [GRE_INPUT_NEXT_##s] = n,
     foreach_gre_input_next
 #undef _
   },
@@ -501,9 +480,8 @@ VLIB_REGISTER_NODE (gre6_input_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 void
-gre_register_input_protocol (vlib_main_t * vm,
-			     gre_protocol_t protocol, u32 node_index,
-			     gre_tunnel_type_t tunnel_type)
+gre_register_input_protocol (vlib_main_t *vm, gre_protocol_t protocol,
+			     u32 node_index, gre_tunnel_type_t tunnel_type)
 {
   gre_main_t *em = &gre_main;
   gre_protocol_info_t *pi;
@@ -531,7 +509,7 @@ gre_register_input_protocol (vlib_main_t * vm,
 }
 
 static void
-gre_setup_node (vlib_main_t * vm, u32 node_index)
+gre_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);
@@ -542,7 +520,7 @@ gre_setup_node (vlib_main_t * vm, u32 node_index)
 }
 
 static clib_error_t *
-gre_input_init (vlib_main_t * vm)
+gre_input_init (vlib_main_t *vm)
 {
   gre_main_t *gm = &gre_main;
   vlib_node_t *ethernet_input, *ip4_input, *ip6_input, *mpls_unicast_input;
@@ -557,9 +535,9 @@ gre_input_init (vlib_main_t * vm)
   gre_setup_node (vm, gre4_input_node.index);
   gre_setup_node (vm, gre6_input_node.index);
 
-  gm->next_by_protocol = sparse_vec_new
-    ( /* elt bytes */ sizeof (gm->next_by_protocol[0]),
-     /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
+  gm->next_by_protocol =
+    sparse_vec_new (/* elt bytes */ sizeof (gm->next_by_protocol[0]),
+		    /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
 
   /* These could be moved to the supported protocol input node defn's */
   ethernet_input = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
@@ -571,14 +549,14 @@ gre_input_init (vlib_main_t * vm)
   mpls_unicast_input = vlib_get_node_by_name (vm, (u8 *) "mpls-input");
   ASSERT (mpls_unicast_input);
 
-  gre_register_input_protocol (vm, GRE_PROTOCOL_teb,
-			       ethernet_input->index, GRE_TUNNEL_TYPE_TEB);
+  gre_register_input_protocol (vm, GRE_PROTOCOL_teb, ethernet_input->index,
+			       GRE_TUNNEL_TYPE_TEB);
 
-  gre_register_input_protocol (vm, GRE_PROTOCOL_ip4,
-			       ip4_input->index, GRE_TUNNEL_TYPE_L3);
+  gre_register_input_protocol (vm, GRE_PROTOCOL_ip4, ip4_input->index,
+			       GRE_TUNNEL_TYPE_L3);
 
-  gre_register_input_protocol (vm, GRE_PROTOCOL_ip6,
-			       ip6_input->index, GRE_TUNNEL_TYPE_L3);
+  gre_register_input_protocol (vm, GRE_PROTOCOL_ip6, ip6_input->index,
+			       GRE_TUNNEL_TYPE_L3);
 
   gre_register_input_protocol (vm, GRE_PROTOCOL_mpls_unicast,
 			       mpls_unicast_input->index, GRE_TUNNEL_TYPE_L3);
