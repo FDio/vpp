@@ -16,6 +16,24 @@
       "message": "I am afraid it is not that simple. Granted that now for a given key your policies are sorted. Still you can have a match for two different keys. Example: you have first policy that matches any ip, and second policy that matches exactly your src and dst ip. Depending on which key will be picked up as first you will end up with this policy regardless of it\u0027s priority.",
       "revId": "a4f5b9cf44b504d99008df68481894cad6be9366",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "57b4fcbb_18ab1569",
+        "filename": "src/vnet/ipsec/ipsec_spd_fp_lookup.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 1737
+      },
+      "writtenOn": "2023-04-27T00:41:24Z",
+      "side": 1,
+      "message": "Thanks for your tips, I have renewed the patch, please check it.",
+      "parentUuid": "3b874c3c_0798d2d4",
+      "revId": "a4f5b9cf44b504d99008df68481894cad6be9366",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
