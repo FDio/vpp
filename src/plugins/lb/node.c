@@ -16,7 +16,7 @@
 #include <lb/lb.h>
 #include <vnet/fib/ip4_fib.h>
 
-#include <vnet/gre/packet.h>
+#include <plugins/gre/packet.h>
 #include <lb/lbhash.h>
 
 #define foreach_lb_error \
