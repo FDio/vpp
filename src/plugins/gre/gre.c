@@ -16,9 +16,11 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/tunnel/tunnel_dp.h>
+#include <vpp/app/version.h>
+#include <vnet/plugin/plugin.h>
 
 extern gre_main_t gre_main;
 
@@ -857,6 +859,7 @@ gre_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gre_init);
+
 
 /*
  * fd.io coding-style-patch-verification: ON

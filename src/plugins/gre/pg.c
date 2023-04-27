@@ -17,7 +17,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 
 typedef struct
 {
