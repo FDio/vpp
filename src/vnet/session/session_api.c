@@ -725,7 +725,6 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
 
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
-    .netns = 0,
     .sock_name = 0,
     .secret = clib_net_to_host_u64 (mp->secret),
     .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
@@ -759,7 +758,7 @@ vl_api_app_namespace_add_del_v2_t_handler (
   vl_api_app_namespace_add_del_v2_t *mp)
 {
   vl_api_app_namespace_add_del_v2_reply_t *rmp;
-  u8 *ns_id = 0, *netns = 0;
+  u8 *ns_id = 0;
   u32 appns_index = 0;
   int rv = 0;
 
@@ -770,13 +769,10 @@ vl_api_app_namespace_add_del_v2_t_handler (
     }
 
   mp->namespace_id[sizeof (mp->namespace_id) - 1] = 0;
-  mp->netns[sizeof (mp->netns) - 1] = 0;
   ns_id = format (0, "%s", &mp->namespace_id);
-  netns = format (0, "%s", &mp->netns);
 
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
-    .netns = netns,
     .sock_name = 0,
     .secret = clib_net_to_host_u64 (mp->secret),
     .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
@@ -795,7 +791,6 @@ vl_api_app_namespace_add_del_v2_t_handler (
 	}
     }
   vec_free (ns_id);
-  vec_free (netns);
 
 done:
   REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_V2_REPLY, ({
@@ -805,11 +800,11 @@ done:
 }
 
 static void
-vl_api_app_namespace_add_del_v3_t_handler (
-  vl_api_app_namespace_add_del_v3_t *mp)
+vl_api_app_namespace_add_del_v4_t_handler (
+  vl_api_app_namespace_add_del_v4_t *mp)
 {
-  vl_api_app_namespace_add_del_v3_reply_t *rmp;
-  u8 *ns_id = 0, *netns = 0, *sock_name = 0;
+  vl_api_app_namespace_add_del_v4_reply_t *rmp;
+  u8 *ns_id = 0, *sock_name = 0;
   u32 appns_index = 0;
   int rv = 0;
   if (session_main_is_enabled () == 0)
@@ -818,13 +813,10 @@ vl_api_app_namespace_add_del_v3_t_handler (
       goto done;
     }
   mp->namespace_id[sizeof (mp->namespace_id) - 1] = 0;
-  mp->netns[sizeof (mp->netns) - 1] = 0;
   ns_id = format (0, "%s", &mp->namespace_id);
-  netns = format (0, "%s", &mp->netns);
   sock_name = vl_api_from_api_to_new_vec (mp, &mp->sock_name);
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
-    .netns = netns,
     .sock_name = sock_name,
     .secret = clib_net_to_host_u64 (mp->secret),
     .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
@@ -843,8 +835,64 @@ vl_api_app_namespace_add_del_v3_t_handler (
 	}
     }
   vec_free (ns_id);
-  vec_free (netns);
   vec_free (sock_name);
+done:
+  REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_V4_REPLY, ({
+		  if (!rv)
+		    rmp->appns_index = clib_host_to_net_u32 (appns_index);
+		}));
+}
+
+static void
+vl_api_app_namespace_add_del_v3_t_handler (
+  vl_api_app_namespace_add_del_v3_t *mp)
+{
+  vl_api_app_namespace_add_del_v3_reply_t *rmp;
+  u8 *ns_id = 0, *sock_name = 0, *api_sock_name = 0;
+  u32 appns_index = 0;
+  int rv = 0;
+  if (session_main_is_enabled () == 0)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+  mp->namespace_id[sizeof (mp->namespace_id) - 1] = 0;
+  ns_id = format (0, "%s", &mp->namespace_id);
+  api_sock_name = vl_api_from_api_to_new_vec (mp, &mp->sock_name);
+  mp->netns[sizeof (mp->netns) - 1] = 0;
+  if (strlen ((char *) mp->netns) != 0)
+    {
+      sock_name =
+	format (0, "abstract:%v,netns_name=%s", api_sock_name, &mp->netns);
+    }
+  else
+    {
+      sock_name = api_sock_name;
+      api_sock_name = 0; // for vec_free
+    }
+
+  vnet_app_namespace_add_del_args_t args = {
+    .ns_id = ns_id,
+    .sock_name = sock_name,
+    .secret = clib_net_to_host_u64 (mp->secret),
+    .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
+    .ip4_fib_id = clib_net_to_host_u32 (mp->ip4_fib_id),
+    .ip6_fib_id = clib_net_to_host_u32 (mp->ip6_fib_id),
+    .is_add = mp->is_add,
+  };
+  rv = vnet_app_namespace_add_del (&args);
+  if (!rv && mp->is_add)
+    {
+      appns_index = app_namespace_index_from_id (ns_id);
+      if (appns_index == APP_NAMESPACE_INVALID_INDEX)
+	{
+	  clib_warning ("app ns lookup failed id:%s", ns_id);
+	  rv = VNET_API_ERROR_UNSPECIFIED;
+	}
+    }
+  vec_free (ns_id);
+  vec_free (sock_name);
+  vec_free (api_sock_name);
 done:
   REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_V3_REPLY, ({
 		  if (!rv)
@@ -1655,27 +1703,10 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
   clib_socket_t *cs;
   char dir[4096];
 
-  if (app_ns->netns)
-    {
-      if (!app_ns->sock_name)
-	app_ns->sock_name = format (0, "@vpp/session/%v%c", app_ns->ns_id, 0);
-      if (app_ns->sock_name[0] != '@')
-	return VNET_API_ERROR_INVALID_VALUE;
-    }
-  else
-    {
-      snprintf (dir, sizeof (dir), "%s%s", vlib_unix_get_runtime_dir (),
-		subdir);
-      err = vlib_unix_recursive_mkdir ((char *) dir);
-      if (err)
-	{
-	  clib_error_report (err);
-	  return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
+  snprintf (dir, sizeof (dir), "%s%s", vlib_unix_get_runtime_dir (), subdir);
 
-      if (!app_ns->sock_name)
-	app_ns->sock_name = format (0, "%s%v%c", dir, app_ns->ns_id, 0);
-    }
+  if (!app_ns->sock_name)
+    app_ns->sock_name = format (0, "%s%v%c", dir, app_ns->ns_id, 0);
 
   /*
    * Create and initialize socket to listen on
@@ -1686,13 +1717,24 @@ appns_sapi_add_ns_socket (app_namespace_t * app_ns)
     CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
     CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
 
-  if ((err = clib_socket_init_netns (cs, app_ns->netns)))
+  if (clib_socket_prefix_get_type (cs->config) == CLIB_SOCKET_TYPE_UNIX)
+    {
+      err = vlib_unix_recursive_mkdir ((char *) dir);
+      if (err)
+	{
+	  clib_error_report (err);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
+    }
+
+  if ((err = clib_socket_init (cs)))
     {
       clib_error_report (err);
       return -1;
     }
 
-  if (!app_ns->netns && stat ((char *) app_ns->sock_name, &file_stat) == -1)
+  if (clib_socket_prefix_get_type (cs->config) == CLIB_SOCKET_TYPE_UNIX &&
+      stat ((char *) app_ns->sock_name, &file_stat) == -1)
     return -1;
 
   /*
