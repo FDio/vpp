@@ -325,6 +325,18 @@ api_app_namespace_add_del (vat_main_t *vam)
 }
 
 static void
+vl_api_app_namespace_add_del_v4_reply_t_handler (
+  vl_api_app_namespace_add_del_v4_reply_t *mp)
+{
+}
+
+static int
+api_app_namespace_add_del_v4 (vat_main_t *vat)
+{
+  return -1;
+}
+
+static void
 vl_api_app_namespace_add_del_v3_reply_t_handler (
   vl_api_app_namespace_add_del_v3_reply_t *mp)
 {

@@ -118,12 +118,11 @@ typedef struct _socket_t
    from IPPORT_USERRESERVED (5000). */
 clib_error_t *clib_socket_init (clib_socket_t * socket);
 
-clib_error_t *clib_socket_init_netns (clib_socket_t *socket, u8 *namespace);
-
 clib_error_t *clib_socket_accept (clib_socket_t * server,
 				  clib_socket_t * client);
 
 int clib_socket_prefix_is_valid (char *s);
+int clib_socket_prefix_get_type (char *s);
 
 always_inline uword
 clib_socket_is_server (clib_socket_t * sock)
