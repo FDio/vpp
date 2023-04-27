@@ -23,26 +23,26 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/gre/gre.api_enum.h>
-#include <vnet/gre/gre.api_types.h>
+#include <gre/gre.api_enum.h>
+#include <gre/gre.api_types.h>
 
 #define REPLY_MSG_ID_BASE gre_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 static int
-gre_tunnel_type_decode (vl_api_gre_tunnel_type_t in, gre_tunnel_type_t * out)
+gre_tunnel_type_decode (vl_api_gre_tunnel_type_t in, gre_tunnel_type_t *out)
 {
   switch (in)
     {
-#define _(n, v)                                           \
-      case GRE_API_TUNNEL_TYPE_##n:                       \
-        *out = GRE_TUNNEL_TYPE_##n;                       \
-        return (0);
+#define _(n, v)                                                               \
+  case GRE_API_TUNNEL_TYPE_##n:                                               \
+    *out = GRE_TUNNEL_TYPE_##n;                                               \
+    return (0);
       foreach_gre_tunnel_type
 #undef _
     }
@@ -57,10 +57,10 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
 
   switch (in)
     {
-#define _(n, v)                                           \
-      case GRE_TUNNEL_TYPE_##n:                           \
-        out = GRE_API_TUNNEL_TYPE_##n;                    \
-        break;
+#define _(n, v)                                                               \
+  case GRE_TUNNEL_TYPE_##n:                                                   \
+    out = GRE_API_TUNNEL_TYPE_##n;                                            \
+    break;
       foreach_gre_tunnel_type
 #undef _
     }
@@ -68,10 +68,10 @@ gre_tunnel_type_encode (gre_tunnel_type_t in)
   return (out);
 }
 
-static void vl_api_gre_tunnel_add_del_t_handler
-  (vl_api_gre_tunnel_add_del_t * mp)
+static void
+vl_api_gre_tunnel_add_del_t_handler (vl_api_gre_tunnel_add_del_t *mp)
 {
-  vnet_gre_tunnel_add_del_args_t _a = { }, *a = &_a;
+  vnet_gre_tunnel_add_del_args_t _a = {}, *a = &_a;
   vl_api_gre_tunnel_add_del_reply_t *rmp;
   tunnel_encap_decap_flags_t flags;
   u32 sw_if_index = ~0;
@@ -119,40 +119,38 @@ static void vl_api_gre_tunnel_add_del_t_handler
 
 out:
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void send_gre_tunnel_details
-  (gre_tunnel_t * t, vl_api_gre_tunnel_dump_t * mp)
-{
-  vl_api_gre_tunnel_details_t *rmp;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO_DETAILS2(VL_API_GRE_TUNNEL_DETAILS,
-  ({
-    ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
-    ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY, &rmp->tunnel.dst);
-
-    rmp->tunnel.outer_table_id =
-      htonl (fib_table_get_table_id
-             (t->outer_fib_index, t->tunnel_dst.fp_proto));
-
-    rmp->tunnel.type = gre_tunnel_type_encode (t->type);
-    rmp->tunnel.mode = tunnel_mode_encode (t->mode);
-    rmp->tunnel.flags = tunnel_encap_decap_flags_encode (t->flags);
-    rmp->tunnel.instance = htonl (t->user_instance);
-    rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
-    rmp->tunnel.session_id = htons (t->session_id);
-  }));
+  REPLY_MACRO2 (VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
+send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
+{
+  vl_api_gre_tunnel_details_t *rmp;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO_DETAILS2 (
+    VL_API_GRE_TUNNEL_DETAILS, ({
+      ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+      ip_address_encode (&t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
+			 &rmp->tunnel.dst);
+
+      rmp->tunnel.outer_table_id = htonl (
+	fib_table_get_table_id (t->outer_fib_index, t->tunnel_dst.fp_proto));
+
+      rmp->tunnel.type = gre_tunnel_type_encode (t->type);
+      rmp->tunnel.mode = tunnel_mode_encode (t->mode);
+      rmp->tunnel.flags = tunnel_encap_decap_flags_encode (t->flags);
+      rmp->tunnel.instance = htonl (t->user_instance);
+      rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+      rmp->tunnel.session_id = htons (t->session_id);
+    }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t *mp)
 {
   vl_api_registration_t *reg;
   gre_main_t *gm = &gre_main;
@@ -169,9 +167,9 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
     {
       /* *INDENT-OFF* */
       pool_foreach (t, gm->tunnels)
-       {
-        send_gre_tunnel_details(t, mp);
-      }
+	{
+	  send_gre_tunnel_details (t, mp);
+	}
       /* *INDENT-ON* */
     }
 
@@ -196,10 +194,10 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
  */
 /* API definitions */
 #include <vnet/format_fns.h>
-#include <vnet/gre/gre.api.c>
+#include <gre/gre.api.c>
 
 static clib_error_t *
-gre_api_hookup (vlib_main_t * vm)
+gre_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table
