@@ -361,6 +361,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->transport.lcl_ip = mp->lcl.ip;
   session->session_type = listen_session->session_type;
   session->is_dgram = vcl_proto_is_dgram (session->session_type);
+  if (session->is_dgram)
+    session->flags |= (listen_session->flags & VCL_SESSION_F_CONNECTED);
   session->listener_index = listen_session->session_index;
   listen_session->n_accepted_sessions++;
 
