@@ -668,26 +668,9 @@ list(APPEND VNET_API_FILES udp/udp.api)
 ##############################################################################
 # Tunnel protocol: gre
 ##############################################################################
-list(APPEND VNET_SOURCES
-  gre/gre.c
-  gre/node.c
-  gre/interface.c
-  gre/pg.c
-  gre/gre_api.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  gre/node.c
-  gre/gre.c
-)
-
 list(APPEND VNET_HEADERS
-  gre/gre.h
   gre/packet.h
-  gre/error.def
 )
-
-list(APPEND VNET_API_FILES gre/gre.api)
 
 ##############################################################################
 # Tunnel protocol: ipip
