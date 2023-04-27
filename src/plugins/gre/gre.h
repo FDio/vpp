@@ -19,7 +19,7 @@
 #define included_gre_h
 
 #include <vnet/vnet.h>
-#include <vnet/gre/packet.h>
+#include <gre/packet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
@@ -32,7 +32,7 @@ extern vnet_hw_interface_class_t mgre_hw_interface_class;
 typedef enum
 {
 #define gre_error(n,s) GRE_ERROR_##n,
-#include <vnet/gre/error.def>
+#include <gre/error.def>
 #undef gre_error
   GRE_N_ERROR,
 } gre_error_t;
