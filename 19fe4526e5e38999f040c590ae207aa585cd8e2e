@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77dfe502_8c95d6ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-04-27T16:19:21Z",
+      "side": 1,
+      "message": "Could you provide more details here. Under what conditions did you observe main closed the epoll fd? \n\nGiven that such an operation is not common, i\u0027d expect main to grab the worker barrier and that would just avoid the issue entirely.",
+      "revId": "19fe4526e5e38999f040c590ae207aa585cd8e2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
