@@ -87,12 +87,12 @@ class QUICTestCase(VppTestCase):
             table_id += 1
 
         # Configure namespaces
-        self.vapi.app_namespace_add_del(
+        self.vapi.app_namespace_add_del_v4(
             namespace_id=self.server_appns,
             secret=self.server_appns_secret,
             sw_if_index=self.loop0.sw_if_index,
         )
-        self.vapi.app_namespace_add_del(
+        self.vapi.app_namespace_add_del_v4(
             namespace_id=self.client_appns,
             secret=self.client_appns_secret,
             sw_if_index=self.loop1.sw_if_index,

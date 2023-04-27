@@ -219,9 +219,49 @@ define app_namespace_add_del {
     @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored
                         if sw_if_index set.
     @param namespace_id - namespace id
+    @param sock_name - socket name (path, abstract socket name)
+*/
+define app_namespace_add_del_v4 {
+  option deprecated;
+  u32 client_index;
+  u32 context;
+  u64 secret;
+  bool is_add [default=true];
+  vl_api_interface_index_t sw_if_index [default=0xffffffff];
+  u32 ip4_fib_id;
+  u32 ip6_fib_id;
+  string namespace_id[64];
+  string sock_name[];
+};
+
+/** \brief Reply for app namespace add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param appns_index - app namespace index
+*/
+define app_namespace_add_del_v4_reply
+{
+  u32 context;
+  i32 retval;
+  u32 appns_index;
+};
+
+/** \brief add/del application namespace
+    @param client_index - opaque cookie to identify the sender
+                          client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param secret - secret shared between app and vpp
+    @param sw_if_index - local interface that "supports" namespace. Set to
+                         ~0 if no preference
+    @param ip4_fib_id - id of ip4 fib that "supports" the namespace. Ignored
+                        if sw_if_index set.
+    @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored
+                        if sw_if_index set.
+    @param namespace_id - namespace id
     @param netns - linux net namespace
 */
 define app_namespace_add_del_v2 {
+  option deprecated;
   u32 client_index;
   u32 context;
   u64 secret;
@@ -248,6 +288,7 @@ define app_namespace_add_del_v2 {
     @param sock_name - socket name (path, abstract socket name)
 */
 define app_namespace_add_del_v3 {
+  option deprecated;
   u32 client_index;
   u32 context;
   u64 secret;
@@ -280,6 +321,7 @@ define app_namespace_add_del_reply
 */
 define app_namespace_add_del_v2_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   u32 appns_index;
@@ -287,6 +329,7 @@ define app_namespace_add_del_v2_reply
 
 define app_namespace_add_del_v3_reply
 {
+  option deprecated;
   u32 context;
   i32 retval;
   u32 appns_index;
