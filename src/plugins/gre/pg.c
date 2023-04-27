@@ -17,7 +17,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 
 typedef struct
 {
@@ -26,14 +26,14 @@ typedef struct
 } pg_gre_header_t;
 
 static inline void
-pg_gre_header_init (pg_gre_header_t * e)
+pg_gre_header_init (pg_gre_header_t *e)
 {
   pg_edit_init (&e->flags_and_version, gre_header_t, flags_and_version);
   pg_edit_init (&e->protocol, gre_header_t, protocol);
 }
 
 uword
-unformat_pg_gre_header (unformat_input_t * input, va_list * args)
+unformat_pg_gre_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_gre_header_t *h;
@@ -46,8 +46,7 @@ unformat_pg_gre_header (unformat_input_t * input, va_list * args)
   pg_edit_set_fixed (&h->flags_and_version, 0);
 
   error = 1;
-  if (!unformat (input, "%U",
-		 unformat_pg_edit,
+  if (!unformat (input, "%U", unformat_pg_edit,
 		 unformat_gre_protocol_net_byte_order, &h->protocol))
     goto done;
 
@@ -64,8 +63,8 @@ unformat_pg_gre_header (unformat_input_t * input, va_list * args)
 	  pg_node = pg_get_node (pi->node_index);
       }
 
-    if (pg_node && pg_node->unformat_edit
-	&& unformat_user (input, pg_node->unformat_edit, s))
+    if (pg_node && pg_node->unformat_edit &&
+	unformat_user (input, pg_node->unformat_edit, s))
       ;
   }
 
@@ -75,7 +74,6 @@ done:
     pg_free_edit_group (s);
   return error == 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON
