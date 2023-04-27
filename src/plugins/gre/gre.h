@@ -19,7 +19,7 @@
 #define included_gre_h
 
 #include <vnet/vnet.h>
-#include <vnet/gre/packet.h>
+#include <gre/packet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>

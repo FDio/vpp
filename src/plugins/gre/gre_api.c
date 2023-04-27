@@ -23,13 +23,13 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ip/ip_types_api.h>
 
-#include <vnet/gre/gre.api_enum.h>
-#include <vnet/gre/gre.api_types.h>
+#include <gre/gre.api_enum.h>
+#include <gre/gre.api_types.h>
 
 #define REPLY_MSG_ID_BASE gre_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -196,7 +196,7 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
  */
 /* API definitions */
 #include <vnet/format_fns.h>
-#include <vnet/gre/gre.api.c>
+#include <gre/gre.api.c>
 
 static clib_error_t *
 gre_api_hookup (vlib_main_t * vm)

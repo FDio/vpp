@@ -16,7 +16,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/gre/gre.h>
+#include <gre/gre.h>
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_midchain.h>
