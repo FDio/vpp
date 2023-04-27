@@ -32,7 +32,7 @@ extern vnet_hw_interface_class_t mgre_hw_interface_class;
 typedef enum
 {
 #define gre_error(n,s) GRE_ERROR_##n,
-#include <vnet/gre/error.def>
+#include <gre/error.def>
 #undef gre_error
   GRE_N_ERROR,
 } gre_error_t;
