@@ -42,6 +42,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vppinfra/lock.h>
 
 /* FIXME autoconf */
 #define HAVE_LINUX_EPOLL
@@ -56,6 +57,7 @@ typedef struct
   int epoll_fd;
   struct epoll_event *epoll_events;
   int n_epoll_fds;
+  clib_spinlock_t lock;
 
   /* Statistics. */
   u64 epoll_files_ready;
@@ -125,8 +127,10 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
 
   if (em->n_epoll_fds == 0)
     {
+      clib_spinlock_lock (&em->lock);
       close (em->epoll_fd);
       em->epoll_fd = -1;
+      clib_spinlock_unlock (&em->lock);
     }
 }
 
@@ -215,20 +219,29 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     /* Allow any signal to wakeup our sleep. */
     if (is_main || em->epoll_fd != -1)
       {
-	static sigset_t unblock_all_signals;
-	n_fds_ready = epoll_pwait (em->epoll_fd,
-				   em->epoll_events,
-				   vec_len (em->epoll_events),
-				   timeout_ms, &unblock_all_signals);
+        clib_spinlock_lock (&em->lock);
 
-	/* This kludge is necessary to run over absurdly old kernels */
-	if (n_fds_ready < 0 && errno == ENOSYS)
-	  {
-	    n_fds_ready = epoll_wait (em->epoll_fd,
-				      em->epoll_events,
-				      vec_len (em->epoll_events), timeout_ms);
-	  }
+        /* Double check because state could be changed before lock. */
+        if (is_main || em->epoll_fd != -1)
+          {
+            static sigset_t unblock_all_signals;
+            n_fds_ready = epoll_pwait (em->epoll_fd,
+                                       em->epoll_events,
+                                       vec_len (em->epoll_events),
+                                       timeout_ms, &unblock_all_signals);
 
+            /* This kludge is necessary to run over absurdly old kernels */
+            if (n_fds_ready < 0 && errno == ENOSYS)
+              {
+                n_fds_ready = epoll_wait (em->epoll_fd,
+                                          em->epoll_events,
+                                          vec_len (em->epoll_events), timeout_ms);
+              }
+          }
+        else
+          n_fds_ready = 0;
+
+        clib_spinlock_unlock (&em->lock);
       }
     else
       {
@@ -390,6 +403,8 @@ linux_epoll_input_init (vlib_main_t * vm)
   {
     /* Allocate some events. */
     vec_resize (em->epoll_events, VLIB_FRAME_SIZE);
+
+    clib_spinlock_init (&em->lock);
 
     if (linux_epoll_mains == em)
       {
