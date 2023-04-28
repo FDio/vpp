@@ -156,15 +156,21 @@ typedef struct
 typedef struct
 {
   vnet_crypto_async_frame_t *f;
+
   u8 enqueued;
   u8 dequeued;
   u8 deq_state;
   u8 frame_inflight;
+
+  u8 op_type;
+  u8 aad_len;
+  u8 n_elts;
+  u8 reserved;
 } cryptodev_async_ring_elt;
 
 typedef struct
 {
-  cryptodev_async_ring_elt *frames;
+  cryptodev_async_ring_elt frames[VNET_CRYPTO_FRAME_POOL_SIZE];
   uint16_t head;
   uint16_t tail;
   uint16_t enq; /*record the frame currently being enqueued */
@@ -177,22 +183,18 @@ typedef struct
   vlib_buffer_t *b[VNET_CRYPTO_FRAME_SIZE];
   union
   {
-    struct
-    {
-      cryptodev_op_t **cops;
-      struct rte_mempool *cop_pool;
-      struct rte_ring *ring;
-    };
+    struct rte_mempool *cop_pool;
     struct
     {
       struct rte_crypto_raw_dp_ctx *ctx;
-      cryptodev_async_frame_sw_ring frame_ring;
       u16 aad_index;
       u8 *aad_buf;
       u64 aad_phy_addr;
       cryptodev_session_t *reset_sess;
     };
   };
+
+  cryptodev_async_frame_sw_ring frame_ring;
   u16 cryptodev_id;
   u16 cryptodev_q;
   u16 frames_on_ring;
@@ -200,7 +202,6 @@ typedef struct
   u16 deqeued_not_returned;
   u16 pending_to_qat;
   u16 inflight;
-  u8 enq_deq_limits[2];
 } cryptodev_engine_thread_t;
 
 typedef struct

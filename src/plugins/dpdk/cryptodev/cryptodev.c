@@ -553,11 +553,6 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
   cryptodev_inst_t *cinst = 0;
   uword idx;
 
-  /*assign limits for how many packets should be enqueued and dequeued to QAT
-   * at once*/
-  cet->enq_deq_limits[0] = CRYPTODE_ENQ_MAX;
-  cet->enq_deq_limits[1] = CRYPTODE_DEQ_MAX;
-
   /* assign resource is only allowed when no inflight op is in the queue */
   if (cet->inflight)
     return -EBUSY;
@@ -575,8 +570,6 @@ cryptodev_assign_resource (cryptodev_engine_thread_t * cet,
       cinst = vec_elt_at_index (cmt->cryptodev_inst, idx);
       cet->cryptodev_id = cinst->dev_id;
       cet->cryptodev_q = cinst->q_id;
-      vec_alloc_aligned (cet->frame_ring.frames, VNET_CRYPTO_FRAME_POOL_SIZE,
-			 0);
       clib_spinlock_unlock (&cmt->tlock);
       break;
     case CRYPTODEV_RESOURCE_ASSIGN_UPDATE:
@@ -702,8 +695,8 @@ cryptodev_show_sw_rings_fn (vlib_main_t *vm, unformat_input_t *input,
 }
 
 VLIB_CLI_COMMAND (show_cryptodev_sw_rings, static) = {
-  .path = "show cryptodev sw_rings",
-  .short_help = "show cryptodev sw_rings",
+  .path = "show cryptodev sw_ring status",
+  .short_help = "show status of all cryptodev software rings",
   .function = cryptodev_show_sw_rings_fn,
 };
 
