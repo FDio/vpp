@@ -216,16 +216,12 @@ func (c *Container) getEnvVarsAsCliOption() string {
 	return cliOption
 }
 
-func (c *Container) newVppInstance(additionalConfig ...Stanza) (*VppInstance, error) {
+func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*VppInstance, error) {
 	vpp := new(VppInstance)
 	vpp.container = c
-
-	if len(additionalConfig) > 0 {
-		vpp.additionalConfig = additionalConfig[0]
-	}
-
+	vpp.cpus = cpus
+	vpp.additionalConfig = append(vpp.additionalConfig, additionalConfigs...)
 	c.vppInstance = vpp
-
 	return vpp, nil
 }
 

@@ -16,22 +16,18 @@ type VethsSuite struct {
 
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
-
+	s.HstSuite.SetupSuite()
 	s.configureNetworkTopology("2peerVeth")
-
 	s.loadContainerTopology("2peerVeth")
 }
 
 func (s *VethsSuite) SetupTest() {
-	s.skipIfUnconfiguring()
-
-	s.setupVolumes()
-	s.setupContainers()
+	s.HstSuite.SetupTest()
 
 	// Setup test conditions
 
-	var startupConfig Stanza
-	startupConfig.
+	var sessionConfig Stanza
+	sessionConfig.
 		newStanza("session").
 		append("enable").
 		append("use-app-socket-api").close()
@@ -39,7 +35,8 @@ func (s *VethsSuite) SetupTest() {
 	// ... For server
 	serverContainer := s.getContainerByName("server-vpp")
 
-	serverVpp, _ := serverContainer.newVppInstance(startupConfig)
+	cpus := s.AllocateCpus()
+	serverVpp, _ := serverContainer.newVppInstance(cpus, sessionConfig)
 	s.assertNotNil(serverVpp)
 
 	s.setupServerVpp()
@@ -47,7 +44,8 @@ func (s *VethsSuite) SetupTest() {
 	// ... For client
 	clientContainer := s.getContainerByName("client-vpp")
 
-	clientVpp, _ := clientContainer.newVppInstance(startupConfig)
+	cpus = s.AllocateCpus()
+	clientVpp, _ := clientContainer.newVppInstance(cpus, sessionConfig)
 	s.assertNotNil(clientVpp)
 
 	s.setupClientVpp()
@@ -67,7 +65,6 @@ func (s *VethsSuite) setupServerVpp() {
 	namespaceSecret := "1"
 	err = serverVpp.addAppNamespace(1, idx, namespaceSecret)
 	s.assertNil(err)
-
 }
 
 func (s *VethsSuite) setupClientVpp() {

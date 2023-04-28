@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	defaultNetworkNumber int = 1
+	DEFAULT_NETWORK_NUM int = 1
 )
 
 var isPersistent = flag.Bool("persist", false, "persists topology config")
 var isVerbose = flag.Bool("verbose", false, "verbose test output")
 var isUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var isVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
+var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 
 type HstSuite struct {
 	suite.Suite
@@ -30,6 +31,29 @@ type HstSuite struct {
 	netInterfaces map[string]*NetInterface
 	addresser     *Addresser
 	testIds       map[string]string
+	cpuAllocator  *CpuAllocatorT
+	cpuContexts   []*CpuContext
+	cpuPerVpp     int
+}
+
+func (s *HstSuite) SetupSuite() {
+	var err error
+	s.cpuAllocator, err = CpuAllocator()
+	if err != nil {
+		s.FailNow("failed to init cpu allocator: %v", err)
+	}
+	s.cpuPerVpp = *nConfiguredCpus
+}
+
+func (s *HstSuite) AllocateCpus() []int {
+	cpuCtx, err := s.cpuAllocator.Allocate(s.cpuPerVpp)
+	s.assertNil(err)
+	s.AddCpuContext(cpuCtx)
+	return cpuCtx.cpus
+}
+
+func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
+	s.cpuContexts = append(s.cpuContexts, cpuCtx)
 }
 
 func (s *HstSuite) TearDownSuite() {
@@ -39,6 +63,9 @@ func (s *HstSuite) TearDownSuite() {
 func (s *HstSuite) TearDownTest() {
 	if *isPersistent {
 		return
+	}
+	for _, c := range s.cpuContexts {
+		c.Release()
 	}
 	s.resetContainers()
 	s.removeVolumes()
@@ -66,7 +93,7 @@ func (s *HstSuite) setupVolumes() {
 
 func (s *HstSuite) setupContainers() {
 	for _, container := range s.containers {
-		if container.isOptional == false {
+		if !container.isOptional {
 			container.run()
 		}
 	}
@@ -128,6 +155,12 @@ func (s *HstSuite) log(args ...any) {
 func (s *HstSuite) skip(args ...any) {
 	s.log(args...)
 	s.T().SkipNow()
+}
+
+func (s *HstSuite) SkipIfMultiWorker(args ...any) {
+	if *nConfiguredCpus > 1 {
+		s.skip("test case not supported with multiple vpp workers")
+	}
 }
 
 func (s *HstSuite) resetContainers() {
