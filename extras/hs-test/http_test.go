@@ -24,6 +24,8 @@ func (s *NsSuite) TestHttpTps() {
 }
 
 func (s *VethsSuite) TestHttpCli() {
+	s.SkipIfMultiWorker()
+
 	serverContainer := s.getContainerByName("server-vpp")
 	clientContainer := s.getContainerByName("client-vpp")
 

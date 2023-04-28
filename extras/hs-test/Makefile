@@ -19,6 +19,10 @@ ifeq ($(DEBUG),)
 DEBUG=false
 endif
 
+ifeq ($(CPUS),)
+CPUS=1
+endif
+
 ifeq ($(UBUNTU_CODENAME),)
 UBUNTU_CODENAME=$(shell grep '^UBUNTU_CODENAME=' /etc/os-release | cut -f2- -d=)
 endif
@@ -47,6 +51,7 @@ help:
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[test-name]         - specific test to run"
+	@echo " CPUS=[n-cpus]            - number of cpus to run with vpp"
 	@echo
 	@echo "List of all tests:"
 	$(call list_tests)
@@ -64,7 +69,7 @@ build-vpp-debug:
 .PHONY: test
 test: .deps.ok .build.vpp
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
-		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST)
+		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS)
 
 build-go:
 	go build ./tools/http_server

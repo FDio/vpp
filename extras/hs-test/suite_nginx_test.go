@@ -14,27 +14,25 @@ type NginxSuite struct {
 }
 
 func (s *NginxSuite) SetupSuite() {
+	s.HstSuite.SetupSuite()
 	s.loadNetworkTopology("2taps")
-
 	s.loadContainerTopology("nginxProxyAndServer")
 }
 
 func (s *NginxSuite) SetupTest() {
-	s.skipIfUnconfiguring()
-
-	s.setupVolumes()
-	s.setupContainers()
+	s.HstSuite.SetupTest()
 
 	// Setup test conditions
-	var startupConfig Stanza
-	startupConfig.
+	var sessionConfig Stanza
+	sessionConfig.
 		newStanza("session").
 		append("enable").
 		append("use-app-socket-api").close()
 
+	cpus := s.AllocateCpus()
 	// ... for proxy
 	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	proxyVpp, _ := vppProxyContainer.newVppInstance(startupConfig)
+	proxyVpp, _ := vppProxyContainer.newVppInstance(cpus, sessionConfig)
 	proxyVpp.start()
 
 	clientInterface := s.netInterfaces[mirroringClientInterfaceName]
