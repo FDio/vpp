@@ -72,7 +72,7 @@ const (
 
 type VppInstance struct {
 	container        *Container
-	additionalConfig Stanza
+	additionalConfig []Stanza
 	connection       *core.Connection
 	apiChannel       api.Channel
 }
@@ -113,7 +113,9 @@ func (vpp *VppInstance) start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 	)
-	configContent += vpp.additionalConfig.toString()
+	for _, c := range vpp.additionalConfig {
+		configContent += c.toString()
+	}
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
 

@@ -23,14 +23,15 @@ func (s *NoTopoSuite) SetupTest() {
 	s.setupContainers()
 
 	// Setup test conditions
-	var startupConfig Stanza
+	var startupConfig, cpuConfig Stanza
 	startupConfig.
 		newStanza("session").
 		append("enable").
 		append("use-app-socket-api").close()
 
+	cpuConfig = GenerateCpuConfig(3)
 	container := s.getContainerByName(singleTopoContainerVpp)
-	vpp, _ := container.newVppInstance(startupConfig)
+	vpp, _ := container.newVppInstance(startupConfig, cpuConfig)
 	vpp.start()
 
 	tapInterface := s.netInterfaces[tapInterfaceName]

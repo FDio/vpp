@@ -34,6 +34,7 @@ type Container struct {
 	volumes          map[string]Volume
 	envVars          map[string]string
 	vppInstance      *VppInstance
+	cpuset           string
 }
 
 func newContainer(yamlInput ContainerConfig) (*Container, error) {
@@ -58,6 +59,12 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 		container.extraRunningArgs = args.(string)
 	} else {
 		container.extraRunningArgs = ""
+	}
+
+	if cpuset, ok := yamlInput["cpuset"]; ok {
+		container.cpuset = "--cpuset-cpus " + cpuset.(string)
+	} else {
+		container.cpuset = ""
 	}
 
 	if isOptional, ok := yamlInput["is-optional"]; ok {
@@ -129,6 +136,7 @@ func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host --rm"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
+	args += " " + c.cpuset
 	args += " --name " + c.name + " " + c.image
 	args += " " + c.extraRunningArgs
 	return args
@@ -221,7 +229,7 @@ func (c *Container) newVppInstance(additionalConfig ...Stanza) (*VppInstance, er
 	vpp.container = c
 
 	if len(additionalConfig) > 0 {
-		vpp.additionalConfig = additionalConfig[0]
+		vpp.additionalConfig = additionalConfig
 	}
 
 	c.vppInstance = vpp
