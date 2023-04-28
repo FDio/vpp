@@ -1022,8 +1022,11 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
       path->frp_preference = ctx->preference;
 
       addr = rtnl_route_nh_get_gateway (rnh);
+
+#if LIBNL_VER_NUM >= LIBNL_VER(3, 4)
       if (!addr)
 	addr = rtnl_route_nh_get_via (rnh);
+#endif
 
       if (addr)
 	fproto = lcp_router_mk_addr46 (addr, &path->frp_addr);
