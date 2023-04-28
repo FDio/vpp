@@ -18,6 +18,8 @@ containers:
     is-optional: true
   - name: "ab"
     image: "jordi/ab"
+    # yaml files are not generated so we can ony hard code this now:
+    # cpuset: "2"
     is-optional: true
     run-detached: false
   - name: "wrk"
