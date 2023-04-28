@@ -16,9 +16,8 @@ type VethsSuite struct {
 
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
-
+	s.HstSuite.SetupSuite()
 	s.configureNetworkTopology("2peerVeth")
-
 	s.loadContainerTopology("2peerVeth")
 }
 
@@ -39,7 +38,7 @@ func (s *VethsSuite) SetupTest() {
 	// ... For server
 	serverContainer := s.getContainerByName("server-vpp")
 
-	serverVpp, _ := serverContainer.newVppInstance(startupConfig)
+	serverVpp, _ := serverContainer.newVppInstance(s.cpuContext.cpus, startupConfig)
 	s.assertNotNil(serverVpp)
 
 	s.setupServerVpp()
@@ -47,7 +46,7 @@ func (s *VethsSuite) SetupTest() {
 	// ... For client
 	clientContainer := s.getContainerByName("client-vpp")
 
-	clientVpp, _ := clientContainer.newVppInstance(startupConfig)
+	clientVpp, _ := clientContainer.newVppInstance(s.cpuContext.cpus, startupConfig)
 	s.assertNotNil(clientVpp)
 
 	s.setupClientVpp()

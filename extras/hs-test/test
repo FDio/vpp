@@ -38,6 +38,9 @@ case "${i}" in
             unconfigure_set=1
         fi
         ;;
+    --cpus=*)
+        args="$args -cpus ${i#*=}"
+        ;;
     --test=*)
         tc_name="${i#*=}"
         if [ $tc_name != "all" ]; then

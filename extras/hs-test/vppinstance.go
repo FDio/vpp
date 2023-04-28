@@ -72,9 +72,10 @@ const (
 
 type VppInstance struct {
 	container        *Container
-	additionalConfig Stanza
+	additionalConfig []Stanza
 	connection       *core.Connection
 	apiChannel       api.Channel
+	cpus             []int
 }
 
 func (vpp *VppInstance) getSuite() *HstSuite {
@@ -113,9 +114,13 @@ func (vpp *VppInstance) start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 	)
-	configContent += vpp.additionalConfig.toString()
+	configContent += vpp.generateCpuConfig()
+	for _, c := range vpp.additionalConfig {
+		configContent += c.toString()
+	}
 	startupFileName := vpp.getEtcDir() + "/startup.conf"
 	vpp.container.createFile(startupFileName, configContent)
+	fmt.Println(configContent)
 
 	// create wrapper script for vppctl with proper CLI socket path
 	cliContent := "#!/usr/bin/bash\nvppctl -s " + vpp.getRunDir() + "/cli.sock"
@@ -340,4 +345,28 @@ func (vpp *VppInstance) saveLogs() {
 func (vpp *VppInstance) disconnect() {
 	vpp.connection.Disconnect()
 	vpp.apiChannel.Close()
+}
+
+func (vpp *VppInstance) generateCpuConfig() string {
+	var c Stanza
+	var s string
+	if len(vpp.cpus) < 1 {
+		return ""
+	}
+	c.newStanza("cpu").
+		append(fmt.Sprintf("main-core %d", vpp.cpus[0]))
+	workers := vpp.cpus[1:]
+	fmt.Printf("n workers %d", len(workers))
+	fmt.Println(workers)
+
+	if len(workers) > 0 {
+		for i := 0; i < len(workers); i++ {
+			if i != 0 {
+				s = s + ", "
+			}
+			s = s + fmt.Sprintf("%d", workers[i])
+		}
+		c.append(fmt.Sprintf("corelist-workers %s", s))
+	}
+	return c.close().toString()
 }

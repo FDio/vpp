@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	defaultNetworkNumber int = 1
+	DEFAULT_NETWORK_NUM int = 1
 )
 
 var isPersistent = flag.Bool("persist", false, "persists topology config")
 var isVerbose = flag.Bool("verbose", false, "verbose test output")
 var isUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var isVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
+var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 
 type HstSuite struct {
 	suite.Suite
@@ -30,10 +31,24 @@ type HstSuite struct {
 	netInterfaces map[string]*NetInterface
 	addresser     *Addresser
 	testIds       map[string]string
+	cpuContext    *CpuContext
+}
+
+func (s *HstSuite) SetupSuite() {
+	cpuAllocator, err := CpuAllocator()
+	if err != nil {
+		s.FailNow("failed to init cpu allocator: %v", err)
+	}
+	fmt.Println("configured CPUS : ", *nConfiguredCpus)
+	s.cpuContext, err = cpuAllocator.Allocate(*nConfiguredCpus)
+	if err != nil {
+		s.FailNow("failed to allocate %d cpus", *nConfiguredCpus)
+	}
 }
 
 func (s *HstSuite) TearDownSuite() {
 	s.unconfigureNetworkTopology()
+	s.cpuContext.Release()
 }
 
 func (s *HstSuite) TearDownTest() {
@@ -66,7 +81,7 @@ func (s *HstSuite) setupVolumes() {
 
 func (s *HstSuite) setupContainers() {
 	for _, container := range s.containers {
-		if container.isOptional == false {
+		if !container.isOptional {
 			container.run()
 		}
 	}

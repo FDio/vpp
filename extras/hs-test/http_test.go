@@ -21,6 +21,8 @@ func (s *NsSuite) TestHttpTps() {
 	// wait for client
 	err := <-finished
 	s.assertNil(err)
+
+	fmt.Println(container.vppInstance.vppctl("show threads"))
 }
 
 func (s *VethsSuite) TestHttpCli() {

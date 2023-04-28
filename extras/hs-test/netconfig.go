@@ -77,7 +77,7 @@ func newNetworkInterface(cfg NetDevConfig, a *Addresser) (*NetInterface, error) 
 	var err error
 	newInterface.addresser = a
 	newInterface.name = cfg["name"].(string)
-	newInterface.networkNumber = defaultNetworkNumber
+	newInterface.networkNumber = DEFAULT_NETWORK_NUM
 
 	if interfaceType, ok := cfg["type"]; ok {
 		newInterface.category = interfaceType.(string)

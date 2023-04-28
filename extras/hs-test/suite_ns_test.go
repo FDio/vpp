@@ -11,8 +11,8 @@ type NsSuite struct {
 }
 
 func (s *NsSuite) SetupSuite() {
+	s.HstSuite.SetupSuite()
 	s.configureNetworkTopology("ns")
-
 	s.loadContainerTopology("ns")
 }
 
@@ -31,7 +31,7 @@ func (s *NsSuite) SetupTest() {
 		append("event-queue-length 100000").close()
 
 	container := s.getContainerByName("vpp")
-	vpp, _ := container.newVppInstance(startupConfig)
+	vpp, _ := container.newVppInstance(s.cpuContext.cpus, startupConfig)
 	vpp.start()
 
 	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
