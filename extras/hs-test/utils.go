@@ -126,7 +126,7 @@ func startWget(finished chan error, server_ip, port, query, netNs string) {
 	if err != nil {
 		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
 		return
-	} else if strings.Contains(string(o), "200 OK") == false {
+	} else if !strings.Contains(string(o), "200 OK") {
 		finished <- fmt.Errorf("wget error: response not 200 OK")
 		return
 	}
