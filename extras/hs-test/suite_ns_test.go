@@ -11,27 +11,26 @@ type NsSuite struct {
 }
 
 func (s *NsSuite) SetupSuite() {
+	s.HstSuite.SetupSuite()
 	s.configureNetworkTopology("ns")
-
 	s.loadContainerTopology("ns")
 }
 
 func (s *NsSuite) SetupTest() {
-	s.skipIfUnconfiguring()
-	s.setupVolumes()
-	s.setupContainers()
+	s.HstSuite.SetupTest()
 
 	// Setup test conditions
-	var startupConfig Stanza
-	startupConfig.
+	var sessionConfig Stanza
+	sessionConfig.
 		newStanza("session").
 		append("enable").
 		append("use-app-socket-api").
 		append("evt_qs_memfd_seg").
 		append("event-queue-length 100000").close()
 
+	cpus := s.AllocateCpus()
 	container := s.getContainerByName("vpp")
-	vpp, _ := container.newVppInstance(startupConfig)
+	vpp, _ := container.newVppInstance(cpus, sessionConfig)
 	vpp.start()
 
 	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
