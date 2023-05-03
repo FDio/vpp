@@ -1598,8 +1598,8 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
 	}
       else
 	{
-	  ip_neighbor_probe_dst (ip_neighbor_get_sw_if_index (ipn), af,
-				 vlib_get_thread_index (),
+	  ip_neighbor_probe_dst (ip_neighbor_get_sw_if_index (ipn),
+				 vlib_get_thread_index (), af,
 				 &ip_addr_46 (&ipn->ipn_key->ipnk_ip));
 
 	  ipn->ipn_n_probes++;
