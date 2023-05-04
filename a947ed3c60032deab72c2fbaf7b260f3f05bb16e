@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "96b95bf5_6db8e2e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-04T02:28:28Z",
+      "side": 1,
+      "message": "I tested this fix locally and confirmed that the MLX driver is being built into DPDK plugin with this patch.",
+      "revId": "a947ed3c60032deab72c2fbaf7b260f3f05bb16e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
