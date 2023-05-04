@@ -73,6 +73,8 @@ enum lcp_itf_host_type : u8
 */
 autoreply autoendian define lcp_itf_pair_add_del
 {
+  option deprecated;
+
   u32 client_index;
   u32 context;
   bool is_add;
@@ -80,10 +82,11 @@ autoreply autoendian define lcp_itf_pair_add_del
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
   string netns[32];			/* LCP_NS_LEN */
-  option in_progress;
 };
 autoendian define lcp_itf_pair_add_del_v2
 {
+  option in_progress;
+
   u32 client_index;
   u32 context;
   bool is_add;
@@ -91,10 +94,11 @@ autoendian define lcp_itf_pair_add_del_v2
   string host_if_name[16];		/* IFNAMSIZ */
   vl_api_lcp_itf_host_type_t host_if_type;
   string netns[32];			/* LCP_NS_LEN */
-  option in_progress;
 };
 define lcp_itf_pair_add_del_v2_reply
 {
+  option in_progress;
+
   u32 context;
   i32 retval;
   vl_api_interface_index_t host_sw_if_index;
