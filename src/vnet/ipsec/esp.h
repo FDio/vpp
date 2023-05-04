@@ -211,31 +211,6 @@ esp_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
 			drop_next, sa_index);
 }
 
-/* when submitting a frame is failed, drop all buffers in the frame */
-always_inline u32
-esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-				 vlib_node_runtime_t *node, u32 err,
-				 u32 ipsec_sa_err, u16 index, u32 *from,
-				 u16 *nexts, u16 drop_next_index)
-{
-  vlib_buffer_t *b;
-  u32 n_drop = f->n_elts;
-  u32 *bi = f->buffer_indices;
-
-  while (n_drop--)
-    {
-      from[index] = bi[0];
-      b = vlib_get_buffer (vm, bi[0]);
-      ipsec_set_next_index (b, node, vm->thread_index, err, ipsec_sa_err,
-			    index, nexts, drop_next_index,
-			    vnet_buffer (b)->ipsec.sad_index);
-      bi++;
-      index++;
-    }
-
-  return (f->n_elts);
-}
-
 /**
  * The post data structure to for esp_encrypt/decrypt_inline to write to
  * vib_buffer_t opaque unused field, and for post nodes to pick up after
@@ -261,10 +236,10 @@ typedef struct
   u16 hdr_sz;
   u16 is_chain;
   u32 seq_hi;
-} esp_decrypt_packet_data_t;
+} esp_packet_data_t;
 
-STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
-STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, sizeof (u64));
+STATIC_ASSERT_SIZEOF (esp_packet_data_t, 3 * sizeof (u64));
+STATIC_ASSERT_OFFSET_OF (esp_packet_data_t, seq, sizeof (u64));
 
 /* we are forced to store the decrypt post data into 2 separate places -
    vlib_opaque and opaque2. */
@@ -278,7 +253,7 @@ typedef struct
 typedef union
 {
   u16 next_index;
-  esp_decrypt_packet_data_t decrypt_data;
+  esp_packet_data_t pd;
 } esp_post_data_t;
 
 STATIC_ASSERT (sizeof (esp_post_data_t) <=
@@ -306,6 +281,35 @@ typedef struct
   u32 esp6_tun_post_next;
   u32 esp_mpls_tun_post_next;
 } esp_async_post_next_t;
+
+/* when submitting a frame is failed, drop all buffers in the frame */
+always_inline u32
+esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
+				 vlib_node_runtime_t *node, u32 err,
+				 u32 ipsec_sa_err, u16 index, u32 *from,
+				 u16 *nexts, u16 drop_next_index)
+{
+  vlib_buffer_t *b;
+  u32 n_drop = f->n_elts;
+  u32 *bi = f->buffer_indices;
+
+  while (n_drop--)
+    {
+      esp_packet_data_t *pd;
+
+      from[index] = bi[0];
+      b = vlib_get_buffer (vm, bi[0]);
+
+      pd = &(esp_post_data (b))->pd;
+
+      ipsec_set_next_index (b, node, vm->thread_index, err, ipsec_sa_err,
+			    index, nexts, drop_next_index, pd->sa_index);
+      bi++;
+      index++;
+    }
+
+  return (f->n_elts);
+}
 
 extern esp_async_post_next_t esp_encrypt_async_next;
 extern esp_async_post_next_t esp_decrypt_async_next;

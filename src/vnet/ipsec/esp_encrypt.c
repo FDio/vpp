@@ -493,7 +493,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 			 ipsec_sa_t *sa, vlib_buffer_t *b, esp_header_t *esp,
 			 u8 *payload, u32 payload_len, u8 iv_sz, u8 icv_sz,
 			 u32 bi, u16 next, u32 hdr_len, u16 async_next,
-			 vlib_buffer_t *lb)
+			 vlib_buffer_t *lb, u32 sa_index)
 {
   esp_post_data_t *post = esp_post_data (b);
   u8 *tag, *iv, *aad = 0;
@@ -503,6 +503,7 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
   u16 crypto_total_len, integ_total_len;
 
   post->next_index = next;
+  post->pd.sa_index = sa_index;
 
   /* crypto */
   crypto_start_offset = integ_start_offset = payload - b->data;
@@ -1006,7 +1007,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  esp_prepare_async_frame (vm, ptd, async_frames[async_op], sa0, b[0],
 				   esp, payload, payload_len, iv_sz, icv_sz,
 				   from[b - bufs], sync_next[0], hdr_len,
-				   async_next_node, lb);
+				   async_next_node, lb, current_sa_index);
 	}
       else
 	esp_prepare_sync_op (vm, ptd, crypto_ops, integ_ops, sa0, sa0->seq_hi,
