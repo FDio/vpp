@@ -344,3 +344,56 @@ class IPSecNATTestCase(TemplateIpsec):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_plain(capture)
+
+    def test_ipsec_nat_tun_not_match_Spd(self):
+        """IPSec/NAT UDP ENCAP ESP PKT does not match policy"""
+        p = self.ipv4_params
+        scapy_tun_sa = SecurityAssociation(
+            ESP,
+            spi=p.scapy_tun_spi,
+            crypt_algo=p.crypt_algo,
+            crypt_key=p.crypt_key,
+            auth_algo=p.auth_algo,
+            auth_key=p.auth_key,
+            tunnel_header=IP(src=self.pg1.remote_ip4, dst=self.tun_if.remote_ip4),
+            nat_t_header=UDP(sport=4700, dport=4700),
+        )
+        # in2out - from private network to public
+        pkts = self.create_stream_plain(
+            self.pg1.remote_mac,
+            self.pg1.local_mac,
+            self.pg1.remote_ip4,
+            self.tun_if.remote_ip4,
+        )
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.tun_if.get_capture(len(pkts))
+        self.verify_capture_encrypted(capture, scapy_tun_sa)
+
+        vpp_tun_sa = SecurityAssociation(
+            ESP,
+            spi=p.vpp_tun_spi,
+            crypt_algo=p.crypt_algo,
+            crypt_key=p.crypt_key,
+            auth_algo=p.auth_algo,
+            auth_key=p.auth_key,
+            tunnel_header=IP(src=self.tun_if.remote_ip4, dst=self.pg1.remote_ip4),
+            nat_t_header=UDP(sport=4700, dport=4700),
+        )
+
+        # out2in - from public network to private
+        pkts = self.create_stream_encrypted(
+            self.tun_if.remote_mac,
+            self.tun_if.local_mac,
+            "172.17.2.3",
+            "172.18.3.2",
+            vpp_tun_sa,
+        )
+        self.logger.info(ppc("Sending packets:", pkts))
+        self.tun_if.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(0)
+        # len(pkts)
+        self.verify_capture_plain(capture)
