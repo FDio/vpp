@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "26ca43ec_b2847432",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T13:46:05Z",
+      "side": 1,
+      "message": "actually I am not sure if I understand. The last index that was scanned is already stored - see line 480, and we start iterating this loop from that index. The only thing that I didn\u0027t like is that it is infinite while - so I\u0027ve replaced it with finite for loop.",
+      "parentUuid": "3efe3001_f2620095",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1366f450_9ce3f02f",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 6
@@ -189,6 +207,24 @@
       "side": 1,
       "message": "Yes I\u0027ve noticed that as well.",
       "parentUuid": "7f51c0fa_a4c2aeeb",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b772fa32_00a87599",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T13:46:05Z",
+      "side": 1,
+      "message": "but are you sure this condition should read n_deq \u003d\u003d max_to_deq? - in practice it would mean that we\u0027ve been able to dequeue the whole frame, and we are done with it, so we grab for more. On the other hand if we dequeue only part of the frame and it is complete we don\u0027t want to continue deque process. So what is the actual logic, what are we trying to achieve here? - as to be honest it is not clear to me.",
+      "parentUuid": "7ec8b0d7_033e249b",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
