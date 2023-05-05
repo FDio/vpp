@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "870d7740_04dac901",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T12:08:12Z",
+      "side": 1,
+      "message": "Missing documentation for this structure",
+      "revId": "c2cd114a6fe74c4bfe7b6313a4a72d2978123ddf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
