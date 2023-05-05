@@ -407,12 +407,11 @@ api_memif_create_v2 (vat_main_t *vam)
   mp->ring_size = clib_host_to_net_u32 (ring_size);
   mp->buffer_size = clib_host_to_net_u16 (buffer_size & 0xffff);
   mp->socket_id = clib_host_to_net_u32 (socket_id);
-  if (secret != 0)
-    {
-      char *p = (char *) &mp->secret;
-      p += vl_api_vec_to_api_string (secret, (vl_api_string_t *) p);
-      vec_free (secret);
-    }
+
+  char *p = (char *) &mp->secret;
+  p += vl_api_vec_to_api_string (secret, (vl_api_string_t *) p);
+  vec_free (secret);
+
   memcpy (mp->hw_addr, hw_addr, 6);
   mp->rx_queues = rx_queues;
   mp->tx_queues = tx_queues;

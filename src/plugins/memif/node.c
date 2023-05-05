@@ -1286,7 +1286,7 @@ memif_device_input_inline_dma (vlib_main_t *vm, vlib_node_runtime_t *node,
     mq->dma_info_tail = 0;
 
 done:
-  vlib_dma_batch_set_cookie (vm, db, (mif_id << 16) | qid);
+  vlib_dma_batch_set_cookie (vm, db, ((u64) mif_id << 16) | qid);
   vlib_dma_batch_submit (vm, db);
   vec_reset_length (ptd->copy_ops);
 

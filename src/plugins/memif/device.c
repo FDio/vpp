@@ -611,7 +611,7 @@ no_free_slots:
   if (PREDICT_TRUE (!fallback))
     {
       vlib_dma_batch_set_cookie (vm, b,
-				 (mif_id << 16) | (mq - mif->tx_queues));
+				 ((u64) mif_id << 16) | (mq - mif->tx_queues));
       vlib_dma_batch_submit (vm, b);
       dma_info->finished = 0;
 
