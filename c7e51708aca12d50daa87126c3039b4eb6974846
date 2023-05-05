@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "391cec80_b687b948",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:39:49Z",
+      "side": 1,
+      "message": "\"show cryptodev sw ring status\" may be a better cmd",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

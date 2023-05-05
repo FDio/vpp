@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2889d80_3ccc75b2",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:39:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d4500df2_5374f5ec",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4722a5a9_0f475da5",
@@ -191,6 +209,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "0c2f8eff_6d0b36cd",
+      "revId": "52079341f1943a4d257b004bbf97046203744fa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b0b3efdf_2e9445e3",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:39:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b11e6310_9bda1e6f",
       "revId": "52079341f1943a4d257b004bbf97046203744fa9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
