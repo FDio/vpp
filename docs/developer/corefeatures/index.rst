@@ -17,6 +17,7 @@ Core Features
     span_doc
     mtu
     gso
+    tx_queue
     sylog_doc
     eventviewer
     stats
