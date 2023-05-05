@@ -1900,6 +1900,10 @@ class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
 class IPSecIPv4Fwd(VppTestCase):
     """Test IPSec by capturing and verifying IPv4 forwarded pkts"""
 
+    tcp_port_out = 6303
+    udp_port_out = 6304
+    icmp_id_out = 6305
+
     @classmethod
     def setUpConstants(cls):
         super(IPSecIPv4Fwd, cls).setUpConstants()
@@ -2045,6 +2049,38 @@ class IPSecIPv4Fwd(VppTestCase):
             packets.append(p)
         # return the created packet list
         return packets
+
+    def create_stream_encrypted(
+        self, src_mac, dst_mac, src_ip, dst_ip, sa, count, proto
+    ):
+        if proto == "TCP":
+            return [
+                # TCP
+                Ether(src=src_mac, dst=dst_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip) / TCP(dport=self.tcp_port_out, sport=20)
+                )
+                for i in range(count)
+            ]
+            # UDP
+        elif proto == "UDP":
+            return [
+                Ether(src=src_mac, dst=dst_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip) / UDP(dport=self.udp_port_out, sport=20)
+                )
+                for i in range(count)
+            ]
+        else:
+            return [
+                # ICMP
+                Ether(src=src_mac, dst=dst_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip)
+                    / ICMP(id=self.icmp_id_out, type="echo-request")
+                )
+                for i in range(count)
+            ]
 
     def verify_capture(self, src_if, dst_if, capture):
         packet_info = None

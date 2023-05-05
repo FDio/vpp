@@ -9,13 +9,15 @@ from scapy.layers.ipsec import SecurityAssociation, ESP
 
 from util import ppp, ppc
 from template_ipsec import TemplateIpsec
+from template_ipsec import IPSecIPv4Fwd
+from template_ipsec import IPSecIPv6Fwd
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 
-class IPSecNATTestCase(TemplateIpsec):
+class IPSecNATTestCase(TemplateIpsec, IPSecIPv4Fwd):
     """IPSec/NAT
 
     TUNNEL MODE::
@@ -83,26 +85,6 @@ class IPSecNATTestCase(TemplateIpsec):
             Ether(src=src_mac, dst=dst_mac)
             / IP(src=src_ip, dst=dst_ip)
             / ICMP(id=self.icmp_id_in, type="echo-request"),
-        ]
-
-    def create_stream_encrypted(self, src_mac, dst_mac, src_ip, dst_ip, sa):
-        return [
-            # TCP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip) / TCP(dport=self.tcp_port_out, sport=20)
-            ),
-            # UDP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip) / UDP(dport=self.udp_port_out, sport=20)
-            ),
-            # ICMP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip)
-                / ICMP(id=self.icmp_id_out, type="echo-request")
-            ),
         ]
 
     def verify_capture_plain(self, capture):
@@ -337,6 +319,8 @@ class IPSecNATTestCase(TemplateIpsec):
             self.tun_if.remote_ip4,
             self.pg1.remote_ip4,
             vpp_tun_sa,
+            5,
+            "UDP",
         )
         self.logger.info(ppc("Sending packets:", pkts))
         self.tun_if.add_stream(pkts)
