@@ -22,3 +22,4 @@ Core Features
     stats
     selinux_doc
     policer
+    hash
