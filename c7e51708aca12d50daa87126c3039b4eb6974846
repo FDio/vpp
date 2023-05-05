@@ -16,6 +16,91 @@
       "message": "\"show cryptodev sw ring status\" may be a better cmd",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6483fb7b_7cd6e6e6",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:51:59Z",
+      "side": 1,
+      "message": "Instead of scanning all frames inflight we can store the index of last scan results in the ring.",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1366f450_9ce3f02f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:51:59Z",
+      "side": 1,
+      "message": "Please use C style comment instead of Cpp",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d98cb9c_48a45b14",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:51:59Z",
+      "side": 1,
+      "message": "dequeued is stored in frame ring, you may store n_elts as well to reduce unnecessary memory read.",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99e77034_4b2bc86f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:51:59Z",
+      "side": 1,
+      "message": "frame_finished is used only once - replace \"if (frame_finished)\" to \"if (ring-\u003e...dequeued \u003d\u003d ring-\u003e...n_elts)\" and remoove frame_finished simplifies the code and adds readability in my opinion",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f51c0fa_a4c2aeeb",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-05T08:51:59Z",
+      "side": 1,
+      "message": "Again enq_deq_limits can be replaced by const macro.\nI assume here is a bug as well? should be \"dequeue_more \u003d n_deq \u003d\u003d max_to_deq;\"?",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
