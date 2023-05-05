@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d736cc61_dca22928",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T12:36:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "391cec80_b687b948",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6483fb7b_7cd6e6e6",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 6
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3efe3001_f2620095",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T12:36:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6483fb7b_7cd6e6e6",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1366f450_9ce3f02f",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 6
@@ -48,6 +84,24 @@
       "writtenOn": "2023-05-05T08:51:59Z",
       "side": 1,
       "message": "Please use C style comment instead of Cpp",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0414b47d_0e114195",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T12:36:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1366f450_9ce3f02f",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +142,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "570c5024_f2ab7ec1",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T12:36:41Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "99e77034_4b2bc86f",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7f51c0fa_a4c2aeeb",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 6
@@ -99,6 +171,24 @@
       "writtenOn": "2023-05-05T08:51:59Z",
       "side": 1,
       "message": "Again enq_deq_limits can be replaced by const macro.\nI assume here is a bug as well? should be \"dequeue_more \u003d n_deq \u003d\u003d max_to_deq;\"?",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ec8b0d7_033e249b",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T12:36:41Z",
+      "side": 1,
+      "message": "Yes I\u0027ve noticed that as well.",
+      "parentUuid": "7f51c0fa_a4c2aeeb",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
