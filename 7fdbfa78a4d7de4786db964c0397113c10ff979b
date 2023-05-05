@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "528754e1_33558c4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-05-05T12:12:56Z",
+      "side": 1,
+      "message": "Almost there thx :)",
+      "revId": "7fdbfa78a4d7de4786db964c0397113c10ff979b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ecea25f_77611ad6",
+        "filename": "src/plugins/gre/plugin.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-05-05T12:12:56Z",
+      "side": 1,
+      "message": "2023",
+      "revId": "7fdbfa78a4d7de4786db964c0397113c10ff979b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
