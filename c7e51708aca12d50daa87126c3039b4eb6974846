@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2ed6250b_88f3d5db",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T17:18:55Z",
+      "side": 1,
+      "message": "Done, however I used sw_ring instead of suggested by you sw_ring - as sw ring will be interpreted by cli as two arguments - which I think is misleading.",
+      "parentUuid": "d736cc61_dca22928",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "6483fb7b_7cd6e6e6",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 6
@@ -124,6 +142,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed019a20_07d08f16",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T17:18:55Z",
+      "side": 1,
+      "message": "Done. Change available in review https://gerrit.fd.io/r/c/vpp/+/38749. Sorry for this inconvenience, but I need to work on the top of Dastin changes, so in this review I\u0027ve added myself as an author - and in the other I continue my actual work.",
+      "parentUuid": "0414b47d_0e114195",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4d98cb9c_48a45b14",
@@ -137,6 +173,24 @@
       "writtenOn": "2023-05-05T08:51:59Z",
       "side": 1,
       "message": "dequeued is stored in frame ring, you may store n_elts as well to reduce unnecessary memory read.",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f065b777_55255364",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T17:18:55Z",
+      "side": 1,
+      "message": "Done. Change available in review https://gerrit.fd.io/r/c/vpp/+/38749. Sorry for this inconvenience, but I need to work on the top of Dastin changes, so in this review I\u0027ve added myself as an author - and in the other I continue my actual work.",
+      "parentUuid": "4d98cb9c_48a45b14",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -172,6 +226,24 @@
       "side": 1,
       "message": "Ack",
       "parentUuid": "99e77034_4b2bc86f",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6387f9a3_7a5d8568",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T17:18:55Z",
+      "side": 1,
+      "message": "Done. Change available in review https://gerrit.fd.io/r/c/vpp/+/38749. Sorry for this inconvenience, but I need to work on the top of Dastin changes, so in this review I\u0027ve added myself as an author - and in the other I continue my actual work.",
+      "parentUuid": "570c5024_f2ab7ec1",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -225,6 +297,24 @@
       "side": 1,
       "message": "but are you sure this condition should read n_deq \u003d\u003d max_to_deq? - in practice it would mean that we\u0027ve been able to dequeue the whole frame, and we are done with it, so we grab for more. On the other hand if we dequeue only part of the frame and it is complete we don\u0027t want to continue deque process. So what is the actual logic, what are we trying to achieve here? - as to be honest it is not clear to me.",
       "parentUuid": "7ec8b0d7_033e249b",
+      "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca1e998a_8a81f5fa",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-05T17:18:55Z",
+      "side": 1,
+      "message": "Ack. enq_deq_limits is removed - and this discussion we can move to the review https://gerrit.fd.io/r/c/vpp/+/38749",
+      "parentUuid": "b772fa32_00a87599",
       "revId": "c7e51708aca12d50daa87126c3039b4eb6974846",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
