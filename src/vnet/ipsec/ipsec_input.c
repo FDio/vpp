@@ -297,6 +297,15 @@ ipsec_udp_encap_esp_packet_process (
   search_flow_cache = im->input_flow_cache_flag;
 udp_or_esp:
 
+  /* inside ESP header , SPI ID value should be higher than Zero */
+  if (esp0->spi == 0)
+    {
+      /* Drop the packet if SPI ID is zero */
+      *ipsec_unprocessed += 1;
+      next[0] = IPSEC_INPUT_NEXT_DROP;
+      return;
+    }
+
   if (im->fp_spd_ipv4_in_is_enabled &&
       PREDICT_TRUE (INDEX_INVALID != spd0->fp_spd.ip4_in_lookup_hash_idx))
     {
@@ -515,6 +524,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       u32 next32, pi0;
       ip4_header_t *ip0;
       esp_header_t *esp0 = NULL;
+      udp_header_t *udp0 = NULL;
       ah_header_t *ah0;
       ip4_ipsec_config_t *c0;
       ipsec_spd_t *spd0;
@@ -536,20 +546,34 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
       ip0 = vlib_buffer_get_current (b[0]);
 
-      if (PREDICT_TRUE
-	  (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
-	   || ip0->protocol == IP_PROTOCOL_UDP))
+      if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_UDP))
 	{
+	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  /*As per rfc3948 in UDP Encapsulated Header, UDP checksum must be
+	   * Zero, and receivers must not depen upon UPD checksum.
+	   * inside ESP header , SPI ID value should be higher than Zero
+	   * */
 
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
-	  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_UDP))
+	  if (udp0->checksum == 0)
 	    {
-	      /* FIXME Skip, if not a UDP encapsulated packet */
-	      esp0 = (esp_header_t *) ((u8 *) esp0 + sizeof (udp_header_t));
+	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
+
+	      ipsec_udp_encap_esp_packet_process (
+		vm, im, ip0, esp0, thread_index, spd0, b, node,
+		&ipsec_bypassed, &ipsec_dropped, &ipsec_matched,
+		&ipsec_unprocessed, next);
+	      if (ipsec_bypassed > 0)
+		goto ipsec_bypassed;
 	    }
+	}
+      else if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_ESP))
+	{
+	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 	  ipsec_udp_encap_esp_packet_process (
 	    vm, im, ip0, esp0, thread_index, spd0, b, node, &ipsec_bypassed,
 	    &ipsec_dropped, &ipsec_matched, &ipsec_unprocessed, next);
+	  if (ipsec_bypassed > 0)
+	    goto ipsec_bypassed;
 	}
       else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
 	{
@@ -692,6 +716,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	}
       else
 	{
+	ipsec_bypassed:
 	  ipsec_unprocessed += 1;
 	}
       n_left_from -= 1;
@@ -722,7 +747,6 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
   return frame->n_vectors;
 }
-
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_input_node) = {
