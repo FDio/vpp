@@ -47,8 +47,8 @@ static struct
 void
 dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {
-  dpdk_log_err ("Interface %U error %d: %s",
-		format_dpdk_device_name, xd->port_id, rv, rte_strerror (rv));
+  dpdk_log_err ("Interface %U error %d: %s", format_dpdk_device_name,
+		xd->device_index, rv, rte_strerror (rv));
   xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s",
 				  str, xd->port_id, rv, rte_strerror (rv));
 }
@@ -331,7 +331,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
   if (rte_eth_dev_rx_intr_enable (xd->port_id, 0))
     {
       dpdk_log_info ("probe for interrupt mode for device %U. Failed.\n",
-		     format_dpdk_device_name, xd->port_id);
+		     format_dpdk_device_name, xd->device_index);
     }
   else
     {
@@ -339,7 +339,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
       if (!(xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE))
 	rte_eth_dev_rx_intr_disable (xd->port_id, 0);
       dpdk_log_info ("Probe for interrupt mode for device %U. Success.\n",
-		     format_dpdk_device_name, xd->port_id);
+		     format_dpdk_device_name, xd->device_index);
     }
 
   if (xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED)
@@ -360,8 +360,8 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  f.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
 	  f.file_descriptor = rxq->efd;
 	  f.private_data = rxq->queue_index;
-	  f.description =
-	    format (0, "%U queue %u", format_dpdk_device_name, xd->port_id, q);
+	  f.description = format (0, "%U queue %u", format_dpdk_device_name,
+				  xd->device_index, q);
 	  rxq->clib_file_index = clib_file_add (&file_main, &f);
 	  vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					      rxq->clib_file_index);
@@ -419,8 +419,8 @@ dpdk_device_start (dpdk_device_t * xd)
 
   rte_eth_allmulticast_enable (xd->port_id);
 
-  dpdk_log_info ("Interface %U started",
-		 format_dpdk_device_name, xd->port_id);
+  dpdk_log_info ("Interface %U started", format_dpdk_device_name,
+		 xd->device_index);
 }
 
 void
@@ -433,8 +433,8 @@ dpdk_device_stop (dpdk_device_t * xd)
   rte_eth_dev_stop (xd->port_id);
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
-  dpdk_log_info ("Interface %U stopped",
-		 format_dpdk_device_name, xd->port_id);
+  dpdk_log_info ("Interface %U stopped", format_dpdk_device_name,
+		 xd->device_index);
 }
 
 void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
