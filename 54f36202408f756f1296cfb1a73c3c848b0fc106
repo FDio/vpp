@@ -16,6 +16,40 @@
       "message": "Hi Neale,\n\nI\u0027ve found an issue that both peer and nh for TEIB entries were creating in the same fib (which doesn\u0027t make much sense). Fixed that, later I discovered that you\u0027ve already pushed the similar patch[0]. It\u0027s a shame that it wasn\u0027t merged. \n\nWould you mind taking a look at mine?\n\n[0] https://gerrit.fd.io/r/c/vpp/+/31695",
       "revId": "54f36202408f756f1296cfb1a73c3c848b0fc106",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "682af6bd_9f3edfaf",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-05-09T00:35:07Z",
+      "side": 1,
+      "message": "nh_fib_index is ignored because this is an attached-nexthop route (i.e. next-hop address and interface is provided). The nh_fib_index would be used for a recursive route, when the interface is not provided.",
+      "revId": "54f36202408f756f1296cfb1a73c3c848b0fc106",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f209f7ba_80053eb3",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-05-09T00:35:07Z",
+      "side": 1,
+      "message": "this should be peer_fib_index, since that was the FIB into which the adj-fib is added.",
+      "revId": "54f36202408f756f1296cfb1a73c3c848b0fc106",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
