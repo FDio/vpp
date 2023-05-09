@@ -19,14 +19,14 @@ DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 DPDK_MLX_IBV_LINK            ?= static
 
-dpdk_version                 ?= 22.11.1
+dpdk_version                 ?= 23.03
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
+dpdk_tarball_md5sum_23.03    := 3cf8ebbcd412d5726db230f2eeb90cc9
 dpdk_tarball_md5sum_22.11.1  := 0594708fe42ce186a55b0235c6e20cfe
 dpdk_tarball_md5sum_22.07    := fb73b58b80b1349cd05fe9cf6984afd4
 dpdk_tarball_md5sum_22.03    := a07ca8839f98062f46e1cc359735cce8
 dpdk_tarball_md5sum_21.11    := 58660bbbe9e95abce86e47692b196555
-dpdk_tarball_md5sum_21.08    := de33433a1806280996a0ecbe66e3642f
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
