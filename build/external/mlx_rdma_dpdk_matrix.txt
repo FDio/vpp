@@ -1,2 +1,3 @@
 rdma=41.0 dpdk=22.07
 rdma=43.0 dpdk=22.11.1
+rdma=45.0 dpdk=23.03

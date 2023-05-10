@@ -13,11 +13,22 @@
 
 RDMA_CORE_DEBUG?=n
 
-rdma-core_version             := 43.0
+# NOTE: When updating the rdma-core version in conjunction with an update of the
+#       dpdk version, please update ../mlx_rdma_dpdk_matrix.txt to include the
+#       updated version matrix with the dpdk and rdma-core version.
+#
+#       Also, please verify that the DPDK RDMA driver is built into the dpdk plugin
+#       as follows:
+#       	1. from workspace root directory, 'make -C build/external build-deb'
+#       	2. Verify that the file build/external/dpdk_mlx_default.sh was generated
+#              and contains 'DPDK_MLX_DEFAULT=y'
+#
+rdma-core_version             := 45.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
 rdma-core_tarball_md5sum_39.1 := 63ba4632fd01173a2331e5b990373330
 rdma-core_tarball_md5sum_41.0 := 2250389cb61a7130133e6411fdeef2f9
 rdma-core_tarball_md5sum_43.0 := 3785fd2b35cd41043ab53226fc112d41
+rdma-core_tarball_md5sum_45.0 := 2b170e6d2ad66fb688580520a16d1ad5
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
