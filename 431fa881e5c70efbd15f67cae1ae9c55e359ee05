@@ -33,6 +33,329 @@
       "message": "Please correct commit message. The component you are changing is ipsec, not crypto. Change the description for informative one - it should shortly explain what you do in this patch. Add section with more detailed explanation. This patch is not a fix. It is improvement.",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b42cc47c_be9e188f",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "instead of \"normal\" use \"plain\"",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ea5d470_7ab9d735",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "please don\u0027t use magic numbers",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15a6641a_55b519f0",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "please don\u0027t use magic numbers",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "df9248ee_eeed1c58",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "in each test you crate same sa - instead of doing that you can make it a part of this function and remove sa from parameter list.",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "518b01cd_964844bf",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "why did you remove this check?",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3ad6520_3f020537",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "please redefine create_stream function in SpdFlowCacheInbound class. It should define sa from line 175 and call internally gen_encrypt_pkts.",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5c68ef3_8393697f",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "Please uncomment this line and remove your changes from this test according to hints that I gave you in previous comment.",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60b9fd7f_1d237af8",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c31fbb9_194f8bb1",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment this line",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6b96581_f6570b92",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b0b1735_3f52da60",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment this line",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc7325da_c88d4434",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment this line",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "070fcdfb_d0e01a3a",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ac8a7a0_89c09702",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment these lines",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0a0dbd7a_5684657d",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e952b4bf_b0bc5394",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 835,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment these lines",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd222b28_c7d7df2f",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 906,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "uncomment these lines",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d0fa4e4f_3c407e49",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa2f6ddb_6ae8f029",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:40:43Z",
+      "side": 1,
+      "message": "you should revert most of your changes in this file accordingly with comments for test_ipsec_flow_cache_input.py file",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
