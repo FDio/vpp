@@ -16,6 +16,24 @@
       "message": "Can you please elaborate the problem?",
       "revId": "b81531222b2509b2a97e2d394c2bb0608fb40035",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c241a90_c6d4f9ec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-05-10T11:20:41Z",
+      "side": 1,
+      "message": "Hi Mohsin,\n\nIt\u0027s not a problem per-se, but some difference I\u0027ve caught while debugging another issue (vlib frame flags weren\u0027t cleared, so it caused issues with virtio interfaces).\n\nFor the majority input nodes (dpdk, af_xdp, rdma, memif, avf, pg) - there\u0027s the similar code. When we receive packets from 1 interface, we allocate one vlib frame, attach packets to it and set ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX flag and sw_if_index in scalar_args. With this information, `ethernet-input` node has a fast-path. So, in general it should be nice to have this piece of logic.\n\nAlthough, I just noticed that my patch is not fully correct, I need to adjust it a bit. I will also update a commit message, so it\u0027s clear enough.",
+      "parentUuid": "807395d9_70ed42ab",
+      "revId": "b81531222b2509b2a97e2d394c2bb0608fb40035",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
