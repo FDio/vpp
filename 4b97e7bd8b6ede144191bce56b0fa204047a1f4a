@@ -33,6 +33,91 @@
       "message": "Please correct commit message. remove \"patch_3\" and description should reflect content of this patch. The component you are changing is ipsec. The type in case of this patch is a fix indeed.",
       "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "041f2a80_8fb7fd75",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:48:14Z",
+      "side": 1,
+      "message": "SPI must be non Zero value.",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35e6ca00_39f75cb8",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:48:14Z",
+      "side": 1,
+      "message": "please move this definition to line 551 and directly initialize it with correct value.",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "876d4c1a_f58037bc",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:48:14Z",
+      "side": 1,
+      "message": "PREDICT_TRUE in \"if else if else\" statement can be used only once - I assume you want to preserve it in line 569",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7f1a7a1_909b09ab",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 552,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:48:14Z",
+      "side": 1,
+      "message": "add empty line between 551 and 552",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0b8fac6_d2b00ffa",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 556,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:48:14Z",
+      "side": 1,
+      "message": "remove this empty line",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
