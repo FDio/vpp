@@ -1060,8 +1060,9 @@ vl_api_from_api_to_new_vec (void *mp, vl_api_string_t * astr)
   u8 *v = 0;
 
   if (vl_msg_api_max_length (mp) < clib_net_to_host_u32 (astr->length))
-    return format (0, "insane astr->length %u%c",
-		   clib_net_to_host_u32 (astr->length), 0);
+    return format (0, "Invalid astr->length %u > max (%u)%c",
+		   clib_net_to_host_u32 (astr->length),
+		   vl_msg_api_max_length (mp), 0);
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
   return v;
 }
