@@ -417,6 +417,59 @@ VLIB_CLI_COMMAND (wg_show_modemode_command, static) = {
   .function = wg_show_mode_command_fn,
 };
 
+static clib_error_t *
+wg_set_handshake_cookie_rate_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  clib_error_t *error = NULL;
+  wg_main_t *wmp = &wg_main;
+  u64 handshake_cookie_rate = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    if (!unformat (line_input, "%lu", &handshake_cookie_rate))
+      return (clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input));
+
+  if (handshake_cookie_rate > 0)
+    wmp->handshake_cookie_rate = (f64) handshake_cookie_rate;
+  else
+    error =
+      clib_error_return (0, "handshake cookie rate should be more than 0!");
+
+  unformat_free (line_input);
+  return (error);
+}
+
+VLIB_CLI_COMMAND (wg_set_handshake_cookie_rate_command, static) = {
+  .path = "set wireguard handshake cookie rate",
+  .short_help = "set wireguard handshake cookie rate [value]",
+  .function = wg_set_handshake_cookie_rate_command_fn,
+};
+
+static clib_error_t *
+wg_show_handshake_cookie_rate_command_fn (vlib_main_t *vm,
+					  unformat_input_t *input,
+					  vlib_cli_command_t *cmd)
+{
+  wg_main_t *wmp = &wg_main;
+  vlib_cli_output (vm, "Current handshake cookie rate: %lu",
+		   (u64) wmp->handshake_cookie_rate);
+
+  return (NULL);
+}
+
+VLIB_CLI_COMMAND (wg_show_handshake_cookie_rate_command, static) = {
+  .path = "show wireguard handshake cookie rate",
+  .short_help = "show wireguard handshake cookie rate",
+  .function = wg_show_handshake_cookie_rate_command_fn,
+};
+
 /* *INDENT-ON* */
 
 /*

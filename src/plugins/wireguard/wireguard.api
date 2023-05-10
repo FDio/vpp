@@ -214,6 +214,39 @@ autoreply define wg_set_async_mode {
   bool async_enable [default=false];
 };
 
+/** \brief Wireguard set handshake cookie rate
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param handshake_cookie_rate - value to set handshake cookie rate measured in handshakes per second
+*/
+autoreply define wg_set_handshake_cookie_rate {
+  u32 client_index;
+  u32 context;
+  u64 handshake_cookie_rate;
+};
+
+/** \brief Wireguard get handshake cookie rate
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define wg_get_handshake_cookie_rate
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Wireguard get handshake cookie rate
+    @param context - sender context, to match reply w/ request
+    @param retval - return status
+    @param handshake_cookie_rate - current value of handshake cookie rate measured in handshakes per second
+*/
+define wg_get_handshake_cookie_rate_reply
+{
+  u32 context;
+  i32 retval;
+  u64 handshake_cookie_rate;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

@@ -88,6 +88,16 @@ wg_init (vlib_main_t * vm)
   wg_timer_wheel_init ();
   wireguard_register_post_node (vm);
   wmp->op_mode_flags = 0;
+  wmp->inflight = 0;
+
+  /* this value has been chosen based on the outcome of tests in experimental
+   * setup */
+  if (CLIB_DEBUG > 0)
+    wmp->handshake_cookie_rate = 1000.0;
+  else
+    wmp->handshake_cookie_rate = 10000.0;
+
+  wmp->n_vlib_mains = tm->n_vlib_mains;
 
   return (NULL);
 }

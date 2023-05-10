@@ -55,6 +55,15 @@ typedef struct
 
   /* operation mode flags (e.g. async) */
   u8 op_mode_flags;
+
+  /* inflight for handshake process */
+  u32 inflight;
+
+  /* current handshake cookie rate */
+  f64 handshake_cookie_rate;
+
+  /* number of VPP threards */
+  u32 n_vlib_mains;
 } wg_main_t;
 
 typedef struct
