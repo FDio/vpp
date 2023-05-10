@@ -407,6 +407,37 @@ vl_api_wg_set_async_mode_t_handler (vl_api_wg_set_async_mode_t *mp)
   REPLY_MACRO (VL_API_WG_SET_ASYNC_MODE_REPLY);
 }
 
+static void
+vl_api_wg_set_handshake_cookie_rate_t_handler (
+  vl_api_wg_set_handshake_cookie_rate_t *mp)
+{
+  wg_main_t *wmp = &wg_main;
+  vl_api_wg_set_handshake_cookie_rate_reply_t *rmp;
+  int rv = 0;
+
+  if (clib_net_to_host_u64 (mp->handshake_cookie_rate) > 0)
+    wmp->handshake_cookie_rate =
+      (f64) clib_net_to_host_u64 (mp->handshake_cookie_rate);
+  else
+    rv = -1;
+
+  REPLY_MACRO (VL_API_WG_SET_HANDSHAKE_COOKIE_RATE_REPLY);
+}
+
+static void
+vl_api_wg_get_handshake_cookie_rate_t_handler (
+  vl_api_wg_get_handshake_cookie_rate_t *mp)
+{
+  wg_main_t *wmp = &wg_main;
+  vl_api_wg_get_handshake_cookie_rate_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO2 (VL_API_WG_GET_HANDSHAKE_COOKIE_RATE_REPLY, {
+    rmp->handshake_cookie_rate =
+      clib_host_to_net_u64 ((u64) wmp->handshake_cookie_rate);
+  });
+}
+
 /* set tup the API message handling tables */
 #include <wireguard/wireguard.api.c>
 static clib_error_t *

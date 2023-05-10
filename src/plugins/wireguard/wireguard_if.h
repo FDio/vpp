@@ -90,9 +90,11 @@ wg_if_indexes_get_by_port (u16 port)
 #define HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD 40
 
 static_always_inline bool
-wg_if_is_under_load (vlib_main_t *vm, wg_if_t *wgi)
+wg_if_is_under_load (vlib_main_t *vm, wg_if_t *wgi, u32 inflight,
+		     f64 handshake_cookie_rate)
 {
   static f64 wg_under_load_end;
+  static f64 inflight_handshake_counting_end = 0.0;
   f64 now = vlib_time_now (vm);
   u32 num_until_under_load =
     hash_elts (wgi->peers) * HANDSHAKE_NUM_PER_PEER_UNTIL_UNDER_LOAD;
@@ -102,11 +104,27 @@ wg_if_is_under_load (vlib_main_t *vm, wg_if_t *wgi)
       wgi->handshake_counting_end = now + HANDSHAKE_COUNTING_INTERVAL;
       wgi->handshake_num = 0;
     }
+
+  if (inflight_handshake_counting_end < now)
+    {
+      /* count REKEY_TIMEOUT time - because want to finished all handshake
+       * process before each REKEY_TIMEOUT time
+       */
+      inflight_handshake_counting_end = now + REKEY_TIMEOUT;
+    }
   wgi->handshake_num++;
 
-  if (wgi->handshake_num >= num_until_under_load)
+  f64 diff = inflight_handshake_counting_end - now;
+
+  /* check if vpp will be able to do handshake process before each
+   * REKEY_TIMEOUT time, if not then under load state is activated
+   */
+  if ((wgi->handshake_num >= num_until_under_load) ||
+      ((f64) inflight - (handshake_cookie_rate * diff) > 0.0))
     {
       wg_under_load_end = now + UNDER_LOAD_INTERVAL;
+      if (wg_under_load_end > inflight_handshake_counting_end)
+	wg_under_load_end = inflight_handshake_counting_end;
       return true;
     }
 

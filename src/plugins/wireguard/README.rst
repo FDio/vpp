@@ -73,6 +73,22 @@ Delete interface
 
    > vpp# wireguard delete <wg_interface>
 
+Set handshake cookie rate
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+   > vpp# set wireguard handshake cookie rate <value>
+
+Show current handshake cookie rate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+   > vpp# show wireguard handshake cookie rate
+   > *Current handshake cookie rate: <value>*
+
+
 Main next steps for improving this implementation
 -------------------------------------------------
 
