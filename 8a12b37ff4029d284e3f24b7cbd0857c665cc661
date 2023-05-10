@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7498f08e_6eef4ef3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-05-10T10:03:04Z",
+      "side": 1,
+      "message": "Thanks Nico, this looks great!\n\nHi Neale, as part of the plugin-inification effort of various VPP subsystems Nico worked on GRE. This looks good to me, the only subtelty is vnet/gre/packet.h is used in various other places including VNET to get the GRE header definitions.",
+      "revId": "8a12b37ff4029d284e3f24b7cbd0857c665cc661",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
