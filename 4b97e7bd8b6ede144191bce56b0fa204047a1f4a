@@ -16,6 +16,23 @@
       "message": "pls help to review",
       "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "adc1ab18_ed074d3e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-10T10:42:29Z",
+      "side": 1,
+      "message": "Please correct commit message. remove \"patch_3\" and description should reflect content of this patch. The component you are changing is ipsec. The type in case of this patch is a fix indeed.",
+      "revId": "4b97e7bd8b6ede144191bce56b0fa204047a1f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
