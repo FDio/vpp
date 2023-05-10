@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b74f984_9078183c",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-05-10T09:02:14Z",
+      "side": 1,
+      "message": "I don\u0027t agree here. It\u0027s the main point of my fix - to provide `fib_table_entry_path_add` with a custom next hop fib index.\n\nBefore the fix - nh-table-id worked for creating /32 adj route, so it was rather a peer-table-id if one could say so. \nAfter the fix - /32 adj route is created in the same table where is the interface. But you can select a fib for the nexthop of the peer. \n\nFor instance - we are using nh-table-id to keep IPIP tunnels inside 0 table while keeping every wan interface in a separate table.",
+      "parentUuid": "3653156a_bc56aef4",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "17c3d973_a803fe35",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-05-10T00:16:28Z",
       "side": 1,
       "message": "... nor here.",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "804ccfe3_7c001597",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-05-10T09:02:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "17c3d973_a803fe35",
       "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
