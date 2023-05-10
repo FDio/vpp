@@ -16,6 +16,40 @@
       "message": "Hello Neale,\nThanks as always for the review and valuable inputs.",
       "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3653156a_bc56aef4",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-05-10T00:16:28Z",
+      "side": 1,
+      "message": "you don\u0027t need nh_fib_index here ...",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17c3d973_a803fe35",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-05-10T00:16:28Z",
+      "side": 1,
+      "message": "... nor here.",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
