@@ -69,6 +69,24 @@
       "parentUuid": "24102019_68cfdb39",
       "revId": "f480ac3b1090f27e0fe3782de541b462f05d39f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ae1fc46_6050b935",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2023-05-10T17:55:24Z",
+      "side": 1,
+      "message": "Hi,\n\nthe C++ test code should go in src/vpp-api/vapi/vapi_cpp_test.cpp\n\nYou then run \n\nmake test[-debug] TEST\u003dvapi",
+      "parentUuid": "663401a7_1591eb89",
+      "revId": "f480ac3b1090f27e0fe3782de541b462f05d39f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
