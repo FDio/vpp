@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d3e7f4d_2aa1d7e4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2023-05-11T13:09:48Z",
+      "side": 1,
+      "message": "Meet a plugin load issue",
+      "revId": "decf0258cfcf4836204a56fd1b54dcd9715e6541",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
