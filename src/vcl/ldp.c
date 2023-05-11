@@ -610,7 +610,7 @@ ioctl (int fd, unsigned long int cmd, ...)
 
 	case FIONBIO:
 	  {
-	    u32 flags = va_arg (ap, int) ? O_NONBLOCK : 0;
+	    u32 flags = *(va_arg (ap, int *)) ? O_NONBLOCK : 0;
 	    u32 size = sizeof (flags);
 
 	    /* TBD: When VPPCOM_ATTR_[GS]ET_FLAGS supports flags other than
