@@ -1524,14 +1524,15 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
 """
 
     write(hdr.format(module=module))
-    write("static u16\n")
-    write("setup_message_id_table (void) {\n")
-    write("   api_main_t *am = my_api_main;\n")
-    write("   vl_msg_api_msg_config_t c;\n")
-    write(
-        '   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", '
-        "VL_MSG_{m}_LAST);\n".format(module, crc=file_crc, m=module.upper())
-    )
+    if len(defines) > 0:
+        write("static u16\n")
+        write("setup_message_id_table (void) {\n")
+        write("   api_main_t *am = my_api_main;\n")
+        write("   vl_msg_api_msg_config_t c;\n")
+        write(
+            '   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", '
+            "VL_MSG_{m}_LAST);\n".format(module, crc=file_crc, m=module.upper())
+        )
 
     for d in defines:
         write(
@@ -1605,9 +1606,9 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
                 write("   vl_msg_api_config (&c);\n")
         except KeyError:
             pass
-
-    write("   return msg_id_base;\n")
-    write("}\n")
+    if len(defines) > 0:
+        write("   return msg_id_base;\n")
+        write("}\n")
 
     severity = {
         "error": "VL_COUNTER_SEVERITY_ERROR",
