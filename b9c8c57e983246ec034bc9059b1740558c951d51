@@ -16,6 +16,23 @@
       "message": "perftest-3n-snr mrrANDnic_*ANDdrv_avfAND1cAND64bANDeth-l2bdscale10kmaclrn",
       "revId": "b9c8c57e983246ec034bc9059b1740558c951d51",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d31e6932_5417009e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-12T16:53:02Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/12/ : FAILURE (skipped)\n\nVPP failed to start. I have to fix the job first.",
+      "revId": "b9c8c57e983246ec034bc9059b1740558c951d51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
