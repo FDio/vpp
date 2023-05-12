@@ -273,10 +273,10 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
       if (app_session)
 	{
 	  session_free (app_session);
-	  ctx->no_app_session = 1;
 	  ctx->c_s_index = SESSION_INVALID_INDEX;
 	  tls_disconnect_transport (ctx);
 	}
+      ctx->no_app_session = 1;
     }
   else
     {
