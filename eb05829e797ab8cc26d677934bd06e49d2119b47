@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "671ef121_3f3ca596",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-05-12T13:48:38Z",
+      "side": 1,
+      "message": "`wmp-\u003emax_handshake_cookie` seem to represent the rate that the server can generate cookies, as this branch is only executed when a cookie was sent in reply. And looking at the updated version of `wg_if_is_under_load()`, `wmp-\u003emax_handshake_cookie` is used there as if it was the rate that the server can process handshake messages. So the value and the use-case don\u0027t seem to agree.\n\nCan you clarify if my conclusions are correct? If so, can handshake rate be used instead of cookie rate for making decisions?",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
