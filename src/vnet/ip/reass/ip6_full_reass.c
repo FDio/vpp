@@ -1279,15 +1279,17 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
+	      u32 fib_index =
+		(vnet_buffer (b0)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+			vec_elt (ip6_main.fib_index_by_sw_if_index,
+			   vnet_buffer (b0)->sw_if_index[VLIB_RX]) :
+			vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      kv.k.as_u64[0] = ip0->src_address.as_u64[0];
 	      kv.k.as_u64[1] = ip0->src_address.as_u64[1];
 	      kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
 	      kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
 	      kv.k.as_u64[4] =
-		((u64) vec_elt (ip6_main.fib_index_by_sw_if_index,
-				vnet_buffer (b0)->sw_if_index[VLIB_RX]))
-		  << 32 |
-		(u64) frag_hdr->identification;
+		((u64) fib_index) << 32 | (u64) frag_hdr->identification;
 	      /* RFC 8200: The Next Header values in the Fragment headers of
 	       * different fragments of the same original packet may differ.
 	       * Only the value from the Offset zero fragment packet is used

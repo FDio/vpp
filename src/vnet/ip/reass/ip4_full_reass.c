@@ -1222,8 +1222,10 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto packet_enqueue;
 	}
 
-      u32 fib_index = vec_elt (ip4_main.fib_index_by_sw_if_index,
-			       vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+      u32 fib_index = (vnet_buffer (b0)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+			      vec_elt (ip4_main.fib_index_by_sw_if_index,
+				 vnet_buffer (b0)->sw_if_index[VLIB_RX]) :
+			      vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
       ip4_full_reass_kv_t kv = { .k.fib_index = fib_index,
 				 .k.src.as_u32 = ip0->src_address.as_u32,
