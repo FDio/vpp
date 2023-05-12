@@ -89,7 +89,7 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 }
 
 always_inline transport_connection_t *
-hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
+hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, tcp_header_t **rhdr, u8 is_ip4)
 {
   transport_connection_t *tc;
   tcp_header_t *hdr;
@@ -98,7 +98,7 @@ hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
   if (is_ip4)
     {
       ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
-      hdr = ip4_next_header (ip4);
+      *rhdr = hdr = ip4_next_header (ip4);
       tc = session_lookup_connection_wt4 (
 	vnet_buffer (b)->ip.fib_index, &ip4->dst_address, &ip4->src_address,
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_TCP,
@@ -107,7 +107,7 @@ hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
   else
     {
       ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
-      hdr = ip6_next_header (ip6);
+      *rhdr = hdr = ip6_next_header (ip6);
       tc = session_lookup_connection_wt6 (
 	vnet_buffer (b)->ip.fib_index, &ip6->dst_address, &ip6->src_address,
 	hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_TCP,
@@ -118,15 +118,27 @@ hsi_tcp_lookup (vlib_buffer_t *b, void *ip_hdr, u8 is_ip4)
 }
 
 always_inline void
-hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4)
+hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
 {
-  transport_connection_t *tc;
   u8 proto, state, have_udp;
+  tcp_header_t *tcp_hdr = 0;
+  tcp_connection_t *tc;
+  u32 rw_len = 0;
   void *ip_hdr;
-  u32 rw_len;
 
-  rw_len = vnet_buffer (b)->ip.save_rewrite_length;
-  ip_hdr = vlib_buffer_get_current (b) + rw_len;
+  if (is_input)
+    {
+      ip_hdr = vlib_buffer_get_current (b);
+      if (is_ip4)
+	ip_lookup_set_buffer_fib_index (ip4_main.fib_index_by_sw_if_index, b);
+      else
+	ip_lookup_set_buffer_fib_index (ip6_main.fib_index_by_sw_if_index, b);
+    }
+  else
+    {
+      rw_len = vnet_buffer (b)->ip.save_rewrite_length;
+      ip_hdr = vlib_buffer_get_current (b) + rw_len;
+    }
 
   if (is_ip4)
     proto = ((ip4_header_t *) ip_hdr)->protocol;
@@ -136,12 +148,18 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4)
   switch (proto)
     {
     case IP_PROTOCOL_TCP:
-      tc = hsi_tcp_lookup (b, ip_hdr, is_ip4);
+      tc = (tcp_connection_t *) hsi_tcp_lookup (b, ip_hdr, &tcp_hdr, is_ip4);
       if (tc)
 	{
-	  state = ((tcp_connection_t *) tc)->state;
+	  state = tc->state;
 	  if (state == TCP_STATE_LISTEN)
 	    {
+	      /* Avoid processing non syn packets that match listener */
+	      if (!tcp_syn (tcp_hdr))
+		{
+		  vnet_feature_next (next, b);
+		  break;
+		}
 	      *next = HSI_INPUT_NEXT_TCP_INPUT;
 	    }
 	  else if (state == TCP_STATE_SYN_SENT)
@@ -152,7 +170,7 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4)
 	    {
 	      /* Lookup already done, use result */
 	      *next = HSI_INPUT_NEXT_TCP_INPUT_NOLOOKUP;
-	      vnet_buffer (b)->tcp.connection_index = tc->c_index;
+	      vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 	    }
 	  vlib_buffer_advance (b, rw_len);
 	}
@@ -166,6 +184,9 @@ hsi_lookup_and_update (vlib_buffer_t *b, u32 *next, u8 is_ip4)
       if (have_udp)
 	{
 	  *next = HSI_INPUT_NEXT_UDP_INPUT;
+	  /* Emulate udp-local and consume headers up to udp payload */
+	  rw_len += is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+	  rw_len += sizeof (udp_header_t);
 	  vlib_buffer_advance (b, rw_len);
 	}
       else
@@ -199,7 +220,7 @@ hsi_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 always_inline uword
 hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vlib_frame_t *frame, int is_ip4)
+		    vlib_frame_t *frame, u8 is_ip4, u8 is_input)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -222,8 +243,8 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_prefetch_buffer_header (b[3], LOAD);
       CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 
-      hsi_lookup_and_update (b[0], &next0, is_ip4);
-      hsi_lookup_and_update (b[1], &next1, is_ip4);
+      hsi_lookup_and_update (b[0], &next0, is_ip4, is_input);
+      hsi_lookup_and_update (b[1], &next1, is_ip4, is_input);
 
       next[0] = next0;
       next[1] = next1;
@@ -237,7 +258,7 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 next0;
 
-      hsi_lookup_and_update (b[0], &next0, is_ip4);
+      hsi_lookup_and_update (b[0], &next0, is_ip4, is_input);
 
       next[0] = next0;
 
@@ -257,7 +278,8 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_NODE_FN (hsi4_in_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return hsi46_input_inline (vm, node, frame, 1 /* is_ip4 */);
+  return hsi46_input_inline (vm, node, frame, 1 /* is_ip4 */,
+			     1 /* is_input */);
 }
 
 VLIB_REGISTER_NODE (hsi4_in_node) = {
@@ -279,12 +301,14 @@ VNET_FEATURE_INIT (hsi4_in_feature, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "hsi4-in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = VNET_FEATURES ("ip4-full-reassembly-feature"),
 };
 
 VLIB_NODE_FN (hsi4_out_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return hsi46_input_inline (vm, node, frame, 1 /* is_ip4 */);
+  return hsi46_input_inline (vm, node, frame, 1 /* is_ip4 */,
+			     0 /* is_input */);
 }
 
 VLIB_REGISTER_NODE (hsi4_out_node) = {
@@ -311,7 +335,8 @@ VNET_FEATURE_INIT (hsi4_out_feature, static) = {
 VLIB_NODE_FN (hsi6_in_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return hsi46_input_inline (vm, node, frame, 0 /* is_ip4 */);
+  return hsi46_input_inline (vm, node, frame, 0 /* is_ip4 */,
+			     1 /* is_input */);
 }
 
 VLIB_REGISTER_NODE (hsi6_in_node) = {
@@ -333,12 +358,14 @@ VNET_FEATURE_INIT (hsi6_in_feature, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "hsi6-in",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
+  .runs_after = VNET_FEATURES ("ip6-full-reassembly-feature"),
 };
 
 VLIB_NODE_FN (hsi6_out_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return hsi46_input_inline (vm, node, frame, 0 /* is_ip4 */);
+  return hsi46_input_inline (vm, node, frame, 0 /* is_ip4 */,
+			     0 /* is_input */);
 }
 
 VLIB_REGISTER_NODE (hsi6_out_node) = {
