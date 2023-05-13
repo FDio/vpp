@@ -23,14 +23,18 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/adj/adj.h>
 
+struct mpls_main_t;
+
 /**
  * @brief Definition of a callback for receiving MPLS interface state change
  * notifications
  */
-typedef void (*mpls_interface_state_change_callback_t) (u32 sw_if_index,
-							u32 is_enable);
+typedef void (mpls_interface_state_change_function_t) (struct mpls_main_t *mm,
+						       uword opaque,
+						       u32 sw_if_index,
+						       u32 is_enable);
 
-typedef struct
+typedef struct mpls_main_t
 {
   /* MPLS FIB index for each software interface */
   u32 *fib_index_by_sw_if_index;
@@ -77,10 +81,13 @@ unformat_function_t unformat_mpls_unicast_label;
 unformat_function_t unformat_mpls_header;
 unformat_function_t unformat_pg_mpls_header;
 
+u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
+
+void mpls_interface_state_change_add_callback (
+  mpls_interface_state_change_function_t *function, uword opaque);
+
 int mpls_sw_interface_enable_disable (mpls_main_t *mm, u32 sw_if_index,
 				      u8 is_enable);
-
-u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 
 int mpls_dest_cmp (void *a1, void *a2);
 
