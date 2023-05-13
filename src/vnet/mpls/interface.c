@@ -81,6 +81,12 @@ mpls_sw_interface_enable_disable (mpls_main_t *mm, u32 sw_if_index,
   else if (hi->l3_if_count)
     hi->l3_if_count--;
 
+  {
+    mpls_interface_state_change_callback_t *cb;
+    vec_foreach (cb, mm->state_change_callbacks)
+      cb->function (mm, cb->function_opaque, sw_if_index, is_enable);
+  }
+
   return (0);
 }
 
