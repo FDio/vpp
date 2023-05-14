@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b801e86a_50c40fa6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-05-14T18:46:12Z",
+      "side": 1,
+      "message": "RECHECK \nlooks good to me - the failure was transient (qemu issue on a node)",
+      "revId": "9838340a35a0cbe5f434575304f1b748fe61be16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
