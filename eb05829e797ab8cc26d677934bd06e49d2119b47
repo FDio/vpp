@@ -120,6 +120,24 @@
       "parentUuid": "8aa78929_ef538e5a",
       "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c88ad44b_11e799ab",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-15T11:59:21Z",
+      "side": 1,
+      "message": "\"wmp-\u003ehandshake_cookie_rate” represents the rate that the server can generate cookies, and this value will be updated only when a cookie is sent in reply. \nIn function “wg_if_is_under_load()” this calculated value is used for prediction if wireguard should activate under load state and this value still represents the predicted rate with which server can generate cookies and here wireguard predicts how much time would spend to reply each handshake by cookie messages and if this time will be longer than the remaining time then under load state will be activated. It is important to consider cookie rate and not handshake rate, as in this case response by normal handshake flow won’t be good enough, because it will take longer time than response by cookie message and we want to consume everything before each REKEY_TIMEOUT, for example:\n- 10k handshake messages to handle,\n- handshake rate in no underload state \u003d 1k per second (this value IS NOT calculated by wireguard),\n- handshake cookie rate \u003d 100k per second (this value IS calculated by wireguard)\n\nThis case in original implementation, will be handled as follows:\nWireguard received 10k in the first storm of handshake and wg is able to consume only \"REKEY_TIMEOUT * 1kps\" handshake message – it is around 5k handshakes. Now the other side will send again 5k new handshake messages after REKEY_TIMEOUT \u003d 5s + jitter, so it means that wireguard has 5k old handshakes and 5k newest handshakes, but still wg can consume only 5k handshakes and will consume the oldest handshakes not the newest handshakes (due to handoff algorithm), time \"5s+jitter\" again was passed and again the other side sends new 5k handshake messages. This process continues.\n\nWith my changes this scenario will be handled differently because when wg will receive 10k handshake messages in the first storm, then wg will consume as soon as possible handshake messages in normal way, but WHEN prediction detects that wireguard should start reply by cookie messages because under load state will be reached then wg consumes each remaining handshakes for the 10k handshake messages from the first storm. So, after the first REKEY_TIME there won’t be any handshakes in the queue, so another side will send for the last handshake messages (for example in this case around 5.5k handshake messages) but again wg won’t be able to consume each handshake before REKEY_TIME is reached but still wg will consume as soon as possible handshakes in the normal way and the rest of remining handshakes will be replied as cookie messages. \n\nIn the original implementation we have the increasing queue because wg will receive a lot of handshakes and won’t be able to reply in the \"REKEY_TIME + jitter\". With my changes wg will be trying to consume as soon as possible handshake messages and reply to the rest of them by cookie messages. \n\nThis situation WON\u0027T occur when wireguard receives less than \"REKEY_TIME x handshake_rate\" – because in this case wg will be able to consume everything before REKEY_TIME, but will notice that there is a problem when receives more handshakes than \"REKEY_TIME x handshake_rate\", and due to this fact the under load state was introduced and there isn’t any suggestion how to reach this state in the whitepaper for wireguard – so it is my understanding, how it should be activated.",
+      "parentUuid": "db78a590_5141e490",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
