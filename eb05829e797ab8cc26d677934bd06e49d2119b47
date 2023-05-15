@@ -37,6 +37,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "44946147_a35ee8ef",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-05-15T11:02:21Z",
+      "side": 1,
+      "message": "move this line into the if(is_cookie \u003d\u003d true) statement in L.794",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c4e4674_54707636",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 791,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-05-15T11:02:21Z",
+      "side": 1,
+      "message": "recommend rename variable handshake_rate to process_rate",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "671ef121_3f3ca596",
         "filename": "src/plugins/wireguard/wireguard_input.c",
         "patchSetId": 1
@@ -48,6 +82,24 @@
       "writtenOn": "2023-05-12T13:48:38Z",
       "side": 1,
       "message": "`wmp-\u003emax_handshake_cookie` seem to represent the rate that the server can generate cookies, as this branch is only executed when a cookie was sent in reply. And looking at the updated version of `wg_if_is_under_load()`, `wmp-\u003emax_handshake_cookie` is used there as if it was the rate that the server can process handshake messages. So the value and the use-case don\u0027t seem to agree.\n\nCan you clarify if my conclusions are correct? If so, can handshake rate be used instead of cookie rate for making decisions?",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8aa78929_ef538e5a",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-05-15T11:02:21Z",
+      "side": 1,
+      "message": "I think the naming here can be improve a bit, \nhandshake_rate \u003d process rate, the actual number of handshake process the system can handle. This  value is represent handshake rate if NOT is_cookie, and cookie rate if is_cookie is true. \nThe under-load state where decided in the function of wg_if_is_under_load(), only takes the input of handshake_cookie_rate and inflight number parameters, the handshake rate is not used in the under-load state decision making.",
+      "parentUuid": "671ef121_3f3ca596",
       "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
