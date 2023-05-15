@@ -268,6 +268,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_device_config_t *devconf = 0;
       vnet_eth_interface_registration_t eir = {};
       dpdk_driver_t *dr;
+      i8 numa_node;
 
       if (!rte_eth_dev_is_valid_port (port_id))
 	continue;
@@ -448,7 +449,12 @@ dpdk_lib_init (dpdk_main_t * dm)
       eir.cb.set_max_frame_size = dpdk_set_max_frame_size;
       xd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
       hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
-      hi->numa_node = xd->cpu_socket = (i8) rte_eth_dev_socket_id (port_id);
+      numa_node = (i8) rte_eth_dev_socket_id (port_id);
+      if (numa_node == SOCKET_ID_ANY)
+	/* numa_node is not set, default to 0 */
+	hi->numa_node = xd->cpu_socket = 0;
+      else
+	hi->numa_node = xd->cpu_socket = numa_node;
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
       dpdk_log_debug ("[%u] interface %s created", port_id, hi->name);
