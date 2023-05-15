@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "749c78a1_55e7bc8e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-05-15T17:14:13Z",
+      "side": 1,
+      "message": "For posterity: removed fd.io jjb -1 as the patch does not affect anything QEMU related. It seems we have some instability in our csit verify job.",
+      "revId": "9c0c45dfc4912a2fe54fe1f7026fb2092ed1cb76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
