@@ -51,6 +51,24 @@
       "parentUuid": "b31e0400_c1bfaf62",
       "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11133081_41096dd8",
+        "filename": "extras/libmemif/examples/common/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-05-15T08:49:46Z",
+      "side": 1,
+      "message": "The patch is not changing the default buffers for the libmemif library. It is only changing the value for example.",
+      "parentUuid": "2fd7ca6f_907f6d72",
+      "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
