@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad9c1ed4_374a5c8c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-15T20:14:26Z",
+      "side": 1,
+      "message": "Please clean up the commit line -\u003e hash: add hash documentation\n\nThere is also  a missing link to the file in the docs tree as well as reference in the index file for it.\n\nUsing src/vnet/gso/gso.rst as an example:\n\nActual source file:  https://github.com/FDio/vpp/blob/0036dcf6b2031ca0f2b9bf85bd369f35b435f220/docs/developer/corefeatures/gso.rst\n\nLink in doc tree: https://github.com/FDio/vpp/blob/0036dcf6b2031ca0f2b9bf85bd369f35b435f220/docs/developer/corefeatures/gso.rst\n\nReference in core features index file: https://raw.githubusercontent.com/FDio/vpp/0036dcf6b2031ca0f2b9bf85bd369f35b435f220/docs/developer/corefeatures/index.rst",
+      "revId": "50a40afa4833d3e2fdcb233e97d009d14bffe910",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
