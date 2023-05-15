@@ -138,6 +138,24 @@
       "parentUuid": "db78a590_5141e490",
       "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad0e507a_9590f609",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-05-15T15:10:29Z",
+      "side": 1,
+      "message": "If my understadning is correct,  the logic here is: \n\nWhen inflight handshake request number is bigger than the handshake_cookie_rate * (time to REKEY TIMEOUT + jitter), the under-load state is set and is_cookie to true. In this way,  the server can eliminate the rekey completely and prevent endless enqueue during the handshake process. Thus the handshake_rate is not really relevant here.",
+      "parentUuid": "c88ad44b_11e799ab",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
