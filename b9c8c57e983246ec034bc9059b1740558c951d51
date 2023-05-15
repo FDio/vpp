@@ -67,6 +67,23 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/14/ : SUCCESS (skipped)\n\nThere is a 2% regression, but I guess that is expected when the new bihash template code is more thorough in checking for freed items.",
       "revId": "b9c8c57e983246ec034bc9059b1740558c951d51",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a2f6384_7efdc29f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-15T12:31:21Z",
+      "side": 1,
+      "message": "perftest-2n-icx mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDeth-l2bdscale1mmaclrn",
+      "revId": "b9c8c57e983246ec034bc9059b1740558c951d51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
