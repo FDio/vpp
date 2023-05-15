@@ -69,6 +69,24 @@
       "parentUuid": "2fd7ca6f_907f6d72",
       "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "327c9773_e3f8c0a0",
+        "filename": "extras/libmemif/examples/common/common.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-05-15T09:12:19Z",
+      "side": 1,
+      "message": "Ha right, I was under the impression it was the default for the whole library and not only for examples.\nIf so it\u0027s fine with me. Damjan, what do you think?",
+      "parentUuid": "11133081_41096dd8",
+      "revId": "97c05e560e429e9fcf0b642084c5320520b25238",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
