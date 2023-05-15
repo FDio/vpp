@@ -33,6 +33,24 @@
       "message": "i\u0027d suggest making this static (aka private) in the .c file where it\u0027s invoked and add an API in this .h to register callbacks.",
       "revId": "9838340a35a0cbe5f434575304f1b748fe61be16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf0cb68b_ef963ff6",
+        "filename": "src/vnet/mpls/mpls.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-05-15T11:26:59Z",
+      "side": 1,
+      "message": "Pardon, make what static? Adding `static` to this would be invalid in C to my knowledge. In C++, that would work.\nA vec_add1 seemed simple enough to me, but I\u0027ll add it.",
+      "parentUuid": "3e3b535a_60fdb4ed",
+      "revId": "9838340a35a0cbe5f434575304f1b748fe61be16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
