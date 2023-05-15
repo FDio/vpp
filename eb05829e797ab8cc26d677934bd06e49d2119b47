@@ -102,6 +102,24 @@
       "parentUuid": "671ef121_3f3ca596",
       "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db78a590_5141e490",
+        "filename": "src/plugins/wireguard/wireguard_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-05-15T11:33:46Z",
+      "side": 1,
+      "message": "\u003e The under-load state where decided in the function of wg_if_is_under_load(), only takes the input of handshake_cookie_rate and inflight number parameters, the handshake rate is not used in the under-load state decision making.\n\nThat\u0027s exactly my point. `wg_if_is_under_load()` indeed uses `handshake_cookie_rate` but uses the value as if it was the handshake rate. Even the comment there says it is supposed to be the handshake rate and not the cookie rate:\n\n```\n/* check if vpp will be able to do handshake process before each\n * REKEY_TIMEOUT time, if not then under load state is activate\n */\n```\n\nThis version is predicting how many cookies the server can generate. But the server does not process cookies. It processes handshakes and thus, handshake rate is actually what is needed to be able to predict whether the server will be able to process all incoming handshakes in normal mode.\n\nTo sum up, my comment is not about naming. It\u0027s about logic.",
+      "parentUuid": "8aa78929_ef538e5a",
+      "revId": "eb05829e797ab8cc26d677934bd06e49d2119b47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
