@@ -3367,7 +3367,7 @@ static void
 vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 			  int maxevents, u32 *n_evts)
 {
-  u32 add_event = 0, next;
+  u32 add_event = 0, next, *to_remove = 0, *si;
   vcl_session_t *s;
   u64 evt_data;
   int rv;
@@ -3415,12 +3415,17 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	}
       else
 	{
-	  vcl_epoll_lt_del (wrk, s);
-	  if (wrk->ep_lt_current == VCL_INVALID_SESSION_INDEX)
-	    break;
+	  vec_add1 (to_remove, s->session_index);
 	}
     }
   while (next != wrk->ep_lt_current);
+
+  vec_foreach (si, to_remove)
+    {
+      s = vcl_session_get (wrk, *si);
+      vcl_epoll_lt_del (wrk, s);
+    }
+  vec_free (to_remove);
 }
 
 int
