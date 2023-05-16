@@ -34,6 +34,24 @@
       "parentUuid": "6b12f5b9_f108e371",
       "revId": "67d223dd788fc02c2b19d1324dfcd2d3381e2707",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "937cd821_5111aa2e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2529
+      },
+      "writtenOn": "2023-05-16T14:53:48Z",
+      "side": 1,
+      "message": "\"make test\" case run was successful, and it returns the results that\n1534 tests passed and 409 tests skipped",
+      "parentUuid": "32fb7af9_403c4170",
+      "revId": "67d223dd788fc02c2b19d1324dfcd2d3381e2707",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
