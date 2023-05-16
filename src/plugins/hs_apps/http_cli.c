@@ -555,6 +555,17 @@ hcs_listen ()
   return rv;
 }
 
+static void
+hcs_detach ()
+{
+  vnet_app_detach_args_t _a, *a = &_a;
+  hcs_main_t *hcm = &hcs_main;
+  a->app_index = hcm->app_index;
+  a->api_client_index = APP_INVALID_INDEX;
+  hcm->app_index = ~0;
+  vnet_application_detach (a);
+}
+
 static int
 hcs_create (vlib_main_t *vm)
 {
@@ -572,6 +583,7 @@ hcs_create (vlib_main_t *vm)
     }
   if (hcs_listen ())
     {
+      hcs_detach ();
       clib_warning ("failed to start listening");
       return -1;
     }
