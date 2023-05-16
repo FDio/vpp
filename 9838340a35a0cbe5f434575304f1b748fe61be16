@@ -87,6 +87,24 @@
       "parentUuid": "d51ac176_699920a8",
       "revId": "9838340a35a0cbe5f434575304f1b748fe61be16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d90deffb_7f0e0b4d",
+        "filename": "src/vnet/mpls/mpls.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-05-16T12:22:58Z",
+      "side": 1,
+      "message": "Ah, now I understand. I implemented that change in patch set 3.",
+      "parentUuid": "c5e455de_e35f68cb",
+      "revId": "9838340a35a0cbe5f434575304f1b748fe61be16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
