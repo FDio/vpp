@@ -3068,14 +3068,14 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       s = vcl_session_get (wrk, sid);
       if (!s || !vcl_session_is_open (s))
 	break;
+      svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ? s->ct_tx_fifo :
+								s->tx_fifo);
       session_events = s->vep.ev.events;
       if (!(EPOLLOUT & session_events))
 	break;
       add_event = 1;
       events[*num_ev].events = EPOLLOUT;
       session_evt_data = s->vep.ev.data.u64;
-      svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ?
-				  s->ct_tx_fifo : s->tx_fifo);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
       if (!e->postponed)
