@@ -53,6 +53,8 @@ typedef struct
   vlib_main_t *vlib_main;
   u32 cli_node_index;
   u8 *http_response;
+  u8 *appns_id;
+  u64 appns_secret;
 } hcc_main_t;
 
 typedef enum
@@ -297,6 +299,11 @@ hcc_attach ()
     hcm->fifo_size ? hcm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hcm->prealloc_fifos;
+  if (hcm->appns_id)
+    {
+      a->namespace_id = hcm->appns_id;
+      a->options[APP_OPTIONS_NAMESPACE_SECRET] = hcm->appns_secret;
+    }
 
   if ((rv = vnet_application_attach (a)))
     return clib_error_return (0, "attach returned %d", rv);
@@ -428,6 +435,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   unformat_input_t _line_input, *line_input = &_line_input;
   hcc_main_t *hcm = &hcc_main;
   u64 seg_size;
+  u8 *appns_id = 0;
   clib_error_t *err = 0;
   int rv;
 
@@ -453,6 +461,10 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->fifo_size <<= 10;
       else if (unformat (line_input, "uri %s", &hcm->uri))
 	;
+      else if (unformat (line_input, "appns %_%v%_", &appns_id))
+	;
+      else if (unformat (line_input, "secret %lu", &hcm->appns_secret))
+	;
       else if (unformat (line_input, "query %s", &hcm->http_query))
 	;
       else
@@ -463,6 +475,8 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
+  vec_free (hcm->appns_id);
+  hcm->appns_id = appns_id;
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
 
   if (!hcm->uri)
@@ -500,7 +514,8 @@ done:
 
 VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
-  .short_help = "uri http://<ip-addr> query <query-string>",
+  .short_help = "[appns <app-ns> secret <appns-secret>] uri http://<ip-addr> "
+		"query <query-string>",
   .function = hcc_command_fn,
   .is_mp_safe = 1,
 };
