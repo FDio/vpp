@@ -30,7 +30,7 @@ endef
 define  xdp-tools_install_cmds
 	@rm -f $(xdp-tools_install_log)
 	@cd ${xdp-tools_src_dir} && \
-		make -C lib/libbpf/src install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
+		make -C lib/libbpf/src install V=1 CFLAGS="-g -O2 -Werror -Wall -std=gnu89 -fPIC" BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
 	@cd ${xdp-tools_src_dir} && \
 		make libxdp_install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
 endef
