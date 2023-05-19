@@ -16,6 +16,24 @@
       "message": "Does anyone know why it always reports the \"checkstyle\" error but there is no cause? I used all \"make checkstyle*\" commands but returns no error.",
       "revId": "7725b30dd27a97cde8104e72bd357874249dddbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06c22443_83d0a51a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-19T19:28:42Z",
+      "side": 1,
+      "message": "Hi Ting,\n\nYou need to look at the build log [0] and search for \u0027marked build as failure\u0027 to determine why the job failed. You can also test this locally on your workspace by running \u0027make checkstyle-all\u0027.\n\nIn this case the spell check failed -- try adding \u0027idpf\u0027 and \u0027Ipdf\u0027 to [1]\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-checkstyle-verify-master-ubuntu2204-x86_64/2080/console-timestamp.log.gz\n[1] https://github.com/FDio/vpp/blob/master/docs/spelling_wordlist.txt",
+      "parentUuid": "bad65b95_6824da74",
+      "revId": "7725b30dd27a97cde8104e72bd357874249dddbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
