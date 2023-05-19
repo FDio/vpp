@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1768770b_3a560df4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-19T20:28:29Z",
+      "side": 1,
+      "message": "Vinay,\n\nPlease use \u0027git commit -s --amend\u0027 when modifying a gerrit change as specified on the VPP wiki documentation on using gerrit [0].  \nThere are now 3 gerrit changes with modifications for the same topic/fix -- please abandon the changes which should not be merged.\n\n[0] https://wiki.fd.io/view/VPP/Pulling,_Building,_Running,_Hacking_and_Pushing_VPP_Code#Revising_a_gerrit_patch",
+      "revId": "c81651b3ac618ccf0345823400212ab6c52077ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
