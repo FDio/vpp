@@ -280,6 +280,7 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
   void *mac_addr_bytes;
+  u32 id, sw_if_index;
 
   mac_addr = rtnl_link_get_addr (rl);
   if (!mac_addr || (nl_addr_get_family (mac_addr) != AF_LLC))
@@ -300,11 +301,35 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
     vnet_hw_interface_change_mac_address (vnm, hw->hw_if_index,
 					  mac_addr_bytes);
 
-  /* mcast adjacencies need to be updated */
+  /* mcast adjacencies need to be updated for given interface and for its
+   * subinterfaces (as they inherit MAC address from the parent interface) */
   vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
 					  lip->lip_phy_adjs.adj_index[AF_IP4]);
   vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
 					  lip->lip_phy_adjs.adj_index[AF_IP6]);
+
+  /* clang-format off */
+  hash_foreach (id, sw_if_index, hw->sub_interface_sw_if_index_by_id,
+  ({
+    index_t sub_lipi;
+    lcp_itf_pair_t *sub_lip;
+
+    sub_lipi = lcp_itf_pair_find_by_phy (sw_if_index);
+    if (sub_lipi == INDEX_INVALID)
+      continue;
+
+    sub_lip = lcp_itf_pair_get (sub_lipi);
+    if (sub_lip == NULL)
+      continue;
+
+    vnet_update_adjacency_for_sw_interface (
+      vnm, sub_lip->lip_phy_sw_if_index,
+      sub_lip->lip_phy_adjs.adj_index[AF_IP4]);
+    vnet_update_adjacency_for_sw_interface (
+      vnm, sub_lip->lip_phy_sw_if_index,
+      sub_lip->lip_phy_adjs.adj_index[AF_IP6]);
+  }));
+  /* clang-format on */
 }
 
 static void lcp_router_table_flush (lcp_router_table_t *nlt,
