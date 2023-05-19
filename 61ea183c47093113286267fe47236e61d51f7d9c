@@ -51,6 +51,23 @@
       "message": "\u003e Maybe we should ask Vratko to run IPv4/IPv6 routing perf test on this too\n\nWow, my backlog of unread Gerrit messages is longer than usual. Quite an old parent, but I think the job should handle that.\n\nperftest-2n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4-ip4base mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4-ip4scale2m-rnd mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND78bANDethip6-ip6base mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND78bANDethip6-ip6scale2m-rnd",
       "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b70ac4da_ea175fb6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-19T08:05:06Z",
+      "side": 1,
+      "message": "So far it looks like a progression (almost 4%) for ip6 and perhaps a small regression (below half a percent) in ip4.",
+      "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
