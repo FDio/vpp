@@ -70,6 +70,30 @@
       },
       "revId": "d576383e27b397887c1b1677baf7f8b78feb3c55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbe95188_dee0fa5e",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1522,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-19T21:26:29Z",
+      "side": 1,
+      "message": "I replicated the diff into asf/asfframework.py for now.  Will address duplication of code later.",
+      "parentUuid": "c6b4bf08_e8e7e715",
+      "range": {
+        "startLine": 1514,
+        "startChar": 0,
+        "endLine": 1522,
+        "endChar": 36
+      },
+      "revId": "d576383e27b397887c1b1677baf7f8b78feb3c55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
