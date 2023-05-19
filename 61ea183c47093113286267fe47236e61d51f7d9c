@@ -68,6 +68,24 @@
       "message": "So far it looks like a progression (almost 4%) for ip6 and perhaps a small regression (below half a percent) in ip4.",
       "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66cb8f78_5dfb0ee7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-19T10:04:08Z",
+      "side": 1,
+      "message": "After few more runs, the ip6 progression is around 4% and the ip4 regression is maybe around 0.2%, which the job (even with 200 trials) considers to be a normal (noise).",
+      "parentUuid": "b70ac4da_ea175fb6",
+      "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
