@@ -272,6 +272,25 @@ lcp_router_link_mtu (struct rtnl_link *rl, u32 sw_if_index)
     vnet_sw_interface_set_mtu (vnm, sw->sw_if_index, mtu);
 }
 
+static walk_rc_t
+lcp_router_link_addr_adj_upd_cb (vnet_main_t *vnm, u32 sw_if_index, void *arg)
+{
+  lcp_itf_pair_t *lip;
+
+  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (sw_if_index));
+  if (!lip)
+    {
+      return WALK_CONTINUE;
+    }
+
+  vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
+					  lip->lip_phy_adjs.adj_index[AF_IP4]);
+  vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
+					  lip->lip_phy_adjs.adj_index[AF_IP6]);
+
+  return WALK_CONTINUE;
+}
+
 static void
 lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
 {
@@ -301,10 +320,8 @@ lcp_router_link_addr (struct rtnl_link *rl, lcp_itf_pair_t *lip)
 					  mac_addr_bytes);
 
   /* mcast adjacencies need to be updated */
-  vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
-					  lip->lip_phy_adjs.adj_index[AF_IP4]);
-  vnet_update_adjacency_for_sw_interface (vnm, lip->lip_phy_sw_if_index,
-					  lip->lip_phy_adjs.adj_index[AF_IP6]);
+  vnet_hw_interface_walk_sw (vnm, hw->hw_if_index,
+			     lcp_router_link_addr_adj_upd_cb, NULL);
 }
 
 static void lcp_router_table_flush (lcp_router_table_t *nlt,
