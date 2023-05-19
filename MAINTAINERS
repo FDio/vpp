@@ -418,7 +418,6 @@ F:	src/plugins/dpdk/
 
 Plugin - DPDK Crypto
 I:	dpdk-cryptodev
-M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
 M:	Fan Zhang <roy.fan.zhang@intel.com>
 F:	src/plugins/dpdk/cryptodev/
