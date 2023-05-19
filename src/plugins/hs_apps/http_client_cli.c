@@ -307,13 +307,37 @@ hcc_attach ()
   return 0;
 }
 
+static int
+hcc_connect_rpc (void *rpc_args)
+{
+  vnet_connect_args_t *a = rpc_args;
+  int rv;
+
+  rv = vnet_connect (a);
+  if (rv)
+    clib_warning (0, "connect returned: %U", format_session_error, rv);
+
+  vec_free (a);
+  return rv;
+}
+
+static void
+hcc_program_connect (vnet_connect_args_t *a)
+{
+  session_send_rpc_evt_to_thread_force (transport_cl_thread (),
+					hcc_connect_rpc, a);
+}
+
 static clib_error_t *
 hcc_connect ()
 {
-  vnet_connect_args_t _a = {}, *a = &_a;
+  vnet_connect_args_t *a = 0;
   hcc_main_t *hcm = &hcc_main;
   hcc_worker_t *wrk;
   hcc_session_t *hs;
+
+  vec_validate (a, 0);
+  clib_memset (a, 0, sizeof (a[0]));
 
   clib_memcpy (&a->sep_ext, &hcm->connect_sep, sizeof (hcm->connect_sep));
   a->app_index = hcm->app_index;
@@ -323,11 +347,7 @@ hcc_connect ()
   hs = hcc_session_alloc (wrk);
   a->api_context = hs->session_index;
 
-  int rv = vnet_connect (a);
-
-  if (rv)
-    return clib_error_return (0, "connect returned: %U", format_session_error,
-			      rv);
+  hcc_program_connect (a);
   return 0;
 }
 
@@ -457,7 +477,9 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  vlib_worker_thread_barrier_sync (vm);
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
+  vlib_worker_thread_barrier_release (vm);
 
   err = hcc_run (vm);
 
@@ -480,6 +502,7 @@ VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
   .short_help = "uri http://<ip-addr> query <query-string>",
   .function = hcc_command_fn,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
