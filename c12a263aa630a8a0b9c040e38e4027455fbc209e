@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cdf1e4d_b4c27029",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-19T20:01:36Z",
+      "side": 1,
+      "message": "Please add a blank line in the commit message between the headline and the \u0027Type:\u0027 line.",
+      "revId": "c12a263aa630a8a0b9c040e38e4027455fbc209e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
