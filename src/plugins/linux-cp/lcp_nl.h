@@ -26,7 +26,8 @@ typedef void (*nl_rt_addr_cb_t) (struct rtnl_addr *ra);
 typedef void (*nl_rt_addr_sync_cb_t) (void);
 typedef void (*nl_rt_neigh_cb_t) (struct rtnl_neigh *rr);
 typedef void (*nl_rt_neigh_sync_cb_t) (void);
-typedef void (*nl_rt_route_cb_t) (struct rtnl_route *rn);
+typedef void (*nl_rt_route_add_cb_t) (struct rtnl_route *rn, int is_replace);
+typedef void (*nl_rt_route_del_cb_t) (struct rtnl_route *rn);
 typedef void (*nl_rt_route_sync_cb_t) (void);
 
 #define NL_RT_COMMON uword is_mp_safe
@@ -73,12 +74,19 @@ typedef struct nl_rt_neigh_sync_t_
   nl_rt_neigh_sync_cb_t cb;
 } nl_rt_neigh_sync_t;
 
-typedef struct nl_rt_route_t_
+typedef struct nl_rt_route_add_t_
 {
   NL_RT_COMMON;
 
-  nl_rt_route_cb_t cb;
-} nl_rt_route_t;
+  nl_rt_route_add_cb_t cb;
+} nl_rt_route_add_t;
+
+typedef struct nl_rt_route_del_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_route_del_cb_t cb;
+} nl_rt_route_del_t;
 
 typedef struct nl_rt_route_sync_t_
 {
@@ -103,8 +111,8 @@ typedef struct nl_vft_t_
   nl_rt_neigh_t nvl_rt_neigh_del;
   nl_rt_neigh_sync_t nvl_rt_neigh_sync_begin;
   nl_rt_neigh_sync_t nvl_rt_neigh_sync_end;
-  nl_rt_route_t nvl_rt_route_add;
-  nl_rt_route_t nvl_rt_route_del;
+  nl_rt_route_add_t nvl_rt_route_add;
+  nl_rt_route_del_t nvl_rt_route_del;
   nl_rt_route_sync_t nvl_rt_route_sync_begin;
   nl_rt_route_sync_t nvl_rt_route_sync_end;
 } nl_vft_t;

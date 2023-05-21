@@ -205,7 +205,10 @@ nl_route_del (struct rtnl_route *rr, void *arg)
 static void
 nl_route_add (struct rtnl_route *rr, void *arg)
 {
-  FOREACH_VFT (nvl_rt_route_add, rr);
+  nl_msg_info_t *msg_info = (nl_msg_info_t *) arg;
+  struct nlmsghdr *nlh = nlmsg_hdr (msg_info->msg);
+
+  FOREACH_VFT_CTX (nvl_rt_route_add, rr, (nlh->nlmsg_flags & NLM_F_REPLACE));
 }
 
 static void
