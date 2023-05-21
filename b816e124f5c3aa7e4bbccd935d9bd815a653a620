@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a45fad21_9503fbc1",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-05-21T23:18:48Z",
+      "side": 1,
+      "message": "fib_table_entry_path_add will ignore the nh_fib_index parameter because the path has an interface.\nWhat your fix has indeed done is separate the FIBs for the overlay and underlay (the peer and nh). This function passes the peer\u0027s FIB, so the /32 adj fib is added in the peer\u0027s FIB. The teib_t has the NH\u0027s FIB so the entry tracked is now the underlay.",
+      "parentUuid": "4b74f984_9078183c",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "17c3d973_a803fe35",
