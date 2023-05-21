@@ -1184,7 +1184,7 @@ lcp_router_route_del (struct rtnl_route *rr)
 }
 
 static void
-lcp_router_route_add (struct rtnl_route *rr)
+lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 {
   fib_entry_flag_t entry_flags;
   uint32_t table_id;
@@ -1213,71 +1213,71 @@ lcp_router_route_add (struct rtnl_route *rr)
       LCP_ROUTER_DBG ("route skip: %d:%U %U", rtnl_route_get_table (rr),
 		      format_fib_prefix, &pfx, format_fib_entry_flags,
 		      entry_flags);
+      return;
+    }
+  LCP_ROUTER_DBG ("route %s: %d:%U %U", is_replace ? "replace" : "add",
+		  rtnl_route_get_table (rr), format_fib_prefix, &pfx,
+		  format_fib_entry_flags, entry_flags);
+
+  lcp_router_route_path_parse_t np = {
+    .route_proto = pfx.fp_proto,
+    .is_mcast = (rtype == RTN_MULTICAST),
+    .type_flags = lcp_router_route_type_frpflags[rtype],
+    .preference = (u8) rtnl_route_get_priority (rr),
+  };
+
+  rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
+  lcp_router_route_path_add_special (rr, &np);
+
+  if (0 != vec_len (np.paths))
+    {
+      if (rtype == RTN_MULTICAST)
+	{
+	  /* it's not clear to me how linux expresses the RPF paramters
+	   * so we'll allow from all interfaces and hope for the best */
+	  mfib_prefix_t mpfx = {};
+
+	  lcp_router_route_mk_mprefix (rr, &mpfx);
+
+	  mfib_table_entry_update (nlt->nlt_mfib_index, &mpfx,
+				   MFIB_SOURCE_PLUGIN_LOW, MFIB_RPF_ID_NONE,
+				   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+
+	  mfib_table_entry_paths_update (nlt->nlt_mfib_index, &mpfx,
+					 MFIB_SOURCE_PLUGIN_LOW,
+					 MFIB_ENTRY_FLAG_NONE, np.paths);
+	}
+      else
+	{
+	  fib_source_t fib_src;
+	  const fib_route_path_t *rpath;
+
+	  vec_foreach (rpath, np.paths)
+	    {
+	      if (fib_route_path_is_attached (rpath))
+		{
+		  entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
+		  break;
+		}
+	    }
+
+	  fib_src = lcp_router_proto_fib_source (rproto);
+
+	  if (is_replace)
+	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
+				    entry_flags, np.paths);
+	  else
+	    fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
+				       entry_flags, np.paths);
+	}
     }
   else
     {
-      LCP_ROUTER_DBG ("route add: %d:%U %U", rtnl_route_get_table (rr),
-		      format_fib_prefix, &pfx, format_fib_entry_flags,
-		      entry_flags);
-
-      lcp_router_route_path_parse_t np = {
-	.route_proto = pfx.fp_proto,
-	.is_mcast = (rtype == RTN_MULTICAST),
-	.type_flags = lcp_router_route_type_frpflags[rtype],
-	.preference = (u8) rtnl_route_get_priority (rr),
-      };
-
-      rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
-      lcp_router_route_path_add_special (rr, &np);
-
-      if (0 != vec_len (np.paths))
-	{
-	  if (rtype == RTN_MULTICAST)
-	    {
-	      /* it's not clear to me how linux expresses the RPF paramters
-	       * so we'll allow from all interfaces and hope for the best */
-	      mfib_prefix_t mpfx = {};
-
-	      lcp_router_route_mk_mprefix (rr, &mpfx);
-
-	      mfib_table_entry_update (
-		nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW,
-		MFIB_RPF_ID_NONE, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
-
-	      mfib_table_entry_paths_update (nlt->nlt_mfib_index, &mpfx,
-					     MFIB_SOURCE_PLUGIN_LOW,
-					     MFIB_ENTRY_FLAG_NONE, np.paths);
-	    }
-	  else
-	    {
-	      fib_source_t fib_src;
-	      const fib_route_path_t *rpath;
-
-	      vec_foreach (rpath, np.paths)
-		{
-		  if (fib_route_path_is_attached (rpath))
-		    {
-		      entry_flags |= FIB_ENTRY_FLAG_ATTACHED;
-		      break;
-		    }
-		}
-
-	      fib_src = lcp_router_proto_fib_source (rproto);
-
-	      if (pfx.fp_proto == FIB_PROTOCOL_IP6)
-		fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
-					   entry_flags, np.paths);
-	      else
-		fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
-					entry_flags, np.paths);
-	    }
-	}
-      else
-	LCP_ROUTER_DBG ("no paths for route add: %d:%U %U",
-			rtnl_route_get_table (rr), format_fib_prefix, &pfx,
-			format_fib_entry_flags, entry_flags);
-      vec_free (np.paths);
+      LCP_ROUTER_DBG ("no paths for route: %d:%U %U",
+		      rtnl_route_get_table (rr), format_fib_prefix, &pfx,
+		      format_fib_entry_flags, entry_flags);
     }
+  vec_free (np.paths);
 }
 
 static void
