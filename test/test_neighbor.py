@@ -16,8 +16,9 @@ from vpp_ip_route import (
     FibPathType,
     VppIpInterfaceAddress,
 )
-from vpp_papi import VppEnum
+from vpp_papi import VppEnum, MACAddress
 from vpp_ip import VppIpPuntRedirect
+from vpp_sub_interface import VppDot1ADSubint
 
 import scapy.compat
 from scapy.packet import Raw
@@ -86,11 +87,11 @@ class ARPTestCase(VppTestCase):
 
         super(ARPTestCase, self).tearDown()
 
-    def verify_arp_req(self, rx, smac, sip, dip):
+    def verify_arp_req(self, rx, smac, sip, dip, etype=0x0806):
         ether = rx[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
         self.assertEqual(ether.src, smac)
-        self.assertEqual(ether.type, 0x0806)
+        self.assertEqual(ether.type, etype)
 
         arp = rx[ARP]
         self.assertEqual(arp.hwtype, 1)
@@ -844,6 +845,105 @@ class ARPTestCase(VppTestCase):
         self.pg2.unset_unnumbered(self.pg1.sw_if_index)
         self.pg2.admin_down()
         self.pg1.admin_down()
+
+    def test_arp_after_mac_change(self):
+        """ARP (after MAC address change)"""
+
+        #
+        # Prepare a subinterface
+        #
+        subif0 = VppDot1ADSubint(self, self.pg1, 0, 300, 400)
+        subif0.admin_up()
+        subif0.config_ip4()
+
+        #
+        # Send a packet to cause ARP generation for the parent interface's remote host
+        #
+        p1 = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
+
+        self.pg0.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+
+        self.verify_arp_req(
+            rx[0], self.pg1.local_mac, self.pg1.local_ip4, self.pg1.remote_ip4
+        )
+
+        #
+        # Send a packet to cause ARP generation for the subinterface's remote host
+        #
+        p2 = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=subif0.remote_ip4)
+            / UDP(sport=1234, dport=1234)
+            / Raw()
+        )
+
+        self.pg0.add_stream(p2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+
+        self.verify_arp_req(
+            rx[0],
+            self.pg1.local_mac,
+            subif0.local_ip4,
+            subif0.remote_ip4,
+            subif0.DOT1AD_TYPE,
+        )
+
+        #
+        # Change MAC address of the parent interface
+        #
+        pg1_mac_saved = self.pg1.local_mac
+        self.pg1.set_mac(MACAddress("00:00:00:11:22:33"))
+
+        #
+        # Send a packet to cause ARP generation for the parent interface's remote host
+        #   - expect new MAC address is used as the source
+        #
+        self.pg0.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+
+        self.verify_arp_req(
+            rx[0], self.pg1.local_mac, self.pg1.local_ip4, self.pg1.remote_ip4
+        )
+
+        #
+        # Send a packet to cause ARP generation for the subinterface's remote host
+        #   - expect new MAC address is used as the source
+        #
+
+        self.pg0.add_stream(p2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+
+        self.verify_arp_req(
+            rx[0],
+            self.pg1.local_mac,
+            subif0.local_ip4,
+            subif0.remote_ip4,
+            subif0.DOT1AD_TYPE,
+        )
+
+        #
+        # Cleanup
+        #
+        subif0.remove_vpp_config()
+        self.pg1.set_mac(MACAddress(pg1_mac_saved))
 
     def test_proxy_mirror_arp(self):
         """Interface Mirror Proxy ARP"""
