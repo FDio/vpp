@@ -303,8 +303,17 @@ ethernet_mac_change (vnet_hw_interface_t * hi,
 
   {
     ethernet_address_change_ctx_t *cb;
+    u32 id, sw_if_index;
     vec_foreach (cb, em->address_change_callbacks)
-      cb->function (em, hi->sw_if_index, cb->function_opaque);
+      {
+	cb->function (em, hi->sw_if_index, cb->function_opaque);
+	/* clang-format off */
+	hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
+	({
+	  cb->function (em, sw_if_index, cb->function_opaque);
+	}));
+	/* clang-format on */
+      }
   }
 
   return (NULL);
