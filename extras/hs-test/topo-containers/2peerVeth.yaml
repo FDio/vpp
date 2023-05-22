@@ -16,10 +16,10 @@ containers:
   - name: "client-vpp"
     volumes:
       - <<: *client-vol
-  - name: "server-application"
+  - name: "server-app"
     volumes:
       - <<: *server-vol
-  - name: "client-application"
+  - name: "client-app"
     volumes:
       - <<: *client-vol
 
