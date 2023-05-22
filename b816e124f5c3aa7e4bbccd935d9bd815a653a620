@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9064cc74_dc7d81db",
+        "filename": "src/vnet/teib/teib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-05-22T07:28:20Z",
+      "side": 1,
+      "message": "sorry, it\u0027s me being stupid again. this function only creates /32 adj fib entry, which is later mid-chained to the nexthop in the function `teib_entry_adj_stack` where both te_nh_fib_index and te_nh are passed. now I see.",
+      "parentUuid": "a45fad21_9503fbc1",
+      "revId": "b816e124f5c3aa7e4bbccd935d9bd815a653a620",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "17c3d973_a803fe35",
