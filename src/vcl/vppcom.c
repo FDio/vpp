@@ -3369,7 +3369,7 @@ static void
 vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 			  int maxevents, u32 *n_evts)
 {
-  u32 add_event = 0, next, *to_remove = 0, *si;
+  u32 add_event = 0, evt_flags = 0, next, *to_remove = 0, *si;
   vcl_session_t *s;
   u64 evt_data;
   int rv;
@@ -3387,26 +3387,28 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
       if ((s->vep.ev.events & EPOLLIN) && (rv = vcl_session_read_ready (s)))
 	{
 	  add_event = 1;
-	  events[*n_evts].events |= rv > 0 ? EPOLLIN : EPOLLHUP | EPOLLRDHUP;
+	  evt_flags |= rv > 0 ? EPOLLIN : EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
       if ((s->vep.ev.events & EPOLLOUT) && (rv = vcl_session_write_ready (s)))
 	{
 	  add_event = 1;
-	  events[*n_evts].events |= rv > 0 ? EPOLLOUT : EPOLLHUP | EPOLLRDHUP;
+	  evt_flags |= rv > 0 ? EPOLLOUT : EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
       if (!add_event && s->session_state > VCL_STATE_READY)
 	{
 	  add_event = 1;
-	  events[*n_evts].events |= EPOLLHUP | EPOLLRDHUP;
+	  evt_flags |= EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
       if (add_event)
 	{
+	  events[*n_evts].events = evt_flags;
 	  events[*n_evts].data.u64 = evt_data;
 	  *n_evts += 1;
 	  add_event = 0;
+	  evt_flags = 0;
 	  if (EPOLLONESHOT & s->vep.ev.events)
 	    s->vep.ev.events = 0;
 	  if (*n_evts == maxevents)
