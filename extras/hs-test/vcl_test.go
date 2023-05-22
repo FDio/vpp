@@ -5,41 +5,35 @@ import (
 	"time"
 )
 
-func (s *VethsSuite) TestVclEchoQuic() {
-	s.skip("quic test skipping..")
-	s.testVclEcho("quic")
-}
+func (s *VethsSuite) testVclEcho(proto string) {
+	port := "12345"
+	srvVppCont := s.getContainerByName("server-vpp")
+	srvAppCont := s.getContainerByName("server-app")
 
-func (s *VethsSuite) TestVclEchoUdp() {
-	s.skip("udp echo currently broken in vpp, skipping..")
-	s.testVclEcho("udp")
+	serverVclConfContent := fmt.Sprintf(vclTemplate, srvVppCont.getContainerWorkDir(), "1")
+	srvAppCont.createFile("/vcl.conf", serverVclConfContent)
+	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
+	srvAppCont.execServer("vcl_test_server " + port)
+
+	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVethAddress := serverVeth.ip4AddressString()
+
+	echoClnContainer := s.getTransientContainerByName("client-app")
+	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
+	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
+
+	testClientCommand := "vcl_test_client -E -p " + proto + " " + serverVethAddress + " " + port
+	echoClnContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
+	o := echoClnContainer.exec(testClientCommand)
+	s.log(o)
 }
 
 func (s *VethsSuite) TestVclEchoTcp() {
 	s.testVclEcho("tcp")
 }
 
-func (s *VethsSuite) testVclEcho(proto string) {
-	serverVethAddress := s.netInterfaces["vppsrv"].ip4AddressString()
-	uri := proto + "://" + serverVethAddress + "/12344"
-
-	echoSrvContainer := s.getContainerByName("server-application")
-	serverCommand := "vpp_echo server TX=RX" +
-		" socket-name " + echoSrvContainer.getContainerWorkDir() + "/var/run/app_ns_sockets/1" +
-		" use-app-socket-api" +
-		" uri " + uri
-	s.log(serverCommand)
-	echoSrvContainer.execServer(serverCommand)
-
-	echoClnContainer := s.getContainerByName("client-application")
-
-	clientCommand := "vpp_echo client" +
-		" socket-name " + echoClnContainer.getContainerWorkDir() + "/var/run/app_ns_sockets/2" +
-		" use-app-socket-api uri " + uri
-	s.log(clientCommand)
-	o := echoClnContainer.exec(clientCommand)
-
-	s.log(o)
+func (s *VethsSuite) TestVclEchoUdp() {
+	s.testVclEcho("udp")
 }
 
 func (s *VethsSuite) TestVclRetryAttach() {
@@ -50,7 +44,7 @@ func (s *VethsSuite) TestVclRetryAttach() {
 func (s *VethsSuite) testRetryAttach(proto string) {
 	srvVppContainer := s.getTransientContainerByName("server-vpp")
 
-	echoSrvContainer := s.getContainerByName("server-application")
+	echoSrvContainer := s.getContainerByName("server-app")
 
 	serverVclConfContent := fmt.Sprintf(vclTemplate, echoSrvContainer.getContainerWorkDir(), "1")
 	echoSrvContainer.createFile("/vcl.conf", serverVclConfContent)
@@ -64,7 +58,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVethAddress := serverVeth.ip4AddressString()
 
-	echoClnContainer := s.getTransientContainerByName("client-application")
+	echoClnContainer := s.getTransientContainerByName("client-app")
 	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
 	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
 
