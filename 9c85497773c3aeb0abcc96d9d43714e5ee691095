@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89a8b046_395b56e8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-22T11:36:00Z",
+      "side": 1,
+      "message": "See [0] on how dramatically this improves NDR performance (PDR and MRR do not show much difference).\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/21/console.log.gz",
+      "revId": "9c85497773c3aeb0abcc96d9d43714e5ee691095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
