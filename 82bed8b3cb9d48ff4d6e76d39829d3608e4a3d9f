@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "82bed8b3cb9d48ff4d6e76d39829d3608e4a3d9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e4e7c06_197cbd06",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-23T14:06:24Z",
+      "side": 1,
+      "message": "Please consider correcting to:\n\nipsec: move ESP/UDP packet processing to the inline function ipsec_udp_encap_esp_packet_process\n\nThis inline function is introduced in order to simplify code readability and allows splitting of UDP and ESP processing, as the next steps.",
+      "revId": "82bed8b3cb9d48ff4d6e76d39829d3608e4a3d9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
