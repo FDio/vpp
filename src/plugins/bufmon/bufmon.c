@@ -108,7 +108,6 @@ bufmon_dispatch_wrapper (vlib_main_t *vm, vlib_node_runtime_t *node,
   int pending_frames;
   uword rv;
 
-  vec_validate_aligned (bm->ptd, vm->thread_index, CLIB_CACHE_LINE_BYTES);
   ptd = vec_elt_at_index (bm->ptd, vm->thread_index);
   vec_validate_aligned (ptd->pnd, node->node_index, CLIB_CACHE_LINE_BYTES);
   pnd = vec_elt_at_index (ptd->pnd, node->node_index);
@@ -152,6 +151,8 @@ bufmon_register_callbacks (vlib_main_t *vm)
 					bufmon_dispatch_wrapper))
       goto err1;
 
+  vec_validate_aligned (bufmon_main.ptd, vlib_thread_main.n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
   return 0;
 
 err1:
