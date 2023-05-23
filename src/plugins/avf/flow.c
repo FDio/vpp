@@ -490,6 +490,13 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
     }
 
 pattern_end:
+  if ((f->actions & VNET_FLOW_ACTION_RSS) &&
+      (f->rss_types & (1ULL << VNET_FLOW_RSS_TYPES_ESP)))
+    {
+      avf_items[layer].type = AVF_FLOW_ITEM_TYPE_ESP;
+      layer++;
+    }
+
   /* pattern end flag  */
   avf_items[layer].type = AVF_FLOW_ITEM_TYPE_END;
 
