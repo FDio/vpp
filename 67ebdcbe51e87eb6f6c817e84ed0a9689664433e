@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc8f9f16_0c5445e8",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 598,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-24T10:27:48Z",
+      "side": 1,
+      "message": "Could you change to: \"rss_conf.rss_hf \u003d temp_conf.rss_hf;\" instead of: \"rss_conf.rss_hf \u003d temp_hf;\" ? \nBecause variable: \"u64 temp_hf\" in not necessary here.",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7b4d569_a3206531",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-24T10:27:48Z",
+      "side": 1,
+      "message": "Would you consider to add api for get RSS hash key by API?",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f51a9cd4_352caae6",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-24T10:27:48Z",
+      "side": 1,
+      "message": "Maybe use binary format to passed value by API instead of string?\nAnd with fixed size to keep maximum length of RSS Hash Key.",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
