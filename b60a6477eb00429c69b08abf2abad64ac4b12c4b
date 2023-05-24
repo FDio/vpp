@@ -16,6 +16,23 @@
       "message": "https://jenkins.fd.io/job/vpp-csit-verify-device-2306-ubuntu2204-aarch64-1n-tx2/ stuck - since this is text-only change, I will go ahead and +1 it, since all the rest of the jobs were successful.",
       "revId": "b60a6477eb00429c69b08abf2abad64ac4b12c4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "64b0cc62_99ae1e1b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-05-24T17:22:57Z",
+      "side": 1,
+      "message": "remerge",
+      "revId": "b60a6477eb00429c69b08abf2abad64ac4b12c4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
