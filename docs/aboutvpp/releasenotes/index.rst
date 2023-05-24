@@ -10,5 +10,4 @@ Release notes
     v22.10.1
     v22.10
     v22.06.1
-    v22.06
     past
