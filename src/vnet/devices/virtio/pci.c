@@ -1498,9 +1498,17 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 			    "error encountered during packet buffering init");
 	  goto error;
 	}
+      /*
+       * packet buffering flag needs to be set 1 before calling the
+       * virtio_pre_input_node_enable but after the successful initialization
+       * of buffering queues above.
+       * Packet buffering flag set to 0 if there will be any error during
+       * buffering initialization.
+       */
+      vif->packet_buffering = 1;
+      virtio_pre_input_node_enable (vm, vif);
     }
 
-  virtio_pre_input_node_enable (vm, vif);
   virtio_vring_set_rx_queues (vm, vif);
   virtio_vring_set_tx_queues (vm, vif);
 
@@ -1542,17 +1550,19 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 
   vlib_pci_intr_disable (vm, vif->pci_dev_handle);
 
-  for (i = 0; i < vif->max_queue_pairs; i++)
-    {
-      vif->virtio_pci_func->del_queue (vm, vif, RX_QUEUE (i));
-      vif->virtio_pci_func->del_queue (vm, vif, TX_QUEUE (i));
-    }
-
-  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
-    vif->virtio_pci_func->del_queue (vm, vif, vif->max_queue_pairs * 2);
-
   if (vif->virtio_pci_func)
-    vif->virtio_pci_func->device_reset (vm, vif);
+    {
+      for (i = 0; i < vif->max_queue_pairs; i++)
+	{
+	  vif->virtio_pci_func->del_queue (vm, vif, RX_QUEUE (i));
+	  vif->virtio_pci_func->del_queue (vm, vif, TX_QUEUE (i));
+	}
+
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
+	vif->virtio_pci_func->del_queue (vm, vif, vif->max_queue_pairs * 2);
+
+      vif->virtio_pci_func->device_reset (vm, vif);
+    }
 
   if (vif->hw_if_index)
     {
@@ -1573,7 +1583,8 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vlib_physmem_free (vm, vring->desc);
   }
 
-  virtio_pre_input_node_disable (vm, vif);
+  if (vif->packet_buffering)
+    virtio_pre_input_node_disable (vm, vif);
 
   vec_foreach_index (i, vif->txq_vrings)
   {

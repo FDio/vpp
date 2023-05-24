@@ -207,7 +207,6 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   vnet_virtio_vring_t *vring;
   clib_error_t *error = 0;
-  vif->packet_buffering = 1;
 
   vec_foreach (vring, vif->txq_vrings)
   {
