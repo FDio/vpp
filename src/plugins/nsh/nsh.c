@@ -188,7 +188,8 @@ nsh_init (vlib_main_t * vm)
   nsh_main_t *nm = &nsh_main;
   clib_error_t *error = 0;
   uword next_node;
-  vlib_node_registration_t *vxlan4_input, *vxlan6_input;
+  vlib_node_t *gre4_input, *gre6_input;
+  vlib_node_t *vxlan4_input, *vxlan6_input;
 
   /* Init the main structures from VPP */
   nm->vlib_main = vm;
@@ -240,22 +241,26 @@ nsh_init (vlib_main_t * vm)
   vlib_node_add_next (vm, vxlan6_gpe_input_node.index,
 		      nsh_aware_vnf_proxy_node.index);
 
-  vlib_node_add_next (vm, gre4_input_node.index, nm->nsh_input_node_index);
-  vlib_node_add_next (vm, gre4_input_node.index, nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, gre4_input_node.index,
-		      nsh_aware_vnf_proxy_node.index);
+  gre4_input = vlib_get_node_by_name (vm, (u8 *) "gre4-input");
+  gre6_input = vlib_get_node_by_name (vm, (u8 *) "gre6-input");
+  if (!gre4_input || !gre6_input)
+    {
+      error = clib_error_return (0, "gre_plugin.so is not loaded");
+      return error;
+    }
 
-  vlib_node_add_next (vm, gre6_input_node.index, nm->nsh_input_node_index);
-  vlib_node_add_next (vm, gre6_input_node.index, nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, gre6_input_node.index,
-		      nsh_aware_vnf_proxy_node.index);
+  vlib_node_add_next (vm, gre4_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, gre4_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, gre4_input->index, nsh_aware_vnf_proxy_node.index);
+
+  vlib_node_add_next (vm, gre6_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, gre6_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, gre6_input->index, nsh_aware_vnf_proxy_node.index);
 
   /* Add NSH-Proxy support */
-  vxlan4_input =
-    vlib_get_plugin_symbol ("vxlan_plugin.so", "vxlan4_input_node");
-  vxlan6_input =
-    vlib_get_plugin_symbol ("vxlan_plugin.so", "vxlan6_input_node");
-  if (vxlan4_input == 0 || vxlan6_input == 0)
+  vxlan4_input = vlib_get_node_by_name (vm, (u8 *) "vxlan4-input");
+  vxlan6_input = vlib_get_node_by_name (vm, (u8 *) "vxlan6-input");
+  if (!vxlan4_input || !vxlan6_input)
     {
       error = clib_error_return (0, "vxlan_plugin.so is not loaded");
       return error;
