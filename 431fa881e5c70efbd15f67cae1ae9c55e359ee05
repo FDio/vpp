@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ec0f011_5ccb0669",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b4f991f3_e70ed384",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b42cc47c_be9e188f",
@@ -66,6 +84,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "instead of \"normal\" use \"plain\"",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7552379_a84f0479",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b42cc47c_be9e188f",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -87,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d2302d4_8b57eb94",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1ea5d470_7ab9d735",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "15a6641a_55b519f0",
@@ -100,6 +154,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "please don\u0027t use magic numbers",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54bb08fc_6455dbdd",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "15a6641a_55b519f0",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -121,6 +193,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7633a3d_d22f3f70",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "create_stream_encrypted has been moved to template_ipsec.py to make it generic for all test file. SecurityAssociation is already generic def. SA is changing on need basis. if test need to send more than one encrypted packet , based on src and dst MAC and IP changing.",
+      "parentUuid": "df9248ee_eeed1c58",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "518b01cd_964844bf",
@@ -134,6 +224,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "why did you remove this check?",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87cf2469_eaca74b7",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Replaced to def verify_capture_packet(self, src_if, dst_if, capture)\nWhich will validate packet field like IP, protocol type and port\nverify_capture , verify src and dst interface number in received packet.\nInterface no get corrupt while conversion from packet to info and info to packet\nAnd throw sw_if_index: 16777216 does not match expected value 1 ,",
+      "parentUuid": "518b01cd_964844bf",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -155,6 +263,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d39c10ef_dffdbf31",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "I have define def create_stream_encrypted in test/template_ipsec.py. since it is going to use in multiple test file. SecurityAssociation() is already generic def   we can use to create SA object as when needed. I dont see requirement to wrap it under create_stream_encrypted",
+      "parentUuid": "e3ad6520_3f020537",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b5c68ef3_8393697f",
@@ -168,6 +294,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "Please uncomment this line and remove your changes from this test according to hints that I gave you in previous comment.",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "646a296f_2ec9e559",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "we have new method to create encrypted stream def create_stream_encrypted",
+      "parentUuid": "b5c68ef3_8393697f",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -189,6 +333,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5db71a03_6bf2ec81",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "we have new method to create encrypted stream def create_stream_encrypted",
+      "parentUuid": "60b9fd7f_1d237af8",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0c31fbb9_194f8bb1",
@@ -202,6 +364,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "uncomment this line",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d11b77c8_0253e88b",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Replaced  def verify_capture_packet(self, src_if, dst_if, capture)\nWhich will validate packet field like IP, protocol type and port\nverify_capture , verify src and dst interface number in received packet.\nInterface no get corrupt while conversion from packet to info and info to packet\nAnd throw sw_if_index: 16777216 does not match expected value 1 ,",
+      "parentUuid": "0c31fbb9_194f8bb1",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -223,6 +403,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6345c385_4488b813",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Replaced to def verify_capture_packet(self, src_if, dst_if, capture)\nWhich will validate packet field like IP, protocol type and port\nverify_capture , verify src and dst interface number in received packet.\nInterface no get corrupt while conversion from packet to info and info to packet\nAnd throw sw_if_index: 16777216 does not match expected value 1 ,",
+      "parentUuid": "c6b96581_f6570b92",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5b0b1735_3f52da60",
@@ -236,6 +434,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "uncomment this line",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76b2d866_d3c160ad",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "Replaced to def verify_capture_packet(self, src_if, dst_if, capture)\nWhich will validate packet field like IP, protocol type and port\nverify_capture , verify src and dst interface number in received packet.\nInterface no get corrupt while conversion from packet to info and info to packet\nAnd throw sw_if_index: 16777216 does not match expected value 1 ,",
+      "parentUuid": "5b0b1735_3f52da60",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -257,6 +473,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9371890f_db0444c8",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "verify_capture , mostly verifying UDP packet now we are sending UDP ESP packet\nIn further steps we are verifying policy and No of packet match. create_stream_encrypted API we are passing only MAC and IP info not interface address , Hence it throw Invalid interface error. AssertionError: 16777216 !\u003d 1 : Invalid source sw_if_index: 16777216 does not match expected value 1 , would prefer to delete as no relevance here",
+      "parentUuid": "cc7325da_c88d4434",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "070fcdfb_d0e01a3a",
@@ -270,6 +504,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6d3ab0b_edfc8d8d",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "we have new method to create encrypted stream def create_stream_encrypted",
+      "parentUuid": "070fcdfb_d0e01a3a",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -291,6 +543,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfa00cc4_5d2238af",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "verify_capture , mostly verifying UDP packet now we are sending UDP ESP packet\nIn further steps we are verifying policy and No of packet match. create_stream_encrypted API we are passing only MAC and IP info not interface address , Hence it throw Invalid interface error. AssertionError: 16777216 !\u003d 1 : Invalid source sw_if_index: 16777216 does not match expected value 1 , would prefer to delete as no relevance here",
+      "parentUuid": "5ac8a7a0_89c09702",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0a0dbd7a_5684657d",
@@ -304,6 +574,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "same remarks as above",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ac976f2_ee9ee566",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "verify_capture , mostly verifying UDP packet now we are sending UDP ESP packet\nIn further steps we are verifying policy and No of packet match. create_stream_encrypted API we are passing only MAC and IP info not interface address , Hence it throw Invalid interface error. AssertionError: 16777216 !\u003d 1 : Invalid source sw_if_index: 16777216 does not match expected value 1 , would prefer to delete as no relevance here",
+      "parentUuid": "0a0dbd7a_5684657d",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -325,6 +613,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ec93232_92f4c13f",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 835,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "verify_capture , mostly verifying UDP packet now we are sending UDP ESP packet\nIn further steps we are verifying policy and No of packet match. create_stream_encrypted API we are passing only MAC and IP info not interface address , Hence it throw Invalid interface error. AssertionError: 16777216 !\u003d 1 : Invalid source sw_if_index: 16777216 does not match expected value 1 , would prefer to delete as no relevance here",
+      "parentUuid": "e952b4bf_b0bc5394",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cd222b28_c7d7df2f",
@@ -338,6 +644,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "uncomment these lines",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac805880_66a16fb7",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 906,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "verify_capture , mostly verifying UDP packet now we are sending UDP ESP packet\nIn further steps we are verifying policy and No of packet match. create_stream_encrypted API we are passing only MAC and IP info not interface address , Hence it throw Invalid interface error. AssertionError: 16777216 !\u003d 1 : Invalid source sw_if_index: 16777216 does not match expected value 1 , would prefer to delete as no relevance here",
+      "parentUuid": "cd222b28_c7d7df2f",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -359,6 +683,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a3d1298_e4231791",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 1045,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "we have new method to create encrypted stream def create_stream_encrypted",
+      "parentUuid": "d0fa4e4f_3c407e49",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "aa2f6ddb_6ae8f029",
@@ -372,6 +714,24 @@
       "writtenOn": "2023-05-10T10:40:43Z",
       "side": 1,
       "message": "you should revert most of your changes in this file accordingly with comments for test_ipsec_flow_cache_input.py file",
+      "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "980270b6_bcda5c48",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-05-24T08:33:52Z",
+      "side": 1,
+      "message": "to make it generic for all test file create_stream_encrypted has been moved to template_ipsec.py . SecurityAssociation is already generic def. SA is changing on need basis. if test need to send more than one encrypted packet , based on src and dst MAC and IP changing.ate_ipsec.py to make it generic for all test file. SecurityAssociation is already generic def. SA is changing on need basis. if test need to send more than one encrypted packet , based on src and dst MAC and IP changing.",
+      "parentUuid": "aa2f6ddb_6ae8f029",
       "revId": "431fa881e5c70efbd15f67cae1ae9c55e359ee05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
