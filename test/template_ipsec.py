@@ -1900,6 +1900,10 @@ class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
 class IPSecIPv4Fwd(VppTestCase):
     """Test IPSec by capturing and verifying IPv4 forwarded pkts"""
 
+    tcp_port_out = 6303
+    udp_port_out = 6304
+    icmp_id_out = 6305
+
     @classmethod
     def setUpConstants(cls):
         super(IPSecIPv4Fwd, cls).setUpConstants()
@@ -2045,6 +2049,96 @@ class IPSecIPv4Fwd(VppTestCase):
             packets.append(p)
         # return the created packet list
         return packets
+
+    def create_stream_encrypted(self, src_if, dst_if, src_ip, dst_ip, count, proto):
+
+        sa = SecurityAssociation(
+            ESP,
+            spi=1000,
+            crypt_algo="AES-CBC",
+            crypt_key=b"JPjyOWBeVEQiMe7h",
+            auth_algo="HMAC-SHA1-96",
+            auth_key=b"C91KUR9GYMm5GfkEvNjX",
+            tunnel_header=IP(src=src_ip, dst=dst_ip),
+            nat_t_header=UDP(sport=4500, dport=4500),
+        )
+
+        if proto == "TCP":
+            return [
+                # TCP
+                Ether(src=src_if.local_mac, dst=dst_if.remote_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip) / TCP(dport=self.tcp_port_out, sport=20)
+                )
+                for i in range(count)
+            ]
+            # UDP
+        elif proto == "UDP":
+            return [
+                Ether(src=src_if.local_mac, dst=dst_if.remote_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip) / UDP(dport=self.udp_port_out, sport=20)
+                )
+                for i in range(count)
+            ]
+        else:
+            return [
+                # ICMP
+                Ether(src=src_if.local_mac, dst=dst_if.remote_mac)
+                / sa.encrypt(
+                    IP(src=src_ip, dst=dst_ip)
+                    / ICMP(id=self.icmp_id_out, type="echo-request")
+                )
+                for i in range(count)
+            ]
+
+    def verify_capture_packet(self, src_if, dst_if, capture):
+        udp_port_in = 4500
+        for packet in capture:
+            try:
+                self.assert_packet_checksums_valid(packet)
+                self.assert_equal(
+                    packet[IP].src,
+                    src_if.remote_ip4,
+                    "decrypted packet source address",
+                )
+                self.assert_equal(
+                    packet[IP].dst,
+                    dst_if.remote_ip4,
+                    "decrypted packet destination address",
+                )
+                if packet.haslayer(TCP):
+                    self.assertFalse(
+                        packet.haslayer(UDP),
+                        "unexpected UDP header in decrypted packet",
+                    )
+                    self.assert_equal(
+                        packet[TCP].dport,
+                        self.tcp_port_in,
+                        "decrypted packet TCP destination port",
+                    )
+                elif packet.haslayer(UDP):
+                    if packet[UDP].payload:
+                        self.assertFalse(
+                            packet[UDP][1].haslayer(UDP),
+                            "unexpected UDP header in decrypted packet",
+                        )
+                    self.assert_equal(
+                        packet[UDP].dport,
+                        udp_port_in,
+                        "decrypted packet UDP destination port",
+                    )
+                else:
+                    self.assertFalse(
+                        packet.haslayer(UDP),
+                        "unexpected UDP header in decrypted packet",
+                    )
+                    self.assert_equal(
+                        packet[ICMP].id, self.icmp_id_in, "decrypted packet ICMP ID"
+                    )
+            except Exception:
+                self.logger.error(ppp("Unexpected or invalid plain packet:", packet))
+                raise
 
     def verify_capture(self, src_if, dst_if, capture):
         packet_info = None

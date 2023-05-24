@@ -9,13 +9,15 @@ from scapy.layers.ipsec import SecurityAssociation, ESP
 
 from util import ppp, ppc
 from template_ipsec import TemplateIpsec
+from template_ipsec import IPSecIPv4Fwd
+from template_ipsec import IPSecIPv6Fwd
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 
-class IPSecNATTestCase(TemplateIpsec):
+class IPSecNATTestCase(TemplateIpsec, IPSecIPv4Fwd):
     """IPSec/NAT
 
     TUNNEL MODE::
@@ -33,7 +35,7 @@ class IPSecNATTestCase(TemplateIpsec):
 
     tcp_port_in = 6303
     tcp_port_out = 6303
-    udp_port_in = 6304
+    udp_port_in = 4500
     udp_port_out = 6304
     icmp_id_in = 6305
     icmp_id_out = 6305
@@ -83,26 +85,6 @@ class IPSecNATTestCase(TemplateIpsec):
             Ether(src=src_mac, dst=dst_mac)
             / IP(src=src_ip, dst=dst_ip)
             / ICMP(id=self.icmp_id_in, type="echo-request"),
-        ]
-
-    def create_stream_encrypted(self, src_mac, dst_mac, src_ip, dst_ip, sa):
-        return [
-            # TCP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip) / TCP(dport=self.tcp_port_out, sport=20)
-            ),
-            # UDP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip) / UDP(dport=self.udp_port_out, sport=20)
-            ),
-            # ICMP
-            Ether(src=src_mac, dst=dst_mac)
-            / sa.encrypt(
-                IP(src=src_ip, dst=dst_ip)
-                / ICMP(id=self.icmp_id_out, type="echo-request")
-            ),
         ]
 
     def verify_capture_plain(self, capture):
@@ -295,6 +277,7 @@ class IPSecNATTestCase(TemplateIpsec):
 
     def test_ipsec_nat_tun(self):
         """IPSec/NAT tunnel test case"""
+        count = 5
         p = self.ipv4_params
         scapy_tun_sa = SecurityAssociation(
             ESP,
@@ -319,24 +302,14 @@ class IPSecNATTestCase(TemplateIpsec):
         capture = self.tun_if.get_capture(len(pkts))
         self.verify_capture_encrypted(capture, scapy_tun_sa)
 
-        vpp_tun_sa = SecurityAssociation(
-            ESP,
-            spi=p.vpp_tun_spi,
-            crypt_algo=p.crypt_algo,
-            crypt_key=p.crypt_key,
-            auth_algo=p.auth_algo,
-            auth_key=p.auth_key,
-            tunnel_header=IP(src=self.tun_if.remote_ip4, dst=self.pg1.remote_ip4),
-            nat_t_header=UDP(sport=4500, dport=4500),
-        )
-
         # out2in - from public network to private
         pkts = self.create_stream_encrypted(
-            self.tun_if.remote_mac,
-            self.tun_if.local_mac,
+            self.tun_if,
+            self.pg1,
             self.tun_if.remote_ip4,
             self.pg1.remote_ip4,
-            vpp_tun_sa,
+            count,
+            "UDP",
         )
         self.logger.info(ppc("Sending packets:", pkts))
         self.tun_if.add_stream(pkts)
