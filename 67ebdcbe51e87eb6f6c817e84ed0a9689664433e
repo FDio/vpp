@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1662b729_d64fc3c2",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 598,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-05-24T10:34:56Z",
+      "side": 1,
+      "message": "Actually I wrote \"rss_conf.rss_hf \u003d temp_conf.rss_hf\" at first, but it led to a bug due to data alignment.",
+      "parentUuid": "cc8f9f16_0c5445e8",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d7b4d569_a3206531",
         "filename": "src/vnet/interface.api",
         "patchSetId": 11
