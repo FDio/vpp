@@ -110,8 +110,7 @@ api_af_xdp_create_v2 (vat_main_t *vam)
   snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s",
 	    args.linux_ifname ?: "");
   snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name ?: "");
-  snprintf ((char *) mp->namespace, sizeof (mp->namespace), "%s",
-	    args.netns ?: "");
+  snprintf ((char *) mp->netns, sizeof (mp->netns), "%s", args.netns ?: "");
   mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
