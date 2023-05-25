@@ -996,6 +996,7 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
             "-t 2",
             "-u",
             "-l 1400",
+            "-P 2",
             "-c",
             self.loop0.local_ip4,
         ]
