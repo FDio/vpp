@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bfc5a24_df044f37",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-05-25T06:59:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7b4d569_a3206531",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f51a9cd4_352caae6",
@@ -66,6 +84,24 @@
       "writtenOn": "2023-05-24T10:27:48Z",
       "side": 1,
       "message": "Maybe use binary format to passed value by API instead of string?\nAnd with fixed size to keep maximum length of RSS Hash Key.",
+      "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ff3aaa0_a0cb17f6",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 2899
+      },
+      "writtenOn": "2023-05-25T06:59:54Z",
+      "side": 1,
+      "message": "the way users input and read RSS key is string, like \u002712345ABCDEF\u0027, the string will be converted to a byte sequence later and fed to NIC driver.\n\nNIC drivers will check whether the length of an RSS hash key is illegal or not, so I think we do not have to impose limitation on the key\u0027s length.",
+      "parentUuid": "f51a9cd4_352caae6",
       "revId": "67ebdcbe51e87eb6f6c817e84ed0a9689664433e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
