@@ -200,6 +200,7 @@ typedef enum
   _ (19, NVGRE, "nvgre")                                                      \
   _ (20, GTPU, "gtpu")                                                        \
   _ (21, ESP, "esp")                                                          \
+  _ (22, L2TPV3, "l2tpv3")                                                    \
   _ (60, L4_DST_ONLY, "l4-dst-only")                                          \
   _ (61, L4_SRC_ONLY, "l4-src-only")                                          \
   _ (62, L3_DST_ONLY, "l3-dst-only")                                          \
