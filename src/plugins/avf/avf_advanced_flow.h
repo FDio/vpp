@@ -248,6 +248,7 @@
   _ (19, AVF_ETH_RSS_NVGRE, "nvgre")                                          \
   _ (20, AVF_ETH_RSS_GTPU, "gtpu")                                            \
   _ (21, AVF_ETH_RSS_ESP, "esp")                                              \
+  _ (22, AVF_ETH_RSS_L2TPV3, "l2tpv3")                                        \
   _ (60, AVF_ETH_RSS_L4_DST_ONLY, "l4-dst-only")                              \
   _ (61, AVF_ETH_RSS_L4_SRC_ONLY, "l4-src-only")                              \
   _ (62, AVF_ETH_RSS_L3_DST_ONLY, "l3-dst-only")                              \

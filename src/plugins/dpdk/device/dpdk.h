@@ -427,6 +427,7 @@ void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
   _ (19, RTE_ETH_RSS_NVGRE, "nvgre")                                          \
   _ (20, RTE_ETH_RSS_GTPU, "gtpu")                                            \
   _ (21, RTE_ETH_RSS_ESP, "esp")                                              \
+  _ (22, RTE_ETH_RSS_L2TPV3, "l2tpv3")                                        \
   _ (60, RTE_ETH_RSS_L4_DST_ONLY, "l4-dst-only")                              \
   _ (61, RTE_ETH_RSS_L4_SRC_ONLY, "l4-src-only")                              \
   _ (62, RTE_ETH_RSS_L3_DST_ONLY, "l3-dst-only")                              \
