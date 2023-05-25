@@ -364,7 +364,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   if (rv)
     return rv;
 
-  if (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
+  if (udp_connection_port_used_extern (clib_net_to_host_u16 (lcl_port),
+				       rmt->is_ip4))
     {
       /* If specific source port was requested abort */
       if (rmt->peer.port)
@@ -375,7 +376,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 	}
 
       /* Try to find a port that's not used */
-      while (udp_is_valid_dst_port (lcl_port, rmt->is_ip4))
+      while (udp_connection_port_used_extern (clib_net_to_host_u16 (lcl_port),
+					      rmt->is_ip4))
 	{
 	  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
 					    lcl_port);
