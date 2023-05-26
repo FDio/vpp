@@ -80,6 +80,17 @@ typedef void *(vlib_add_trace_callback_t) (struct vlib_main_t *,
 					   struct vlib_buffer_t * b,
 					   u32 n_data_bytes);
 
+typedef int (vlib_is_packet_traced_fn_t) (vlib_buffer_t *b,
+					  u32 classify_table_index, int func);
+typedef struct vlib_trace_filter_function_registration
+{
+  const char *name;
+  const char *description;
+  int priority;
+  vlib_is_packet_traced_fn_t *function;
+  struct vlib_trace_filter_function_registration *next;
+} vlib_trace_filter_function_registration_t;
+
 typedef struct
 {
   /* Pool of trace buffers. */
@@ -109,9 +120,32 @@ typedef struct
   /* a callback to enable customized addition of a new trace */
   vlib_add_trace_callback_t *add_trace_callback;
 
+  vlib_is_packet_traced_fn_t *current_trace_filter_function;
+
 } vlib_trace_main_t;
 
 format_function_t format_vlib_trace;
+typedef struct
+{
+  vlib_trace_filter_function_registration_t *trace_filter_registration;
+} vlib_trace_filter_main_t;
+
+extern vlib_trace_filter_main_t vlib_trace_filter_main;
+#define VLIB_REGISTER_TRACE_FILTER_FUNCTION(x, ...)                           \
+  __VA_ARGS__ vlib_trace_filter_function_registration_t                       \
+    __vlib_trace_filter_function_##x;                                         \
+  static void __clib_constructor                                              \
+    __vlib_trace_filter_function_registration_##x (void)                      \
+  {                                                                           \
+    vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;                  \
+    __vlib_trace_filter_function_##x.next = tfm->trace_filter_registration;   \
+    tfm->trace_filter_registration = &__vlib_trace_filter_function_##x;       \
+  }                                                                           \
+  __VA_ARGS__ vlib_trace_filter_function_registration_t                       \
+    __vlib_trace_filter_function_##x
+
+vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_function_from_name (const char *name);
 
 void trace_apply_filter (struct vlib_main_t *vm);
 int trace_time_cmp (void *a1, void *a2);
@@ -121,6 +155,9 @@ void trace_update_capture_options (u32 add, u32 node_index,
 				   u32 filter, u8 verbose);
 void trace_filter_set (u32 node_index, u32 flag, u32 count);
 void clear_trace_buffer (void);
+void vlib_set_trace_filter_function (vlib_is_packet_traced_fn_t *x);
+uword unformat_vlib_trace_filter_function (unformat_input_t *input,
+					   va_list *args);
 
 #endif /* included_vlib_trace_h */
 
