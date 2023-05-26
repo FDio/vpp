@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a483830e_c912d4a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-26T07:56:00Z",
+      "side": 1,
+      "message": "You may find guidelines from this template useful:\nhttps://gerrit.fd.io/r/c/vpp/+/19391/7/.git_commit_template.txt\nAlso please take your time, identify problems, be consistent, and once you are convinced that issues are fixed, push your changes to the Gerrit.",
+      "revId": "f4c3273ab68707dca1172da22f186ede7466fb20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
