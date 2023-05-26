@@ -122,6 +122,9 @@ void trace_update_capture_options (u32 add, u32 node_index,
 void trace_filter_set (u32 node_index, u32 flag, u32 count);
 void clear_trace_buffer (void);
 
+int vlib_is_packet_traced_stub (vlib_buffer_t *b, u32 classify_table_index,
+				int func);
+
 #endif /* included_vlib_trace_h */
 
 /*

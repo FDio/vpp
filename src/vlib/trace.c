@@ -613,12 +613,8 @@ vlib_trace_cli_reference (void)
 }
 
 int
-vnet_is_packet_traced (vlib_buffer_t * b,
-		       u32 classify_table_index, int func)
-__attribute__ ((weak));
-
-int
-vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
+vlib_is_packet_traced_stub (vlib_buffer_t *b, u32 classify_table_index,
+			    int func)
 {
   clib_warning ("BUG: STUB called");
   return 1;
