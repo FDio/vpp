@@ -612,18 +612,6 @@ vlib_trace_cli_reference (void)
 {
 }
 
-int
-vnet_is_packet_traced (vlib_buffer_t * b,
-		       u32 classify_table_index, int func)
-__attribute__ ((weak));
-
-int
-vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
-{
-  clib_warning ("BUG: STUB called");
-  return 1;
-}
-
 void *
 vlib_add_trace (vlib_main_t * vm,
 		vlib_node_runtime_t * r, vlib_buffer_t * b, u32 n_data_bytes)
@@ -631,8 +619,148 @@ vlib_add_trace (vlib_main_t * vm,
   return vlib_add_trace_inline (vm, r, b, n_data_bytes);
 }
 
+vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_function_from_name (const char *name)
+{
+  vlib_trace_filter_function_registration_t *reg =
+    vlib_trace_filter_main.trace_filter_registration;
+  while (reg)
+    {
+      if (clib_strcmp (reg->name, name) == 0)
+	break;
+      reg = reg->next;
+    }
+  if (!reg)
+    return 0;
+  return reg->function;
+}
 
+static vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_default_function ()
+{
+  vlib_trace_filter_function_registration_t *reg =
+    vlib_trace_filter_main.trace_filter_registration;
+  vlib_trace_filter_function_registration_t *tmp_reg = reg;
+  while (reg)
+    {
+      if (reg->priority > tmp_reg->priority)
+	tmp_reg = reg;
+      reg = reg->next;
+    }
+  return tmp_reg->function;
+}
 
+static clib_error_t *
+vlib_trace_filter_function_init (vlib_main_t *vm)
+{
+  vlib_is_packet_traced_fn_t *default_fn =
+    vlib_is_packet_traced_default_function ();
+  foreach_vlib_main ()
+    {
+      vlib_trace_main_t *tm = &this_vlib_main->trace_main;
+      tm->current_trace_filter_function = default_fn;
+    }
+  return 0;
+}
+
+vlib_trace_filter_main_t vlib_trace_filter_main;
+
+VLIB_INIT_FUNCTION (vlib_trace_filter_function_init);
+
+static clib_error_t *
+show_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
+{
+  vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;
+  vlib_trace_main_t *tm = &vm->trace_main;
+  vlib_is_packet_traced_fn_t *current_trace_filter_fn =
+    tm->current_trace_filter_function;
+  vlib_trace_filter_function_registration_t *reg =
+    tfm->trace_filter_registration;
+
+  while (reg)
+    {
+      vlib_cli_output (vm, "%sname:%s description: %s priority: %u",
+		       reg->function == current_trace_filter_fn ? "(*) " : "",
+		       reg->name, reg->description, reg->priority);
+      reg = reg->next;
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_trace_filter_function_cli, static) = {
+  .path = "show trace filter function",
+  .short_help = "show trace filter function",
+  .function = show_trace_filter_function,
+};
+
+uword
+unformat_vlib_trace_filter_function (unformat_input_t *input, va_list *args)
+{
+  vlib_is_packet_traced_fn_t **res =
+    va_arg (*args, vlib_is_packet_traced_fn_t **);
+  vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;
+
+  vlib_trace_filter_function_registration_t *reg =
+    tfm->trace_filter_registration;
+  while (reg)
+    {
+      if (unformat (input, reg->name))
+	{
+	  *res = reg->function;
+	  return 1;
+	}
+      reg = reg->next;
+    }
+  return 0;
+}
+
+void
+vlib_set_trace_filter_function (vlib_is_packet_traced_fn_t *x)
+{
+  foreach_vlib_main ()
+    {
+      this_vlib_main->trace_main.current_trace_filter_function = x;
+    }
+}
+
+static clib_error_t *
+set_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vlib_is_packet_traced_fn_t *res = 0;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vlib_trace_filter_function,
+		    &res))
+	;
+      else
+	{
+	  error = clib_error_create (
+	    "expected valid trace filter function, got `%U'",
+	    format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+  vlib_set_trace_filter_function (res);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_trace_filter_function_cli, static) = {
+  .path = "set trace filter function",
+  .short_help = "set trace filter function <func_name>",
+  .function = set_trace_filter_function,
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -473,6 +473,61 @@ vl_api_trace_clear_cache_t_handler (vl_api_trace_clear_cache_t *mp)
   REPLY_MACRO (VL_API_TRACE_CLEAR_CACHE_REPLY);
 }
 
+static void
+vl_api_trace_set_filter_function_t_handler (
+  vl_api_trace_set_filter_function_t *mp)
+{
+  vl_api_trace_set_filter_function_reply_t *rmp;
+  tracedump_main_t *tdmp = &tracedump_main;
+  unformat_input_t input = { 0 };
+  vlib_is_packet_traced_fn_t *f;
+  char *filter_name;
+  int rv = 0;
+  filter_name = vl_api_from_api_to_new_c_string (&mp->filter_function_name);
+  unformat_init_cstring (&input, filter_name);
+  if (unformat (&input, "%U", unformat_vlib_trace_filter_function, &f) == 0)
+    {
+      rv = -1;
+      goto done;
+    }
+  vlib_set_trace_filter_function (f);
+done:
+  unformat_free (&input);
+  vec_free (filter_name);
+  REPLY_MACRO (VL_API_TRACE_SET_FILTER_FUNCTION_REPLY);
+}
+
+static void
+vl_api_trace_filter_function_dump_t_handler (
+  vl_api_trace_filter_function_dump_t *mp)
+{
+  vl_api_registration_t *rp;
+  vl_api_trace_filter_function_details_t *dmp;
+  tracedump_main_t *tdmp = &tracedump_main;
+  vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;
+  vlib_trace_filter_function_registration_t *reg =
+    tfm->trace_filter_registration;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_is_packet_traced_fn_t *current =
+    vm->trace_main.current_trace_filter_function;
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    return;
+
+  while (reg)
+    {
+      dmp = vl_msg_api_alloc (sizeof (*dmp) + strlen (reg->name));
+      dmp->_vl_msg_id =
+	htons (VL_API_TRACE_FILTER_FUNCTION_DETAILS + (tdmp->msg_id_base));
+      dmp->context = mp->context;
+      vl_api_c_string_to_api_string (reg->name, &dmp->name);
+      dmp->selected = current == reg->function;
+      vl_api_send_msg (rp, (u8 *) dmp);
+      reg = reg->next;
+    }
+}
+
 /* API definitions */
 #include <tracedump/tracedump.api.c>
 

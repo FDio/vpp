@@ -138,10 +138,7 @@ vlib_trace_next_frame (vlib_main_t * vm,
   nf->flags |= VLIB_FRAME_TRACE;
 }
 
-void trace_apply_filter (vlib_main_t * vm);
-int vnet_is_packet_traced (vlib_buffer_t * b,
-			   u32 classify_table_index, int func);
-
+void trace_apply_filter (vlib_main_t *vm);
 
 /*
  * Mark buffer as traced and allocate trace buffer.
@@ -164,7 +161,7 @@ vlib_trace_buffer (vlib_main_t * vm,
   if (PREDICT_FALSE (vlib_global_main.trace_filter.trace_filter_enable))
     {
       /* See if we're supposed to trace this packet... */
-      if (vnet_is_packet_traced (
+      if (tm->current_trace_filter_function (
 	    b, vlib_global_main.trace_filter.classify_table_index,
 	    0 /* full classify */) != 1)
 	return 0;
