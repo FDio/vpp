@@ -612,18 +612,6 @@ vlib_trace_cli_reference (void)
 {
 }
 
-int
-vnet_is_packet_traced (vlib_buffer_t * b,
-		       u32 classify_table_index, int func)
-__attribute__ ((weak));
-
-int
-vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
-{
-  clib_warning ("BUG: STUB called");
-  return 1;
-}
-
 void *
 vlib_add_trace (vlib_main_t * vm,
 		vlib_node_runtime_t * r, vlib_buffer_t * b, u32 n_data_bytes)
@@ -631,8 +619,53 @@ vlib_add_trace (vlib_main_t * vm,
   return vlib_add_trace_inline (vm, r, b, n_data_bytes);
 }
 
+vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_function_from_name (const char *name)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_trace_filter_function_registration_t *reg =
+    vm->trace_main.trace_filter_registration;
+  while (reg)
+    {
+      if (clib_strcmp (reg->name, name) == 0)
+	break;
+      reg = reg->next;
+    }
+  if (!reg)
+    return 0;
+  return reg->function;
+}
 
+static vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_default_function ()
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_trace_filter_function_registration_t *reg =
+    vm->trace_main.trace_filter_registration;
+  vlib_trace_filter_function_registration_t *tmp_reg = reg;
+  while (reg)
+    {
+      if (reg->priority > tmp_reg->priority)
+	tmp_reg = reg;
+      reg = reg->next;
+    }
+  return tmp_reg->function;
+}
 
+static clib_error_t *
+vlib_trace_filter_function_init (vlib_main_t *vm)
+{
+  vlib_is_packet_traced_fn_t *default_fn =
+    vlib_is_packet_traced_default_function ();
+  foreach_vlib_main ()
+    {
+      vlib_trace_main_t *tm = &this_vlib_main->trace_main;
+      tm->current_trace_filter_function = default_fn;
+    }
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vlib_trace_filter_function_init);
 /*
  * fd.io coding-style-patch-verification: ON
  *
