@@ -1955,6 +1955,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  /* Should be overriden by vnet init funciton */
+  vlib_set_is_packet_traced_function (vlib_is_packet_traced_stub);
+
   /* See unix/main.c; most likely already set up */
   if (vgm->init_functions_called == 0)
     vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
@@ -2053,6 +2056,13 @@ elog_main_t *
 vlib_get_elog_main_not_inline ()
 {
   return &vlib_global_main.elog_main;
+}
+
+void
+vlib_set_is_packet_traced_function (vlib_is_packet_traced_fn_t x)
+{
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  vgm->is_traced_function = x;
 }
 
 void

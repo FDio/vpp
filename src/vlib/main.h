@@ -64,6 +64,9 @@ typedef struct
   u32 classify_table_index;
 } vlib_trace_filter_t;
 
+typedef int (vlib_is_packet_traced_fn_t) (vlib_buffer_t *b,
+					  u32 classify_table_index, int func);
+
 typedef enum
 {
   VLIB_NODE_RUNTIME_PERF_BEFORE,
@@ -302,6 +305,9 @@ typedef struct vlib_global_main_t
   /* Packet trace capture filter */
   vlib_trace_filter_t trace_filter;
 
+  /* Is packet traced function */
+  vlib_is_packet_traced_fn_t *is_traced_function;
+
   /* List of init functions to call, setup by constructors */
   _vlib_init_function_list_elt_t *init_function_registrations;
   _vlib_init_function_list_elt_t *main_loop_enter_function_registrations;
@@ -490,6 +496,7 @@ void vlib_add_del_post_mortem_callback (void *cb, int is_add);
 vlib_main_t *vlib_get_main_not_inline (void);
 elog_main_t *vlib_get_elog_main_not_inline ();
 
+void vlib_set_is_packet_traced_function (vlib_is_packet_traced_fn_t x);
 #endif /* included_vlib_main_h */
 
 /*

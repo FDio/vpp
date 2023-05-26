@@ -3052,6 +3052,9 @@ unformat_l2_output_next_node (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+int vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index,
+			   int func);
+
 static clib_error_t *
 vnet_classify_init (vlib_main_t * vm)
 {
@@ -3075,6 +3078,7 @@ vnet_classify_init (vlib_main_t * vm)
 
   vlib_global_main.trace_filter.classify_table_index = ~0;
 
+  vlib_set_is_packet_traced_function (vnet_is_packet_traced);
   return 0;
 }
 
