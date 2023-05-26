@@ -420,7 +420,8 @@ vl_api_trace_v2_dump_t_handler (vl_api_trace_v2_dump_t *mp)
   /* Save the cache, one way or the other */
   tdmp->traces[client_index] = client_trace_cache;
 
-  for (i = first_thread_id; i <= last_thread_id; i++)
+  for (i = first_thread_id;
+       i <= last_thread_id && i < vec_len (client_trace_cache); i++)
     {
       // dump a number of 'max' packets per thead
       for (j = first_position;
