@@ -273,6 +273,48 @@ uword_bitmap_find_first_set (uword *bmp)
   return (b - bmp) * uword_bits + get_lowest_set_bit_index (b[0]);
 }
 
+static_always_inline u32
+bit_extract_u32 (u32 v, u32 mask)
+{
+#ifdef __BMI2__
+  return _pext_u32 (v, mask);
+#else
+  u32 rv = 0;
+  u32 bit = 1;
+
+  while (mask)
+    {
+      u32 lowest_mask_bit = get_lowest_set_bit (mask);
+      mask ^= lowest_mask_bit;
+      rv |= (v & lowest_mask_bit) ? bit : 0;
+      bit <<= 1;
+    }
+
+  return rv;
+#endif
+}
+
+static_always_inline u64
+bit_extract_u64 (u64 v, u64 mask)
+{
+#ifdef __BMI2__
+  return _pext_u64 (v, mask);
+#else
+  u64 rv = 0;
+  u64 bit = 1;
+
+  while (mask)
+    {
+      u64 lowest_mask_bit = get_lowest_set_bit (mask);
+      mask ^= lowest_mask_bit;
+      rv |= (v & lowest_mask_bit) ? bit : 0;
+      bit <<= 1;
+    }
+
+  return rv;
+#endif
+}
+
 #else
 #warning "already included"
 #endif /* included_clib_bitops_h */
