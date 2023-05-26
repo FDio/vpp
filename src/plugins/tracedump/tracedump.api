@@ -193,3 +193,23 @@ define trace_v2_details {
 
     string trace_data[];
 };
+
+autoreply define trace_set_filter_function
+{
+    u32 client_index;
+    u32 context;
+
+    string filter_function_name[];
+};
+
+define trace_filter_function_dump {
+    u32 client_index;
+    u32 context;
+};
+
+define trace_filter_function_details {
+    u32 context;
+
+    bool selected;
+    string name[];
+};
