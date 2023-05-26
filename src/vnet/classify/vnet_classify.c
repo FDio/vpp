@@ -3085,7 +3085,12 @@ vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
 {
   return vnet_is_packet_traced_inline (b, classify_table_index, func);
 }
-
+VLIB_REGISTER_TRACE_FILTER_FUNCTION (vnet_is_packet_traced_fn, static) = {
+  .name = "vnet_is_packet_traced",
+  .description = "classifier based filter",
+  .priority = 50,
+  .function = vnet_is_packet_traced
+};
 
 #define TEST_CODE 0
 
