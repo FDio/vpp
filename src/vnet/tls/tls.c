@@ -463,6 +463,7 @@ tls_session_accept_callback (session_t * tls_session)
   session_t *tls_listener, *app_session;
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
+  int rv;
 
   tls_listener =
     listen_session_get_from_handle (tls_session->listener_handle);
@@ -489,7 +490,14 @@ tls_session_accept_callback (session_t * tls_session)
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
 	   tls_listener->opaque, vlib_get_thread_index (), ctx_handle);
 
-  return tls_ctx_init_server (ctx);
+  rv = tls_ctx_init_server (ctx);
+  if (rv)
+    {
+      session_free (app_session);
+      tls_ctx_free (ctx);
+    }
+
+  return rv;
 }
 
 int
@@ -530,6 +538,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   tls_ctx_t *ho_ctx, *ctx;
   session_type_t st;
   u32 ctx_handle;
+  int rv;
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
 
@@ -559,7 +568,14 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   app_session->session_type = st;
   app_session->connection_index = ctx->tls_ctx_handle;
 
-  return tls_ctx_init_client (ctx);
+  rv = tls_ctx_init_client (ctx);
+  if (rv)
+    {
+      session_free (app_session);
+      tls_ctx_free (ctx);
+    }
+
+  return rv;
 }
 
 int
