@@ -70,7 +70,7 @@ vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
   vlib_buffer_t *b = b_first;
   uword l_first = b_first->current_length;
   uword l = 0;
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       l += b->current_length;
@@ -96,7 +96,7 @@ format_vlib_buffer_no_chain (u8 * s, va_list * args)
 		"ref-count %u", b->current_data, b->current_length,
 		b->buffer_pool_index, b->ref_count);
 
-  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  if (vlib_buffer_is_chained (b))
     s = format (s, ", totlen-nifb %d",
 		b->total_length_not_including_first_buffer);
 
@@ -119,7 +119,7 @@ format_vlib_buffer (u8 * s, va_list * args)
 
   s = format (s, "%U", format_vlib_buffer_no_chain, b);
 
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     {
       u32 next_buffer = b->next_buffer;
       b = vlib_get_buffer (vm, next_buffer);
@@ -182,7 +182,7 @@ format_vlib_buffer_contents (u8 * s, va_list * va)
   while (1)
     {
       vec_add (s, vlib_buffer_get_current (b), b->current_length);
-      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (b)))
 	break;
       b = vlib_get_buffer (vm, b->next_buffer);
     }
@@ -209,7 +209,7 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
     return format (0, "%d-%d beyond end of buffer %d", b->current_data,
 		   b->current_length, vlib_buffer_get_default_data_size (vm));
 
-  if (follow_buffer_next && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+  if (follow_buffer_next && (vlib_buffer_is_chained (b)))
     {
       vlib_buffer_known_state_t k;
       u8 *msg, *result;
@@ -403,7 +403,7 @@ vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
   b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
   /* Get to the end of the chain before we try to append data... */
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     b = vlib_get_buffer (vm, b->next_buffer);
 
   while (1)

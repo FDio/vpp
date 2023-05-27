@@ -170,7 +170,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 
       bufs[0] = bi[0];
 
-      if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (vlib_buffer_is_chained (b[0]))
 	{
 	  /*
 	   * max number of available dseg:
@@ -194,8 +194,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 	   * buffers because we are close to the end of the ring while we
 	   * still have plenty of descriptors available
 	   */
-	  while (chained_n < dseg_max
-		 && chained_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (chained_n < dseg_max && vlib_buffer_is_chained (chained_b))
 	    {
 	      struct mlx5_wqe_data_seg *dseg = (void *) txq->dv_sq_wqes;
 	      dseg += ((tail + 1) * RDMA_MLX5_WQE_DS + chained_n) & dseg_mask;
@@ -223,7 +222,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 	      chained_n += 1;
 	    }
 
-	  if (chained_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (chained_b))
 	    {
 	      /*
 	       * no descriptors left: drop the chain including 1st WQE
@@ -320,7 +319,7 @@ wrap_around:
 
   while (n >= 1)
     {
-      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b[0])))
 	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq,
 						   n_left_from, bi, b, tail);
 

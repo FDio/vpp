@@ -40,6 +40,10 @@
 
 /* Standard CLIB types. */
 
+#ifndef bool
+typedef _Bool bool;
+#endif
+
 /* Define signed and unsigned 8, 16, 32, and 64 bit types
    and machine signed/unsigned word for all architectures. */
 typedef signed char i8;

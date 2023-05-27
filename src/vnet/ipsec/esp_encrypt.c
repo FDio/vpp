@@ -320,7 +320,7 @@ esp_encrypt_chain_crypto (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	total_len += ch->len = cb->current_length;
       ch->src = ch->dst = vlib_buffer_get_current (cb);
 
-      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (cb)))
 	break;
 
       cb = vlib_get_buffer (vm, cb->next_buffer);
@@ -366,7 +366,7 @@ esp_encrypt_chain_integ (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
 	total_len += ch->len = cb->current_length;
       ch->src = vlib_buffer_get_current (cb);
 
-      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (cb)))
 	break;
 
       cb = vlib_get_buffer (vm, cb->next_buffer);
@@ -735,7 +735,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (n_bufs > 1)
 	{
 	  /* find last buffer in the chain */
-	  while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (lb))
 	    lb = vlib_get_buffer (vm, lb->next_buffer);
 	}
 

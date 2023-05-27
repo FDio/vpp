@@ -232,7 +232,7 @@ gso_segment_buffer_inline (vlib_main_t *vm,
       if (0 == src_left)
 	{
 	  /* init src to the next buffer in chain */
-	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (b))
 	    {
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      src_left = b->current_length;

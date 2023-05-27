@@ -138,7 +138,7 @@ cryptodev_sw_scheduler_sgl (vlib_main_t *vm,
   len -= ch->len;
   n_chunks = 1;
 
-  while (len && b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (len && vlib_buffer_is_chained (b))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       vec_add2 (ptd->chunks, ch, 1);

@@ -219,7 +219,7 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
 				udp->src_port, TRANSPORT_PROTO_UDP);
     }
 
-  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+  if (PREDICT_TRUE (!(vlib_buffer_is_chained (b))))
     b->current_length = hdr->data_length;
   else
     b->total_length_not_including_first_buffer = hdr->data_length

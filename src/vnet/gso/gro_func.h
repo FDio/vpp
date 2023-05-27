@@ -134,10 +134,10 @@ gro_merge_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
 {
   vlib_buffer_t *pb = b0;
 
-  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+  if (PREDICT_FALSE ((vlib_buffer_is_chained (b0)) == 0))
     b0->total_length_not_including_first_buffer = 0;
 
-  while (pb->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (pb))
     pb = vlib_get_buffer (vm, pb->next_buffer);
 
   vlib_buffer_advance (b1, l234_sz1);

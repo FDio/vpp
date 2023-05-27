@@ -1021,7 +1021,7 @@ ip4_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (n_bytes_left == 0)
 	break;
 
-      ASSERT (p0->flags & VLIB_BUFFER_NEXT_PRESENT);
+      ASSERT (vlib_buffer_is_chained (p0));
       p0 = vlib_get_buffer (vm, p0->next_buffer);
       data_this_buffer = vlib_buffer_get_current (p0);
       n_this_buffer = p0->current_length;

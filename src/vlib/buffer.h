@@ -232,6 +232,12 @@ STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
 #define vlib_prefetch_buffer_data(b,type) \
   CLIB_PREFETCH (vlib_buffer_get_current(b), CLIB_CACHE_LINE_BYTES, type)
 
+static_always_inline bool
+vlib_buffer_is_chained (vlib_buffer_t *b)
+{
+  return ((b->flags & VLIB_BUFFER_NEXT_PRESENT) != 0);
+}
+
 always_inline void
 vlib_buffer_struct_is_sane (vlib_buffer_t * b)
 {
@@ -279,7 +285,7 @@ vlib_buffer_advance (vlib_buffer_t * b, word l)
   b->current_data += l;
   b->current_length -= l;
 
-  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
+  ASSERT ((vlib_buffer_is_chained (b)) == 0 ||
 	  b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
 }
 

@@ -212,7 +212,7 @@ retry:
 	  dst_left -= bytes_to_copy;
 	}
 
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b0)))
 	{
 	  bi0 = b0->next_buffer;
 	  goto next_in_chain;
@@ -335,7 +335,7 @@ retry:
       free_slots--;
       slot++;
 
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b0)))
 	{
 	  if (PREDICT_FALSE (free_slots == 0))
 	    {
@@ -526,7 +526,7 @@ retry:
 	  dst_left -= bytes_to_copy;
 	}
 
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b0)))
 	{
 	  slot++;
 	  free_slots--;

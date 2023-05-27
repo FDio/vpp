@@ -141,7 +141,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
       b = b0;
 
       space_left = vmxnet3_tx_ring_space_left (txq);
-      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      while (vlib_buffer_is_chained (b))
 	{
 	  u32 next_buffer = b->next_buffer;
 

@@ -595,8 +595,7 @@ retry:
 	  /* Check if vlib buffer has more data. If not, get more or break */
 	  if (PREDICT_TRUE (!bytes_left))
 	    {
-	      if (PREDICT_FALSE
-		  (current_b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	      if (PREDICT_FALSE (vlib_buffer_is_chained (current_b0)))
 		{
 		  current_b0 = vlib_get_buffer (vm, current_b0->next_buffer);
 		  bytes_left = current_b0->current_length;
@@ -919,8 +918,7 @@ retry:
 	  // Check if vlib buffer has more data. If not, get more or break.
 	  if (PREDICT_TRUE (!bytes_left))
 	    {
-	      if (PREDICT_FALSE
-		  (current_b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	      if (PREDICT_FALSE (vlib_buffer_is_chained (current_b0)))
 		{
 		  current_b0 = vlib_get_buffer (vm, current_b0->next_buffer);
 		  bytes_left = current_b0->current_length;

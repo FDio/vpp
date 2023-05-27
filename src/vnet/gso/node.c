@@ -424,7 +424,7 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
 
 	  if (0 == src_left)
 	    {
-	      int has_next = (csb0->flags & VLIB_BUFFER_NEXT_PRESENT);
+	      int has_next = (vlib_buffer_is_chained (csb0));
 	      u32 next_bi = csb0->next_buffer;
 
 	      /* init src to the next buffer in chain */

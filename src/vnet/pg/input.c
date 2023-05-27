@@ -1600,7 +1600,7 @@ fill_buffer_offload_flags (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
 	    oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 
 	  /* only set GSO flag for chained buffers */
-	  if (gso_enabled && (b0->flags & VLIB_BUFFER_NEXT_PRESENT))
+	  if (gso_enabled && (vlib_buffer_is_chained (b0)))
 	    {
 	      b0->flags |= VNET_BUFFER_F_GSO;
 	      tcp_header_t *tcp =
@@ -1747,7 +1747,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  for (i = 0; i < n_this_frame; i++)
 	    {
 	      b = vlib_get_buffer (vm, to_next[i]);
-	      ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
+	      ASSERT ((vlib_buffer_is_chained (b)) == 0 ||
 		      b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
 	    }
 	}

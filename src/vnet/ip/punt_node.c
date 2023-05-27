@@ -355,7 +355,7 @@ punt_socket_inline (vlib_main_t * vm,
 			    sizeof (t->packet_data));
 	}
 
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b)))
 	{
 	  do
 	    {
@@ -374,7 +374,7 @@ punt_socket_inline (vlib_main_t * vm,
 	      iov->iov_len = b->current_length;
 	      l += b->current_length;
 	    }
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  while (vlib_buffer_is_chained (b));
 	}
 
       struct msghdr msg = {

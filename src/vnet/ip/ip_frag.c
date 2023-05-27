@@ -199,7 +199,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
 	  ASSERT (left_in_from_buffer <= 0);
 	  /* Move buffer */
-	  if (!(from_b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	  if (!vlib_buffer_is_chained (from_b))
 	    {
 	      return IP_FRAG_ERROR_MALFORMED;
 	    }
@@ -472,7 +472,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
 	  ASSERT (left_in_from_buffer <= 0);
 	  /* Move buffer */
-	  if (!(from_b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	  if (!vlib_buffer_is_chained (from_b))
 	    {
 	      return IP_FRAG_ERROR_MALFORMED;
 	    }
