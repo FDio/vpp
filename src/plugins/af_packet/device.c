@@ -454,7 +454,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 			    vlib_buffer_get_current (b0), len);
 	  offset += len;
 
-	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b0))
 	    {
 	      b0 = vlib_get_buffer (vm, b0->next_buffer);
 	      len = b0->current_length;
@@ -533,7 +533,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 			    vlib_buffer_get_current (b0), len);
 	  offset += len;
 
-	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b0))
 	    {
 	      b0 = vlib_get_buffer (vm, b0->next_buffer);
 	      len = b0->current_length;

@@ -166,9 +166,9 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
       last->current_length -= tail;
       return;
     }
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+  ASSERT (vlib_buffer_is_chained (b));
 
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     {
       before_last = b;
       b = vlib_get_buffer (vm, b->next_buffer);
@@ -190,7 +190,7 @@ esp_move_icv (vlib_main_t * vm, vlib_buffer_t * first,
   u16 first_sz = icv_sz - last_sz;
 
   bp = before_last = first;
-  while (bp->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (bp))
     {
       before_last = bp;
       bp = vlib_get_buffer (vm, bp->next_buffer);
@@ -370,7 +370,7 @@ esp_decrypt_chain_integ (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
       else
 	total_len += ch->len = cb->current_length;
 
-      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (cb)))
 	break;
 
       cb = vlib_get_buffer (vm, cb->next_buffer);
@@ -445,7 +445,7 @@ esp_decrypt_chain_crypto (vlib_main_t * vm, ipsec_per_thread_data_t * ptd,
       else
 	total_len += ch->len = cb->current_length;
 
-      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (cb)))
 	break;
 
       cb = vlib_get_buffer (vm, cb->next_buffer);
@@ -786,7 +786,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	   * last buffer */
 
 	  vlib_buffer_t *before_last = b, *bp = b;
-	  while (bp->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (bp))
 	    {
 	      before_last = bp;
 	      bp = vlib_get_buffer (vm, bp->next_buffer);
@@ -1134,7 +1134,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  pd->is_chain = 1;
 	  /* find last buffer in the chain */
-	  while (pd2->lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (pd2->lb))
 	    pd2->lb = vlib_get_buffer (vm, pd2->lb->next_buffer);
 
 	  crypto_ops = &ptd->chained_crypto_ops;

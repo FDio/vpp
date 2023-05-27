@@ -1160,7 +1160,7 @@ format_ip6_sv_reass (u8 * s, va_list * args)
 	++counter;
 	bi = b->next_buffer;
       }
-    while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+    while (vlib_buffer_is_chained (b));
   }
   return s;
 }

@@ -450,7 +450,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       virtio_tx_trace (vm, node, b, bi, is_tun);
     }
 
-  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+  if (PREDICT_TRUE ((vlib_buffer_is_chained (b)) == 0))
     {
       d->addr = ((is_pci) ? vlib_buffer_get_current_pa (vm, b) :
 		 pointer_to_uword (vlib_buffer_get_current (b))) - hdr_sz;
@@ -505,7 +505,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->addr = vlib_buffer_get_current_pa (vm, b);
 	      id->len = b->current_length;
 	    }
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b))
 	    {
 	      id->flags = VRING_DESC_F_NEXT;
 	      id->next = count;
@@ -516,7 +516,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->len = b->current_length;
 	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
 		{
-		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		  if (vlib_buffer_is_chained (b))
 		    vlib_error_count (vm, node->node_index,
 				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
 		  break;
@@ -530,7 +530,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  id->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
 	  id->len = b->current_length + hdr_sz;
 
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b))
 	    {
 	      id->flags = VRING_DESC_F_NEXT;
 	      id->next = count;
@@ -541,7 +541,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->len = b->current_length;
 	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
 		{
-		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		  if (vlib_buffer_is_chained (b))
 		    vlib_error_count (vm, node->node_index,
 				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
 		  break;
@@ -564,7 +564,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
        * descriptors. Return from here, retry to get more descriptors,
        * if chain length is greater than available descriptors.
        */
-      while (b_temp->flags & VLIB_BUFFER_NEXT_PRESENT)
+      while (vlib_buffer_is_chained (b_temp))
 	{
 	  n_buffers_in_chain++;
 	  b_temp = vlib_get_buffer (vm, b_temp->next_buffer);
@@ -576,7 +576,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
 
-      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      while (vlib_buffer_is_chained (b))
 	{
 	  d->flags = VRING_DESC_F_NEXT;
 	  vring->buffers[count] = bi;
@@ -657,7 +657,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
       virtio_tx_trace (vm, node, b, bi, is_tun);
     }
 
-  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+  if (PREDICT_TRUE ((vlib_buffer_is_chained (b)) == 0))
     {
       d->addr =
 	((is_pci) ? vlib_buffer_get_current_pa (vm,
@@ -714,7 +714,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->addr = vlib_buffer_get_current_pa (vm, b);
 	      id->len = b->current_length;
 	    }
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b))
 	    {
 	      id->flags = 0;
 	      id->id = 0;
@@ -725,7 +725,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      id->len = b->current_length;
 	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
 		{
-		  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+		  if (vlib_buffer_is_chained (b))
 		    vlib_error_count (vm, node->node_index,
 				      VIRTIO_TX_ERROR_TRUNC_PACKET, 1);
 		  break;

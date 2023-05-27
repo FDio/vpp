@@ -162,7 +162,7 @@ ip_incremental_checksum_buffer (vlib_main_t * vm,
   n = clib_min (n_bytes_left, b->current_length - first_buffer_offset);
   h = vlib_buffer_get_current (b) + first_buffer_offset;
   sum = ip_incremental_checksum (sum, h, n);
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+  if (PREDICT_FALSE (vlib_buffer_is_chained (b)))
     {
       while (1)
 	{
@@ -231,7 +231,7 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
       if (n_bytes_left == 0)
 	break;
 
-      if (!(p0->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (p0)))
 	{
 	  return 0xfefe;
 	}

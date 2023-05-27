@@ -157,7 +157,7 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (n_left <= 0)
 		break;
 	      d += b->current_length;
-	      ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	      ASSERT (vlib_buffer_is_chained (b));
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	    }
 	  clib_spinlock_unlock_if_init (&pm->lock);

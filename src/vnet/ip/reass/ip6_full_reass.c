@@ -512,11 +512,11 @@ sanitize_reass_buffers_add_missing (vlib_main_t *vm, ip6_full_reass_t *reass,
 	{
 	  if (bi == *bi0)
 	    *bi0 = ~0;
-	  if (range_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (range_b))
 	    {
 	      u32 _bi = bi;
 	      vlib_buffer_t *_b = vlib_get_buffer (vm, _bi);
-	      while (_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      while (vlib_buffer_is_chained (_b))
 		{
 		  if (_b->next_buffer != range_vnb->ip.reass.next_range_bi)
 		    {
@@ -572,7 +572,7 @@ ip6_full_reass_on_timeout (vlib_main_t *vm, vlib_node_runtime_t *node,
 					ICMP_ERROR_RT_EXCEEDED, ~0);
 	    }
 	  // fragment with offset zero received - send icmp message back
-	  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (b))
 	    {
 	      // separate first buffer from chain and steer it towards icmp node
 	      b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
@@ -751,7 +751,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (trim_front > tmp->current_length)
 		{
 		  /* drop whole buffer */
-		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
+		  if (!(vlib_buffer_is_chained (tmp)))
 		    {
 		      rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 		      goto free_buffers_and_return;
@@ -785,7 +785,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  keep_data -= tmp->current_length;
-		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
+		  if (!(vlib_buffer_is_chained (tmp)))
 		    {
 		      rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
 		      goto free_buffers_and_return;
@@ -802,7 +802,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      vec_add1 (vec_drop_compress, tmp_bi);
 	    }
-	  if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (tmp))
 	    {
 	      tmp_bi = tmp->next_buffer;
 	      tmp = vlib_get_buffer (vm, tmp->next_buffer);
@@ -890,7 +890,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	      s = format (s, "%u: %U\n", bi, format_hexdump,
 			  vlib_buffer_get_current (b), b->current_length);
-	      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      if (vlib_buffer_is_chained (b))
 		{
 		  bi = b->next_buffer;
 		}
@@ -1886,7 +1886,7 @@ format_ip6_full_reass (u8 * s, va_list * args)
 		  ip6_full_reass_buffer_get_data_offset (b),
 		  ip6_full_reass_buffer_get_data_len (b),
 		  vnb->ip.reass.fragment_first, vnb->ip.reass.fragment_last);
-      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (vlib_buffer_is_chained (b))
 	{
 	  bi = b->next_buffer;
 	}

@@ -334,7 +334,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 static void *
 tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT ((vlib_buffer_is_chained (b)) == 0);
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   b->current_data = 0;
@@ -607,7 +607,7 @@ tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4)
   /*
    * Clear and reuse current buffer for reset
    */
-  if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  if (vlib_buffer_is_chained (b))
     vlib_buffer_free_one (vm, b->next_buffer);
 
   /* Zero all flags but free list index and trace flag */
@@ -900,7 +900,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
   tcp_header_t *th;
 
   data_len = b->current_length;
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+  if (PREDICT_FALSE (vlib_buffer_is_chained (b)))
     data_len += b->total_length_not_including_first_buffer;
 
   vnet_buffer (b)->tcp.flags = 0;
@@ -958,7 +958,7 @@ always_inline u32
 tcp_buffer_len (vlib_buffer_t * b)
 {
   u32 data_len = b->current_length;
-  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+  if (PREDICT_FALSE (vlib_buffer_is_chained (b)))
     data_len += b->total_length_not_including_first_buffer;
   return data_len;
 }

@@ -42,21 +42,21 @@
 
 #define IP4_REASS_DEBUG_BUFFERS 0
 #if IP4_REASS_DEBUG_BUFFERS
-#define IP4_REASS_DEBUG_BUFFER(bi, what)             \
-  do                                                 \
-    {                                                \
-      u32 _bi = bi;                                  \
-      printf (#what "buffer %u", _bi);               \
-      vlib_buffer_t *_b = vlib_get_buffer (vm, _bi); \
-      while (_b->flags & VLIB_BUFFER_NEXT_PRESENT)   \
-        {                                            \
-          _bi = _b->next_buffer;                     \
-          printf ("[%u]", _bi);                      \
-          _b = vlib_get_buffer (vm, _bi);            \
-        }                                            \
-      printf ("\n");                                 \
-      fflush (stdout);                               \
-    }                                                \
+#define IP4_REASS_DEBUG_BUFFER(bi, what)                                      \
+  do                                                                          \
+    {                                                                         \
+      u32 _bi = bi;                                                           \
+      printf (#what "buffer %u", _bi);                                        \
+      vlib_buffer_t *_b = vlib_get_buffer (vm, _bi);                          \
+      while (vlib_buffer_is_chained (_b))                                     \
+	{                                                                     \
+	  _bi = _b->next_buffer;                                              \
+	  printf ("[%u]", _bi);                                               \
+	  _b = vlib_get_buffer (vm, _bi);                                     \
+	}                                                                     \
+      printf ("\n");                                                          \
+      fflush (stdout);                                                        \
+    }                                                                         \
   while (0)
 #else
 #define IP4_REASS_DEBUG_BUFFER(...)
@@ -493,11 +493,11 @@ sanitize_reass_buffers_add_missing (vlib_main_t *vm, ip4_full_reass_t *reass,
 	{
 	  if (bi == *bi0)
 	    *bi0 = ~0;
-	  if (range_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (vlib_buffer_is_chained (range_b))
 	    {
 	      u32 _bi = bi;
 	      vlib_buffer_t *_b = vlib_get_buffer (vm, _bi);
-	      while (_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      while (vlib_buffer_is_chained (_b))
 		{
 		  if (_b->next_buffer != range_vnb->ip.reass.next_range_bi)
 		    {
@@ -671,7 +671,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  /* drop whole buffer */
 		  u32 to_be_freed_bi = tmp_bi;
 		  trim_front -= tmp->current_length;
-		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
+		  if (!(vlib_buffer_is_chained (tmp)))
 		    {
 		      return IP4_REASS_RC_INTERNAL_ERROR;
 		    }
@@ -704,13 +704,13 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  keep_data -= tmp->current_length;
-		  if (!(tmp->flags & VLIB_BUFFER_NEXT_PRESENT))
+		  if (!(vlib_buffer_is_chained (tmp)))
 		    {
 		      return IP4_REASS_RC_INTERNAL_ERROR;
 		    }
 		}
 	      total_length += tmp->current_length;
-	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      if (vlib_buffer_is_chained (tmp))
 		{
 		  tmp_bi = tmp->next_buffer;
 		  tmp = vlib_get_buffer (vm, tmp->next_buffer);
@@ -727,7 +727,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  return IP4_REASS_RC_INTERNAL_ERROR;
 		}
-	      if (tmp->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      if (vlib_buffer_is_chained (tmp))
 		{
 		  tmp->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 		  tmp_bi = tmp->next_buffer;
@@ -787,7 +787,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 	      s = format (s, "%u: %U\n", bi, format_hexdump,
 			  vlib_buffer_get_current (b), b->current_length);
-	      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      if (vlib_buffer_is_chained (b))
 		{
 		  bi = b->next_buffer;
 		}
@@ -898,7 +898,7 @@ ip4_full_reass_remove_range_from_chain (vlib_main_t * vm,
 	  ip4_full_reass_add_trace (vm, node, reass, discard_bi, RANGE_DISCARD,
 				    0, ~0);
 	}
-      if (discard_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (vlib_buffer_is_chained (discard_b))
 	{
 	  discard_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 	  discard_bi = discard_b->next_buffer;
@@ -1765,7 +1765,7 @@ format_ip4_reass (u8 * s, va_list * args)
 		ip4_full_reass_buffer_get_data_offset (b),
 		ip4_full_reass_buffer_get_data_len (b),
 		vnb->ip.reass.fragment_first, vnb->ip.reass.fragment_last);
-      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (vlib_buffer_is_chained (b))
 	{
 	  bi = b->next_buffer;
 	}

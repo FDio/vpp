@@ -94,7 +94,7 @@ mpcap_add_buffer (mpcap_main_t * pm,
       if (n_left <= 0)
 	break;
       d += b->current_length;
-      ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+      ASSERT (vlib_buffer_is_chained (b));
       b = vlib_get_buffer (vm, b->next_buffer);
     }
   if (pm->n_packets_captured >= pm->n_packets_to_capture)

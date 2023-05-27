@@ -494,12 +494,12 @@ api_rx_from_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       msg = b0->data + b0->current_data;
       msg_len = b0->current_length;
-      if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+      if (vlib_buffer_is_chained (b0))
 	{
 	  ASSERT (long_msg != 0);
 	  vec_set_len (long_msg, 0);
 	  vec_add (long_msg, msg, msg_len);
-	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b0))
 	    {
 	      b0 = vlib_get_buffer (vm, b0->next_buffer);
 	      msg = b0->data + b0->current_data;
