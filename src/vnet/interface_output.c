@@ -1143,7 +1143,7 @@ pcap_drop_trace (vlib_main_t * vm,
 	drop_string_len = error_string_len + vec_len (n->name) + 2;
 
 	/* Find the last buffer in the chain */
-	while (last->flags & VLIB_BUFFER_NEXT_PRESENT)
+	while (vlib_buffer_is_chained (last))
 	  last = vlib_get_buffer (vm, last->next_buffer);
 
 	/*

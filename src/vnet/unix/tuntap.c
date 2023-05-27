@@ -179,7 +179,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
-      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b)))
 	{
 	  do
 	    {
@@ -191,7 +191,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      iov->iov_len = b->current_length;
 	      l += b->current_length;
 	    }
-	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  while (vlib_buffer_is_chained (b));
 	}
 
       if (writev (tm->dev_net_tun_fd, tm->threads[thread_index].iovecs,

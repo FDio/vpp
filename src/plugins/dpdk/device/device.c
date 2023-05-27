@@ -128,7 +128,7 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     b->current_length;
   mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
 
-  while (maybe_multiseg && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+  while (maybe_multiseg && (vlib_buffer_is_chained (b)))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);

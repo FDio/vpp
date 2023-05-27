@@ -87,7 +87,7 @@ bufmon_count_buffers (vlib_main_t *vm, vlib_frame_t *frame)
   for (i = 0; i < n; i++)
     {
       const vlib_buffer_t *cb = b[i];
-      while (cb->flags & VLIB_BUFFER_NEXT_PRESENT)
+      while (vlib_buffer_is_chained ((vlib_buffer_t *) cb))
 	{
 	  nc++;
 	  cb = vlib_get_buffer (vm, cb->next_buffer);

@@ -2734,7 +2734,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
       bi = vlib_get_buffer_index (vm, b0);
     }
 
-  if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+  if (vlib_buffer_is_chained (b0))
     vlib_buffer_free_one (vm, b0->next_buffer);
 
   /*

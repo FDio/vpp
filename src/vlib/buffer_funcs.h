@@ -367,8 +367,8 @@ vlib_get_buffer_indices (vlib_main_t * vm, vlib_buffer_t ** b, u32 * bi,
 always_inline vlib_buffer_t *
 vlib_get_next_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  return (b->flags & VLIB_BUFFER_NEXT_PRESENT
-	  ? vlib_get_buffer (vm, b->next_buffer) : 0);
+  return (vlib_buffer_is_chained (b) ? vlib_get_buffer (vm, b->next_buffer) :
+					     0);
 }
 
 uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
@@ -385,7 +385,7 @@ vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
 {
   uword len = b->current_length;
 
-  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+  if (PREDICT_TRUE ((vlib_buffer_is_chained (b)) == 0))
     return len;
 
   if (PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
@@ -427,7 +427,7 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
       l = b->current_length;
       clib_memcpy_fast (contents + content_len, b->data + b->current_data, l);
       content_len += l;
-      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (b)))
 	break;
       buffer_index = b->next_buffer;
     }
@@ -1102,7 +1102,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   int i;
 
   s = b;
-  while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (s))
     {
       n_buffers++;
       s = vlib_get_buffer (vm, s->next_buffer);
@@ -1181,7 +1181,7 @@ vlib_buffer_copy_no_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * di)
 always_inline void
 vlib_buffer_move (vlib_main_t * vm, vlib_buffer_t * b, i16 offset)
 {
-  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT ((vlib_buffer_is_chained (b)) == 0);
   ASSERT (offset + VLIB_BUFFER_PRE_DATA_SIZE >= 0);
   ASSERT (offset + b->current_length <
 	  vlib_buffer_get_default_data_size (vm));
@@ -1265,7 +1265,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 
       d->total_length_not_including_first_buffer = s->current_length -
 	head_end_offset;
-      if (PREDICT_FALSE (s->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (s)))
 	{
 	  d->total_length_not_including_first_buffer +=
 	    s->total_length_not_including_first_buffer;
@@ -1281,7 +1281,7 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
     }
   vlib_buffer_advance (s, head_end_offset);
   s->ref_count = n_buffers ? n_buffers : s->ref_count;
-  while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (s))
     {
       s = vlib_get_buffer (vm, s->next_buffer);
       s->ref_count = n_buffers ? n_buffers : s->ref_count;
@@ -1359,7 +1359,7 @@ always_inline void
 vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
 			  vlib_buffer_t * tail)
 {
-  ASSERT ((head->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT ((vlib_buffer_is_chained (head)) == 0);
   ASSERT (head->buffer_pool_index == tail->buffer_pool_index);
 
   head->flags |= VLIB_BUFFER_NEXT_PRESENT;
@@ -1373,7 +1373,7 @@ vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
 next_segment:
   clib_atomic_add_fetch (&tail->ref_count, 1);
 
-  if (tail->flags & VLIB_BUFFER_NEXT_PRESENT)
+  if (vlib_buffer_is_chained (tail))
     {
       tail = vlib_get_buffer (vm, tail->next_buffer);
       goto next_segment;
@@ -1494,7 +1494,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
   u16 rem_len, dst_len, data_size, src_len = 0;
   u8 *dst, *src = 0;
 
-  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+  if (PREDICT_TRUE ((vlib_buffer_is_chained (b)) == 0))
     return 1;
 
   ASSERT (1 == b->ref_count);
@@ -1516,8 +1516,8 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 
       while (0 == src_len)
 	{
-	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-	  if (PREDICT_FALSE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	  ASSERT (vlib_buffer_is_chained (b));
+	  if (PREDICT_FALSE (!(vlib_buffer_is_chained (b))))
 	    break; /* malformed chained buffer */
 
 	  b = vlib_get_buffer (vm, b->next_buffer);
@@ -1527,8 +1527,8 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
 
       if (0 == dst_len)
 	{
-	  ASSERT (dst_b->flags & VLIB_BUFFER_NEXT_PRESENT);
-	  if (PREDICT_FALSE (!(dst_b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	  ASSERT (vlib_buffer_is_chained (dst_b));
+	  if (PREDICT_FALSE (!(vlib_buffer_is_chained (dst_b))))
 	    break; /* malformed chained buffer */
 
 	  vlib_buffer_t *next_dst_b = vlib_get_buffer (vm, dst_b->next_buffer);
@@ -1613,7 +1613,7 @@ vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * b)
   if (to_free)
     vlib_buffer_free_one (vm, to_free);
 
-  if (dst_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  if (vlib_buffer_is_chained (dst_b))
     {
       /* the resulting chain is smaller than the original, cut it there */
       dst_b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;

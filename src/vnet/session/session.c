@@ -442,8 +442,8 @@ session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
 {
   vlib_buffer_t *next = *chain_b;
   u32 to_drop = n_bytes_to_drop;
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-  while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
+  ASSERT (vlib_buffer_is_chained (b));
+  while (to_drop && vlib_buffer_is_chained (next))
     {
       next = vlib_get_buffer (vm, next->next_buffer);
       if (next->current_length > to_drop)
@@ -530,8 +530,8 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 	  offset += len;
 	}
     }
-  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	  ? chain_b->next_buffer : 0));
+  while ((chain_bi =
+	    (vlib_buffer_is_chained (chain_b)) ? chain_b->next_buffer : 0));
 
   if (is_in_order)
     return written;
@@ -586,8 +586,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
       enqueued = svm_fifo_enqueue (s->rx_fifo,
 				   b->current_length,
 				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
-			 && enqueued >= 0))
+      if (PREDICT_FALSE ((vlib_buffer_is_chained (b)) && enqueued >= 0))
 	{
 	  in_order_off = enqueued > b->current_length ? enqueued : 0;
 	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
@@ -600,7 +599,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
       rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
 					 b->current_length,
 					 vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
+      if (PREDICT_FALSE (vlib_buffer_is_chained (b) && !rv))
 	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
       /* if something was enqueued, report even this as success for ooo
        * segment handling */
@@ -636,7 +635,7 @@ session_enqueue_dgram_connection (session_t * s,
   ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
-  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+  if (PREDICT_TRUE (!vlib_buffer_is_chained (b)))
     {
       /* *INDENT-OFF* */
       svm_fifo_seg_t segs[2] = {
@@ -664,7 +663,7 @@ session_enqueue_dgram_connection (session_t * s,
 	  seg->data = vlib_buffer_get_current (it);
 	  seg->len = it->current_length;
 	  n_segs++;
-	  if (!(it->flags & VLIB_BUFFER_NEXT_PRESENT))
+	  if (!(vlib_buffer_is_chained (it)))
 	    break;
 	  it = vlib_get_buffer (vm, it->next_buffer);
 	}

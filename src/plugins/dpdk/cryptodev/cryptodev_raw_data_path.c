@@ -69,7 +69,7 @@ cryptodev_frame_build_sgl (vlib_main_t *vm, enum rte_iova_mode iova_mode,
   if (vlib_buffer_chain_linearize (vm, b) > CRYPTODEV_MAX_N_SGL)
     return -1;
 
-  while ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && size)
+  while ((vlib_buffer_is_chained (b)) && size)
     {
       u32 len;
       b = vlib_get_buffer (vm, b->next_buffer);

@@ -196,7 +196,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 	  space_left = vlib_buffer_space_left_at_end (vm, b0);
 	  /* cant parse chains...
 	   * and we need some space for option 82*/
-	  if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) != 0 ||
+	  if (vlib_buffer_is_chained (b0) ||
 	      space_left < VPP_DHCP_OPTION82_SIZE)
 	    {
 	      error0 = DHCP_PROXY_ERROR_PKT_TOO_BIG;
@@ -572,7 +572,7 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
 	  // if (1 /* dpm->insert_option_82 */ )
 	  /* linearize needed to "unclone" and scan options */
 	  int rv = vlib_buffer_chain_linearize (vm, b0);
-	  if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) != 0 || !rv)
+	  if (vlib_buffer_is_chained (b0) || !rv)
 	    {
 	      error0 = DHCP_PROXY_ERROR_PKT_TOO_BIG;
 	      goto drop_packet;

@@ -1264,7 +1264,7 @@ tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
   /* Handle multi-buffer segments */
   if (n_bytes_to_drop > b->current_length)
     {
-      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (b)))
 	return -1;
       do
 	{

@@ -86,7 +86,7 @@ cryptodev_validate_mbuf_chain (vlib_main_t *vm, struct rte_mbuf *mb,
   first_mb->nb_segs = 1;
   first_mb->pkt_len = first_mb->data_len = data_len;
 
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);

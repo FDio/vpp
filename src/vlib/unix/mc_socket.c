@@ -69,7 +69,7 @@ append_buffer_index_to_iovec (vlib_main_t * vm,
       i->iov_base = vlib_buffer_get_current (b);
       i->iov_len = b->current_length;
       l += i->iov_len;
-      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+      if (!(vlib_buffer_is_chained (b)))
 	break;
       bi = b->next_buffer;
     }

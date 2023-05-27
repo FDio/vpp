@@ -112,7 +112,7 @@ check_chain (vlib_main_t *vm, vlib_buffer_t *b, const u8 *rand)
 		   b->current_length))
     return 0;
   len = b->current_length;
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+  while (vlib_buffer_is_chained (b))
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       if (clib_memcmp (vlib_buffer_get_current (b),

@@ -352,7 +352,7 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	    {
 	      vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
 	      n_desc_needed = 2;
-	      while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
+	      while (vlib_buffer_is_chained (next))
 		{
 		  next = vlib_get_buffer (vm, next->next_buffer);
 		  n_desc_needed++;
@@ -392,7 +392,7 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	    }
 
 	  /* Deal with chain buffer if present */
-	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (vlib_buffer_is_chained (b[0]))
 	    {
 	      avf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
 
