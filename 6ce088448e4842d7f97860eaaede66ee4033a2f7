@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2d3a829_cdd7c605",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-28T21:42:35Z",
+      "side": 1,
+      "message": "Please correct commit message issues.",
+      "revId": "6ce088448e4842d7f97860eaaede66ee4033a2f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
