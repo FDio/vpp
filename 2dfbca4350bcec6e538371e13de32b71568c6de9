@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "08112892_1dc5dd42",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-05-28T14:49:20Z",
+      "side": 1,
+      "message": "Please take a look - further documentation of this change on:\n\nhttps://ipng.ch/s/articles/2023/05/21/vpp-mpls-3.html\nhttps://ipng.ch/s/articles/2023/05/28/vpp-mpls-4.html",
+      "revId": "2dfbca4350bcec6e538371e13de32b71568c6de9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
