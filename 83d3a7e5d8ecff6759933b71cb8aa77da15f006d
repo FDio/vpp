@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55697096_b75560f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-29T09:54:36Z",
+      "side": 1,
+      "message": "Sorry for the late response. Can you do a rebase on your patch again? Sorry for not getting back to you earlier.",
+      "revId": "83d3a7e5d8ecff6759933b71cb8aa77da15f006d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
