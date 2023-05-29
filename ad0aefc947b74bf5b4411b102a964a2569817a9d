@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a60400b_8111d409",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T17:32:13Z",
+      "side": 1,
+      "message": "In commit message in the title use imperative, so \"make\" instead of \"making\". Also description part start with \"This\" instead of \"this\".",
+      "revId": "ad0aefc947b74bf5b4411b102a964a2569817a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
