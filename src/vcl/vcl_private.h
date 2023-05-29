@@ -666,6 +666,22 @@ vcl_session_dgram_tx_evt (vcl_session_t *s, session_evt_type_t et)
   return (s->flags & VCL_SESSION_F_CONNECTED) ? et : SESSION_IO_EVT_TX_MAIN;
 }
 
+static inline void
+vcl_session_add_want_deq_ntf (vcl_session_t *s, svm_fifo_deq_ntf_t evt)
+{
+  svm_fifo_t *txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+  if (txf)
+    svm_fifo_add_want_deq_ntf (txf, evt);
+}
+
+static inline void
+vcl_session_del_want_deq_ntf (vcl_session_t *s, svm_fifo_deq_ntf_t evt)
+{
+  svm_fifo_t *txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+  if (txf)
+    svm_fifo_del_want_deq_ntf (txf, evt);
+}
+
 /*
  * Helpers
  */
