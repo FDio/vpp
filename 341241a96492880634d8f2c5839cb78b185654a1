@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "18a8eb48_cabdffa0",
+        "filename": "src/plugins/wireguard/wireguard_if.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-29T10:23:56Z",
+      "side": 1,
+      "message": "This branch is not always true, in variable: \"inflight_handshake_counting_end\" wg will kept the time and this time will be updated for each \"REKEY_TIMEOUT\" (5s), in the first time it will be store \"now + 5s\", but during the next 5s value \"inflight_handshake_counting_end\" won\u0027t updated.",
+      "parentUuid": "42290924_d72f793c",
+      "revId": "341241a96492880634d8f2c5839cb78b185654a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "969db4bd_42588db7",
         "filename": "src/plugins/wireguard/wireguard_if.h",
         "patchSetId": 3
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7215aa7e_d9cf59e0",
+        "filename": "src/plugins/wireguard/wireguard_if.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-29T10:23:56Z",
+      "side": 1,
+      "message": "This diff shows how much time is remaining for the next \"REKEY_TIMEOUT\".",
+      "parentUuid": "969db4bd_42588db7",
+      "revId": "341241a96492880634d8f2c5839cb78b185654a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3e18a1ab_6d451a00",
         "filename": "src/plugins/wireguard/wireguard_if.h",
         "patchSetId": 3
@@ -48,6 +84,24 @@
       "writtenOn": "2023-05-29T09:18:45Z",
       "side": 1,
       "message": "Line 126/127 are useless.",
+      "revId": "341241a96492880634d8f2c5839cb78b185654a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "054368c2_9f1b2d9a",
+        "filename": "src/plugins/wireguard/wireguard_if.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-29T10:23:56Z",
+      "side": 1,
+      "message": "These lines are necessary, because they provide that under load state won\u0027t take longer than it is necessary. \nThese lines will be helpful if the diff will be shorter than \"UNDER_LOAD_INTERVAL\" (1s) and under load state should take similar time as diff has in this case.",
+      "parentUuid": "3e18a1ab_6d451a00",
       "revId": "341241a96492880634d8f2c5839cb78b185654a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
