@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "429e0d78_863d5666",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "Instead of \"normal UDP traffic\", \"plain UDP traffic\" formulation can be used.",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a1a7acc_c36df4a5",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "Either inbound/outbound or Inbound/Outbound. Please be consistent.",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9cad871_a5a7f9d3",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "if this line is not needed please remove it",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc4f9578_514deced",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "if this line is not needed please remove it",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64bcf77c_a816f3cc",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "why this line is needed?",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa47d6e2_2968816a",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "if this line is not needed please remove it",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "997f241f_57ecbfda",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 766,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "please don\u0027t use magic numbers",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0727bc0c_93c46ff5",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 895,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "if these lines are not needed please remove them",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad454c49_77d81247",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "please remove this comment",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aef7b4ba_3892234c",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "why did you introduce this variable, for pg0, but at same time explicitly use pg1?",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c2d516d_8a41afdb",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "please remove this line if not needed",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e561bee2_65a21ae4",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 937,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 1,
+      "message": "unused variable?",
+      "revId": "027c60e20d4ab72b8c2faf70aa52b427159e7147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

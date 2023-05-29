@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d4ea4c0_41436769",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "please don\u0027t remove this comment",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56f00ce2_e14f5396",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 512,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "please don\u0027t remove this comment",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ea1d333_9cbe3d12",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 827,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "why these lines are removed?",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f8f4747_0c1e286b",
+        "filename": "test/asf/test_ipsec_spd_flow_cache_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 852,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "why this comment is removed?",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "025eee1c_714c9f21",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "why did you remove these lines?",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5cabfccc_9e589109",
+        "filename": "test/test_ipsec_spd_fp_input.py",
+        "patchSetId": 24
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T23:05:02Z",
+      "side": 0,
+      "message": "why did you remove these lines?",
+      "revId": "b5ec6b106b18378936ef49230df95645f492ec75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
