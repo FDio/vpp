@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "84987cbb_9174bc91",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-29T09:48:43Z",
+      "side": 1,
+      "message": "Adding the guys with more knowledge on nat as reviewer.",
+      "revId": "668b18be85bce41079564be7d143270180860621",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
