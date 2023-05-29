@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "64386777_aee5ab8c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-05-29T08:02:31Z",
+      "side": 1,
+      "message": "Now you are missing space after comma: IPsec traffic,UDP",
+      "revId": "178c2ce61e6b0a9e5f54e7daced053bf27d1a55b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
