@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2847a1cf_1623ec2b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-05-29T12:44:04Z",
+      "side": 1,
+      "message": "This patch looks fine. This (and the associated mail) also resolves my curiosity as to why that difference in behavior was there in the first place.",
+      "revId": "6aa1c765e81242d18aeda60da1c7c2f9687aec37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
