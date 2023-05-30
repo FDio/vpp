@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b19eb89b_dcf3e83e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-05-30T05:39:22Z",
+      "side": 1,
+      "message": "Please take consider about add support also for wireguard, because there is support for async.",
+      "revId": "aa15abc8d1e35a9f6872250c0fb817b973231d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
