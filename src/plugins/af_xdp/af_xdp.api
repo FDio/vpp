@@ -132,6 +132,56 @@ autoreply define af_xdp_delete
   option vat_help = "<sw_if_index index>";
 };
 
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index or ~0 for all
+*/
+
+autoendian define af_xdp_get
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+};
+autoendian define af_xdp_get_reply
+{
+  u32 context;
+  u32 retval;
+  u32 cursor;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param linux_ifindex - netdev ifindex in linux
+    @param name - new af_xdp interface name (optional)
+    @param host_ifname - Linux netdev interface name
+    @param netns - netns of nic
+    @param rxq_num - number of receive queues
+    @param txq_num - number of transmit queues
+    @param flags - flags
+*/
+
+autoendian define af_xdp_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 linux_ifindex;
+  string name[64];
+  string host_ifname[64];
+  string netns[64];
+  u32 flags;
+  u8 tqx_num;
+  u8 rxq_num;
+};
+
+service {
+  rpc af_xdp_get returns af_xdp_get_reply
+    stream af_xdp_details;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

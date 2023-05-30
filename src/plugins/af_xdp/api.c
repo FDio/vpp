@@ -143,6 +143,46 @@ reply:
   REPLY_MACRO (VL_API_AF_XDP_DELETE_REPLY);
 }
 
+static void
+send_af_xdp_details (u32 cursor, vl_api_registration_t *rp, u32 context)
+{
+  vl_api_af_xdp_details_t *rmp;
+  af_xdp_main_t *rm = &af_xdp_main;
+  af_xdp_device_t *dev = pool_elt_at_index (rm->devices, cursor);
+
+  REPLY_MACRO_DETAILS4_END (
+    VL_API_AF_XDP_DETAILS, rp, context, ({
+      rmp->sw_if_index = dev->sw_if_index;
+      rmp->rxq_num = dev->rxq_num;
+      rmp->tqx_num = dev->txq_num;
+      rmp->linux_ifindex = dev->linux_ifindex;
+      rmp->flags = dev->flags;
+
+      memcpy_s (rmp->name, sizeof (rmp->name), dev->name, vec_len (dev->name));
+      rmp->name[vec_len (dev->name)] = 0;
+
+      memcpy_s (rmp->host_ifname, sizeof (rmp->host_ifname), dev->linux_ifname,
+		vec_len (dev->linux_ifname));
+      rmp->host_ifname[vec_len (dev->linux_ifname)] = 0;
+
+      memcpy_s (rmp->netns, sizeof (rmp->netns), dev->netns,
+		vec_len (dev->netns));
+      rmp->netns[vec_len (dev->netns)] = 0;
+    }));
+}
+
+static void
+vl_api_af_xdp_get_t_handler (vl_api_af_xdp_get_t *mp)
+{
+  af_xdp_main_t *rm = &af_xdp_main;
+  vl_api_af_xdp_get_reply_t *rmp;
+  i32 rv = 0;
+
+  REPLY_AND_DETAILS_MACRO_END (VL_API_AF_XDP_GET_REPLY, rm->devices, ({
+				 send_af_xdp_details (cursor, rp, mp->context);
+			       }))
+}
+
 /* set tup the API message handling tables */
 #include <af_xdp/af_xdp.api.c>
 static clib_error_t *

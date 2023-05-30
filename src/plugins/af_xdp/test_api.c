@@ -198,6 +198,17 @@ api_af_xdp_delete (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_af_xdp_get (vat_main_t *vam)
+{
+  return 0;
+}
+
+static void
+vl_api_af_xdp_get_reply_t_handler (vl_api_af_xdp_create_reply_t *mp)
+{
+}
+
 #include <af_xdp/af_xdp.api_test.c>
 
 /*
