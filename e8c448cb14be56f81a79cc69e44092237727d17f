@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cabda607_f2f7fe38",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-05-31T19:29:20Z",
+      "side": 1,
+      "message": "The following statements can also be updated to use vlib_buffer_is_chained():\n\n/scratch/dwallacelf/lf/vpp.38917$ grep -rsHn VLIB_BUFFER_NEXT_PRESENT | grep \u0027if (\u0027\nsrc/plugins/dpdk/device/device.c:318:      if (or_flags \u0026 VLIB_BUFFER_NEXT_PRESENT)\nsrc/plugins/dpdk/device/device.c:375:      if (or_flags \u0026 VLIB_BUFFER_NEXT_PRESENT)\nsrc/plugins/avf/output.c:351:\t  if (flags \u0026 VLIB_BUFFER_NEXT_PRESENT)\nsrc/plugins/rdma/output.c:298:      if (PREDICT_FALSE (flags \u0026 VLIB_BUFFER_NEXT_PRESENT))\nsrc/vlib/buffer_funcs.h:974:      if (maybe_next \u0026\u0026 (flags \u0026 VLIB_BUFFER_NEXT_PRESENT))",
+      "revId": "e8c448cb14be56f81a79cc69e44092237727d17f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
