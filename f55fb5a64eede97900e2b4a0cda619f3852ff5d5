@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "f55fb5a64eede97900e2b4a0cda619f3852ff5d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d6ba108_7b0a48d0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-05-31T08:59:55Z",
+      "side": 1,
+      "message": "I don\u0027t think this is a fix patch as the original code was not broken.\n\nThe patch shall be renamed to\ncrypto: use fixed crypto frame pool\n\nAlso please change the message to describe the reason to use fixe pool (intended for coming change for cryptodev) and add check before pool_get only.",
+      "revId": "f55fb5a64eede97900e2b4a0cda619f3852ff5d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
