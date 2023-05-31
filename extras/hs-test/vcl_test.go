@@ -22,7 +22,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
 	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
 
-	testClientCommand := "vcl_test_client -E -p " + proto + " " + serverVethAddress + " " + port
+	testClientCommand := "vcl_test_client -p " + proto + " " + serverVethAddress + " " + port
 	echoClnContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	o := echoClnContainer.exec(testClientCommand)
 	s.log(o)
