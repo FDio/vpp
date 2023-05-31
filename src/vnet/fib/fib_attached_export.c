@@ -378,6 +378,7 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	     */
 	    if (0 == --export->faee_locks)
 	    {
+                vec_free (export->faee_importers);
 		pool_put(fib_ae_export_pool, export);
                 fib_entry_delegate_remove(export_entry,
                                           FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
