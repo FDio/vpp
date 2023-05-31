@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8bfca016_f147b3fa",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 997,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-05-31T14:18:45Z",
+      "side": 1,
+      "message": "Verify said:\n  may be used uninitialized in this function [-Werror\u003dmaybe-uninitialized]",
+      "range": {
+        "startLine": 997,
+        "startChar": 6,
+        "endLine": 997,
+        "endChar": 22
+      },
+      "revId": "79e14b1f5ccda87b024b493e1a87e026a9266abe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
