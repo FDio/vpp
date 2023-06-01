@@ -298,6 +298,9 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
+	      /* original dst ip4 & port */
+	      session_transport_original_dst_attach (&uc0->connection, b[0],
+						     is_ip4);
 	      uc0 = udp_connection_accept (uc0, &hdr0, thread_index);
 	      if (!uc0)
 		{

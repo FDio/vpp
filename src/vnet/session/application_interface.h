@@ -297,6 +297,9 @@ typedef struct app_session_transport_
   u16 rmt_port;			/**< remote port (network order) */
   u16 lcl_port;			/**< local port (network order) */
   u8 is_ip4;			/**< set if uses ip4 networking */
+  u8 unused;
+  u16 original_dst_port;
+  u32 original_dst_ip4;
 } app_session_transport_t;
 
 #define foreach_app_session_field					\
@@ -386,6 +389,8 @@ typedef struct session_accepted_msg_
   transport_endpoint_t lcl;
   transport_endpoint_t rmt;
   u8 flags;
+  u32 original_dst_ip4;
+  u16 original_dst_port;
 } __clib_packed session_accepted_msg_t;
 
 typedef struct session_accepted_reply_msg_

@@ -1348,6 +1348,22 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 
   return 0;
 }
+void
+session_transport_original_dst_attach (transport_connection_t *tc,
+				       vlib_buffer_t *b, int is_ip4)
+{
+  if (is_ip4 && vnet_buffer2 (b)->nat.translated)
+    {
+      tc->original_dst_ip4 = vnet_buffer2 (b)->nat.original_dst_ip4;
+      tc->original_dst_port = vnet_buffer2 (b)->nat.original_dst_port;
+    }
+  else if (is_ip4)
+    {
+      tc->original_dst_ip4 = tc->lcl_ip.ip4.data_u32;
+      tc->original_dst_port = tc->lcl_port;
+    }
+  return;
+}
 
 int
 session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)

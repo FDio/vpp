@@ -3760,6 +3760,12 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     {
       if (!is_icmp_inner_ip4)
 	{ // regular case
+
+	  /* record original dst ip4 & port */
+	  vnet_buffer2 (b)->nat.translated = 1;
+	  vnet_buffer2 (b)->nat.original_dst_ip4 = ip->dst_address.data_u32;
+	  vnet_buffer2 (b)->nat.original_dst_port = udp->dst_port;
+
 	  ip->src_address = f->rewrite.saddr;
 	  ip->dst_address = f->rewrite.daddr;
 	  udp->src_port = f->rewrite.sport;

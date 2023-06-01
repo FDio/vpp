@@ -493,9 +493,14 @@ typedef struct
       u32 cached_session_index;
       u32 cached_dst_nat_session_index;
     };
+    /* attach nat44 original dst info.*/
+    u32 original_dst_ip4;
+    u16 original_dst_port;
+    u8 translated;
+    u8 reserve;
   } nat;
 
-  u32 unused[8];
+  u32 unused[6];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)

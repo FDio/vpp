@@ -80,7 +80,7 @@ typedef struct _spacer
   u32 max_burst;
 } spacer_t;
 
-#define TRANSPORT_CONN_ID_LEN	44
+#define TRANSPORT_CONN_ID_LEN 48
 
 /*
  * Protocol independent transport properties associated to a session
@@ -102,8 +102,9 @@ typedef struct _transport_connection
       u16 lcl_port;		/**< Local port */
       u8 is_ip4;		/**< Flag if IP4 connection */
       u8 proto;			/**< Protocol id */
-      u8 unused[2];		/**< First field after id wants to be
-				     4-byte aligned) */
+      u16 original_dst_port;	/**< First field after id wants to be
+				   4-byte aligned) */
+      u32 original_dst_ip4;
     };
     /*
      * Opaque connection ID

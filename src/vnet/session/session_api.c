@@ -89,6 +89,11 @@ mq_send_session_accepted_cb (session_t * s)
   fifo_segment_t *eq_seg;
   session_t *listener;
   application_t *app;
+  ct_connection_t *ct;
+
+  ct = (ct_connection_t *) session_get_transport (s);
+  m.original_dst_ip4 = ct->connection.original_dst_ip4;
+  m.original_dst_port = ct->connection.original_dst_port;
 
   app = application_get (app_wrk->app_index);
 
@@ -122,9 +127,6 @@ mq_send_session_accepted_cb (session_t * s)
     }
   else
     {
-      ct_connection_t *ct;
-
-      ct = (ct_connection_t *) session_get_transport (s);
       listener = listen_session_get_from_handle (s->listener_handle);
       m.listener_handle = app_listen_session_handle (listener);
       m.rmt.is_ip4 = session_type_is_ip4 (listener->session_type);

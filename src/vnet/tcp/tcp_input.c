@@ -2252,6 +2252,9 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+	  /* original dst ip4 & port */
+	  session_transport_original_dst_attach (&tc->connection, b[0],
+						 is_ip4);
 	  if (session_stream_accept_notify (&tc->connection))
 	    {
 	      error = TCP_ERROR_MSG_QUEUE_FULL;

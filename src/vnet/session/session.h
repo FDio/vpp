@@ -512,6 +512,8 @@ int session_stream_accept (transport_connection_t * tc, u32 listener_index,
 			   u32 thread_index, u8 notify);
 int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 			  u32 thread_index);
+void session_transport_original_dst_attach (transport_connection_t *tc,
+					    vlib_buffer_t *b, int is_ip4);
 /**
  * Initialize session layer for given transport proto and ip version
  *
