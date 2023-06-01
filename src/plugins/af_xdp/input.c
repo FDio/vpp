@@ -196,6 +196,7 @@ af_xdp_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
   ef = vlib_frame_scalar_args (f);
   ef->sw_if_index = sw_if_index;
   ef->hw_if_index = hw_if_index;
+  vlib_frame_no_append (f);
 }
 
 static_always_inline u32
