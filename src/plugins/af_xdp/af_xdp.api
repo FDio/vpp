@@ -88,6 +88,7 @@ define af_xdp_create_v2
   string prog[256];
   string namespace[64];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  option in_progress;
 };
 
 /** \brief
