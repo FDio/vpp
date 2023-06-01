@@ -1524,7 +1524,15 @@ session_stop_listen (session_t * s)
     return SESSION_E_NONE;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-    session_lookup_del_connection (tc);
+    {
+      /* Reset remote ip/port before cleanup from lookup table */
+      if (transport_connection_is_cless (tc))
+	{
+	  clib_memset (&tc->rmt_ip, 0, sizeof (tc->rmt_ip));
+	  tc->rmt_port = 0;
+	}
+      session_lookup_del_connection (tc);
+    }
 
   transport_stop_listen (tp, s->connection_index);
   return 0;
