@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91f50337_d69c642d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-01T18:37:34Z",
+      "side": 1,
+      "message": "Hi, Yang! This is really interesting but the current code is pretty invasive, as it expands several data structures that we typically avoid changing. Moreover, note that vlib buffer metadata is not guaranteed to survive transition through multiple nodes, i.e., if additional features are configured between nat and tcp/udp input metadata might be corrupted. \n\nOne suggestion would be to maybe glean the original dst ip/port in session_api just before notifying the app of the accept event, if a nat translation table exists. And we should enable this feature with a startup config session stanza flag as we don\u0027t want to be looking for nat dest ips always. It would probably be even better if we could do the nat table lookup only on demand, not on accept, as a request from VPPCOM_ATTR_GET_ORIGINAL_DST attr handler to session layer.",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
