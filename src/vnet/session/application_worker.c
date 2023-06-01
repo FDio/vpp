@@ -68,14 +68,12 @@ app_worker_free (app_worker_t * app_wrk)
    *  Listener cleanup
    */
 
-  /* *INDENT-OFF* */
   hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
     ls = listen_session_get_from_handle (handle);
     vec_add1 (handles, app_listen_session_handle (ls));
     vec_add1 (sm_indices, sm_index);
     sm = segment_manager_get (sm_index);
   }));
-  /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (handles); i++)
     {
