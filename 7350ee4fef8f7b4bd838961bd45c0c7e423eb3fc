@@ -52,6 +52,24 @@
       "parentUuid": "c525b81e_f3e4fbee",
       "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ca3ffe5_2f9c1e13",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-06-02T06:25:31Z",
+      "side": 1,
+      "message": "Thanks for your advice.I need get through how app_attach_options_index_t works first.",
+      "parentUuid": "a9d252b2_fd42426c",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
