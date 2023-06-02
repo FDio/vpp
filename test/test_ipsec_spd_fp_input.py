@@ -4,6 +4,11 @@ import ipaddress
 
 from util import ppp
 from framework import VppTestRunner
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import IPv6, Raw
+from scapy.layers.ipsec import SecurityAssociation, ESP
+from template_ipsec import TemplateIpsec
 from template_ipsec import IPSecIPv4Fwd
 from template_ipsec import IPSecIPv6Fwd
 from test_ipsec_esp import TemplateIpsecEsp
@@ -163,14 +168,23 @@ class IPSec4SpdTestCaseBypass(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
         self.pg_start()
 
         # check capture on pg1
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -180,7 +194,7 @@ class IPSec4SpdTestCaseBypass(SpdFastPathInbound):
         self.logger.debug("SPD: Num packets: %s", len(capture.res))
 
         # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -227,7 +241,15 @@ class IPSec4SpdTestCaseDiscard(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
@@ -293,6 +315,7 @@ class IPSec4SpdTestCaseProtect(SpdFastPathInboundProtect):
             pkt_count,
             "incorrect SA out counts: expected %d != %d" % (pkt_count, pkts),
         )
+
         self.assertEqual(p.tra_sa_out.get_err("lost"), 0)
         self.assertEqual(p.tra_sa_in.get_err("lost"), 0)
 
@@ -350,7 +373,15 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface + enable capture
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
@@ -358,7 +389,7 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathInbound):
         # start the packet generator
         self.pg_start()
         # get capture
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -370,7 +401,7 @@ class IPSec4SpdTestCaseAddIPRange(SpdFastPathInbound):
         # assert nothing captured on pg0
         self.pg0.assert_nothing_captured()
         # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(pkt_count, policy_1)
@@ -417,7 +448,15 @@ class IPSec4SpdTestCaseAddAll(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface + enable capture
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
@@ -439,8 +478,6 @@ class IPSec4SpdTestCaseAddAll(SpdFastPathInbound):
             all_ips=True,
         )
 
-        # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
         # add the stream to the source interface + enable capture
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
@@ -459,6 +496,8 @@ class IPSec4SpdTestCaseAddAll(SpdFastPathInbound):
 
         # assert nothing captured on pg0
         self.pg0.assert_nothing_captured()
+        # verify capture packet on pg1
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_2)
 
@@ -509,7 +548,15 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface + enable capture
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
@@ -517,7 +564,7 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         # start the packet generator
         self.pg_start()
         # get capture
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -528,8 +575,8 @@ class IPSec4SpdTestCaseRemove(SpdFastPathInbound):
         # assert nothing captured on pg0
         self.pg0.assert_nothing_captured()
         # verify capture on pg1
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         self.logger.debug("SPD: Num packets: %s", len(capture.res))
-        self.verify_capture(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -609,7 +656,15 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         )
 
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface + enable capture
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
@@ -617,7 +672,7 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         # start the packet generator
         self.pg_start()
         # get capture
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -629,7 +684,7 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         # assert nothing captured on pg0
         self.pg0.assert_nothing_captured()
         # verify capture on pg1
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -689,7 +744,7 @@ class IPSec4SpdTestCaseReadd(SpdFastPathInbound):
         # assert nothing captured on pg0
         self.pg0.assert_nothing_captured()
         # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(pkt_count, policy_1)
@@ -785,9 +840,32 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         )
 
         # create the packet streams
-        packets0 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        packets1 = self.create_stream(self.pg1, self.pg2, pkt_count)
-        packets2 = self.create_stream(self.pg2, self.pg0, pkt_count)
+        # out2in - from public network to private
+        packets0 = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        packets1 = self.create_stream_encrypted(
+            self.pg1,
+            self.pg2,
+            self.pg1.remote_ip4,
+            self.pg2.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        packets2 = self.create_stream_encrypted(
+            self.pg2,
+            self.pg0,
+            self.pg2.remote_ip4,
+            self.pg0.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
         # add the streams to the source interfaces
         self.pg0.add_stream(packets0)
         self.pg1.add_stream(packets1)
@@ -801,7 +879,7 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         # get captures
         if_caps = []
         for pg in [self.pg1, self.pg2]:  # we are expecting captures on pg1/pg2
-            if_caps.append(pg.get_capture())
+            if_caps.append(pg.get_capture(pkt_count))
             for packet in if_caps[-1]:
                 try:
                     self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -812,8 +890,8 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         self.logger.debug("SPD: Num packets: %s", len(if_caps[1].res))
 
         # verify captures that matched BYPASS rule
-        self.verify_capture(self.pg0, self.pg1, if_caps[0])
-        self.verify_capture(self.pg1, self.pg2, if_caps[1])
+        self.verify_capture_packet(self.pg0, self.pg1, if_caps[0])
+        self.verify_capture_packet(self.pg1, self.pg2, if_caps[1])
         # verify that traffic to pg0 matched BYPASS rule
         # although DISCARD rule had higher prioriy and was not dropped
         self.verify_policy_match(pkt_count, policy_21)
@@ -876,6 +954,7 @@ class IPSec6SpdTestCaseProtect(SpdFastPathIPv6InboundProtect):
             pkt_count,
             "incorrect SA out counts: expected %d != %d" % (pkt_count, pkts),
         )
+
         self.assertEqual(p.tra_sa_out.get_err("lost"), 0)
         self.assertEqual(p.tra_sa_in.get_err("lost"), 0)
 
