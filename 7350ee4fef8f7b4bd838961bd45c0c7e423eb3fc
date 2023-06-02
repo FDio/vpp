@@ -34,6 +34,24 @@
       "parentUuid": "91f50337_d69c642d",
       "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a9d252b2_fd42426c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-02T04:06:36Z",
+      "side": 1,
+      "message": "It should be possible, but then I\u0027d like to avoid doing this type of nat lookup for all applications, especially as nat will not always be configured. I suggested one option above with startup.conf config but probably a better alternative would be to add a new app flag (see app_attach_options_index_t) which would enable this feature per app. We could add these types of flags to vcl.conf and pass them down to vpp at attach time.",
+      "parentUuid": "c525b81e_f3e4fbee",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
