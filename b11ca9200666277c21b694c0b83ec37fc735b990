@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "afeaac90_88fbab36",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 25
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-06-02T11:07:03Z",
+      "side": 1,
+      "message": "correct \"plan\" to \"plain\"",
+      "revId": "b11ca9200666277c21b694c0b83ec37fc735b990",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
