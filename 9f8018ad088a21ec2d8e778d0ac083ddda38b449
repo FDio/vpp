@@ -16,6 +16,24 @@
       "message": "Are there any concerns about this commit?",
       "revId": "9f8018ad088a21ec2d8e778d0ac083ddda38b449",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ee85433_8b00428d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-02T12:28:25Z",
+      "side": 1,
+      "message": "Not really apart lack of testing - but as we\u0027re at the start of a new release cycle, I guess it\u0027s a good time to reconsider",
+      "parentUuid": "1b859ffa_d498f108",
+      "revId": "9f8018ad088a21ec2d8e778d0ac083ddda38b449",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
