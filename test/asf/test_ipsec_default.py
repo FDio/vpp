@@ -1,9 +1,19 @@
 import socket
 import unittest
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+import scapy.compat
 
 from util import ppp
 from asfframework import VppTestRunner
 from template_ipsec import IPSecIPv4Fwd
+from scapy.layers.ipsec import SecurityAssociation, ESP
+from template_ipsec import TemplateIpsec
+from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfBinding
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip import DpoProto
+from vpp_papi import VppEnum
+
 
 """
 When an IPSec SPD is configured on an interface, any inbound packets
@@ -29,23 +39,51 @@ Packets are captured and verified at pg1.
 Then either the inbound or outbound policies are removed and we verify
 packets are dropped as expected.
 
+This test cover IPsec traffic like ESP UDP ENCAP ESP not
+plan UDP traffic.
+
 """
 
 
-class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
-    """IPSec: inbound packets drop by default with no matching rule"""
+class IPSecInboundAndOutboundDefaultDrop(IPSecIPv4Fwd):
+    """IPSec: Inbound/Outbound packets drop by default with no matching rule"""
 
-    def test_ipsec_inbound_default_drop(self):
-        # configure two interfaces and bind the same SPD to both
+    tcp_port_in = 6303
+    tcp_port_out = 6303
+    udp_port_in = 6304
+    udp_port_out = 6304
+    icmp_id_in = 6305
+    icmp_id_out = 6305
+    is_ipv6 = 0
+
+    @classmethod
+    def setUpClass(cls):
+        super(IPSecInboundAndOutboundDefaultDrop, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(IPSecInboundAndOutboundDefaultDrop, cls).tearDownClass()
+
+    def setUp(self):
+        super(IPSecInboundAndOutboundDefaultDrop, self).setUp()
         self.create_interfaces(2)
         self.spd_create_and_intf_add(1, self.pg_interfaces)
+
+    def tearDown(self):
+        # self.unconfig_network()
+        super(IPSecInboundAndOutboundDefaultDrop, self).tearDown()
+
+    def test_ipsec_inbound_default_drop(self):
+        """IPSec: inbound packets drop by default with no matching rule"""
+
+        # configure two interfaces and bind the same SPD to both
         pkt_count = 5
 
         # catch-all inbound BYPASS policy, all interfaces
         inbound_policy = self.spd_add_rem_policy(
             1,
-            None,
-            None,
+            self.pg0,
+            self.pg1,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -65,14 +103,21 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
         )
 
         # create a packet stream pg0->pg1 + add to pg0
-        packets0 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        self.pg0.add_stream(packets0)
+        pkts = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        self.pg0.add_stream(pkts)
 
         # with inbound BYPASS rule at pg0, we expect to see forwarded
         # packets on pg1
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
-        cap1 = self.pg1.get_capture()
+        cap1 = self.pg1.get_capture(pkt_count)
         for packet in cap1:
             try:
                 self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -81,7 +126,7 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
                 raise
         self.logger.debug("SPD: Num packets: %s", len(cap1.res))
         # verify captures on pg1
-        self.verify_capture(self.pg0, self.pg1, cap1)
+        self.verify_capture_packet(self.pg0, self.pg1, cap1)
         # verify policies matched correct number of times
         self.verify_policy_match(pkt_count, inbound_policy)
         self.verify_policy_match(pkt_count, outbound_policy)
@@ -89,8 +134,8 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
         # remove inbound catch-all BYPASS rule, traffic should now be dropped
         self.spd_add_rem_policy(  # inbound, all interfaces
             1,
-            None,
-            None,
+            self.pg0,
+            self.pg1,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -98,10 +143,19 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
             all_ips=True,
             remove=True,
         )
-
+        self.logger.info(self.vapi.cli("show ipsec all"))
         # create another packet stream pg0->pg1 + add to pg0
-        packets1 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        self.pg0.add_stream(packets1)
+
+        # out2in - from public network to private
+        pkts1 = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        self.pg0.add_stream(pkts1)
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
         # confirm traffic has now been dropped
@@ -113,21 +167,14 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
         self.verify_policy_match(pkt_count, outbound_policy)
         self.verify_policy_match(pkt_count, inbound_policy)
 
-
-class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
-    """IPSec: outbound packets drop by default with no matching rule"""
-
-    def test_ipsec_inbound_default_drop(self):
-        # configure two interfaces and bind the same SPD to both
-        self.create_interfaces(2)
-        self.spd_create_and_intf_add(1, self.pg_interfaces)
+    def test_ipsec_outbound_default_drop(self):
+        """IPSec: outbound packets drop by default with no matching rule"""
         pkt_count = 5
-
         # catch-all inbound BYPASS policy, all interfaces
         inbound_policy = self.spd_add_rem_policy(
             1,
-            None,
-            None,
+            self.pg0,
+            self.pg1,
             socket.IPPROTO_UDP,
             is_out=0,
             priority=10,
@@ -147,14 +194,23 @@ class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
         )
 
         # create a packet stream pg0->pg1 + add to pg0
-        packets0 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        self.pg0.add_stream(packets0)
+
+        # out2in - from public network to private
+        pkts = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        self.pg0.add_stream(pkts)
 
         # with outbound BYPASS rule allowing pg0->pg1, we expect to see
         # forwarded packets on pg1
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
-        cap1 = self.pg1.get_capture()
+        cap1 = self.pg1.get_capture(pkt_count)
         for packet in cap1:
             try:
                 self.logger.debug(ppp("SPD - Got packet:", packet))
@@ -163,7 +219,7 @@ class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
                 raise
         self.logger.debug("SPD: Num packets: %s", len(cap1.res))
         # verify captures on pg1
-        self.verify_capture(self.pg0, self.pg1, cap1)
+        self.verify_capture_packet(self.pg0, self.pg1, cap1)
         # verify policies matched correct number of times
         self.verify_policy_match(pkt_count, inbound_policy)
         self.verify_policy_match(pkt_count, outbound_policy)
@@ -181,8 +237,18 @@ class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
         )
 
         # create another packet stream pg0->pg1 + add to pg0
-        packets1 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        self.pg0.add_stream(packets1)
+        self.logger.info(self.vapi.cli("show ipsec all"))
+        # out2in - from public network to private
+        pkts = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
+        self.pg0.add_stream(pkts)
         self.pg_interfaces[1].enable_capture()
         self.pg_start()
         # confirm traffic was dropped and not forwarded
