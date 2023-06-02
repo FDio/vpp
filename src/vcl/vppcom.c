@@ -2869,7 +2869,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       vep_session->vep.next_sh = session_handle;
 
       if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+					   SVM_FIFO_WANT_DEQ_NOTIF);
 
       /* Generate EPOLLOUT if tx fifo not full */
       if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
@@ -2922,8 +2923,14 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  goto done;
 	}
 
+      /* SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL should typically treated as a config
+       * option, i.e., should not be updated often, as want_deq_ntf flag is not
+       * updated atomically and sequential ordering of loads and stores for
+       * fifo size and the flag are not guaranteed in vcl and vpp.
+       * Consequently, ask for a one shot SVM_FIFO_WANT_DEQ_NOTIF as well. */
       if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
+					   SVM_FIFO_WANT_DEQ_NOTIF);
       else
 	vcl_session_del_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
