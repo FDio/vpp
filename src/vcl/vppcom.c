@@ -2868,15 +2868,20 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
 
-      if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
-
-      /* Generate EPOLLOUT if tx fifo not full */
-      if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
+      if ((event->events & EPOLLOUT))
 	{
-	  vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
-					     SESSION_IO_EVT_TX);
-	  add_evt = 1;
+	  vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	  if (vcl_session_write_ready (s) > 0)
+	    {
+	      /* Generate EPOLLOUT if tx fifo not full */
+	      vcl_epoll_ctl_add_unhandled_event (
+		wrk, s, event->events & EPOLLET, SESSION_IO_EVT_TX);
+	      add_evt = 1;
+	    }
+	  else
+	    {
+	      vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF);
+	    }
 	}
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
@@ -2928,11 +2933,19 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	vcl_session_del_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
       /* Generate EPOLLOUT if session write ready nd event was not on */
-      if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT) &&
-	  (vcl_session_write_ready (s) > 0))
+      if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT))
 	{
-	  vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
-					     SESSION_IO_EVT_TX);
+	  if (vcl_session_write_ready (s) > 0)
+	    vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+					       SESSION_IO_EVT_TX);
+	  else
+	    /* SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL should typically treated as a
+	     * config option, i.e., should not be updated often, as
+	     * want_deq_ntf flag is not updated atomically and sequential
+	     * ordering of loads and stores for fifo size and the flag are not
+	     * guaranteed in vcl and vpp. Consequently, ask for a one shot
+	     * SVM_FIFO_WANT_DEQ_NOTIF as well if fifo is currently full. */
+	    vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF);
 	}
       /* Generate EPOLLIN if session read ready and event was not on */
       if ((event->events & EPOLLIN) && !(s->vep.ev.events & EPOLLIN) &&
