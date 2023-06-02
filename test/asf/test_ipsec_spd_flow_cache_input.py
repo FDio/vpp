@@ -3,6 +3,11 @@ import socket
 import unittest
 
 from util import ppp
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import ICMP, IP, TCP, UDP
+from scapy.layers.inet6 import IPv6, Raw
+from scapy.layers.ipsec import SecurityAssociation, ESP
+
 from asfframework import VppTestRunner
 from template_ipsec import SpdFlowCacheTemplate
 
@@ -72,14 +77,23 @@ class IPSec4SpdTestCaseBypass(SpdFlowCacheInbound):
         # check flow cache is empty before sending traffic
         self.verify_num_inbound_flow_cache_entries(0)
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
         self.pg_start()
 
         # check capture on pg1
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -87,9 +101,8 @@ class IPSec4SpdTestCaseBypass(SpdFlowCacheInbound):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         self.logger.debug("SPD: Num packets: %s", len(capture.res))
-
-        # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        # verify packet at pg1
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -136,7 +149,15 @@ class IPSec4SpdTestCaseDiscard(SpdFlowCacheInbound):
         # check flow cache is empty before sending traffic
         self.verify_num_inbound_flow_cache_entries(0)
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
@@ -209,14 +230,22 @@ class IPSec4SpdTestCaseRemoveInbound(SpdFlowCacheInbound):
         # check flow cache is empty before sending traffic
         self.verify_num_inbound_flow_cache_entries(0)
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
         self.pg_start()
 
         # check capture on pg1
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -225,8 +254,7 @@ class IPSec4SpdTestCaseRemoveInbound(SpdFlowCacheInbound):
                 raise
         self.logger.debug("SPD: Num packets: %s", len(capture.res))
 
-        # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -326,14 +354,22 @@ class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
         # check flow cache is empty before sending traffic
         self.verify_num_inbound_flow_cache_entries(0)
         # create the packet stream
-        packets = self.create_stream(self.pg0, self.pg1, pkt_count)
+        # out2in - from public network to private
+        packets = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the stream to the source interface
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
         self.pg_start()
 
         # check capture on pg1
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -342,8 +378,7 @@ class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
                 raise
         self.logger.debug("SPD: Num packets: %s", len(capture.res))
 
-        # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(0, policy_1)
@@ -399,7 +434,7 @@ class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
         self.pg_start()
 
         # check capture on pg1
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(pkt_count)
         for packet in capture:
             try:
                 self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -407,8 +442,7 @@ class IPSec4SpdTestCaseReaddInbound(SpdFlowCacheInbound):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
-        # verify captured packets
-        self.verify_capture(self.pg0, self.pg1, capture)
+        self.verify_capture_packet(self.pg0, self.pg1, capture)
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_0)
         self.verify_policy_match(pkt_count, policy_1)
@@ -485,9 +519,35 @@ class IPSec4SpdTestCaseMultipleInbound(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(0)
 
         # create the packet streams
-        packets0 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        packets1 = self.create_stream(self.pg1, self.pg2, pkt_count)
-        packets2 = self.create_stream(self.pg2, self.pg0, pkt_count)
+        # out2in - from public network to private
+        packets0 = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
+        # out2in - from public network to private
+        packets1 = self.create_stream_encrypted(
+            self.pg1,
+            self.pg2,
+            self.pg1.remote_ip4,
+            self.pg2.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+
+        # out2in - from public network to private
+        packets2 = self.create_stream_encrypted(
+            self.pg2,
+            self.pg0,
+            self.pg2.remote_ip4,
+            self.pg0.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the streams to the source interfaces
         self.pg0.add_stream(packets0)
         self.pg1.add_stream(packets1)
@@ -501,7 +561,7 @@ class IPSec4SpdTestCaseMultipleInbound(SpdFlowCacheInbound):
         # get captures from ifs
         if_caps = []
         for pg in [self.pg1, self.pg2]:  # we are expecting captures on pg1/pg2
-            if_caps.append(pg.get_capture())
+            if_caps.append(pg.get_capture(pkt_count))
             for packet in if_caps[-1]:
                 try:
                     self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -509,9 +569,8 @@ class IPSec4SpdTestCaseMultipleInbound(SpdFlowCacheInbound):
                     self.logger.error(ppp("Unexpected or invalid packet:", packet))
                     raise
 
-        # verify captures that matched BYPASS rules
-        self.verify_capture(self.pg0, self.pg1, if_caps[0])
-        self.verify_capture(self.pg1, self.pg2, if_caps[1])
+        self.verify_capture_packet(self.pg0, self.pg1, if_caps[0])
+        self.verify_capture_packet(self.pg1, self.pg2, if_caps[1])
         # verify that traffic to pg0 matched DISCARD rule and was dropped
         self.pg0.assert_nothing_captured()
         # verify all policies matched the expected number of times
@@ -592,9 +651,33 @@ class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
         self.verify_num_inbound_flow_cache_entries(0)
 
         # create the packet streams
-        packets0 = self.create_stream(self.pg0, self.pg1, pkt_count)
-        packets1 = self.create_stream(self.pg1, self.pg2, pkt_count)
-        packets2 = self.create_stream(self.pg2, self.pg0, pkt_count)
+        # out2in - from public network to private
+        packets0 = self.create_stream_encrypted(
+            self.pg0,
+            self.pg1,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        # out2in - from public network to private
+        packets1 = self.create_stream_encrypted(
+            self.pg1,
+            self.pg2,
+            self.pg1.remote_ip4,
+            self.pg2.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
+        # out2in - from public network to private
+        packets2 = self.create_stream_encrypted(
+            self.pg2,
+            self.pg0,
+            self.pg2.remote_ip4,
+            self.pg0.remote_ip4,
+            pkt_count,
+            "UDP",
+        )
         # add the streams to the source interfaces
         self.pg0.add_stream(packets0)
         self.pg1.add_stream(packets1)
@@ -608,7 +691,7 @@ class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
         # get captures from ifs
         if_caps = []
         for pg in [self.pg1, self.pg2]:  # we are expecting captures on pg1/pg2
-            if_caps.append(pg.get_capture())
+            if_caps.append(pg.get_capture(pkt_count))
             for packet in if_caps[-1]:
                 try:
                     self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -617,8 +700,8 @@ class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
                     raise
 
         # verify captures that matched BYPASS rules
-        self.verify_capture(self.pg0, self.pg1, if_caps[0])
-        self.verify_capture(self.pg1, self.pg2, if_caps[1])
+        self.verify_capture_packet(self.pg0, self.pg1, if_caps[0])
+        self.verify_capture_packet(self.pg1, self.pg2, if_caps[1])
         # verify that traffic to pg0 matched DISCARD rule and was dropped
         self.pg0.assert_nothing_captured()
         # verify all policies matched the expected number of times
@@ -678,7 +761,7 @@ class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
         # get captures from ifs
         if_caps = []
         for pg in [self.pg1, self.pg2]:  # we are expecting captures on pg1/pg2
-            if_caps.append(pg.get_capture())
+            if_caps.append(pg.get_capture(pkt_count))
             for packet in if_caps[-1]:
                 try:
                     self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -687,8 +770,8 @@ class IPSec4SpdTestCaseOverwriteStaleInbound(SpdFlowCacheInbound):
                     raise
 
         # verify captures that matched BYPASS rules
-        self.verify_capture(self.pg0, self.pg1, if_caps[0])
-        self.verify_capture(self.pg1, self.pg2, if_caps[1])
+        self.verify_capture_packet(self.pg0, self.pg1, if_caps[0])
+        self.verify_capture_packet(self.pg1, self.pg2, if_caps[1])
         # verify that traffic to pg0 matched DISCARD rule and was dropped
         self.pg0.assert_nothing_captured()
         # verify all policies matched the expected number of times
@@ -786,9 +869,26 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
             # create the packet streams
             # packet hashes to:
             # ad727628
-            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 1)
+
+            packets1 = self.create_stream_encrypted(
+                self.pg2,
+                self.pg1,
+                self.pg2.remote_ip4,
+                self.pg1.remote_ip4,
+                pkt_count,
+                "UDP",
+            )
+
             # b5512898
-            packets2 = self.create_stream(self.pg0, self.pg3, pkt_count, 1, 1)
+            packets2 = self.create_stream_encrypted(
+                self.pg0,
+                self.pg3,
+                self.pg0.remote_ip4,
+                self.pg3.remote_ip4,
+                pkt_count,
+                "UDP",
+            )
+
             # add the streams to the source interfaces
             self.pg2.add_stream(packets1)
             self.pg0.add_stream(packets2)
@@ -822,9 +922,25 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
 
             # create the packet streams
             # 2f8f90f557eef12c
-            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 1)
+
+            packets1 = self.create_stream_encrypted(
+                self.pg2,
+                self.pg1,
+                self.pg2.remote_ip4,
+                self.pg1.remote_ip4,
+                pkt_count,
+                "UDP",
+            )
+
             # 6b7f9987719ffc1c
-            packets2 = self.create_stream(self.pg3, self.pg2, pkt_count, 1, 1)
+            packets2 = self.create_stream_encrypted(
+                self.pg3,
+                self.pg2,
+                self.pg3.remote_ip4,
+                self.pg2.remote_ip4,
+                pkt_count,
+                "UDP",
+            )
             # add the streams to the source interfaces
             self.pg2.add_stream(packets1)
             self.pg3.add_stream(packets2)
@@ -837,7 +953,7 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
         # get captures
         if_caps = []
         for pg in capture_intfs:
-            if_caps.append(pg.get_capture())
+            if_caps.append(pg.get_capture(pkt_count))
             for packet in if_caps[-1]:
                 try:
                     self.logger.debug(ppp("SPD Add - Got packet:", packet))
@@ -847,12 +963,11 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
 
         # verify captures that matched BYPASS rule
         if hashed_with_crc32:
-            self.verify_capture(self.pg2, self.pg1, if_caps[0])
-            self.verify_capture(self.pg0, self.pg3, if_caps[1])
+            self.verify_capture_packet(self.pg2, self.pg1, if_caps[0])
+            self.verify_capture_packet(self.pg0, self.pg3, if_caps[1])
         else:  # hashed with xxhash
-            self.verify_capture(self.pg2, self.pg1, if_caps[0])
-            self.verify_capture(self.pg3, self.pg2, if_caps[1])
-
+            self.verify_capture_packet(self.pg2, self.pg1, if_caps[0])
+            self.verify_capture_packet(self.pg3, self.pg2, if_caps[1])
         # verify all policies matched the expected number of times
         self.verify_policy_match(pkt_count, policy_1)
         self.verify_policy_match(pkt_count, policy_2)
