@@ -2869,7 +2869,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       vep_session->vep.next_sh = session_handle;
 
       if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+        vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL
+                                             | SVM_FIFO_WANT_DEQ_NOTIF);
 
       /* Generate EPOLLOUT if tx fifo not full */
       if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
@@ -2923,7 +2924,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	}
 
       if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+        vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL
+                                             | SVM_FIFO_WANT_DEQ_NOTIF);
       else
 	vcl_session_del_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
