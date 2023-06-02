@@ -2868,15 +2868,22 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
 
-      if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
-
-      /* Generate EPOLLOUT if tx fifo not full */
-      if ((event->events & EPOLLOUT) && (vcl_session_write_ready (s) > 0))
+      if ((event->events & EPOLLOUT))
 	{
-	  vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
-					     SESSION_IO_EVT_TX);
-	  add_evt = 1;
+	  int write_ready = vcl_session_write_ready (s);
+
+	  vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	  if (write_ready > 0)
+	    {
+	      /* Generate EPOLLOUT if tx fifo not full */
+	      vcl_epoll_ctl_add_unhandled_event (
+		wrk, s, event->events & EPOLLET, SESSION_IO_EVT_TX);
+	      add_evt = 1;
+	    }
+	  else
+	    {
+	      vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF);
+	    }
 	}
       /* Generate EPOLLIN if rx fifo has data */
       if ((event->events & EPOLLIN) && (vcl_session_read_ready (s) > 0))
@@ -2922,18 +2929,23 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  goto done;
 	}
 
-      if (event->events & EPOLLOUT)
-	vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
-      else
+      /* Generate EPOLLOUT if session write ready and event was not on */
+      if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT))
+	{
+	  /* Fifo size load acq synchronized with update store rel */
+	  int write_ready = vcl_session_write_ready (s);
+
+	  vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+	  if (write_ready > 0)
+	    vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
+					       SESSION_IO_EVT_TX);
+	  else
+	    /* Request deq ntf in case dequeue happened while updating flag */
+	    vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF);
+	}
+      else if (!(event->events & EPOLLOUT))
 	vcl_session_del_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
 
-      /* Generate EPOLLOUT if session write ready nd event was not on */
-      if ((event->events & EPOLLOUT) && !(s->vep.ev.events & EPOLLOUT) &&
-	  (vcl_session_write_ready (s) > 0))
-	{
-	  vcl_epoll_ctl_add_unhandled_event (wrk, s, event->events & EPOLLET,
-					     SESSION_IO_EVT_TX);
-	}
       /* Generate EPOLLIN if session read ready and event was not on */
       if ((event->events & EPOLLIN) && !(s->vep.ev.events & EPOLLIN) &&
 	  (vcl_session_read_ready (s) > 0))
