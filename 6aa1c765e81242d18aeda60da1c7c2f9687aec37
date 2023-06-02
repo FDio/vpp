@@ -33,6 +33,24 @@
       "message": "The indentation didn\u0027t seem to get updated here. I think the else and vec_free should be indented 2 columns and LCP_ROUTER_DBG should be indented 4 columns.",
       "revId": "6aa1c765e81242d18aeda60da1c7c2f9687aec37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "edaedafc_fd2b2900",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1257,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-06-02T16:59:36Z",
+      "side": 1,
+      "message": "\u003e The indentation didn\u0027t seem to get updated here. I think the else and vec_free should be indented 2 columns and LCP_ROUTER_DBG should be indented 4 columns.\n\nsomehow the macro threw off clang-format? I put it in a scope after which the formatting returned to what you had expected. \nI asserted the formatting with make fixstyle.",
+      "parentUuid": "e71332b4_afba5d1b",
+      "revId": "6aa1c765e81242d18aeda60da1c7c2f9687aec37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
