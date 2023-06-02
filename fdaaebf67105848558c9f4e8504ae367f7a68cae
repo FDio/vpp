@@ -16,6 +16,23 @@
       "message": "PTAL",
       "revId": "fdaaebf67105848558c9f4e8504ae367f7a68cae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "635dd3a1_a488ecc8",
+        "filename": "src/plugins/lcpng",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-06-02T17:10:10Z",
+      "side": 1,
+      "message": "The new patchset added a symlink at src/plugins/lcpng -\u003e /home/pim/src/lcpng",
+      "revId": "fdaaebf67105848558c9f4e8504ae367f7a68cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
