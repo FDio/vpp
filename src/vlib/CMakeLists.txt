@@ -77,6 +77,7 @@ add_vpp_library(vlib
   init.c
   linux/pci.c
   linux/vfio.c
+  linux/usb.c
   log.c
   main.c
   node.c
@@ -103,6 +104,8 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  usb/format.c
+  usb/usb.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
   dma/dma.c
@@ -148,6 +151,8 @@ add_vpp_library(vlib
   unix/mc_socket.h
   unix/plugin.h
   unix/unix.h
+  usb/usb.h
+  usb/usb_cdc.h
   vlib.h
   vmbus/vmbus.h
 
