@@ -292,13 +292,13 @@ endif()
 ##############################################################################
 
 add_custom_target(run
-  COMMAND ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  COMMAND sudo ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
   COMMENT "Starting VPP..."
   USES_TERMINAL
 )
 
 add_custom_target(debug
-  COMMAND gdb --args ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
+  COMMAND sudo gdb --args ./${VPP_RUNTIME_DIR}/vpp -c startup.conf
   COMMENT "Starting VPP in the debugger..."
   USES_TERMINAL
 )

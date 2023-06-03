@@ -25,6 +25,8 @@ ForEachMacros:
   - 'foreach_vlib_main'
   - 'foreach_set_bit_index'
   - 'foreach_vlib_frame_bitmap_set_bit_index'
+  - 'foreach_vlib_usb_child_desc'
+  - 'foreach_vlib_usb_child_desc_of_type'
   - 'FOREACH_ARRAY_ELT'
   - 'RTE_ETH_FOREACH_DEV'
   - 'foreach_vnet_dev_rx_queue_runtime'

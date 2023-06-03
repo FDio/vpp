@@ -67,7 +67,11 @@ add_vpp_library(vlib
   init.c
   linux/pci.c
   linux/vfio.c
+<<<<<<< HEAD
   linux/vmbus.c
+=======
+  linux/usb.c
+>>>>>>> 73a213cb0 (usbnet: native device driver for USB network adapters)
   log.c
   main.c
   node.c
@@ -94,6 +98,8 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  usb/format.c
+  usb/usb.c
   vmbus/vmbus.c
   dma/dma.c
   dma/cli.c
@@ -138,6 +144,8 @@ add_vpp_library(vlib
   unix/mc_socket.h
   unix/plugin.h
   unix/unix.h
+  usb/usb.h
+  usb/usb_cdc.h
   vlib.h
   vmbus/vmbus.h
 
