@@ -33,6 +33,24 @@
       "message": "The new patchset added a symlink at src/plugins/lcpng -\u003e /home/pim/src/lcpng",
       "revId": "fdaaebf67105848558c9f4e8504ae367f7a68cae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cea441dd_a1bfa5e3",
+        "filename": "src/plugins/lcpng",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-06-04T12:16:30Z",
+      "side": 1,
+      "message": "\u003e The new patchset added a symlink at src/plugins/lcpng -\u003e /home/pim/src/lcpng\n\nmy bad - removed in ps 6",
+      "parentUuid": "635dd3a1_a488ecc8",
+      "revId": "fdaaebf67105848558c9f4e8504ae367f7a68cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
