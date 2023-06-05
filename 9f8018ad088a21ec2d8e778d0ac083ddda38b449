@@ -34,6 +34,24 @@
       "parentUuid": "1b859ffa_d498f108",
       "revId": "9f8018ad088a21ec2d8e778d0ac083ddda38b449",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4768b1d_b6b70d8e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-05T08:08:11Z",
+      "side": 1,
+      "message": "I rebased it so code review +1 were removed, can you review again?",
+      "parentUuid": "8ee85433_8b00428d",
+      "revId": "9f8018ad088a21ec2d8e778d0ac083ddda38b449",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
