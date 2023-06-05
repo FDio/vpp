@@ -523,16 +523,12 @@ u8
 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
-  u16 *n;
-
-  if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4,
-			     clib_host_to_net_u16 (dst_port));
-  else
-    n = sparse_vec_validate (um->next_by_dst_port6,
-			     clib_host_to_net_u16 (dst_port));
-
-  return (n[0] != SPARSE_VEC_INVALID_INDEX && n[0] != UDP_NO_NODE_SET);
+  u16 *next_by_dst_port =
+    is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6;
+  uword index =
+    sparse_vec_index (next_by_dst_port, clib_host_to_net_u16 (dst_port));
+  return (index != SPARSE_VEC_INVALID_INDEX &&
+	  vec_elt (next_by_dst_port, index) != UDP_NO_NODE_SET);
 }
 
 void
