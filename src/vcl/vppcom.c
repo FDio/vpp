@@ -3058,7 +3058,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ? s->ct_tx_fifo :
 								s->tx_fifo);
       session_events = s->vep.ev.events;
-      if (!(EPOLLOUT & session_events))
+      if (!(EPOLLOUT & session_events) ||
+	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
 	break;
       add_event = 1;
       events[*num_ev].events = EPOLLOUT;
