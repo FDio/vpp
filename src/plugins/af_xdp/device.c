@@ -650,7 +650,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       goto err1;
     }
 
-  if (args->prog && af_xdp_load_program (args, ad))
+  if (args->prog &&
+      (af_xdp_remove_program (ad) || af_xdp_load_program (args, ad)))
     goto err2;
 
   q_num = clib_max (rxq_num, txq_num);
