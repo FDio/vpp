@@ -33,6 +33,24 @@
       "message": "Hello Dave,\nHello Nathan,\n\nLooks like I\u0027ve broken the `sw_interface_set_tx_placement` type while I was trying to fix `sw_interface_tx_placement_details`.\n\nHowever, with this patch applied the following code is generated for `sw_interface_tx_placement_details` auto-endian type:\n\n```\nstatic inline void vl_api_sw_interface_tx_placement_details_t_endian (vl_api_sw_interface_tx_placement_details_t *a)\n{\n    int i __attribute__((unused));\n    a-\u003e_vl_msg_id \u003d clib_net_to_host_u16(a-\u003e_vl_msg_id);\n    /* a-\u003eclient_index \u003d a-\u003eclient_index (no-op) */\n    a-\u003econtext \u003d clib_net_to_host_u32(a-\u003econtext);\n    vl_api_interface_index_t_endian(\u0026a-\u003esw_if_index);\n    a-\u003equeue_id \u003d clib_net_to_host_u32(a-\u003equeue_id);\n    /* a-\u003eshared \u003d a-\u003eshared (no-op) */\n    a-\u003earray_size \u003d clib_net_to_host_u32(a-\u003earray_size);\n    ASSERT((u32)a-\u003earray_size \u003c\u003d (u32)VL_API_MAX_ARRAY_SIZE);\n    for (i \u003d 0; i \u003c a-\u003earray_size; i++) {\n        a-\u003ethreads[i] \u003d clib_net_to_host_u32(a-\u003ethreads[i]);\n    }\n}\n```\n\nSo, it changes the endianess of the array length and then iterates from 0 to a converted value. The example of dumping the tx_placement is below.\n\n```\nDBGvpp# \nThread 1 \"vpp_main\" received signal SIGSEGV, Segmentation fault.\n0x00007ffff70ebeb1 in vl_api_sw_interface_tx_placement_details_t_endian (a\u003d0x13004c728) at CMakeFiles/vnet/interface.api.h:1684\n1684            a-\u003ethreads[i] \u003d clib_net_to_host_u32(a-\u003ethreads[i]);\n(gdb) bt\n#0  0x00007ffff70ebeb1 in vl_api_sw_interface_tx_placement_details_t_endian (a\u003d0x13004c728) at CMakeFiles/vnet/interface.api.h:1684\n#1  0x00007ffff70fc35b in send_interface_tx_placement_details (all_queues\u003d0x7fffbc917698, index\u003d0, rp\u003d0x1301cab10, native_context\u003d0) at /home/zstas/vpp/src/vnet/interface_api.c:1231\n#2  0x00007ffff70eb61f in vl_api_sw_interface_tx_placement_get_t_handler (mp\u003d0x1300980f0) at /home/zstas/vpp/src/vnet/interface_api.c:1299\n#3  0x00007ffff7f89adf in vl_mem_api_handler_with_vm_node (am\u003d0x7ffff7f7f2a8 \u003capi_global_main\u003e, vlib_rp\u003d0x130029000, the_msg\u003d0x1300980f0, vm\u003d0x7fffb6a00740, node\u003d0x7fffb792a240, is_private\u003d0 \u0027\\000\u0027) at /home/zstas/vpp/src/vlibmemory/memory_api.c:835\n#4  0x00007ffff7f894fe in void_mem_api_handle_msg_i (am\u003d0x7ffff7f7f2a8 \u003capi_global_main\u003e, vlib_rp\u003d0x130029000, vm\u003d0x7fffb6a00740, node\u003d0x7fffb792a240, is_private\u003d0 \u0027\\000\u0027) at /home/zstas/vpp/src/vlibmemory/memory_api.c:910\n#5  0x00007ffff7f89485 in vl_mem_api_handle_msg_main (vm\u003d0x7fffb6a00740, node\u003d0x7fffb792a240) at /home/zstas/vpp/src/vlibmemory/memory_api.c:921\n#6  0x00007ffff7f94d9c in vl_api_clnt_process (vm\u003d0x7fffb6a00740, node\u003d0x7fffb792a240, f\u003d0x0) at /home/zstas/vpp/src/vlibmemory/memclnt_api.c:359\n#7  0x00007ffff6f36e1d in vlib_process_bootstrap (_a\u003d140736200354744) at /home/zstas/vpp/src/vlib/main.c:1221\n#8  0x00007ffff6e58fd8 in clib_calljmp () at /home/zstas/vpp/src/vppinfra/longjmp.S:123\n#9  0x00007fffb33aabb0 in ?? ()\n#10 0x00007ffff6f368b9 in vlib_process_startup (vm\u003d0x8, p\u003d0x7ffff6f3958b \u003cdispatch_suspended_process+763\u003e, f\u003d0x7fffb33aacc0) at /home/zstas/vpp/src/vlib/main.c:1246\n#11 0x00007ffff6eb3a1c in vec_mem_size (v\u003d0x7fffb6a00740) at /home/zstas/vpp/src/vppinfra/vec.c:15\n(gdb) f 1\n#1  0x00007ffff70fc35b in send_interface_tx_placement_details (all_queues\u003d0x7fffbc917698, index\u003d0, rp\u003d0x1301cab10, native_context\u003d0) at /home/zstas/vpp/src/vnet/interface_api.c:1231\n(gdb) p/x *rmp\n$3 \u003d {_vl_msg_id \u003d 0xea02, client_index \u003d 0x0, context \u003d 0x0, sw_if_index \u003d 0x1000000, queue_id \u003d 0x0, shared \u003d 0x1, array_size \u003d 0x2000000, threads \u003d 0x13004c73f}\n```",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d42e7d28_71b9c9c6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-06-06T19:32:33Z",
+      "side": 1,
+      "message": "Hmm, that means that the array_size was not converted to network order by whomever sent the message.  Where/how was the message created?",
+      "parentUuid": "8d4dc763_7092a99f",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
