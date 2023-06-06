@@ -16,6 +16,24 @@
       "message": "Need input on how to test this change.\n\n@Nathan, can you verify this change in your use case?",
       "revId": "2adc6a7ddd25bf662f04ceec74de13758b0e421d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a814fbf1_5b284701",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-06-06T16:44:08Z",
+      "side": 1,
+      "message": "Hi Dave,\nThanks for the fix,\nby the looks of it it should address the issue I was seeing,\nI\u0027m testing tomorrow and keeping you up to date.\nCheers",
+      "parentUuid": "1a9054fd_8f05cbdb",
+      "revId": "2adc6a7ddd25bf662f04ceec74de13758b0e421d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
