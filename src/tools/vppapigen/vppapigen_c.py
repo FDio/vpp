@@ -751,6 +751,17 @@ TOP_BOILERPLATE = """\
 #endif
 
 #define VL_API_PACKED(x) x __attribute__ ((packed))
+
+/*
+ * Note: VL_API_MAX_ARRAY_SIZE is set to an arbitrarily large limit.
+ *
+ * However, any message with a ~2 billion element array is likely to break the
+ * api handling long before this limit causes array element endian issues.
+ *
+ * Applications should be written to create reasonable api messages.
+ */
+#define VL_API_MAX_ARRAY_SIZE 0x7fffffff
+
 """
 
 BOTTOM_BOILERPLATE = """\
@@ -1136,6 +1147,7 @@ ENDIAN_STRINGS = {
 def endianfun_array(o):
     """Generate endian functions for arrays"""
     forloop = """\
+    ASSERT((u32){length} <= (u32)VL_API_MAX_ARRAY_SIZE);
     for (i = 0; i < {length}; i++) {{
         a->{name}[i] = {format}(a->{name}[i]);
     }}
@@ -1249,11 +1261,6 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
             continue
 
         output += signature.format(name=t.name)
-
-        # make Array type appear before the others:
-        # some arrays have dynamic length, and we want to iterate over
-        # them before changing endiann for the length field
-        t.block.sort(key=lambda x: x.type)
 
         for o in t.block:
             output += endianfun_obj(o)
