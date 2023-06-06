@@ -751,6 +751,17 @@ TOP_BOILERPLATE = """\
 #endif
 
 #define VL_API_PACKED(x) x __attribute__ ((packed))
+
+/*
+ * Note: VL_API_MAX_ARRAY_SIZE is set to an arbitrarily large limit.
+ *
+ * However, any message with a ~2 billion element array is likely to break the
+ * api handling long before this limit causes array element endian issues.
+ *
+ * Applications should be written to create reasonable api messages.
+ */
+#define VL_API_MAX_ARRAY_SIZE 0x7fffffff
+
 """
 
 BOTTOM_BOILERPLATE = """\
@@ -1133,9 +1144,21 @@ ENDIAN_STRINGS = {
 }
 
 
+def get_endian_string(o, type):
+    """Return proper endian string conversion function"""
+    try:
+        if o.to_network:
+            return ENDIAN_STRINGS[type].replace("net_to_host", "host_to_net")
+    except:
+        pass
+    return ENDIAN_STRINGS[type]
+
+
 def endianfun_array(o):
     """Generate endian functions for arrays"""
     forloop = """\
+    {comment}
+    ASSERT((u32){length} <= (u32)VL_API_MAX_ARRAY_SIZE);
     for (i = 0; i < {length}; i++) {{
         a->{name}[i] = {format}(a->{name}[i]);
     }}
@@ -1147,6 +1170,19 @@ def endianfun_array(o):
     }}
 """
 
+    to_network_comment = ""
+    try:
+        if o.to_network:
+            to_network_comment = """/*
+     * Array fields processed first to handle variable length arrays and size
+     * field endian conversion in the proper order for to-network messages.
+     * Message fields have been sorted by type in the code generator, thus fields
+     * in this generated code may be converted in a different order than specified
+     * in the *.api file.
+     */"""
+    except:
+        pass
+
     output = ""
     if o.fieldtype == "u8" or o.fieldtype == "string" or o.fieldtype == "bool":
         output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
@@ -1154,7 +1190,10 @@ def endianfun_array(o):
         lfield = "a->" + o.lengthfield if o.lengthfield else o.length
         if o.fieldtype in ENDIAN_STRINGS:
             output += forloop.format(
-                length=lfield, format=ENDIAN_STRINGS[o.fieldtype], name=o.fieldname
+                comment=to_network_comment,
+                length=lfield,
+                format=get_endian_string(o, o.fieldtype),
+                name=o.fieldname,
             )
         else:
             output += forloop_format.format(
@@ -1181,7 +1220,7 @@ def endianfun_obj(o):
         return output
     if o.fieldtype in ENDIAN_STRINGS:
         output += "    a->{name} = {format}(a->{name});\n".format(
-            name=o.fieldname, format=ENDIAN_STRINGS[o.fieldtype]
+            name=o.fieldname, format=get_endian_string(o, o.fieldtype)
         )
     elif o.fieldtype.startswith("vl_api_"):
         output += "    {type}_endian(&a->{name});\n".format(
@@ -1203,10 +1242,13 @@ def endianfun(objs, modulename):
 #define included_{module}_endianfun
 
 #undef clib_net_to_host_uword
+#undef clib_host_to_net_uword
 #ifdef LP64
 #define clib_net_to_host_uword clib_net_to_host_u64
+#define clib_host_to_net_uword clib_host_to_net_u64
 #else
 #define clib_net_to_host_uword clib_net_to_host_u32
+#define clib_host_to_net_uword clib_host_to_net_u32
 #endif
 
 """
@@ -1219,10 +1261,17 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
 """
 
     for t in objs:
+        # Outbound (to network) messages are identified by message nomenclature
+        # i.e. message names ending with these suffixes are 'to network'
+        if t.name.endswith("_reply") or t.name.endswith("_details"):
+            t.to_network = True
+        else:
+            t.to_network = False
+
         if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
             output += signature.format(name=t.name)
             if t.enumtype in ENDIAN_STRINGS:
-                output += "    *a = {}(*a);\n".format(ENDIAN_STRINGS[t.enumtype])
+                output += "    *a = {}(*a);\n".format(get_endian_string(t, t.enumtype))
             else:
                 output += "    /* a->{name} = a->{name} (no-op) */\n".format(
                     name=t.name
@@ -1242,7 +1291,9 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
                     name=t.name
                 )
             elif t.alias["type"] in FORMAT_STRINGS:
-                output += "    *a = {}(*a);\n".format(ENDIAN_STRINGS[t.alias["type"]])
+                output += "    *a = {}(*a);\n".format(
+                    get_endian_string(t, t.alias["type"])
+                )
             else:
                 output += "    /* Not Implemented yet {} */".format(t.name)
             output += "}\n\n"
@@ -1250,12 +1301,15 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
 
         output += signature.format(name=t.name)
 
-        # make Array type appear before the others:
-        # some arrays have dynamic length, and we want to iterate over
-        # them before changing endiann for the length field
-        t.block.sort(key=lambda x: x.type)
+        # For outbound (to network) messages:
+        #   some arrays have dynamic length -- iterate over
+        #   them before changing endianness for the length field
+        #   by making the Array types show up first
+        if t.to_network:
+            t.block.sort(key=lambda x: x.type)
 
         for o in t.block:
+            o.to_network = t.to_network
             output += endianfun_obj(o)
         output += "}\n\n"
 
@@ -1322,7 +1376,7 @@ static inline uword vl_api_{name}_t_calc_size (vl_api_{name}_t *a)
                             )
                         lf = m[0]
                         if lf.fieldtype in ENDIAN_STRINGS:
-                            output += f" + {ENDIAN_STRINGS[lf.fieldtype]}(a->{b.lengthfield}) * sizeof(a->{b.fieldname}[0])"
+                            output += f" + {get_endian_string(b, lf.fieldtype)}(a->{b.lengthfield}) * sizeof(a->{b.fieldname}[0])"
                         elif lf.fieldtype == "u8":
                             output += (
                                 f" + a->{b.lengthfield} * sizeof(a->{b.fieldname}[0])"
