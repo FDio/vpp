@@ -255,7 +255,7 @@ Once the packages are built they can be found in the build-root directory.
 
 .. code-block:: console
 
-    $ ls *.deb
+    $ ls build-root/*.deb
 
     If the packages are built correctly, then this should be the corresponding output:
 
@@ -271,12 +271,10 @@ For Ubuntu:
 
 .. code-block:: console
 
-   $ sudo bash
-   # dpkg -i *.deb
+   $ sudo dpkg -i build-root/*.deb
 
 For Centos or Redhat:
 
 .. code-block:: console
 
-   $ sudo bash
-   # rpm -ivh *.rpm
+   $ sudo rpm -ivh build-root/*.rpm
