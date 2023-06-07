@@ -279,6 +279,10 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 			     lcp_itf_l3_feat_names[lip->lip_host_type][af],
 			     lip->lip_host_sw_if_index, 1, NULL, 0);
 
+  /* Enable MPLS */
+  vnet_feature_enable_disable ("mpls-input", "linux-cp-xc-mpls",
+			       lip->lip_host_sw_if_index, 1, NULL, 0);
+
   /*
    * Configure passive punt to the host interface.
    */
@@ -426,6 +430,9 @@ lcp_itf_pair_del (u32 phy_sw_if_index)
   ip_feature_enable_disable (af, N_SAFI, IP_FEATURE_INPUT,
 			     lcp_itf_l3_feat_names[lip->lip_host_type][af],
 			     lip->lip_host_sw_if_index, 0, NULL, 0);
+
+  vnet_feature_enable_disable ("mpls-input", "linux-cp-xc-mpls",
+			       lip->lip_host_sw_if_index, 0, NULL, 0);
 
   lcp_itf_unset_adjs (lip);
 
