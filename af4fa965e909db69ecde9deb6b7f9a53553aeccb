@@ -16,6 +16,41 @@
       "message": "Hi, shouldn\u0027t this change be cherry-picked into stable/2306?",
       "revId": "af4fa965e909db69ecde9deb6b7f9a53553aeccb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a38dbfd_a206cba3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-06-07T12:47:36Z",
+      "side": 1,
+      "message": "Andrew - can you let me know what you\u0027d like for this merge?",
+      "revId": "af4fa965e909db69ecde9deb6b7f9a53553aeccb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab1b9a55_1ef8ec9c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-06-07T12:47:36Z",
+      "side": 1,
+      "message": "I have no strong opinions either way - but this change allows any process that sends routes with NLM_F_REPLACE (notably Bird2.0.8+ and Bird3) to work for IPv6.\n\nIt would be good to cherrypick, but I will defer to Andrew\u0027s advice.",
+      "parentUuid": "32c2ae81_fd7d65d1",
+      "revId": "af4fa965e909db69ecde9deb6b7f9a53553aeccb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
