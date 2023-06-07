@@ -17,6 +17,9 @@ description: |-
         In the TX direction, packets received by VPP an the mirror Tap/Tun
         are cross-connected to the VPP interfaces. For IP packets, IP output
         features are applied.
+        If MPLS is enabled on a VPP interface, state is synced to Linux and
+        in TX direction a special feature is enabled to pass MPLS packets through
+        untouched.
         The "linux_nl" plugin listens to netlink messages and synchronizes the IP
         configuration of the paired interfaces.
 

@@ -15,6 +15,7 @@
 
 #include <sys/socket.h>
 #include <linux/if.h>
+#include <linux/mpls.h>
 
 //#include <vlib/vlib.h>
 #include <vlib/unix/plugin.h>
@@ -27,6 +28,7 @@
 #include <netlink/route/link.h>
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
+#include <netlink/route/nexthop.h>
 #include <netlink/route/addr.h>
 #include <netlink/route/link/vlan.h>
 
@@ -596,9 +598,18 @@ VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_router_link_up_down);
 static fib_protocol_t
 lcp_router_proto_k2f (uint32_t k)
 {
-  if (AF_INET6 == k)
-    return (FIB_PROTOCOL_IP6);
-  return (FIB_PROTOCOL_IP4);
+  switch (k)
+    {
+    case AF_INET6:
+      return FIB_PROTOCOL_IP6;
+    case AF_INET:
+      return FIB_PROTOCOL_IP4;
+    case AF_MPLS:
+      return FIB_PROTOCOL_MPLS;
+    default:
+      ASSERT (0);
+      return FIB_PROTOCOL_NONE;
+    }
 }
 
 static void
@@ -608,6 +619,7 @@ lcp_router_mk_addr (const struct nl_addr *rna, ip_address_t *ia)
 
   ip_address_reset (ia);
   fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
+  ASSERT (FIB_PROTOCOL_MPLS != fproto);
 
   ip_address_set (ia, nl_addr_get_binary_addr (rna),
 		  FIB_PROTOCOL_IP4 == fproto ? AF_IP4 : AF_IP6);
@@ -619,6 +631,8 @@ lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
   fib_protocol_t fproto;
 
   fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
+  ASSERT (FIB_PROTOCOL_MPLS != fproto);
+
   ip46_address_reset (ia);
   if (FIB_PROTOCOL_IP4 == fproto)
     memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
@@ -988,9 +1002,31 @@ static void
 lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
 {
   const struct nl_addr *addr = rtnl_route_get_dst (r);
+  u32 *baddr = nl_addr_get_binary_addr (addr);
+  u32 blen = nl_addr_get_len (addr);
+  ip46_address_t *paddr = &p->fp_addr;
+  u32 entry;
+
+  p->fp_proto = lcp_router_proto_k2f (nl_addr_get_family (addr));
+
+  switch (p->fp_proto)
+    {
+    case FIB_PROTOCOL_MPLS:
+      entry = ntohl (*baddr);
+      p->fp_label = (entry & MPLS_LS_LABEL_MASK) >> MPLS_LS_LABEL_SHIFT;
+      p->fp_len = 21;
+      p->fp_eos = MPLS_NON_EOS;
+      return;
+    case FIB_PROTOCOL_IP4:
+      ip46_address_reset (paddr);
+      memcpy (&paddr->ip4, baddr, blen);
+      break;
+    case FIB_PROTOCOL_IP6:
+      memcpy (&paddr->ip6, baddr, blen);
+      break;
+    }
 
   p->fp_len = nl_addr_get_prefixlen (addr);
-  p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_addr);
 }
 
 static void
@@ -1008,6 +1044,37 @@ lcp_router_route_mk_mprefix (struct rtnl_route *r, mfib_prefix_t *p)
     p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_src_addr);
 }
 
+static int
+lcp_router_mpls_nladdr_to_path (fib_route_path_t *path, struct nl_addr *addr)
+{
+  if (!addr)
+    return 0;
+
+  struct mpls_label *stack = nl_addr_get_binary_addr (addr);
+  u32 entry, label;
+  u8 exp, ttl;
+  int label_count = 0;
+
+  while (1)
+    {
+      entry = ntohl (stack[label_count++].entry);
+      label = (entry & MPLS_LS_LABEL_MASK) >> MPLS_LS_LABEL_SHIFT;
+      exp = (entry & MPLS_LS_TC_MASK) >> MPLS_LS_TC_SHIFT;
+      ttl = (entry & MPLS_LS_TTL_MASK) >> MPLS_LS_TTL_SHIFT;
+
+      fib_mpls_label_t fml = {
+	.fml_value = label,
+	.fml_exp = exp,
+	.fml_ttl = ttl,
+      };
+      vec_add1 (path->frp_label_stack, fml);
+
+      if (entry & MPLS_LS_S_MASK)
+	break;
+    }
+  return label_count;
+}
+
 typedef struct lcp_router_route_path_parse_t_
 {
   fib_route_path_t *paths;
@@ -1023,6 +1090,7 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
   lcp_router_route_path_parse_t *ctx = arg;
   fib_route_path_t *path;
   u32 sw_if_index;
+  int label_count = 0;
 
   sw_if_index = lcp_router_intf_h2p (rtnl_route_nh_get_ifindex (rnh));
 
@@ -1035,8 +1103,15 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 
       path->frp_flags = FIB_ROUTE_PATH_FLAG_NONE | ctx->type_flags;
       path->frp_sw_if_index = sw_if_index;
-      path->frp_weight = rtnl_route_nh_get_weight (rnh);
       path->frp_preference = ctx->preference;
+
+      /*
+       * FIB Path Weight of 0 is meaningless and replaced with 1 further along.
+       * See fib_path_create. fib_path_cmp_w_route_path would fail to match
+       * such a fib_route_path_t with any fib_path_t, because a fib_path_t's
+       * fp_weight can never be 0.
+       */
+      path->frp_weight = clib_max (1, rtnl_route_nh_get_weight (rnh));
 
       addr = rtnl_route_nh_get_gateway (rnh);
       if (!addr)
@@ -1048,6 +1123,32 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 	fproto = ctx->route_proto;
 
       path->frp_proto = fib_proto_to_dpo (fproto);
+
+      if (ctx->route_proto == FIB_PROTOCOL_MPLS)
+	{
+	  addr = rtnl_route_nh_get_newdst (rnh);
+	  label_count = lcp_router_mpls_nladdr_to_path (path, addr);
+	  if (label_count)
+	    {
+	      LCP_ROUTER_DBG (" is label swap to %u",
+			      path->frp_label_stack[0].fml_value);
+	    }
+	  else
+	    {
+	      fib_mpls_label_t fml = {
+		.fml_value = MPLS_LABEL_POP,
+	      };
+	      vec_add1 (path->frp_label_stack, fml);
+	      LCP_ROUTER_DBG (" is label pop");
+	    }
+	}
+
+#ifdef NL_CAPABILITY_VERSION_3_6_0
+      addr = rtnl_route_nh_get_encap_mpls_dst (rnh);
+      label_count = lcp_router_mpls_nladdr_to_path (path, addr);
+      if (label_count)
+	LCP_ROUTER_DBG (" has encap mpls, %d labels", label_count);
+#endif
 
       if (ctx->is_mcast)
 	path->frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
@@ -1171,16 +1272,45 @@ lcp_router_route_del (struct rtnl_route *rr)
 
       fib_src = lcp_router_proto_fib_source (rproto);
 
-      if (pfx.fp_proto == FIB_PROTOCOL_IP6)
-	fib_table_entry_delete (nlt->nlt_fib_index, &pfx, fib_src);
-      else
-	fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
-				      np.paths);
+      switch (pfx.fp_proto)
+	{
+	case FIB_PROTOCOL_IP6:
+	  fib_table_entry_delete (nlt->nlt_fib_index, &pfx, fib_src);
+	  break;
+	case FIB_PROTOCOL_MPLS:
+	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
+					np.paths);
+	  /* delete the EOS route in addition to NEOS - fallthrough */
+	  pfx.fp_eos = MPLS_EOS;
+	default:
+	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
+					np.paths);
+	}
     }
 
   vec_free (np.paths);
 
   lcp_router_table_unlock (nlt);
+}
+
+static fib_route_path_t *
+lcp_router_fib_route_path_dup (fib_route_path_t *old)
+{
+  int idx;
+  fib_route_path_t *p;
+
+  fib_route_path_t *new = vec_dup (old);
+  if (!new)
+    return NULL;
+
+  for (idx = 0; idx < vec_len (new); idx++)
+    {
+      p = &new[idx];
+      if (p->frp_label_stack)
+	p->frp_label_stack = vec_dup (p->frp_label_stack);
+    }
+
+  return new;
 }
 
 static void
@@ -1262,6 +1392,24 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	    }
 
 	  fib_src = lcp_router_proto_fib_source (rproto);
+
+	  if (pfx.fp_proto == FIB_PROTOCOL_MPLS)
+	    {
+	      /* in order to avoid double-frees, we duplicate the paths. */
+	      fib_route_path_t *pathdup =
+		lcp_router_fib_route_path_dup (np.paths);
+	      if (is_replace)
+		fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
+					entry_flags, pathdup);
+	      else
+		fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
+					   entry_flags, pathdup);
+	      vec_free (pathdup);
+
+	      /* install EOS route in addition to NEOS */
+	      pfx.fp_eos = MPLS_EOS;
+	      pfx.fp_payload_proto = np.paths[0].frp_proto;
+	    }
 
 	  if (is_replace)
 	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
