@@ -87,6 +87,24 @@
       "parentUuid": "f0b2bbcc_0a492236",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ed29105_18858797",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-06-07T16:09:35Z",
+      "side": 1,
+      "message": "If sw_interface_tx_placement_details is sent set by vpp (i.e. the message contents are in host order), then the generated code needs to use \u0027clib_host_to_net_\u003csize\u003e\u0027 functions in addition to changing the endianness after processing the contents of the array.\n\nSo while your hack works, it is not correct and I don\u0027t think it should be merged.\n\nThe correct solution is to have \u0027to-network\u0027 autoendian code generation and \u0027to-host\u0027 autoendian code generation based on whether the api message is outbound (i.e. _reply or _details) or inbound (all the rest).  \n\nI\u0027m not a fan of parsing the message name to identify outbound messages, but adding that context to the api definition is not feasible at this point.  At the very least, the nomenclature used to identify outbound messages should be documented and/or \u0027non-reply\u0027 outbound message definitions with autoendian arrays should have a comment included with them to identify what part of the message name is being used to identify it as being an outbound message.\n\nI will work on updating this gerrit change to implement the correct solution.",
+      "parentUuid": "bda10fed_fbff7b7c",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
