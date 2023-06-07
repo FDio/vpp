@@ -105,6 +105,24 @@
       "parentUuid": "bda10fed_fbff7b7c",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7dda77bf_f445cc92",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-06-07T17:09:30Z",
+      "side": 1,
+      "message": "Fully agreed that this is a dirty hack indeed and it shouldn\u0027t be merged. Look forward to the correct implementation and please let me know if I can assist in any way (e.g. testing). Thanks Dave!",
+      "parentUuid": "4ed29105_18858797",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
