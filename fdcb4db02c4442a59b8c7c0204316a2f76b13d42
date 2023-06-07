@@ -51,6 +51,24 @@
       "parentUuid": "8d4dc763_7092a99f",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0b2bbcc_0a492236",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-06-07T07:32:56Z",
+      "side": 1,
+      "message": "That\u0027s the tricky part.\n`sw_interface_set_tx_placement` is sent by the remote end (vapi client).\n`sw_interface_tx_placement_details` is sent set by vpp.\n\nIn the 1st case we need to change the array_size\u0027s endianness and then iterate.\nIn the 2nd case we need to iterate and then change the endianness.\n\nThe only solution which I see here is to distinguish between requests and replies (_reply, _details types) and to apply different logic.",
+      "parentUuid": "d42e7d28_71b9c9c6",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
