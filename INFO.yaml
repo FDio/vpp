@@ -86,10 +86,10 @@ committers:
       company: 'intel'
       email: 'roy.fan.zhang@intel.com'
       id: 'royzhang1980'
-    - name: 'Mohammed Hawari'
+    - name: 'Mohammed HAWARI'
       company: 'cisco'
       email: 'momohawari@gmail.com'
-      id: 'mhawari'
+      id: 'momohawari'
 tsc:
     # yamllint disable rule:line-length
     approval: 'https://wiki.fd.io/view/TSC/Meeting_Minutes'
@@ -101,5 +101,5 @@ tsc:
           name: 'Fan Zhang'
           link: 'https://lists.fd.io/g/vpp-dev/message/19068'
         - type: 'Approval'
-          name: 'Mohammed Hawari'
+          name: 'Mohammed HAWARI'
           link: 'https://ircbot.wl.linuxfoundation.org/meetings/fdio-meeting/2023/fd_io_tsc/fdio-meeting-fd_io_tsc.2023-06-01-15.00.html'
