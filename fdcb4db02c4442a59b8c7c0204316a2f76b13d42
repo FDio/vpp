@@ -69,6 +69,24 @@
       "parentUuid": "d42e7d28_71b9c9c6",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bda10fed_fbff7b7c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-06-07T08:19:04Z",
+      "side": 1,
+      "message": "Okay, seems for me like a dirty hack, but at least it works. I was able to call `sw_interface_set_tx_placement` and then `sw_interface_tx_placement_details`.\n\n```\ndiff --git a/src/tools/vppapigen/vppapigen_c.py b/src/tools/vppapigen/vppapigen_c.py\nindex 26a348f39..570ebb9c5 100755\n--- a/src/tools/vppapigen/vppapigen_c.py\n+++ b/src/tools/vppapigen/vppapigen_c.py\n@@ -1250,10 +1250,12 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)\n \n         output +\u003d signature.format(name\u003dt.name)\n \n-        # make Array type appear before the others:\n+        # Only for replies:\n+        # make Array type appear before the others\n         # some arrays have dynamic length, and we want to iterate over\n         # them before changing endiann for the length field\n-        t.block.sort(key\u003dlambda x: x.type)\n+        if( t.name.endswith( \u0027_reply\u0027 ) or t.name.endswith( \u0027_details\u0027 ) ):\n+            t.block.sort(key\u003dlambda x: x.type)\n \n         for o in t.block:\n             output +\u003d endianfun_obj(o)\ndiff --git a/src/vnet/interface_api.c b/src/vnet/interface_api.c\nindex c3e78e5c7..c9403ca9e 100644\n--- a/src/vnet/interface_api.c\n+++ b/src/vnet/interface_api.c\n@@ -1214,7 +1214,7 @@ out:\n static void\n send_interface_tx_placement_details (vnet_hw_if_tx_queue_t **all_queues,\n                                     u32 index, vl_api_registration_t *rp,\n-                                    u32 native_context)\n+                                    u32 context)\n {\n   vnet_main_t *vnm \u003d vnet_get_main ();\n   vl_api_sw_interface_tx_placement_details_t *rmp;\n@@ -1223,7 +1223,6 @@ send_interface_tx_placement_details (vnet_hw_if_tx_queue_t **all_queues,\n   uword *bitmap \u003d q[0]-\u003ethreads;\n   u32 hw_if_index \u003d q[0]-\u003ehw_if_index;\n   vnet_hw_interface_t *hw_if \u003d vnet_get_hw_interface (vnm, hw_if_index);\n-  u32 context \u003d clib_host_to_net_u32 (native_context);\n \n   n_bits \u003d clib_bitmap_count_set_bits (bitmap);\n   u32 n \u003d n_bits * sizeof (u32);\n\n```",
+      "parentUuid": "f0b2bbcc_0a492236",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
