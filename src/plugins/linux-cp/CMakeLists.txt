@@ -34,6 +34,7 @@ add_vpp_library(lcp
   SOURCES
   lcp_interface.c
   lcp_interface_sync.c
+  lcp_mpls_sync.c
   lcp_adj.c
   lcp.c
 

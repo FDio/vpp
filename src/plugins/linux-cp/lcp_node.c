@@ -31,6 +31,7 @@
 #include <vnet/ip/ip4.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/mpls/mpls.h>
 
 #define foreach_lip_punt                                                      \
   _ (IO, "punt to host")                                                      \
@@ -438,6 +439,103 @@ VNET_FEATURE_INIT (lcp_xc_ip6_mcast_node, static) = {
 
 typedef enum
 {
+  LCP_XC_MPLS_NEXT_DROP,
+  LCP_XC_MPLS_NEXT_IO,
+  LCP_XC_MPLS_N_NEXT,
+} lcp_xc_mpls_next_t;
+
+static_always_inline uword
+lcp_xc_mpls_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
+{
+  u32 n_left_from, *from, *to_next, n_left_to_next;
+  lcp_xc_next_t next_index;
+
+  next_index = 0;
+  n_left_from = frame->n_vectors;
+  from = vlib_frame_vector_args (frame);
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  const ethernet_header_t *eth;
+	  const lcp_itf_pair_t *lip;
+	  u32 next0, bi0, lipi, ai;
+	  vlib_buffer_t *b0;
+	  // const ip_adjacency_t *adj;
+
+	  bi0 = to_next[0] = from[0];
+
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  lipi =
+	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  lip = lcp_itf_pair_get (lipi);
+
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lip->lip_phy_sw_if_index;
+	  vlib_buffer_advance (b0, -lip->lip_rewrite_len);
+	  eth = vlib_buffer_get_current (b0);
+
+	  ai = ADJ_INDEX_INVALID;
+	  next0 = LCP_XC_MPLS_NEXT_DROP;
+	  if (!ethernet_address_cast (eth->dst_address))
+	    ai = lcp_adj_lkup ((u8 *) eth, lip->lip_rewrite_len,
+			       vnet_buffer (b0)->sw_if_index[VLIB_TX]);
+	  if (ai != ADJ_INDEX_INVALID)
+	    {
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ai;
+	      next0 = LCP_XC_MPLS_NEXT_IO;
+	    }
+
+	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
+	    {
+	      lcp_xc_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->phy_sw_if_index = lip->lip_phy_sw_if_index;
+	      t->adj_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	    }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (lcp_xc_mpls)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return (lcp_xc_mpls_inline (vm, node, frame));
+}
+
+VLIB_REGISTER_NODE (
+  lcp_xc_mpls) = { .name = "linux-cp-xc-mpls",
+		   .vector_size = sizeof (u32),
+		   .format_trace = format_lcp_xc_trace,
+		   .type = VLIB_NODE_TYPE_INTERNAL,
+		   .n_next_nodes = LCP_XC_MPLS_N_NEXT,
+		   .next_nodes = {
+		     [LCP_XC_MPLS_NEXT_DROP] = "error-drop",
+		     [LCP_XC_MPLS_NEXT_IO] = "interface-output",
+		   } };
+
+VNET_FEATURE_INIT (lcp_xc_mpls_node, static) = {
+  .arc_name = "mpls-input",
+  .node_name = "linux-cp-xc-mpls",
+};
+
+typedef enum
+{
   LCP_XC_L3_NEXT_XC,
   LCP_XC_L3_NEXT_LOOKUP,
   LCP_XC_L3_N_NEXT,
@@ -446,7 +544,7 @@ typedef enum
 /**
  * X-connect all packets from the HOST to the PHY on L3 interfaces
  *
- * There's only one adjacency that can be used on thises links.
+ * There's only one adjacency that can be used on these links.
  */
 static_always_inline u32
 lcp_xc_l3_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
