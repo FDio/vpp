@@ -1,0 +1,9 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+2: Fan Zhang <fanzhang.oss@gmail.com>
+Code-Review+1: Gabriel Oginski <gabrielx.oginski@intel.com>
+Code-Review+1: Kai Ji <kai.ji@intel.com>
+Submitted-by: Fan Zhang <fanzhang.oss@gmail.com>
+Submitted-at: Thu, 08 Jun 2023 09:18:58 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/38926
+Project: vpp
+Branch: refs/heads/master
