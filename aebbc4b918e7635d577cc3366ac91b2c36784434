@@ -16,6 +16,23 @@
       "message": "Adding Damjan as reviewer.",
       "revId": "aebbc4b918e7635d577cc3366ac91b2c36784434",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f7fe56d_eaabbfb7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-08T09:18:53Z",
+      "side": 1,
+      "message": "The change looks ok.",
+      "revId": "aebbc4b918e7635d577cc3366ac91b2c36784434",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
