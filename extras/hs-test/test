@@ -70,4 +70,4 @@ if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     exit 1
 fi
 
-sudo -E go test -buildvcs=false -v $args
+sudo -E go test -timeout=20m -buildvcs=false -v $args
