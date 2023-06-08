@@ -236,7 +236,7 @@ func (vpp *VppInstance) createAfPacket(
 	if veth.addressWithPrefix() == (AddressWithPrefix{}) {
 		var err error
 		var ip4Address string
-		if ip4Address, err = veth.addresser.newIp4Address(veth.peer.networkNumber); err == nil {
+		if ip4Address, err = veth.ip4AddrAllocator.NewIp4InterfaceAddress(veth.peer.networkNumber); err == nil {
 			veth.ip4Address = ip4Address
 		} else {
 			return 0, err
