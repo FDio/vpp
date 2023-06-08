@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -25,15 +24,15 @@ var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 
 type HstSuite struct {
 	suite.Suite
-	containers    map[string]*Container
-	volumes       []string
-	netConfigs    []NetConfig
-	netInterfaces map[string]*NetInterface
-	addresser     *Addresser
-	testIds       map[string]string
-	cpuAllocator  *CpuAllocatorT
-	cpuContexts   []*CpuContext
-	cpuPerVpp     int
+	containers       map[string]*Container
+	volumes          []string
+	netConfigs       []NetConfig
+	netInterfaces    map[string]*NetInterface
+	ip4AddrAllocator *Ip4AddressAllocator
+	testIds          map[string]string
+	cpuAllocator     *CpuAllocatorT
+	cpuContexts      []*CpuContext
+	cpuPerVpp        int
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -229,7 +228,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 		s.T().Fatalf("unmarshal error: %v", err)
 	}
 
-	s.addresser = newAddresser(s)
+	s.ip4AddrAllocator = NewIp4AddressAllocator()
 	s.netInterfaces = make(map[string]*NetInterface)
 	for _, elem := range yamlTopo.Devices {
 		switch elem["type"].(string) {
@@ -243,7 +242,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 			}
 		case Veth, Tap:
 			{
-				if netIf, err := newNetworkInterface(elem, s.addresser); err == nil {
+				if netIf, err := newNetworkInterface(elem, s.ip4AddrAllocator); err == nil {
 					s.netConfigs = append(s.netConfigs, netIf)
 					s.netInterfaces[netIf.Name()] = netIf
 				} else {
@@ -297,45 +296,4 @@ func (s *HstSuite) getTestId() string {
 	}
 
 	return s.testIds[testName]
-}
-
-type AddressCounter = int
-
-type Addresser struct {
-	networks map[int]AddressCounter
-	suite    *HstSuite
-}
-
-func (a *Addresser) addNetwork(networkNumber int) {
-	a.networks[networkNumber] = 1
-}
-
-func (a *Addresser) newIp4Address(inputNetworkNumber ...int) (string, error) {
-	var networkNumber int = 0
-	if len(inputNetworkNumber) > 0 {
-		networkNumber = inputNetworkNumber[0]
-	}
-
-	if _, ok := a.networks[networkNumber]; !ok {
-		a.addNetwork(networkNumber)
-	}
-
-	numberOfAddresses := a.networks[networkNumber]
-
-	if numberOfAddresses == 254 {
-		return "", fmt.Errorf("no available IPv4 addresses")
-	}
-
-	address := fmt.Sprintf("10.10.%v.%v/24", networkNumber, numberOfAddresses)
-	a.networks[networkNumber] = numberOfAddresses + 1
-
-	return address, nil
-}
-
-func newAddresser(suite *HstSuite) *Addresser {
-	var addresser = new(Addresser)
-	addresser.suite = suite
-	addresser.networks = make(map[int]AddressCounter)
-	addresser.addNetwork(0)
-	return addresser
 }

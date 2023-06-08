@@ -32,8 +32,8 @@ type (
 
 	NetInterface struct {
 		NetConfigBase
-		addresser        *Addresser
-		ip4Address       string // this will have form 10.10.10.1/24
+		ip4AddrAllocator *Ip4AddressAllocator
+		ip4Address       string
 		index            InterfaceIndex
 		hwAddress        MacAddress
 		networkNamespace string
@@ -72,10 +72,10 @@ var (
 	}
 )
 
-func newNetworkInterface(cfg NetDevConfig, a *Addresser) (*NetInterface, error) {
+func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterface, error) {
 	var newInterface *NetInterface = &NetInterface{}
 	var err error
-	newInterface.addresser = a
+	newInterface.ip4AddrAllocator = a
 	newInterface.name = cfg["name"].(string)
 	newInterface.networkNumber = DEFAULT_NETWORK_NUM
 
@@ -98,7 +98,7 @@ func newNetworkInterface(cfg NetDevConfig, a *Addresser) (*NetInterface, error) 
 		if n, ok := ip.(NetDevConfig)["network"]; ok {
 			newInterface.networkNumber = n.(int)
 		}
-		newInterface.ip4Address, err = newInterface.addresser.newIp4Address(
+		newInterface.ip4Address, err = newInterface.ip4AddrAllocator.NewIp4InterfaceAddress(
 			newInterface.networkNumber,
 		)
 		if err != nil {
