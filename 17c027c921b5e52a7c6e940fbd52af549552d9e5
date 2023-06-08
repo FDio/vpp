@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6922a35_892839e9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-08T09:28:55Z",
+      "side": 1,
+      "message": "Can you change the way patches are organized:\npatch 1: add new ring structure, the ring structure related change in 37836 and 38749 should all goes to this patch, the \"cryptodev_async_frame_sw_ring\" should be in the cryptodev_engine_thread_t as 38749. Also please include the code to initialize the structure. Don\u0027t remove any existing code in this patch.\nPatch 2: change raw API with the new ring structure.\nPatch 3: change cop API with the new ring structure.",
+      "revId": "17c027c921b5e52a7c6e940fbd52af549552d9e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
