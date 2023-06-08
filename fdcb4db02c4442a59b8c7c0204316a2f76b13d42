@@ -123,6 +123,24 @@
       "parentUuid": "4ed29105_18858797",
       "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "62f7ae22_12dbe10e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-06-08T20:44:32Z",
+      "side": 1,
+      "message": "Hopefully Patchset 3 is an acceptable solution.\n\nI will add a comment to the _reply_t_endian \u0026 _details_t_endian generated functions explaining why the all fields are reversed.  Ideally just the array_size \u0026 array fields would be swapped in the functions with variable length arrays, but doing so would have made the code generator too complicated.\n\n@Nathan, @Stanislav, please test in your environment.",
+      "parentUuid": "7dda77bf_f445cc92",
+      "revId": "fdcb4db02c4442a59b8c7c0204316a2f76b13d42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
