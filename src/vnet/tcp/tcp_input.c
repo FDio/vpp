@@ -27,54 +27,6 @@ static vlib_error_desc_t tcp_input_error_counters[] = {
 #undef tcp_error
 };
 
-/* All TCP nodes have the same outgoing arcs */
-#define foreach_tcp_state_next                  \
-  _ (DROP4, "ip4-drop")                         \
-  _ (DROP6, "ip6-drop")                         \
-  _ (TCP4_OUTPUT, "tcp4-output")                \
-  _ (TCP6_OUTPUT, "tcp6-output")
-
-typedef enum _tcp_established_next
-{
-#define _(s,n) TCP_ESTABLISHED_NEXT_##s,
-  foreach_tcp_state_next
-#undef _
-    TCP_ESTABLISHED_N_NEXT,
-} tcp_established_next_t;
-
-typedef enum _tcp_rcv_process_next
-{
-#define _(s,n) TCP_RCV_PROCESS_NEXT_##s,
-  foreach_tcp_state_next
-#undef _
-    TCP_RCV_PROCESS_N_NEXT,
-} tcp_rcv_process_next_t;
-
-typedef enum _tcp_syn_sent_next
-{
-#define _(s,n) TCP_SYN_SENT_NEXT_##s,
-  foreach_tcp_state_next
-#undef _
-    TCP_SYN_SENT_N_NEXT,
-} tcp_syn_sent_next_t;
-
-typedef enum _tcp_listen_next
-{
-#define _(s,n) TCP_LISTEN_NEXT_##s,
-  foreach_tcp_state_next
-#undef _
-    TCP_LISTEN_N_NEXT,
-} tcp_listen_next_t;
-
-/* Generic, state independent indices */
-typedef enum _tcp_state_next
-{
-#define _(s,n) TCP_NEXT_##s,
-  foreach_tcp_state_next
-#undef _
-    TCP_STATE_N_NEXT,
-} tcp_state_next_t;
-
 typedef enum _tcp_input_next
 {
   TCP_INPUT_NEXT_DROP,
@@ -86,12 +38,6 @@ typedef enum _tcp_input_next
   TCP_INPUT_NEXT_PUNT,
   TCP_INPUT_N_NEXT
 } tcp_input_next_t;
-
-#define tcp_next_output(is_ip4) (is_ip4 ? TCP_NEXT_TCP4_OUTPUT          \
-                                        : TCP_NEXT_TCP6_OUTPUT)
-
-#define tcp_next_drop(is_ip4) (is_ip4 ? TCP_NEXT_DROP4                  \
-                                      : TCP_NEXT_DROP6)
 
 /**
  * Validate segment sequence number. As per RFC793:
@@ -1542,39 +1488,23 @@ VLIB_NODE_FN (tcp6_established_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp4_established_node) =
-{
+VLIB_REGISTER_NODE (tcp4_established_node) = {
   .name = "tcp4-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_ESTABLISHED_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_ESTABLISHED_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp6_established_node) =
-{
+VLIB_REGISTER_NODE (tcp6_established_node) = {
   .name = "tcp6-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_ESTABLISHED_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_ESTABLISHED_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
@@ -2082,13 +2012,6 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_SYN_SENT_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_SYN_SENT_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
@@ -2101,13 +2024,6 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_SYN_SENT_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_SYN_SENT_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
@@ -2540,39 +2456,23 @@ VLIB_NODE_FN (tcp6_rcv_process_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
-{
+VLIB_REGISTER_NODE (tcp4_rcv_process_node) = {
   .name = "tcp4-rcv-process",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_RCV_PROCESS_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_RCV_PROCESS_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
-{
+VLIB_REGISTER_NODE (tcp6_rcv_process_node) = {
   .name = "tcp6-rcv-process",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_RCV_PROCESS_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_RCV_PROCESS_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
@@ -2799,59 +2699,81 @@ VLIB_NODE_FN (tcp6_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp4_listen_node) =
-{
+VLIB_REGISTER_NODE (tcp4_listen_node) = {
   .name = "tcp4-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_LISTEN_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_LISTEN_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tcp6_listen_node) =
-{
+VLIB_REGISTER_NODE (tcp6_listen_node) = {
   .name = "tcp6-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
   .error_counters = tcp_input_error_counters,
-  .n_next_nodes = TCP_LISTEN_N_NEXT,
-  .next_nodes =
-  {
-#define _(s,n) [TCP_LISTEN_NEXT_##s] = n,
-    foreach_tcp_state_next
-#undef _
-  },
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
-#define foreach_tcp4_input_next                 \
-  _ (DROP, "ip4-drop")                          \
-  _ (LISTEN, "tcp4-listen")                     \
-  _ (RCV_PROCESS, "tcp4-rcv-process")           \
-  _ (SYN_SENT, "tcp4-syn-sent")                 \
-  _ (ESTABLISHED, "tcp4-established")		\
-  _ (RESET, "tcp4-reset")			\
+always_inline uword
+tcp46_drop_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, int is_ip4)
+{
+  u32 *from = vlib_frame_vector_args (frame);
+
+  /* Error counters must be incremented by previous nodes */
+  vlib_buffer_free (vm, from, frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
+VLIB_NODE_FN (tcp4_drop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_drop_inline (vm, node, from_frame, 1 /* is_ip4 */);
+}
+
+VLIB_NODE_FN (tcp6_drop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  return tcp46_drop_inline (vm, node, from_frame, 0 /* is_ip4 */);
+}
+
+VLIB_REGISTER_NODE (tcp4_drop_node) = {
+  .name = "tcp4-drop",
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+};
+
+VLIB_REGISTER_NODE (tcp6_drop_node) = {
+  .name = "tcp6-drop",
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_counters = tcp_input_error_counters,
+};
+
+#define foreach_tcp4_input_next                                               \
+  _ (DROP, "tcp4-drop")                                                       \
+  _ (LISTEN, "tcp4-listen")                                                   \
+  _ (RCV_PROCESS, "tcp4-rcv-process")                                         \
+  _ (SYN_SENT, "tcp4-syn-sent")                                               \
+  _ (ESTABLISHED, "tcp4-established")                                         \
+  _ (RESET, "tcp4-reset")                                                     \
   _ (PUNT, "ip4-punt")
 
-#define foreach_tcp6_input_next                 \
-  _ (DROP, "ip6-drop")                          \
-  _ (LISTEN, "tcp6-listen")                     \
-  _ (RCV_PROCESS, "tcp6-rcv-process")           \
-  _ (SYN_SENT, "tcp6-syn-sent")                 \
-  _ (ESTABLISHED, "tcp6-established")		\
-  _ (RESET, "tcp6-reset")			\
+#define foreach_tcp6_input_next                                               \
+  _ (DROP, "tcp6-drop")                                                       \
+  _ (LISTEN, "tcp6-listen")                                                   \
+  _ (RCV_PROCESS, "tcp6-rcv-process")                                         \
+  _ (SYN_SENT, "tcp6-syn-sent")                                               \
+  _ (ESTABLISHED, "tcp6-established")                                         \
+  _ (RESET, "tcp6-reset")                                                     \
   _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
