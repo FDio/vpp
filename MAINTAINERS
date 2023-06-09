@@ -806,6 +806,11 @@ I:	prom
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/prom
 
+Plugin - BPF Trace Filter
+I:      bpf_trace_filter
+M:      Mohammed Hawari <mohammed@hawari.fr>
+F:      src/plugins/bpf_trace_filter
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
