@@ -29,6 +29,8 @@
  * @param u32 classify_table_index - classifier table index
  * @return 0 => no trace, 1 => trace, -1 => error
  */
+int vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index,
+			   int func);
 
 static inline int
 vnet_is_packet_traced_inline (vlib_buffer_t * b,

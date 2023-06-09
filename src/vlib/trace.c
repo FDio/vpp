@@ -715,6 +715,15 @@ unformat_vlib_trace_filter_function (unformat_input_t *input, va_list *args)
   return 0;
 }
 
+void
+vlib_set_trace_filter_function (vlib_is_packet_traced_fn_t *x)
+{
+  foreach_vlib_main ()
+    {
+      this_vlib_main->trace_main.current_trace_filter_function = x;
+    }
+}
+
 static clib_error_t *
 set_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
 			   vlib_cli_command_t *cmd)
@@ -739,11 +748,8 @@ set_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
 	  goto done;
 	}
     }
+  vlib_set_trace_filter_function (res);
 
-  foreach_vlib_main ()
-    {
-      this_vlib_main->trace_main.current_trace_filter_function = res;
-    }
 done:
   unformat_free (line_input);
 
