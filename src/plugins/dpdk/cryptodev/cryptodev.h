@@ -26,6 +26,8 @@
 #define CRYPTODEV_CACHE_QUEUE_MASK (VNET_CRYPTO_FRAME_POOL_SIZE - 1)
 #define CRYPTODEV_MAX_INFLIGHT	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
 #define CRYPTODEV_AAD_MASK	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
+#define CRYPTODE_ENQ_MAX	   64
+#define CRYPTODE_DEQ_MAX	   64
 #define CRYPTODEV_DEQ_CACHE_SZ	   32
 #define CRYPTODEV_NB_SESSION	   4096
 #define CRYPTODEV_MAX_IV_SIZE	   16
@@ -154,6 +156,30 @@ typedef struct
 
 typedef struct
 {
+  vnet_crypto_async_frame_t *f;
+
+  u8 enqueued;
+  u8 dequeued;
+  u8 deq_state;
+  u8 frame_inflight;
+
+  u8 op_type;
+  u8 aad_len;
+  u8 n_elts;
+  u8 reserved;
+} cryptodev_async_ring_elt;
+
+typedef struct
+{
+  cryptodev_async_ring_elt frames[VNET_CRYPTO_FRAME_POOL_SIZE];
+  uint16_t head;
+  uint16_t tail;
+  uint16_t enq; /*record the frame currently being enqueued */
+  uint16_t deq; /*record the frame currently being dequeued */
+} cryptodev_async_frame_sw_ring;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vlib_buffer_t *b[VNET_CRYPTO_FRAME_SIZE];
   union
@@ -174,8 +200,14 @@ typedef struct
       cryptodev_session_t *reset_sess;
     };
   };
+
+  cryptodev_async_frame_sw_ring frame_ring;
   u16 cryptodev_id;
   u16 cryptodev_q;
+  u16 frames_on_ring;
+  u16 enqueued_not_dequeueq;
+  u16 deqeued_not_returned;
+  u16 pending_to_qat;
   u16 inflight;
 } cryptodev_engine_thread_t;
 
