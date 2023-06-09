@@ -41,3 +41,4 @@ For more on plugins please refer to :ref:`add_plugin`.
     acl_lookup_context
     bufmon_doc
     ip_session_redirect_doc
+    bpf_trace_filter
