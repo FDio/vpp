@@ -223,7 +223,7 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
 static int
 vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
 {
-  u8 *tmpmem = 0;
+  static u8 *tmpmem = 0;
   int tlen, slen;
 
   u32 msg_length = vec_len (msg);
@@ -245,7 +245,7 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
       tlen = fwrite (s, 1, slen, fp);
       cJSON_free (s);
       cJSON_Delete (o);
-      vec_free (tmpmem);
+      // vec_free (tmpmem);
       if (tlen != slen)
 	{
 	  fformat (stderr, "writing to file error\n");
@@ -525,9 +525,6 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 
   if (m && m->handler)
     {
-      if (trace_it)
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
-
       if (am->msg_print_flag)
 	{
 	  fformat (stdout, "[%d]: %s\n", id, m->name);
@@ -553,6 +550,12 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 			"verify message size is correct",
 			m->name, id);
 	}
+
+      /* don't trace message if it's truncated, otherwise output api message
+       * trace output will access memory beyond message boundary.
+       * e.g. VLA length field set to 1M elements, but VLA empty */
+      if (trace_it && calc_size <= msg_len)
+	vl_msg_api_trace (am, am->rx_trace, the_msg);
 
       /* don't process message if it's truncated, otherwise byte swaps
        * and stuff could corrupt memory even beyond message if it's malicious
