@@ -183,12 +183,7 @@ typedef struct
   vlib_buffer_t *b[VNET_CRYPTO_FRAME_SIZE];
   union
   {
-    struct
-    {
-      cryptodev_op_t **cops;
-      struct rte_mempool *cop_pool;
-      struct rte_ring *ring;
-    };
+    struct rte_mempool *cop_pool;
     struct
     {
       struct rte_crypto_raw_dp_ctx *ctx;
