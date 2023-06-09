@@ -919,12 +919,11 @@ class VppTestCase(CPUInterface, unittest.TestCase):
                 if self.remove_configured_vpp_objects_on_tear_down:
                     self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
-            m = self._testMethodName
-            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
-            tmp_api_trace = "/tmp/%s" % api_trace
-            vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
-            self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
-            self.logger.info("Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log))
+            api_trace = f"vpp_api_trace.{self._testMethodName}.{self.vpp.pid}.json"
+            tmp_api_trace = f"/tmp/{api_trace}"
+            vpp_api_trace_log = f"{self.tempdir}/{api_trace}"
+            self.logger.info(self.vapi.ppcli(f"api trace save-json {api_trace}"))
+            self.logger.info(f"Moving {tmp_api_trace} to {vpp_api_trace_log}\n")
             shutil.move(tmp_api_trace, vpp_api_trace_log)
         except VppTransportSocketIOError:
             self.logger.debug(
