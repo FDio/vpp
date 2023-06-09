@@ -274,6 +274,38 @@ api_trace_clear_cache (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_trace_set_filter_function (vat_main_t *vam)
+{
+  vl_api_trace_set_filter_function_t *mp;
+  int ret;
+
+  M (TRACE_SET_FILTER_FUNCTION, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_trace_filter_function_dump (vat_main_t *vam)
+{
+  vl_api_trace_filter_function_dump_t *mp;
+  int ret;
+
+  M (TRACE_FILTER_FUNCTION_DUMP, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_trace_filter_function_details_t_handler (
+  vl_api_trace_filter_function_details_t *dmp)
+{
+  fformat (stdout, "name: %U, selected: %u\n\n", vl_api_format_string,
+	   &dmp->name, dmp->selected);
+}
+
 #define vl_endianfun
 #include <tracedump/tracedump.api.h>
 #undef vl_endianfun
