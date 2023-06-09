@@ -34,6 +34,23 @@
       "parentUuid": "d6922a35_892839e9",
       "revId": "17c027c921b5e52a7c6e940fbd52af549552d9e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "282491f3_613370e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-09T13:53:30Z",
+      "side": 1,
+      "message": "The code, if applied altogether, looks good to me. \nI understand https://gerrit.fd.io/r/c/vpp/+/37836 was done by different people, this patch aims to maintain all those marks, but the fact some data structures were created there and then updated in this patch looks confusing.\n\nI believe the patch could be reorganized as:\n- 37836 involves only the data structure change\n- 38749 and a new patch involves changing cop data path and raw api path respectively.",
+      "revId": "17c027c921b5e52a7c6e940fbd52af549552d9e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
