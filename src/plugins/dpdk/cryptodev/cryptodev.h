@@ -28,7 +28,6 @@
 #define CRYPTODEV_AAD_MASK	   (CRYPTODEV_NB_CRYPTO_OPS - 1)
 #define CRYPTODE_ENQ_MAX	   64
 #define CRYPTODE_DEQ_MAX	   64
-#define CRYPTODEV_DEQ_CACHE_SZ	   32
 #define CRYPTODEV_NB_SESSION	   4096
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
@@ -193,7 +192,6 @@ typedef struct
     struct
     {
       struct rte_crypto_raw_dp_ctx *ctx;
-      struct rte_ring *cached_frame;
       u16 aad_index;
       u8 *aad_buf;
       u64 aad_phy_addr;
@@ -233,13 +231,14 @@ extern cryptodev_main_t cryptodev_main;
 
 static_always_inline void
 cryptodev_mark_frame_err_status (vnet_crypto_async_frame_t *f,
-				 vnet_crypto_op_status_t s)
+				 vnet_crypto_op_status_t s,
+				 vnet_crypto_async_frame_state_t fs)
 {
   u32 n_elts = f->n_elts, i;
 
   for (i = 0; i < n_elts; i++)
     f->elts[i].status = s;
-  f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
+  f->state = fs;
 }
 
 int cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
