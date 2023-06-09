@@ -1,0 +1,8 @@
+---
+name: BPF Trace Filter
+maintainer: Mohammed Hawari <mohammed@hawari.fr>
+features:
+  - BPF Trace Filtering
+description: "BPF Trace Filtering"
+state: experimental
+properties: [CLI, API]
