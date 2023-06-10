@@ -410,6 +410,54 @@ vl_api_mpls_table_dump_t_handler (vl_api_mpls_table_dump_t * mp)
 }
 
 static void
+send_mpls_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+			     u32 context, const u32 sw_if_index)
+{
+  vl_api_mpls_interface_details_t *mp;
+
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_MPLS_INTERFACE_DETAILS);
+  mp->context = context;
+
+  mp->sw_if_index = htonl (sw_if_index);
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_mpls_interface_dump_t_handler (vl_api_mpls_interface_dump_t *mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vl_api_registration_t *reg;
+  vnet_interface_main_t *im = &vnet_main.interface_main;
+  vnet_sw_interface_t *si;
+  u32 sw_if_index = ~0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index == ~0)
+    {
+      pool_foreach (si, im->sw_interfaces)
+	{
+	  if (mpls_sw_interface_is_enabled (si->sw_if_index))
+	    {
+	      send_mpls_interface_details (am, reg, mp->context,
+					   si->sw_if_index);
+	    }
+	}
+    }
+  else
+    {
+      if (mpls_sw_interface_is_enabled (sw_if_index))
+	{
+	  send_mpls_interface_details (am, reg, mp->context, sw_if_index);
+	}
+    }
+}
+
+static void
 send_mpls_route_details (vpe_api_main_t * am,
 			 vl_api_registration_t * reg,
 			 u32 context, fib_node_index_t fib_entry_index)
