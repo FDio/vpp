@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2908df11_118dd36e",
+        "filename": "src/vnet/mpls/mpls_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-06-12T23:28:20Z",
+      "side": 1,
+      "message": "vl_msg_api_alloc_zero rather than the additional memset.",
+      "revId": "4a9acf6ed6e63da9c627f68806a913269ffd4579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
