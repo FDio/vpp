@@ -63,7 +63,6 @@ layer3 = test_config["L3"]
 def create_test(test_name, test, ip_version, mtu):
     """Create and return a unittest method for a test."""
 
-    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
         self.setUpTestToplogy(test=test, ip_version=ip_version)
@@ -303,7 +302,9 @@ class TestVPPInterfacesQemu(VppTestCase):
             sys.exit(1)
 
         if x_connect_mode == "L2":
-            self.l2_connect_interfaces(1, self.ingress_if_idx, self.egress_if_idx)
+            # DAW: Force L2 tests to fail to test CI failure results publishing
+            # self.l2_connect_interfaces(1, self.ingress_if_idx, self.egress_if_idx)
+            pass
         elif x_connect_mode == "L3":
             # L3 connect client & server side
             vrf_id = layer3["ip4_vrf"] if ip_version == 4 else layer3["ip6_vrf"]
