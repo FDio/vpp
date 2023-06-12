@@ -63,7 +63,6 @@ layer3 = test_config["L3"]
 def create_test(test_name, test, ip_version, mtu):
     """Create and return a unittest method for a test."""
 
-    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
         self.setUpTestToplogy(test=test, ip_version=ip_version)
@@ -241,6 +240,11 @@ class TestVPPInterfacesQemu(VppTestCase):
             self.linux_interfaces.append([client_namespace, f"{client_if_type}0"])
             # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
             disable_interface_gso(client_namespace, f"{client_if_type}0")
+            # najoy: Simulate tap interface failure for test ID=10
+            if test["id"] == 10:
+                self.vapi.sw_interface_set_flags(
+                    sw_if_index=self.ingress_if_idx, flags=0
+                )
         else:
             print(
                 f"Unsupported client interface type: {client_if_type} "
