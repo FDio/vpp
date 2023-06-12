@@ -52,6 +52,23 @@
       "parentUuid": "5beb724b_1313f805",
       "revId": "3538c8010b2fa08335f4b0dd74ec44e9a9eb08ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f20b0eb0_af74f959",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-12T10:14:16Z",
+      "side": 1,
+      "message": "Good catch! Could you update the commit message to something like\n\"Can you rephrase the commit message to something like:\nMake sure the same frame is not used for multiple interfaces, otherwise it breaks the ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX promise\"\nwhich is a better description IMHO :)",
+      "revId": "3538c8010b2fa08335f4b0dd74ec44e9a9eb08ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
