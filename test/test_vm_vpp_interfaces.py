@@ -63,7 +63,6 @@ layer3 = test_config["L3"]
 def create_test(test_name, test, ip_version, mtu):
     """Create and return a unittest method for a test."""
 
-    @unittest.skipUnless(config.extended, "part of extended tests")
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
         self.setUpTestToplogy(test=test, ip_version=ip_version)
