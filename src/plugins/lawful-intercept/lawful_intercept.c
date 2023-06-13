@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include "lawful_intercept.h"
 
 li_main_t li_main;
 
