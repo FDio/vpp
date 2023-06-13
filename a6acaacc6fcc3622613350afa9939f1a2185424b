@@ -37,6 +37,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "91fb2981_e77bd63f",
+        "filename": "src/vlib/trace.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 719,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-13T12:18:26Z",
+      "side": 1,
+      "message": "Would be awesome to have an API for that",
+      "range": {
+        "startLine": 719,
+        "startChar": 0,
+        "endLine": 719,
+        "endChar": 25
+      },
+      "revId": "a6acaacc6fcc3622613350afa9939f1a2185424b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "862824f9_94301621",
         "filename": "src/vnet/classify/vnet_classify.c",
         "patchSetId": 6
