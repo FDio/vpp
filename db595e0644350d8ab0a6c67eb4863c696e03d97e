@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a75a80d0_ec77275d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-06-13T09:55:38Z",
+      "side": 1,
+      "message": "This patch should be abandoned for the sake of https://gerrit.fd.io/r/c/vpp/+/39019, unfortunately becasue I am not the owner of this patch I cannot do it.",
+      "revId": "db595e0644350d8ab0a6c67eb4863c696e03d97e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
