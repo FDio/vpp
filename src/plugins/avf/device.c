@@ -156,7 +156,6 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
   if (ad->flags & AVF_DEVICE_F_ELOG)
     clib_memcpy_fast (&dc, d, sizeof (avf_aq_desc_t));
 
-  CLIB_MEMORY_BARRIER ();
   ad->atq_next_slot = (ad->atq_next_slot + 1) % AVF_MBOX_LEN;
   avf_reg_write (ad, AVF_ATQT, ad->atq_next_slot);
   avf_reg_flush (ad);
