@@ -428,7 +428,7 @@ avf_reg_write (avf_device_t * ad, u32 addr, u32 val)
 {
   if (ad->flags & AVF_DEVICE_F_ELOG)
     avf_elog_reg (ad, addr, val, 0);
-  *(volatile u32 *) ((u8 *) ad->bar0 + addr) = val;
+  __atomic_store_n ((u32 *) ((u8 *) ad->bar0 + addr), val, __ATOMIC_RELEASE);
 }
 
 static inline u32
