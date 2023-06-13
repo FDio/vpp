@@ -35,6 +35,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1050edc5_fe8740f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-13T12:22:53Z",
+      "side": 1,
+      "message": "LGTM overall, some minor comments",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "563208d2_b8aebb64",
@@ -71,6 +88,46 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b4f260e5_80a7de25",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-13T12:22:53Z",
+      "side": 1,
+      "message": "Can\u0027t you include that function from `vnet` directly instead of declaring a prototype here?",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3c8257f_67309db8",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-13T12:22:53Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we set the priority higher than the one for vnet_is_packet_traced?\nIf we load the plugin it is probably that we want to use it, isn\u0027t it?\nAnd the default behavior is similar to vnet_is_packet_traced when there are no bpf prog set yet.",
+      "range": {
+        "startLine": 57,
+        "startChar": 3,
+        "endLine": 57,
+        "endChar": 11
+      },
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b6c2683c_104ce0ea",
         "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.rst",
         "patchSetId": 2
@@ -99,6 +156,23 @@
       "writtenOn": "2023-06-12T09:52:40Z",
       "side": 1,
       "message": "2023",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a8863f5b_8d50ef8b",
+        "filename": "src/plugins/bpf_trace_filter/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-13T12:22:53Z",
+      "side": 1,
+      "message": "It would also be nice to have an API for that one if possible",
       "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
