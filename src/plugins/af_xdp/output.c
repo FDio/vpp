@@ -1,4 +1,5 @@
 #include <string.h>
+#include <vppinfra/clib.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
@@ -154,6 +155,14 @@ wrap_around:
 
   while (n >= 8)
     {
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT ||
+			 b[1]->flags & VLIB_BUFFER_NEXT_PRESENT ||
+			 b[2]->flags & VLIB_BUFFER_NEXT_PRESENT ||
+			 b[3]->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  break;
+	}
+
       vlib_prefetch_buffer_header (b[4], LOAD);
       offset =
 	(sizeof (vlib_buffer_t) +
@@ -193,6 +202,17 @@ wrap_around:
 
   while (n >= 1)
     {
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  if (vlib_buffer_chain_linearize (vm, b[0]) != 1)
+	    {
+	      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
+			  "vlib_buffer_chain_linearize failed");
+	      vlib_buffer_free_one (vm, b[0]->buffer_pool_index);
+	      continue;
+	    }
+	}
+
       offset =
 	(sizeof (vlib_buffer_t) +
 	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
