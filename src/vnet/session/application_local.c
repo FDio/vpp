@@ -39,6 +39,8 @@ typedef struct ct_segments_
   u32 client_wrk;
   u32 fifo_pair_bytes;
   ct_segment_t *segments;
+  u32 last_seg_freed;
+  u8 have_free_seg;
 } ct_segments_ctx_t;
 
 typedef struct ct_cleanup_req_
@@ -194,6 +196,77 @@ ct_set_invalid_app_wrk (ct_connection_t *ct, u8 is_client)
     }
 }
 
+/**
+ * Cleans up segment. Assumes is that app_segs_lock is taken
+ */
+static void
+ct_free_segment (ct_segments_ctx_t *seg_ctx, ct_segment_t *ct_seg,
+		 u8 cache_last)
+{
+  segment_manager_t *sm;
+  app_worker_t *app_wrk;
+
+  /*
+   * Keep last freed segment around in case we need to reuse it.
+   * This is meant to avoid segment allocation/mapping churn
+   */
+  if (cache_last)
+    {
+      u32 last_seg_index = seg_ctx->last_seg_freed;
+      seg_ctx->last_seg_freed = ct_seg->ct_seg_index;
+      seg_ctx->have_free_seg = 1;
+      if (last_seg_index == ~0)
+	return;
+      ct_seg = pool_elt_at_index (seg_ctx->segments, last_seg_index);
+    }
+
+  /*
+   * Remove segment because both client and server detached. Notify apps
+   */
+
+  sm = segment_manager_get (seg_ctx->sm_index);
+  app_wrk = app_worker_get_if_valid (seg_ctx->client_wrk);
+
+  /* Determine if client app still needs notification, i.e., if it is
+   * still attached. If client detached and this is the last ct session
+   * on this segment, then its connects segment manager should also be
+   * detached, so do not send notification */
+  if (app_wrk)
+    {
+      segment_manager_t *csm;
+      u64 seg_handle;
+
+      seg_handle = segment_manager_make_segment_handle (seg_ctx->sm_index,
+							ct_seg->segment_index);
+      csm = app_worker_get_connect_segment_manager (app_wrk);
+      if (!segment_manager_app_detached (csm))
+	app_worker_del_segment_notify (app_wrk, seg_handle);
+    }
+
+  /* Notify server app and free segment */
+  segment_manager_lock_and_del_segment (sm, ct_seg->segment_index);
+
+  pool_put_index (seg_ctx->segments, ct_seg->ct_seg_index);
+
+  /*
+   * No more segment indices left, remove the segments context
+   */
+  if (!pool_elts (seg_ctx->segments))
+    {
+      ct_main_t *cm = &ct_main;
+      u64 table_handle = seg_ctx->client_wrk << 16 | seg_ctx->server_wrk;
+      table_handle = (u64) seg_ctx->sm_index << 32 | table_handle;
+      hash_unset (cm->app_segs_ctxs_table, table_handle);
+      pool_free (seg_ctx->segments);
+      pool_put_index (cm->app_seg_ctxs, ct_seg->seg_ctx_index);
+    }
+
+  /* Cleanup segment manager if needed. If server detaches there's a chance
+   * the client's sessions will hold up segment removal */
+  if (segment_manager_app_detached (sm) && !segment_manager_has_fifos (sm))
+    segment_manager_free_safe (sm);
+}
+
 static void
 ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
 			  svm_fifo_t *tx_fifo)
@@ -201,7 +274,6 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
   ct_segments_ctx_t *seg_ctx;
   ct_main_t *cm = &ct_main;
   segment_manager_t *sm;
-  app_worker_t *app_wrk;
   ct_segment_t *ct_seg;
   fifo_segment_t *fs;
   u32 seg_index;
@@ -282,48 +354,7 @@ ct_session_dealloc_fifos (ct_connection_t *ct, svm_fifo_t *rx_fifo,
       !(ct_seg->flags & CT_SEGMENT_F_SERVER_DETACHED))
     goto done;
 
-  /*
-   * Remove segment context because both client and server detached
-   */
-
-  pool_put_index (seg_ctx->segments, ct->ct_seg_index);
-
-  /*
-   * No more segment indices left, remove the segments context
-   */
-  if (!pool_elts (seg_ctx->segments))
-    {
-      u64 table_handle = seg_ctx->client_wrk << 16 | seg_ctx->server_wrk;
-      table_handle = (u64) seg_ctx->sm_index << 32 | table_handle;
-      hash_unset (cm->app_segs_ctxs_table, table_handle);
-      pool_free (seg_ctx->segments);
-      pool_put_index (cm->app_seg_ctxs, ct->seg_ctx_index);
-    }
-
-  /*
-   * Segment to be removed so notify both apps
-   */
-
-  app_wrk = app_worker_get_if_valid (ct->client_wrk);
-  /* Determine if client app still needs notification, i.e., if it is
-   * still attached. If client detached and this is the last ct session
-   * on this segment, then its connects segment manager should also be
-   * detached, so do not send notification */
-  if (app_wrk)
-    {
-      segment_manager_t *csm;
-      csm = app_worker_get_connect_segment_manager (app_wrk);
-      if (!segment_manager_app_detached (csm))
-	app_worker_del_segment_notify (app_wrk, ct->segment_handle);
-    }
-
-  /* Notify server app and free segment */
-  segment_manager_lock_and_del_segment (sm, seg_index);
-
-  /* Cleanup segment manager if needed. If server detaches there's a chance
-   * the client's sessions will hold up segment removal */
-  if (segment_manager_app_detached (sm) && !segment_manager_has_fifos (sm))
-    segment_manager_free_safe (sm);
+  ct_free_segment (seg_ctx, ct_seg, 1 /* cache_last */);
 
 done:
 
@@ -404,7 +435,6 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
 
   cs = session_get (cct->c_s_index, cct->c_thread_index);
   session_set_state (cs, SESSION_STATE_READY);
-
   return 0;
 
 connect_error:
@@ -431,6 +461,13 @@ ct_lookup_free_segment (ct_main_t *cm, segment_manager_t *sm,
 
   seg_ctx = pool_elt_at_index (cm->app_seg_ctxs, seg_ctx_index);
   max_free_bytes = seg_ctx->fifo_pair_bytes;
+
+  if (seg_ctx->last_seg_freed != ~0)
+    {
+      ct_seg = pool_elt_at_index (seg_ctx->segments, seg_ctx->last_seg_freed);
+      seg_ctx->last_seg_freed = ~0;
+      return ct_seg;
+    }
 
   pool_foreach (ct_seg, seg_ctx->segments)
     {
@@ -501,6 +538,7 @@ ct_alloc_segment (ct_main_t *cm, app_worker_t *server_wrk, u64 table_handle,
       seg_ctx->client_wrk = client_wrk_index;
       seg_ctx->sm_index = sm_index;
       seg_ctx->fifo_pair_bytes = pair_bytes;
+      seg_ctx->last_seg_freed = ~0;
     }
   else
     {
@@ -516,6 +554,7 @@ ct_alloc_segment (ct_main_t *cm, app_worker_t *server_wrk, u64 table_handle,
 
   /* New segment, notify the server and client */
   seg_handle = segment_manager_make_segment_handle (sm_index, fs_index);
+  clib_warning ("segment handle %lu");
   if (app_worker_add_segment_notify (server_wrk, seg_handle))
     goto error;
 
