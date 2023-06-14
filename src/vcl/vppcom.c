@@ -3392,7 +3392,8 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	  evt_flags |= rv > 0 ? EPOLLOUT : EPOLLHUP | EPOLLRDHUP;
 	  evt_data = s->vep.ev.data.u64;
 	}
-      if (!add_event && s->session_state > VCL_STATE_READY)
+      if (!add_event && (s->flags & VCL_SESSION_F_IS_VEP_SESSION) &&
+	  s->session_state > VCL_STATE_READY)
 	{
 	  add_event = 1;
 	  evt_flags |= EPOLLHUP | EPOLLRDHUP;
