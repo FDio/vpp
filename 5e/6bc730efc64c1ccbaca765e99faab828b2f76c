@@ -1,0 +1,7 @@
+Code-Review+2: Andrew Yourtchenko <ayourtch@gmail.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Wed, 14 Jun 2023 09:55:28 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/39046
+Project: vpp
+Branch: refs/heads/stable/2306
