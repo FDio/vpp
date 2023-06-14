@@ -969,7 +969,7 @@ vcl_session_app_del_segment_handler (vcl_worker_t * wrk, void *data)
 {
   session_app_del_segment_msg_t *msg = (session_app_del_segment_msg_t *) data;
   vcl_segment_detach (msg->segment_handle);
-  VDBG (1, "Unmapped segment: %d", msg->segment_handle);
+  VDBG (1, "Unmapped segment: %lx", msg->segment_handle);
 }
 
 static void

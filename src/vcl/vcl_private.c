@@ -479,7 +479,7 @@ vcl_segment_detach (u64 segment_handle)
 
   clib_rwlock_writer_unlock (&vcm->segment_table_lock);
 
-  VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
+  VDBG (0, "detached segment %u handle %lx", segment_index, segment_handle);
 }
 
 void
