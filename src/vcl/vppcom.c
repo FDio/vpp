@@ -2864,6 +2864,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.lt_next = VCL_INVALID_SESSION_INDEX;
       s->vep.ev = *event;
+      s->vep.ev.events |= EPOLLHUP | EPOLLERR;
       s->flags &= ~VCL_SESSION_F_IS_VEP;
       s->flags |= VCL_SESSION_F_IS_VEP_SESSION;
       vep_session->vep.next_sh = session_handle;
@@ -2955,6 +2956,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	}
       s->vep.et_mask = VEP_DEFAULT_ET_MASK;
       s->vep.ev = *event;
+      s->vep.ev.events |= EPOLLHUP | EPOLLERR;
 
       VDBG (1, "EPOLL_CTL_MOD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
 	    vep_handle, session_handle, event->events, event->data.u64);
@@ -3033,6 +3035,14 @@ done:
   return rv;
 }
 
+always_inline u8
+vcl_ep_session_needs_evt (vcl_session_t *s, u32 evt)
+{
+  /* No event if not epolled / events reset on hup or level-trigger on */
+  return ((s->vep.ev.events & evt) &&
+	  s->vep.lt_next == VCL_INVALID_SESSION_INDEX);
+}
+
 static inline void
 vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 				struct epoll_event *events, u32 * num_ev)
@@ -3052,11 +3062,10 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (vcl_session_is_closed (s))
 	break;
       vcl_fifo_rx_evt_valid_or_break (s);
-      session_events = s->vep.ev.events;
-      if (!(EPOLLIN & s->vep.ev.events) ||
-	  (s->flags & VCL_SESSION_F_HAS_RX_EVT) ||
-	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
+      if (!vcl_ep_session_needs_evt (s, EPOLLIN) ||
+	  (s->flags & VCL_SESSION_F_HAS_RX_EVT))
 	break;
+      session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events = EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
@@ -3069,10 +3078,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       svm_fifo_reset_has_deq_ntf (vcl_session_is_ct (s) ? s->ct_tx_fifo :
 								s->tx_fifo);
-      session_events = s->vep.ev.events;
-      if (!(EPOLLOUT & session_events) ||
-	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
+      if (!vcl_ep_session_needs_evt (s, EPOLLOUT))
 	break;
+      session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events = EPOLLOUT;
       session_evt_data = s->vep.ev.data.u64;
@@ -3082,13 +3090,10 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	s = vcl_session_accepted (wrk, (session_accepted_msg_t *) e->data);
       else
 	s = vcl_session_get (wrk, e->session_index);
-      if (!s)
+      if (!s || !vcl_ep_session_needs_evt (s, EPOLLIN))
 	break;
-      session_events = s->vep.ev.events;
       sid = s->session_index;
-      if (!(EPOLLIN & session_events) ||
-	  (s->vep.lt_next != VCL_INVALID_SESSION_INDEX))
-	break;
+      session_events = s->vep.ev.events;
       add_event = 1;
       events[*num_ev].events = EPOLLIN;
       session_evt_data = s->vep.ev.data.u64;
@@ -3102,19 +3107,20 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       else
 	sid = e->session_index;
       s = vcl_session_get (wrk, sid);
-      if (vcl_session_is_closed (s))
-	break;
-      session_events = s->vep.ev.events;
-      /* Generate EPOLLOUT because there's no connected event */
-      if (!(EPOLLOUT & session_events))
+      if (vcl_session_is_closed (s) || !vcl_ep_session_needs_evt (s, EPOLLOUT))
 	break;
       /* We didn't have a fifo when the event was added */
       vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       add_event = 1;
+      session_events = s->vep.ev.events;
+      /* Generate EPOLLOUT because there's no connected event */
       events[*num_ev].events = EPOLLOUT;
       session_evt_data = s->vep.ev.data.u64;
       if (s->session_state == VCL_STATE_DETACHED)
-	events[*num_ev].events |= EPOLLHUP;
+	{
+	  events[*num_ev].events |= EPOLLHUP;
+	  s->vep.ev.events = 0;
+	}
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       if (!e->postponed)
@@ -3127,8 +3133,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  s = vcl_session_get (wrk, e->session_index);
 	  s->flags &= ~VCL_SESSION_F_PENDING_DISCONNECT;
 	}
-      if (vcl_session_is_closed (s) ||
-	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
+      if (vcl_session_is_closed (s) || !vcl_ep_session_needs_evt (s, EPOLLHUP))
 	{
 	  if (s && (s->flags & VCL_SESSION_F_PENDING_FREE))
 	    vcl_session_free (wrk, s);
@@ -3152,7 +3157,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  events[*num_ev].events = EPOLLHUP;
 	}
       session_evt_data = s->vep.ev.data.u64;
-
+      s->vep.ev.events = 0;
       break;
     case SESSION_CTRL_EVT_BOUND:
       vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
@@ -3170,8 +3175,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  s = vcl_session_get (wrk, sid);
 	  s->flags &= ~VCL_SESSION_F_PENDING_DISCONNECT;
 	}
-      if (vcl_session_is_closed (s) ||
-	  !(s->flags & VCL_SESSION_F_IS_VEP_SESSION))
+      if (vcl_session_is_closed (s) || !vcl_ep_session_needs_evt (s, EPOLLHUP))
 	{
 	  if (s && (s->flags & VCL_SESSION_F_PENDING_FREE))
 	    vcl_session_free (wrk, s);
@@ -3190,6 +3194,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  events[*num_ev].events |= EPOLLIN;
 	}
       session_evt_data = s->vep.ev.data.u64;
+      s->vep.ev.events = 0;
       break;
     case SESSION_CTRL_EVT_UNLISTEN_REPLY:
       vcl_session_unlisten_reply_handler (wrk, e->data);
@@ -3222,11 +3227,13 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 
   if (add_event)
     {
+      ASSERT (s->flags & VCL_SESSION_F_IS_VEP_SESSION);
       events[*num_ev].data.u64 = session_evt_data;
       if (EPOLLONESHOT & session_events)
 	{
 	  s = vcl_session_get (wrk, sid);
-	  s->vep.ev.events = 0;
+	  if (!(events[*num_ev].events & EPOLLHUP))
+	    s->vep.ev.events = EPOLLHUP | EPOLLERR;
 	}
       else if (!(EPOLLET & session_events))
 	{
@@ -3380,6 +3387,11 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
       s = vcl_session_get (wrk, next);
       next = s->vep.lt_next;
 
+      if (s->vep.ev.events == 0)
+	{
+	  vec_add1 (to_remove, s->session_index);
+	  continue;
+	}
       if ((s->vep.ev.events & EPOLLIN) && (rv = vcl_session_read_ready (s)))
 	{
 	  add_event = 1;
@@ -3406,6 +3418,8 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	  add_event = 0;
 	  evt_flags = 0;
 	  if (EPOLLONESHOT & s->vep.ev.events)
+	    s->vep.ev.events = EPOLLHUP | EPOLLERR;
+	  if (evt_flags & EPOLLHUP)
 	    s->vep.ev.events = 0;
 	  if (*n_evts == maxevents)
 	    {
