@@ -943,6 +943,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16x16 next16_l2 = u16x16_splat (next_l2);
   u16x16 zero = { 0 };
   u16x16 stairs = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+  u8 *dmac_bad = dmacs_bad;
 #endif
 
   etype = etypes;
@@ -959,6 +960,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef CLIB_HAVE_VEC256
       if (n_left >= 16)
 	{
+	  u8x16 dmac_bad16 = u8x16_load_unaligned (dmac_bad);
 	  u16x16 r = zero;
 	  u16x16 e16 = u16x16_load_unaligned (etype);
 	  if (main_is_l3)
@@ -970,6 +972,19 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    r = ((e16 != et16_vlan) & (e16 != et16_dot1ad)) & next16_l2;
 	  u16x16_store_unaligned (r, next);
+
+	  if (dmac_check && main_is_l3 && !u8x16_is_all_zero (dmac_bad16))
+	    {
+	      for (int j = 0; j < 16; j++)
+		{
+		  if (dmac_bad[j])
+		    {
+		      next[j] = 0;
+		      slowpath_indices[n_slowpath++] = i + j;
+		    }
+		}
+	      goto step;
+	    }
 
 	  if (!u16x16_is_all_zero (r == zero))
 	    {
@@ -987,14 +1002,21 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
+	step:
 	  etype += 16;
+	  dmac_bad += 16;
 	  next += 16;
 	  n_left -= 16;
 	  i += 16;
 	  continue;
 	}
 #endif
-      if (main_is_l3 && etype[0] == et_ip4)
+      if (main_is_l3 && dmac_check && dmacs_bad[i])
+	{
+	  next[0] = 0;
+	  slowpath_indices[n_slowpath++] = i;
+	}
+      else if (main_is_l3 && etype[0] == et_ip4)
 	next[0] = next_ip4;
       else if (main_is_l3 && etype[0] == et_ip6)
 	next[0] = next_ip6;
