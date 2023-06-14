@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "cb13d7a0_4f306caa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 2630
+      },
+      "writtenOn": "2023-06-14T10:33:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8ca986e1_412ae97f",
+      "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "e08648ac_9f0051cf",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 2
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8db54175_18687635",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 2630
+      },
+      "writtenOn": "2023-06-14T10:33:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "6ada21f5_ed2504a4",
+      "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b91e3a96_95b55c75",
@@ -65,6 +101,24 @@
       "writtenOn": "2023-06-13T16:02:54Z",
       "side": 1,
       "message": "We should probably add PREDICT_FALSE here",
+      "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "62813996_bcb34f31",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 2630
+      },
+      "writtenOn": "2023-06-14T10:33:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b91e3a96_95b55c75",
       "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1011ef9_3013c2f2",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 2630
+      },
+      "writtenOn": "2023-06-14T10:33:57Z",
+      "side": 1,
+      "message": "Sorry about that. Should have tested it again after a minor refactoring.",
+      "parentUuid": "968950ae_6e9f2c50",
+      "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "110c3542_1ff32de5",
@@ -99,6 +171,24 @@
       "writtenOn": "2023-06-13T16:02:54Z",
       "side": 1,
       "message": "I believe we are missing a vlib_buffer_free_one() here, otherwise we\u0027ll leak buffers",
+      "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f2c7923_92918ffe",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 2630
+      },
+      "writtenOn": "2023-06-14T10:33:57Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "110c3542_1ff32de5",
       "revId": "4b18ba2df1f7470b54cb41639a1625e1c037e52f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
