@@ -4,3 +4,4 @@ export HST_LDPRELOAD=${VPP_WS}/build-root/build-vpp-native/vpp/lib/x86_64-linux-
 export PATH=${VPP_WS}/build-root/build-vpp-native/vpp/bin:$PATH
 
 export UBUNTU_VERSION=$(lsb_release -rs)
+export HST_EXTENDED_TESTS=false

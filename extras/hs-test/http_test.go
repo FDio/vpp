@@ -40,6 +40,26 @@ func (s *VethsSuite) TestHttpCli() {
 	s.assertContains(o, "<html>", "<html> not found in the result!")
 }
 
+func (s *NoTopoSuite) TestNginxHttp3() {
+	s.SkipUnlessExtendedTestsBuilt()
+
+	query := "index.html"
+	nginxCont := s.getContainerByName("nginx-http3")
+	s.assertNil(nginxCont.run())
+
+	vpp := s.getContainerByName("vpp").vppInstance
+	vpp.waitForApp("nginx-", 5)
+	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+
+	defer func() { os.Remove(query) }()
+	curlCont := s.getContainerByName("curl")
+	args := fmt.Sprintf("curl --noproxy '*' --http3-only -k https://%s:8443/%s", serverAddress, query)
+	curlCont.extraRunningArgs = args
+	o, err := curlCont.combinedOutput()
+	s.assertNil(err)
+	s.assertContains(o, "<http>", "<http> not found in the result!")
+}
+
 func (s *NoTopoSuite) TestNginxAsServer() {
 	query := "return_ok"
 	finished := make(chan error, 1)

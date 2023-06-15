@@ -44,8 +44,11 @@ help:
 	@echo " fixstyle             - format .go source files"
 	@echo " list-tests           - list all tests"
 	@echo
-	@echo "Make arguments:"
+	@echo "make build arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
+	@echo " HST_EXTENDED_TESTS	 - build extended tests"
+	@echo
+	@echo "make test arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " VERBOSE=[true|false]     - verbose output"
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
@@ -76,12 +79,12 @@ build-go:
 
 build: .deps.ok build-vpp-release build-go
 	@rm -f .build.vpp
-	bash ./script/build.sh release
+	bash ./script/build_hst.sh release
 	@touch .build.vpp
 
 build-debug: .deps.ok build-vpp-debug build-go
 	@rm -f .build.vpp
-	bash ./script/build.sh debug
+	bash ./script/build_hst.sh debug
 	@touch .build.vpp
 
 .deps.ok:
