@@ -354,13 +354,26 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	      };
 
 	      if (is_del)
-		fib_table_entry_path_remove2 (fib_index,
-					      &rpfx, FIB_SOURCE_CLI, rpaths);
+		{
+		  if (FIB_NODE_INDEX_INVALID ==
+		      fib_table_entry_path_remove2 (fib_index, &rpfx,
+						    FIB_SOURCE_CLI, rpaths))
+		    {
+		      vlib_cli_output (vm, "Invalid prefix len: %d",
+				       rpfx.fp_len);
+		    }
+		}
 	      else
-		fib_table_entry_path_add2 (fib_index,
-					   &rpfx,
-					   FIB_SOURCE_CLI,
-					   FIB_ENTRY_FLAG_NONE, rpaths);
+		{
+		  if (FIB_NODE_INDEX_INVALID ==
+		      fib_table_entry_path_add2 (fib_index, &rpfx,
+						 FIB_SOURCE_CLI,
+						 FIB_ENTRY_FLAG_NONE, rpaths))
+		    {
+		      vlib_cli_output (vm, "Invalid prefix len: %d",
+				       rpfx.fp_len);
+		    }
+		}
 
 	      fib_prefix_increment (&prefixs[i]);
 	    }

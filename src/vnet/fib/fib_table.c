@@ -612,6 +612,18 @@ fib_table_entry_path_add2 (u32 fib_index,
     fib_table_t *fib_table;
     u32 ii;
 
+    if (FIB_PROTOCOL_IP4 == prefix->fp_proto) {
+        if (prefix->fp_len > 32) {
+            return FIB_NODE_INDEX_INVALID;
+        }
+    }
+
+    if (FIB_PROTOCOL_IP6 == prefix->fp_proto) {
+        if (prefix->fp_len > 128) {
+            return FIB_NODE_INDEX_INVALID;
+        }
+    }
+
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
 
@@ -650,7 +662,7 @@ fib_table_entry_path_add2 (u32 fib_index,
     return (fib_entry_index);
 }
 
-void
+fib_node_index_t
 fib_table_entry_path_remove2 (u32 fib_index,
 			      const fib_prefix_t *prefix,
 			      fib_source_t source,
@@ -665,6 +677,18 @@ fib_table_entry_path_remove2 (u32 fib_index,
     fib_node_index_t fib_entry_index;
     fib_route_path_t *rpath;
     fib_table_t *fib_table;
+
+    if (FIB_PROTOCOL_IP4 == prefix->fp_proto) {
+        if (prefix->fp_len > 32) {
+            return FIB_NODE_INDEX_INVALID;
+        }
+    }
+
+    if (FIB_PROTOCOL_IP6 == prefix->fp_proto) {
+        if (prefix->fp_len > 128) {
+            return FIB_NODE_INDEX_INVALID;
+        }
+    }
 
     fib_table = fib_table_get(fib_index, prefix->fp_proto);
     fib_entry_index = fib_table_lookup_exact_match_i(fib_table, prefix);
@@ -686,7 +710,7 @@ fib_table_entry_path_remove2 (u32 fib_index,
         was_sourced = fib_entry_is_sourced(fib_entry_index, source);
         if (!was_sourced)
         {
-            return;
+            return 0;
         }
 
         /*
@@ -730,6 +754,7 @@ fib_table_entry_path_remove2 (u32 fib_index,
 
 	fib_entry_unlock(fib_entry_index);
     }
+    return 0;
 }
 
 void

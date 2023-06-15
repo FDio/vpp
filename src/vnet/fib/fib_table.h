@@ -443,7 +443,7 @@ extern void fib_table_entry_path_remove(u32 fib_index,
  * @param rpaths
  *  A vector of paths.
  */
-extern void fib_table_entry_path_remove2(u32 fib_index,
+extern fib_node_index_t fib_table_entry_path_remove2(u32 fib_index,
 					 const fib_prefix_t *prefix,
 					 fib_source_t source,
 					 fib_route_path_t *paths);
