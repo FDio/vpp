@@ -9,6 +9,7 @@ containers:
       - <<: *shared-vol
         container-dir: "/tmp/vpp"
         is-default-work-dir: true
+
   - name: "nginx"
     volumes:
       - <<: *shared-vol
@@ -16,11 +17,31 @@ containers:
         is-default-work-dir: true
     image: "hs-test/nginx-ldp"
     is-optional: true
+
+  - name: "nginx-http3"
+    volumes:
+      - <<: *shared-vol
+        container-dir: "/tmp/nginx"
+        is-default-work-dir: true
+      - host-dir: $HST_DIR/resources/cert
+        container-dir: "/etc/nginx/ssl"
+    image: "hs-test/nginx-http3"
+    is-optional: true
+
   - name: "ab"
     image: "jordi/ab"
     is-optional: true
     run-detached: false
+
   - name: "wrk"
     image: "skandyla/wrk"
+    is-optional: true
+    run-detached: false
+
+  - name: "curl"
+    vars:
+    - name: LD_LIBRARY_PATH
+      value: "/usr/local/lib"
+    image: "hs-test/curl"
     is-optional: true
     run-detached: false

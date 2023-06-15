@@ -17,4 +17,4 @@ ENV LDP_DEBUG=0
 ENV VCL_DEBUG=0
 ENV LDP_SID_BIT=8
 
-ENTRYPOINT ["nginx_ldp.sh", "-c", "/nginx.conf"]
+ENTRYPOINT ["nginx_ldp.sh", "nginx", "-c", "/nginx.conf"]

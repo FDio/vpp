@@ -1,0 +1,23 @@
+FROM hs-test/build
+
+ENV DIR1=/tmp/dir1
+ENV DIR2=/tmp/dir2
+ENV DIR2=/tmp/dir2
+
+COPY script/build_openssl.sh /build_openssl.sh
+RUN git clone --depth 1 -b openssl-3.0.9+quic https://github.com/quictls/openssl
+RUN ./build_openssl.sh ${DIR1}
+
+COPY script/build_nghttp3.sh /build_nghttp3.sh
+RUN git clone -b v0.12.0 https://github.com/ngtcp2/nghttp3
+RUN ./build_nghttp3.sh ${DIR2}
+
+COPY script/build_ngtcp2.sh /build_ngtcp2.sh
+RUN git clone -b v0.16.0 https://github.com/ngtcp2/ngtcp2
+RUN ./build_ngtcp2.sh ${DIR1} ${DIR2} ${DIR3}
+
+COPY script/build_curl.sh /build_curl.sh
+RUN git clone https://github.com/curl/curl
+RUN ./build_curl.sh ${DIR1} ${DIR2} ${DIR3}
+
+CMD ["/bin/sh"]
