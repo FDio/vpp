@@ -88,6 +88,24 @@
       "parentUuid": "1ca3ffe5_2f9c1e13",
       "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f20407d8_5b553a90",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-15T15:19:44Z",
+      "side": 1,
+      "message": "Hi Yang, several quick comments:\n- let\u0027s just do C apis for now by reading the mappings in session_api.c just before sending the accept to vcl. Because nat is a plugin this might be still tricky because you\u0027ll need means of making sure the nat plugin has been loaded, so maybe something will have to be initialized when session layer is enabled\n- vcl is slowly moving away from binary api to socket api. Both are available today but the former will eventually be removed.",
+      "parentUuid": "ace4d3d4_65b4d685",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
