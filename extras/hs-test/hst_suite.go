@@ -4,6 +4,8 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
@@ -159,6 +161,20 @@ func (s *HstSuite) skip(args ...any) {
 func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	if *nConfiguredCpus > 1 {
 		s.skip("test case not supported with multiple vpp workers")
+	}
+}
+
+func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
+	imageName := "hs-test/nginx-http3"
+
+	cmd := exec.Command("docker", "images", imageName)
+	byteOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		s.log("error while searching for docker image")
+		return
+	}
+	if !strings.Contains(string(byteOutput), imageName) {
+		s.skip("extended tests not built")
 	}
 }
 

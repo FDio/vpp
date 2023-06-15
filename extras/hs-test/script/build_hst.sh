@@ -62,6 +62,11 @@ docker_build () {
 docker_build hs-test/vpp vpp
 docker_build hs-test/nginx-ldp nginx
 docker_build hs-test/nginx-server nginx-server
+docker_build hs-test/build build
+if [ "$HST_EXTENDED_TESTS" = true ] ; then
+    docker_build hs-test/nginx-http3 nginx-http3
+    docker_build hs-test/curl curl
+fi
 
 # cleanup detached images
 images=$(docker images --filter "dangling=true" -q --no-trunc)
