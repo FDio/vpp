@@ -448,6 +448,9 @@ fib_api_route_add_del (u8 is_add,
                        fib_entry_flag_t entry_flags,
                        fib_route_path_t *rpaths)
 {
+    if (!fib_prefix_validate(prefix)) {
+          return (VNET_API_ERROR_INVALID_PREFIX_LENGTH);
+    }
     if (is_multipath)
     {
         if (vec_len(rpaths) == 0)
