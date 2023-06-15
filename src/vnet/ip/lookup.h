@@ -179,6 +179,7 @@ ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,
 }
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
+bool fib_prefix_validate (const fib_prefix_t *prefix);
 
 #endif /* included_ip_lookup_h */
 /*

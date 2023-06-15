@@ -220,6 +220,27 @@ const ip46_address_t zero_addr = {
 	     0, 0},
 };
 
+bool
+fib_prefix_validate (const fib_prefix_t *prefix)
+{
+  if (FIB_PROTOCOL_IP4 == prefix->fp_proto)
+    {
+      if (prefix->fp_len > 32)
+	{
+	  return false;
+	}
+    }
+
+  if (FIB_PROTOCOL_IP6 == prefix->fp_proto)
+    {
+      if (prefix->fp_len > 128)
+	{
+	  return false;
+	}
+    }
+  return true;
+}
+
 static clib_error_t *
 vnet_ip_route_cmd (vlib_main_t * vm,
 		   unformat_input_t * main_input, vlib_cli_command_t * cmd)
@@ -352,6 +373,12 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 		.fp_proto = prefixs[i].fp_proto,
 		.fp_addr = prefixs[i].fp_addr,
 	      };
+
+	      if (!fib_prefix_validate (&rpfx))
+		{
+		  vlib_cli_output (vm, "Invalid prefix len: %d", rpfx.fp_len);
+		  continue;
+		}
 
 	      if (is_del)
 		fib_table_entry_path_remove2 (fib_index,
