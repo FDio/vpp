@@ -106,6 +106,24 @@
       "parentUuid": "ace4d3d4_65b4d685",
       "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "821479ed_119dd308",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-06-16T06:29:06Z",
+      "side": 1,
+      "message": "Hi,Florin,Thanks very much for your reply.\n\nIn fact, I have tried both two methods to avoid modifying the vlib buffer:\n\n1.Calling the nat bapi in vcl as mentioned before, it resulted in compilation failure. I have not yet tried calling the socket API.\n2.Calling the C API in session_api.c to query nat sessions (as you mentioned above). However, this also resulted in compilation failure as the original_dst_lookup() function is in the nat plugin, which is not loaded by default.Calling functions from the plugin within the session base library seems a bit inappropriate.\n\nShould I try using the socket API in VCL or add options in CMake to load the nat plugin?",
+      "parentUuid": "f20407d8_5b553a90",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
