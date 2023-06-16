@@ -161,6 +161,9 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
 {
   vlib_buffer_t *before_last = b;
 
+  if (b != last)
+    b->total_length_not_including_first_buffer -= tail;
+
   if (last->current_length > tail)
     {
       last->current_length -= tail;
@@ -176,6 +179,37 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
   before_last->current_length -= tail - last->current_length;
   vlib_buffer_free_one (vm, before_last->next_buffer);
   before_last->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+}
+
+always_inline void
+esp_remove_tail_and_tfc_padding (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 const esp_decrypt_packet_data_t *pd,
+				 vlib_buffer_t *b, vlib_buffer_t *last,
+				 u16 *next, u16 tail, int is_ip6)
+{
+  const u16 total_buffer_length = vlib_buffer_length_in_chain (vm, b);
+  u16 ip_packet_length;
+  if (is_ip6)
+    {
+      const ip6_header_t *ip6 = vlib_buffer_get_current (b);
+      ip_packet_length =
+	clib_net_to_host_u16 (ip6->payload_length) + sizeof (ip6_header_t);
+    }
+  else
+    {
+      const ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      ip_packet_length = clib_net_to_host_u16 (ip4->length);
+    }
+  // In case of TFC padding, the size of the buffer data needs
+  // to be adjusted to the ip packet length
+  if (PREDICT_FALSE (total_buffer_length < ip_packet_length + tail))
+    {
+      esp_decrypt_set_next_index (b, node, vm->thread_index,
+				  ESP_DECRYPT_ERROR_NO_TAIL_SPACE, 0, next,
+				  ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+      return;
+    }
+  esp_remove_tail (vm, b, last, total_buffer_length - ip_packet_length);
 }
 
 /* ICV is splitted in last two buffers so move it to the last buffer and
@@ -203,9 +237,12 @@ esp_move_icv (vlib_main_t * vm, vlib_buffer_t * first,
   before_last->current_length -= first_sz;
   if (before_last == first)
     pd->current_length -= first_sz;
+  else
+    first->total_length_not_including_first_buffer -= first_sz;
   clib_memset (vlib_buffer_get_tail (before_last), 0, first_sz);
   if (dif)
     dif[0] = first_sz;
+  first->total_length_not_including_first_buffer -= last_sz;
   pd2->lb = before_last;
   pd2->icv_removed = 1;
   pd2->free_buffer_index = before_last->next_buffer;
@@ -828,7 +865,6 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 adv = pd->iv_sz + esp_sz;
   u16 tail = sizeof (esp_footer_t) + pad_length + icv_sz;
   u16 tail_orig = sizeof (esp_footer_t) + pad_length + pd->icv_sz;
-  b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
   if ((pd->flags & tun_flags) == 0 && !is_tun)	/* transport mode */
     {
@@ -878,14 +914,16 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
-	  esp_remove_tail (vm, b, lb, tail);
+	  esp_remove_tail_and_tfc_padding (vm, node, pd, b, lb, next, tail,
+					   false);
 	}
       else if (next_header == IP_PROTOCOL_IPV6)
 	{
 	  next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
-	  esp_remove_tail (vm, b, lb, tail);
+	  esp_remove_tail_and_tfc_padding (vm, node, pd, b, lb, next, tail,
+					   true);
 	}
       else if (next_header == IP_PROTOCOL_MPLS_IN_IP)
 	{

@@ -5,8 +5,8 @@ import copy
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from scapy.layers.l2 import Ether, GRE, Dot1Q
 from scapy.packet import Raw, bind_layers
-from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.contrib.mpls import MPLS
 from framework import tag_fixme_vpp_workers
 from framework import VppTestRunner
@@ -368,6 +368,29 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect, TemplateIpsec):
         super(TemplateIpsec4TunIfEspUdp, self).tearDown()
 
 
+class TemplateIpsec4TunTfc:
+    """IPsec IPv4 tunnel with TFC"""
+
+    def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1, payload_size=54):
+        pkt = (
+            IP(src=src, dst=dst, len=28 + payload_size)
+            / ICMP()
+            / Raw(b"X" * payload_size)
+            / Padding(b"Y" * 100)
+        )
+        return [
+            Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) / sa.encrypt(pkt)
+            for i in range(count)
+        ]
+
+    def verify_decrypted(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IP].src, p.remote_tun_if_host)
+            self.assert_equal(rx[IP].dst, self.pg1.remote_ip4)
+            self.assert_equal(rx[IP].len, len(rx[IP]))
+            self.assert_packet_checksums_valid(rx)
+
+
 class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     """Ipsec ESP - TUN tests"""
 
@@ -670,6 +693,28 @@ class TemplateIpsec6TunIfEspUdp(TemplateIpsec6TunProtect, TemplateIpsec):
 
     def tearDown(self):
         super(TemplateIpsec6TunIfEspUdp, self).tearDown()
+
+
+class TemplateIpsec6TunTfc:
+    """IPsec IPv6 tunnel with TFC"""
+
+    def gen_encrypt_pkts6(self, p, sa, sw_intf, src, dst, count=1, payload_size=54):
+        return [
+            Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac)
+            / sa.encrypt(
+                IPv6(src=src, dst=dst, hlim=p.inner_hop_limit, fl=p.inner_flow_label)
+                / ICMPv6EchoRequest(id=0, seq=1, data="X" * payload_size)
+                / Padding(b"Y" * 100)
+            )
+            for i in range(count)
+        ]
+
+    def verify_decrypted6(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IPv6].src, p.remote_tun_if_host)
+            self.assert_equal(rx[IPv6].dst, self.pg1.remote_ip6)
+            self.assert_equal(rx[IPv6].plen, len(rx[IPv6].payload))
+            self.assert_packet_checksums_valid(rx)
 
 
 class TestIpsec6TunIfEspUdp(TemplateIpsec6TunIfEspUdp, IpsecTun6Tests):
@@ -2471,8 +2516,13 @@ class TestIpsec4TunProtect(TemplateIpsec, TemplateIpsec4TunProtect, IpsecTun4):
 
 
 @tag_fixme_vpp_workers
+class TestIpsec4TunProtectTfc(TemplateIpsec4TunTfc, TestIpsec4TunProtect):
+    """IPsec IPv4 Tunnel protect with TFC - transport mode"""
+
+
+@tag_fixme_vpp_workers
 class TestIpsec4TunProtectUdp(TemplateIpsec, TemplateIpsec4TunProtect, IpsecTun4):
-    """IPsec IPv4 Tunnel protect - transport mode"""
+    """IPsec IPv4 UDP Tunnel protect - transport mode"""
 
     def setUp(self):
         super(TestIpsec4TunProtectUdp, self).setUp()
@@ -2512,6 +2562,11 @@ class TestIpsec4TunProtectUdp(TemplateIpsec, TemplateIpsec4TunProtect, IpsecTun4
     def test_keepalive(self):
         """IPSEC NAT Keepalive"""
         self.verify_keepalive(self.ipv4_params)
+
+
+@tag_fixme_vpp_workers
+class TestIpsec4TunProtectUdpTfc(TemplateIpsec4TunTfc, TestIpsec4TunProtectUdp):
+    """IPsec IPv4 UDP Tunnel protect with TFC - transport mode"""
 
 
 @tag_fixme_vpp_workers
@@ -2786,6 +2841,11 @@ class TestIpsec6TunProtect(TemplateIpsec, TemplateIpsec6TunProtect, IpsecTun6):
         self.unconfig_protect(p)
         self.unconfig_sa(p)
         self.unconfig_network(p)
+
+
+@tag_fixme_vpp_workers
+class TestIpsec6TunProtectTfc(TemplateIpsec6TunTfc, TestIpsec6TunProtect):
+    """IPsec IPv6 Tunnel protect with TFC - transport mode"""
 
 
 @tag_fixme_vpp_workers
@@ -3204,6 +3264,11 @@ class TestIpsecItf4(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
         self.unconfig_network(p)
 
 
+@tag_fixme_vpp_workers
+class TestIpsecItf4Tfc(TemplateIpsec4TunTfc, TestIpsecItf4):
+    """IPsec Interface IPv4 with TFC"""
+
+
 class TestIpsecItf4MPLS(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
     """IPsec Interface MPLSoIPv4"""
 
@@ -3514,6 +3579,11 @@ class TestIpsecItf6(TemplateIpsec, TemplateIpsecItf6, IpsecTun6):
         self.unconfig_protect(p)
         self.unconfig_sa(p)
         self.unconfig_network(p)
+
+
+@tag_fixme_vpp_workers
+class TestIpsecItf6Tfc(TemplateIpsec6TunTfc, TestIpsecItf6):
+    """IPsec Interface IPv6 with TFC"""
 
 
 class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
