@@ -3219,6 +3219,105 @@ class TestIPv4ItfRebind(VppTestCase):
     def tearDown(self):
         super(TestIPv4ItfRebind, self).tearDown()
 
+    def test_adj_fib(self):
+        """Import of Adj FIBs"""
+
+        TABLE_ID = 1
+        tbl = VppIpTable(self, TABLE_ID).add_vpp_config()
+        self.pg1.set_table_ip4(TABLE_ID)
+
+        self.pg0.generate_remote_hosts(4)
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        # add an attached route via an pg0
+        # in a different table. this prefix should import
+        rt = VppIpRoute(
+            self,
+            self.pg0.local_ip4,
+            24,
+            [VppRoutePath("0.0.0.0", self.pg0.sw_if_index)],
+            table_id=TABLE_ID,
+        ).add_vpp_config()
+
+        p0 = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"0xa" * 640)
+        )
+        p1 = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_hosts[1].ip4)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"0xa" * 640)
+        )
+        p2 = (
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_hosts[2].ip4)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"0xa" * 640)
+        )
+
+        # host zero has a resolved ARP entry
+        rx = self.send_and_expect(self.pg1, [p0], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+        rx = self.send_and_expect(self.pg1, [p0], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # host 1 does not
+        rx = self.send_and_expect(self.pg1, [p1], self.pg0)
+        self.assertTrue(rx[0].haslayer(ARP))
+        rx = self.send_and_expect(self.pg1, [p1], self.pg0)
+        self.assertTrue(rx[0].haslayer(ARP))
+
+        # resolve host 1
+        nbr = VppNeighbor(
+            self,
+            self.pg0.sw_if_index,
+            self.pg0.remote_hosts[1].mac,
+            self.pg0.remote_hosts[1].ip4,
+        ).add_vpp_config()
+
+        rx = self.send_and_expect(self.pg1, [p1], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+        rx = self.send_and_expect(self.pg1, [p1], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # for host 2 start with the adj incomplete ...
+        VppIpRoute(
+            self,
+            "1.1.1.1",
+            32,
+            [VppRoutePath(self.pg0.remote_hosts[2].ip4, self.pg0.sw_if_index)],
+        ).add_vpp_config()
+
+        rx = self.send_and_expect(self.pg1, [p2], self.pg0)
+        self.assertTrue(rx[0].haslayer(ARP))
+        rx = self.send_and_expect(self.pg1, [p2], self.pg0)
+        self.assertTrue(rx[0].haslayer(ARP))
+
+        # ... then add the neighbour
+        VppNeighbor(
+            self,
+            self.pg0.sw_if_index,
+            self.pg0.remote_hosts[2].mac,
+            self.pg0.remote_hosts[2].ip4,
+        ).add_vpp_config()
+
+        rx = self.send_and_expect(self.pg1, [p2], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+        rx = self.send_and_expect(self.pg1, [p2], self.pg0)
+        self.assertFalse(rx[0].haslayer(ARP))
+
+        # cleanup
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+        self.pg1.set_table_ip4(0)
+
     def test_rebind(self):
         """Import to no import"""
 

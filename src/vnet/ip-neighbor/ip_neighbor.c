@@ -533,6 +533,12 @@ ip_neighbor_alloc (const ip_neighbor_key_t * key,
 
   ip_neighbor_db_add (ipn);
 
+  /* ensure the adjacencies are complete before the adj-fib is created */
+  adj_nbr_walk_nh (
+    ipn->ipn_key->ipnk_sw_if_index,
+    ip_address_family_to_fib_proto (ip_addr_version (&ipn->ipn_key->ipnk_ip)),
+    &ip_addr_46 (&ipn->ipn_key->ipnk_ip), ip_neighbor_mk_complete_walk, ipn);
+
   /* create the adj-fib. the entry in the FIB table for the peer's interface */
   if (!(ipn->ipn_flags & IP_NEIGHBOR_FLAG_NO_FIB_ENTRY))
     ip_neighbor_adj_fib_add
@@ -608,6 +614,10 @@ ip_neighbor_add (const ip_address_t * ip,
 	}
 
       mac_address_copy (&ipn->ipn_mac, mac);
+
+      adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index, fproto,
+		       &ip_addr_46 (&ipn->ipn_key->ipnk_ip),
+		       ip_neighbor_mk_complete_walk, ipn);
     }
   else
     {
@@ -625,10 +635,6 @@ ip_neighbor_add (const ip_address_t * ip,
 
   /* Update time stamp and flags. */
   ip_neighbor_refresh (ipn);
-
-  adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index,
-		   fproto, &ip_addr_46 (&ipn->ipn_key->ipnk_ip),
-		   ip_neighbor_mk_complete_walk, ipn);
 
 check_customers:
   /* Customer(s) requesting event for this address? */
