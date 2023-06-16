@@ -124,6 +124,24 @@
       "parentUuid": "f20407d8_5b553a90",
       "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5a3d9ad_fea69a1b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-16T15:55:22Z",
+      "side": 1,
+      "message": "Hi Yang, \n\nYou won\u0027t be able to call binary api after vcl switches fully to socket api. That is, the socket api is just a socket that allows external apps to attach to vpp\u0027s host stack. \n\nRegarding point 2. Typical approach to these types of issues is to rely on vlib_get_plugin_symbol to load symbol and, if function exists, used it. Since we don\u0027t want to do this all the time, I would add a session layer stanza startup config option (see session_config_fn) to enable original_dst_lookup. If that flag is on, load nat plugin symbol and if that exists, use it in session_api.c only if application requested this feature in the attach options.\n\nDoes that help?",
+      "parentUuid": "821479ed_119dd308",
+      "revId": "7350ee4fef8f7b4bd838961bd45c0c7e423eb3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
