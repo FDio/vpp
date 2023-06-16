@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "7cab2d16_e7a76cd3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8d92caa3_b327c957",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "392f2c43_356042e4",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 2
@@ -69,6 +87,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97748000_8deb8cc1",
+        "filename": "src/plugins/bpf_trace_filter/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "563208d2_b8aebb64",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "af20d4e9_2b8af76e",
@@ -86,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbdafc04_336dfa50",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "af20d4e9_2b8af76e",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4f260e5_80a7de25",
@@ -99,6 +153,24 @@
       "writtenOn": "2023-06-13T12:22:53Z",
       "side": 1,
       "message": "Can\u0027t you include that function from `vnet` directly instead of declaring a prototype here?",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a9fcaf6f_430d57d9",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "No we can\u0027t include vnet in this file because of conflicting functions between pcap.h and vnet (pcap_close for example)",
+      "parentUuid": "b4f260e5_80a7de25",
       "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -126,6 +198,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a3a14fc_7399772b",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "To be honest, I would rather not introduce a plugin that changes the behavior of VPP if it\u0027s loaded (because it might break a lot of existing setups...)",
+      "parentUuid": "c3c8257f_67309db8",
+      "range": {
+        "startLine": 57,
+        "startChar": 3,
+        "endLine": 57,
+        "endChar": 11
+      },
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b6c2683c_104ce0ea",
@@ -139,6 +235,24 @@
       "writtenOn": "2023-06-12T09:52:40Z",
       "side": 1,
       "message": "please add an entry to docs/developer/plugins/index.rst",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "14358954_b637d7ed",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "This only works if the rst file is added in the docs subfolder (not as part of the plugin)",
+      "parentUuid": "b6c2683c_104ce0ea",
       "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -160,6 +274,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ec2478c_f07255b6",
+        "filename": "src/plugins/bpf_trace_filter/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a447be2b_fab72c48",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a8863f5b_8d50ef8b",
@@ -177,6 +309,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "252d1ce6_0e9d44b1",
+        "filename": "src/plugins/bpf_trace_filter/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a8863f5b_8d50ef8b",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "31f48222_451dc2fa",
@@ -190,6 +340,24 @@
       "writtenOn": "2023-06-12T09:52:40Z",
       "side": 1,
       "message": "2023",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1aa6a0f_5c301880",
+        "filename": "src/plugins/bpf_trace_filter/plugin.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-16T11:36:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31f48222_451dc2fa",
       "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
