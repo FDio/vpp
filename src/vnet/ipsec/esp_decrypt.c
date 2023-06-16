@@ -875,16 +875,51 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       if (PREDICT_TRUE (next_header == IP_PROTOCOL_IP_IN_IP))
 	{
+	  ip4_header_t *ip4;
+	  u16 total_length;
 	  next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  ip4 = vlib_buffer_get_current (b);
+	  // In case of TFC padding, the size of the buffer data needs
+	  // to be adjusted to the ip4 packet length
+	  total_length =
+	    b->current_length + b->total_length_not_including_first_buffer;
+	  if (PREDICT_FALSE (total_length <
+			     clib_net_to_host_u16 (ip4->length) + tail_orig))
+	    {
+	      esp_decrypt_set_next_index (
+		b, node, vm->thread_index, ESP_DECRYPT_ERROR_NO_TAIL_SPACE, 0,
+		next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+	      return;
+	    }
+	  tail = total_length - clib_net_to_host_u16 (ip4->length) +
+		 +(tail - tail_orig);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if (next_header == IP_PROTOCOL_IPV6)
 	{
+	  ip6_header_t *ip6;
+	  u16 total_length;
 	  next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  ip6 = vlib_buffer_get_current (b);
+	  // In case of TFC padding, the size of the buffer data needs
+	  // to be adjusted to the ip6 packet length
+	  total_length =
+	    b->current_length + b->total_length_not_including_first_buffer;
+	  if (PREDICT_FALSE (total_length <
+			     clib_net_to_host_u16 (ip6->payload_length) +
+			       sizeof (ip6_header_t) + tail_orig))
+	    {
+	      esp_decrypt_set_next_index (
+		b, node, vm->thread_index, ESP_DECRYPT_ERROR_NO_TAIL_SPACE, 0,
+		next, ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+	      return;
+	    }
+	  tail = total_length - clib_net_to_host_u16 (ip6->payload_length) -
+		 sizeof (ip6_header_t) + (tail - tail_orig);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if (next_header == IP_PROTOCOL_MPLS_IN_IP)
