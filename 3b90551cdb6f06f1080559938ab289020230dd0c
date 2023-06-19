@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a05404e_ee627232",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-19T17:22:28Z",
+      "side": 1,
+      "message": "This works but wonder if it wouldn\u0027t be better to just validate cli generated prefixes before sending to fib apis. \n\nAdding Neale as he\u0027ll have a better informed opinion than mine.",
+      "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
