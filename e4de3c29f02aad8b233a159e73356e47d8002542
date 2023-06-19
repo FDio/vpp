@@ -16,6 +16,24 @@
       "message": "Before debating the details of the patch, what exactly would you expect pg to do? By construction it\u0027s stateless so you can\u0027t really expect a flow to be maintained in the presence of loss and missing acks.",
       "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a6c285a_1c0a1cf6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-19T17:22:08Z",
+      "side": 1,
+      "message": "We use pg to test some stateless TCP option transformations, namely MSS clamping.\nThe goal of this patch is to enable pg to craft a TCP packet with a MSS option so that we can update it and verify it was updated.\nThere is no expectation of working TCP, there just stateless transformation of TCP options.",
+      "parentUuid": "a3db7baa_5d336961",
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
