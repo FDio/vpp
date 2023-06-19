@@ -158,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ae2202a_3226d1e0",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2023-06-19T12:44:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b23ce055_98916a36",
+      "revId": "8efb30a8e63772b773eede4006518bc4307dd5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b4f260e5_80a7de25",
