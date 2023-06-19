@@ -18,8 +18,10 @@
 #ifndef _MEMIF_H_
 #define _MEMIF_H_
 
+#include <vppinfra/cache.h>
+
 #ifndef MEMIF_CACHELINE_SIZE
-#define MEMIF_CACHELINE_SIZE 64
+#define MEMIF_CACHELINE_SIZE CLIB_CACHE_LINE_BYTES
 #endif
 
 #define MEMIF_COOKIE		0x3E31F20
