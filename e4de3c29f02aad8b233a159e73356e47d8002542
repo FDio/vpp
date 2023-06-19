@@ -34,6 +34,64 @@
       "parentUuid": "a3db7baa_5d336961",
       "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b481a5ec_dbb28848",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-19T18:40:00Z",
+      "side": 1,
+      "message": "Reasonable then, assuming you don\u0027t need to validate the whole handshake.",
+      "parentUuid": "5a6c285a_1c0a1cf6",
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cdd993b0_aea8ee17",
+        "filename": "src/vnet/tcp/tcp_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-19T18:40:00Z",
+      "side": 1,
+      "message": "Cool, thanks for this!",
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4294a178_76030392",
+        "filename": "src/vnet/tcp/tcp_pg.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-19T18:40:00Z",
+      "side": 1,
+      "message": "Debug code?",
+      "range": {
+        "startLine": 220,
+        "startChar": 0,
+        "endLine": 222,
+        "endChar": 2
+      },
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
