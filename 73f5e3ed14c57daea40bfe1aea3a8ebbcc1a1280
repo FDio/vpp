@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "675656fb_9e0764e1",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-19T08:54:03Z",
+      "side": 1,
+      "message": "Usually in API we use bool is_add [default\u003dtrue];",
+      "revId": "73f5e3ed14c57daea40bfe1aea3a8ebbcc1a1280",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
