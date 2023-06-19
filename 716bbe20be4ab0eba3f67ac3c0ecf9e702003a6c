@@ -16,6 +16,23 @@
       "message": "Thanks a lot, this is great. It would be even better with unittests ;)",
       "revId": "716bbe20be4ab0eba3f67ac3c0ecf9e702003a6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3fc20d7_185814f2",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-19T13:46:09Z",
+      "side": 1,
+      "message": "Any reason not to use the \"bool\" API construct for this flag?\nWith a default value set to true.",
+      "revId": "716bbe20be4ab0eba3f67ac3c0ecf9e702003a6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
