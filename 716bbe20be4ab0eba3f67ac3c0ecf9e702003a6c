@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d024559_5c7e76e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-06-19T13:02:05Z",
+      "side": 1,
+      "message": "Thanks a lot, this is great. It would be even better with unittests ;)",
+      "revId": "716bbe20be4ab0eba3f67ac3c0ecf9e702003a6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
