@@ -52,12 +52,68 @@ format_tcp_flags (u8 * s, va_list * args)
     return s;
 }
 
+u8 *
+format_tcp_options (u8 *s, va_list *args)
+{
+  tcp_options_t *opts = va_arg (*args, tcp_options_t *);
+  u32 indent, n_opts = 0;
+  int i;
+
+  if (!opts->flags)
+    return s;
+
+  indent = format_get_indent (s);
+  indent += 2;
+
+  s = format (s, "options:\n%U", format_white_space, indent);
+
+  if (tcp_opts_mss (opts))
+    {
+      s = format (s, "mss %d", opts->mss);
+      n_opts++;
+    }
+  if (tcp_opts_wscale (opts))
+    {
+      s = format (s, "%swindow scale %d", n_opts > 0 ? ", " : "",
+		  format_white_space, indent, opts->wscale);
+      n_opts++;
+    }
+  if (tcp_opts_tstamp (opts))
+    {
+      s = format (s, "%stimestamp %d, echo/reflected timestamp",
+		  n_opts > 0 ? ", " : "", format_white_space, indent,
+		  opts->tsval, opts->tsecr);
+      n_opts++;
+    }
+  if (tcp_opts_sack_permitted (opts))
+    {
+      s = format (s, "%ssack permitted", n_opts > 0 ? ", " : "",
+		  format_white_space, indent);
+      n_opts++;
+    }
+  if (tcp_opts_sack (opts))
+    {
+      s = format (s, "%ssacks:", n_opts > 0 ? ", " : "", format_white_space,
+		  indent);
+      for (i = 0; i < opts->n_sack_blocks; ++i)
+	{
+	  s = format (s, "\n%Ublock %d: start %d, end %d", format_white_space,
+		      indent + 2, i + 1, opts->sacks[i].start,
+		      opts->sacks[i].end);
+	}
+      n_opts++;
+    }
+
+  return s;
+}
+
 /* Format TCP header. */
 u8 *
 format_tcp_header (u8 * s, va_list * args)
 {
   tcp_header_t *tcp = va_arg (*args, tcp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
+  tcp_options_t opts = { .flags = 0 };
   u32 header_bytes;
   u32 indent;
 
@@ -83,32 +139,11 @@ format_tcp_header (u8 * s, va_list * args)
 	      clib_net_to_host_u16 (tcp->window),
 	      clib_net_to_host_u16 (tcp->checksum));
 
-
-#if 0
-  /* Format TCP options. */
-  {
-    u8 *o;
-    u8 *option_start = (void *) (tcp + 1);
-    u8 *option_end = (void *) tcp + header_bytes;
-
-    for (o = option_start; o < option_end;)
-      {
-	u32 length = o[1];
-	switch (o[0])
-	  {
-	  case TCP_OPTION_END:
-	    length = 1;
-	    o = option_end;
-	    break;
-
-	  case TCP_OPTION_NOOP:
-	    length = 1;
-	    break;
-
-	  }
-      }
-  }
-#endif
+  if (tcp_options_parse (tcp, &opts, tcp_is_syn (tcp)) < 0)
+    s = format (s, "\n%Uoptions: parsing failed", format_white_space, indent);
+  else
+    s = format (s, "\n%U%U", format_white_space, indent, format_tcp_options,
+		&opts);
 
   /* Recurse into next protocol layer. */
   if (max_header_bytes != 0 && header_bytes < max_header_bytes)
