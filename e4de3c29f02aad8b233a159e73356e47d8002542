@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e6b8ef40_a82e5698",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-19T19:32:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b481a5ec_dbb28848",
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cdd993b0_aea8ee17",
@@ -71,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "40680fc3_66f67fd9",
+        "filename": "src/vnet/tcp/tcp_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-19T19:32:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cdd993b0_aea8ee17",
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4294a178_76030392",
@@ -84,6 +120,30 @@
       "writtenOn": "2023-06-19T18:40:00Z",
       "side": 1,
       "message": "Debug code?",
+      "range": {
+        "startLine": 220,
+        "startChar": 0,
+        "endLine": 222,
+        "endChar": 2
+      },
+      "revId": "e4de3c29f02aad8b233a159e73356e47d8002542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1b354f2_5ca3df99",
+        "filename": "src/vnet/tcp/tcp_pg.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-19T19:32:38Z",
+      "side": 1,
+      "message": "No, I added this if statement on purpose, so I can parse TCP options with else if statement and have a else one to break if no options known option has been given in input. I know it is hardly understandable at first glance...",
+      "parentUuid": "4294a178_76030392",
       "range": {
         "startLine": 220,
         "startChar": 0,
