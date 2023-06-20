@@ -25,6 +25,11 @@ vlib_stats_segment_lock (void)
   clib_spinlock_lock (sm->stat_segment_lockp);
 
   sm->shared_header->in_progress = 1;
+
+  // Make sure in_progress write is visible to other cores before writing
+  // to memory
+  CLIB_MEMORY_BARRIER(); 
+
   sm->locking_thread_index = vm->thread_index;
 done:
   sm->n_locks++;
@@ -45,7 +50,12 @@ vlib_stats_segment_unlock (void)
   if (sm->n_locks > 0)
     return;
 
+  // Make sure all writes are visible to other cores before increasing the epoch
+  // Release would be enough but we use full for symmetry with the lock function
+  CLIB_MEMORY_BARRIER();
   sm->shared_header->epoch++;
+  
+  // Here release is enough
   __atomic_store_n (&sm->shared_header->in_progress, 0, __ATOMIC_RELEASE);
   sm->locking_thread_index = ~0;
   clib_spinlock_unlock (sm->stat_segment_lockp);

@@ -120,6 +120,12 @@ stat_segment_access_start (stat_segment_access_t * sa,
   uint64_t max_time;
 
   sa->epoch = shared_header->epoch;
+
+  // Prevent later reads to move before the epoch read
+  // Could be a read barrier. load acquire would work but we use the full
+  // barrier for symmetry with the stat_segment_access_end function
+  CLIB_MEMORY_BARRIER(); 
+
   if (sm->timeout)
     {
       max_time = _time_now_nsec () + sm->timeout;
@@ -128,9 +134,17 @@ stat_segment_access_start (stat_segment_access_t * sa,
     }
   else
     {
+      // If we go into that loop, it means that epoch will change and
+      // end will fail anyway 
       while (shared_header->in_progress != 0)
 	;
     }
+
+  // Prevent later reads to move before the in_progress read
+  // Could be a read barrier. load acquire would work but we use the full
+  // barrier for symmetry with the stat_segment_access_end function
+  CLIB_MEMORY_BARRIER(); 
+
   sm->directory_vector = (vlib_stats_entry_t *) stat_segment_adjust (
     sm, (void *) sm->shared_header->directory_vector);
   if (sm->timeout)
@@ -165,8 +179,22 @@ stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
 {
   vlib_stats_shared_header_t *shared_header = sm->shared_header;
 
-  if (shared_header->epoch != sa->epoch || shared_header->in_progress)
+  // Prevent former reads to move after the in_progress read
+  // Could be a read barrier. Here load acquire would not work
+  // because former reads could be re-ordered after it
+  CLIB_MEMORY_BARRIER(); 
+
+  if (shared_header->in_progress)
     return false;
+
+  // Prevent in_prgress read to move after the epoch read
+  // Could be a read barrier. Here load acquire would not work
+  // because former reads could be re-ordered after it
+  CLIB_MEMORY_BARRIER(); 
+
+  if (shared_header->epoch != sa->epoch)
+    return false;
+
   return true;
 }
 
