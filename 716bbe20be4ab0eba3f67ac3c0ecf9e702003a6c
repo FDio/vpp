@@ -33,6 +33,24 @@
       "message": "Any reason not to use the \"bool\" API construct for this flag?\nWith a default value set to true.",
       "revId": "716bbe20be4ab0eba3f67ac3c0ecf9e702003a6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16cb4177_b38ff74d",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.api",
+        "patchSetId": 13
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-06-20T16:25:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d3fc20d7_185814f2",
+      "revId": "716bbe20be4ab0eba3f67ac3c0ecf9e702003a6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
