@@ -6,6 +6,22 @@ import subprocess
 import sys
 
 
+def can_create_namespaces():
+    """Check if the environment allows creating the namespaces"""
+
+    try:
+        namespace = "vpp_chk_4212"
+        result = subprocess.run(["ip", "netns", "add", namespace], capture_output=True)
+        if result.returncode != 0:
+            return False
+        result = subprocess.run(["ip", "netns", "del", namespace], capture_output=True)
+        if result.returncode != 0:
+            return False
+        return True
+    except:
+        return False
+
+
 def create_namespace(ns):
     """create one or more namespaces.
 
@@ -18,7 +34,9 @@ def create_namespace(ns):
         namespaces = ns
     try:
         for namespace in namespaces:
-            subprocess.run(["ip", "netns", "add", namespace])
+            result = subprocess.run(["ip", "netns", "add", namespace])
+            if result.returncode != 0:
+                raise Exception(f"Error while creating namespace {namespace}")
     except subprocess.CalledProcessError as e:
         raise Exception("Error creating namespace:", e.output)
 
@@ -207,7 +225,11 @@ def delete_namespace(namespaces):
     """
     try:
         for namespace in namespaces:
-            subprocess.run(["ip", "netns", "del", namespace], capture_output=True)
+            result = subprocess.run(
+                ["ip", "netns", "del", namespace], capture_output=True
+            )
+            if result.returncode != 0:
+                raise Exception(f"Error while deleting namespace {namespace}")
     except subprocess.CalledProcessError as e:
         raise Exception("Error deleting namespace:", e.output)
 

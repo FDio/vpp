@@ -2,6 +2,7 @@ import argparse
 import os
 import psutil
 import time
+from vpp_qemu_utils import can_create_namespaces
 
 
 def positive_int_or_default(default):
@@ -191,6 +192,11 @@ parser.add_argument(
 )
 
 parser.add_argument("--extended", action="store_true", help="run extended tests")
+parser.add_argument(
+    "--skip-netns-tests",
+    action="store_true",
+    help="skip tests involving netns operations",
+)
 
 parser.add_argument(
     "--sanity", action="store_true", help="perform sanity vpp run before running tests"
@@ -443,6 +449,10 @@ elif config.max_vpp_cpus > 0:
     max_vpp_cpus = min(config.max_vpp_cpus, num_cpus)
 else:
     max_vpp_cpus = num_cpus
+
+if not config.skip_netns_tests:
+    if not can_create_namespaces():
+        config.skip_netns_tests = True
 
 if __name__ == "__main__":
     print("Provided arguments:")
