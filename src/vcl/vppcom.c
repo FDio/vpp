@@ -3414,13 +3414,13 @@ vcl_epoll_wait_handle_lt (vcl_worker_t *wrk, struct epoll_event *events,
 	{
 	  events[*n_evts].events = evt_flags;
 	  events[*n_evts].data.u64 = evt_data;
-	  *n_evts += 1;
-	  add_event = 0;
-	  evt_flags = 0;
 	  if (EPOLLONESHOT & s->vep.ev.events)
 	    s->vep.ev.events = EPOLLHUP | EPOLLERR;
 	  if (evt_flags & EPOLLHUP)
 	    s->vep.ev.events = 0;
+	  *n_evts += 1;
+	  add_event = 0;
+	  evt_flags = 0;
 	  if (*n_evts == maxevents)
 	    {
 	      wrk->ep_lt_current = next;
