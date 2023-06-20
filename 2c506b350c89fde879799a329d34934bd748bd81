@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33aa3ac6_3a934583",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-06-20T11:42:06Z",
+      "side": 1,
+      "message": "Hi guys,\nIs additional review needed? If not, can we merge this one?",
+      "revId": "2c506b350c89fde879799a329d34934bd748bd81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
