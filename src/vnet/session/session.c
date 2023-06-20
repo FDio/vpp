@@ -309,7 +309,7 @@ session_cleanup_half_open (session_handle_t ho_handle)
   else
     {
       /* Cleanup half-open session lookup table if need be */
-      if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+      if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSED)
 	{
 	  transport_connection_t *tc;
 	  tc = transport_get_half_open (session_get_transport_proto (ho),
@@ -348,7 +348,7 @@ session_half_open_delete_notify (transport_connection_t *tc)
   session_t *ho = ho_session_get (tc->s_index);
 
   /* Cleanup half-open lookup table if need be */
-  if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+  if (ho->session_state != SESSION_STATE_TRANSPORT_CLOSED)
     {
       if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
 	session_lookup_del_half_open (tc);
@@ -911,7 +911,7 @@ session_stream_connect_notify (transport_connection_t * tc,
   session_lookup_del_half_open (tc);
 
   ho = ho_session_get (tc->s_index);
-  session_set_state (ho, SESSION_STATE_TRANSPORT_CLOSING);
+  session_set_state (ho, SESSION_STATE_TRANSPORT_CLOSED);
   opaque = ho->opaque;
   app_wrk = app_worker_get_if_valid (ho->app_wrk_index);
   if (!app_wrk)
