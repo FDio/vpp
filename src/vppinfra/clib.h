@@ -178,13 +178,29 @@
  */
 #define CLIB_COMPILER_BARRIER() asm volatile ("":::"memory")
 
-/* Full memory barrier (read and write). */
+/* Full memory barrier (read and write).``
+ * Could use a CLIB_DMA_MEMORY_BARRIER variant to avoid using dmb osh on arm
+ * all the time */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
 
+// Note: I think this is more used as a release barrier, not only a store one ?
+// x86-64 doesn't need sfence for store-store order
 #if __SSE__
 #define CLIB_MEMORY_STORE_BARRIER() __builtin_ia32_sfence ()
+#elif __aarch64__ /* Actual store-store barrier ! Likely wrong in the context
+                   * it is used, so just for reference */
+#define CLIB_MEMORY_STORE_BARRIER() asm volatile ("dmb ishst" ::: "memory");
 #else
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
+#endif
+
+// Load-load barrier
+#if __x86_64__
+#define CLIB_MEMORY_READ_BARRIER() /* x86-64 has strong load ordering */
+#elif __aarch64__
+#define CLIB_MEMORY_READ_BARRIER() asm volatile ("dmb ishld" ::: "memory");
+#else
+#define CLIB_MEMORY_READ_BARRIER() __sync_synchronize ()
 #endif
 
 /* Arranges for function to be called before main. */

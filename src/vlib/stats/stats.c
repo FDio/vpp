@@ -45,6 +45,7 @@ vlib_stats_segment_unlock (void)
   if (sm->n_locks > 0)
     return;
 
+  CLIB_MEMORY_STORE_BARRIER(); // Make sure all writes are visible to other cores before increasing the epoch
   sm->shared_header->epoch++;
   __atomic_store_n (&sm->shared_header->in_progress, 0, __ATOMIC_RELEASE);
   sm->locking_thread_index = ~0;

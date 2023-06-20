@@ -120,6 +120,7 @@ stat_segment_access_start (stat_segment_access_t * sa,
   uint64_t max_time;
 
   sa->epoch = shared_header->epoch;
+  CLIB_MEMORY_READ_BARRIER(); // Prevent later reads to move before the epoch read
   if (sm->timeout)
     {
       max_time = _time_now_nsec () + sm->timeout;
@@ -128,6 +129,8 @@ stat_segment_access_start (stat_segment_access_t * sa,
     }
   else
     {
+      // Loads for in_progress need acquire semantics as well ? only one
+      // store-release seems fishy
       while (shared_header->in_progress != 0)
 	;
     }
@@ -164,6 +167,8 @@ static inline bool
 stat_segment_access_end (stat_segment_access_t * sa, stat_client_main_t * sm)
 {
   vlib_stats_shared_header_t *shared_header = sm->shared_header;
+
+  CLIB_MEMORY_READ_BARRIER(); // Prevent former loads from moving after the epoch read
 
   if (shared_header->epoch != sa->epoch || shared_header->in_progress)
     return false;
