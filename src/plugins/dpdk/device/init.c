@@ -222,102 +222,77 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   return &dm->conf->default_devconf;
 }
 
-static clib_error_t *
-dpdk_lib_init (dpdk_main_t * dm)
+u32
+dpdk_port_init (dpdk_main_t *dm, u16 port_id, dpdk_device_config_t *devconf)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u16 port_id;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  vnet_sw_interface_t *sw;
-  vnet_hw_interface_t *hi;
-  dpdk_device_t *xd;
-  char *if_num_fmt;
-
-  /* vlib_buffer_t template */
-  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-  for (int i = 0; i < tm->n_vlib_mains; i++)
-    {
-      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
-      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
-      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-    }
+  vnet_sw_interface_t *sw = NULL;
+  vnet_hw_interface_t *hi = NULL;
+  dpdk_device_t *xd = NULL;
+  char *if_num_fmt = NULL;
+  u8 addr[6] = {};
+  int rv = 0, q = 0;
+  struct rte_eth_dev_info di = {};
+  vnet_eth_interface_registration_t eir = {};
+  dpdk_driver_t *dr = NULL;
+  i8 numa_node;
 
   if_num_fmt =
     dm->conf->interface_name_format_decimal ? "%d/%d/%d" : "%x/%x/%x";
 
-  /* device config defaults */
-  dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
-  dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
-  dm->default_port_conf.n_rx_queues = 1;
-  dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
-  dm->default_port_conf.rss_hf =
-    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
-  dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
+  if (!rte_eth_dev_is_valid_port (port_id))
+    return ~0;
 
-  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
-      check_l3cache () == 0)
-    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
-
-  RTE_ETH_FOREACH_DEV (port_id)
+  if ((rv = rte_eth_dev_info_get (port_id, &di)) != 0)
     {
-      u8 addr[6];
-      int rv, q;
-      struct rte_eth_dev_info di;
-      dpdk_device_config_t *devconf = 0;
-      vnet_eth_interface_registration_t eir = {};
-      dpdk_driver_t *dr;
-      i8 numa_node;
+      dpdk_log_warn ("[%u] failed to get device info. skipping device.",
+		     port_id);
+      return ~0;
+    }
 
-      if (!rte_eth_dev_is_valid_port (port_id))
-	continue;
+  if (di.device == 0)
+    {
+      dpdk_log_warn ("[%u] missing device info. Skipping '%s' device", port_id,
+		     di.driver_name);
+      return ~0;
+    }
 
-      if ((rv = rte_eth_dev_info_get (port_id, &di)) != 0)
-	{
-	  dpdk_log_warn ("[%u] failed to get device info. skipping device.",
-			 port_id);
-	  continue;
-	}
-
-      if (di.device == 0)
-	{
-	  dpdk_log_warn ("[%u] missing device info. Skipping '%s' device",
-			 port_id, di.driver_name);
-	  continue;
-	}
-
+  if (!devconf)
+    {
       devconf = dpdk_find_startup_config (&di);
+    }
 
-      /* If device is blacklisted, we should skip it */
-      if (devconf->is_blacklisted)
-	{
-	  dpdk_log_notice ("[%d] Device %s blacklisted. Skipping...", port_id,
-			   di.driver_name);
-	  continue;
-	}
+  /* If device is blacklisted, we should skip it */
+  if (devconf->is_blacklisted)
+    {
+      dpdk_log_notice ("[%d] Device %s blacklisted. Skipping...", port_id,
+		       di.driver_name);
+      return ~0;
+    }
 
-      vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
-      xd->port_id = port_id;
-      xd->device_index = xd - dm->devices;
-      xd->per_interface_next_index = ~0;
+  vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
+  memset (xd, 0, sizeof (dpdk_device_t));
+  xd->port_id = port_id;
+  xd->device_index = xd - dm->devices;
+  xd->per_interface_next_index = ~0;
 
-      clib_memcpy (&xd->conf, &dm->default_port_conf,
-		   sizeof (dpdk_port_conf_t));
+  clib_memcpy (&xd->conf, &dm->default_port_conf, sizeof (dpdk_port_conf_t));
 
-      /* find driver datea for this PMD */
-      if ((dr = dpdk_driver_find (di.driver_name, &xd->if_desc)))
-	{
-	  xd->driver = dr;
-	  xd->supported_flow_actions = dr->supported_flow_actions;
-	  xd->conf.disable_rss = dr->mq_mode_none;
-	  xd->conf.disable_rx_scatter = dr->disable_rx_scatter;
-	  xd->conf.enable_rxq_int = dr->enable_rxq_int;
-	  if (dr->use_intel_phdr_cksum)
-	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
-	  if (dr->int_unmaskable)
-	    dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
-	}
+  /* find driver datea for this PMD */
+  if ((dr = dpdk_driver_find (di.driver_name, &xd->if_desc)))
+    {
+      xd->driver = dr;
+      xd->supported_flow_actions = dr->supported_flow_actions;
+      xd->conf.disable_rss = dr->mq_mode_none;
+      xd->conf.disable_rx_scatter = dr->disable_rx_scatter;
+      xd->conf.enable_rxq_int = dr->enable_rxq_int;
+      if (dr->use_intel_phdr_cksum)
+	dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM, 1);
+      if (dr->int_unmaskable)
+	dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_INT_UNMASKABLE, 1);
+    }
       else
 	dpdk_log_warn ("[%u] unknown driver '%s'", port_id, di.driver_name);
 
@@ -527,6 +502,45 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (vec_len (xd->errors))
 	dpdk_log_err ("[%u] setup failed Errors:\n  %U", port_id,
 		      format_dpdk_device_errors, xd);
+
+      return xd->hw_if_index;
+}
+
+static clib_error_t *
+dpdk_lib_init (dpdk_main_t *dm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u16 port_id = 0;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  memset (&dm->default_port_conf, 0, sizeof (dpdk_port_conf_t));
+
+  /* vlib_buffer_t template */
+  vec_validate_aligned (dm->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  for (int i = 0; i < tm->n_vlib_mains; i++)
+    {
+      dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
+      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
+      vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~0;
+    }
+
+  /* device config defaults */
+  dm->default_port_conf.n_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
+  dm->default_port_conf.n_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
+  dm->default_port_conf.n_rx_queues = 1;
+  dm->default_port_conf.n_tx_queues = tm->n_vlib_mains;
+  dm->default_port_conf.rss_hf =
+    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
+  dm->default_port_conf.max_lro_pkt_size = DPDK_MAX_LRO_SIZE_DEFAULT;
+
+  if ((clib_mem_get_default_hugepage_size () == 2 << 20) &&
+      check_l3cache () == 0)
+    dm->default_port_conf.n_rx_desc = dm->default_port_conf.n_tx_desc = 512;
+
+  RTE_ETH_FOREACH_DEV (port_id)
+    {
+      dpdk_port_init (dm, port_id, NULL);
     }
 
   for (int i = 0; i < vec_len (dm->devices); i++)
@@ -824,7 +838,6 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
   clib_error_t *error = 0;
   uword *p;
   dpdk_device_config_t *devconf = 0;
-  unformat_input_t sub_input;
 
   if (is_default)
     {
@@ -883,44 +896,7 @@ dpdk_device_config (dpdk_config_main_t *conf, void *addr,
   unformat_skip_white_space (input);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "num-rx-queues %u", &devconf->num_rx_queues))
-	;
-      else if (unformat (input, "num-tx-queues %u", &devconf->num_tx_queues))
-	;
-      else if (unformat (input, "num-rx-desc %u", &devconf->num_rx_desc))
-	;
-      else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
-	;
-      else if (unformat (input, "name %v", &devconf->name))
-	;
-      else if (unformat (input, "tag %s", &devconf->tag))
-	;
-      else if (unformat (input, "workers %U", unformat_bitmap_list,
-			 &devconf->workers))
-	;
-      else
-	if (unformat
-	    (input, "rss %U", unformat_vlib_cli_sub_input, &sub_input))
-	{
-	  error = unformat_rss_fn (&sub_input, &devconf->rss_fn);
-	  if (error)
-	    break;
-	}
-      else if (unformat (input, "tso on"))
-	{
-	  devconf->tso = DPDK_DEVICE_TSO_ON;
-	}
-      else if (unformat (input, "tso off"))
-	{
-	  devconf->tso = DPDK_DEVICE_TSO_OFF;
-	}
-      else if (unformat (input, "devargs %s", &devconf->devargs))
-	;
-      else if (unformat (input, "rss-queues %U",
-			 unformat_bitmap_list, &devconf->rss_queues))
-	;
-      else if (unformat (input, "max-lro-pkt-size %u",
-			 &devconf->max_lro_pkt_size))
+      if (unformat (input, "%U", unformat_dpdk_device_config, devconf))
 	;
       else
 	{
@@ -987,6 +963,59 @@ dpdk_log_read_ready (clib_file_t * uf)
 
   unformat_free (&input);
   return 0;
+}
+
+uword
+unformat_dpdk_device_config (unformat_input_t *input, va_list *args)
+{
+  unformat_input_t sub_input;
+  dpdk_device_config_t *devconf = va_arg (*args, dpdk_device_config_t *);
+  char *tso;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "num-rx-queues %u", &devconf->num_rx_queues))
+	;
+      else if (unformat (input, "num-tx-queues %u", &devconf->num_tx_queues))
+	;
+      else if (unformat (input, "num-rx-desc %u", &devconf->num_rx_desc))
+	;
+      else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
+	;
+      else if (unformat (input, "name %v", &devconf->name))
+	;
+      else if (unformat (input, "tag %s", &devconf->tag))
+	;
+      else if (unformat (input, "workers %U", unformat_bitmap_list,
+			 &devconf->workers))
+	;
+      else if (unformat (input, "rss %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
+	{
+	  unformat_rss_fn (&sub_input, &devconf->rss_fn);
+	}
+      else if (unformat (input, "tso %s", &tso))
+	{
+	  if (strcmp (tso, "on") == 0)
+	    devconf->tso = DPDK_DEVICE_TSO_ON;
+	  else if (strcmp (tso, "off") == 0)
+	    devconf->tso = DPDK_DEVICE_TSO_OFF;
+
+	  vec_free (tso);
+	}
+      else if (unformat (input, "devargs %s", &devconf->devargs))
+	;
+      else if (unformat (input, "rss-queues %U", unformat_bitmap_list,
+			 &devconf->rss_queues))
+	;
+      else if (unformat (input, "max-lro-pkt-size %u",
+			 &devconf->max_lro_pkt_size))
+	;
+      else
+	return 0;
+    }
+
+  return 1;
 }
 
 static clib_error_t *
