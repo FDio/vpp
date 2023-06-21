@@ -81,6 +81,10 @@ u64 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep);
 session_t *session_lookup_global_session_endpoint (session_endpoint_t *);
 int session_lookup_add_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep, u64 value);
+int session_lookup_add_cless_endpoint (transport_connection_t *tc,
+				       u32 table_index,
+				       session_endpoint_t *sep);
+int session_lookup_restore_cless_endpoint (transport_connection_t *tc);
 int session_lookup_del_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep);
 int session_lookup_del_session_endpoint2 (session_endpoint_t * sep);

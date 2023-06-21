@@ -117,6 +117,8 @@ typedef struct _transport_connection
   u8 flags;			/**< Transport specific flags */
   u8 dscp;			/**< Differentiated Services Code Point */
 
+  u32 cless_pool_index; /**< Index to cless pool */
+
   /*fib_node_index_t rmt_fei;
      dpo_id_t rmt_dpo; */
 

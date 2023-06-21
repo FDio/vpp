@@ -1526,10 +1526,7 @@ session_stop_listen (session_t * s)
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     {
       if (transport_connection_is_cless (tc))
-	{
-	  clib_memset (&tc->rmt_ip, 0, sizeof (tc->rmt_ip));
-	  tc->rmt_port = 0;
-	}
+	session_lookup_restore_cless_endpoint (tc);
       session_lookup_del_connection (tc);
     }
 

@@ -246,6 +246,12 @@ app_listener_alloc_and_init (application_t * app,
 	  /* Assume namespace vetted previously so make sure table exists */
 	  table_index = session_lookup_get_or_alloc_index_for_fib (
 	    fib_proto, sep->fib_index);
+
+	  /* save the original endpoint information for connection less udp */
+	  if (transport_connection_is_cless (tc))
+	    session_lookup_add_cless_endpoint (tc, table_index,
+					       (session_endpoint_t *) sep);
+
 	  session_lookup_add_session_endpoint (table_index,
 					       (session_endpoint_t *) sep,
 					       lh);

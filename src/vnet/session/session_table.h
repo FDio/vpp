@@ -29,6 +29,12 @@ typedef struct _session_lookup_table
   clib_bihash_48_8_t v6_session_hash;
 
   /**
+   * Helper lookup tables for specificaly udp cless connections needed for
+   * cleanup
+   */
+  ip46_address_t *cless_endpoints_pool;
+
+  /**
    * Lookup tables for half-open sessions
    */
   clib_bihash_16_8_t v4_half_open_hash;

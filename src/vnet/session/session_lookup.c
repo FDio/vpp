@@ -222,6 +222,51 @@ session_lookup_get_or_alloc_index_for_fib (u32 fib_proto, u32 fib_index)
   return session_table_index (st);
 }
 
+int
+session_lookup_add_cless_endpoint (transport_connection_t *tc, u32 table_index,
+				   session_endpoint_t *sep)
+{
+  ip46_address_t *ip46;
+  session_table_t *st;
+  st = session_table_get (table_index);
+  if (!st)
+    return -1;
+
+  pool_get (st->cless_endpoints_pool, ip46);
+  tc->cless_pool_index = ip46 - st->cless_endpoints_pool;
+
+  if (sep->is_ip4)
+    ip46->ip4 = sep->ip.ip4;
+  else
+    ip46->ip6 = sep->ip.ip6;
+  return 0;
+}
+
+int
+session_lookup_restore_cless_endpoint (transport_connection_t *tc)
+{
+  u8 fib_proto;
+  ip46_address_t *ip46;
+  session_table_t *st;
+  st = session_table_get_for_connection (tc);
+  if (!st)
+    return -1;
+
+  ip46 = pool_elt_at_index (st->cless_endpoints_pool, tc->cless_pool_index);
+  tc->rmt_port = 0;
+  clib_memset (&tc->rmt_ip, 0, sizeof (tc->rmt_ip));
+  fib_proto = transport_connection_fib_proto (tc);
+
+  /* restore the original information so the connection
+   * can be properly deleted */
+  if (fib_proto == FIB_PROTOCOL_IP4)
+    tc->lcl_ip.ip4 = ip46->ip4;
+  else
+    tc->lcl_ip.ip6 = ip46->ip6;
+  pool_put (st->cless_endpoints_pool, ip46);
+  return 0;
+}
+
 /**
  * Add transport connection to a session table
  *
