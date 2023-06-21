@@ -16,6 +16,24 @@
       "message": "Instead of messing with barriers you should probably use __atomic_store_n(..., ..., __ATOMIC_RELEASE). On ARM that emits ordered store....",
       "revId": "98743367c9bbb56bae82ef16a930da058951fc55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4aef62a7_a532d4b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1755
+      },
+      "writtenOn": "2023-06-21T13:27:18Z",
+      "side": 1,
+      "message": "Thanks for having a look. There are multiple questions:\n\n1/ it looks like there is a missing store barrier after we store in_progress \u003d 1 (to prevent subsequent stores from being reordered before). acquire would work as well\n\n2/ I think `if(shared_header-\u003eepoch !\u003d sa-\u003eepoch || shared_header-\u003ein_progress)` should be in the other order + with a read-read barrier in between. I think we could run into the case when epoch is still unchanged then in_progress gets set to 0. So a reader would believe nothing happened while it read memory which was modified\n  \n3/ atomic store release could emit STLR which is only a one way barrier ? I agree for in_progress, but we need to ensure that read-read and write-write between epoch and in_progress are not reordered because of 2/\n\nI am preparing a proper question with diagrams otherwise, it should be clearer",
+      "parentUuid": "a448c18d_b642f462",
+      "revId": "98743367c9bbb56bae82ef16a930da058951fc55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
