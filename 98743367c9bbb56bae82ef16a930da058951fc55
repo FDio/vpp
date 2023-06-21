@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a448c18d_b642f462",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-06-21T08:27:55Z",
+      "side": 1,
+      "message": "Instead of messing with barriers you should probably use __atomic_store_n(..., ..., __ATOMIC_RELEASE). On ARM that emits ordered store....",
+      "revId": "98743367c9bbb56bae82ef16a930da058951fc55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
