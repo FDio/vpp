@@ -455,6 +455,25 @@ struct rte_vmbus_device *
 dpdk_get_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
 
+typedef struct
+{
+  dpdk_device_config_t config;
+
+  /* return */
+  i32 rv;
+  u32 sw_if_index;
+  clib_error_t *error;
+} dpdk_create_if_args_t;
+
+uword unformat_dpdk_device_config (unformat_input_t *input, va_list *args);
+
+u32 dpdk_port_init (dpdk_main_t *dm, u16 port_id,
+		    dpdk_device_config_t *devconf);
+
+int dpdk_create_if (vlib_main_t *vm, dpdk_create_if_args_t *args);
+
+int dpdk_delete_if (vlib_main_t *vm, u32 sw_if_index);
+
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
 void dpdk_buffer_poison_trajectory_all (void);

@@ -129,6 +129,7 @@ add_vpp_plugin(dpdk
   SOURCES
   buffer.c
   main.c
+  device/api.c
   device/cli.c
   device/common.c
   device/device.c
@@ -160,4 +161,7 @@ add_vpp_plugin(dpdk
 
   COMPONENT
   vpp-plugin-dpdk
+
+  API_FILES
+  dpdk.api
 )

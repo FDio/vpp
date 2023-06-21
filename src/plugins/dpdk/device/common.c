@@ -14,6 +14,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vppinfra/clib_error.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
 #include <vppinfra/file.h>
@@ -506,6 +507,140 @@ dpdk_get_vmbus_device (const struct rte_eth_dev_info *info)
     return container_of (info->device, struct rte_vmbus_device, device);
   else
     return NULL;
+}
+
+int
+dpdk_create_if (vlib_main_t *vm, dpdk_create_if_args_t *args)
+{
+  u8 *pci_addr = 0;
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  u16 port_id = 0;
+  args->rv = 0;
+  args->error = NULL;
+
+  vec_reset_length (pci_addr);
+  pci_addr =
+    format (0, "%U%c", format_vlib_pci_addr, &args->config.pci_addr, 0);
+
+  args->error =
+    vlib_pci_bind_to_uio (vm, &args->config.pci_addr, (char *) "auto", 1);
+  if (args->error)
+    {
+      args->rv = args->error->code;
+      goto cleanup;
+    }
+
+  args->rv = rte_eth_dev_get_port_by_name ((char *) pci_addr, &port_id);
+  if (!args->rv)
+    {
+      args->error = NULL;
+      goto cleanup;
+    }
+
+  args->rv = rte_eal_hotplug_add ("pci", (char *) pci_addr, NULL);
+  if (args->rv)
+    {
+      args->error = clib_error_return (0, "rte_eal_hotplug_add failed");
+      goto cleanup;
+    }
+
+  args->rv = rte_eth_dev_get_port_by_name ((char *) pci_addr, &port_id);
+  if (args->rv)
+    {
+      args->error =
+	clib_error_return (0, "rte_eth_dev_get_port_by_name failed");
+      goto cleanup;
+    }
+
+  if (args->config.workers && args->config.num_rx_queues == 0)
+    args->config.num_rx_queues =
+      clib_bitmap_count_set_bits (args->config.workers);
+  else if (args->config.workers &&
+	   clib_bitmap_count_set_bits (args->config.workers) !=
+	     args->config.num_rx_queues)
+    {
+      args->error =
+	clib_error_return (0,
+			   "%U: number of worker threads must be "
+			   "equal to number of rx queues",
+			   format_vlib_pci_addr, &args->config.pci_addr);
+      goto cleanup;
+    }
+
+  u32 hw_if_index = dpdk_port_init (dm, port_id, &args->config);
+  vnet_hw_interface_t *hif = vnet_get_hw_interface (vnm, hw_if_index);
+  args->sw_if_index = hif->sw_if_index;
+
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hif->dev_instance);
+
+  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+
+  f64 now = vlib_time_now (vm);
+  dpdk_update_link_state (xd, now);
+
+cleanup:
+  vec_free (pci_addr);
+
+  return args->rv;
+}
+
+int
+dpdk_delete_if (vlib_main_t *vm, u32 sw_if_index)
+{
+  int rv = 0;
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  struct rte_eth_dev_info di = {};
+
+  if (sw_if_index == ~0)
+    {
+      dpdk_log_warn ("[%u] invalid sw interface.", sw_if_index);
+      return VNET_ERR_INVALID_SW_IF_INDEX;
+    }
+
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (!si)
+    {
+      dpdk_log_warn ("[%u] failed to get sw interface.", sw_if_index);
+      return VNET_ERR_INVALID_SW_IF_INDEX;
+    }
+
+  vnet_hw_interface_t *hif = vnet_get_hw_interface (vnm, si->hw_if_index);
+  if (!hif)
+    {
+      dpdk_log_warn ("[%u] failed to get hw interface.", si->hw_if_index);
+      return VNET_ERR_NO_SUCH_ENTRY;
+    }
+
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hif->dev_instance);
+  if (!xd)
+    {
+      dpdk_log_warn ("[%u] failed to get dpdk device.", hif->dev_instance);
+      return VNET_ERR_NO_SUCH_ENTRY;
+    }
+
+  ethernet_delete_interface (vnm, si->hw_if_index);
+
+  dpdk_device_stop (xd);
+
+  if ((rv = rte_eth_dev_info_get (xd->port_id, &di)) != 0)
+    {
+      dpdk_log_warn ("[%u] failed to get device info. skipping device.",
+		     xd->port_id);
+      return VNET_ERR_NO_SUCH_ENTRY;
+    }
+
+  rv = rte_dev_remove (di.device);
+  if (rv)
+    {
+      dpdk_log_warn ("rte_dev_remove failed.");
+      return VNET_ERR_NO_SUCH_ENTRY;
+    }
+
+  vec_del1 (dm->devices, xd - dm->devices);
+
+  return 0;
 }
 
 /*

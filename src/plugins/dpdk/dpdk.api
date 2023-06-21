@@ -1,0 +1,99 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+import "vnet/ethernet/ethernet_types.api";
+import "vlib/pci/pci_types.api";
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pci_addr - pci address
+    @param num_rx_queues - number of rx queues
+    @param num_tx_queues - number of tx queues
+    @param num_rx_desc - number of entries of RX ring
+    @param num_tx_desc - number of entries of TX ring
+    @param num_tx_desc - number of entries of TX ring
+    @param max_lro_pkt_size - maximum allowed size of LRO aggregated packet
+    @param rss_fn - RSS function
+    @param tso - TSO
+    @param name - interface name
+    @param tag - interface tag
+    @param devargs - user arguments
+    @param workers_number - worker cores number
+    @param workers - worker cores
+    @param rss_queues_number - RSS queues number
+    @param rss_queues - RSS queues
+*/
+
+autoendian define dpdk_create
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_pci_address_t pci_addr;
+  u64 num_rx_queues;
+  u64 num_tx_queues;
+  u64 num_rx_desc;
+  u64 num_tx_desc;
+  u64 max_lro_pkt_size;
+  u64 rss_fn;
+  u8 tso;
+  string name[64];
+  string tag[64];
+  string devargs[64];
+  u8 workers_number;
+  u8 workers[64];
+  u8 rss_queues_number;
+  u8 rss_queues[64];
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new dpdk interface
+*/
+
+autoendian define dpdk_create_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index of an existing dpdk interface
+*/
+
+autoreply autoendian define dpdk_delete
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+  option vat_help = "sw_if_index <sw_if_index>";
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

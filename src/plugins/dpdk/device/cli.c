@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <vlib/pci/pci.h>
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
@@ -375,6 +376,90 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .function = show_dpdk_version_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+dpdk_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  dpdk_create_if_args_t args = {};
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return NULL;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U %U", unformat_vlib_pci_addr,
+		    &args.config.pci_addr, unformat_dpdk_device_config,
+		    &args.config))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  dpdk_create_if (vm, &args);
+
+  if (args.error == 0)
+    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
+		     vnet_get_main (), args.sw_if_index);
+
+  return args.error;
+}
+
+VLIB_CLI_COMMAND (dpdk_create_command, static) = {
+  .path = "create interface dpdk",
+  .short_help = "create interface dpdk <pci-address> "
+		"[num-rx-queues <n>] [num-tx-queues <n>] "
+		"[num-rx-desc <n>] [num-tx-desc <n>]",
+  .function = dpdk_create_command_fn,
+};
+
+static clib_error_t *
+dpdk_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  int rv = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  rv = dpdk_delete_if (vm, sw_if_index);
+  if (rv)
+    return clib_error_return (0, "dpdk_delete_if failed");
+
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (dpdk_delete_command, static) = {
+  .path = "delete interface dpdk",
+  .short_help = "delete interface dpdk "
+		"{<interface> | sw_if_index <sw_idx>}",
+  .function = dpdk_delete_command_fn,
+};
 
 /* Dummy function to get us linked in. */
 void
