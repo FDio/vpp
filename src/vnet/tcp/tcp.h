@@ -66,6 +66,13 @@ typedef struct tcp_wrk_stats_
 #undef _
 } tcp_wrk_stats_t;
 
+typedef enum
+{
+#define _(name, type, str) TCP_STAT_##name,
+  foreach_tcp_wrk_stat
+#undef _
+} tcp_wrk_stats_e;
+
 typedef struct tcp_free_req_
 {
   clib_time_type_t free_time;
