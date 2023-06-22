@@ -65,7 +65,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-python
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf libnuma-dev
+DEB_DEPENDS += gcovr lcov chrpath autoconf libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += libffi-dev python3-ply
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
@@ -426,7 +426,7 @@ rebuild-release: wipe-release build-release
 export TEST_DIR ?= $(WS_ROOT)/test
 
 define test
-	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=vpp TAG=$(1) vpp-install,)
+	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=vpp TAG=$(1) CC=$(CC) vpp-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(1)-native/vpp \
@@ -449,9 +449,27 @@ test:
 test-debug:
 	$(call test,vpp_debug,test)
 
-.PHONY: test-gcov
-test-gcov:
+.PHONY: test-cov
+test-cov:
+	$(eval CC=gcc)
+	$(eval TEST_GCOV=1)
+	$(call test,vpp_gcov,cov)
+
+.PHONY: test-cov-build
+test-cov-build:
+	$(eval CC=gcc)
+	$(eval TEST_GCOV=1)
 	$(call test,vpp_gcov,test)
+
+.PHONY: test-cov-prep
+test-cov-prep:
+	$(eval CC=gcc)
+	$(call test,vpp_gcov,cov-prep)
+
+.PHONY: test-cov-post
+test-cov-post:
+	$(eval CC=gcc)
+	$(call test,vpp_gcov,cov-post)
 
 .PHONY: test-all
 test-all:
@@ -462,6 +480,13 @@ test-all:
 test-all-debug:
 	$(eval EXTENDED_TESTS=1)
 	$(call test,vpp_debug,test)
+
+.PHONY: test-all-cov
+test-all-cov:
+	$(eval CC=gcc)
+	$(eval TEST_GCOV=1)
+	$(eval EXTENDED_TESTS=1)
+	$(call test,vpp_gcov,test)
 
 .PHONY: papi-wipe
 papi-wipe: test-wipe-papi
@@ -487,8 +512,10 @@ test-shell:
 test-shell-debug:
 	$(call test,vpp_debug,shell)
 
-.PHONY: test-shell-gcov
-test-shell-gcov:
+.PHONY: test-shell-cov
+test-shell-cov:
+	$(eval CC=gcc)
+	$(eval TEST_GCOV=1)
 	$(call test,vpp_gcov,shell)
 
 .PHONY: test-dep
@@ -505,13 +532,9 @@ test-wipe-doc:
 	@echo "make test-wipe-doc is DEPRECATED"
 	sleep 300
 
-.PHONY: test-cov
-test-cov:
-	$(eval EXTENDED_TESTS=1)
-	$(call test,vpp_gcov,cov)
-
 .PHONY: test-wipe-cov
 test-wipe-cov:
+	$(call make,$(PLATFORM)_gcov,$(addsuffix -wipe,$(TARGETS)))
 	@make -C test wipe-cov
 
 .PHONY: test-wipe-all
