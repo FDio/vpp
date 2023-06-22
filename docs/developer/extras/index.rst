@@ -7,7 +7,6 @@ VPP extra tools
 .. toctree::
     :maxdepth: 2
 
-    lcov
     snap
     strongswan
     vpp_config
