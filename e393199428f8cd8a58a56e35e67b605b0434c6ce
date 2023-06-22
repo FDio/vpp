@@ -67,6 +67,23 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/26/ : SUCCESS (skipped)\n\nThe results with the default settings looked too noisy to me. So I manually triggered [2] on a testbed without hyperthreading and it proved this Change has no impact on performance.\n\n[2] https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-aarch64-2n-tx2/6/",
       "revId": "e393199428f8cd8a58a56e35e67b605b0434c6ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eed8c494_f8737069",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-06-22T15:11:32Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "e393199428f8cd8a58a56e35e67b605b0434c6ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
