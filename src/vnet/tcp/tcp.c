@@ -25,6 +25,8 @@
 #include <vnet/dpo/load_balance.h>
 #include <math.h>
 
+#include <vlib/stats/stats.h>
+
 tcp_main_t tcp_main;
 
 typedef struct
@@ -1458,6 +1460,46 @@ tcp_initialize_iss_seed (tcp_main_t * tm)
   tm->iss_seed.second = random_u64 (&time_now);
 }
 
+static void
+tcp_stats_collector_fn (vlib_stats_collector_data_t *d)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  counter_t **counters = d->entry->data;
+  counter_t *cb = counters[0];
+  tcp_wrk_stats_t acc = {};
+  tcp_worker_ctx_t *wrk;
+
+  vec_foreach (wrk, tm->wrk_ctx)
+    {
+#define _(name, type, str) acc.name += wrk->stats.name;
+      foreach_tcp_wrk_stat
+#undef _
+    }
+
+#define _(name, type, str) cb[TCP_STAT_##name] = acc.name;
+  foreach_tcp_wrk_stat
+#undef _
+}
+
+static void
+tcp_counters_init (void)
+{
+  vlib_stats_collector_reg_t r = {};
+  u32 idx;
+
+  r.entry_index = idx = vlib_stats_add_counter_vector ("/sys/tcp");
+  r.collect_fn = tcp_stats_collector_fn;
+  vlib_stats_validate (idx, 0, TCP_STAT_no_buffer);
+
+#define _(name, type, str)                                                    \
+  vlib_stats_add_symlink (idx, TCP_STAT_##name, "/sys/tcp/%s",                \
+			  CLIB_STRING_MACRO (name));
+  foreach_tcp_wrk_stat
+#undef _
+
+    vlib_stats_register_collector_fn (&r);
+}
+
 static clib_error_t *
 tcp_main_enable (vlib_main_t * vm)
 {
@@ -1533,6 +1575,8 @@ tcp_main_enable (vlib_main_t * vm)
 
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
+
+  tcp_counters_init ();
 
   return error;
 }
