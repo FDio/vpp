@@ -16,6 +16,46 @@
       "message": "LGTM",
       "revId": "17b16963f28bd73d95f7bba28e5279aaea2ba210",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f44e3dc_73a7d354",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-22T16:57:16Z",
+      "side": 1,
+      "message": "Just have a little comment, otherwise thanks a lot!",
+      "revId": "17b16963f28bd73d95f7bba28e5279aaea2ba210",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cf03214_8fa767de",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-22T16:57:16Z",
+      "side": 1,
+      "message": "If no program has been already set, adding an expression takes precedence over deleting it there. That is, if `btm-\u003eprog_set \u003d\u003d 0`, `is_del \u003d\u003d1` and `bpf_expr !\u003d 0`, then the expression is installed.\n\nIt is maybe more of a personal choice, but if I specify a delete event in the CLI, even though I give an expression, it would make more sense to me that nothing gets installed.",
+      "range": {
+        "startLine": 42,
+        "startChar": 11,
+        "endLine": 42,
+        "endChar": 19
+      },
+      "revId": "17b16963f28bd73d95f7bba28e5279aaea2ba210",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
