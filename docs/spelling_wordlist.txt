@@ -397,7 +397,6 @@ Gerrit
 gethostbyname
 gettingsources
 gettingstarted
-ggcov
 gid
 Gigabit
 GigE
