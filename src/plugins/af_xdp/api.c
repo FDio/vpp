@@ -116,6 +116,38 @@ vl_api_af_xdp_create_v2_t_handler (vl_api_af_xdp_create_v2_t *mp)
 }
 
 static void
+vl_api_af_xdp_create_v3_t_handler (vl_api_af_xdp_create_v3_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  af_xdp_main_t *rm = &af_xdp_main;
+  vl_api_af_xdp_create_v3_reply_t *rmp;
+  af_xdp_create_if_args_t args;
+  int rv;
+
+  clib_memset (&args, 0, sizeof (af_xdp_create_if_args_t));
+
+  args.linux_ifname = mp->host_if[0] ? (char *) mp->host_if : 0;
+  args.name = mp->name[0] ? (char *) mp->name : 0;
+  args.prog = mp->prog[0] ? (char *) mp->prog : 0;
+  args.netns = mp->netns[0] ? (char *) mp->netns : 0;
+  args.mode = af_xdp_api_mode (mp->mode);
+  args.flags = af_xdp_api_flags (mp->flags);
+  args.rxq_size = mp->rxq_size;
+  args.txq_size = mp->txq_size;
+  args.rxq_num = mp->rxq_num;
+
+  af_xdp_create_if (vm, &args);
+  rv = args.rv;
+
+  /* clang-format off */
+  REPLY_MACRO2_END (VL_API_AF_XDP_CREATE_V3_REPLY,
+    ({
+      rmp->sw_if_index = args.sw_if_index;
+    }));
+  /* clang-format on */
+}
+
+static void
 vl_api_af_xdp_delete_t_handler (vl_api_af_xdp_delete_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();

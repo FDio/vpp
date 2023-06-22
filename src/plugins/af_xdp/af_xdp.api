@@ -57,6 +57,7 @@ define af_xdp_create
   vl_api_af_xdp_flag_t flags [default=0];
   string prog[256];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  option deprecated;
 };
 
 /** \brief
@@ -88,6 +89,7 @@ define af_xdp_create_v2
   string prog[256];
   string namespace[64];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]";
+  option deprecated;
 };
 
 /** \brief
@@ -101,6 +103,7 @@ define af_xdp_create_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+  option deprecated;
 };
 
 /** \brief
@@ -114,6 +117,7 @@ define af_xdp_create_v2_reply
   u32 context;
   i32 retval;
   vl_api_interface_index_t sw_if_index;
+  option deprecated;
 };
 
 /** \brief
@@ -121,6 +125,50 @@ define af_xdp_create_v2_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface index
 */
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if - Linux netdev interface name
+    @param name - new af_xdp interface name (optional)
+    @param rxq_num - number of receive queues. 65535 can be used as special value to request all available queues (optional)
+    @param rxq_size - receive queue size (optional)
+    @param txq_size - transmit queue size (optional)
+    @param mode - operation mode (optional)
+    @param flags - flags (optional)
+    @param prog - eBPF program path (optional)
+    @param netns - netns of nic (optional)
+*/
+
+autoendian define af_xdp_create_v3
+{
+  u32 client_index;
+  u32 context;
+
+  string host_if[64];
+  string name[64];
+  u16 rxq_num [default=1];
+  u16 rxq_size [default=0];
+  u16 txq_size [default=0];
+  vl_api_af_xdp_mode_t mode [default=0];
+  vl_api_af_xdp_flag_t flags [default=0];
+  string prog[256];
+  string netns[64];
+  option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]";
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index for the new af_xdp interface
+*/
+
+autoendian define af_xdp_create_v3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
 
 autoreply define af_xdp_delete
 {
