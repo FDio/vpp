@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "022bcf2ce1a6f77d5fc16898f91c16d282d86027",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c0c992b_50592f62",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-06-23T10:04:32Z",
+      "side": 1,
+      "message": "Hello Neale,\nCould you please review this patch? It addressed an issue which I found some time ago but struggled to reproduce (before sending it upstream). However, another user encountered it [0].\n\n[0] - https://lists.fd.io/g/vpp-dev/topic/vpp_crash/99694649",
+      "revId": "022bcf2ce1a6f77d5fc16898f91c16d282d86027",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
