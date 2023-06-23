@@ -56,6 +56,30 @@
       },
       "revId": "17b16963f28bd73d95f7bba28e5279aaea2ba210",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73c36579_47d3882a",
+        "filename": "src/plugins/bpf_trace_filter/bpf_trace_filter.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-06-23T21:02:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1cf03214_8fa767de",
+      "range": {
+        "startLine": 42,
+        "startChar": 11,
+        "endLine": 42,
+        "endChar": 19
+      },
+      "revId": "17b16963f28bd73d95f7bba28e5279aaea2ba210",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
