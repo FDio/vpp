@@ -226,50 +226,68 @@ udp_session_get_listener (u32 listener_index)
 }
 
 always_inline u32
-udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
+udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
+		     u8 is_cless)
 {
-  vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port,
-			udp_csum_offload (uc));
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
-
-  /* Handle ip header now as session layer overwrite connection details for
-   * non-connected udp. */
-  if (uc->c_is_ip4)
-    vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
-				 IP_PROTOCOL_UDP, udp_csum_offload (uc),
-				 0 /* is_df */, uc->c_dscp);
-  else
-    vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
-			  IP_PROTOCOL_UDP);
-
   /* reuse tcp medatada for now */
   vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
 
-  /* Not connected udp session. Mark buffer for custom handling in
-   * udp_output */
-  if (PREDICT_FALSE (!(uc->flags & UDP_CONN_F_CONNECTED)))
-    vnet_buffer (b)->tcp.flags |= UDP_CONN_F_LISTEN;
+  if (!is_cless)
+    {
+      vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port,
+			    udp_csum_offload (uc));
+
+      if (uc->c_is_ip4)
+	vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
+				     IP_PROTOCOL_UDP, udp_csum_offload (uc),
+				     0 /* is_df */, uc->c_dscp);
+      else
+	vlib_buffer_push_ip6 (vm, b, &uc->c_lcl_ip6, &uc->c_rmt_ip6,
+			      IP_PROTOCOL_UDP);
+
+      vnet_buffer (b)->tcp.flags = 0;
+    }
   else
-    vnet_buffer (b)->tcp.flags = 0;
+    {
+      u8 *data = vlib_buffer_get_current (b);
+      session_dgram_hdr_t hdr;
+
+      hdr = *(session_dgram_hdr_t *) (data - sizeof (hdr));
+
+      /* Local port assumed to be bound, not overwriting it */
+      vlib_buffer_push_udp (b, uc->c_lcl_port, hdr.rmt_port,
+			    udp_csum_offload (uc));
+
+      if (uc->c_is_ip4)
+	vlib_buffer_push_ip4_custom (vm, b, &hdr.lcl_ip.ip4, &hdr.rmt_ip.ip4,
+				     IP_PROTOCOL_UDP, udp_csum_offload (uc),
+				     0 /* is_df */, uc->c_dscp);
+      else
+	vlib_buffer_push_ip6 (vm, b, &hdr.lcl_ip.ip6, &hdr.rmt_ip.ip6,
+			      IP_PROTOCOL_UDP);
+
+      /* Not connected udp session. Mark buffer for custom handling in
+       * udp_output */
+      vnet_buffer (b)->tcp.flags |= UDP_CONN_F_LISTEN;
+    }
 
   return 0;
 }
 
-static u32
-udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
+always_inline void
+udp_push_header_batch (udp_connection_t *uc, vlib_buffer_t **bs, u32 n_bufs,
+		       u8 is_cless)
 {
   vlib_main_t *vm = vlib_get_main ();
-  udp_connection_t *uc;
-
-  uc = udp_connection_from_transport (tc);
 
   while (n_bufs >= 4)
     {
       vlib_prefetch_buffer_header (bs[2], STORE);
       vlib_prefetch_buffer_header (bs[3], STORE);
 
-      udp_push_one_header (vm, uc, bs[0]);
-      udp_push_one_header (vm, uc, bs[1]);
+      udp_push_one_header (vm, uc, bs[0], is_cless);
+      udp_push_one_header (vm, uc, bs[1], is_cless);
 
       n_bufs -= 2;
       bs += 2;
@@ -279,11 +297,23 @@ udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
       if (n_bufs > 1)
 	vlib_prefetch_buffer_header (bs[1], STORE);
 
-      udp_push_one_header (vm, uc, bs[0]);
+      udp_push_one_header (vm, uc, bs[0], is_cless);
 
       n_bufs -= 1;
       bs += 1;
     }
+}
+
+static u32
+udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
+{
+  udp_connection_t *uc;
+
+  uc = udp_connection_from_transport (tc);
+  if (uc->flags & UDP_CONN_F_CONNECTED)
+    udp_push_header_batch (uc, bs, n_bufs, 0 /* is_cless */);
+  else
+    udp_push_header_batch (uc, bs, n_bufs, 1 /* is_cless */);
 
   if (PREDICT_FALSE (uc->flags & UDP_CONN_F_CLOSING))
     {
