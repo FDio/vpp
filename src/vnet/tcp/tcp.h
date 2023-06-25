@@ -240,6 +240,9 @@ typedef struct _tcp_main
   /** Flag that indicates if stack is on or off */
   u8 is_enabled;
 
+  /** Set if counters on stats segment initialized */
+  u8 counters_init;
+
   /** Flag that indicates if v4 punting is enabled */
   u8 punt_unknown4;
 
