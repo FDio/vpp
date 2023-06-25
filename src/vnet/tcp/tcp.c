@@ -1482,10 +1482,13 @@ tcp_stats_collector_fn (vlib_stats_collector_data_t *d)
 }
 
 static void
-tcp_counters_init (void)
+tcp_counters_init (tcp_main_t *tm)
 {
   vlib_stats_collector_reg_t r = {};
   u32 idx;
+
+  if (tm->counters_init)
+    return;
 
   r.entry_index = idx = vlib_stats_add_counter_vector ("/sys/tcp");
   r.collect_fn = tcp_stats_collector_fn;
@@ -1498,6 +1501,8 @@ tcp_counters_init (void)
 #undef _
 
     vlib_stats_register_collector_fn (&r);
+
+  tm->counters_init = 1;
 }
 
 static clib_error_t *
@@ -1576,7 +1581,7 @@ tcp_main_enable (vlib_main_t * vm)
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
 
-  tcp_counters_init ();
+  tcp_counters_init (tm);
 
   return error;
 }
