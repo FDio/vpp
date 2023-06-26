@@ -2247,6 +2247,14 @@ class NeighborAgeTestCase(VppTestCase):
         self.assertEqual(arp.psrc, sip)
         self.assertEqual(arp.pdst, dip)
 
+    def verify_ip_neighbor_config(self, af, max_number, max_age, recycle):
+        config = self.vapi.ip_neighbor_config_get(af)
+
+        self.assertEqual(config.af, af)
+        self.assertEqual(config.max_number, max_number)
+        self.assertEqual(config.max_age, max_age)
+        self.assertEqual(config.recycle, recycle)
+
     def test_age(self):
         """Aging/Recycle"""
 
@@ -2263,12 +2271,22 @@ class NeighborAgeTestCase(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
 
         #
+        # Verify neighbor configuration defaults
+        #
+        self.verify_ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=50000, max_age=0, recycle=False
+        )
+
+        #
         # Set the neighbor configuration:
         #   limi = 200
         #   age  = 0 seconds
         #   recycle = false
         #
         self.vapi.ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=False
+        )
+        self.verify_ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=False
         )
 
@@ -2298,6 +2316,9 @@ class NeighborAgeTestCase(VppTestCase):
         self.vapi.ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=True
         )
+        self.verify_ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=True
+        )
 
         # now new additions are allowed
         VppNeighbor(
@@ -2319,6 +2340,9 @@ class NeighborAgeTestCase(VppTestCase):
         # change the config to age old neighbors
         #
         self.vapi.ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=200, max_age=2, recycle=True
+        )
+        self.verify_ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=2, recycle=True
         )
 
@@ -2399,6 +2423,9 @@ class NeighborAgeTestCase(VppTestCase):
         self.vapi.ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=1000, recycle=True
         )
+        self.verify_ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=200, max_age=1000, recycle=True
+        )
 
         #
         # load up some neighbours again, then disable the aging
@@ -2412,6 +2439,9 @@ class NeighborAgeTestCase(VppTestCase):
                 self.pg0.remote_hosts[ii].ip4,
             ).add_vpp_config()
         self.vapi.ip_neighbor_config(
+            af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=False
+        )
+        self.verify_ip_neighbor_config(
             af=vaf.ADDRESS_IP4, max_number=200, max_age=0, recycle=False
         )
 
