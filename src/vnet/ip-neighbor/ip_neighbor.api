@@ -20,7 +20,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -120,6 +120,40 @@ autoreply define ip_neighbor_config
 {
   u32 client_index;
   u32 context;
+  vl_api_address_family_t af;
+  u32 max_number;
+  u32 max_age;
+  bool recycle;
+};
+
+/** \brief Get neighbor database configuration per AF
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param af - Address family (v4/v6)
+*/
+define ip_neighbor_config_get
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  vl_api_address_family_t af;
+};
+
+/** \brief Neighbor database configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - error (0 is "no error")
+    @param af - Address family (v4/v6)
+    @param max_number - The maximum number of neighbours that will be created
+    @param max_age - The maximum age (in seconds) before an inactive neighbour
+                     is flushed
+    @param recycle - If max_number of neighbours is reached and new ones need
+                      to be created, should the oldest neighbour be 'recycled'
+*/
+define ip_neighbor_config_get_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
   vl_api_address_family_t af;
   u32 max_number;
   u32 max_age;

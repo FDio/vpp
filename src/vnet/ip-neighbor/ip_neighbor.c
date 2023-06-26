@@ -1759,6 +1759,17 @@ ip_neighbor_config (ip_address_family_t af, u32 limit, u32 age, bool recycle)
   return (0);
 }
 
+int
+ip_neighbor_get_config (ip_address_family_t af, u32 *limit, u32 *age,
+			bool *recycle)
+{
+  *limit = ip_neighbor_db[af].ipndb_limit;
+  *age = ip_neighbor_db[af].ipndb_age;
+  *recycle = ip_neighbor_db[af].ipndb_recycle;
+
+  return (0);
+}
+
 static clib_error_t *
 ip_neighbor_config_show (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)

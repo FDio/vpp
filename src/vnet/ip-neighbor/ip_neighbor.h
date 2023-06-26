@@ -36,6 +36,8 @@ extern int ip_neighbor_del (const ip_address_t * ip, u32 sw_if_index);
 
 extern int ip_neighbor_config (ip_address_family_t af,
 			       u32 limit, u32 age, bool recycle);
+extern int ip_neighbor_get_config (ip_address_family_t af, u32 *limit,
+				   u32 *age, bool *recycle);
 
 extern void ip_neighbor_del_all (ip_address_family_t af, u32 sw_if_index);
 

@@ -314,6 +314,32 @@ vl_api_ip_neighbor_config_t_handler (vl_api_ip_neighbor_config_t * mp)
 }
 
 static void
+vl_api_ip_neighbor_config_get_t_handler (vl_api_ip_neighbor_config_get_t *mp)
+{
+  vl_api_ip_neighbor_config_get_reply_t *rmp;
+  int rv;
+  ip_address_family_t af = AF_IP4;
+  u32 max_number = ~0;
+  u32 max_age = ~0;
+  bool recycle = false;
+
+  rv = ip_address_family_decode (mp->af, &af);
+
+  if (!rv)
+    rv = ip_neighbor_get_config (af, &max_number, &max_age, &recycle);
+
+  // clang-format off
+  REPLY_MACRO2 (VL_API_IP_NEIGHBOR_CONFIG_GET_REPLY,
+  ({
+    rmp->af = ip_address_family_encode (af);
+    rmp->max_number = htonl (max_number);
+    rmp->max_age = htonl (max_age);
+    rmp->recycle = recycle;
+  }));
+  // clang-format on
+}
+
+static void
 vl_api_ip_neighbor_replace_begin_t_handler (vl_api_ip_neighbor_replace_begin_t
 					    * mp)
 {
