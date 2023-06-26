@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2bca8b5d_3a7a4be8",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-26T12:36:55Z",
+      "side": 1,
+      "message": "Let\u0027s do if (udp0-\u003echecksum \u003d\u003d 0 \u0026\u0026 (udp0-\u003esrc_port \u003d\u003d udp0-\u003edst_port)) here.",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2cd7af41_b88d8f18",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 563,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-26T12:36:55Z",
+      "side": 1,
+      "message": "Let\u0027s do a simple check if (esp0-\u003espi) !\u003d 0 here. Since we are to follow RFC3948, let\u0027s follow it in full here.",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
