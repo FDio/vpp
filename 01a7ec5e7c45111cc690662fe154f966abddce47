@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb2cdf02_6489367c",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-06-26T21:12:53Z",
+      "side": 1,
+      "message": "Is there any benefit to enabling/disabling MPLS on the host interface at the time it is enabled/disabled on the physical interface? It seems like you could just enable it at the time of interface pair creation and leave it enabled. And maybe you already effectively have done so by enabling linux-cp-xc-mpls on the mpls-input feature arc of the host interface when the pair is created.\n\nThe host interface is intended to be mostly transparent. We administratively enable the host interface early on and enable IPv4/IPv6 unicast and multicast on it and don\u0027t do much to change those things afterwards. It seems like we could do the same with MPLS.",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f5f0cdc_2e415eb3",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-06-26T21:12:53Z",
+      "side": 1,
+      "message": "The linux-cp and linux-nl plugins were designed with the primary intention to propagate linux configurations into VPP. The ability to sync configurations in the other direction from VPP to linux was merged later at Pim van Pelt\u0027s request, but it is only supposed to happen if you have that feature explicitly enabled. By default, configurations should not be propagated from VPP to linux. There should be a check like \u0027if (!lcp_sync()) return;\u0027.",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1df1bf81_d12b5c1d",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-06-26T21:12:53Z",
+      "side": 1,
+      "message": "It seems like the fd is only being closed here if it was not successfully opened. This should probably be changed to \u0027if (ctl_fd \u003e -1)\u0027 or something like that.",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
