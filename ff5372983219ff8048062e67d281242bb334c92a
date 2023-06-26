@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82fe91d0_d683e018",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-26T12:43:50Z",
+      "side": 1,
+      "message": "Please correct me if I am wrong but looks like you removed all original plain text packets tests and replaced by encrypted packets. Can you explain why you think the original tests are not necessary any more?",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
