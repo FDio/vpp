@@ -192,6 +192,15 @@ func (vpp *VppInstance) vppctl(command string, arguments ...any) string {
 	return string(output)
 }
 
+func (vpp *VppInstance) GetSessionStat(stat string) int {
+	o := vpp.vppctl("show session stats")
+	vpp.getSuite().log(o)
+	if strings.Contains(o, stat) {
+		return 1
+	}
+	return 0
+}
+
 func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")

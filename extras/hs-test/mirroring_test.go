@@ -15,9 +15,6 @@ func (s *NginxSuite) TestMirroring() {
 	s.log(string(o))
 	s.assertNotEmpty(o)
 
-	// Check if log output from VPP contains 'no lcl port' warnings
-	// TODO: Need to change after adding session worker counter
 	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	logContent := vppProxyContainer.log()
-	s.assertNotContains(logContent, "no lcl port")
+	s.assertEqual(0, vppProxyContainer.vppInstance.GetSessionStat("no lcl port"))
 }
