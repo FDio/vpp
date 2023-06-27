@@ -17,6 +17,7 @@
  * @brief Session and session manager
  */
 
+#include <vnet/plugin/plugin.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/dpo/load_balance.h>
@@ -2292,6 +2293,11 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->no_adaptive = 1;
       else if (unformat (input, "use-dma"))
 	smm->dma_enabled = 1;
+      else if (unformat (input, "nat44-original-dst-enable"))
+	{
+	  smm->original_dst_lookup = vlib_get_plugin_symbol (
+	    "nat_plugin.so", "nat44_original_dst_lookup");
+	}
       /*
        * Deprecated but maintained for compatibility
        */

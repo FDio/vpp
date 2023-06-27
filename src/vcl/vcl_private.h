@@ -208,6 +208,7 @@ typedef struct vppcom_cfg_t_
   u32 tls_engine;
   u8 mt_wrk_supported;
   u8 huge_page;
+  u8 app_original_dst;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);

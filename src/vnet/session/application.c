@@ -1529,6 +1529,12 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
+int
+application_original_dst_is_enabled (application_t *app)
+{
+  return app->flags & APP_OPTIONS_FLAGS_GET_ORIGINAL_DST;
+}
+
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)

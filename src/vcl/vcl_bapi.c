@@ -360,7 +360,8 @@ vcl_bapi_send_attach (void)
     (vcm->cfg.app_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
     (app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0) |
     (vcm->cfg.use_mq_eventfd ? APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD : 0) |
-    (vcm->cfg.huge_page ? APP_OPTIONS_FLAGS_USE_HUGE_PAGE : 0);
+    (vcm->cfg.huge_page ? APP_OPTIONS_FLAGS_USE_HUGE_PAGE : 0) |
+    (vcm->cfg.app_original_dst ? APP_OPTIONS_FLAGS_GET_ORIGINAL_DST : 0);
   bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
     (u64) ((vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
 	   (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0));
