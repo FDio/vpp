@@ -84,6 +84,7 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 static int
 mq_send_session_accepted_cb (session_t * s)
 {
+  session_main_t *smm = vnet_get_session_main ();
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   session_accepted_msg_t m = { 0 };
   fifo_segment_t *eq_seg;
@@ -134,6 +135,21 @@ mq_send_session_accepted_cb (session_t * s)
       m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
       m.mq_index = s->thread_index;
+    }
+
+  if (app->flags & APP_OPTIONS_FLAGS_GET_ORIGINAL_DST)
+    {
+      m.original_dst_ip4 = m.rmt.ip.ip4.as_u32;
+      m.original_dst_port = m.rmt.port;
+      if (smm->original_dst_lookup)
+	{
+	  smm->original_dst_lookup (
+	    &m.lcl.ip.ip4, m.lcl.port, &m.rmt.ip.ip4, m.rmt.port,
+	    session_get_transport_proto (s) == TRANSPORT_PROTO_TCP ?
+		    IPPROTO_TCP :
+		    IPPROTO_UDP,
+	    &m.original_dst_ip4, &m.original_dst_port);
+	}
     }
 
   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));

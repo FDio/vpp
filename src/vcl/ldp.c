@@ -67,6 +67,10 @@
 #define UDP_SEGMENT 103
 #endif
 
+#ifndef SO_ORIGINAL_DST
+/* from <linux/netfilter_ipv4.h> */
+#define SO_ORIGINAL_DST 80
+#endif
 typedef struct ldp_worker_ctx_
 {
   u8 *io_buffer;
@@ -2039,6 +2043,21 @@ getsockopt (int fd, int level, int optname,
 	    default:
 	      LDBG (0, "ERROR: fd %d: getsockopt SOL_TCP: sid %u, "
 		    "optname %d unsupported!", fd, vlsh, optname);
+	      break;
+	    }
+	  break;
+	case SOL_IP:
+	  switch (optname)
+	    {
+	    case SO_ORIGINAL_DST:
+	      rv =
+		vls_attr (vlsh, VPPCOM_ATTR_GET_ORIGINAL_DST, optval, optlen);
+	      break;
+	    default:
+	      LDBG (0,
+		    "ERROR: fd %d: getsockopt SOL_IP: vlsh %u "
+		    "optname %d unsupported!",
+		    fd, vlsh, optname);
 	      break;
 	    }
 	  break;
