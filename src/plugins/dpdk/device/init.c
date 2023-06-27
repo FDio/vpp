@@ -669,7 +669,12 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         continue;
       }
     /* Mellanox CX6, CX6VF, CX6DX, CX6DXVF */
-    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x101b && d->device_id <= 0x101e)
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x101b && d->device_id <= 0x101f)
+      {
+        continue;
+      }
+    /* Mellanox CX7 */
+    else if (d->vendor_id == 0x15b3 && d->device_id == 0x1021)
       {
         continue;
       }
