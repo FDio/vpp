@@ -136,6 +136,17 @@ mq_send_session_accepted_cb (session_t * s)
       m.mq_index = s->thread_index;
     }
 
+  if (application_original_dst_is_enabled (app))
+    {
+      m.original_dst_ip4 = m.lcl.ip.ip4.as_u32;
+      m.original_dst_port = m.lcl.port;
+      session_get_original_dst (
+	&m.lcl.ip.ip4, m.lcl.port, &m.rmt.ip.ip4, m.rmt.port,
+	session_get_transport_proto (s) == TRANSPORT_PROTO_TCP ? IPPROTO_TCP :
+								       IPPROTO_UDP,
+	&m.original_dst_ip4, &m.original_dst_port);
+    }
+
   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
 
   return 0;

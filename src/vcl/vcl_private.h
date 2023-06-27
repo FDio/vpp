@@ -180,6 +180,9 @@ typedef struct vcl_session_
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
+
+  u16 original_dst_port; /**< original dst port (network order) */
+  u32 original_dst_ip4;	 /**< original dst ip4 (network order) */
 } vcl_session_t;
 
 typedef struct vppcom_cfg_t_
@@ -208,6 +211,7 @@ typedef struct vppcom_cfg_t_
   u32 tls_engine;
   u8 mt_wrk_supported;
   u8 huge_page;
+  u8 app_original_dst;
 } vppcom_cfg_t;
 
 void vppcom_cfg (vppcom_cfg_t * vcl_cfg);

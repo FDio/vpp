@@ -17,6 +17,7 @@
  * @brief Session and session manager
  */
 
+#include <vnet/plugin/plugin.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/dpo/load_balance.h>
@@ -26,6 +27,20 @@
 
 session_main_t session_main;
 
+void
+session_get_original_dst (ip4_address_t *i2o_src, u16 i2o_src_port,
+			  ip4_address_t *i2o_dst, u16 i2o_dst_port,
+			  ip_protocol_t proto, u32 *original_dst,
+			  u16 *original_dst_port)
+{
+  session_main_t *smm = vnet_get_session_main ();
+  if (smm->original_dst_lookup)
+    {
+      smm->original_dst_lookup (i2o_src, i2o_src_port, i2o_dst, i2o_dst_port,
+				proto, original_dst, original_dst_port);
+    }
+  return;
+}
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 			    session_evt_type_t evt_type)
@@ -2292,6 +2307,11 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->no_adaptive = 1;
       else if (unformat (input, "use-dma"))
 	smm->dma_enabled = 1;
+      else if (unformat (input, "nat44-original-dst-enable"))
+	{
+	  smm->original_dst_lookup = vlib_get_plugin_symbol (
+	    "nat_plugin.so", "nat44_original_dst_lookup");
+	}
       /*
        * Deprecated but maintained for compatibility
        */
