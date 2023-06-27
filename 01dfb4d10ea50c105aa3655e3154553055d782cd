@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7f2f2b4_264aaf27",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-27T16:38:55Z",
+      "side": 1,
+      "message": "This looks pretty good! A couple of nits and adding Ole for nat code review",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "df7a8f27_3d4ade96",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-27T16:38:55Z",
+      "side": 1,
+      "message": "This is a good idea but for now let\u0027s move it to the vcl session. We\u0027ll have to refactor/cleanup app_session_transport_t at one point in the future",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a7b1223_056bafe8",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-27T16:38:55Z",
+      "side": 1,
+      "message": "No need for the extra space",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9cb7fc2_b7d0668e",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-27T16:38:55Z",
+      "side": 1,
+      "message": "Add maybe a comment explaining what this is used for",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a70f32b_bb5e39d8",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-06-27T16:38:55Z",
+      "side": 1,
+      "message": "Let\u0027s move the code to a helper function in session.c",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
