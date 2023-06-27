@@ -193,6 +193,10 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
 typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
+typedef void (*nat44_original_dst_lookup_fn) (
+  ip4_address_t *i2o_src, u16 i2o_src_port, ip4_address_t *i2o_dst,
+  u16 i2o_dst_port, ip_protocol_t proto, u32 *original_dst,
+  u16 *original_dst_port);
 
 typedef struct session_main_
 {
@@ -281,6 +285,9 @@ typedef struct session_main_
   u32 preallocated_sessions;
 
   u16 msg_id_base;
+
+  /** Query nat44-ed session to get original dst ip4 & dst port. */
+  nat44_original_dst_lookup_fn original_dst_lookup;
 } session_main_t;
 
 extern session_main_t session_main;
@@ -799,6 +806,10 @@ void session_wrk_handle_evts_main_rpc (void *);
 
 session_t *session_alloc_for_connection (transport_connection_t * tc);
 session_t *session_alloc_for_half_open (transport_connection_t *tc);
+void session_get_original_dst (transport_endpoint_t *i2o_src,
+			       transport_endpoint_t *i2o_dst,
+			       transport_proto_t transport_proto,
+			       u32 *original_dst, u16 *original_dst_port);
 
 typedef void (pool_safe_realloc_rpc_fn) (void *rpc_args);
 

@@ -4104,7 +4104,49 @@ nat_syslog_nat44_sdel (u32 ssubix, u32 sfibix, ip4_address_t *isaddr,
 			 idaddr, idport, xdaddr, xdport, proto, 0,
 			 is_twicenat);
 }
+__clib_export void
+nat44_original_dst_lookup (ip4_address_t *i2o_src, u16 i2o_src_port,
+			   ip4_address_t *i2o_dst, u16 i2o_dst_port,
+			   ip_protocol_t proto, u32 *original_dst,
+			   u16 *original_dst_port)
+{
+  snat_main_per_thread_data_t *tsm;
+  snat_main_t *sm = &snat_main;
+  u32 fib_index = 0;
+  snat_session_t *s;
+  ip4_header_t ip;
 
+  ip.src_address.as_u32 = i2o_src->as_u32;
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, 0);
+
+  if (sm->num_workers > 1)
+    {
+      tsm = vec_elt_at_index (
+	sm->per_thread_data,
+	nat44_ed_get_in2out_worker_index (0, &ip, fib_index, 0));
+    }
+  else
+    {
+      tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+    }
+
+  /* query */
+  clib_bihash_kv_16_8_t kv = { 0 }, value;
+  init_ed_k (&kv, i2o_src->as_u32, i2o_src_port, i2o_dst->as_u32, i2o_dst_port,
+	     fib_index, proto);
+  if (tsm->sessions == NULL ||
+      clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
+    {
+      return;
+    }
+  s = pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
+  if (s)
+    {
+      *original_dst = s->i2o.rewrite.saddr.as_u32;
+      *original_dst_port = s->i2o.rewrite.sport;
+    }
+  return;
+}
 /*
  * fd.io coding-style-patch-verification: ON
  *
