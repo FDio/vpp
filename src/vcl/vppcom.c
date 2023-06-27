@@ -351,6 +351,11 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 
   session->vpp_handle = mp->handle;
   session->session_state = VCL_STATE_READY;
+  if (mp->rmt.is_ip4)
+    {
+      session->original_dst_ip4 = mp->original_dst_ip4;
+      session->original_dst_port = mp->original_dst_port;
+    }
   session->transport.rmt_port = mp->rmt.port;
   session->transport.is_ip4 = mp->rmt.is_ip4;
   clib_memcpy_fast (&session->transport.rmt_ip, &mp->rmt.ip,
@@ -3604,6 +3609,33 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 		" port %d",
 		session_handle, ep->is_ip4, vcl_format_ip46_address,
 		&session->transport.lcl_ip,
+		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+		clib_net_to_host_u16 (ep->port));
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_ORIGINAL_DST:
+      if (!session->transport.is_ip4)
+	{
+	  /* now original dst only support ipv4*/
+	  rv = VPPCOM_EAFNOSUPPORT;
+	  break;
+	}
+      if (PREDICT_TRUE (buffer && buflen && (*buflen >= sizeof (*ep)) &&
+			ep->ip))
+	{
+	  ep->is_ip4 = session->transport.is_ip4;
+	  ep->port = session->original_dst_port;
+	  clib_memcpy_fast (ep->ip, &session->original_dst_ip4,
+			    sizeof (ip4_address_t));
+	  *buflen = sizeof (*ep);
+	  VDBG (1,
+		"VPPCOM_ATTR_GET_ORIGINAL_DST: sh %u, is_ip4 = %u, addr = %U"
+		" port %d",
+		session_handle, ep->is_ip4, vcl_format_ip4_address,
+		(ip4_address_t *) (&session->original_dst_ip4),
 		ep->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 		clib_net_to_host_u16 (ep->port));
 	}

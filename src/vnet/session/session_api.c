@@ -136,6 +136,13 @@ mq_send_session_accepted_cb (session_t * s)
       m.mq_index = s->thread_index;
     }
 
+  if (application_original_dst_is_enabled (app))
+    {
+      session_get_original_dst (&m.lcl, &m.rmt,
+				session_get_transport_proto (s),
+				&m.original_dst_ip4, &m.original_dst_port);
+    }
+
   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
 
   return 0;

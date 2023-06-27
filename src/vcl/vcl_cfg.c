@@ -464,6 +464,11 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured with multithread workers",
 			getpid ());
 	    }
+	  else if (unformat (line_input, "app_original_dst"))
+	    {
+	      vcl_cfg->app_original_dst = 1;
+	      VCFG_DBG (0, "VCL<%d>: support original destination", getpid ());
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;
