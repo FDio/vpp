@@ -582,6 +582,17 @@ transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
   return svm_fifo_has_ooo_data (s->rx_fifo);
 }
 
+always_inline u32
+transport_tx_fifo_has_dgram (transport_connection_t *tc)
+{
+  session_t *s = session_get (tc->s_index, tc->thread_index);
+  session_dgram_pre_hdr_t phdr;
+
+  svm_fifo_peek (s->tx_fifo, 0, sizeof (phdr), (u8 *) &phdr);
+  return svm_fifo_max_dequeue_cons (s->tx_fifo) >=
+	 phdr.data_length + sizeof (session_dgram_hdr_t);
+}
+
 always_inline void
 transport_rx_fifo_req_deq_ntf (transport_connection_t *tc)
 {

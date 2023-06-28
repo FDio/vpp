@@ -343,7 +343,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
   if (!uc || (uc->flags & UDP_CONN_F_MIGRATED))
     return;
 
-  if (!transport_max_tx_dequeue (&uc->connection))
+  if (!transport_tx_fifo_has_dgram (&uc->connection))
     udp_connection_program_cleanup (uc);
   else
     uc->flags |= UDP_CONN_F_CLOSING;
