@@ -73,8 +73,8 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 static u8 *cache_uri;
 static session_endpoint_cfg_t *cache_sep;
 
-int
-parse_uri (char *uri, session_endpoint_cfg_t * sep)
+session_error_t
+parse_uri (char *uri, session_endpoint_cfg_t *sep)
 {
   unformat_input_t _input, *input = &_input;
 
@@ -92,7 +92,7 @@ parse_uri (char *uri, session_endpoint_cfg_t * sep)
   if (!unformat (input, "%U", unformat_vnet_uri, sep))
     {
       unformat_free (input);
-      return VNET_API_ERROR_INVALID_VALUE;
+      return SESSION_E_INVALID;
     }
   unformat_free (input);
 
@@ -120,36 +120,36 @@ vnet_bind_uri (vnet_listen_args_t * a)
   return vnet_listen (a);
 }
 
-int
-vnet_unbind_uri (vnet_unlisten_args_t * a)
+session_error_t
+vnet_unbind_uri (vnet_unlisten_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   application_t *app;
   session_t *listener;
   u32 table_index;
-  int rv;
+  session_error_t rv;
 
   if ((rv = parse_uri (a->uri, &sep)))
     return rv;
 
   app = application_get (a->app_index);
   if (!app)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   table_index = application_session_table (app, fib_ip_proto (!sep.is_ip4));
   listener = session_lookup_listener (table_index,
 				      (session_endpoint_t *) & sep);
   if (!listener)
-    return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
+    return SESSION_E_ADDR_NOT_IN_USE;
   a->handle = listen_session_get_handle (listener);
   return vnet_unlisten (a);
 }
 
-int
-vnet_connect_uri (vnet_connect_args_t * a)
+session_error_t
+vnet_connect_uri (vnet_connect_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  int rv;
+  session_error_t rv;
 
   if ((rv = parse_uri (a->uri, &sep)))
     return rv;

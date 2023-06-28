@@ -386,11 +386,11 @@ session_rules_table_lookup6 (session_rules_table_t * srt,
  * @param srt table where rule should be added
  * @param args rule arguments
  *
- * @return 0 if success, clib_error_t error otherwise
+ * @return 0 if success, session_error_t error otherwise
  */
-int
-session_rules_table_add_del (session_rules_table_t * srt,
-			     session_rule_table_add_del_args_t * args)
+session_error_t
+session_rules_table_add_del (session_rules_table_t *srt,
+			     session_rule_table_add_del_args_t *args)
 {
   u8 fib_proto = args->rmt.fp_proto, *rt;
   u32 ri_from_tag, ri;
@@ -398,7 +398,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 
   ri_from_tag = session_rules_table_rule_for_tag (srt, args->tag);
   if (args->is_add && ri_from_tag != SESSION_RULES_TABLE_INVALID_INDEX)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (fib_proto == FIB_PROTOCOL_IP4)
     {
@@ -509,7 +509,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 	}
     }
   else
-    return VNET_API_ERROR_INVALID_VALUE_2;
+    return SESSION_E_INVALID;
   return 0;
 }
 

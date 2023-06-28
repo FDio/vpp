@@ -765,8 +765,8 @@ application_verify_cfg (ssvm_segment_type_t st)
     return 1;
 }
 
-static int
-application_alloc_and_init (app_init_args_t * a)
+static session_error_t
+application_alloc_and_init (app_init_args_t *a)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   segment_manager_props_t *props;
@@ -787,15 +787,15 @@ application_alloc_and_init (app_init_args_t * a)
     {
       clib_warning ("mq eventfds can only be used if socket transport is "
 		    "used for binary api");
-      return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+      return SESSION_E_NOSUPPORT;
     }
 
   if (!application_verify_cfg (seg_type))
-    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+    return SESSION_E_NOSUPPORT;
 
   if (opts[APP_OPTIONS_PREALLOC_FIFO_PAIRS] &&
       opts[APP_OPTIONS_PREALLOC_FIFO_HDRS])
-    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+    return SESSION_E_NOSUPPORT;
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
@@ -1048,8 +1048,8 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   return 0;
 }
 
-int
-vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
+session_error_t
+vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a)
 {
   fifo_segment_t *fs;
   app_worker_map_t *wrk_map;
@@ -1060,7 +1060,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 
   app = application_get (a->app_index);
   if (!app)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (a->is_add)
     {
@@ -1083,11 +1083,11 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
     {
       wrk_map = app_worker_map_get (app, a->wrk_map_index);
       if (!wrk_map)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       app_wrk = app_worker_get (wrk_map->wrk_index);
       if (!app_wrk)
-	return VNET_API_ERROR_INVALID_VALUE;
+	return SESSION_E_INVALID;
 
       application_api_table_del (app_wrk->api_client_index);
       if (appns_sapi_enabled ())
@@ -1100,8 +1100,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
   return 0;
 }
 
-static int
-app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
+static session_error_t
+app_validate_namespace (u8 *namespace_id, u64 secret, u32 *app_ns_index)
 {
   app_namespace_t *app_ns;
   if (vec_len (namespace_id) == 0)
@@ -1113,12 +1113,12 @@ app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
 
   *app_ns_index = app_namespace_index_from_id (namespace_id);
   if (*app_ns_index == APP_NAMESPACE_INVALID_INDEX)
-    return VNET_API_ERROR_APP_INVALID_NS;
+    return SESSION_E_INVALID_NS;
   app_ns = app_namespace_get (*app_ns_index);
   if (!app_ns)
-    return VNET_API_ERROR_APP_INVALID_NS;
+    return SESSION_E_INVALID_NS;
   if (app_ns->ns_secret != secret)
-    return VNET_API_ERROR_APP_WRONG_NS_SECRET;
+    return SESSION_E_WRONG_NS_SECRET;
   return 0;
 }
 
@@ -1142,8 +1142,8 @@ app_name_from_api_index (u32 api_client_index)
  * to external app and a segment manager for shared memory fifo based
  * communication with the external app.
  */
-int
-vnet_application_attach (vnet_app_attach_args_t * a)
+session_error_t
+vnet_application_attach (vnet_app_attach_args_t *a)
 {
   fifo_segment_t *fs;
   application_t *app = 0;
@@ -1152,17 +1152,17 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   u32 app_ns_index = 0;
   u8 *app_name = 0;
   u64 secret;
-  int rv;
+  session_error_t rv;
 
   if (a->api_client_index != APP_INVALID_INDEX)
     app = application_lookup (a->api_client_index);
   else if (a->name)
     app = application_lookup_name (a->name);
   else
-    return VNET_API_ERROR_INVALID_VALUE;
+    return SESSION_E_INVALID;
 
   if (app)
-    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
+    return SESSION_E_APP_ATTACHED;
 
   /* Socket api sets the name and validates namespace prior to attach */
   if (!a->use_sock_api)
@@ -1216,8 +1216,8 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 /**
  * Detach application from vpp
  */
-int
-vnet_application_detach (vnet_app_detach_args_t * a)
+session_error_t
+vnet_application_detach (vnet_app_detach_args_t *a)
 {
   application_t *app;
 
@@ -1225,7 +1225,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
   if (!app)
     {
       clib_warning ("app not attached");
-      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      return SESSION_E_NOAPP;
     }
 
   app_interface_check_thread_and_barrier (vnet_application_detach, a);
@@ -1299,8 +1299,8 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
     }
 }
 
-int
-vnet_listen (vnet_listen_args_t * a)
+session_error_t
+vnet_listen (vnet_listen_args_t *a)
 {
   app_listener_t *app_listener;
   app_worker_t *app_wrk;
@@ -1353,8 +1353,8 @@ vnet_listen (vnet_listen_args_t * a)
   return 0;
 }
 
-int
-vnet_connect (vnet_connect_args_t * a)
+session_error_t
+vnet_connect (vnet_connect_args_t *a)
 {
   app_worker_t *client_wrk;
   application_t *client;
@@ -1377,7 +1377,7 @@ vnet_connect (vnet_connect_args_t * a)
    */
   if (application_has_local_scope (client))
     {
-      int rv;
+      session_error_t rv;
 
       a->sep_ext.original_tp = a->sep_ext.transport_proto;
       a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
@@ -1392,8 +1392,8 @@ vnet_connect (vnet_connect_args_t * a)
   return app_worker_connect_session (client_wrk, &a->sep_ext, &a->sh);
 }
 
-int
-vnet_unlisten (vnet_unlisten_args_t * a)
+session_error_t
+vnet_unlisten (vnet_unlisten_args_t *a)
 {
   app_worker_t *app_wrk;
   app_listener_t *al;
@@ -1423,7 +1423,7 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   return app_worker_stop_listen (app_wrk, al);
 }
 
-int
+session_error_t
 vnet_shutdown_session (vnet_shutdown_args_t *a)
 {
   app_worker_t *app_wrk;
@@ -1444,8 +1444,8 @@ vnet_shutdown_session (vnet_shutdown_args_t *a)
   return 0;
 }
 
-int
-vnet_disconnect_session (vnet_disconnect_args_t * a)
+session_error_t
+vnet_disconnect_session (vnet_disconnect_args_t *a)
 {
   app_worker_t *app_wrk;
   session_t *s;
@@ -2076,7 +2076,7 @@ vnet_app_del_cert_key_pair (u32 index)
   u32 *app_index;
 
   if (!(ckpair = app_cert_key_pair_get_if_valid (index)))
-    return (VNET_API_ERROR_INVALID_VALUE);
+    return SESSION_E_INVALID;
 
   vec_foreach (app_index, ckpair->app_interests)
   {
