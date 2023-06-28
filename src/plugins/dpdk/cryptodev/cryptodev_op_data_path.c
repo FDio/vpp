@@ -67,6 +67,23 @@ cryptodev_get_iova (clib_pmalloc_main_t *pm, enum rte_iova_mode mode,
 }
 
 static_always_inline void
+cryptodev_validate_mbuf (struct rte_mbuf *mb, vlib_buffer_t *b)
+{
+  /* on vnet side vlib_buffer current_length is updated by cipher padding and
+   * icv_sh. mbuf needs to be sync with these changes */
+  u16 data_len = b->current_length +
+		 (b->data + b->current_data - rte_pktmbuf_mtod (mb, u8 *));
+
+  /* for input nodes that are not dpdk-input, it is possible the mbuf
+   * was updated before as one of the chained mbufs. Setting nb_segs
+   * to 1 here to prevent the cryptodev PMD to access potentially
+   * invalid m_src->next pointers.
+   */
+  mb->nb_segs = 1;
+  mb->pkt_len = mb->data_len = data_len;
+}
+
+static_always_inline void
 cryptodev_validate_mbuf_chain (vlib_main_t *vm, struct rte_mbuf *mb,
 			       vlib_buffer_t *b)
 {
@@ -218,12 +235,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
       if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
 	cryptodev_validate_mbuf_chain (vm, sop->m_src, b);
       else
-	/* for input nodes that are not dpdk-input, it is possible the mbuf
-	 * was updated before as one of the chained mbufs. Setting nb_segs
-	 * to 1 here to prevent the cryptodev PMD to access potentially
-	 * invalid m_src->next pointers.
-	 */
-	sop->m_src->nb_segs = 1;
+	cryptodev_validate_mbuf (sop->m_src, b);
+
       clib_memcpy_fast (cop[0]->iv, fe->iv, 16);
       cop++;
       bi++;
@@ -359,12 +372,8 @@ cryptodev_frame_aead_enqueue (vlib_main_t *vm,
       if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
 	cryptodev_validate_mbuf_chain (vm, sop->m_src, b);
       else
-	/* for input nodes that are not dpdk-input, it is possible the mbuf
-	 * was updated before as one of the chained mbufs. Setting nb_segs
-	 * to 1 here to prevent the cryptodev PMD to access potentially
-	 * invalid m_src->next pointers.
-	 */
-	sop->m_src->nb_segs = 1;
+	cryptodev_validate_mbuf (sop->m_src, b);
+
       clib_memcpy_fast (cop[0]->iv, fe->iv, 12);
       clib_memcpy_fast (cop[0]->aad, fe->aad, aad_len);
       cop++;
