@@ -484,9 +484,11 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
   _ (NOLISTEN, "not listening")                                               \
   _ (NOSESSION, "session does not exist")                                     \
   _ (NOAPP, "app not attached")                                               \
+  _ (APP_ATTACHED, "app already attached")                                    \
   _ (PORTINUSE, "lcl port in use")                                            \
   _ (IPINUSE, "ip in use")                                                    \
   _ (ALREADY_LISTENING, "ip port pair already listened on")                   \
+  _ (ADDR_NOT_IN_USE, "address not in use")                                   \
   _ (INVALID, "invalid value")                                                \
   _ (INVALID_RMT_IP, "invalid remote ip")                                     \
   _ (INVALID_APPWRK, "invalid app worker")                                    \
@@ -506,6 +508,8 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 10),
   _ (NOCRYPTOENG, "no crypto engine")                                         \
   _ (NOCRYPTOCKP, "cert key pair not found ")                                 \
   _ (LOCAL_CONNECT, "could not connect with local scope")                     \
+  _ (WRONG_NS_SECRET, "wrong ns secret")                                      \
+  _ (SYSCALL, "system call error")                                            \
   _ (TRANSPORT_NO_REG, "transport was not registered")
 
 typedef enum session_error_p_

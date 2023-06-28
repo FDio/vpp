@@ -527,7 +527,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error != 0), "app attachment should fail");
-  SESSION_TEST ((error == VNET_API_ERROR_APP_WRONG_NS_SECRET),
+  SESSION_TEST ((error == SESSION_E_WRONG_NS_SECRET),
 		"code should be wrong ns secret: %d", error);
 
   /*
