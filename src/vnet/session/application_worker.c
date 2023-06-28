@@ -202,7 +202,7 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
   return 0;
 }
 
-int
+session_error_t
 app_worker_start_listen (app_worker_t * app_wrk,
 			 app_listener_t * app_listener)
 {

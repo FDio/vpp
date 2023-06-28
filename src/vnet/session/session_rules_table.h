@@ -18,6 +18,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/fib/fib.h>
+#include <vnet/session/session_types.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/mma_16.h>
 #include <vnet/session/mma_40.h>
@@ -111,8 +112,9 @@ void session_rules_table_show_rule (vlib_main_t * vm,
 				    ip46_address_t * lcl_ip, u16 lcl_port,
 				    ip46_address_t * rmt_ip, u16 rmt_port,
 				    u8 is_ip4);
-int session_rules_table_add_del (session_rules_table_t * srt,
-				 session_rule_table_add_del_args_t * args);
+session_error_t
+session_rules_table_add_del (session_rules_table_t *srt,
+			     session_rule_table_add_del_args_t *args);
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
 				  u8 is_ip4);
 void session_rules_table_init (session_rules_table_t * srt);
