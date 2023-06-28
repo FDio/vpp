@@ -82,7 +82,8 @@ const u8 *app_namespace_id (app_namespace_t * app_ns);
 const u8 *app_namespace_id_from_index (u32 index);
 u32 app_namespace_index_from_id (const u8 *ns_id);
 void app_namespaces_init (void);
-int vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a);
+session_error_t
+vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a);
 u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);
 session_table_t *app_namespace_get_local_table (app_namespace_t * app_ns);
 

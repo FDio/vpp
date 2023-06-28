@@ -327,7 +327,8 @@ int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
 int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
-int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
+session_error_t app_worker_start_listen (app_worker_t *app_wrk,
+					 app_listener_t *lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
 int app_worker_init_accepted (session_t * s);
 int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
@@ -374,7 +375,7 @@ u8 *format_app_worker_listener (u8 * s, va_list * args);
 u8 *format_crypto_engine (u8 * s, va_list * args);
 u8 *format_crypto_context (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
-int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
