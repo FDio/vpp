@@ -373,7 +373,7 @@ u8 *format_app_worker_listener (u8 * s, va_list * args);
 u8 *format_crypto_engine (u8 * s, va_list * args);
 u8 *format_crypto_context (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
-int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 

@@ -130,7 +130,7 @@ typedef struct _session_rule_add_del_args
   u8 transport_proto;
 } session_rule_add_del_args_t;
 
-int vnet_session_rule_add_del (session_rule_add_del_args_t * args);
+session_error_t vnet_session_rule_add_del (session_rule_add_del_args_t *args);
 void session_lookup_set_tables_appns (app_namespace_t * app_ns);
 
 void session_lookup_init (void);
