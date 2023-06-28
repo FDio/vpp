@@ -93,78 +93,6 @@ const static char* const * const lb_dpo_nat6_port_nodes[DPO_PROTO_NUM] =
         [DPO_PROTO_IP6]  = lb_dpo_nat6_ip6_port,
     };
 
-const static char *const lb_dpo_gre4_ip4_sticky[] = { "lb4-gre4-sticky",
-						      NULL };
-const static char *const lb_dpo_gre4_ip6_sticky[] = { "lb6-gre4-sticky",
-						      NULL };
-const static char *const *const lb_dpo_gre4_sticky_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP4] = lb_dpo_gre4_ip4_sticky,
-  [DPO_PROTO_IP6] = lb_dpo_gre4_ip6_sticky,
-};
-
-const static char *const lb_dpo_gre6_ip4_sticky[] = { "lb4-gre6-sticky",
-						      NULL };
-const static char *const lb_dpo_gre6_ip6_sticky[] = { "lb6-gre6-sticky",
-						      NULL };
-const static char *const *const lb_dpo_gre6_sticky_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP4] = lb_dpo_gre6_ip4_sticky,
-  [DPO_PROTO_IP6] = lb_dpo_gre6_ip6_sticky,
-};
-
-const static char *const lb_dpo_gre4_ip4_port_sticky[] = {
-  "lb4-gre4-port-sticky", NULL
-};
-const static char *const lb_dpo_gre4_ip6_port_sticky[] = {
-  "lb6-gre4-port-sticky", NULL
-};
-const static char *const
-  *const lb_dpo_gre4_port_sticky_nodes[DPO_PROTO_NUM] = {
-    [DPO_PROTO_IP4] = lb_dpo_gre4_ip4_port_sticky,
-    [DPO_PROTO_IP6] = lb_dpo_gre4_ip6_port_sticky,
-  };
-
-const static char *const lb_dpo_gre6_ip4_port_sticky[] = {
-  "lb4-gre6-port-sticky", NULL
-};
-const static char *const lb_dpo_gre6_ip6_port_sticky[] = {
-  "lb6-gre6-port-sticky", NULL
-};
-const static char *const
-  *const lb_dpo_gre6_port_sticky_nodes[DPO_PROTO_NUM] = {
-    [DPO_PROTO_IP4] = lb_dpo_gre6_ip4_port_sticky,
-    [DPO_PROTO_IP6] = lb_dpo_gre6_ip6_port_sticky,
-  };
-
-const static char *const lb_dpo_l3dsr_ip4_sticky[] = { "lb4-l3dsr-sticky",
-						       NULL };
-const static char *const *const lb_dpo_l3dsr_sticky_nodes[DPO_PROTO_NUM] = {
-  [DPO_PROTO_IP4] = lb_dpo_l3dsr_ip4_sticky,
-};
-
-const static char *const lb_dpo_l3dsr_ip4_port_sticky[] = {
-  "lb4-l3dsr-port-sticky", NULL
-};
-const static char *const
-  *const lb_dpo_l3dsr_port_sticky_nodes[DPO_PROTO_NUM] = {
-    [DPO_PROTO_IP4] = lb_dpo_l3dsr_ip4_port_sticky,
-  };
-
-const static char *const lb_dpo_nat4_ip4_port_sticky[] = {
-  "lb4-nat4-port-sticky", NULL
-};
-const static char *const
-  *const lb_dpo_nat4_port_sticky_nodes[DPO_PROTO_NUM] = {
-    [DPO_PROTO_IP4] = lb_dpo_nat4_ip4_port_sticky,
-  };
-
-const static char *const lb_dpo_nat6_ip6_port_sticky[] = {
-  "lb6-nat6-port-sticky", NULL
-};
-const static char *const
-  *const lb_dpo_nat6_port_sticky_nodes[DPO_PROTO_NUM] = {
-    [DPO_PROTO_IP6] = lb_dpo_nat6_ip6_port_sticky,
-  };
-
 u32 lb_hash_time_now(vlib_main_t * vm)
 {
   return (u32) (vlib_time_now(vm) + 10000);
@@ -1024,22 +952,6 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
     dpo_type = lbm->dpo_nat4_port_type;
   else if (lb_vip_is_nat6_port(vip))
     dpo_type = lbm->dpo_nat6_port_type;
-  else if (lb_vip_is_gre4_sticky (vip))
-    dpo_type = lbm->dpo_gre4_sticky_type;
-  else if (lb_vip_is_gre6_sticky (vip))
-    dpo_type = lbm->dpo_gre6_sticky_type;
-  else if (lb_vip_is_gre4_port_sticky (vip))
-    dpo_type = lbm->dpo_gre4_port_sticky_type;
-  else if (lb_vip_is_gre6_port_sticky (vip))
-    dpo_type = lbm->dpo_gre6_port_sticky_type;
-  else if (lb_vip_is_l3dsr_sticky (vip))
-    dpo_type = lbm->dpo_l3dsr_sticky_type;
-  else if (lb_vip_is_l3dsr_port_sticky (vip))
-    dpo_type = lbm->dpo_l3dsr_port_sticky_type;
-  else if (lb_vip_is_nat4_port_sticky (vip))
-    dpo_type = lbm->dpo_nat4_port_sticky_type;
-  else if (lb_vip_is_nat6_port_sticky (vip))
-    dpo_type = lbm->dpo_nat6_port_sticky_type;
 
   dpo_set(&dpo, dpo_type, proto, *vip_prefix_index);
   fib_table_entry_special_dpo_add(0,
@@ -1406,22 +1318,6 @@ lb_as_stack (lb_as_t *as)
     dpo_type = lbm->dpo_nat4_port_type;
   else if (lb_vip_is_nat6_port(vip))
     dpo_type = lbm->dpo_nat6_port_type;
-  else if (lb_vip_is_gre4_sticky (vip))
-    dpo_type = lbm->dpo_gre4_sticky_type;
-  else if (lb_vip_is_gre6_sticky (vip))
-    dpo_type = lbm->dpo_gre6_sticky_type;
-  else if (lb_vip_is_gre4_port_sticky (vip))
-    dpo_type = lbm->dpo_gre4_port_sticky_type;
-  else if (lb_vip_is_gre6_port_sticky (vip))
-    dpo_type = lbm->dpo_gre6_port_sticky_type;
-  else if (lb_vip_is_l3dsr_sticky (vip))
-    dpo_type = lbm->dpo_l3dsr_sticky_type;
-  else if (lb_vip_is_l3dsr_port_sticky (vip))
-    dpo_type = lbm->dpo_l3dsr_port_sticky_type;
-  else if (lb_vip_is_nat4_port_sticky (vip))
-    dpo_type = lbm->dpo_nat4_port_sticky_type;
-  else if (lb_vip_is_nat6_port_sticky (vip))
-    dpo_type = lbm->dpo_nat6_port_sticky_type;
 
   dpo_stack(dpo_type,
             lb_vip_is_ip4(vip->type)?DPO_PROTO_IP4:DPO_PROTO_IP6,
@@ -1523,22 +1419,6 @@ lb_init (vlib_main_t * vm)
                                                   lb_dpo_nat4_port_nodes);
   lbm->dpo_nat6_port_type = dpo_register_new_type(&lb_vft,
                                                   lb_dpo_nat6_port_nodes);
-  lbm->dpo_gre4_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_gre4_sticky_nodes);
-  lbm->dpo_gre6_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_gre6_sticky_nodes);
-  lbm->dpo_gre4_port_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_gre4_port_sticky_nodes);
-  lbm->dpo_gre6_port_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_gre6_port_sticky_nodes);
-  lbm->dpo_l3dsr_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_l3dsr_sticky_nodes);
-  lbm->dpo_l3dsr_port_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_l3dsr_port_sticky_nodes);
-  lbm->dpo_nat4_port_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_nat4_port_sticky_nodes);
-  lbm->dpo_nat6_port_sticky_type =
-    dpo_register_new_type (&lb_vft, lb_dpo_nat6_port_sticky_nodes);
   lbm->fib_node_type = fib_node_register_new_type ("lb", &lb_fib_node_vft);
 
   //Init AS reference counters

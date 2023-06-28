@@ -175,25 +175,21 @@ lb_node_get_other_ports6 (ip6_header_t *ip60)
 
 static_always_inline void
 lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4, u32 *hash,
-		  u32 *vip_idx, u8 per_port_vip, u8 src_ip_sticky)
+		  u32 *vip_idx, u8 per_port_vip)
 {
   vip_port_key_t key;
   clib_bihash_kv_8_8_t kv, value;
+  ip4_header_t *ip40;
+  ip6_header_t *ip60;
+  lb_vip_t *vip0;
+  u64 ports;
 
   /* For vip case, retrieve vip index for ip lookup */
   *vip_idx = vnet_buffer (p)->ip.adj_index[VLIB_TX];
 
-  if (per_port_vip)
-    {
-      /* For per-port-vip case, ip lookup stores placeholder index */
-      key.vip_prefix_index = *vip_idx;
-    }
-
+  /* Extract the L4 port number from the packet */
   if (is_input_v4)
     {
-      ip4_header_t *ip40;
-      u64 ports;
-
       ip40 = vlib_buffer_get_current (p);
       if (PREDICT_TRUE(
           ip40->protocol == IP_PROTOCOL_TCP
@@ -202,28 +198,10 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4, u32 *hash,
             | ((u64) ((udp_header_t *) (ip40 + 1))->dst_port);
       else
         ports = lb_node_get_other_ports4 (ip40);
-
-      if (src_ip_sticky)
-	{
-	  *hash = lb_hash_hash (*((u64 *) &ip40->address_pair), 0, 0, 0, 0);
-	}
-      else
-	{
-	  *hash =
-	    lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
-	}
-
-      if (per_port_vip)
-        {
-          key.protocol = ip40->protocol;
-          key.port = (u16)(ports & 0xFFFF);
-        }
     }
   else
     {
-      ip6_header_t *ip60;
       ip60 = vlib_buffer_get_current (p);
-      u64 ports;
 
       if (PREDICT_TRUE(
           ip60->protocol == IP_PROTOCOL_TCP
@@ -232,8 +210,52 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4, u32 *hash,
             | ((u64) ((udp_header_t *) (ip60 + 1))->dst_port);
       else
         ports = lb_node_get_other_ports6 (ip60);
+    }
 
-      if (src_ip_sticky)
+  if (per_port_vip)
+    {
+      /* For per-port-vip case, ip lookup stores placeholder index */
+      key.vip_prefix_index = *vip_idx;
+      key.port = (u16) (ports & 0xFFFF);
+      if (is_input_v4)
+	{
+	  key.protocol = ip40->protocol;
+	}
+      else
+	{
+	  key.protocol = ip60->protocol;
+	}
+
+      /* For per-port-vip case, retrieve vip index for vip_port_filter table */
+      kv.key = key.as_u64;
+      if (clib_bihash_search_8_8 (&lbm->vip_index_per_port, &kv, &value) < 0)
+	{
+	  /* Set default vip */
+	  *vip_idx = 0;
+	}
+      else
+	{
+	  *vip_idx = value.value;
+	}
+    }
+
+  vip0 = pool_elt_at_index (lbm->vips, *vip_idx);
+
+  if (is_input_v4)
+    {
+      if (lb_vip_is_src_ip_sticky (vip0))
+	{
+	  *hash = lb_hash_hash (*((u64 *) &ip40->address_pair), 0, 0, 0, 0);
+	}
+      else
+	{
+	  *hash =
+	    lb_hash_hash (*((u64 *) &ip40->address_pair), ports, 0, 0, 0);
+	}
+    }
+  else
+    {
+      if (lb_vip_is_src_ip_sticky (vip0))
 	{
 	  *hash = lb_hash_hash (
 	    ip60->src_address.as_u64[0], ip60->src_address.as_u64[1],
@@ -245,25 +267,6 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4, u32 *hash,
 	    ip60->src_address.as_u64[0], ip60->src_address.as_u64[1],
 	    ip60->dst_address.as_u64[0], ip60->dst_address.as_u64[1], ports);
 	}
-
-      if (per_port_vip)
-        {
-          key.protocol = ip60->protocol;
-          key.port = (u16)(ports & 0xFFFF);
-        }
-    }
-
-  /* For per-port-vip case, retrieve vip index for vip_port_filter table */
-  if (per_port_vip)
-    {
-      kv.key = key.as_u64;
-      if (clib_bihash_search_8_8(&lbm->vip_index_per_port, &kv, &value) < 0)
-        {
-          /* return default vip */
-          *vip_idx = 0;
-          return;
-        }
-      *vip_idx = value.value;
     }
 }
 
@@ -274,8 +277,7 @@ lb_node_fn (vlib_main_t * vm,
             vlib_frame_t * frame,
             u8 is_input_v4, //Compile-time parameter stating that is input is v4 (or v6)
             lb_encap_type_t encap_type, //Compile-time parameter is GRE4/GRE6/L3DSR/NAT4/NAT6
-            u8 per_port_vip, //Compile-time parameter stating that is per_port_vip or not
-            u8 src_ip_sticky) //Compile-time parameter stating that is source ip based sticky or not
+            u8 per_port_vip) //Compile-time parameter stating that is per_port_vip or not
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
@@ -293,7 +295,7 @@ lb_node_fn (vlib_main_t * vm,
     {
       vlib_buffer_t *p0 = vlib_get_buffer (vm, from[0]);
       lb_node_get_hash (lbm, p0, is_input_v4, &nexthash0,
-                        &next_vip_idx0, per_port_vip, src_ip_sticky);
+                        &next_vip_idx0, per_port_vip);
     }
 
   while (n_left_from > 0)
@@ -318,7 +320,7 @@ lb_node_fn (vlib_main_t * vm,
               //Compute next hash and prefetch bucket
               lb_node_get_hash (lbm, p1, is_input_v4,
                                 &nexthash0, &next_vip_idx0,
-                                per_port_vip, src_ip_sticky);
+                                per_port_vip);
               lb_hash_prefetch_bucket (sticky_ht, nexthash0);
               //Prefetch for encap, next
               CLIB_PREFETCH(vlib_buffer_get_current (p1) - 64, 64, STORE);
@@ -966,168 +968,84 @@ static uword
 lb6_gre6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 0, 0);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 0);
 }
 
 static uword
 lb6_gre4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 0, 0);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 0);
 }
 
 static uword
 lb4_gre6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 0, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 0);
 }
 
 static uword
 lb4_gre4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 0, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 0);
 }
 
 static uword
 lb6_gre6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 1, 0);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 1);
 }
 
 static uword
 lb6_gre4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 1, 0);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 1);
 }
 
 static uword
 lb4_gre6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 1, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 1);
 }
 
 static uword
 lb4_gre4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 1, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 1);
 }
 
 static uword
 lb4_l3dsr_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                         vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 0, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 0);
 }
 
 static uword
 lb4_l3dsr_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                         vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 1, 0);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 1);
 }
 
 static uword
 lb6_nat6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6, 1, 0);
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6, 1);
 }
 
 static uword
 lb4_nat4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_NAT4, 1, 0);
-}
-
-static uword
-lb6_gre6_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 0, 1);
-}
-
-static uword
-lb6_gre4_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 0, 1);
-}
-
-static uword
-lb4_gre6_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 0, 1);
-}
-
-static uword
-lb4_gre4_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			 vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 0, 1);
-}
-
-static uword
-lb6_gre6_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE6, 1, 1);
-}
-
-static uword
-lb6_gre4_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_GRE4, 1, 1);
-}
-
-static uword
-lb4_gre6_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE6, 1, 1);
-}
-
-static uword
-lb4_gre4_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_GRE4, 1, 1);
-}
-
-static uword
-lb4_l3dsr_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 0, 1);
-}
-
-static uword
-lb4_l3dsr_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			       vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_L3DSR, 1, 1);
-}
-
-static uword
-lb6_nat6_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6, 1, 1);
-}
-
-static uword
-lb4_nat4_port_sticky_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
-			      vlib_frame_t *frame)
-{
-  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_NAT4, 1, 1);
+  return lb_node_fn (vm, node, frame, 1, LB_ENCAP_TYPE_NAT4, 1);
 }
 
 static uword
@@ -1299,138 +1217,6 @@ VLIB_REGISTER_NODE (lb4_nat4_port_node) =
     .next_nodes =
         { [LB_NEXT_DROP] = "error-drop" },
   };
-
-VLIB_REGISTER_NODE (lb6_gre6_sticky_node) = {
-  .function = lb6_gre6_sticky_node_fn,
-  .name = "lb6-gre6-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb6_gre4_sticky_node) = {
-  .function = lb6_gre4_sticky_node_fn,
-  .name = "lb6-gre4-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_gre6_sticky_node) = {
-  .function = lb4_gre6_sticky_node_fn,
-  .name = "lb4-gre6-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_gre4_sticky_node) = {
-  .function = lb4_gre4_sticky_node_fn,
-  .name = "lb4-gre4-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb6_gre6_port_sticky_node) = {
-  .function = lb6_gre6_port_sticky_node_fn,
-  .name = "lb6-gre6-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb6_gre4_port_sticky_node) = {
-  .function = lb6_gre4_port_sticky_node_fn,
-  .name = "lb6-gre4-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_gre6_port_sticky_node) = {
-  .function = lb4_gre6_port_sticky_node_fn,
-  .name = "lb4-gre6-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_gre4_port_sticky_node) = {
-  .function = lb4_gre4_port_sticky_node_fn,
-  .name = "lb4-gre4-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_l3dsr_port_sticky_node) = {
-  .function = lb4_l3dsr_port_sticky_node_fn,
-  .name = "lb4-l3dsr-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_l3dsr_sticky_node) = {
-  .function = lb4_l3dsr_sticky_node_fn,
-  .name = "lb4-l3dsr-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb6_nat6_port_sticky_node) = {
-  .function = lb6_nat6_port_sticky_node_fn,
-  .name = "lb6-nat6-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
-
-VLIB_REGISTER_NODE (lb4_nat4_port_sticky_node) = {
-  .function = lb4_nat4_port_sticky_node_fn,
-  .name = "lb4-nat4-port-sticky",
-  .vector_size = sizeof (u32),
-  .format_trace = format_lb_trace,
-  .n_errors = LB_N_ERROR,
-  .error_strings = lb_error_strings,
-  .n_next_nodes = LB_N_NEXT,
-  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
-};
 
 static uword
 lb4_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
