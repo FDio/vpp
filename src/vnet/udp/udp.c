@@ -317,7 +317,7 @@ udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
 
   if (PREDICT_FALSE (uc->flags & UDP_CONN_F_CLOSING))
     {
-      if (!transport_max_tx_dequeue (&uc->connection))
+      if (!transport_tx_fifo_has_dgram (&uc->connection))
 	udp_connection_program_cleanup (uc);
     }
 
@@ -343,7 +343,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
   if (!uc || (uc->flags & UDP_CONN_F_MIGRATED))
     return;
 
-  if (!transport_max_tx_dequeue (&uc->connection))
+  if (!transport_tx_fifo_has_dgram (&uc->connection))
     udp_connection_program_cleanup (uc);
   else
     uc->flags |= UDP_CONN_F_CLOSING;
