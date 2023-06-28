@@ -1236,6 +1236,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 	      ctx->max_len_to_snd = 0;
 	      return;
 	    }
+	  /* We cannot be sure apps have not enqueued incomplete dgrams */
+	  if (PREDICT_FALSE (ctx->max_dequeue <
+			     ctx->hdr.data_length + sizeof (ctx->hdr)))
+	    {
+	      ctx->max_len_to_snd = 0;
+	      return;
+	    }
 	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
 	  len = ctx->hdr.data_length - ctx->hdr.data_offset;
 
