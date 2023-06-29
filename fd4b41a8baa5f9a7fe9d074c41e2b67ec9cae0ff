@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e435afd_7ea3eafc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2829
+      },
+      "writtenOn": "2023-06-29T08:11:14Z",
+      "side": 1,
+      "message": "Could you review the patch?",
+      "revId": "fd4b41a8baa5f9a7fe9d074c41e2b67ec9cae0ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
