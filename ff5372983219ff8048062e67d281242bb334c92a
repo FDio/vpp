@@ -34,6 +34,23 @@
       "parentUuid": "82fe91d0_d683e018",
       "revId": "ff5372983219ff8048062e67d281242bb334c92a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ead87e5_0b505c53",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-06-30T09:44:45Z",
+      "side": 1,
+      "message": "Sorry I didn\u0027t make myself clear - the original test here targets plain packet bypass policy - not the encrypted and udp encapped packet. The test was also created for specific reason. Your test itself is ok but please create new test instead of replacing existing one.",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
