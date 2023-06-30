@@ -16,6 +16,24 @@
       "message": "Please correct me if I am wrong but looks like you removed all original plain text packets tests and replaced by encrypted packets. Can you explain why you think the original tests are not necessary any more?",
       "revId": "ff5372983219ff8048062e67d281242bb334c92a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbc3bcd3_c0f2b61c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-06-30T08:51:46Z",
+      "side": 1,
+      "message": "I think VLIB_NODE_FN (ipsec4_input_node) is to handle IPsec traffic(Be it ESP,AH or ESP encapsulated UDP). \nNoticed that plane text TCP and ICMP packet being forwarded without SPD policy match, Where UDP being dropped. \nTo proof that , just modify traffic type from UDP to TCP , will see all test get fails with same policy rules. \nIn my further investigation I found that, https://gerrit.fd.io/r/c/vpp/+/38791/4/src/vnet/ipsec/ipsec_input.c#549  line 549 hit for UDP as well as ESP encapsulated UDP packet. Probably , there is mishandling in RFC 3948.",
+      "parentUuid": "82fe91d0_d683e018",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
