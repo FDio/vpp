@@ -2605,6 +2605,38 @@ class TestNAT44ED(VppTestCase):
         for i in loopbacks:
             i.remove_vpp_config()
 
+    def test_delete_interface_address(self):
+        """NAT44ED delete nat interface address from fib"""
+
+        def route_lookup(prefix, exact):
+            return self.vapi.api(
+                self.vapi.papi.ip_route_lookup,
+                {
+                    "table_id": 0,
+                    "exact": exact,
+                    "prefix": prefix,
+                },
+            )
+
+        nat_prefix = self.nat_addr + "/32"
+        self.nat_add_address(self.nat_addr)
+
+        interfaces = self.create_loopback_interfaces(2)
+        self.nat_add_outside_interface(interfaces[0])
+        self.nat_add_outside_interface(interfaces[1])
+        result = route_lookup(nat_prefix, True)
+        self.assertEqual(str(result.route.prefix), nat_prefix)
+
+        # Remove first interface, nat prefix should exist in fib
+        interfaces[0].remove_vpp_config()
+        result = route_lookup(nat_prefix, True)
+        self.assertEqual(str(result.route.prefix), nat_prefix)
+
+        # Remove second interface, nat prefix should be gone
+        interfaces[1].remove_vpp_config()
+        with self.vapi.assert_negative_api_retval():
+            route_lookup(nat_prefix, True)
+
 
 @tag_fixme_ubuntu2204
 class TestNAT44EDMW(TestNAT44ED):
