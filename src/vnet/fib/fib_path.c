@@ -1640,8 +1640,10 @@ fib_path_cmp_i (const fib_path_t *path1,
 	case FIB_PATH_TYPE_EXCLUSIVE:
 	    res = dpo_cmp(&path1->exclusive.fp_ex_dpo, &path2->exclusive.fp_ex_dpo);
 	    break;
-	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
+	    res = (path1->receive.fp_interface - path2->receive.fp_interface);
+	    break;
+	case FIB_PATH_TYPE_SPECIAL:
 	    res = 0;
 	    break;
 	}
@@ -1782,7 +1784,7 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	case FIB_PATH_TYPE_RECEIVE:
             if (rpath->frp_flags & FIB_ROUTE_PATH_LOCAL)
             {
-                res = 0;
+                res = (path->receive.fp_interface - rpath->frp_sw_if_index);
             }
             else
             {
