@@ -385,12 +385,12 @@ nat44_ed_add_fib_entry_reg (ip4_address_t addr, u32 sw_if_index)
 		},
       };
       u32 fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
-      fib_table_entry_update_one_path (fib_index, &prefix, sm->fib_src_low,
-				       (FIB_ENTRY_FLAG_CONNECTED |
-					FIB_ENTRY_FLAG_LOCAL |
-					FIB_ENTRY_FLAG_EXCLUSIVE),
-				       DPO_PROTO_IP4, NULL, sw_if_index, ~0, 1,
-				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_add (fib_index, &prefix, sm->fib_src_low,
+				(FIB_ENTRY_FLAG_CONNECTED |
+				 FIB_ENTRY_FLAG_LOCAL |
+				 FIB_ENTRY_FLAG_EXCLUSIVE),
+				DPO_PROTO_IP4, NULL, sw_if_index, ~0, 1, NULL,
+				FIB_ROUTE_PATH_FLAG_NONE);
 
       vec_add2 (sm->fib_entry_reg, fe, 1);
       clib_memset (fe, 0, sizeof (*fe));
@@ -421,7 +421,9 @@ nat44_ed_del_fib_entry_reg (ip4_address_t addr, u32 sw_if_index)
           };
 	  u32 fib_index =
 	    ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
-	  fib_table_entry_delete (fib_index, &prefix, sm->fib_src_low);
+	  fib_table_entry_path_remove (fib_index, &prefix, sm->fib_src_low,
+				       DPO_PROTO_IP4, NULL, sw_if_index, ~0, 1,
+				       FIB_ROUTE_PATH_FLAG_NONE);
 	  vec_del1 (sm->fib_entry_reg, i);
 	}
     }
@@ -2410,9 +2412,8 @@ nat_init (vlib_main_t * vm)
   cbt.function = nat44_ed_update_outside_fib_cb;
   vec_add1 (sm->ip4_main->table_bind_callbacks, cbt);
 
-  sm->fib_src_low =
-    fib_source_allocate ("nat-low", FIB_SOURCE_PRIORITY_LOW,
-			 FIB_SOURCE_BH_SIMPLE);
+  sm->fib_src_low = fib_source_allocate ("nat-low", FIB_SOURCE_PRIORITY_LOW,
+					 FIB_SOURCE_BH_API);
   sm->fib_src_hi =
     fib_source_allocate ("nat-hi", FIB_SOURCE_PRIORITY_HI,
 			 FIB_SOURCE_BH_SIMPLE);

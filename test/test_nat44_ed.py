@@ -2605,6 +2605,60 @@ class TestNAT44ED(VppTestCase):
         for i in loopbacks:
             i.remove_vpp_config()
 
+    def test_delete_interface_address(self):
+        """NAT44ED delete nat interface address from fib"""
+
+        def route_lookup(prefix, exact):
+            return self.vapi.api(
+                self.vapi.papi.ip_route_lookup,
+                {
+                    "table_id": 0,
+                    "exact": exact,
+                    "prefix": prefix,
+                },
+            )
+
+        nat_addrs = [
+            "10.0.10.3",
+            "10.0.10.4",
+        ]
+        nat_prefixes = [x + "/32" for x in nat_addrs]
+
+        self.nat_add_address(nat_addrs[0])
+
+        interfaces = self.create_loopback_interfaces(2)
+        self.nat_add_outside_interface(interfaces[0])
+        self.nat_add_outside_interface(interfaces[1])
+        result = route_lookup(nat_prefixes[0], True)
+        self.assertEqual(str(result.route.prefix), nat_prefixes[0])
+        self.assertEqual(result.route.n_paths, 2)
+
+        # Add second nat address, nat prefix should exist in fib
+        self.nat_add_address(nat_addrs[1])
+        result = route_lookup(nat_prefixes[1], True)
+        self.assertEqual(str(result.route.prefix), nat_prefixes[1])
+        self.assertEqual(result.route.n_paths, 2)
+
+        # Remove second nat address, nat prefix should be gone
+        self.nat_add_address(nat_addrs[1], is_add=0)
+        with self.vapi.assert_negative_api_retval():
+            route_lookup(nat_prefixes[1], True)
+
+        self.nat_add_address(nat_addrs[1])
+
+        # Remove first interface, nat prefixes should exist in fib
+        interfaces[0].remove_vpp_config()
+        for prefix in nat_prefixes:
+            result = route_lookup(prefix, True)
+            self.assertEqual(str(result.route.prefix), prefix)
+            self.assertEqual(result.route.n_paths, 1)
+
+        # Remove second interface, nat prefixes should be gone
+        interfaces[1].remove_vpp_config()
+        for prefix in nat_prefixes:
+            with self.vapi.assert_negative_api_retval():
+                route_lookup(prefix, True)
+
 
 @tag_fixme_ubuntu2204
 class TestNAT44EDMW(TestNAT44ED):
