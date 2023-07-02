@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "36538aee_03f7ea3b",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-07-02T14:24:09Z",
+      "side": 1,
+      "message": "Enabling MPLS input on an interface requires an mpls table in VPP, thus, with linux-cp enabled, it would always exist even if MPLS isn\u0027t used.\nIn addition, the Linux knobs don\u0027t exist if the mpls modules aren\u0027t loaded.\n\nSince I intended this patch to not change any existing behavior unless it was incorrect, I didn\u0027t want to touch any state unless necessary, either.\n\nI will enable/disable the feature here as well.",
+      "parentUuid": "eb2cdf02_6489367c",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2f5f0cdc_2e415eb3",
         "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
         "patchSetId": 16
@@ -31,6 +49,24 @@
       "writtenOn": "2023-06-26T21:12:53Z",
       "side": 1,
       "message": "The linux-cp and linux-nl plugins were designed with the primary intention to propagate linux configurations into VPP. The ability to sync configurations in the other direction from VPP to linux was merged later at Pim van Pelt\u0027s request, but it is only supposed to happen if you have that feature explicitly enabled. By default, configurations should not be propagated from VPP to linux. There should be a check like \u0027if (!lcp_sync()) return;\u0027.",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed3af1c8_aacccd20",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-07-02T14:24:09Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2f5f0cdc_2e415eb3",
       "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -48,6 +84,24 @@
       "writtenOn": "2023-06-26T21:12:53Z",
       "side": 1,
       "message": "It seems like the fd is only being closed here if it was not successfully opened. This should probably be changed to \u0027if (ctl_fd \u003e -1)\u0027 or something like that.",
+      "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b50dd75a_0857de4a",
+        "filename": "src/plugins/linux-cp/lcp_mpls_sync.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-07-02T14:24:09Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1df1bf81_d12b5c1d",
       "revId": "01a7ec5e7c45111cc690662fe154f966abddce47",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
