@@ -86,6 +86,9 @@ vnet_main_init (vlib_main_t * vm)
   vnm->local_interface_hw_if_index = hw_if_index;
   vnm->local_interface_sw_if_index = hw->sw_if_index;
 
+  vnm->pcap.current_filter_function =
+    vlib_is_packet_traced_default_function ();
+
   return 0;
 }
 

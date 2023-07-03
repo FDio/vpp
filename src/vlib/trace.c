@@ -635,7 +635,7 @@ vlib_is_packet_traced_function_from_name (const char *name)
   return reg->function;
 }
 
-static vlib_is_packet_traced_fn_t *
+vlib_is_packet_traced_fn_t *
 vlib_is_packet_traced_default_function ()
 {
   vlib_trace_filter_function_registration_t *reg =
