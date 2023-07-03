@@ -91,7 +91,7 @@ class ParseGraph:
         return None
 
     def GetNode(self, name):
-        if self.nodeDict.has_key(name):
+        if name in self.nodeDict:
             return self.nodeDict[name]
         return None
 

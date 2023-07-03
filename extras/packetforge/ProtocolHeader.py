@@ -136,7 +136,7 @@ class ProtocolHeader:
             key = exp[0:offset].strip()
             shift = int(exp[offset + 2 :].strip())
 
-        if self.fieldDict.has_key(key):
+        if key in self.fieldDict:
             field = self.fieldDict[key]
             _, u16 = ExpressionConverter.ToNum(field.Value)
             if u16:
@@ -144,7 +144,7 @@ class ProtocolHeader:
             else:
                 return 0
 
-        if self.attributeDict.has_key(key):
+        if key in self.attributeDict:
             attr = self.attributeDict[key]
             _, u16 = ExpressionConverter.ToNum(attr.Value)
             if u16:
@@ -201,14 +201,14 @@ class ProtocolHeader:
             phf.UpdateValue(ExpressionConverter.IncreaseValue(phf.Value, size), True)
 
     def getField(self, name):
-        if not self.fieldDict.has_key(name):
+        if name not in self.fieldDict:
             return None
         field = self.fieldDict[name]
 
         return field.Value
 
     def getAttribute(self, name):
-        if not self.attributeDict.has_key(name):
+        if name not in self.attributeDict:
             return None
 
         return self.attributeDict[name].Value
