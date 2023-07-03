@@ -51,6 +51,24 @@
       "message": "Sorry I didn\u0027t make myself clear - the original test here targets plain packet bypass policy - not the encrypted and udp encapped packet. The test was also created for specific reason. Your test itself is ok but please create new test instead of replacing existing one.",
       "revId": "ff5372983219ff8048062e67d281242bb334c92a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "541aaf27_b2d5d14a",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-07-03T07:57:51Z",
+      "side": 1,
+      "message": "I had also doubt initially when I started working on this issue. Why plain text TCP and ICMP traffic did not consider to match against Bypass policy ? \nAs https://gerrit.fd.io/r/c/vpp/+/38791/4/src/vnet/ipsec/ipsec_input.c#546 only plain text UDP handled to match against Bypass/Protect/discard . tests are tuned to send UDP traffic only. \nFor TCP and ICMP control directly goes to https://gerrit.fd.io/r/c/vpp/+/38791/4/src/vnet/ipsec/ipsec_input.c#698 after line 546.  When I correct logic for UDP as same as TCP and ICMP\nMost of test case start failing. So I assumed that inbound node only to deal IPsec traffic for decrypt /bypass/discard. I may wrong …. Pls provide reference to deal plan traffic as well.",
+      "parentUuid": "2ead87e5_0b505c53",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
