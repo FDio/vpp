@@ -733,6 +733,20 @@ autoreply define collect_detailed_interface_stats
   bool  enable_disable;
 };
 
+/** \brief pcap_set_filter_function
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param filter_function_name - the name of the filter function
+                                  to set for pcap capture
+*/
+autoreply define pcap_set_filter_function
+{
+    u32 client_index;
+    u32 context;
+
+    string filter_function_name[];
+};
+
 /** \brief pcap_trace_on
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

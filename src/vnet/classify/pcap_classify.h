@@ -47,11 +47,11 @@ vnet_is_packet_pcaped (vnet_pcap_t *pp, vlib_buffer_t *b, u32 sw_if_index)
     return 0; /* wrong error */
 
   if (filter_classify_table_index != ~0 &&
-      vnet_is_packet_traced_inline (b, filter_classify_table_index,
-				    0 /* full classify */) != 1)
+      pp->current_filter_function (b, filter_classify_table_index,
+				   0 /* full classify */) != 1)
     return 0; /* not matching the filter, skip */
 
-  return 1; /* success */
+  return 1;
 }
 
 /*
