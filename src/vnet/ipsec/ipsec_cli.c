@@ -229,7 +229,7 @@ ipsec_sa_bind_cli (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "unbind"))
 	bind = 0;
-      else if (id != ~0 && unformat (line_input, "%u", &id))
+      else if (id == ~0 && unformat (line_input, "%u", &id))
 	;
       else if (unformat (line_input, "%u", &worker))
 	;
