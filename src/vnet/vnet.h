@@ -71,6 +71,7 @@ typedef struct
   u32 pcap_sw_if_index;
   pcap_main_t pcap_main;
   u32 filter_classify_table_index;
+  vlib_is_packet_traced_fn_t *current_filter_function;
   vlib_error_t pcap_error_index;
 } vnet_pcap_t;
 

@@ -1604,6 +1604,33 @@ static void
 }
 
 static void
+vl_api_pcap_set_filter_function_t_handler (
+  vl_api_pcap_set_filter_function_t *mp)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_pcap_t *pp = &vnm->pcap;
+  vl_api_pcap_set_filter_function_reply_t *rmp;
+  unformat_input_t input = { 0 };
+  vlib_is_packet_traced_fn_t *f;
+  char *filter_name;
+  int rv = 0;
+  filter_name = vl_api_from_api_to_new_c_string (&mp->filter_function_name);
+  unformat_init_cstring (&input, filter_name);
+  if (unformat (&input, "%U", unformat_vlib_trace_filter_function, &f) == 0)
+    {
+      rv = -1;
+      goto done;
+    }
+
+  pp->current_filter_function = f;
+
+done:
+  unformat_free (&input);
+  vec_free (filter_name);
+  REPLY_MACRO (VL_API_PCAP_SET_FILTER_FUNCTION_REPLY);
+}
+
+static void
 vl_api_pcap_trace_on_t_handler (vl_api_pcap_trace_on_t *mp)
 {
   vl_api_pcap_trace_on_reply_t *rmp;

@@ -146,7 +146,7 @@ extern vlib_trace_filter_main_t vlib_trace_filter_main;
 
 vlib_is_packet_traced_fn_t *
 vlib_is_packet_traced_function_from_name (const char *name);
-
+vlib_is_packet_traced_fn_t *vlib_is_packet_traced_default_function ();
 void trace_apply_filter (struct vlib_main_t *vm);
 int trace_time_cmp (void *a1, void *a2);
 void vlib_trace_stop_and_clear (void);

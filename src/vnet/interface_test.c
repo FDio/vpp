@@ -1284,6 +1284,18 @@ api_sw_interface_set_interface_name (vat_main_t *vam)
 }
 
 static int
+api_pcap_set_filter_function (vat_main_t *vam)
+{
+  vl_api_pcap_set_filter_function_t *mp;
+  int ret;
+
+  M (PCAP_SET_FILTER_FUNCTION, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_pcap_trace_on (vat_main_t *vam)
 {
   return -1;
