@@ -450,6 +450,15 @@ clib_cpu_march_priority_neoversen2 ()
   return -1;
 }
 
+static inline int
+clib_cpu_march_priority_neoversen2 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_NEOVERSEN2 == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_NEOVERSEN2 == clib_cpu_part ()))
+    return 10;
+  return -1;
+}
+
 #ifdef CLIB_MARCH_VARIANT
 #define CLIB_MARCH_FN_PRIORITY() CLIB_MARCH_SFX(clib_cpu_march_priority)()
 #else
