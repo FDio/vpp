@@ -1,0 +1,63 @@
+From 6429e38ae77c7998c84d5a0ed26b4fb0d81424c1 Mon Sep 17 00:00:00 2001
+From: Ting Xu <ting.xu@intel.com>
+Date: Thu, 15 Jun 2023 01:33:37 +0000
+Subject: [PATCH v1] net: fix pkt length type for raw pattern
+
+In current pattern parsing function for raw pattern, the packet length
+variable is defined as uint8_t, which is too small for a large packet,
+such as srv6. Change the type to uint16_t.
+
+Fixes: 1b9c68120a1c ("net/ice: enable protocol agnostic flow offloading
+in RSS")
+
+Signed-off-by: Ting Xu <ting.xu@intel.com>
+---
+ drivers/net/iavf/iavf_hash.c      | 2 +-
+ drivers/net/ice/ice_fdir_filter.c | 2 +-
+ drivers/net/ice/ice_hash.c        | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/iavf/iavf_hash.c b/drivers/net/iavf/iavf_hash.c
+index ae6fb38594..cf4d677101 100644
+--- a/drivers/net/iavf/iavf_hash.c
++++ b/drivers/net/iavf/iavf_hash.c
+@@ -886,8 +886,8 @@ iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
+ 			struct iavf_rss_meta *meta)
+ {
+ 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
++	uint16_t spec_len, pkt_len;
+ 	uint8_t *pkt_buf, *msk_buf;
+-	uint8_t spec_len, pkt_len;
+ 	uint8_t tmp_val = 0;
+ 	uint8_t tmp_c = 0;
+ 	int i, j;
+diff --git a/drivers/net/ice/ice_fdir_filter.c b/drivers/net/ice/ice_fdir_filter.c
+index 480b369af8..e8842bc242 100644
+--- a/drivers/net/ice/ice_fdir_filter.c
++++ b/drivers/net/ice/ice_fdir_filter.c
+@@ -1876,7 +1876,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
+ 				(uint8_t *)(uintptr_t)raw_mask->pattern;
+ 			uint8_t *tmp_spec, *tmp_mask;
+ 			uint16_t tmp_val = 0;
+-			uint8_t pkt_len = 0;
++			uint16_t pkt_len = 0;
+ 			uint8_t tmp = 0;
+ 			int i, j;
+ 
+diff --git a/drivers/net/ice/ice_hash.c b/drivers/net/ice/ice_hash.c
+index f35727856e..52646e9408 100644
+--- a/drivers/net/ice/ice_hash.c
++++ b/drivers/net/ice/ice_hash.c
+@@ -653,8 +653,8 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
+ 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
+ 	struct ice_parser_profile prof;
+ 	struct ice_parser_result rslt;
++	uint16_t spec_len, pkt_len;
+ 	uint8_t *pkt_buf, *msk_buf;
+-	uint8_t spec_len, pkt_len;
+ 	uint8_t tmp_val = 0;
+ 	uint8_t tmp_c = 0;
+ 	int i, j;
+-- 
+2.25.1
+
