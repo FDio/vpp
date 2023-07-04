@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8576927c_8bcda784",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-04T13:32:54Z",
+      "side": 1,
+      "message": "Meant to move this to vcl_session_t explicitly, as opposed to relying on app_session_transport_t. Were you trying to avoid extending other data structures?",
+      "parentUuid": "f16ba220_1b950c24",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3a7b1223_056bafe8",
         "filename": "src/vnet/session/session.c",
         "patchSetId": 1
@@ -154,6 +172,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "3a70f32b_bb5e39d8",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8bd06bbd_158b8dd3",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-04T13:32:54Z",
+      "side": 1,
+      "message": "My comment was misplaced. I meant moving lines 144-152 to a session layer function as we have an explicit dependency on smm",
+      "parentUuid": "2bb533da_c262f502",
       "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
