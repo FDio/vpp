@@ -194,6 +194,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
     N_PREFETCHES 6
     CACHE_PREFETCH_BYTES 64
   )
+  add_vpp_march_variant(neoversen2
+    FLAGS -march=armv9-a+crypto -mtune=neoverse-n2
+    N_PREFETCHES 6
+    CACHE_PREFETCH_BYTES 64
+  )
 endif()
 
 macro(vpp_library_set_multiarch_sources lib)
