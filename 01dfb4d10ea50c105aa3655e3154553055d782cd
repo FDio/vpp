@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1941aa80_8a8ed150",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-05T03:13:34Z",
+      "side": 1,
+      "message": "OK, I did not notice that the foreach_app_session_field was also referenced by app_session_t.",
+      "parentUuid": "8576927c_8bcda784",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3a7b1223_056bafe8",
@@ -190,6 +208,24 @@
       "side": 1,
       "message": "My comment was misplaced. I meant moving lines 144-152 to a session layer function as we have an explicit dependency on smm",
       "parentUuid": "2bb533da_c262f502",
+      "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5a48059_d2f2f5d4",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-05T03:13:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8bd06bbd_158b8dd3",
       "revId": "01dfb4d10ea50c105aa3655e3154553055d782cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
