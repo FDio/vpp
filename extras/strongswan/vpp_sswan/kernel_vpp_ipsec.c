@@ -669,6 +669,7 @@ get_sw_if_index (char *interface)
 {
   char *out = NULL;
   int out_len, name_filter_len = 0, msg_len = 0;
+  int num, i;
   vl_api_sw_interface_dump_t *mp;
   vl_api_sw_interface_details_t *rmp;
   uint32_t sw_if_index = ~0;
@@ -683,7 +684,7 @@ get_sw_if_index (char *interface)
   mp->name_filter.length = htonl (name_filter_len);
   memcpy ((char *) mp->name_filter.buf, interface, name_filter_len);
 
-  if (vac->send (vac, (char *) mp, msg_len, &out, &out_len))
+  if (vac->send_dump (vac, (char *) mp, msg_len, &out, &out_len))
     {
       goto error;
     }
@@ -691,12 +692,24 @@ get_sw_if_index (char *interface)
     {
       goto error;
     }
+  num = out_len / sizeof (*rmp);
   rmp = (vl_api_sw_interface_details_t *) out;
-  sw_if_index = ntohl (rmp->sw_if_index);
+  for (i = 0; i < num; i++)
+    {
+      if (interface != NULL && strlen (rmp->interface_name) &&
+	  streq (interface, rmp->interface_name))
+	{
+	  sw_if_index = ntohl (rmp->sw_if_index);
+	  break;
+	}
+      rmp += 1;
+    }
 
 error:
-  free (out);
-  vl_msg_api_free (mp);
+  if (out)
+    free (out);
+  if (mp)
+    vl_msg_api_free (mp);
   return sw_if_index;
 }
 /**
