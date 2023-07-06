@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e92471fa_90be04e4",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-06T15:35:32Z",
+      "side": 1,
+      "message": "nitpick, but I think moving it right next to line 212 where we detach the last buffer from the chain would help readability: it took me a while to figure out why this was needed, until I realized we were removing the last buffer from the chain (and hence we needed to decrement its size)",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "99b3a713_177bcdf9",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-06T15:35:32Z",
+      "side": 1,
+      "message": "const would be good",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d99233cf_ada7ed8f",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-06T15:35:32Z",
+      "side": 1,
+      "message": "you should use vlib_buffer_length_in_chain() here",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d3858ba_6dc4482b",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-06T15:35:32Z",
+      "side": 1,
+      "message": "I think the ip4 \u0026 ip6 code can be factored in a single inline function with an is_ip6 boolean, as the only difference is how to get the packet length?",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
