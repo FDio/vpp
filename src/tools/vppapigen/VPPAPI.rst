@@ -402,3 +402,196 @@ Future considerations
 -  Embed JSON definitions into the API server, so dynamic languages
    can download them directly without going via the filesystem and JSON
    files.
+
+API Change Process
+------------------
+
+Purpose
+~~~~~~~
+
+To minimize the disruptions to the consumers of the VPP API, while permitting
+the innovation for the VPP itself.
+
+Historically, API changes in VPP master branch were allowed at any point in time
+outside of a small window between the API freeze milestone and RC1 milestone.
+The API changes on the throttle branches were not permitted at all. This model
+proved workable, however all the production use cases ended up on throttle
+branches, with a lot of forklift activity when it is the time to upgrade to the
+next branch.
+
+This formally structured API change process harmonizes the behavior across all
+the VPP branches, and allows more flexibility for the consumer, while permitting
+the innovation in the VPP itself.
+
+The Core Promise
+~~~~~~~~~~~~~~~~
+
+"If a user is running a VPP version N and does not use any deprecated APIs, they
+should be able to simply upgrade the VPP to version N+1 and there should be no
+API breakage".
+
+In-Progress, Production and Deprecated APIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This proposal adds a classification of stability of an API call:
+
+-   "In-Progress": APIs in the process of the development, experimentation, and
+    limited testing.
+
+-   "Production": tested as part of the "make test", considered stable for general
+    usage.
+
+-   "Deprecated": used as a flag on Production APIs which are slated to be
+    deprecated in the future release.
+
+The "In-Progress" APIs or the APIs with the semantic version of 0.x.y are not
+subject to any stability checks, thus the developers are free to introduce them,
+modify their signatures, and as well remove them completely at will. The users
+should not use the in-progress APIs without the interactions with its
+maintainers, nor base the production code on those APIs. The goal of
+"in-progress" APIs to allow rapid iteration and modifications to ensure the API
+signature and function is stabilized. These API calls may be used for testing or
+experimentation and prototyping.
+
+When the maintainer is satisfied with the quality of the APIs, and ensures that
+they are tested as part of the "Make test" runs, they can transition their
+status to "Production".
+
+The "Production" APIs can *NOT* be changed in any way that modifies their
+representation on the wire and the signature (thus CRC). The only change that
+they may incur is to be marked as "Deprecated". These are the APIs that the
+downstream users can use for production purposes. They exist to fulfill a core
+promise of this process: The "Deprecated" APIs are the "Production" APIs that
+are about to be deleted. To ensure the above core promise is maintained, if the
+API call was marked as deprecated at any point between RC1 of release N and RC1
+of release N+1, it MUST NOT be deleted until the RC1 milestone of the
+release N+2. The deprecated API SHOULD specify a replacement API - which MUST
+be a Production API, so as not to decrease the level of stability.
+
+
+The time interval between a commit that marks an API as deprecated and a commit
+that deletes that API MUST be at least equal the time between the two subsequent
+releases (currently 4 months).
+
+
+Doing so allows a for a good heads-up to those who are using the
+"one free upgrade" property to proactively catch and test the transition from
+the deprecated APIs using the master.
+
+
+Marking an API as deprecated just 1 day before RC1 branch pull and then deleting
+that API one day after does *technically* satisfy "one free upgrade" promise,
+but is rather hostile to the users that are proactively tracking it.
+
+Semantic API Versioning
+~~~~~~~~~~~~~~~~~~~~~~~
+
+VPP APIs use semantic versioning according to semver.org, with the compatibility
+logic being applied at the moment the messages are marked as deprecated.
+
+To discuss: i.e. if message_2 is being introduced which deprecates the
+message_1, then that same commit should increase the major version of the API.
+
+The 0.x.x API versions, by virtue of being in-progress, are exempt from this
+treatment.
+
+Tooling
+~~~~~~~
+
+See https://gerrit.fd.io/r/c/vpp/+/26881:
+
+crcchecker.py is a tool to enforce the policy, with a few other bonus uses:
+
+extras/scripts/crcchecker.py --check-patchset # returns -1 if backwards incompatible extras/scripts/crcchecker.py --dump-manifest extras/scripts/crcchecker.py --git-revision v20.01 <files> extras/scripts/crcchecker.py -- diff <oldfile> <newfile>
+
+Notice that you can use this tool to get the list of API changes since a given past release.
+
+The policy:
+
+.. highlight:: none
+
+.. code-block::
+
+  1. Production APIs should never change.
+     The definition of a "production API" is if the major version in
+     the API file is > 0 that is not marked as "in-progress".
+  2. APIs that are experimental / not released are not checked.
+     An API message can be individually marked as in progress,
+     by adding the following in the API definition:
+        option in_progress;
+  3. An API can be deprecated in three-to-six steps (the steps
+     with letters can be combined or split, depending on situation):
+        Step 1a: A new "in-progress" API new_api_2 is added that
+           is deemed to be a replacement.
+        Step 1b: The existing API is marked as "replaced_by" this new API:
+           option replaced_by="new_api_2";
+        Step 2a: The new_api_2 is marked as production by deleting its in-progress status,
+           provided that this API does have sufficient test coverage to deem it well tested.
+        Step 2b: the existing API is marked as "deprecated":
+           option deprecated="optional short message to humans reading it";
+        Step 3: the deprecated API is deleted.
+
+There is a time constraint that the minimum interval between the steps 2 and 3
+must be at least 4 months. The proposal is to have step 2 around a couple of
+weeks before the F0 milestone for a release, as triggered by the release manager
+(and in the future by an automated means).
+
+Use Cases
+~~~~~~~~~
+
+Adding A New Field To A Production API
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The simplest way to add a new field to a Production API message *foo_message* is
+to create a new In-Progress message *foo_message_v2*, and add the field to that
+one. Typically it will be an extension - so the API message handlers are
+trivially chained. If there are changes/adjustments that are needed, this new
+message can be freely altered without bothering the users of the Production API.
+
+When the maintainer is happy with the quality of the implementation, and the
+foo_message_v2 is tested in "make test" to the same extent as the foo_message,
+they can make two commits: one, removing the in-progress status for
+foo_message_v2, and the second one - deprecating foo_message and pointing the
+foo_message_v2 as the replacement. Technically after the next throttle pull,
+they can delete the foo_message - the deprecation and the replacement will be
+already in the corresponding branch.
+
+Rapid Experimentation For A New Feature
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Add a message that is in-progress, and keep iterating with this message. This
+message is not subject to the change control process.
+
+An In-progress API Accidentally Marked As "production"
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This is expected to mainly apply during the initial period of 20.05->20.09, the
+proposal is to have it active for 4 weeks from Jun 17 till July 15th, with the
+following process.
+
+If a developer finds that a given API or a set of APIs is not ready for
+production due to lack of tests and/or the general API stability, then they:
+
+-   Create a new gerrit change with *just* the marking of the API as
+    in_progress, subject being: "api: <feature> api message downgrade" and
+    a comment identifying which APIs are being downgraded and why.
+
+-   Add ayourtch@gmail.com or the current Release Manager as a reviewer --
+    for help in guiding the process and to ensure that the gerrit change is not
+    forgotten.
+
+-   Send an email to vpp-dev mailing list with the subject being the same as the
+    one-liner commit message, reference to the gerrit change, and the reasoning.
+
+-   Wait for the timeout period of two weeks for the feedback.
+
+-   If no feedback received, assume the community agreement and commit the
+    change to master branch.
+
+This needs to be highlighted that this process is an *exception* - normally the
+transition is always in_progress => production => deprecated.
+
+API Change Examples
+~~~~~~~~~~~~~~~~~~~
+
+https://gerrit.fd.io/r/q/+is:merged+message:%2522%255Eapi:.*%2524%2522
