@@ -96,7 +96,7 @@ cryptodev_reset_ctx (cryptodev_engine_thread_t *cet)
 {
   union rte_cryptodev_session_ctx sess_ctx;
 
-  ASSERT (cet->reset_sess != 0);
+  ERROR_ASSERT (cet->reset_sess != 0);
 
   sess_ctx.crypto_sess = cet->reset_sess;
 
@@ -112,15 +112,14 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t *vm,
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
-  cryptodev_async_ring_elt *ring_elt = &ring->frames[ring->head];
-  cet->frames_on_ring++;
-  ring_elt->f = frame;
-  ring_elt->n_elts = frame->n_elts;
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
+  ERROR_ASSERT (frame != 0);
+  ERROR_ASSERT (frame->n_elts > 0);
+  cryptodev_cache_ring_elt_t *ring_elt =
+    cryptodev_cache_ring_push (ring, frame);
+
   ring_elt->aad_len = 1;
   ring_elt->op_type = (u8) op_type;
-  ring->head++;
-  ring->head &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
   return 0;
 }
 
@@ -135,13 +134,14 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
   vlib_buffer_t **b;
   struct rte_crypto_vec vec[CRYPTODEV_MAX_N_SGL];
   struct rte_crypto_va_iova_ptr iv_vec, digest_vec;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
+  u16 *const enq = &ring->enq_head;
   u32 n_elts;
   u32 last_key_index = ~0;
   i16 min_ofs;
   u32 max_end;
   u32 max_to_enq = clib_min (CRYPTODE_ENQ_MAX,
-			     frame->n_elts - ring->frames[ring->enq].enqueued);
+			     frame->n_elts - ring->frames[*enq].enq_elts_head);
   u8 is_update = 0;
   int status;
 
@@ -152,8 +152,8 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 
   vlib_get_buffers (vm, frame->buffer_indices, cet->b, frame->n_elts);
 
-  b = cet->b + ring->frames[ring->enq].enqueued;
-  fe = frame->elts + ring->frames[ring->enq].enqueued;
+  b = cet->b + ring->frames[*enq].enq_elts_head;
+  fe = frame->elts + ring->frames[*enq].enq_elts_head;
 
   while (n_elts)
     {
@@ -233,7 +233,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
       if (PREDICT_FALSE (status < 0))
 	goto error_exit;
 
-      ring->frames[ring->enq].enqueued += 1;
+      ring->frames[*enq].enq_elts_head += 1;
       b++;
       fe++;
       n_elts--;
@@ -244,22 +244,19 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
     goto error_exit;
 
   cet->inflight += max_to_enq;
-  ring->frames[ring->enq].frame_inflight += max_to_enq;
-  if (ring->frames[ring->enq].enqueued == frame->n_elts)
-    {
-      cet->frame_ring.enq += 1;
-      cet->frame_ring.enq &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
-      frame->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-    }
+  cryptodev_cache_ring_update_enq_head (ring, frame);
   return;
 
 error_exit:
-  cryptodev_mark_frame_err_status (frame,
-				   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
-				   VNET_CRYPTO_FRAME_STATE_ELT_ERROR);
+  cryptodev_mark_frame_fill_err (frame,
+				 ring->frames[*enq].frame_elts_errs_mask,
+				 ring->frames[*enq].enq_elts_head, max_to_enq,
+				 VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+  ring->frames[*enq].enq_elts_head += max_to_enq;
+  ring->frames[*enq].deq_elts_tail += max_to_enq;
+  cryptodev_cache_ring_update_enq_head (ring, frame);
   cryptodev_reset_ctx (cet);
-  cet->frame_ring.enq += 1;
-  cet->frame_ring.enq &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
+
   return;
 }
 
@@ -269,15 +266,14 @@ cryptodev_raw_aead_enqueue (vlib_main_t *vm, vnet_crypto_async_frame_t *frame,
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
-  cryptodev_async_ring_elt *ring_elt = &ring->frames[ring->head];
-  cet->frames_on_ring++;
-  ring_elt->f = frame;
-  ring_elt->n_elts = frame->n_elts;
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
+  ERROR_ASSERT (frame != 0);
+  ERROR_ASSERT (frame->n_elts > 0);
+  cryptodev_cache_ring_elt_t *ring_elt =
+    cryptodev_cache_ring_push (ring, frame);
+
   ring_elt->aad_len = aad_len;
   ring_elt->op_type = (u8) op_type;
-  ring->head++;
-  ring->head &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
   return 0;
 }
 
@@ -288,7 +284,7 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
   vnet_crypto_async_frame_elt_t *fe;
   vlib_buffer_t **b;
   u32 n_elts;
@@ -296,7 +292,8 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
   struct rte_crypto_vec vec[CRYPTODEV_MAX_N_SGL];
   struct rte_crypto_va_iova_ptr iv_vec, digest_vec, aad_vec;
   u32 last_key_index = ~0;
-  u16 left_to_enq = frame->n_elts - ring->frames[ring->enq].enqueued;
+  u16 *const enq = &ring->enq_head;
+  u16 left_to_enq = frame->n_elts - ring->frames[*enq].enq_elts_head;
   u16 max_to_enq = clib_min (CRYPTODE_ENQ_MAX, left_to_enq);
   u8 is_update = 0;
   int status;
@@ -310,8 +307,8 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
 
   vlib_get_buffers (vm, frame->buffer_indices, cet->b, frame->n_elts);
 
-  fe = frame->elts + ring->frames[ring->enq].enqueued;
-  b = cet->b + ring->frames[ring->enq].enqueued;
+  fe = frame->elts + ring->frames[*enq].enq_elts_head;
+  b = cet->b + ring->frames[*enq].enq_elts_head;
   cofs.raw = 0;
 
   while (n_elts)
@@ -424,7 +421,7 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
       if (PREDICT_FALSE (status < 0))
 	goto error_exit;
 
-      ring->frames[ring->enq].enqueued += 1;
+      ring->frames[*enq].enq_elts_head += 1;
       fe++;
       b++;
       n_elts--;
@@ -435,24 +432,18 @@ cryptodev_raw_aead_enqueue_internal (vlib_main_t *vm,
     goto error_exit;
 
   cet->inflight += max_to_enq;
-  ring->frames[ring->enq].frame_inflight += max_to_enq;
-  if (ring->frames[ring->enq].enqueued == frame->n_elts)
-    {
-      ring->enq += 1;
-      ring->enq &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
-      frame->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-      cet->enqueued_not_dequeueq++;
-    }
-
+  cryptodev_cache_ring_update_enq_head (ring, frame);
   return;
 
 error_exit:
-  cryptodev_mark_frame_err_status (frame,
-				   VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR,
-				   VNET_CRYPTO_FRAME_STATE_ELT_ERROR);
+  cryptodev_mark_frame_fill_err (frame,
+				 ring->frames[*enq].frame_elts_errs_mask,
+				 ring->frames[*enq].enq_elts_head, max_to_enq,
+				 VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+  ring->frames[*enq].enq_elts_head += max_to_enq;
+  ring->frames[*enq].deq_elts_tail += max_to_enq;
+  cryptodev_cache_ring_update_enq_head (ring, frame);
   cryptodev_reset_ctx (cet);
-  ring->enq += 1;
-  ring->enq &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
   return;
 }
 
@@ -472,7 +463,8 @@ cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
   vnet_crypto_async_frame_t *frame;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
+  u16 *const deq = &ring->deq_tail;
   u32 n_success;
   u16 n_deq, indice, i, left_to_deq;
   u16 max_to_deq = 0;
@@ -480,22 +472,22 @@ cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
   u8 dequeue_more = 0;
   int dequeue_status;
 
-  indice = ring->deq;
+  indice = *deq;
 
   for (i = 0; i < VNET_CRYPTO_FRAME_POOL_SIZE; i++)
     {
-      if (PREDICT_TRUE (ring->frames[indice].frame_inflight > 0))
+      if (PREDICT_TRUE (
+	    CRYPTODEV_CACHE_RING_GET_FRAME_ELTS_INFLIGHT (ring, indice) > 0))
 	break;
       indice += 1;
-      indice &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
+      indice &= CRYPTODEV_CACHE_QUEUE_MASK;
     }
 
-  ASSERT (i != VNET_CRYPTO_FRAME_POOL_SIZE);
+  ERROR_ASSERT (i != VNET_CRYPTO_FRAME_POOL_SIZE);
 
-  ring->deq = indice;
+  *deq = indice;
 
-  left_to_deq =
-    ring->frames[ring->deq].f->n_elts - ring->frames[ring->deq].dequeued;
+  left_to_deq = ring->frames[*deq].n_elts - ring->frames[*deq].deq_elts_tail;
   max_to_deq = clib_min (left_to_deq, CRYPTODE_DEQ_MAX);
 
   /* you can use deq field to track frame that is currently dequeued */
@@ -506,37 +498,39 @@ cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
     cet->ctx, NULL, max_to_deq, cryptodev_post_dequeue, (void **) &frame, 0,
     &n_success, &dequeue_status);
 
-  if (!n_deq)
+  if (n_deq == 0)
     return dequeue_more;
 
   inflight -= n_deq;
-  ring->frames[ring->deq].dequeued += n_deq;
-  ring->frames[ring->deq].deq_state += n_success;
-  ring->frames[ring->deq].frame_inflight -= n_deq;
-
-  if (ring->frames[ring->deq].dequeued == ring->frames[ring->deq].n_elts)
+  if (PREDICT_FALSE (n_success < n_deq))
     {
-      frame->state = ring->frames[ring->deq].deq_state == frame->n_elts ?
-			     VNET_CRYPTO_FRAME_STATE_SUCCESS :
-			     VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+      u16 idx = ring->frames[*deq].deq_elts_tail;
+
+      for (i = 0; i < n_deq; i++)
+	{
+	  if (frame->elts[idx + i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+	    ring->frames[*deq].frame_elts_errs_mask |= 1 << (idx + i);
+	}
+    }
+  ring->frames[*deq].deq_elts_tail += n_deq;
+
+  if (cryptodev_cache_ring_update_deq_tail (ring, deq))
+    {
       *nb_elts_processed = frame->n_elts;
       *enqueue_thread_idx = frame->enqueue_thread_index;
-      cet->deqeued_not_returned++;
-      cet->enqueued_not_dequeueq--;
-      ring->deq += 1;
-      ring->deq &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
       dequeue_more = max_to_deq < CRYPTODE_DEQ_MAX;
     }
 
   int res =
     rte_cryptodev_raw_dequeue_done (cet->ctx, cet->inflight - inflight);
-  ASSERT (res == 0);
+  ERROR_ASSERT (res == 0);
   cet->inflight = inflight;
   return dequeue_more;
 }
 
 static_always_inline void
-cryptodev_enqueue_frame (vlib_main_t *vm, cryptodev_async_ring_elt *ring_elt)
+cryptodev_enqueue_frame_to_qat (vlib_main_t *vm,
+				cryptodev_cache_ring_elt_t *ring_elt)
 {
   cryptodev_op_type_t op_type = (cryptodev_op_type_t) ring_elt->op_type;
   u8 linked_or_aad_len = ring_elt->aad_len;
@@ -555,8 +549,8 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_main_t *cm = &crypto_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
-  cryptodev_async_frame_sw_ring *ring = &cet->frame_ring;
-  cryptodev_async_ring_elt *ring_elt = &ring->frames[ring->tail];
+  cryptodev_cache_ring_t *ring = &cet->cache_ring;
+  cryptodev_cache_ring_elt_t *ring_elt = &ring->frames[ring->tail];
   vnet_crypto_async_frame_t *ret_frame = 0;
   u8 dequeue_more = 1;
 
@@ -566,26 +560,17 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 						     enqueue_thread_idx);
     }
 
-  if (PREDICT_TRUE (ring->frames[ring->enq].f != 0))
-    cryptodev_enqueue_frame (vm, &ring->frames[ring->enq]);
+  if (PREDICT_TRUE (ring->frames[ring->enq_head].f != 0))
+    cryptodev_enqueue_frame_to_qat (vm, &ring->frames[ring->enq_head]);
 
   if (PREDICT_TRUE (ring_elt->f != 0))
     {
-      if ((ring_elt->f->state == VNET_CRYPTO_FRAME_STATE_SUCCESS ||
-	   ring_elt->f->state == VNET_CRYPTO_FRAME_STATE_ELT_ERROR) &&
-	  ring_elt->enqueued == ring_elt->dequeued)
+      if (ring_elt->enq_elts_head == ring_elt->deq_elts_tail)
 	{
 	  vlib_node_set_interrupt_pending (
 	    vlib_get_main_by_index (vm->thread_index), cm->crypto_node_index);
-	  ret_frame = ring_elt->f;
-	  ring_elt->f = 0;
-	  ring_elt->dequeued = 0;
-	  ring_elt->enqueued = 0;
-	  ring_elt->deq_state = 0;
-	  ring->tail += 1;
-	  ring->tail &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
-	  cet->frames_on_ring--;
-	  cet->deqeued_not_returned--;
+	  ret_frame = cryptodev_cache_ring_pop (ring);
+
 	  return ret_frame;
 	}
     }
@@ -684,7 +669,7 @@ cryptodev_register_raw_hdl (vlib_main_t *vm, u32 eidx)
     {
       u32 thread_id = cet - cmt->per_thread_data;
       u32 numa = vlib_get_main_by_index (thread_id)->numa_node;
-      u8 *name = format (0, "cache_frame_ring_%u_%u", numa, thread_id);
+      u8 *name = format (0, "cache_cache_ring_%u_%u", numa, thread_id);
 
       cet->aad_buf = rte_zmalloc_socket (
 	0, CRYPTODEV_NB_CRYPTO_OPS * CRYPTODEV_MAX_AAD_SIZE,
