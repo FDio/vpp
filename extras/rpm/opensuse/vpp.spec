@@ -134,6 +134,8 @@ This package contains the python bindings for the vpp api
 %prep
 %setup -q -n %{name}-%{version}
 
+%debug_package
+
 %build
 export VPP_BUILD_USER=suse
 export VPP_BUILD_HOST=SUSE
