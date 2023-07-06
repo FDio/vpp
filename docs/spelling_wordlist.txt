@@ -190,6 +190,7 @@ CPPFLAGS
 cpu
 cPython
 crc
+crcchecker
 crcs
 crit
 criterias
@@ -746,6 +747,7 @@ netmap
 Netmap
 netplan
 Netplan
+newfile
 nexthop
 nginx
 NIC
@@ -778,6 +780,7 @@ oddbuf
 Oddbuf
 offline
 ofr
+oldfile
 online
 onlink
 ooo
@@ -800,6 +803,7 @@ params
 parsable
 passthrough
 passwordless
+patchset
 pathname
 pbb
 pcap
@@ -992,6 +996,7 @@ seg
 segfault
 selinux
 semodule
+semver
 setjmp
 settingupenvironment
 setUp
