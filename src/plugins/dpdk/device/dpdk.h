@@ -119,14 +119,14 @@ typedef struct
   u16 n_rx_desc;
   u16 n_tx_desc;
   u32 supported_flow_actions;
-  i32 enable_lsc_int : 1;
-  i32 enable_rxq_int : 1;
-  i32 disable_rx_scatter : 1;
-  i32 program_vlans : 1;
-  i32 mq_mode_none : 1;
-  i32 interface_number_from_port_id : 1;
-  i32 use_intel_phdr_cksum : 1;
-  i32 int_unmaskable : 1;
+  u32 enable_lsc_int : 1;
+  u32 enable_rxq_int : 1;
+  u32 disable_rx_scatter : 1;
+  u32 program_vlans : 1;
+  u32 mq_mode_none : 1;
+  u32 interface_number_from_port_id : 1;
+  u32 use_intel_phdr_cksum : 1;
+  u32 int_unmaskable : 1;
 } dpdk_driver_t;
 
 dpdk_driver_t *dpdk_driver_find (const char *name, const char **desc);
