@@ -296,41 +296,50 @@ vac_rx_thread_fn (private_vac_t *this)
 
   q = am->vl_input_queue;
 
+  const u16 msg_id_rx_thread_exit =
+    vl_msg_api_get_msg_index ((u8 *) "rx_thread_exit_c3a3a452");
+  const u16 msg_id_memclnt_rx_thread_suspend =
+    vl_msg_api_get_msg_index ((u8 *) "memclnt_rx_thread_suspend_c3a3a452");
+  const u16 msg_id_memclnt_read_timeout =
+    vl_msg_api_get_msg_index ((u8 *) "memclnt_read_timeout_c3a3a452");
+  const u16 msg_id_memclnt_keepalive =
+    vl_msg_api_get_msg_index ((u8 *) "memclnt_keepalive_51077d14");
+
   while (TRUE)
     {
       while (!svm_queue_sub (q, (u8 *) &msg, SVM_Q_WAIT, 0))
 	{
 	  u16 id = ntohs (*((u16 *) msg));
-	  switch (id)
+
+	  if (msg_id_rx_thread_exit == id)
 	    {
-	    case VL_API_RX_THREAD_EXIT:
 	      vl_msg_api_free ((void *) msg);
 	      this->queue_lock->lock (this->queue_lock);
 	      this->terminate_cv->signal (this->terminate_cv);
 	      this->queue_lock->unlock (this->queue_lock);
 	      DBG3 (DBG_KNL, "vac received rx thread exit [%d]",
-		    VL_API_RX_THREAD_EXIT);
+		    msg_id_rx_thread_exit);
 	      thread_exit (NULL);
 	      return NULL;
-	      break;
-
-	    case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
+	    }
+	  else if (msg_id_memclnt_rx_thread_suspend == id)
+	    {
 	      vl_msg_api_free ((void *) msg);
 	      this->queue_lock->lock (this->queue_lock);
 	      this->suspend_cv->signal (this->suspend_cv);
 	      this->resume_cv->wait (this->resume_cv, this->queue_lock);
 	      this->queue_lock->unlock (this->queue_lock);
 	      DBG3 (DBG_KNL, "vac received rx thread suspend [%d]",
-		    VL_API_MEMCLNT_RX_THREAD_SUSPEND);
-	      break;
-
-	    case VL_API_MEMCLNT_READ_TIMEOUT:
+		    msg_id_memclnt_rx_thread_suspend);
+	    }
+	  else if (msg_id_memclnt_read_timeout == id)
+	    {
 	      DBG3 (DBG_KNL, "vac received read timeout [%d]",
-		    VL_API_MEMCLNT_READ_TIMEOUT);
+		    msg_id_memclnt_read_timeout);
 	      vl_msg_api_free ((void *) msg);
-	      break;
-
-	    case VL_API_MEMCLNT_KEEPALIVE:
+	    }
+	  else if (msg_id_memclnt_keepalive == id)
+	    {
 	      mp = (void *) msg;
 	      rmp = vl_msg_api_alloc (sizeof (*rmp));
 	      memset (rmp, 0, sizeof (*rmp));
@@ -342,12 +351,10 @@ vac_rx_thread_fn (private_vac_t *this)
 	      vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) &rmp);
 	      vl_msg_api_free ((void *) msg);
 	      DBG3 (DBG_KNL, "vac received keepalive %d",
-		    VL_API_MEMCLNT_KEEPALIVE);
-	      break;
-
-	    default:
-	      vac_api_handler (this, (void *) msg);
+		    msg_id_memclnt_keepalive);
 	    }
+	  else
+	    vac_api_handler (this, (void *) msg);
 	}
     }
 
