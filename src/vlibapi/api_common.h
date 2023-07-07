@@ -127,11 +127,11 @@ typedef struct
   void *fromjson;		/**< JSON to binary convert function */
   void *calc_size;		/**< message size calculation */
   int size;			/**< message size  */
-  int traced : 1;		/**< is this message to be traced?  */
-  int replay : 1;		/**< is this message to be replayed?  */
-  int message_bounce : 1;	/**< do not free message after processing */
-  int is_mp_safe : 1;		/**< worker thread barrier required?  */
-  int is_autoendian : 1;	/**< endian conversion required?  */
+  u32 traced : 1;		/**< is this message to be traced?  */
+  u32 replay : 1;		/**< is this message to be replayed?  */
+  u32 message_bounce : 1;	/**< do not free message after processing */
+  u32 is_mp_safe : 1;		/**< worker thread barrier required?  */
+  u32 is_autoendian : 1;	/**< endian conversion required?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
