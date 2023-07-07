@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "39ec29e0_3e91ca7b",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-07-07T12:52:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e92471fa_90be04e4",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "99b3a713_177bcdf9",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-07-06T15:35:32Z",
       "side": 1,
       "message": "const would be good",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3170085e_97d3eaa4",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 881,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-07-07T12:52:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "99b3a713_177bcdf9",
       "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3c6f4b2_0b949e4a",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-07-07T12:52:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d99233cf_ada7ed8f",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9d3858ba_6dc4482b",
@@ -65,6 +119,24 @@
       "writtenOn": "2023-07-06T15:35:32Z",
       "side": 1,
       "message": "I think the ip4 \u0026 ip6 code can be factored in a single inline function with an is_ip6 boolean, as the only difference is how to get the packet length?",
+      "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b55cf03a_6cf07550",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2023-07-07T12:52:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d3858ba_6dc4482b",
       "revId": "e1f5b3939fed3fd02c73f8908c698c7eaaeceadc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
