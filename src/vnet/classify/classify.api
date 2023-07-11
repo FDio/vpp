@@ -651,6 +651,23 @@ define classify_trace_get_tables_reply
   u32 indices[count];
 };
 
+/** \brief Enable/disable trace filtering feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface on which to enable/disable trace filtering feature
+    @param is_pcap - if non-zero enable the feature for pcap capture, else for trace
+    @param is_enable - if non-zero then enable the feature, else disable it
+*/
+autoreply define filtering_feature
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_pcap [default=false];
+  bool enable [default=true];
+};
+
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

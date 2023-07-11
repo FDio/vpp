@@ -326,11 +326,13 @@ list(APPEND VNET_SOURCES
   classify/flow_classify_node.c
   classify/vnet_classify.h
   classify/classify_api.c
+  classify/feature_node.c
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
   classify/ip_classify.c
   classify/flow_classify_node.c
+  classify/feature_node.c
 )
 
 list(APPEND VNET_HEADERS

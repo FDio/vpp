@@ -127,6 +127,30 @@ vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn)
   vec_add1 (cm->unformat_opaque_index_fns, fn);
 }
 
+int
+vnet_enable_disable_filtering_feature (u32 sw_if_index, int is_pcap,
+				       int enable)
+{
+  int rv;
+  if (is_pcap)
+    {
+      if ((rv = vnet_feature_enable_disable ("ip4-unicast", "pcap-filtering",
+					     sw_if_index, enable, 0, 0)) != 0)
+	return rv;
+      rv = vnet_feature_enable_disable ("ip6-unicast", "pcap-filtering",
+					sw_if_index, enable, 0, 0);
+    }
+  else
+    {
+      if ((rv = vnet_feature_enable_disable ("ip4-unicast", "trace-filtering",
+					     sw_if_index, enable, 0, 0)) != 0)
+	return rv;
+      rv = vnet_feature_enable_disable ("ip6-unicast", "trace-filtering",
+					sw_if_index, enable, 0, 0);
+    }
+  return rv;
+}
+
 vnet_classify_table_t *
 vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
 			 u32 nbuckets, u32 memory_size, u32 skip_n_vectors,
@@ -2940,6 +2964,55 @@ VLIB_CLI_COMMAND (classify_session_command, static) = {
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]"
     "\n [action set-ip4-fib-id|set-ip6-fib-id|set-sr-policy-index <n>] [del]",
     .function = classify_session_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+classify_filtering_feature_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  int enable = 1, is_pcap = 0;
+  int rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "disable"))
+	enable = 0;
+      else if (unformat (line_input, "pcap"))
+	is_pcap = 1;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnet_get_main (), &sw_if_index))
+	{
+	  if (sw_if_index == 0)
+	    return clib_error_return (0, "Local interface not supported...");
+	}
+
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "Software interface required");
+
+  if ((rv = vnet_enable_disable_filtering_feature (sw_if_index, is_pcap,
+						   enable)) != 0)
+    return clib_error_return (
+      0, "vnet_enable_disable_filtering_feature returned %d", rv);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (classify_filtering_feature, static) = {
+  .path = "classify filtering feature",
+  .short_help = "classify filtering feature <intfc> [disable] [pcap]",
+  .function = classify_filtering_feature_fn,
 };
 /* *INDENT-ON* */
 
