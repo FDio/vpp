@@ -16,6 +16,24 @@
       "message": "Can interface still be NULL till now ?",
       "revId": "4e9b5904fa2a71862480e49dd62139580198137c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1b7e8759_079bc9c5",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 699,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-07-11T08:56:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0670d51c_d364b220",
+      "revId": "4e9b5904fa2a71862480e49dd62139580198137c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
