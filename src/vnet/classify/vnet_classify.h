@@ -601,6 +601,9 @@ int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
 				       u32 table_index, int del_chain);
 
+int vnet_enable_disable_filtering_feature (u32 sw_if_index, int is_pcap,
+					   int enable);
+
 unformat_function_t unformat_ip4_mask;
 unformat_function_t unformat_ip6_mask;
 unformat_function_t unformat_l3_mask;
@@ -628,8 +631,7 @@ void vnet_classify_register_unformat_acl_next_index_fn
 void vnet_classify_register_unformat_policer_next_index_fn
   (unformat_function_t * fn);
 
-void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *
-						      fn);
+void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *fn);
 
 u32 classify_get_pcap_chain (vnet_classify_main_t * cm, u32 sw_if_index);
 void classify_set_pcap_chain (vnet_classify_main_t * cm,

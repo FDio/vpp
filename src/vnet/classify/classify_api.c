@@ -955,6 +955,23 @@ static void vl_api_output_acl_set_interface_t_handler
   REPLY_MACRO (VL_API_OUTPUT_ACL_SET_INTERFACE_REPLY);
 }
 
+static void
+vl_api_filtering_feature_t_handler (vl_api_filtering_feature_t *mp)
+{
+  vl_api_filtering_feature_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  vnet_enable_disable_filtering_feature (sw_if_index, mp->is_pcap, mp->enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_FILTERING_FEATURE_REPLY);
+}
+
 #include <classify/classify.api.c>
 
 static clib_error_t *
