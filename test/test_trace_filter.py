@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
 
 import unittest
+import secrets
+import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_papi import VppEnum
+from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdItfBinding, VppIpsecSpdEntry
+from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 
 from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, UDP, TCP
 from scapy.layers.vxlan import VXLAN
+from scapy.layers.ipsec import ESP, SecurityAssociation
 from scapy.compat import raw
 from scapy.utils import rdpcap
 
 
-class TestTracefilter(VppTestCase):
-    """Packet Tracer Filter Test"""
-
+class TemplateTraceFilter(VppTestCase):
     @classmethod
     def setUpClass(cls):
-        super(TestTracefilter, cls).setUpClass()
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
-        super(TestTracefilter, cls).tearDownClass()
+        super().tearDownClass()
 
     def setUp(self):
-        super(TestTracefilter, self).setUp()
+        super().setUp()
         self.create_pg_interfaces(range(2))
         self.pg0.generate_remote_hosts(11)
         for i in self.pg_interfaces:
@@ -35,7 +39,7 @@ class TestTracefilter(VppTestCase):
             i.resolve_arp()
 
     def tearDown(self):
-        super(TestTracefilter, self).tearDown()
+        super().tearDown()
         for i in self.pg_interfaces:
             i.unconfig()
             i.admin_down()
@@ -56,9 +60,12 @@ class TestTracefilter(VppTestCase):
         r = self.cli("show classify table verbose")
         self.assertTrue(r.reply.find("hits %i" % n) != -1)
 
+    def clear(self):
+        self.cli("clear trace")
+
     def add_trace_filter(self, mask, match):
         self.cli("classify filter trace mask %s match %s" % (mask, match))
-        self.cli("clear trace")
+        self.clear()
         self.cli("trace add pg-input 1000 filter")
 
     def del_trace_filters(self):
@@ -72,6 +79,17 @@ class TestTracefilter(VppTestCase):
         r = self.cli("show classify filter")
         s = "pcap rx/tx/drop:               first table none"
         self.assertTrue(r.reply.find(s) != -1)
+
+    # install a classify rule, inject traffic and check for hits
+    def assert_classify(self, mask, match, packets, n=None):
+        self.add_trace_filter("hex %s" % mask, "hex %s" % match)
+        self.send_and_expect(self.pg0, packets, self.pg1, trace=False)
+        self.assert_hits(n if n is not None else len(packets))
+        self.del_trace_filters()
+
+
+class TestTracefilter(TemplateTraceFilter):
+    """Packet Tracer Filter Test"""
 
     def test_basic(self):
         """Packet Tracer Filter Test"""
@@ -109,13 +127,6 @@ class TestTracefilter(VppTestCase):
         self.assert_hits(9)
         self.assert_hits(17)
 
-        self.del_trace_filters()
-
-    # install a classify rule, inject traffic and check for hits
-    def assert_classify(self, mask, match, packets, n=None):
-        self.add_trace_filter("hex %s" % mask, "hex %s" % match)
-        self.send_and_expect(self.pg0, packets, self.pg1, trace=False)
-        self.assert_hits(n if n is not None else len(packets))
         self.del_trace_filters()
 
     def test_encap(self):
@@ -279,6 +290,177 @@ class TestTracefilter(VppTestCase):
         # check captured pcap
         pcap = rdpcap("/tmp/vpp_test_trace_filter_test_pcap_drop.pcap")
         self.assertEqual(len(pcap), 17)
+
+
+class TestTraceFilterInner(TemplateTraceFilter):
+    """Packet Tracer Filter Inner Test"""
+
+    extra_vpp_plugin_config = [
+        "plugin tracenode_plugin.so {enable}",
+    ]
+
+    def add_trace_filter(self, mask, match, tn_feature_intfc_index=None):
+        if tn_feature_intfc_index is not None:
+            self.logger.info("fffff")
+            self.vapi.tracenode_feature(sw_if_index=tn_feature_intfc_index)
+        super().add_trace_filter(mask, match)
+
+    def del_trace_filters(self, tn_feature_intfc_index=None):
+        if tn_feature_intfc_index is not None:
+            self.vapi.tracenode_feature(
+                sw_if_index=tn_feature_intfc_index, enable=False
+            )
+        super().del_trace_filters()
+
+    def __add_sa(self, id_, tun_src, tun_dst):
+        # AES-CTR-128 / SHA2-256
+        crypto_key_length = 16
+        salt_length = 4
+        integ_key_lenght = 16
+        crypto_key = secrets.token_bytes(crypto_key_length)
+        salt = secrets.randbits(salt_length * 8)
+        integ_key = secrets.token_bytes(integ_key_lenght)
+
+        flags = VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_UDP_ENCAP
+
+        vpp_sa_in = VppIpsecSA(
+            test=self,
+            id=id_,
+            spi=id_,
+            integ_alg=VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128,
+            integ_key=integ_key,
+            crypto_alg=VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CTR_128,
+            crypto_key=crypto_key,
+            proto=VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+            flags=flags,
+            salt=salt,
+            tun_src=tun_src,
+            tun_dst=tun_dst,
+            udp_src=4500,
+            udp_dst=4500,
+        )
+        vpp_sa_in.add_vpp_config()
+
+        scapy_sa_in = SecurityAssociation(
+            ESP,
+            spi=id_,
+            crypt_algo="AES-CTR",
+            crypt_key=crypto_key + salt.to_bytes(salt_length, "big"),
+            auth_algo="SHA2-256-128",
+            auth_key=integ_key,
+            tunnel_header=IP(src=tun_src, dst=tun_dst),
+            nat_t_header=UDP(sport=4500, dport=4500),
+        )
+
+        id_ += 1
+
+        vpp_sa_out = VppIpsecSA(
+            test=self,
+            id=id_,
+            spi=id_,
+            integ_alg=VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA_256_128,
+            integ_key=integ_key,
+            crypto_alg=VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CTR_128,
+            crypto_key=crypto_key,
+            proto=VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+            flags=flags,
+            salt=salt,
+            tun_src=tun_dst,
+            tun_dst=tun_src,
+            udp_src=4500,
+            udp_dst=4500,
+        )
+        vpp_sa_out.add_vpp_config()
+
+        scapy_sa_out = SecurityAssociation(
+            ESP,
+            spi=id_,
+            crypt_algo="AES-CTR",
+            crypt_key=crypto_key + salt.to_bytes(salt_length, "big"),
+            auth_algo="SHA2-256-128",
+            auth_key=integ_key,
+            tunnel_header=IP(src=tun_dst, dst=tun_src),
+            nat_t_header=UDP(sport=4500, dport=4500),
+        )
+
+        return vpp_sa_in, scapy_sa_in, vpp_sa_out, scapy_sa_out
+
+    def __gen_encrypt_pkt(self, scapy_sa, pkt):
+        return Ether(
+            src=self.pg0.local_mac, dst=self.pg0.remote_mac
+        ) / scapy_sa.encrypt(pkt)
+
+    def test_encrypted_encap(self):
+        """Packet Tracer Filter Test with encrypted encap"""
+
+        vpp_sa_in, scapy_sa_in, vpp_sa_out, _ = self.__add_sa(
+            1, self.pg0.local_ip4, self.pg0.remote_ip4
+        )
+
+        spd = VppIpsecSpd(self, 1)
+        spd.add_vpp_config()
+
+        spd_binding = VppIpsecSpdItfBinding(self, spd, self.pg0)
+        spd_binding.add_vpp_config()
+
+        spd_entry = VppIpsecSpdEntry(
+            self,
+            spd,
+            1,
+            self.pg0.local_ip4,
+            self.pg0.local_ip4,
+            self.pg0.remote_ip4,
+            self.pg0.remote_ip4,
+            socket.IPPROTO_ESP,
+            policy=VppEnum.vl_api_ipsec_spd_action_t.IPSEC_API_SPD_ACTION_PROTECT,
+            is_outbound=0,
+        ).add_vpp_config()
+
+        # the inner packet we are trying to match
+        inner_pkt = (
+            IP(src=self.pg1.local_ip4, dst=self.pg1.remote_ip4)
+            / TCP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 100)
+        )
+        pkt = self.__gen_encrypt_pkt(scapy_sa_in, inner_pkt)
+
+        # self.add_trace_filter("l3 ip4 src", f"l3 ip4 src {self.pg0.local_ip4}")
+
+        self.add_trace_filter(
+            "l2 none l3 ip4 src proto l4 dst_port",
+            f"l2 none l3 ip4 src {self.pg1.local_ip4} proto 6 l4 dst_port 4321",
+            tn_feature_intfc_index=self.pg0.sw_if_index,
+        )
+
+        self.logger.info("Sending packet with matching inner")
+        self.send_and_expect(self.pg0, pkt * 67, self.pg1, trace=False)
+        self.assert_hits(67)
+        self.clear()
+
+        self.logger.info("Sending packet with wrong inner port")
+        inner_pkt[TCP].dport = 1111
+        pkt = self.__gen_encrypt_pkt(scapy_sa_in, inner_pkt)
+        self.send_and_expect(self.pg0, pkt * 67, self.pg1, trace=False)
+        # the classify session should still have the 67 previous hits.
+        # In another way, the delta is 0
+        self.assert_hits(67)
+        self.clear()
+
+        self.logger.info("Sending packet with wrong source address")
+        inner_pkt[IP].src = "1.2.3.4"
+        inner_pkt[TCP].dport = 4321
+        pkt = self.__gen_encrypt_pkt(scapy_sa_in, inner_pkt)
+        self.send_and_expect(self.pg0, pkt * 67, self.pg1, trace=False)
+        self.assert_hits(67)
+        self.clear()
+
+        self.del_trace_filters(tn_feature_intfc_index=self.pg0.sw_if_index)
+
+        spd_entry.remove_vpp_config()
+        spd_binding.remove_vpp_config()
+        spd.remove_vpp_config()
+        vpp_sa_in.remove_vpp_config()
+        vpp_sa_out.remove_vpp_config()
 
 
 if __name__ == "__main__":
