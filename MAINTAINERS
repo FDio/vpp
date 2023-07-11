@@ -826,6 +826,11 @@ I:      npt66
 M:      Ole Troan <otroan@employees.org>
 F:      src/plugins/npt66
 
+Plugin - Trace node
+I:	tracenode
+M:	Maxime Peim <mpeim@cisco.com>
+F:	src/plugins/tracenode
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
