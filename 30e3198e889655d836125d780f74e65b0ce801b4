@@ -84,6 +84,23 @@
       "message": "perftest-2n-tx2 mrrANDnic_*ANDdrv_avfAND1cAND64bANDethip6-ip6base",
       "revId": "30e3198e889655d836125d780f74e65b0ce801b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c72f20b_de689126",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-07-11T12:19:51Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_*ANDdrv_rdma_coreAND1cAND64bANDethip6-ip6base",
+      "revId": "30e3198e889655d836125d780f74e65b0ce801b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
