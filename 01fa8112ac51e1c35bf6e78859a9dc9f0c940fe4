@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d057e6ce_bdf99b6f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2947
+      },
+      "writtenOn": "2023-07-11T11:36:43Z",
+      "side": 1,
+      "message": "Hey all, could you please take a look at this change (again)?\nI solved the remarks in the best way I could think of.\nLooking forward to more feedback.",
+      "revId": "01fa8112ac51e1c35bf6e78859a9dc9f0c940fe4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
