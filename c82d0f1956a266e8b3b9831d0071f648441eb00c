@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c3c6cb6_a656a797",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-07-11T16:46:16Z",
+      "side": 1,
+      "message": "thanks for finding this, Alexander! Looks good to me, to avoid the null deref you witnessed.",
+      "revId": "c82d0f1956a266e8b3b9831d0071f648441eb00c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
