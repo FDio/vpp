@@ -811,6 +811,11 @@ I:      bpf_trace_filter
 M:      Mohammed Hawari <mohammed@hawari.fr>
 F:      src/plugins/bpf_trace_filter
 
+Plugin - Trace node
+I:	tracenode
+M:	Maxime Peim <mpeim@cisco.com>
+F:	src/plugins/tracenode
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
