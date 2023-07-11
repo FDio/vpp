@@ -1,0 +1,8 @@
+---
+name: Trace node
+maintainer: Maxime Peim <mpeim@cisco.com>
+features:
+  - Encrypted packet tracing
+description: "Allow tracing on IP feature arc, enabling encrypted packet tracing"
+state: experimental
+properties: [CLI, API]
