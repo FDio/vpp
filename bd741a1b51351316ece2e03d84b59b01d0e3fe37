@@ -16,6 +16,24 @@
       "message": "patch looks good to me, suggest update the commint message to the following:\n\nvpp-swan: Fix incorrect message ID registration in register_event\n\nThis patch addresses the issue where the message ID registration in the register_event function is incorrect. Due to this incorrect registration, the lookup for the corresponding callback on received messages fails, eventually leading to a segmentation fault and double-free memory space.",
       "revId": "bd741a1b51351316ece2e03d84b59b01d0e3fe37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f4b9d10_d877f04b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-07-11T08:59:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ed6ae8b9_4ef537ac",
+      "revId": "bd741a1b51351316ece2e03d84b59b01d0e3fe37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
