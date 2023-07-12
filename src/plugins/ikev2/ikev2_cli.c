@@ -121,6 +121,12 @@ format_ikev2_child_sa (u8 * s, va_list * va)
   return s;
 }
 
+static char *stateNames[] = {
+#define _(v, f, s) s,
+  foreach_ikev2_state
+#undef _
+};
+
 static u8 *
 format_ikev2_sa (u8 * s, va_list * va)
 {
@@ -149,6 +155,11 @@ format_ikev2_sa (u8 * s, va_list * va)
 
   tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
   s = format (s, "%U", format_ikev2_sa_transform, tr);
+
+  if (sa->state <= IKEV2_STATE_NO_PROPOSAL_CHOSEN)
+    {
+      s = format (s, "\n state: %s", stateNames[sa->state]);
+    }
 
   s = format (s, "\n%U", format_white_space, indent);
 
