@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "176455ee_c524edf2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-07-12T11:26:22Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2xcbase mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2bdbasemaclrn mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDeth-l2bdscale1mmaclrn\nmrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND78bANDethip6-ip6base",
+      "revId": "7449ceefa21fa422d30d7f901e8c9ec6fe119ac7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
