@@ -3269,6 +3269,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (sa0->state == IKEV2_STATE_AUTHENTICATED)
 		{
 		  ikev2_initial_contact_cleanup (ptd, sa0);
+		  p = hash_get (ptd->sa_by_rspi,
+				clib_net_to_host_u64 (ike0->rspi));
 		  ikev2_sa_match_ts (sa0);
 		  if (sa0->state != IKEV2_STATE_TS_UNACCEPTABLE)
 		    ikev2_create_tunnel_interface (vm, sa0, &sa0->childs[0],
@@ -5334,24 +5336,28 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
           ikev2_child_sa_t *c;
           u8 del_old_ids = 0;
 
-          if (sa->state != IKEV2_STATE_AUTHENTICATED)
-            continue;
+	  if (sa->state == IKEV2_STATE_SA_INIT)
+	    {
+	      if (vec_len (sa->childs) > 0)
+		vec_add1 (to_be_deleted, sa - tkm->sas);
+	    }
+	  else if (sa->state != IKEV2_STATE_AUTHENTICATED)
+	    continue;
 
-          if (sa->old_remote_id_present && 0 > sa->old_id_expiration)
-            {
-              sa->old_remote_id_present = 0;
-              del_old_ids = 1;
-            }
-          else
-            sa->old_id_expiration -= 1;
+	  if (sa->old_remote_id_present && 0 > sa->old_id_expiration)
+	    {
+	      sa->old_remote_id_present = 0;
+	      del_old_ids = 1;
+	    }
+	  else
+	    sa->old_id_expiration -= 1;
 
-          vec_foreach (c, sa->childs)
-            ikev2_mngr_process_child_sa(sa, c, del_old_ids);
+	  vec_foreach (c, sa->childs)
+	    ikev2_mngr_process_child_sa (sa, c, del_old_ids);
 
-          if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
-            vec_add1 (to_be_deleted, sa - tkm->sas);
-        }
-        /* *INDENT-ON* */
+	  if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (sa))
+	    vec_add1 (to_be_deleted, sa - tkm->sas);
+	  }
 
 	vec_foreach (sai, to_be_deleted)
 	{

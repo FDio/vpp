@@ -184,16 +184,21 @@ do {                                                                          \
 #define ikev2_log_debug(...) \
   vlib_log(VLIB_LOG_LEVEL_DEBUG, ikev2_main.log_class, __VA_ARGS__)
 
+#define foreach_ikev2_state                                                   \
+  _ (0, UNKNOWN, "UNKNOWN")                                                   \
+  _ (1, SA_INIT, "SA_INIT")                                                   \
+  _ (2, DELETED, "DELETED")                                                   \
+  _ (3, AUTH_FAILED, "AUTH_FAILED")                                           \
+  _ (4, AUTHENTICATED, "AUTHENTICATED")                                       \
+  _ (5, NOTIFY_AND_DELETE, "NOTIFY_AND_DELETE")                               \
+  _ (6, TS_UNACCEPTABLE, "TS_UNACCEPTABLE")                                   \
+  _ (7, NO_PROPOSAL_CHOSEN, "NO_PROPOSAL_CHOSEN")
+
 typedef enum
 {
-  IKEV2_STATE_UNKNOWN,
-  IKEV2_STATE_SA_INIT,
-  IKEV2_STATE_DELETED,
-  IKEV2_STATE_AUTH_FAILED,
-  IKEV2_STATE_AUTHENTICATED,
-  IKEV2_STATE_NOTIFY_AND_DELETE,
-  IKEV2_STATE_TS_UNACCEPTABLE,
-  IKEV2_STATE_NO_PROPOSAL_CHOSEN,
+#define _(v, f, s) IKEV2_STATE_##f = v,
+  foreach_ikev2_state
+#undef _
 } ikev2_state_t;
 
 typedef struct
