@@ -256,6 +256,11 @@ l2input_node_inline (vlib_main_t * vm,
 	    clib_prefetch_store (b[5]);
 	    clib_prefetch_store (b[6]);
 	    clib_prefetch_store (b[7]);
+
+	    clib_prefetch_store (b[4]->data);
+	    clib_prefetch_store (b[5]->data);
+	    clib_prefetch_store (b[6]->data);
+	    clib_prefetch_store (b[7]->data);
 	  }
 
 	  classify_and_dispatch (msm, b[0], &next[0]);
