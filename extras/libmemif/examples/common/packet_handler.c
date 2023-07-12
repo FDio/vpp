@@ -48,7 +48,7 @@ icmp_packet_handler (memif_connection_t *c)
       for (i = 0; i < c->tx_buf_num; i++)
 	{
 	  uint32_t len;
-	  void *packet = c->rx_bufs[i].data;
+	  void *packet = c->tx_bufs[i].data;
 
 	  memcpy (c->tx_bufs[i].data, c->rx_bufs[i].data, c->rx_bufs[i].len);
 	  c->tx_bufs[i].flags = c->rx_bufs[i].flags;

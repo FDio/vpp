@@ -199,13 +199,13 @@ main (int argc, char *argv[])
   int id0 = IF_ID0;
   int id1 = IF_ID1;
 
-  strncpy (socket_path, SOCKET_PATH, strlen (SOCKET_PATH));
+  strncpy (socket_path, SOCKET_PATH, sizeof (SOCKET_PATH));
 
   /* prepare the private data */
   memset (&intf0, 0, sizeof (intf0));
   memset (&intf1, 0, sizeof (intf1));
 
-  while ((opt = getopt (argc, argv, "rsithv")) != -1)
+  while ((opt = getopt (argc, argv, "r:s:i:t:hv")) != -1)
     {
       switch (opt)
 	{
