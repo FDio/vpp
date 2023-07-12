@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07622275_3d238548",
+        "filename": "src/vnet/l2/l2_input_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-07-12T06:00:32Z",
+      "side": 0,
+      "message": "Are you sure we shouldn\u0027t prefetch b-\u003edata for classify_and_dispatch, statement immediately below, which calls vlib_buffer_get_current? vlib_buffer_get_current returns b-\u003edata + b-\u003ecurrent_data",
+      "revId": "ff27c9f8ecb08ff0f5b98332975733e8bab125f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
