@@ -427,12 +427,13 @@ ec_init (vlib_main_t *vm)
 
   vlib_worker_thread_barrier_sync (vm);
   vnet_session_enable_disable (vm, 1 /* turn on session and transports */);
-  vlib_worker_thread_barrier_release (vm);
 
   /* Turn on the builtin client input nodes */
   foreach_vlib_main ()
     vlib_node_set_state (this_vlib_main, echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
+
+  vlib_worker_thread_barrier_release (vm);
 
   return 0;
 }
