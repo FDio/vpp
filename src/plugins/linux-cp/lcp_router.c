@@ -1411,7 +1411,8 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      pfx.fp_payload_proto = np.paths[0].frp_proto;
 	    }
 
-	  if (is_replace)
+	  /* Always use fib_table_entry_update() for ipv4 */
+	  if (is_replace || FIB_PROTOCOL_IP4 == pfx.fp_proto)
 	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
 				    entry_flags, np.paths);
 	  else
