@@ -16,6 +16,23 @@
       "message": "Please review, thanks",
       "revId": "a19cc151218c0ff6aa9cdca13c4ef5225b257eb6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6bfdba4_8e41f75f",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1415,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2023-07-12T19:55:32Z",
+      "side": 1,
+      "message": "Adding \u0027drop\u0027 to a prefix previously resolved with dynamically obtained route.\nResult with this patch applied:\n```\nipv4-VRF:0, fib_index:0, flow hash:[src dst sport dport proto flowlabel ] epoch:0 flags:none locks:[adjacency:1, default-route:1, lcp-rt:1, ]\n10.100.200.1/32 fib:0 index:11 locks:3\n  lcp-rt refs:1 entry-flags:drop, src-flags:added,contributing,active,\n    path-list:[28] locks:2 flags:drop, uPRF-list:20 len:0 itfs:[]\n      path:[37] pl-index:28 ip4 weight\u003d1 pref\u003d0 deag:  cfg-flags:drop,\n         fib-index:0\n\n  lcp-rt-dynamic refs:1 src-flags:added,\n    path-list:[22] locks:1 flags:shared, uPRF-list:16 len:1 itfs:[1, ]\n      path:[25] pl-index:22 ip4 weight\u003d1 pref\u003d20 attached-nexthop:  oper-flags:resolved,\n        10.255.0.4 GigabitEthernet7/0/0\n      [@0]: ipv4 via 10.255.0.4 GigabitEthernet7/0/0: mtu:1500 next:5 flags:[]\n```",
+      "revId": "a19cc151218c0ff6aa9cdca13c4ef5225b257eb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
