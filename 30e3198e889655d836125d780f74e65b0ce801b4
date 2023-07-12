@@ -135,6 +135,23 @@
       "message": "perftest-2n-clx mrrANDnic_*ANDdrv_rdma_coreAND1cAND78bANDethip6-ip6base",
       "revId": "30e3198e889655d836125d780f74e65b0ce801b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47c5626c_8719a920",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-07-12T07:55:30Z",
+      "side": 1,
+      "message": "Ok, no regression in ip6 this time.",
+      "revId": "30e3198e889655d836125d780f74e65b0ce801b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
