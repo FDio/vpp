@@ -126,7 +126,7 @@ main (int argc, char *argv[])
   char socket_path[108];
   int id = IF_ID;
 
-  strncpy (socket_path, SOCKET_PATH, strlen (SOCKET_PATH));
+  strncpy (socket_path, SOCKET_PATH, sizeof (SOCKET_PATH));
 
   /* prepare the private data */
   memset (&intf, 0, sizeof (intf));
@@ -219,6 +219,8 @@ main (int argc, char *argv[])
    */
   if (intf.buffer_size)
     memif_conn_args.buffer_size = intf.buffer_size;
+  else
+    intf.buffer_size = 2048;
 
   memif_conn_args.socket = memif_socket;
   memif_conn_args.interface_id = id;
