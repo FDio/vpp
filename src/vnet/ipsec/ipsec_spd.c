@@ -165,9 +165,6 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 	      pool_max_len (im->fp_ip6_lookup_hashes_pool))
 	    {
 	      clib_bihash_40_8_t *bihash_table;
-	      ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
-
-	      fp_spd->name6_out = format (0, "spd_%u_fp_ip6_out", spd_id);
 
 	      fp_spd->name6_out = format (0, "spd_%u_fp_ip6_out", spd_id);
 	      pool_get (im->fp_ip6_lookup_hashes_pool, bihash_table);
@@ -185,7 +182,6 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 	      pool_max_len (im->fp_ip6_lookup_hashes_pool))
 	    {
 	      clib_bihash_40_8_t *bihash_table;
-	      ipsec_spd_fp_t *fp_spd = &spd->fp_spd;
 
 	      fp_spd->name6_in = format (0, "spd_%u_fp_ip6_in", spd_id);
 	      pool_get (im->fp_ip6_lookup_hashes_pool, bihash_table);
