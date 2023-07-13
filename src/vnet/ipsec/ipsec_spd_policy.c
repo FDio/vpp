@@ -480,7 +480,7 @@ ipsec_fp_ip6_get_policy_mask (ipsec_policy_t *policy, ipsec_fp_5tuple_t *mask,
 
   if (*prmask++ & clib_host_to_net_u64 (0x1))
     {
-      *prmask = (*pladdr_start ^ *pladdr_stop);
+      *prmask = (*praddr_start ^ *praddr_stop);
       *prmask = clib_host_to_net_u64 (
 	mask_out_highest_set_bit_u64 (clib_net_to_host_u64 (*prmask)));
     }
