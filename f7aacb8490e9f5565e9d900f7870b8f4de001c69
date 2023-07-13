@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "165a8d79_ab5bd7b9",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-07-13T09:28:13Z",
+      "side": 1,
+      "message": "Why this?",
+      "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21c92835_f7320b11",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-07-13T09:28:13Z",
+      "side": 1,
+      "message": "Why this change? You can use ## in the macro to concat this prefix....",
+      "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
