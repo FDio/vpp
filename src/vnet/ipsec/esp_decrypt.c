@@ -845,6 +845,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       b->current_data = pd->current_data + adv - ip_hdr_sz;
       b->current_length += ip_hdr_sz - adv;
+      b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
       esp_remove_tail (vm, b, lb, tail);
 
       if (is_ip6)
@@ -878,6 +879,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next[0] = ESP_DECRYPT_NEXT_IP4_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if (next_header == IP_PROTOCOL_IPV6)
@@ -885,6 +887,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next[0] = ESP_DECRYPT_NEXT_IP6_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if (next_header == IP_PROTOCOL_MPLS_IN_IP)
@@ -892,6 +895,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next[0] = ESP_DECRYPT_NEXT_MPLS_INPUT;
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else if (is_tun && next_header == IP_PROTOCOL_GRE)
@@ -900,6 +904,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv - tail;
+	  b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
 	  gre = vlib_buffer_get_current (b);
 
@@ -929,6 +934,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  b->current_data = pd->current_data + adv;
 	  b->current_length = pd->current_length - adv;
+	  b->flags &= ~(VNET_BUFFER_F_L4_CHECKSUM_COMPUTED | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 	  esp_remove_tail (vm, b, lb, tail);
 	}
       else
