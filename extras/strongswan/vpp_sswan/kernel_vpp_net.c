@@ -159,18 +159,29 @@ manage_route (private_kernel_vpp_net_t *this, bool add, chunk_t dst,
   vl_api_fib_path_t *apath;
   bool exists = FALSE;
 
-  this->mutex->lock (this->mutex);
-  enumerator = this->ifaces->create_enumerator (this->ifaces);
-  while (enumerator->enumerate (enumerator, &entry))
+  for (int i = 0; i < N_RETRY_GET_IF; i++)
     {
-      if (streq (name, entry->if_name))
+      this->mutex->lock (this->mutex);
+      enumerator = this->ifaces->create_enumerator (this->ifaces);
+      while (enumerator->enumerate (enumerator, &entry))
 	{
-	  exists = TRUE;
-	  break;
+	  if (streq (name, entry->if_name))
+	    {
+	      exists = TRUE;
+	      break;
+	    }
 	}
+      enumerator->destroy (enumerator);
+      this->mutex->unlock (this->mutex);
+
+      if (!exists)
+	{
+	  DBG1 (DBG_NET, "if_name %s not found", name);
+	  sleep (1);
+	}
+      else
+	break;
     }
-  enumerator->destroy (enumerator);
-  this->mutex->unlock (this->mutex);
 
   if (!exists)
     {

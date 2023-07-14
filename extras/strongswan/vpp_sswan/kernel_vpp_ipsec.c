@@ -62,14 +62,6 @@
 
 #define PRIO_BASE 384
 
-/**
- * Every 2 seconds, the thread responsible for collecting the available
- * interfaces will be executed.
- * Retrying 5 times every 1 second ensures that there is enough time to check
- * if the interface will be available.
- */
-#define N_RETRY_GET_IF 5
-
 u32 natt_port;
 
 /**
