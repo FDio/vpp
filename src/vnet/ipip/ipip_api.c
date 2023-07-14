@@ -105,6 +105,22 @@ vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t * mp)
   REPLY_MACRO (VL_API_IPIP_DEL_TUNNEL_REPLY);
 }
 
+static vl_api_tunnel_mode_t
+ipip_tunnel_mode_encode (ipip_mode_t mode)
+{
+  switch (mode)
+    {
+    case IPIP_MODE_P2P:
+      return TUNNEL_API_MODE_P2P;
+    case IPIP_MODE_P2MP:
+      return TUNNEL_API_MODE_MP;
+    case IPIP_MODE_6RD:
+      return TUNNEL_API_MODE_P2P;
+    default:
+      return TUNNEL_API_MODE_P2P;
+    }
+}
+
 static void
 send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
 {
@@ -113,8 +129,8 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
   bool is_ipv6 = t->transport == IPIP_TRANSPORT_IP6 ? true : false;
   fib_table_t *ft;
 
-  ft = fib_table_get (t->fib_index, (is_ipv6 ? FIB_PROTOCOL_IP6 :
-				     FIB_PROTOCOL_IP4));
+  ft = fib_table_get (t->fib_index,
+		      (is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4));
 
   /* *INDENT-OFF* */
   REPLY_MACRO_DETAILS2(VL_API_IPIP_TUNNEL_DETAILS,
@@ -126,6 +142,7 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
     rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
     rmp->tunnel.dscp = ip_dscp_encode(t->dscp);
     rmp->tunnel.flags = tunnel_encap_decap_flags_encode(t->flags);
+    rmp->tunnel.mode = ipip_tunnel_mode_encode (t->mode);
   }));
     /* *INDENT-ON* */
 }
