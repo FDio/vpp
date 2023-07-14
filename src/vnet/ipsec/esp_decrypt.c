@@ -840,7 +840,9 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 adv = pd->iv_sz + esp_sz;
   u16 tail = sizeof (esp_footer_t) + pad_length + icv_sz;
   u16 tail_orig = sizeof (esp_footer_t) + pad_length + pd->icv_sz;
-  b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b->flags &=
+    ~(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
+      VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   if ((pd->flags & tun_flags) == 0 && !is_tun)	/* transport mode */
     {
