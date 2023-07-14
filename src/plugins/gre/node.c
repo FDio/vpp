@@ -21,6 +21,11 @@
 #include <vnet/mpls/mpls.h>
 #include <vppinfra/sparse_vec.h>
 
+#ifndef CLIB_MARCH_VARIANT
+__clib_export vlib_node_registration_t gre4_input_node;
+__clib_export vlib_node_registration_t gre6_input_node;
+#endif
+
 #define foreach_gre_input_next                                                \
   _ (PUNT, "error-punt")                                                      \
   _ (DROP, "error-drop")                                                      \

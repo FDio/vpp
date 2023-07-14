@@ -189,6 +189,7 @@ nsh_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   uword next_node;
   vlib_node_registration_t *vxlan4_input, *vxlan6_input;
+  vlib_node_registration_t *gre4_input, *gre6_input;
 
   /* Init the main structures from VPP */
   nm->vlib_main = vm;
@@ -240,15 +241,16 @@ nsh_init (vlib_main_t * vm)
   vlib_node_add_next (vm, vxlan6_gpe_input_node.index,
 		      nsh_aware_vnf_proxy_node.index);
 
-  vlib_node_add_next (vm, gre4_input_node.index, nm->nsh_input_node_index);
-  vlib_node_add_next (vm, gre4_input_node.index, nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, gre4_input_node.index,
-		      nsh_aware_vnf_proxy_node.index);
+  gre4_input = vlib_get_plugin_symbol ("gre_plugin.so", "gre4_input_node");
+  gre6_input = vlib_get_plugin_symbol ("gre_plugin.so", "gre6_input_node");
 
-  vlib_node_add_next (vm, gre6_input_node.index, nm->nsh_input_node_index);
-  vlib_node_add_next (vm, gre6_input_node.index, nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, gre6_input_node.index,
-		      nsh_aware_vnf_proxy_node.index);
+  vlib_node_add_next (vm, gre4_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, gre4_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, gre4_input->index, nsh_aware_vnf_proxy_node.index);
+
+  vlib_node_add_next (vm, gre6_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, gre6_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, gre6_input->index, nsh_aware_vnf_proxy_node.index);
 
   /* Add NSH-Proxy support */
   vxlan4_input =
