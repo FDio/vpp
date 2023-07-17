@@ -288,7 +288,11 @@ ldp_init (void)
   ldp_worker_ctx_t *ldpw;
   int rv;
 
-  ASSERT (!ldp->init);
+  if (ldp->init)
+    {
+      LDBG (0, "LDP is initialized already");
+      return 0;
+    }
 
   ldp_init_cfg ();
   ldp->init = 1;
