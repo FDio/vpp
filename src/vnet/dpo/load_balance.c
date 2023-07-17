@@ -643,7 +643,30 @@ load_balance_set_n_buckets (load_balance_t *lb,
 {
     ASSERT (n_buckets <= LB_MAX_BUCKETS);
     lb->lb_n_buckets = n_buckets;
-    lb->lb_n_buckets_minus_1 = n_buckets-1;
+    clib_atomic_store_seq_cst(& lb->lb_n_buckets_minus_1, n_buckets-1);
+}
+
+static dpo_id_t *
+copy_dpos (const dpo_id_t *src, u32 n, dpo_id_t *dst)
+{
+    u32 ii;
+
+    vec_resize(dst, n);
+
+    for (ii = 0; ii < n; ii++)
+        dpo_copy (&dst[ii], &src[ii]);
+
+    return (dst);
+}
+
+static void
+free_copies (dpo_id_t *copies)
+{
+    dpo_id_t *copy;
+
+    vec_foreach(copy, copies)
+        dpo_reset(copy);
+    vec_reset_length(copies);
 }
 
 void
@@ -657,11 +680,27 @@ load_balance_multipath_update (const dpo_id_t *dpo,
     load_balance_t *lb;
     dpo_id_t *tmp_dpo;
 
+    vlib_smp_unsafe_warning();
+
+    static dpo_id_t *copies = NULL;
     nhs = NULL;
 
     ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
     lb = load_balance_get(dpo->dpoi_index);
     lb->lb_flags = flags;
+
+    /*
+     * The make-before-break scheme has two elements.
+     *  1. an DPO object must not be deleted whilst a worker is using it.
+     *     This means that DPOs that the LB uses at this point, must not
+     *     be freed (i.e. a lock must remain held) until all workers are done
+     *  2. The dpo_id_t instance in the LB bucket cannot be reset whilst the
+     *     the worker is using it. This is a stricter insistence than the former.
+     *
+     * lock the DPOs that are currently in use
+     */
+    copies = copy_dpos (load_balance_get_buckets(lb), lb->lb_n_buckets, copies);
+
     fixed_nhs = load_balance_multipath_next_hop_fixup(raw_nhs, lb->lb_proto);
     n_buckets =
         ip_multipath_normalize_next_hops((NULL == fixed_nhs ?
@@ -722,6 +761,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                                       load_balance_get_buckets(lb),
                                       n_buckets, flags);
             lb->lb_map = lbmi;
+            vlib_worker_wait_one_loop();
         }
         else if (n_buckets > lb->lb_n_buckets)
         {
@@ -738,6 +778,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                  * from the inline storage to out-line. Alloc the outline buckets
                  * first, then fixup the number. then reset the inlines.
                  */
+                u32 old_n_buckets = lb->lb_n_buckets;
                 ASSERT(NULL == lb->lb_buckets);
                 vec_validate_aligned(lb->lb_buckets,
                                      n_buckets - 1,
@@ -746,12 +787,11 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                 load_balance_fill_buckets(lb, nhs,
                                           lb->lb_buckets,
                                           n_buckets, flags);
-                CLIB_MEMORY_BARRIER();
+                CLIB_MEMORY_STORE_BARRIER();
                 load_balance_set_n_buckets(lb, n_buckets);
 
-                CLIB_MEMORY_BARRIER();
-
-                for (ii = 0; ii < LB_NUM_INLINE_BUCKETS; ii++)
+                vlib_worker_wait_one_loop();
+                for (ii = 0; ii < old_n_buckets; ii++)
                 {
                     dpo_reset(&lb->lb_buckets_inline[ii]);
                 }
@@ -767,8 +807,8 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                     load_balance_fill_buckets(lb, nhs,
                                               load_balance_get_buckets(lb),
                                               n_buckets, flags);
-                    CLIB_MEMORY_BARRIER();
                     load_balance_set_n_buckets(lb, n_buckets);
+                    vlib_worker_wait_one_loop();
                 }
                 else
                 {
@@ -776,23 +816,30 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                      * we are not crossing the threshold. We need a new bucket array to
                      * hold the increased number of choices.
                      */
-                    dpo_id_t *new_buckets, *old_buckets, *tmp_dpo;
+                    dpo_id_t *new_buckets = NULL, *old_buckets;
 
-                    new_buckets = NULL;
-                    old_buckets = load_balance_get_buckets(lb);
-
+                    old_buckets = lb->lb_buckets;
                     vec_validate_aligned(new_buckets,
                                          n_buckets - 1,
                                          CLIB_CACHE_LINE_BYTES);
 
                     load_balance_fill_buckets(lb, nhs, new_buckets,
                                               n_buckets, flags);
-                    CLIB_MEMORY_BARRIER();
-                    lb->lb_buckets = new_buckets;
-                    CLIB_MEMORY_BARRIER();
+
+                    /*
+                     * Swap the LB to the new set of buckets and ensure
+                     * all threads see that update before changing the number
+                     * of buckets.
+                     */
+                    clib_atomic_store_seq_cst(&lb->lb_buckets, new_buckets);
+                    CLIB_MEMORY_STORE_BARRIER();
+
+                    // vlib_worker_wait_one_loop();
+
                     load_balance_set_n_buckets(lb, n_buckets);
 
-                    vec_foreach(tmp_dpo, old_buckets)
+                    vlib_worker_wait_one_loop();
+                    vec_foreach (tmp_dpo, old_buckets)
                     {
                         dpo_reset(tmp_dpo);
                     }
@@ -813,9 +860,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
              * larger number of buckets, so will be translating to indices
              * out of range. So the new MAP must be installed first.
              */
-            lb->lb_map = lbmi;
-            CLIB_MEMORY_BARRIER();
-
+            clib_atomic_store_seq_cst(&lb->lb_map, lbmi);
 
             if (n_buckets <= LB_NUM_INLINE_BUCKETS &&
                 lb->lb_n_buckets > LB_NUM_INLINE_BUCKETS)
@@ -831,10 +876,13 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                 load_balance_fill_buckets(lb, nhs,
                                           lb->lb_buckets_inline,
                                           n_buckets, flags);
-                CLIB_MEMORY_BARRIER();
-                load_balance_set_n_buckets(lb, n_buckets);
-                CLIB_MEMORY_BARRIER();
 
+                /* ensure all threads see the updated buckets */
+                CLIB_MEMORY_STORE_BARRIER();
+
+                load_balance_set_n_buckets(lb, n_buckets);
+
+                vlib_worker_wait_one_loop();
                 vec_foreach(tmp_dpo, lb->lb_buckets)
                 {
                     dpo_reset(tmp_dpo);
@@ -856,11 +904,13 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                 buckets = load_balance_get_buckets(lb);
 
                 load_balance_set_n_buckets(lb, n_buckets);
-                CLIB_MEMORY_BARRIER();
+                CLIB_MEMORY_STORE_BARRIER();
 
                 load_balance_fill_buckets(lb, nhs, buckets,
                                           n_buckets, flags);
 
+                /* those no longer used */
+                vlib_worker_wait_one_loop();
                 for (ii = n_buckets; ii < old_n_buckets; ii++)
                 {
                     dpo_reset(&buckets[ii]);
@@ -869,6 +919,11 @@ load_balance_multipath_update (const dpo_id_t *dpo,
         }
     }
 
+    /*
+     * Each of the cases above, should have performed the
+     * wait one loop
+     */
+    free_copies(copies);
     vec_foreach (nh, nhs)
     {
         dpo_reset(&nh->path_dpo);
