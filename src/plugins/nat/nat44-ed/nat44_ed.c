@@ -502,7 +502,8 @@ nat44_ed_add_del_sm_fib_reg_entries (u32 sw_if_index, u8 is_add)
 }
 
 int
-nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
+nat44_ed_add_address_sw_if_index (ip4_address_t *addr, u32 vrf_id,
+				  u8 twice_nat, u32 sw_if_index)
 {
   snat_main_t *sm = &snat_main;
   snat_address_t *ap, *addresses;
@@ -536,6 +537,7 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
   ap->addr_len = ~0;
   ap->fib_index = ~0;
   ap->addr = *addr;
+  ap->sw_if_index = sw_if_index;
 
   if (vrf_id != ~0)
     {
@@ -551,6 +553,12 @@ nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
       nat44_ed_update_outside_if_addresses (ap);
     }
   return 0;
+}
+
+int
+nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat)
+{
+  return nat44_ed_add_address_sw_if_index (addr, vrf_id, twice_nat, 0);
 }
 
 int
@@ -3520,7 +3528,8 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	  return;
 	}
 
-      rv = nat44_ed_add_address (address, ~0, arp->is_twice_nat);
+      rv = nat44_ed_add_address_sw_if_index (address, ~0, arp->is_twice_nat,
+					     sw_if_index);
       if (0 == rv)
 	{
 	  arp->is_resolved = 1;

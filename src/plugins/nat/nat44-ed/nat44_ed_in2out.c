@@ -185,7 +185,14 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 		}
 	      else if (a->fib_index == ~0)
 		{
-		  ba = a;
+		  if (a->sw_if_index == tx_sw_if_index)
+		    {
+		      ja = a;
+		    }
+		  else
+		    {
+		      ba = a;
+		    }
 		}
 	    }
 	  for (i = 0; i < s_addr_offset; ++i)
@@ -320,7 +327,7 @@ get_vrf_table_by_fib (u32 fib_index)
 }
 
 static_always_inline u32
-get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr)
+get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr, u32 *p_tx_sw_if_index)
 {
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {
@@ -347,6 +354,24 @@ get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr)
 	    {
 	      tx_fib_index = r->fib_index;
 	      break;
+	    }
+	}
+      if (pool_elts (t->routes) == 0)
+	{
+	  /* lookup the route in receiving fib index  and use the resolving fib
+	   * as the tx fib */
+	  fei = fib_table_lookup (rx_fib_index, &pfx);
+	  if ((FIB_NODE_INDEX_INVALID != fei) &&
+	      (~0 != fib_entry_get_resolving_interface (fei)))
+	    {
+	      u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+	      u32 table_id = fib_table_get_table_id_for_sw_if_index (
+		FIB_PROTOCOL_IP4, sw_if_index);
+	      tx_fib_index = ip4_fib_index_from_table_id (table_id);
+	      if (p_tx_sw_if_index)
+		{
+		  *p_tx_sw_if_index = sw_if_index;
+		}
 	    }
 	}
     }
@@ -394,6 +419,16 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
       pool_foreach (r, t->routes)
 	{
 	  fei = fib_table_lookup (r->fib_index, &pfx);
+	  if ((FIB_NODE_INDEX_INVALID != fei) &&
+	      (~0 != (ii = fib_entry_get_resolving_interface (fei))))
+	    {
+	      return 1;
+	    }
+	}
+      if (pool_elts (t->routes) == 0)
+	{
+	  // no managed vrf routes - attempt to use the route within the vrf
+	  fei = fib_table_lookup (rx_fib_index, &pfx);
 	  if ((FIB_NODE_INDEX_INVALID != fei) &&
 	      (~0 != (ii = fib_entry_get_resolving_interface (fei))))
 	    {
@@ -488,7 +523,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   s = nat_ed_session_alloc (sm, thread_index, now, proto);
   ASSERT (s);
 
-  tx_fib_index = get_tx_fib_index (rx_fib_index, r_addr);
+  tx_fib_index = get_tx_fib_index (rx_fib_index, r_addr, &tx_sw_if_index);
 
   if (!is_sm)
     {
@@ -923,7 +958,7 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
       return 0;
     }
 
-  tx_fib_index = get_tx_fib_index (rx_fib_index, ip->dst_address);
+  tx_fib_index = get_tx_fib_index (rx_fib_index, ip->dst_address, 0);
 
   // Try to find static mapping first
   m = nat44_ed_sm_i2o_lookup (sm, ip->src_address, 0, rx_fib_index,
