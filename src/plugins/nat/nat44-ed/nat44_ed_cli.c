@@ -612,11 +612,13 @@ nat44_show_addresses_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   snat_main_t *sm = &snat_main;
   snat_address_t *ap;
+  vnet_main_t *vnm = vnet_get_main ();
 
   vlib_cli_output (vm, "NAT44 pool addresses:");
   vec_foreach (ap, sm->addresses)
     {
-      vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);
+      vlib_cli_output (vm, "%U - intf %U", format_ip4_address, &ap->addr,
+		       format_vnet_sw_if_index_name, vnm, ap->sw_if_index);
       if (ap->fib_index != ~0)
 	vlib_cli_output (
 	  vm, "  tenant VRF: %u",
