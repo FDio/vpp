@@ -349,6 +349,20 @@ get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr)
 	      break;
 	    }
 	}
+      if (pool_elts (t->routes) == 0)
+	{
+	  /* lookup the route in receiving fib index  and use the resolving fib
+	   * as the tx fib */
+	  fei = fib_table_lookup (rx_fib_index, &pfx);
+	  if ((FIB_NODE_INDEX_INVALID != fei) &&
+	      (~0 != fib_entry_get_resolving_interface (fei)))
+	    {
+	      u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+	      u32 table_id = fib_table_get_table_id_for_sw_if_index (
+		FIB_PROTOCOL_IP4, sw_if_index);
+	      tx_fib_index = ip4_fib_index_from_table_id (table_id);
+	    }
+	}
     }
   else
     {
@@ -394,6 +408,16 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
       pool_foreach (r, t->routes)
 	{
 	  fei = fib_table_lookup (r->fib_index, &pfx);
+	  if ((FIB_NODE_INDEX_INVALID != fei) &&
+	      (~0 != (ii = fib_entry_get_resolving_interface (fei))))
+	    {
+	      return 1;
+	    }
+	}
+      if (pool_elts (t->routes) == 0)
+	{
+	  // no managed vrf routes - attempt to use the route within the vrf
+	  fei = fib_table_lookup (rx_fib_index, &pfx);
 	  if ((FIB_NODE_INDEX_INVALID != fei) &&
 	      (~0 != (ii = fib_entry_get_resolving_interface (fei))))
 	    {
@@ -523,7 +547,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
+	    sm, tx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
 	    r_addr, tsm->snat_thread_index, s, &outside_addr, &outside_port))
 	{
 	  nat_elog_notice (sm, "addresses exhausted");

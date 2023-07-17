@@ -3520,7 +3520,10 @@ nat44_ed_add_del_interface_address_cb (ip4_main_t *im, uword opaque,
 	  return;
 	}
 
-      rv = nat44_ed_add_address (address, ~0, arp->is_twice_nat);
+      u32 table_id =
+	fib_table_get_table_id_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
+
+      rv = nat44_ed_add_address (address, table_id, arp->is_twice_nat);
       if (0 == rv)
 	{
 	  arp->is_resolved = 1;
