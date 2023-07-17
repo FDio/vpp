@@ -355,6 +355,18 @@ get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr)
       // default to configured fib
       tx_fib_index = sm->outside_fib_index;
 
+      /* lookup the route in receiving fib index */
+      fei = fib_table_lookup (rx_fib_index, &pfx);
+      if ((FIB_NODE_INDEX_INVALID != fei) &&
+	  (~0 != fib_entry_get_resolving_interface (fei)))
+	{
+	  u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+	  u32 table_id = fib_table_get_table_id_for_sw_if_index (
+	    FIB_PROTOCOL_IP4, sw_if_index);
+	  tx_fib_index = ip4_fib_index_from_table_id (table_id);
+	  return tx_fib_index;
+	}
+
       // default routes to other fibs
       nat_fib_t *f;
       vec_foreach (f, sm->outside_fibs)
@@ -364,7 +376,7 @@ get_tx_fib_index (u32 rx_fib_index, ip4_address_t addr)
 	      (~0 != fib_entry_get_resolving_interface (fei)))
 	    {
 	      tx_fib_index = f->fib_index;
-	      break;
+	      return tx_fib_index;
 	    }
 	}
     }
@@ -523,7 +535,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
+	    sm, tx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
 	    r_addr, tsm->snat_thread_index, s, &outside_addr, &outside_port))
 	{
 	  nat_elog_notice (sm, "addresses exhausted");
