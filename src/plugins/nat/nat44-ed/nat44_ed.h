@@ -842,6 +842,8 @@ int nat44_ed_add_output_interface (u32 sw_if_index);
 int nat44_ed_del_output_interface (u32 sw_if_index);
 
 int nat44_ed_add_address (ip4_address_t *addr, u32 vrf_id, u8 twice_nat);
+int nat44_ed_add_address_sw_if_index (ip4_address_t *addr, u32 vrf_id,
+				      u8 twice_nat, u32 sw_if_index);
 int nat44_ed_del_address (ip4_address_t addr, u8 twice_nat);
 int nat44_ed_add_interface_address (u32 sw_if_index, u8 twice_nat);
 int nat44_ed_del_interface_address (u32 sw_if_index, u8 twice_nat);
