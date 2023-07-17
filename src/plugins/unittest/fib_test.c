@@ -88,11 +88,45 @@ typedef struct test_main_t_ {
 } test_main_t;
 static test_main_t test_main;
 
-/* fake ethernet device class, distinct from "fake-ethX" */
-static u8 * format_test_interface_name (u8 * s, va_list * args)
+static int
+fib_test_mk_one_intf (u32 i)
 {
-  u32 dev_instance = va_arg (*args, u32);
-  return format (s, "test-eth%d", dev_instance);
+    clib_error_t * error = NULL;
+    test_main_t *tm = &test_main;
+    int res = 0;
+
+    vlib_worker_thread_barrier_sync(vlib_get_main());
+    tm->pg_ids[i] = pg_interface_add_or_get(&pg_main, i, 0, 0, 0,
+                                            PG_MODE_ETHERNET);
+    tm->hw[i] = pool_elt_at_index(pg_main.interfaces, tm->pg_ids[i]);
+
+    error = vnet_hw_interface_set_flags(vnet_get_main(),
+                                        tm->hw[i]->hw_if_index,
+                                        VNET_HW_INTERFACE_FLAG_LINK_UP);
+    FIB_TEST((NULL == error), "LINK UP interface %d", i);
+
+    error = vnet_sw_interface_set_flags(vnet_get_main(),
+                                        tm->hw[i]->sw_if_index,
+                                        VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+    FIB_TEST((NULL == error), "ADMIN UP interface %d", i);
+
+    ip4_sw_interface_enable_disable (tm->hw[i]->sw_if_index, 1);
+    ip6_sw_interface_enable_disable (tm->hw[i]->sw_if_index, 1);
+    vlib_worker_thread_barrier_release(vlib_get_main());
+
+    return (res);
+}
+
+static void
+fib_test_del_one_intf (u32 i)
+{
+    test_main_t *tm = &test_main;
+
+    vlib_worker_thread_barrier_sync(vlib_get_main());
+    ip4_sw_interface_enable_disable (tm->hw[i]->sw_if_index, 0);
+    ip6_sw_interface_enable_disable (tm->hw[i]->sw_if_index, 0);
+    pg_interface_delete(&pg_main, i);
+    vlib_worker_thread_barrier_release(vlib_get_main());
 }
 
 static uword placeholder_interface_tx (vlib_main_t * vm,
@@ -126,7 +160,6 @@ static u8 *hw_address;
 static int
 fib_test_mk_intf (u32 ninterfaces)
 {
-    clib_error_t * error = NULL;
     test_main_t *tm = &test_main;
     u32 i, res;
     u8 byte;
@@ -168,8 +201,7 @@ fib_test_mk_intf (u32 ninterfaces)
      */
     for (i = 0; i < ninterfaces; i++)
     {
-        tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
-                                          tm->hw_if_indicies[i]);
+        tm->hw[i] = pool_elt_at_index(pg_main.interfaces, tm->pg_ids[i]);
     }
 
     return (res);
@@ -1725,7 +1757,7 @@ fib_test_v4 (void)
             .ip4.as_u32 = clib_host_to_net_u32(0x01020305),
         },
     };
-    fib_table_entry_path_add(fib_index,
+    fei = fib_table_entry_path_add(fib_index,
                              &pfx_1_2_3_5_s_32,
                              FIB_SOURCE_API,
                              FIB_ENTRY_FLAG_NONE,
@@ -1735,7 +1767,7 @@ fib_test_v4 (void)
                              ~0,
                              1,
                              NULL,
-                             FIB_ROUTE_PATH_FLAG_NONE);
+                                   FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_entry_path_add(fib_index,
                                    &pfx_1_2_3_5_s_32,
                                    FIB_SOURCE_API,
@@ -5168,7 +5200,7 @@ fib_test_v6 (void)
      * not remove interfaces through which routes resolve, but
      * such things can happen. ALL affected routes will drop.
      */
-    vnet_delete_hw_interface(vnet_get_main(), tm->hw_if_indicies[0]);
+    fib_test_del_one_intf(0);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
     FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
@@ -10809,11 +10841,742 @@ fib_test_sticky (void)
     return 0;
 }
 
+static u64
+get_interface_tx_pkt_ctr (u32 sw_if_index)
+{
+    vnet_interface_main_t *im = &vnet_get_main()->interface_main;
+    vlib_combined_counter_main_t *cm =  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
+    vlib_counter_t ctr;
+
+    vlib_get_combined_counter (cm, sw_if_index, &ctr);
+
+    return (ctr.packets);
+}
+
+static void
+clear_interface_ctr (void)
+{
+    vnet_interface_main_t *im = &vnet_get_main()->interface_main;
+    vlib_combined_counter_main_t *cm;
+
+    int j, n_counters;
+
+    n_counters = vec_len (im->combined_sw_if_counters);
+
+    for (j = 0; j < n_counters; j++)
+    {
+        cm = im->combined_sw_if_counters + j;
+        vlib_clear_combined_counters (cm);
+    }
+}
+
+static_always_inline void
+compute_checksum (vlib_main_t * vm,
+                  u32 * packets,
+                  u32 n_packets,
+                  u32 ip_header_offset)
+{
+  while (n_packets >= 2)
+    {
+      u32 pi0, pi1;
+      vlib_buffer_t *p0, *p1;
+      ip4_header_t *ip0, *ip1;
+      ip_csum_t sum0, sum1;
+
+      pi0 = packets[0];
+      pi1 = packets[1];
+      p0 = vlib_get_buffer (vm, pi0);
+      p1 = vlib_get_buffer (vm, pi1);
+      n_packets -= 2;
+      packets += 2;
+
+      ip0 = (void *) (p0->data + ip_header_offset);
+      ip1 = (void *) (p1->data + ip_header_offset);
+
+      ASSERT (ip4_header_bytes (ip0) == sizeof (ip0[0]));
+      ASSERT (ip4_header_bytes (ip1) == sizeof (ip1[0]));
+
+      ip0->checksum = 0;
+      ip1->checksum = 0;
+
+      ip4_partial_header_checksum_x2 (ip0, ip1, sum0, sum1);
+      ip0->checksum = ~ip_csum_fold (sum0);
+      ip1->checksum = ~ip_csum_fold (sum1);
+
+      ASSERT (ip4_header_checksum_is_valid (ip0));
+      ASSERT (ip4_header_checksum_is_valid (ip1));
+    }
+
+  while (n_packets >= 1)
+    {
+      u32 pi0;
+      vlib_buffer_t *p0;
+      ip4_header_t *ip0;
+      ip_csum_t sum0;
+
+      pi0 = packets[0];
+      p0 = vlib_get_buffer (vm, pi0);
+      n_packets -= 1;
+      packets += 1;
+
+      ip0 = (void *) (p0->data + ip_header_offset);
+
+      ASSERT (ip4_header_bytes (ip0) == sizeof (ip0[0]));
+
+      ip0->checksum = 0;
+
+      ip4_partial_header_checksum_x1 (ip0, sum0);
+      ip0->checksum = ~ip_csum_fold (sum0);
+
+      ASSERT (ip4_header_checksum_is_valid (ip0));
+    }
+}
+
+static void
+ip4_header_edit_function (pg_main_t * pg,
+                          pg_stream_t * s,
+                          pg_edit_group_t * g,
+                          u32 * packets,
+                          u32 n_packets)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u32 ip_offset;
+
+  ip_offset = g->start_byte_offset + g->edit_function_opaque;
+
+  compute_checksum (vm, packets, n_packets, ip_offset);
+}
+
+#define PUSH_HDR(_v, _p)                        \
+{                                               \
+    u32 _n = sizeof(_p);                        \
+    u32 _l = vec_len(_v);                       \
+    vec_resize(_v, _l + _n);                    \
+    clib_memcpy(_v + _l, &_p, _n);              \
+}
+
+
+static void
+build_stream_ip4 (pg_stream_t *template,
+                  const ip4_address_t *dst,
+                  u32 label)
+{
+    u32 max_len = pg_edit_group_n_bytes (template, 0);
+    u32 len, gi, offset, ip_hdr_offset = 0;
+    u8 *hex1 = NULL, *hex2 = NULL;
+
+    ip4_header_t ip4 = {
+        .ip_version_and_header_length = 0x45,
+        .protocol = 0x11,
+        .length = clib_host_to_net_u16(64),
+        .ttl = 63,
+        .dst_address = *dst,
+    };
+    udp_header_t udp = {
+        .src_port = 0xa,
+        .dst_port = 0xa,
+    };
+    mpls_unicast_header_t mpls_hdr = {
+        0
+    };
+
+    vnet_mpls_uc_set_label(&mpls_hdr.label_exp_s_ttl, label);
+    vnet_mpls_uc_set_ttl(&mpls_hdr.label_exp_s_ttl, 64);
+    vnet_mpls_uc_set_s(&mpls_hdr.label_exp_s_ttl, 1);
+    mpls_hdr.label_exp_s_ttl = clib_host_to_net_u32 (mpls_hdr.label_exp_s_ttl);
+
+    if (label) {
+        ip_hdr_offset = sizeof(mpls_hdr);
+        PUSH_HDR(hex1, mpls_hdr);
+    }
+    PUSH_HDR(hex1, ip4);
+    PUSH_HDR(hex1, udp);
+
+    if (max_len >= template->max_packet_bytes)
+        /* no payload */
+        len = 0;
+    else
+        /* make a bigger v to hold the data */
+        len = template->max_packet_bytes - max_len;
+
+    vec_resize(hex1, len);
+    vec_resize(hex2, len);
+
+    offset = STRUCT_OFFSET_OF(ip4_header_t, src_address) + ip_hdr_offset;
+
+    pg_edit_t *e = pg_create_edit_group(template, sizeof (e[0]), offset, &gi);
+
+    // fixed fields: upto the src_address
+    e->type = PG_EDIT_FIXED;
+    e->n_bits = offset * 8;
+    e->lsb_bit_offset = e->n_bits - 8;
+    e->values[PG_EDIT_LO] = hex1;
+
+    e = pg_add_edits (template, sizeof(*e), sizeof(ip4_address_t), gi);
+
+    e->type = PG_EDIT_INCREMENT;
+    e->n_bits = BITS (ip4_address_t);
+    e->lsb_bit_offset = (8 * (offset-1)) + e->n_bits;
+    vec_validate_init_empty(e->values[PG_EDIT_LO], 4, 0);
+    vec_validate_init_empty(e->values[PG_EDIT_HI], 4, 0xff);
+
+    offset = STRUCT_OFFSET_OF(ip4_header_t, dst_address) + ip_hdr_offset;
+    e = pg_add_edits (template, sizeof(*e), len - offset, gi);
+    e->type = PG_EDIT_FIXED;
+    e->n_bits = (len - offset) * 8;
+    e->lsb_bit_offset = 8 * (len - 1);
+    clib_memcpy(hex2, hex1 + offset, len - offset);
+    e->values[PG_EDIT_LO] = hex2;
+
+    pg_edit_group_t *g = pg_stream_get_group (template, gi);
+    g->edit_function = ip4_header_edit_function;
+    g->edit_function_opaque = ip_hdr_offset;
+}
+
+static void
+build_stream_ip6 (pg_stream_t *template,
+                  const ip6_address_t *dst,
+                  u32 label)
+{
+    u32 max_len = pg_edit_group_n_bytes (template, 0);
+    u32 len, gi, offset, ip_hdr_offset = 0;
+    u8 *hex1 = NULL, *hex2 = NULL;
+
+    ip6_header_t ip6 = {
+        .ip_version_traffic_class_and_flow_label = 0x60,
+        .protocol = 0x11,
+        .payload_length = clib_host_to_net_u16(64 - sizeof(ip6_header_t)),
+        .hop_limit = 63,
+        .dst_address = *dst,
+    };
+    udp_header_t udp = {
+        .src_port = 0xa,
+        .dst_port = 0xa,
+    };
+    mpls_unicast_header_t mpls_hdr = {
+        0
+    };
+
+    vnet_mpls_uc_set_label(&mpls_hdr.label_exp_s_ttl, label);
+    vnet_mpls_uc_set_ttl(&mpls_hdr.label_exp_s_ttl, 64);
+    vnet_mpls_uc_set_s(&mpls_hdr.label_exp_s_ttl, 1);
+    mpls_hdr.label_exp_s_ttl = clib_host_to_net_u32 (mpls_hdr.label_exp_s_ttl);
+
+    if (label) {
+        ip_hdr_offset = sizeof(mpls_hdr);
+        PUSH_HDR(hex1, mpls_hdr);
+    }
+    PUSH_HDR(hex1, ip6);
+    PUSH_HDR(hex1, udp);
+
+    if (max_len >= template->max_packet_bytes)
+        /* no payload */
+        len = 0;
+    else
+        /* make a bigger v to hold the data */
+        len = template->max_packet_bytes - max_len;
+
+    vec_resize(hex1, len);
+    vec_resize(hex2, len);
+
+    // we can only increment a u64, so use the bottom u64 of the address
+    offset = STRUCT_OFFSET_OF(ip6_header_t, src_address) + ip_hdr_offset + 8;
+
+    pg_edit_t *e = pg_create_edit_group(template, sizeof (e[0]), offset, &gi);
+
+    e->type = PG_EDIT_FIXED;
+    e->n_bits = offset * 8;
+    e->lsb_bit_offset = e->n_bits - 8;
+    e->values[PG_EDIT_LO] = hex1;
+
+    e = pg_add_edits (template, sizeof(*e), sizeof(u64), gi);
+
+    e->type = PG_EDIT_INCREMENT;
+    e->n_bits = BITS (ip6_address_t) / 2;
+    e->lsb_bit_offset = (8 * (offset-1)) + e->n_bits;
+    vec_validate_init_empty(e->values[PG_EDIT_LO], sizeof(u64), 0);
+    vec_validate_init_empty(e->values[PG_EDIT_HI], sizeof(u64), 0xff);
+
+    offset = STRUCT_OFFSET_OF(ip6_header_t, dst_address) + ip_hdr_offset;
+    e = pg_add_edits (template, sizeof(*e), len - offset, gi);
+    e->type = PG_EDIT_FIXED;
+    e->n_bits = (len - offset) * 8;
+    e->lsb_bit_offset = 8 * (len - 1);
+    clib_memcpy(hex2, hex1 + offset, len - offset);
+    e->values[PG_EDIT_LO] = hex2;
+}
+
+static pg_stream_t *
+start_stream (pg_stream_t *template, const ip_address_t *dst, u32 label)
+{
+    pg_stream_t *s;
+
+    clear_interface_ctr();
+    if (AF_IP4 == dst->version)
+        build_stream_ip4(template, &dst->ip.ip4, label);
+    else
+        build_stream_ip6(template, &dst->ip.ip6, label);
+    s = pg_stream_add(&pg_main, template);
+    pg_stream_enable_disable(&pg_main, s, 1);
+    template->edit_groups = NULL;
+
+    return (s);
+}
+
+static void
+stop_stream (pg_stream_t *s)
+{
+    pg_stream_enable_disable(&pg_main, s, 0);
+    pg_stream_del(&pg_main, s - pg_main.streams);
+}
+
+static int
+print_result (pg_stream_t *s, u64 *n_updates)
+{
+    test_main_t *tm = &test_main;
+    int res = 0;
+
+    vlib_worker_wait_one_loop();
+    u64 lost = s->n_packets_generated -
+        get_interface_tx_pkt_ctr(tm->hw[1]->sw_if_index);
+    clib_warning("updates: %llu, packets: tx:%llu, rx:%llu dropped:%lld (%.2f%%)",
+                 *n_updates, s->n_packets_generated,
+                 get_interface_tx_pkt_ctr(tm->hw[1]->sw_if_index),
+                 lost, 100 * (((f64) lost) / s->n_packets_generated));
+    *n_updates = 0;
+
+    FIB_TEST(s->n_packets_generated ==
+             get_interface_tx_pkt_ctr(tm->hw[1]->sw_if_index),
+             "dropped");
+    stop_stream(s);
+
+    return res;
+}
+
+/* suck in the MPLS-FIB test code */
+extern void test_mpls_fib_set_default (u32 label,
+                                       mpls_eos_bit_t eos);
+
+/**
+ * To start in gdb:
+ *  run unix interactive plugins { plugin unittest_plugin.so { enable } plugin dpdk_plugin.so { disable } } cpu { main-core 0 corelist-workers 1 }
+ */
+static int
+fib_test_traffic (vlib_main_t * vm, u64 n_packets)
+{
+    test_main_t *tm = &test_main;
+    clib_error_t *error;
+    u64 n_updates = 0;
+    int res = 0, i;
+    index_t fei;
+
+    mpls_table_create (0, 1, format(NULL, ""));
+
+    /*
+     * re-eval after the inevitable realloc
+     */
+    for (i = 0; i < ARRAY_LEN(tm->hw); i++)
+    {
+        ip4_address_t ip4 = {
+            .as_u32 = clib_host_to_net_u32 (0x0a0a0a01 + (i << 8)),
+        };
+        error = ip4_add_del_interface_address (vlib_get_main(),
+                                               tm->hw[i]->sw_if_index,
+                                               &ip4, 24, 0);
+        FIB_TEST((NULL == error), "interface %d prefix add", i);
+
+        mpls_sw_interface_enable_disable (&mpls_main,
+                                          tm->hw[i]->sw_if_index,
+                                          1);
+    }
+
+    pg_stream_t *s, template = {
+        .max_packet_bytes = 64,
+        .min_packet_bytes = 64,
+        .buffer_bytes = vlib_buffer_get_default_data_size (vm),
+        .n_max_frame = VLIB_FRAME_SIZE,
+        .if_id = tm->hw[0]->id,
+        .name = format(NULL, "test0"),
+        .worker_index = 0,
+        .node_index = vlib_get_node_by_name(vm, (u8*) "ip4-input")->index,
+        .n_packets_limit = n_packets,
+        .sw_if_index = {
+            [VLIB_RX] = tm->hw[0]->sw_if_index,
+        },
+    };
+
+    #define N_NBRS 6
+    fib_route_path_t rpaths[N_NBRS] = { 0 };
+    ip_address_t nbrs[N_NBRS] = { 0 };
+    adj_index_t ais[N_NBRS];
+
+    const mac_address_t mac = {
+        .bytes = {0,1,2,3,4,5},
+    };
+    for (i = 0; i < N_NBRS; i++) {
+        nbrs[i].ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a0a0a02 + i);
+        nbrs[i].version = AF_IP4;
+
+        FIB_TEST(0 == ip_neighbor_add (&nbrs[i], &mac, tm->hw[1]->sw_if_index,
+                                       IP_NEIGHBOR_FLAG_STATIC, NULL),
+                 "IP neighbour %d add failed", i);
+
+        rpaths[i].frp_proto = DPO_PROTO_IP4;
+        rpaths[i].frp_addr = nbrs[i].ip;
+        rpaths[i].frp_sw_if_index = tm->hw[1]->sw_if_index;
+        rpaths[i].frp_weight = 1;
+        rpaths[i].frp_fib_index = ~0;
+
+        /*
+         * create the MPLS adj for the peers, so that using
+         * it doesn't require it to be created, and made complete each time.
+         * making an adj complete requires a child walk and stacks children on a drop
+         * each time.
+         */
+        ais[i] = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                     VNET_LINK_MPLS,
+                                     &nbrs[i].ip,
+                                     tm->hw[1]->sw_if_index);
+    }
+
+
+    const ip_address_t a_1_1_1_1 = {
+        .ip.ip4.as_u32 = clib_host_to_net_u32 (0x01010101),
+        .version = AF_IP4,
+    };
+    const fib_prefix_t p_1_1_1_1_s_32 = {
+        .fp_addr.ip4 = a_1_1_1_1.ip.ip4,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_len = 32,
+    };
+    const fib_prefix_t p_1_1_1_0_s_24 = {
+        .fp_addr.ip4.as_u32 = clib_host_to_net_u32 (0x01010100),
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_len = 24,
+    };
+    const ip_address_t a_1_1 = {
+        .ip.ip6.as_u64 = {
+            [0] = clib_host_to_net_u64 (0x0001000000000000),
+            [1] = clib_host_to_net_u64 (0x0000000000000001),
+        },
+        .version = AF_IP6,
+    };
+    const fib_prefix_t p_1_1_s_128 = {
+        .fp_addr.ip6 = a_1_1.ip.ip6,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_len = 128,
+    };
+    const fib_prefix_t p_1_s_64 = {
+        .fp_addr.ip6.as_u64 = {
+            [0] = clib_host_to_net_u64 (0x0001000000000000),
+        },
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_len = 64,
+    };
+    fib_mpls_label_t *l999 = NULL, fml_999 = {
+        .fml_value = 999,
+    };
+    vec_add1(l999, fml_999);
+    fib_route_path_t *r_paths1 , *r_paths2 , *r_paths3, *r_paths5, *r_paths6 ;
+
+    r_paths1 = r_paths2 = r_paths3 = r_paths5 = r_paths6 = NULL;
+
+    vec_add1(r_paths1, rpaths[0]);
+    vec_add1(r_paths2, rpaths[0]);
+    vec_add1(r_paths2, rpaths[1]);
+    vec_add1(r_paths3, rpaths[2]);
+    vec_add1(r_paths3, rpaths[3]);
+    vec_add1(r_paths5, rpaths[0]);
+    vec_add1(r_paths5, rpaths[1]);
+    vec_add1(r_paths5, rpaths[2]);
+    vec_add1(r_paths5, rpaths[3]);
+    vec_add1(r_paths5, rpaths[4]);
+    vec_add1(r_paths6, rpaths[0]);
+    vec_add1(r_paths6, rpaths[1]);
+    vec_add1(r_paths6, rpaths[2]);
+    vec_add1(r_paths6, rpaths[3]);
+    vec_add1(r_paths6, rpaths[4]);
+    vec_add1(r_paths6, rpaths[5]);
+
+    /* covering v4 and v6 prefix */
+    fib_table_entry_update(0,
+                           &p_1_1_1_0_s_24,
+                           FIB_SOURCE_API,
+                           FIB_ENTRY_FLAG_NONE,
+                           r_paths1);
+    fib_table_entry_update(0,
+                           &p_1_s_64,
+                           FIB_SOURCE_API,
+                           FIB_ENTRY_FLAG_NONE,
+                           r_paths1);
+
+    /* Add a route for the streams destination via pg1 */
+    fei = fib_table_entry_update(0,
+                                 &p_1_1_1_1_s_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths1);
+
+    s = start_stream(&template, &a_1_1_1_1, 0);
+
+    clib_warning("1 -> 2 -> 2 -> 1 -> 6 (64) -> 5 (16) -> 6 paths (buckets)");
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths2);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths3);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths6);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths5);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths6);
+        fib_table_entry_delete(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API);
+        n_updates += 7;
+    }
+
+    print_result(s, &n_updates);
+    fei = fib_table_entry_update(0,
+                                 &p_1_1_1_1_s_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths1);
+
+    s = start_stream(&template, &a_1_1_1_1, 0);
+    clib_warning("IPv4: less <-> more specific");
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        fib_table_entry_delete(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        n_updates += 2;
+    }
+
+    print_result(s, &n_updates);
+
+    template.node_index = vlib_get_node_by_name(vm, (u8*) "ip6-input")->index;
+    s = start_stream(&template, &a_1_1, 0);
+    clib_warning("IPv6: less <-> more specific");
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        fib_table_entry_update(0,
+                               &p_1_1_s_128,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        fib_table_entry_delete(0,
+                               &p_1_1_s_128,
+                               FIB_SOURCE_API);
+        n_updates += 2;
+    }
+
+    print_result(s, &n_updates);
+
+    /*
+     * Labelled Paths
+     */
+    r_paths1[0].frp_label_stack = vec_dup(l999);
+    r_paths2[0].frp_label_stack = vec_dup(l999);
+    r_paths2[1].frp_label_stack = vec_dup(l999);
+
+    fei = fib_table_entry_update(0,
+                                 &p_1_1_1_1_s_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths1);
+
+    template.node_index = vlib_get_node_by_name(vm, (u8*) "ip4-input")->index;
+    s = start_stream(&template, &a_1_1_1_1, 0);
+    clib_warning("1 -> 2 -> 2 labelled paths");
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        r_paths1[0].frp_label_stack = vec_dup(l999);
+        r_paths2[0].frp_label_stack = vec_dup(l999);
+        r_paths2[1].frp_label_stack = vec_dup(l999);
+        r_paths3[0].frp_label_stack = vec_dup(l999);
+        r_paths3[1].frp_label_stack = vec_dup(l999);
+
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths2);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths3);
+        fib_table_entry_update(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        n_updates += 3;
+    }
+
+    print_result(s, &n_updates);
+
+    /*
+     * routes with zones
+     */
+    #define FIB_TEST_ZONE_ID 100
+
+    r_paths1[0].frp_zone_id = FIB_TEST_ZONE_ID;
+
+    s = start_stream(&template, &a_1_1_1_1, 0);
+    clib_warning("zones+labels less <-> more specific");
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        fib_table_entry_delete(0,
+                               &p_1_1_1_1_s_32,
+                               FIB_SOURCE_API);
+        r_paths1[0].frp_label_stack = vec_dup(l999);
+        fei = fib_table_entry_update(0,
+                                     &p_1_1_1_1_s_32,
+                                     FIB_SOURCE_API,
+                                     FIB_ENTRY_FLAG_NONE,
+                                     r_paths1);
+        n_updates += 2;
+    }
+
+    r_paths1[0].frp_zone_id = 0;
+    print_result(s, &n_updates);
+
+    /*
+     * MPLS Routes
+     */
+    template.node_index = vlib_get_node_by_name(vm, (u8*) "mpls-input")->index;
+
+    const u32 MPLS_LABEL_VALUE = 32;
+    const fib_prefix_t p_m_32 = {
+        .fp_label = MPLS_LABEL_VALUE,
+        .fp_proto = FIB_PROTOCOL_MPLS,
+        .fp_len = 21,
+        .fp_eos = MPLS_EOS,
+    };
+
+
+    /*
+     * Add an MPLS route via the test interface, and use it to set
+     * the default 'drop' behaviour for the table.
+     * This means that packets should not be dropped, even when the label
+     * table entry is removed.
+     */
+    r_paths1[0].frp_label_stack = vec_dup(l999);
+    fei = fib_table_entry_update(0,
+                                 &p_m_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 r_paths1);
+    test_mpls_fib_set_default (MPLS_LABEL_VALUE, MPLS_EOS);
+    fib_table_entry_delete_index(fei, FIB_SOURCE_API);
+
+    clib_warning("MPLS local-label bind<->unbind");
+    s = start_stream(&template, &a_1_1_1_1, MPLS_LABEL_VALUE);
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        fib_table_entry_local_label_add (0, &p_1_1_1_1_s_32, MPLS_LABEL_VALUE);
+        fib_table_entry_local_label_remove (0, &p_1_1_1_1_s_32,
+                                            MPLS_LABEL_VALUE);
+        n_updates += 2;
+    }
+
+    print_result(s, &n_updates);
+
+    clib_warning("MPLS route add<->del");
+    s = start_stream(&template, &a_1_1_1_1, MPLS_LABEL_VALUE);
+
+    while (template.n_packets_limit != s->n_packets_generated)
+    {
+        r_paths1[0].frp_label_stack = vec_dup(l999);
+        fib_table_entry_update(0,
+                               &p_m_32,
+                               FIB_SOURCE_API,
+                               FIB_ENTRY_FLAG_NONE,
+                               r_paths1);
+        fib_table_entry_delete(0,
+                               &p_m_32,
+                               FIB_SOURCE_API);
+        n_updates += 2;
+    }
+
+    print_result(s, &n_updates);
+
+    /*
+     * cleanup
+     */
+    fib_table_entry_delete(0, &p_1_1_1_1_s_32, FIB_SOURCE_API);
+    fib_table_entry_delete(0, &p_1_1_1_0_s_24, FIB_SOURCE_API);
+    fib_table_entry_delete(0, &p_1_s_64, FIB_SOURCE_API);
+    for (i = 0; i < N_NBRS; i++) {
+        FIB_TEST(0 == ip_neighbor_del (&nbrs[i], tm->hw[1]->sw_if_index),
+                 "IP neighbour %d add failed", i);
+        adj_unlock(ais[i]);
+    }
+    for (i = 0; i < ARRAY_LEN(tm->hw); i++)
+    {
+        ip4_address_t ip4 = {
+            .as_u32 = clib_host_to_net_u32 (0x0a0a0a01 + (i << 8)),
+        };
+        error = ip4_add_del_interface_address (vlib_get_main(),
+                                               tm->hw[i]->sw_if_index,
+                                               &ip4, 24, 1);
+        FIB_TEST((NULL == error), "interface %d prefix del", i);
+        mpls_sw_interface_enable_disable (&mpls_main,
+                                          tm->hw[i]->sw_if_index,
+                                          0);
+    }
+    mpls_table_delete (0, 1);
+    FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
+             adj_nbr_db_size());
+    return 0;
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm,
           unformat_input_t * input,
           vlib_cli_command_t * cmd_arg)
 {
+    u64 n_packets = 100;
     int res;
 
     res = 0;
@@ -10870,6 +11633,14 @@ fib_test (vlib_main_t * vm,
     {
         res += fib_test_sticky();
     }
+    else if (unformat (input, "traffic %lld", &n_packets))
+    {
+        res += fib_test_traffic(vm, n_packets);
+    }
+    else if (unformat (input, "traffic"))
+    {
+        res += fib_test_traffic(vm, n_packets);
+    }
     else
     {
         res += fib_test_v4();
@@ -10880,6 +11651,15 @@ fib_test (vlib_main_t * vm,
         res += fib_test_label();
         res += fib_test_inherit();
         res += lfib_test();
+
+        /*
+         * This cannot be run form the python UT because even though
+         * 'test ifb' is marked MP-safe, the test-harness injects CLIs
+         * using the 'cli_inban' API call, which is not MP-safe, so 
+         * the barrier is held.
+         *
+         * res += fib_test_traffic(vm, n_packets);
+         */
 
         /*
          * fib-walk process must be disabled in order for the walk tests to work
@@ -10904,6 +11684,7 @@ VLIB_CLI_COMMAND (test_fib_command, static) = {
     .path = "test fib",
     .short_help = "fib unit tests - DO NOT RUN ON A LIVE SYSTEM",
     .function = fib_test,
+    .is_mp_safe = 1,
 };
 
 clib_error_t *
