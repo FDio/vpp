@@ -5,13 +5,20 @@
 test_config = {
     "client_namespace": "iprf_client_ns",
     "server_namespace": "iprf_server_ns",
-    "mtus": [9001, 9000, 2048, 2049, 1500, 512],
+    # "mtus": [9001, 9000, 2048, 2049, 1500, 512],
+    "mtus": [2048, 2049, 1500],
     "ip_versions": [4, 6],
     "af_packet": {
         "iprf_client_interface_on_linux": "hostintclient",
         "iprf_server_interface_on_linux": "hostintserver",
         "iprf_client_interface_on_vpp": "vppclientout",
         "iprf_server_interface_on_vpp": "vppserverout",
+    },
+    "af_xdp": {
+        "iprf_client_interface_on_linux": "afxdpintclient",
+        "iprf_server_interface_on_linux": "afxdpintserver",
+        "iprf_client_interface_on_vpp": "vppafxdpclient",
+        "iprf_server_interface_on_vpp": "vppafxdpserver",
     },
     "L2": {
         "client_ip4_prefix": "10.0.0.101/24",
@@ -34,7 +41,7 @@ test_config = {
     # Test Filter
     # Comma separated test id's or range(s) of test id's to run (default=all)
     # e.g. "1,3-4,19-23" runs tests with ID's 1, 3, 4, 19, 20, 21, 22 & 23 only
-    "tests_to_run": "",
+    "tests_to_run": "24,25",
     "tests": [
         {
             "id": 1,
@@ -287,6 +294,22 @@ test_config = {
             "server_if_version": 2,
             "server_if_gso": 1,
             "x_connect_mode": "L2",
+        },
+        {
+            "id": 24,
+            "client_if_type": "af_xdp",
+            "client_if_version": 3,
+            "server_if_type": "af_xdp",
+            "server_if_version": 3,
+            "x_connect_mode": "L2",
+        },
+        {
+            "id": 25,
+            "client_if_type": "af_xdp",
+            "client_if_version": 3,
+            "server_if_type": "af_xdp",
+            "server_if_version": 3,
+            "x_connect_mode": "L3",
         },
     ],
 }

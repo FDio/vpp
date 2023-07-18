@@ -56,6 +56,7 @@ client_namespace = test_config["client_namespace"]
 server_namespace = test_config["server_namespace"]
 tests = filter(filter_tests, test_config["tests"])
 af_packet_config = test_config["af_packet"]
+af_xdp_config = test_config["af_xdp"]
 layer2 = test_config["L2"]
 layer3 = test_config["L3"]
 
@@ -102,9 +103,18 @@ def generate_vpp_interface_tests():
     """Generate unittests for testing vpp interfaces."""
     if config.skip_netns_tests:
         print("Skipping netns tests")
+
+    def get_valid_mtus(test):
+        if_types = (test["client_if_type"], test["server_if_type"])
+        # MTU <= 3000 Bytes is safe for af_xdp interfaces
+        if "af_xdp" in if_types:
+            return [mtu for mtu in test_config["mtus"] if mtu <= 3000]
+        else:
+            return test_config["mtus"]
+
     for test in tests:
         for ip_version in test_config["ip_versions"]:
-            for mtu in test_config["mtus"]:
+            for mtu in get_valid_mtus(test):
                 test_name = (
                     f"test_id_{test['id']}_"
                     + f"client_{test['client_if_type']}"
@@ -245,6 +255,35 @@ class TestVPPInterfacesQemu(VppTestCase):
             self.linux_interfaces.append([client_namespace, f"{client_if_type}0"])
             # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
             disable_interface_gso(client_namespace, f"{client_if_type}0")
+        elif client_if_type == "af_xdp":
+            # Create a veth interface pair
+            create_host_interface(
+                af_xdp_config["iprf_client_interface_on_linux"],
+                af_xdp_config["iprf_client_interface_on_vpp"],
+                client_namespace,
+                layer2["client_ip4_prefix"]
+                if x_connect_mode == "L2"
+                else layer3["client_ip4_prefix"],
+                layer2["client_ip6_prefix"]
+                if x_connect_mode == "L2"
+                else layer3["client_ip6_prefix"],
+            )
+            self.ingress_if_idx = self.create_af_xdp(
+                version=client_if_version,
+                host_if_name=af_xdp_config["iprf_client_interface_on_vpp"],
+            )
+            self.vpp_interfaces.append(self.ingress_if_idx)
+            self.linux_interfaces.append(
+                ["", af_xdp_config["iprf_client_interface_on_vpp"]]
+            )
+            self.linux_interfaces.append(
+                [client_namespace, af_xdp_config["iprf_client_interface_on_linux"]]
+            )
+            # af_xdp does not support GSO/checksum offload
+            disable_interface_gso("", af_xdp_config["iprf_client_interface_on_vpp"])
+            disable_interface_gso(
+                client_namespace, af_xdp_config["iprf_client_interface_on_linux"]
+            )
         else:
             print(
                 f"Unsupported client interface type: {client_if_type} "
@@ -299,6 +338,30 @@ class TestVPPInterfacesQemu(VppTestCase):
             self.linux_interfaces.append([server_namespace, f"{server_if_type}0"])
             # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
             disable_interface_gso(server_namespace, f"{server_if_type}0")
+        elif server_if_type == "af_xdp":
+            create_host_interface(
+                af_xdp_config["iprf_server_interface_on_linux"],
+                af_xdp_config["iprf_server_interface_on_vpp"],
+                server_namespace,
+                server_ip4_prefix,
+                server_ip6_prefix,
+            )
+            self.egress_if_idx = self.create_af_xdp(
+                version=server_if_version,
+                host_if_name=af_xdp_config["iprf_server_interface_on_vpp"],
+            )
+            self.vpp_interfaces.append(self.egress_if_idx)
+            self.linux_interfaces.append(
+                ["", af_xdp_config["iprf_server_interface_on_vpp"]]
+            )
+            self.linux_interfaces.append(
+                [server_namespace, af_xdp_config["iprf_server_interface_on_linux"]]
+            )
+            # af_xdp does not support GSO/checksum offload
+            disable_interface_gso("", af_xdp_config["iprf_server_interface_on_vpp"])
+            disable_interface_gso(
+                server_namespace, af_xdp_config["iprf_server_interface_on_linux"]
+            )
         else:
             print(
                 f"Unsupported server interface type: {server_if_type} "
@@ -356,11 +419,28 @@ class TestVPPInterfacesQemu(VppTestCase):
         except Exception:
             pass
         try:
+            self.vapi.af_xdp_delete(self.ingress_if_idx)
+        except Exception:
+            pass
+        try:
+            self.vapi.af_xdp_delete(self.egress_if_idx)
+        except Exception:
+            pass
+        try:
             delete_host_interfaces(
                 af_packet_config["iprf_client_interface_on_linux"],
                 af_packet_config["iprf_server_interface_on_linux"],
                 af_packet_config["iprf_client_interface_on_vpp"],
                 af_packet_config["iprf_server_interface_on_vpp"],
+            )
+        except Exception:
+            pass
+        try:
+            delete_host_interfaces(
+                af_xdp_config["iprf_client_interface_on_linux"],
+                af_xdp_config["iprf_server_interface_on_linux"],
+                af_xdp_config["iprf_client_interface_on_vpp"],
+                af_xdp_config["iprf_server_interface_on_vpp"],
             )
         except Exception:
             pass
@@ -515,6 +595,29 @@ class TestVPPInterfacesQemu(VppTestCase):
                 sw_if_index=sw_if_index, enable_disable=0
             )
         # Admin up
+        self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
+        return sw_if_index
+
+    def create_af_xdp(self, version, host_if_name):
+        """Create an af_xdp interface in VPP.
+
+        Parameters:
+        version -- 1 for af_xdp_create
+                -- 2 for af_xdp_create_v2
+                -- 3 for af_xdp_create_v3
+        host_if_name -- Linux netdev interface name
+        """
+        api_args = {
+            "host_if": host_if_name,
+            "rxq_num": 65535,  # request all available queues
+        }
+        if version == 1:
+            result = self.vapi.af_xdp_create(**api_args)
+        elif version == 2:
+            result = self.vapi.af_xdp_create_v2(**api_args)
+        elif version == 3:
+            result = self.vapi.af_xdp_create_v3(**api_args)
+        sw_if_index = result.sw_if_index
         self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
         return sw_if_index
 
