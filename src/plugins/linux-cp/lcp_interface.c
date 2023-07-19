@@ -321,6 +321,16 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 	}
     }
 
+  /* for TAP interfaces, make the physical interface promiscuous */
+  if (lip->lip_host_type != LCP_ITF_HOST_TUN)
+    {
+      vnet_main_t *vm = vnet_get_main ();
+      vnet_hw_interface_t *hi =
+	vnet_get_sup_hw_interface (vm, lip->lip_host_sw_if_index);
+      ethernet_set_flags (vm, hi->hw_if_index,
+			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+    }
+
   /* invoke registered callbacks for pair addition */
   lcp_itf_pair_vft_t *vft;
 

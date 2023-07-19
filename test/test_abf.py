@@ -325,7 +325,7 @@ class TestAbf(VppTestCase):
         # packets are dropped because there is no route to the policy's
         # next hop
         #
-        self.send_and_assert_no_replies(self.pg1, p * NUM_PKTS, "no route")
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "no route")
 
         #
         # add a route resolving the next-hop
