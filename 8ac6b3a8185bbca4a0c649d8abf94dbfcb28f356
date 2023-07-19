@@ -16,6 +16,92 @@
       "message": "Hi Yang! Apologies for the delay, I\u0027m out on PTO until the 19th. Let\u0027s catch up then.",
       "revId": "8ac6b3a8185bbca4a0c649d8abf94dbfcb28f356",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0eb92246_25f6631e",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-19T17:56:16Z",
+      "side": 1,
+      "message": "Let\u0027s move this lower in the file. For instance under session_segment_handle",
+      "revId": "8ac6b3a8185bbca4a0c649d8abf94dbfcb28f356",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a94010ff_7b93e149",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-19T17:56:16Z",
+      "side": 1,
+      "message": "Is this still needed?",
+      "range": {
+        "startLine": 141,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 39
+      },
+      "revId": "8ac6b3a8185bbca4a0c649d8abf94dbfcb28f356",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b0b3a2a_f3cdddf9",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-19T17:56:16Z",
+      "side": 1,
+      "message": "Pass lcl, rmt as ip46_address_t down to session_get_original_dst and have it only work for ip4 for now.",
+      "range": {
+        "startLine": 144,
+        "startChar": 2,
+        "endLine": 144,
+        "endChar": 10
+      },
+      "revId": "8ac6b3a8185bbca4a0c649d8abf94dbfcb28f356",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "730d8102_81d48676",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-19T17:56:16Z",
+      "side": 1,
+      "message": "Move this logic to session_get_original_dst, i.e., use session layer types up to the point we go to some external component.",
+      "range": {
+        "startLine": 145,
+        "startChar": 0,
+        "endLine": 146,
+        "endChar": 27
+      },
+      "revId": "8ac6b3a8185bbca4a0c649d8abf94dbfcb28f356",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
