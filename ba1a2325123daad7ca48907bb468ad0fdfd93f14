@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac76b3ab_55f65fab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-07-19T02:39:40Z",
+      "side": 1,
+      "message": "Can you resubmit this patch as an individual fix patch instead a patch in a patchset please.",
+      "revId": "ba1a2325123daad7ca48907bb468ad0fdfd93f14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
