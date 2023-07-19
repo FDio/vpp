@@ -1748,6 +1748,7 @@ ldp_make_cmsg (vls_handle_t vlsh, struct msghdr *msg)
   struct cmsghdr *cmsg;
 
   cmsg = CMSG_FIRSTHDR (msg);
+  memset (cmsg, 0, sizeof (*cmsg));
 
   if (!vls_attr (vlsh, VPPCOM_ATTR_GET_IP_PKTINFO, (void *) &optval, &optlen))
     return 0;
