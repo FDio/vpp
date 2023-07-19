@@ -16,6 +16,24 @@
       "message": "Typo in the title",
       "revId": "c6f85041080917b8ca22ea43bced519f402bf512",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25633b75_150385a3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-07-19T08:02:08Z",
+      "side": 1,
+      "message": "Fixed.",
+      "parentUuid": "fdff7d5e_42297201",
+      "revId": "c6f85041080917b8ca22ea43bced519f402bf512",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
