@@ -16,6 +16,24 @@
       "message": "Can you resubmit this patch as an individual fix patch instead a patch in a patchset please.",
       "revId": "ba1a2325123daad7ca48907bb468ad0fdfd93f14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c76e30e_5894e975",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-07-19T12:49:18Z",
+      "side": 1,
+      "message": "Done. The new review is available at https://gerrit.fd.io/r/c/vpp/+/39248",
+      "parentUuid": "ac76b3ab_55f65fab",
+      "revId": "ba1a2325123daad7ca48907bb468ad0fdfd93f14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
