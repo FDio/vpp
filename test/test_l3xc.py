@@ -123,12 +123,12 @@ class TestL3xc(VppTestCase):
             / UDP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)
         )
-        # self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
+        self.send_and_expect(self.pg0, p_1*NUM_PKTS, self.pg1)
 
         p_2 = []
         for ii in range(NUM_PKTS):
             p_2.append(
-                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
                 / IP(src="1.1.1.1", dst="1.1.1.2")
                 / UDP(sport=1000 + ii, dport=1234)
                 / Raw(b"\xa5" * 100)

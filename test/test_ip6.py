@@ -3412,9 +3412,11 @@ class TestIP6LinkLocal(VppTestCase):
         # Use the specific link-local API on pg1
         #
         VppIp6LinkLocalAddress(self, self.pg1, ll1).add_vpp_config()
+        p_echo_request_1[Ether].dst = self.pg1.local_mac
         self.send_and_expect(self.pg1, [p_echo_request_1], self.pg1)
 
         VppIp6LinkLocalAddress(self, self.pg1, ll3).add_vpp_config()
+        p_echo_request_3[Ether].dst = self.pg1.local_mac
         self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
 
     def test_ip6_ll_p2p(self):
