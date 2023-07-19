@@ -16,6 +16,23 @@
       "message": "Could you review this patch?",
       "revId": "83bb01bff121960748708026fc8892eea2eb843a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3bfda9fc_43ccbada",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_shared.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-07-19T02:34:02Z",
+      "side": 1,
+      "message": "Sorry for my lacking of knowledge - the number c3a3a452 and 51077d14 looks hash number to me - could you explain a bit why they are used?",
+      "revId": "83bb01bff121960748708026fc8892eea2eb843a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
