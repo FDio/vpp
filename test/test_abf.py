@@ -325,7 +325,7 @@ class TestAbf(VppTestCase):
         # packets are dropped because there is no route to the policy's
         # next hop
         #
-        self.send_and_assert_no_replies(self.pg1, p * NUM_PKTS, "no route")
+        self.send_and_assert_no_replies(self.pg0, p * NUM_PKTS, "no route")
 
         #
         # add a route resolving the next-hop
@@ -388,7 +388,7 @@ class TestAbf(VppTestCase):
         # a packet matching the deny rule
         #
         p_deny = (
-            Ether(src=self.pg0.remote_mac, dst=self.pg3.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IP(src=self.pg0.remote_ip4, dst=self.pg3.remote_ip4)
             / UDP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)
@@ -399,7 +399,7 @@ class TestAbf(VppTestCase):
         # a packet matching the permit rule
         #
         p_permit = (
-            Ether(src=self.pg0.remote_mac, dst=self.pg2.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IP(src=self.pg0.remote_ip4, dst=self.pg2.remote_ip4)
             / UDP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)
@@ -451,7 +451,7 @@ class TestAbf(VppTestCase):
         # a packet matching the deny rule
         #
         p_deny = (
-            Ether(src=self.pg0.remote_mac, dst=self.pg3.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg3.remote_ip6)
             / UDP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)
@@ -462,7 +462,7 @@ class TestAbf(VppTestCase):
         # a packet matching the permit rule
         #
         p_permit = (
-            Ether(src=self.pg0.remote_mac, dst=self.pg2.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg2.remote_ip6)
             / UDP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 100)

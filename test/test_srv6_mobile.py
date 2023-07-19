@@ -134,7 +134,7 @@ class TestSRv6TMGTP4D(VppTestCase):
         pkts = list()
         for d, s in inner:
             pkt = (
-                Ether()
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IP(dst=str(ip4_dst), src=str(ip4_src))
                 / UDP(sport=2152, dport=2152)
                 / GTP_U_Header(gtp_type="g_pdu", teid=200)
@@ -224,7 +224,7 @@ class TestSRv6EndMGTP6E(VppTestCase):
         pkts = list()
         for d, s in inner:
             pkt = (
-                Ether()
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IPv6(dst=str(ip6_dst), src=str(ip6_src))
                 / IPv6ExtHdrSegmentRouting(
                     segleft=1, lastentry=0, tag=0, addresses=["a1::1"]
@@ -306,7 +306,7 @@ class TestSRv6EndMGTP6D(VppTestCase):
         pkts = list()
         for d, s in inner:
             pkt = (
-                Ether()
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
                 / IPv6(dst=str(ip6_dst), src=str(ip6_src))
                 / UDP(sport=2152, dport=2152)
                 / GTP_U_Header(gtp_type="g_pdu", teid=200)
