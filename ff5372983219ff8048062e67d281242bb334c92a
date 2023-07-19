@@ -69,6 +69,24 @@
       "parentUuid": "2ead87e5_0b505c53",
       "revId": "ff5372983219ff8048062e67d281242bb334c92a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb2dd81b_0fa26354",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-07-19T02:29:34Z",
+      "side": 1,
+      "message": "First, your doubt.\n\nIt is valid, for now VPP relies on the user carefully setting the routing/punting correctly to drop TCP/ICMP or any other packet types except for UDP or ESP that may be harmful or invalid as it is cheaper to do so (ipsec_input just pass through and expect l3 input/lookup to drop them).\n\nIn the perfect world yes it may be better for those packets filtered by the graph node - I assume this can be in our TODO list - but as nobody complains yet, so nothing happened.\n\nSecond, your tests.\n\nTo coop with the code the tests shall include both UDP and UDP encapped IPsec packets to test the behavior. I really don\u0027t think replacing the old tests to only UDP encapped IPsec is a good idea.",
+      "parentUuid": "541aaf27_b2d5d14a",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
