@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3653ccc8_df5e618b",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-07-20T17:18:11Z",
+      "side": 1,
+      "message": "please add back the empty line",
+      "revId": "7428ad328c3f3ec3b35a5debc8b3892edb2f6d22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
