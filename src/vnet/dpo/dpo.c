@@ -268,12 +268,7 @@ dpo_copy (dpo_id_t *dst,
         .as_u64 = dst->as_u64
     };
 
-    /*
-     * the destination is written in a single u64 write - hence atomically w.r.t
-     * any packets inflight.
-     */
-    dst->as_u64 = src->as_u64;
-
+    dpo_clone(dst, src);
     dpo_lock(dst);
     dpo_unlock(&tmp);
 }
