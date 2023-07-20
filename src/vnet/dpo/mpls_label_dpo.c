@@ -45,10 +45,8 @@ mpls_label_dpo_alloc (void)
     u8 did_barrier_sync;
 
     dpo_pool_barrier_sync (vm, mpls_label_dpo_pool, did_barrier_sync);
-    pool_get_aligned(mpls_label_dpo_pool, mld, CLIB_CACHE_LINE_BYTES);
+    pool_get_aligned_zero (mpls_label_dpo_pool, mld, CLIB_CACHE_LINE_BYTES);
     dpo_pool_barrier_release (vm, did_barrier_sync);
-
-    clib_memset(mld, 0, sizeof(*mld));
 
     dpo_reset(&mld->mld_dpo);
 
@@ -386,6 +384,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             u32 bi0, mldi0, bi1, mldi1, bi2, mldi2, bi3, mldi3;
             mpls_unicast_header_t *hdr0, *hdr1, *hdr2, *hdr3;
             mpls_label_dpo_t *mld0, *mld1, *mld2, *mld3;
+            dpo_id_t mld_dpo0, mld_dpo1, mld_dpo2, mld_dpo3;
             vlib_buffer_t * b0, *b1, * b2, *b3;
             u32 next0, next1, next2, next3;
             u8 ttl0, ttl1, ttl2, ttl3;
@@ -435,6 +434,12 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             mld1 = mpls_label_dpo_get(mldi1);
             mld2 = mpls_label_dpo_get(mldi2);
             mld3 = mpls_label_dpo_get(mldi3);
+
+            /* atomic copy a data-plane object */
+            mld_dpo0.as_u64 = mld0->mld_dpo.as_u64;
+            mld_dpo1.as_u64 = mld1->mld_dpo.as_u64;
+            mld_dpo2.as_u64 = mld2->mld_dpo.as_u64;
+            mld_dpo3.as_u64 = mld3->mld_dpo.as_u64;
 
             if (DPO_PROTO_MPLS != dproto)
             {
@@ -690,15 +695,15 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                 vnet_buffer(b3)->mpls.first = 0;
             }
 
-            next0 = mld0->mld_dpo.dpoi_next_node;
-            next1 = mld1->mld_dpo.dpoi_next_node;
-            next2 = mld2->mld_dpo.dpoi_next_node;
-            next3 = mld3->mld_dpo.dpoi_next_node;
+            next0 = mld_dpo0.dpoi_next_node;
+            next1 = mld_dpo1.dpoi_next_node;
+            next2 = mld_dpo2.dpoi_next_node;
+            next3 = mld_dpo3.dpoi_next_node;
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mld1->mld_dpo.dpoi_index;
-            vnet_buffer(b2)->ip.adj_index[VLIB_TX] = mld2->mld_dpo.dpoi_index;
-            vnet_buffer(b3)->ip.adj_index[VLIB_TX] = mld3->mld_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld_dpo0.dpoi_index;
+            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mld_dpo1.dpoi_index;
+            vnet_buffer(b2)->ip.adj_index[VLIB_TX] = mld_dpo2.dpoi_index;
+            vnet_buffer(b3)->ip.adj_index[VLIB_TX] = mld_dpo3.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -771,6 +776,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
         {
             mpls_unicast_header_t *hdr0;
             mpls_label_dpo_t *mld0;
+            dpo_id_t mld_dpo0;
             vlib_buffer_t * b0;
             u32 bi0, mldi0;
             u8 ttl0, exp0;
@@ -788,6 +794,9 @@ mpls_label_imposition_inline (vlib_main_t * vm,
             /* dst lookup was done by ip4 lookup */
             mldi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             mld0 = mpls_label_dpo_get(mldi0);
+
+            /* atomic copy a data-plane object */
+            mld_dpo0.as_u64 = mld0->mld_dpo.as_u64;
 
             if (DPO_PROTO_MPLS != dproto)
             {
@@ -891,8 +900,8 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                 vnet_buffer(b0)->mpls.first = 0;
             }
 
-            next0 = mld0->mld_dpo.dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
+            next0 = mld_dpo0.dpoi_next_node;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld_dpo0.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
