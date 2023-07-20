@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00108746_510ed693",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-20T20:21:43Z",
+      "side": 1,
+      "message": "A few more nits but overall looks good!",
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be07406b_160b8382",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1772,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-20T20:21:43Z",
+      "side": 1,
+      "message": "To minimize amount of work if original_dst_lookup is not on, do the test at the start of the function and if the function is not available, return. So something like:\n\n```\nif (!smm-\u003eoriginal_dst_lookup || !rmt-\u003eis_ip4)\n  return;\n  \nsmm \u003d vnet_get_session_main ();\n...\n```",
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc3dcd74_c9d39fcb",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1781,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-20T20:21:43Z",
+      "side": 1,
+      "message": "Not needed",
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f13128bd_6da5eae7",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-20T20:21:43Z",
+      "side": 1,
+      "message": "Let\u0027s move this under session_update_time_fn. Since that\u0027s the place where we have other typedef-ed functions",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 46
+      },
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac3c1935_06892e9b",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-07-20T20:21:43Z",
+      "side": 1,
+      "message": "I guess we can move this into session_get_original_dst, if we pass transport_endpoint_t as opposed to ip46_address_t? That would further reduce the number of arguments that we need to pass around.",
+      "range": {
+        "startLine": 139,
+        "startChar": 48,
+        "endLine": 139,
+        "endChar": 64
+      },
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
