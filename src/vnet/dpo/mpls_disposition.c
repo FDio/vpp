@@ -18,6 +18,8 @@
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/mpls/mpls.h>
 
+// clang-format off
+
 #ifndef CLIB_MARCH_VARIANT
 /*
  * pool of all MPLS Label DPOs
@@ -28,9 +30,12 @@ static mpls_disp_dpo_t *
 mpls_disp_dpo_alloc (void)
 {
     mpls_disp_dpo_t *mdd;
+    vlib_main_t *vm;
+    u8 did_barrier_sync;
 
-    pool_get_aligned(mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
-    clib_memset(mdd, 0, sizeof(*mdd));
+    dpo_pool_barrier_sync (vm, mpls_disp_dpo_pool, did_barrier_sync);
+    pool_get_aligned_zero (mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
+    dpo_pool_barrier_release (vm, did_barrier_sync);
 
     dpo_reset(&mdd->mdd_dpo);
 
@@ -189,6 +194,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
         while (n_left_from >= 4 && n_left_to_next >= 2)
         {
             mpls_disp_dpo_t *mdd0, *mdd1;
+            dpo_id_t mdd_dpo0, mdd_dpo1;
             u32 bi0, mddi0, bi1, mddi1;
             vlib_buffer_t * b0, *b1;
             u32 next0, next1;
@@ -224,8 +230,12 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             mdd0 = mpls_disp_dpo_get(mddi0);
             mdd1 = mpls_disp_dpo_get(mddi1);
 
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
-            next1 = mdd1->mdd_dpo.dpoi_next_node;
+            /* atomic copy a data-plane object */
+            mdd_dpo0.as_u64 = mdd0->mdd_dpo.as_u64;
+            mdd_dpo1.as_u64 = mdd1->mdd_dpo.as_u64;
+
+            next0 = mdd_dpo0.dpoi_next_node;
+            next1 = mdd_dpo1.dpoi_next_node;
 
             if (payload_is_ip4)
             {
@@ -289,8 +299,8 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
-            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mdd1->mdd_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd_dpo0.dpoi_index;
+            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mdd_dpo1.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
             vnet_buffer(b1)->ip.rpf_id = mdd1->mdd_rpf_id;
 
@@ -320,6 +330,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
         while (n_left_from > 0 && n_left_to_next > 0)
         {
             mpls_disp_dpo_t *mdd0;
+            dpo_id_t mdd_dpo0;
             vlib_buffer_t * b0;
             u32 bi0, mddi0;
             u32 next0;
@@ -336,7 +347,11 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             /* dst lookup was done by ip4 lookup */
             mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             mdd0 = mpls_disp_dpo_get(mddi0);
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
+
+            /* atomic copy a data-plane object */
+            mdd_dpo0.as_u64 = mdd0->mdd_dpo.as_u64;
+
+            next0 = mdd_dpo0.dpoi_next_node;
 
             if (payload_is_ip4)
             {
@@ -386,7 +401,7 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                 }
             }
 
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd_dpo0.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -554,3 +569,5 @@ mpls_disp_dpo_module_init(void)
                  mpls_label_disp_uniform_nodes);
 }
 #endif /* CLIB_MARCH_VARIANT */
+
+// clang-format on
