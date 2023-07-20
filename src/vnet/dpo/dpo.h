@@ -286,6 +286,21 @@ extern void dpo_copy(dpo_id_t *dst,
 		     const dpo_id_t *src);
 
 /**
+ * @brief
+ *  atomic clone a data-plane object w/o locking.
+ * This is safe to use when the dst DPO is currently switching packets
+ */
+static_always_inline void
+dpo_clone(dpo_id_t *dst, const dpo_id_t *src)
+{
+    /*
+     * the destination is written in a single u64 write - hence atomically w.r.t
+     * any packets inflight.
+     */
+    dst->as_u64 = src->as_u64;
+}
+
+/**
  * @brief Return TRUE is the DPO is any type of adjacency
  */
 extern int dpo_is_adj(const dpo_id_t *dpo);
