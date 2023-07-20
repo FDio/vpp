@@ -23,23 +23,6 @@
 #include <svm/fifo_segment.h>
 #include <vlib/dma/dma.h>
 
-#define foreach_session_input_error                                    	\
-_(NO_SESSION, "No session drops")                                       \
-_(NO_LISTENER, "No listener for dst port drops")                        \
-_(ENQUEUED, "Packets pushed into rx fifo")                              \
-_(NOT_READY, "Session not ready packets")                               \
-_(FIFO_FULL, "Packets dropped for lack of rx fifo space")               \
-_(EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")      \
-_(API_QUEUE_FULL, "Sessions not created for lack of API queue space")   \
-
-typedef enum
-{
-#define _(sym,str) SESSION_ERROR_##sym,
-  foreach_session_input_error
-#undef _
-    SESSION_N_ERROR,
-} session_input_error_t;
-
 typedef struct session_wrk_stats_
 {
   u32 errors[SESSION_N_ERRORS];
