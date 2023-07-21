@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "88a5566c_a3141297",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1772,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-21T03:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "be07406b_160b8382",
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dc3dcd74_c9d39fcb",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-07-20T20:21:43Z",
       "side": 1,
       "message": "Not needed",
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db5e4a7a_c43c3fbf",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1781,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-21T03:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dc3dcd74_c9d39fcb",
       "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -75,6 +111,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e9bf128_82194521",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-21T03:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f13128bd_6da5eae7",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 46
+      },
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ac3c1935_06892e9b",
@@ -88,6 +148,30 @@
       "writtenOn": "2023-07-20T20:21:43Z",
       "side": 1,
       "message": "I guess we can move this into session_get_original_dst, if we pass transport_endpoint_t as opposed to ip46_address_t? That would further reduce the number of arguments that we need to pass around.",
+      "range": {
+        "startLine": 139,
+        "startChar": 48,
+        "endLine": 139,
+        "endChar": 64
+      },
+      "revId": "06016c3cbc75700fb02f6624525eca48d3e4386a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f45df89_37f7128e",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 2975
+      },
+      "writtenOn": "2023-07-21T03:17:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ac3c1935_06892e9b",
       "range": {
         "startLine": 139,
         "startChar": 48,
