@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "067434ab_bc99ea05",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-07-21T07:26:13Z",
+      "side": 1,
+      "message": "nat changes looks fine!",
+      "revId": "6f68abba565555b6d51e9cb9bef729a49e0520f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
