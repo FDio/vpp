@@ -69,6 +69,24 @@
       "parentUuid": "21c92835_f7320b11",
       "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42085931_4dd4077b",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-07-21T12:24:57Z",
+      "side": 1,
+      "message": "Marian, is this which you expected?",
+      "parentUuid": "9c10aba3_c41d275d",
+      "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
