@@ -23,6 +23,8 @@ ForEachMacros:
   - 'foreach_vlib_frame_bitmap_set_bit_index'
   - 'FOREACH_ARRAY_ELT'
   - 'RTE_ETH_FOREACH_DEV'
+  - 'vnet_dev_foreach'
+  - 'foreach_vnet_dev_rx_queue_runtime'
 
 StatementMacros:
   - 'CLIB_MULTIARCH_FN'
