@@ -26,6 +26,14 @@ list(APPEND VNET_SOURCES
   config.c
   devices/devices.c
   devices/netlink.c
+  dev/cli.c
+  dev/config.c
+  dev/format.c
+  dev/dev.c
+  dev/mgmt.c
+  dev/pci.c
+  dev/port.c
+  dev/process.c
   error.c
   flow/flow.c
   flow/flow_cli.c
@@ -59,6 +67,7 @@ list(APPEND VNET_HEADERS
   config.h
   devices/devices.h
   devices/netlink.h
+  dev/dev.h
   flow/flow.h
   global_funcs.h
   interface/rx_queue_funcs.h
