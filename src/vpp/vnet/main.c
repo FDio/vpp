@@ -269,6 +269,10 @@ main (int argc, char *argv[])
 		main_core = x;
 	    }
 	}
+      else if (!strncmp (argv[i], "interactive", 11))
+	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
+      else if (!strncmp (argv[i], "nosyslog", 8))
+	unix_main.flags |= UNIX_FLAG_NOSYSLOG;
     }
 defaulted:
 
