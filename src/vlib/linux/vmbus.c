@@ -31,8 +31,6 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 
-#include <uuid/uuid.h>
-
 static const char sysfs_vmbus_dev_path[] = "/sys/bus/vmbus/devices";
 static const char sysfs_vmbus_drv_path[] = "/sys/bus/vmbus/drivers";
 static const char sysfs_class_net_path[] = "/sys/class/net";
@@ -123,16 +121,39 @@ unformat_vlib_vmbus_addr (unformat_input_t *input, va_list *args)
 {
   vlib_vmbus_addr_t *addr = va_arg (*args, vlib_vmbus_addr_t *);
   uword ret = 0;
-  u8 *s;
+  u8 *s = 0;
 
-  if (!unformat (input, "%s", &s))
+  if (!unformat (input, "%U", unformat_token, "a-zA-Z0-9-", &s))
     return 0;
 
-  if (uuid_parse ((char *) s, addr->guid) == 0)
-    ret = 1;
+  if (vec_len (s) != 36)
+    goto fail;
 
+  if (s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-')
+    goto fail;
+
+  clib_memmove (s + 8, s + 9, 4);
+  clib_memmove (s + 12, s + 14, 4);
+  clib_memmove (s + 16, s + 19, 4);
+  clib_memmove (s + 20, s + 24, 12);
+
+  for (int i = 0; i < 32; i++)
+    if (s[i] >= '0' && s[i] <= '9')
+      s[i] -= '0';
+    else if (s[i] >= 'A' && s[i] <= 'F')
+      s[i] -= 'A' - 10;
+    else if (s[i] >= 'a' && s[i] <= 'f')
+      s[i] -= 'a' - 10;
+    else
+      goto fail;
+
+  for (int i = 0; i < 16; i++)
+    addr->guid[i] = s[2 * i] * 16 + s[2 * i + 1];
+
+  ret = 1;
+
+fail:
   vec_free (s);
-
   return ret;
 }
 
@@ -141,10 +162,24 @@ u8 *
 format_vlib_vmbus_addr (u8 *s, va_list *va)
 {
   vlib_vmbus_addr_t *addr = va_arg (*va, vlib_vmbus_addr_t *);
-  char tmp[40];
+  u8 *bytes = addr->guid;
 
-  uuid_unparse (addr->guid, tmp);
-  return format (s, "%s", tmp);
+  for (int i = 0; i < 4; i++)
+    s = format (s, "%02X", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02X", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02X", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02X", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 6; i++)
+    s = format (s, "%02X", bytes++[0]);
+
+  return s;
 }
 
 /* workaround for mlx bug, bring lower device up before unbind */
@@ -383,7 +418,13 @@ vmbus_addr_cmp (void *v1, void *v2)
   vlib_vmbus_addr_t *a1 = v1;
   vlib_vmbus_addr_t *a2 = v2;
 
-  return uuid_compare (a1->guid, a2->guid);
+  for (int i = 0; i < ARRAY_LEN (a1->guid); i++)
+    if (a1->guid[i] > a2->guid[i])
+      return 1;
+    else if (a1->guid[i] < a2->guid[i])
+      return -1;
+
+  return 0;
 }
 
 vlib_vmbus_addr_t *
