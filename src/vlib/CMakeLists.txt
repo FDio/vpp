@@ -46,22 +46,6 @@ install(
 )
 
 ##############################################################################
-# Find lib and include files
-##############################################################################
-message(STATUS "Looking for libuuid")
-vpp_find_path(UUID_INCLUDE_DIR NAMES uuid/uuid.h)
-vpp_find_library(UUID_LIB NAMES uuid)
-
-if(UUID_INCLUDE_DIR AND UUID_LIB)
-  include_directories(${UUID_INCLUDE_DIR})
-  set(VMBUS_SOURCE linux/vmbus.c)
-  set(VMBUS_LIBS uuid)
-  message(STATUS "Found uuid in ${UUID_INCLUDE_DIR}")
-else()
-  message(WARNING "-- libuuid not found - vmbus support disabled")
-endif()
-
-##############################################################################
 # vlib shared library
 ##############################################################################
 add_vpp_library(vlib
@@ -77,6 +61,7 @@ add_vpp_library(vlib
   init.c
   linux/pci.c
   linux/vfio.c
+  linux/vmbus.c
   log.c
   main.c
   node.c
@@ -104,7 +89,6 @@ add_vpp_library(vlib
   unix/plugin.c
   unix/util.c
   vmbus/vmbus.c
-  ${VMBUS_SOURCE}
   dma/dma.c
   dma/cli.c
 
@@ -154,7 +138,7 @@ add_vpp_library(vlib
   API_FILES
   pci/pci_types.api
 
-  LINK_LIBRARIES vppinfra svm ${VMBUS_LIBS} ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS}
 
   DEPENDS api_headers
 )

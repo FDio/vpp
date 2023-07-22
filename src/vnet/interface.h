@@ -49,6 +49,7 @@
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
+struct vnet_dev_rx_queue;
 union ip46_address_t_;
 
 typedef enum
@@ -761,11 +762,25 @@ typedef struct
   u32 queue_id;
 } vnet_hw_if_rxq_poll_vector_t;
 
-typedef struct
+typedef union
 {
-  vnet_hw_if_rxq_poll_vector_t *rxq_vector_int;
-  vnet_hw_if_rxq_poll_vector_t *rxq_vector_poll;
-  void *rxq_interrupts;
+  struct
+  {
+    vnet_hw_if_rxq_poll_vector_t *rxq_vector_int;
+    vnet_hw_if_rxq_poll_vector_t *rxq_vector_poll;
+    void *rxq_interrupts;
+  };
+  struct
+  {
+    union
+    {
+      struct vnet_dev_rx_queue *rx_queues[2];
+      struct vnet_dev_rx_queue **rx_queues_ptr;
+    };
+    u32 hw_if_index;
+    u32 sw_if_index;
+    u16 n_rx_queues;
+  };
 } vnet_hw_if_rx_node_runtime_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
