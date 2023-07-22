@@ -22,6 +22,7 @@ include_directories (
 FILE(GLOB files RELATIVE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
+  ${CMAKE_CURRENT_SOURCE_DIR}/*/*/CMakeLists.txt
 )
 foreach (f ${files})
   get_filename_component(dir ${f} DIRECTORY)

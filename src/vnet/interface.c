@@ -1404,6 +1404,26 @@ vnet_sw_interface_supports_addressing (vnet_main_t *vnm, u32 sw_if_index)
   return NULL;
 }
 
+u32
+vnet_register_device_class (vlib_main_t *vm, vnet_device_class_t *c)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  c->index = vec_len (im->device_classes);
+  hash_set_mem (im->device_class_by_name, c->name, c->index);
+
+  /* to avoid confusion, please remove ".tx_function" statement
+    from VNET_DEVICE_CLASS() if using function candidates */
+  ASSERT (c->tx_fn_registrations == 0 || c->tx_function == 0);
+
+  if (c->tx_fn_registrations)
+    c->tx_function =
+      vlib_node_get_preferred_node_fn_variant (vm, c->tx_fn_registrations);
+
+  vec_add1 (im->device_classes, c[0]);
+  return c->index;
+}
+
 clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {
@@ -1450,28 +1470,10 @@ vnet_interface_init (vlib_main_t * vm)
 
   im->device_class_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
-  {
-    vnet_device_class_t *c;
 
-    c = vnm->device_class_registrations;
-
-    while (c)
-      {
-	c->index = vec_len (im->device_classes);
-	hash_set_mem (im->device_class_by_name, c->name, c->index);
-
-	/* to avoid confusion, please remove ".tx_function" statement
-	  from VNET_DEVICE_CLASS() if using function candidates */
-	ASSERT (c->tx_fn_registrations == 0 || c->tx_function == 0);
-
-	if (c->tx_fn_registrations)
-	  c->tx_function = vlib_node_get_preferred_node_fn_variant (
-	    vm, c->tx_fn_registrations);
-
-	vec_add1 (im->device_classes, c[0]);
-	c = c->next_class_registration;
-      }
-  }
+  for (vnet_device_class_t *c = vnm->device_class_registrations; c;
+       c = c->next_class_registration)
+    vnet_register_device_class (vm, c);
 
   im->hw_interface_class_by_name = hash_create_string ( /* size */ 0,
 						       sizeof (uword));

@@ -1152,15 +1152,4 @@ rdma_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (rdma_init) =
-{
-  .runs_after = VLIB_INITS ("pci_bus_init"),
-};
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+VLIB_INIT_FUNCTION (rdma_init);
