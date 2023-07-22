@@ -292,6 +292,8 @@ typedef struct _vnet_device_class
 
 } vnet_device_class_t;
 
+u32 vnet_register_device_class (vlib_main_t *, vnet_device_class_t *);
+
 #ifndef CLIB_MARCH_VARIANT
 #define VNET_DEVICE_CLASS(x,...)                                        \
   __VA_ARGS__ vnet_device_class_t x;                                    \

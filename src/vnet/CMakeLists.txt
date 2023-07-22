@@ -26,6 +26,10 @@ list(APPEND VNET_SOURCES
   config.c
   devices/devices.c
   devices/netlink.c
+  devices/dev_init.c
+  devices/dev_cli.c
+  devices/dev_format.c
+  devices/dev_process.c
   error.c
   flow/flow.c
   flow/flow_cli.c
