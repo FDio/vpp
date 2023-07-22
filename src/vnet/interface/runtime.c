@@ -75,6 +75,9 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   log_debug ("update node '%U' triggered by interface %v",
 	     format_vlib_node_name, vm, node_index, hi->name);
 
+  if (!vec_len (hi->rx_queue_indices) && !vec_len (hi->tx_queue_indices))
+    return;
+
   vec_validate (d, n_threads - 1);
   vec_validate (a, n_threads - 1);
   vec_validate_init_empty (per_thread_node_state, n_threads - 1,

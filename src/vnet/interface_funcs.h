@@ -483,12 +483,16 @@ unformat_function_t unformat_vnet_sw_interface_flags;
 format_function_t format_vtr;
 
 /* Node runtime for interface output function. */
+struct vnet_dev_tx_queue;
 typedef struct
 {
   u32 hw_if_index;
   u32 sw_if_index;
   u32 dev_instance;
-  u32 is_deleted;
+  u8 is_deleted;
+  u8 lock_required;
+  u8 lock;
+  struct vnet_dev_tx_queue *tx_queue;
 } vnet_interface_output_runtime_t;
 
 /* Interface output function. */

@@ -326,6 +326,12 @@ u32x16_splat_u32x4 (u32x4 a)
   return (u32x16) _mm512_broadcast_i64x2 ((__m128i) a);
 }
 
+static_always_inline u64x8
+u64x8_splat_u64x2 (u64x2 a)
+{
+  return (u64x8) _mm512_broadcast_i64x2 ((__m128i) a);
+}
+
 static_always_inline u32x16
 u32x16_mask_blend (u32x16 a, u32x16 b, u16 mask)
 {
