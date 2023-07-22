@@ -167,8 +167,8 @@ init_intel_uncore_iio_bw (vlib_main_t *vm, struct perfmon_bundle *b)
 
       s = format (
 	s, "%-10U%-5U%-13U%04x:%04x   %-14U%-16s%v\n", format_stack_socket, p,
-	h, addr, format_vlib_pci_link_port, d, format_vlib_pci_addr, addr,
-	d->vendor_id, d->device_id, format_vlib_pci_link_speed, d,
+	h, addr, format_vlib_pci_link_port, &d->config, format_vlib_pci_addr,
+	addr, d->vendor_id, d->device_id, format_vlib_pci_link_speed, d,
 	d->driver_name ? (char *) d->driver_name : "", d->product_name);
 
       vlib_pci_free_device_info (d);
