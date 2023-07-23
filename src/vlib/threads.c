@@ -699,8 +699,11 @@ start_workers (vlib_main_t * vm)
 		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 				 CLIB_CACHE_LINE_BYTES);
 	      clib_interrupt_init (
-		&nm_clone->interrupts,
+		&nm_clone->input_node_interrupts,
 		vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]));
+	      clib_interrupt_init (
+		&nm_clone->pre_input_node_interrupts,
+		vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT]));
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
@@ -1022,8 +1025,11 @@ vlib_worker_thread_node_refork (void)
     vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 		     CLIB_CACHE_LINE_BYTES);
   clib_interrupt_resize (
-    &nm_clone->interrupts,
+    &nm_clone->input_node_interrupts,
     vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]));
+  clib_interrupt_resize (
+    &nm_clone->pre_input_node_interrupts,
+    vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT]));
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
   {
