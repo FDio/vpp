@@ -55,6 +55,11 @@ typedef struct
 
 typedef struct
 {
+  u32 iface; /**< Interface */
+} sr_pt_probe_inject_iface_t;
+
+typedef struct
+{
   u16 oif_oil;
   u8 tts;
 } __clib_packed sr_pt_cmd_t;
@@ -75,6 +80,12 @@ typedef struct
   /* Hash table for sr_pt_iface parameters */
   mhash_t sr_pt_iface_index_hash;
 
+  /* Pool of sr_pt_probe_inject_iface instances */
+  sr_pt_probe_inject_iface_t *sr_pt_probe_inject_iface;
+
+  /* Hash table for sr_pt_probe_inject_iface parameters */
+  mhash_t sr_pt_probe_inject_iface_index_hash;
+
   /* convenience */
   u16 msg_id_base;
 } sr_pt_main_t;
@@ -85,5 +96,8 @@ extern int sr_pt_add_iface (u32 iface, u16 id, u8 ingress_load, u8 egress_load,
 			    u8 tts_template);
 extern int sr_pt_del_iface (u32 iface);
 extern void *sr_pt_find_iface (u32 iface);
+extern int sr_pt_add_probe_inject_iface (u32 iface);
+extern int sr_pt_del_probe_inject_iface (u32 iface);
+extern void *sr_pt_find_probe_inject_iface (u32 iface);
 
 #endif /* included_vnet_sr_pt_h */

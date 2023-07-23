@@ -31,6 +31,14 @@ format_pt_trace (u8 *s, va_list *args)
   pt_trace_t *t = va_arg (*args, pt_trace_t *);
   switch (t->behavior)
     {
+    case PT_BEHAVIOR_SRC:
+      s = format (
+	s,
+	"Behavior SRC, outgoing interface %U, outgoing interface id %u, "
+	"outgoing interface load %u, t64_sec %u, t64_nsec %u",
+	format_vnet_sw_if_index_name, vnet_get_main (), t->iface, t->id,
+	t->load, htobe32 (t->t64.sec), htobe32 (t->t64.nsec));
+      break;
     case PT_BEHAVIOR_MID:
       s = format (
 	s,
@@ -45,6 +53,40 @@ format_pt_trace (u8 *s, va_list *args)
       break;
     }
   return s;
+}
+
+static_always_inline void
+pt_src_processing (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_buffer_t *b0, ip6_header_t *ip0, sr_pt_iface_t *ls,
+		   timestamp_64_t t64)
+{
+  ip6_sr_header_t *sr0;
+  ip6_sr_pt_tlv_t *srh_pt_tlv;
+  sr0 = ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, NULL);
+  if (sr0)
+    {
+      if (sr0->last_entry == 255 && sr0->length > 0)
+	{
+	  srh_pt_tlv =
+	    (ip6_sr_pt_tlv_t *) ((u8 *) sr0 + sizeof (ip6_sr_header_t));
+	  srh_pt_tlv->id_ld = htobe16 (ls->id << 4);
+	  srh_pt_tlv->id_ld |= ls->egress_load;
+	  srh_pt_tlv->t64.sec = htobe32 (t64.sec);
+	  srh_pt_tlv->t64.nsec = htobe32 (t64.nsec);
+	}
+      else if ((sr0->length * 8) > ((sr0->last_entry + 1) * 16))
+	{
+	  srh_pt_tlv =
+	    (ip6_sr_pt_tlv_t *) ((u8 *) sr0 + sizeof (ip6_sr_header_t) +
+				 sizeof (ip6_address_t) *
+				   (sr0->last_entry + 1));
+	  srh_pt_tlv->id_ld = htobe16 (ls->id << 4);
+	  srh_pt_tlv->id_ld |= ls->egress_load;
+	  srh_pt_tlv->t64.sec = htobe32 (t64.sec);
+	  srh_pt_tlv->t64.nsec = htobe32 (t64.nsec);
+	}
+    }
+  return;
 }
 
 static_always_inline void
@@ -108,6 +150,10 @@ VLIB_NODE_FN (sr_pt_node)
       u32 n_left_to_next;
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
+      // Getting the timestamp (one for each batch of packets)
+      timestamp_64_t t64 = {};
+      unix_time_now_nsec_fraction (&t64.sec, &t64.nsec);
+
       // Single loop for potentially the last three packets
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -123,7 +169,6 @@ VLIB_NODE_FN (sr_pt_node)
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-	  timestamp_64_t t64 = {};
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  iface = vnet_buffer (b0)->sw_if_index[VLIB_TX];
@@ -132,9 +177,17 @@ VLIB_NODE_FN (sr_pt_node)
 	    {
 	      en0 = vlib_buffer_get_current (b0);
 	      ip0 = (void *) (en0 + 1);
-	      unix_time_now_nsec_fraction (&t64.sec, &t64.nsec);
-	      pt_midpoint_processing (vm, node, b0, ip0, ls, t64);
-	      pt_behavior = PT_BEHAVIOR_MID;
+	      if (sr_pt_find_probe_inject_iface (
+		    vnet_buffer (b0)->sw_if_index[VLIB_RX]))
+		{
+		  pt_src_processing (vm, node, b0, ip0, ls, t64);
+		  pt_behavior = PT_BEHAVIOR_SRC;
+		}
+	      else
+		{
+		  pt_midpoint_processing (vm, node, b0, ip0, ls, t64);
+		  pt_behavior = PT_BEHAVIOR_MID;
+		}
 	    }
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
