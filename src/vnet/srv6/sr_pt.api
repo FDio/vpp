@@ -57,3 +57,44 @@ autoreply define sr_pt_iface_del
   u32 context;
   vl_api_interface_index_t sw_if_index;
 };
+
+/** \brief SR PT probe-inject-iface dump request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sr_pt_probe_inject_iface_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define sr_pt_probe_inject_iface_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief SR PT probe-inject-iface add request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to add to SR PT
+*/
+autoreply define sr_pt_probe_inject_iface_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief SR PT probe-inject-iface del request
+    @param client_index - opaque cookie to identifty the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to delete from SR PT
+*/
+autoreply define sr_pt_probe_inject_iface_del
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
