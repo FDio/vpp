@@ -62,8 +62,8 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 	  index = vlib_stats_add_symlink (
 	    if_counters[i].index, sw_if_index, "/interfaces/%U/%s",
 	    format_vlib_stats_symlink, name, if_counters[i].name);
-	  ASSERT (index != ~0);
-	  vec_add1 (dir_entry_indices[sw_if_index], index);
+	  if (index != ~0)
+	    vec_add1 (dir_entry_indices[sw_if_index], index);
 	}
     }
   else
