@@ -16,7 +16,7 @@ enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_frame_bitmap_t match_bmp;
   vlib_frame_t *f;
   u32 n_extracted, n_free;
-  u32 *to, *to_aux;
+  u32 *to, *to_aux = 0;
 
   f = vlib_get_next_frame_internal (vm, node, next_index, 0);
 

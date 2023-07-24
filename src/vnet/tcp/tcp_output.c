@@ -420,7 +420,7 @@ static inline void
 tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 		u8 flags)
 {
-  tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
+  tcp_options_t _snd_opts = {}, *snd_opts = &_snd_opts;
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 wnd;

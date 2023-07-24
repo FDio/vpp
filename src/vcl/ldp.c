@@ -1894,7 +1894,7 @@ recvmsg (int fd, struct msghdr * msg, int flags)
     {
       struct iovec *iov = msg->msg_iov;
       ssize_t max_deq, total = 0;
-      int i, rv;
+      int i, rv = 0;
 
       max_deq = vls_attr (vlsh, VPPCOM_ATTR_GET_NREAD, 0, 0);
       if (!max_deq)
