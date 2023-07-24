@@ -561,7 +561,7 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
 /*
  * Enqueue data for delivery to session peer. Does not notify peer of enqueue
  * event but on request can queue notification events for later delivery by
- * calling stream_server_flush_enqueue_events().
+ * calling session_main_flush_enqueue_events().
  *
  * @param tc Transport connection which is to be enqueued data
  * @param b Buffer to be enqueued
@@ -611,7 +611,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
   if (queue_event)
     {
       /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
+       * by calling session_main_flush_enqueue_events () */
       session_worker_t *wrk;
 
       wrk = session_main_get_worker (s->thread_index);
@@ -677,7 +677,7 @@ session_enqueue_dgram_connection (session_t * s,
   if (queue_event && rv > 0)
     {
       /* Queue RX event on this fifo. Eventually these will need to be flushed
-       * by calling stream_server_flush_enqueue_events () */
+       * by calling session_main_flush_enqueue_events () */
       session_worker_t *wrk;
 
       wrk = session_main_get_worker (s->thread_index);
