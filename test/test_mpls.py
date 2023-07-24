@@ -1924,7 +1924,7 @@ class TestMPLS(VppTestCase):
         binding.add_vpp_config()
 
         tx = (
-            Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+            Ether(src=self.pg1.remote_mac, dst=self.pg0.local_mac)
             / MPLS(label=44, ttl=64)
             / IP(src=self.pg0.remote_ip4, dst=self.pg0.remote_ip4)
             / UDP(sport=1234, dport=1234)

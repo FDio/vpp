@@ -40,7 +40,7 @@ class TestGtpuUDP(VppTestCase):
     def _check_udp_port_ip4(self, enabled=True):
 
         pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
             / UDP(sport=self.dport, dport=self.dport, chksum=0)
         )
@@ -60,7 +60,7 @@ class TestGtpuUDP(VppTestCase):
     def _check_udp_port_ip6(self, enabled=True):
 
         pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
             / UDP(sport=self.dport, dport=self.dport, chksum=0)
         )

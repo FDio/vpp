@@ -489,11 +489,11 @@ class TestMAP(VppTestCase):
         # Send a v4 packet that will be encapped.
         #
         p_ether = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
-        p_ip4 = IP(src=self.pg0.remote_ip4, dst="192.168.1.1")
+        p_ip4 = IP(src=self.pg0.remote_ip4, dst="192.168.1.4")
         p_tcp = TCP(sport=20000, dport=30000, flags="S", options=[("MSS", 1455)])
         p4 = p_ether / p_ip4 / p_tcp
 
-        self.pg1.add_stream(p4)
+        self.pg0.add_stream(p4)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 

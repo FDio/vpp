@@ -678,7 +678,7 @@ class TestIPIP(VppTestCase):
                 / Raw(b"0x44" * 100)
             )
             tx_e = [
-                (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / inner)
+                (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) / inner)
                 for x in range(63)
             ]
 
@@ -1454,6 +1454,7 @@ class TestIPIPMPLS(VppTestCase):
         #
         # Tunnel Decap
         #
+        self.p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
         p4 = (
             self.p_ether
             / IP(src=self.pg1.remote_ip4, dst=self.pg1.local_ip4)
