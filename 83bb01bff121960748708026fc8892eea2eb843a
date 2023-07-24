@@ -51,6 +51,24 @@
       "parentUuid": "3bfda9fc_43ccbada",
       "revId": "83bb01bff121960748708026fc8892eea2eb843a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6ad5527_3ea94e4d",
+        "filename": "extras/strongswan/vpp_sswan/kernel_vpp_shared.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-07-24T08:15:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b3e6b7dd_2f768b45",
+      "revId": "83bb01bff121960748708026fc8892eea2eb843a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
