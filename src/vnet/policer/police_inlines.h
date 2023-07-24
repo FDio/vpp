@@ -123,7 +123,7 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_enq, n_left_from, *from;
   vnet_policer_main_t *pm;
   policer_t *policer;
-  u32 this_thread, policer_thread;
+  u32 this_thread, policer_thread = 0;
   bool single_policer_node = (policer_index != ~0);
 
   pm = &vnet_policer_main;
