@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "312f4918_67306849",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1755
+      },
+      "writtenOn": "2023-07-25T13:57:32Z",
+      "side": 1,
+      "message": "Hello Ole, I think there are some issues with the thread safety of the statseg, but I am not sure on the best fix. Can you please have a look ? Thanks",
+      "revId": "14f120c6ca407e57622d204aa02596756e255476",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
