@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "692f06f0_9754abb1",
+        "filename": "src/plugins/srv6-mobile/mobile.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 2857
+      },
+      "writtenOn": "2023-07-25T20:21:23Z",
+      "side": 1,
+      "message": "Thank you for your review. Just noticed your review.sorry...\nI fixed...",
+      "parentUuid": "523c19aa_0aa4db07",
+      "revId": "e31042514e48f1bdba74429c09c31ee7383ea789",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9a6035ca_7388381b",
