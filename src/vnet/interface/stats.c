@@ -25,7 +25,7 @@ static struct
 static clib_error_t *
 statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
-  u8 *name;
+  u8 *name = 0;
 
   if (if_names == 0)
     {
@@ -58,7 +58,6 @@ statseg_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 
       for (u32 index, i = 0; i < ARRAY_LEN (if_counters); i++)
 	{
-	  name = format (0, "%v", hi_sup->name);
 	  index = vlib_stats_add_symlink (
 	    if_counters[i].index, sw_if_index, "/interfaces/%U/%s",
 	    format_vlib_stats_symlink, name, if_counters[i].name);
