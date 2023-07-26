@@ -16,6 +16,23 @@
       "message": "Hi Damjan,\n\nCould you help review this patch? Thanks.",
       "revId": "85a4116f1d6987a02916012fb3f9c8913a48a5d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15362589_c309b57b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-07-26T11:29:00Z",
+      "side": 1,
+      "message": "This header file is written to be used outside of VPP so it cannot depend on VPP headers and macros",
+      "revId": "85a4116f1d6987a02916012fb3f9c8913a48a5d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
