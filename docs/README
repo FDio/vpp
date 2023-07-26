@@ -26,7 +26,7 @@ Install the virtual environment
 $ python -m pip install --user virtualenv
 $ python -m virtualenv env
 $ source env/bin/activate
-$ pip install -r docs/etc/requirements.txt
+$ pip install -r extras/vpp_config/scripts/requirements.txt 
 $ cd docs
 
 Which installs all the required applications into it's own, isolated,
@@ -39,7 +39,7 @@ Build the html files
 Be sure you are in your vpp/docs directory, since that is where Sphinx will
 look for your conf.py file, and build the documents into an index.html file
 
-$ make html
+$ make docs
 
 View the results
 ------------------------
