@@ -14,7 +14,7 @@ cd /root/strongswan-${VERSION_SSWAN}
 make -j$(nproc)
 sudo make install
 
-sudo cp /root/vpp/extras/strongswan/vpp_sswan/docker/configs/swanctl_docker2.conf /etc/swanctl/conf.d/swanctl.conf
+sudo cp /root/vpp/extras/strongswan/vpp_sswan/docker/configs/swanctl_docker_policy_2.conf /etc/swanctl/conf.d/swanctl.conf
 
 sudo systemctl daemon-reload
 sudo systemctl restart strongswan.service
