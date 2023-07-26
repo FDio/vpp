@@ -1229,13 +1229,13 @@ vapi_dispatch_one (vapi_ctx_t ctx)
       return VAPI_EINVAL;
     }
   const vapi_msg_id_t id = ctx->vl_msg_id_to_vapi_msg_t[vpp_id];
+  vapi_get_swap_to_host_func (id) (msg);
   if (vapi_verify_msg_size (id, msg, size))
     {
       vapi_msg_free (ctx, msg);
       return VAPI_EINVAL;
     }
   u32 context;
-  vapi_get_swap_to_host_func (id) (msg);
   if (vapi_msg_is_with_context (id))
     {
       context = *(u32 *) (((u8 *) msg) + vapi_get_context_offset (id));
