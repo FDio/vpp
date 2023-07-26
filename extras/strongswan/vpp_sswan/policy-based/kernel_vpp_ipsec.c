@@ -42,7 +42,7 @@
 #undef vl_endianfun
 
 #include "kernel_vpp_ipsec.h"
-#include "kernel_vpp_shared.h"
+#include "../common/kernel_vpp_shared.h"
 
 #include <stdio.h>
 #include <stdlib.h>
