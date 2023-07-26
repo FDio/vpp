@@ -252,7 +252,7 @@ vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vec_elt (nm->nodes, node_index);
-  void *interrupts;
+  void *interrupts = 0;
 
   if (n->type == VLIB_NODE_TYPE_INPUT)
     interrupts = nm->input_node_interrupts;
