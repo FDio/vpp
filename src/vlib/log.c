@@ -74,7 +74,7 @@ u8 *
 format_vlib_log_class (u8 * s, va_list * args)
 {
   vlib_log_class_t ci = va_arg (*args, vlib_log_class_t);
-  vlib_log_class_data_t *c = vnet_log_get_class_data (ci);
+  vlib_log_class_data_t *c = vlib_log_get_class_data (ci);
   vlib_log_subclass_data_t *sc = vlib_log_get_subclass_data (ci);
 
   if (sc->name)
