@@ -24,4 +24,7 @@ RUN     chmod +x /root/init_docker2.sh
 RUN     chmod +x /root/init.sh
 RUN     chmod +x /root/run_vpp.sh
 
+# only for testing, should be deleted after merged this patch
+COPY    / /root/vpp_sswan
+
 RUN     ./init.sh

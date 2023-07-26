@@ -28,9 +28,9 @@
 #undef vl_endianfun
 
 #include "kernel_vpp_plugin.h"
-#include "kernel_vpp_shared.h"
+#include "../common/kernel_vpp_shared.h"
 #include "kernel_vpp_ipsec.h"
-#include "kernel_vpp_net.h"
+#include "../common/kernel_vpp_net.h"
 
 typedef struct private_kernel_vpp_plugin_t private_kernel_vpp_plugin_t;
 

@@ -13,13 +13,11 @@ SWANARCHIVE=${CURDIR}/../../../build/external/downloads
 # default install configuration files:
 PREFIX_SYS_CONF=/etc
 # target location of the plugin config snippet: $(PREFIX)/etc/strongswan.d/charon/ or /etc/strongswan.d/charon/
-PLUGINCONF=$(PREFIX_SYS_CONF)/strongswan.d/charon/
+PLUGINCONF=$(PREFIX_SYS_CONF)/strongswan.d/charon
 # location of the  VPP libraries
 VPPLIBS=$(CURDIR)/../../../build-root/install-vpp-native/vpp/lib/x86_64-linux-gnu
 # the directory to the VPP sources
-VPPDIR=../../../build-root/install-vpp-native/vpp/include
-
-TARGET=libstrongswan-kernel-vpp.so
+VPPDIR=$(CURDIR)/../../../build-root/install-vpp-native/vpp/include
 
 # tested only with 5.9.5 and 5.9.6 version of strongSwan
 VERSION_SSWAN=5.9.6
@@ -54,7 +52,16 @@ endif
 SOURCES=$(wildcard *.c)
 OBJECTS=$(SOURCES:.c=.o)
 
-all: pull-swan install-swan $(TARGET)
+export CFLAGS
+export CFLAGS_I
+export LDFLAGS
+export VPPLIBS
+export VPPDIR
+export SWANDIR
+export SWANPLUGINS
+export PLUGINCONF
+
+all: pull-swan install-swan build
 
 pull-swan:
 	@if [ -d "${SWANDIR}" ]; then \
@@ -97,20 +104,19 @@ else
 	$(info INFO: Found installed VPP in version: $(VERSION_VPP))
 endif
 
-$(TARGET): $(OBJECTS)
-	gcc $(CFLAGS) -shared -DPIC $(OBJECTS) $(LDFLAGS) -Wl,-soname -Wl,$(TARGET) -o $@
-	cp $(TARGET) ${SWANDIR}
+build:
+	$(MAKE) -C policy-based all
 
-%.o: %.c
-	gcc $(CFLAGS) $(CFLAGS_I) -c $< -o $@ $(LDFLAGS)
+install-policy: uninstall
+	$(MAKE) -C policy-based install
 
-install:
-	cp $(TARGET) $(SWANPLUGINS)/$(TARGET)
-	cp kernel-vpp.conf $(PLUGINCONF)
+uninstall:
+	$(MAKE) -C policy-based uninstall
 
 clean:
 	rm -f ${SWANARCHIVE}/strongswan-${VERSION_SSWAN}.tar.gz
 	rm -rf ${SWANDIR}
-	rm -f *.so *.o
+	$(MAKE) -C policy-based clean
+	rm -f common/*.o
 
-.PHONY: clean install all
+.PHONY: clean uninstall install-policy build all

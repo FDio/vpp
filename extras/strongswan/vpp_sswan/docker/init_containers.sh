@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DOCKER_IMAGE_NAME="vppstrongswan"
-DOCKER_IMAGE_TAG="0.1"
+DOCKER_IMAGE_TAG="1.0"
 DOCKER_IMAGE_NAME_FULL="$DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG"
 
 if [ "_$1" == "_build_docker_image" ];
