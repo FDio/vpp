@@ -16,6 +16,41 @@
       "message": "Let me see if I understand the issue. Are you ld_preloading an application that has its own constructors and/or uses atfork and those make use of read/write syscalls before ldp constructor has a chance to run?",
       "revId": "26cf7754b8204025fcd62a205293fac1418a4672",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d1312e4_61d210f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1525
+      },
+      "writtenOn": "2023-07-26T07:13:49Z",
+      "side": 1,
+      "message": "yes. The read/write syscalls invokes ldp_init firstly before the ldp constructor.",
+      "parentUuid": "316e25c5_312b29ea",
+      "revId": "26cf7754b8204025fcd62a205293fac1418a4672",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "554c0016_f2ac83e2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1525
+      },
+      "writtenOn": "2023-07-26T07:13:49Z",
+      "side": 1,
+      "message": "yes. The read/write syscalls invokes ldp_init firstly before the ldp constructor.",
+      "revId": "26cf7754b8204025fcd62a205293fac1418a4672",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
