@@ -14,8 +14,10 @@
 ##############################################################################
 # Check if we want to use the system DPDK
 ##############################################################################
-option(VPP_USE_SYSTEM_DPDK "Use the system installation of DPDK." OFF)
+option(VPP_USE_SYSTEM_DPDK "Use the system installation of DPDK." ON)
+set(VPP_USE_SYSTEM_DPDK "/usr/local/lib")
 if(VPP_USE_SYSTEM_DPDK)
+    message("try to find system dpdk lib")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DPDK REQUIRED libdpdk)
     message(WARNING "-- linking dpdk plugin against system libdpdk, version ${DPDK_VERSION}")

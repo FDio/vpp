@@ -165,7 +165,7 @@ dpdk_device_setup (dpdk_device_t * xd)
     {
       conf.rxmode.max_rx_pkt_len = dev_info.max_rx_pktlen;
       xd->max_supported_frame_size = dev_info.max_rx_pktlen;
-      mtu = xd->max_supported_frame_size - xd->driver_frame_overhead;
+      CLIB_UNUSED(u32 mtu) = xd->max_supported_frame_size - xd->driver_frame_overhead;
     }
   else
     {
