@@ -341,7 +341,8 @@ vcl_session_read_ready (vcl_session_t * s)
 	  if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
 	    return 0;
 
-	  return ph.data_length;
+	  /* Allow zero legth datagrams */
+	  return ph.data_length ? ph.data_length : 1;
 	}
 
       return svm_fifo_max_dequeue_cons (s->rx_fifo);
