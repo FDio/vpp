@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18405abe_8134b815",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-27T16:31:28Z",
+      "side": 1,
+      "message": "Looks like there is a few missing features (correct tracing info, pcap support).\nAlso I wonder whether this would be better as a separate plugin?",
+      "revId": "a577ea317a5186ea5b26ab6b31725f29481c3c4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
