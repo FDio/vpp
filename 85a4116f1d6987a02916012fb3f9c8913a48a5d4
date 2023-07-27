@@ -33,6 +33,24 @@
       "message": "This header file is written to be used outside of VPP so it cannot depend on VPP headers and macros",
       "revId": "85a4116f1d6987a02916012fb3f9c8913a48a5d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de3e5885_544af1e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2763
+      },
+      "writtenOn": "2023-07-27T05:38:42Z",
+      "side": 1,
+      "message": "Thanks for the comment. I once thought memif plugin including this header file was only used inside of VPP. Is memif plugin used by other apps too? Should other apps use libmemif instead of VPP memif plugin?",
+      "parentUuid": "15362589_c309b57b",
+      "revId": "85a4116f1d6987a02916012fb3f9c8913a48a5d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
