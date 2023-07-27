@@ -106,17 +106,23 @@ endif
 
 build:
 	$(MAKE) -C policy-based all
+	$(MAKE) -C route-based all
 
 install-policy: uninstall
 	$(MAKE) -C policy-based install
 
+install-route: uninstall
+	$(MAKE) -C route-based install
+
 uninstall:
 	$(MAKE) -C policy-based uninstall
+	$(MAKE) -C route-based uninstall
 
 clean:
 	rm -f ${SWANARCHIVE}/strongswan-${VERSION_SSWAN}.tar.gz
 	rm -rf ${SWANDIR}
 	$(MAKE) -C policy-based clean
+	$(MAKE) -C route-based clean
 	rm -f common/*.o
 
-.PHONY: clean uninstall install-policy build all
+.PHONY: clean uninstall install-policy install-route build all

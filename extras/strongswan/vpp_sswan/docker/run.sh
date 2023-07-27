@@ -3,16 +3,7 @@
 DOCKER_1_NAME="vpp_sswan_docker_1"
 DOCKER_2_NAME="vpp_sswan_docker_2"
 
-if [ "_$1" == "_prepare_containers" ];
-then
-        echo "### Building docker image for vpp sswan plugin"
-        ./init_containers.sh build_docker_image
-        echo "### Building the first container for vpp sswan plugin"
-        ./init_containers.sh create_docker1 $DOCKER_1_NAME
-        echo "### Building the second container for vpp sswan plugin"
-        ./init_containers.sh create_docker2 $DOCKER_2_NAME
-elif [ "_$1" == "_config_policy" ];
-then
+function prepare_network_containers {
         echo "### Configuration $DOCKER_1_NAME and $DOCKER_2_NAME"
         #ADD 1: set network namespace
         echo "### Adding network namespace for $DOCKER_1_NAME and $DOCKER_2_NAME"
@@ -51,11 +42,6 @@ then
         ip netns exec $DOCKER_2_NAME ip route add 192.168.200.0/24 via 192.168.100.1 dev docker_2b_eth1
 
         echo "### Setting network for $DOCKER_1_NAME and $DOCKER_2_NAME finished"
-
-        #install policy mode
-        docker exec -i $DOCKER_1_NAME make -C /root/vpp/extras/strongswan/vpp_sswan/ install-policy
-        docker exec -i $DOCKER_1_NAME cp /root/vpp/extras/strongswan/vpp_sswan/docker/configs/swanctl_docker_policy_1.conf /etc/swanctl/conf.d/swanctl.conf
-
         #ADD 4: run VPP on the first docker
         echo "### Running VPP and sswan on: $DOCKER_1_NAME and $DOCKER_2_NAME"
         docker exec -i "$DOCKER_1_NAME" "/root/run_vpp.sh"
@@ -66,6 +52,34 @@ then
         echo "### initiate SSWAN between $DOCKER_1_NAME and $DOCKER_2_NAME"
         docker exec -i $DOCKER_1_NAME swanctl --initiate --child net-net
         echo "### initiate SSWAN between $DOCKER_1_NAME and $DOCKER_2_NAME finished"
+}
+
+if [ "_$1" == "_prepare_containers" ];
+then
+        echo "### Building docker image for vpp sswan plugin"
+        ./init_containers.sh build_docker_image
+        echo "### Building the first container for vpp sswan plugin"
+        ./init_containers.sh create_docker1 $DOCKER_1_NAME
+        echo "### Building the second container for vpp sswan plugin"
+        ./init_containers.sh create_docker2 $DOCKER_2_NAME
+
+elif [ "_$1" == "_config_policy" ];
+then
+        #install policy mode
+        docker exec -i $DOCKER_1_NAME make -C /root/vpp/extras/strongswan/vpp_sswan/ install-policy
+        docker exec -i $DOCKER_1_NAME cp /root/vpp/extras/strongswan/vpp_sswan/docker/configs/swanctl_docker_policy_1.conf /etc/swanctl/conf.d/swanctl.conf
+
+        #config network for containers
+        prepare_network_containers
+
+elif [ "_$1" == "_config_route" ];
+then
+        #install route mode
+        docker exec -i $DOCKER_1_NAME make -C /root/vpp/extras/strongswan/vpp_sswan/ install-route
+        docker exec -i $DOCKER_1_NAME cp /root/vpp/extras/strongswan/vpp_sswan/docker/configs/swanctl_docker_route_1.conf /etc/swanctl/conf.d/swanctl.conf
+
+        #config network for containers
+        prepare_network_containers
 
 elif [ "_$1" == "_clean" ];
 then
