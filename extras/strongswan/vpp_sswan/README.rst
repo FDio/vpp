@@ -17,8 +17,14 @@ the `VPP C API <https://wiki.fd.io/view/VPP/How_To_Use_The_C_API>`__.
 It provides address and routing lookup functionality and installs routes for
 IPsec traffic.
 
-The plugin also installs and maintains Security Associations and Policies to
-the `VPP IPsec <https://wiki.fd.io/view/VPP/IPSec_and_IKEv2#IPSec>`__.
+There are two plugins to configuration in the two different mode:
+policy and route base IPSec.
+
+The plugin based on policy base mode installs, maintains Security
+Associations and Policies to the `VPP IPsec <https://wiki.fd.io/view/VPP/IPSec_and_IKEv2#IPSec>`__.
+
+The plugin based on route based mode installs, maintains Security
+Associations and installs ipip interface `VPP IPsec Protection Model <https://wiki.fd.io/view/VPP/IPSec#Protection_Model>`__.
 
 Since ``StrongSwan`` expects both IKE and IPsec traffic coming through the
 same network protected interfaces, the ``VPP-SSWAN`` expects the IKE traffic
@@ -87,7 +93,7 @@ simple command to compile and install ``Strongswan`` from the downloaded source.
    make pull-swan
    make install-swan
 
-Install VPP-SWAN plugin into StrongSwan
+Install VPP-SWAN plugin in policy mode IPSec into StrongSwan
 -------------
 
 After the ``VPP-SSWAN`` plugin has been built and ``Strongswan`` was installed,
@@ -96,11 +102,28 @@ the following command will install the ``VPP-SSWAN`` plugin into ``Strongswan``.
 ::
 
    cd path/to/vpp/external/strongswan/vpp_swan/
-   make install
+   make install-policy
 
-Or you can manually copy ``libstrongswan-kernel-vpp.so`` into:
-``/usr/lib/ipsec/plugins``,
-and also ``kernel-vpp.conf`` into: ``/etc/strongswan.d/charon/``
+Or you can manually copy:
+``libstrongswan-kernel-vpp.so`` into: ``/usr/lib/ipsec/plugins``,
+and also ``kernel-vpp.conf`` into: ``/etc/strongswan.d/charon/``.
+
+Install VPP-SWAN plugin in route mode IPSec into StrongSwan
+-------------
+
+After the ``VPP-SSWAN`` plugin has been built and ``Strongswan`` was installed,
+the following command will install the ``VPP-SSWAN`` plugin into ``Strongswan``.
+
+::
+
+   cd path/to/vpp/external/strongswan/vpp_swan/
+   make install-route
+
+Or you can manually copy:
+``libstrongswan-kernel-libipsec-vpp.so`` into: ``/usr/lib/ipsec/plugins``,
+and also ``kernel-libipsec-vpp.conf`` into: ``/etc/strongswan.d/charon/``.
+
+Please Note: ONLY one of them should be installed into Strongswan directory.
 
 Now you can restart ``Strongswan`` by executing the following command:
 
@@ -111,10 +134,13 @@ Now you can restart ``Strongswan`` by executing the following command:
 Configuration Strongswan
 -------------
 
-As an example, ``swanctl.conf`` file provides an example configuration to
-initialize connections between two endpoints.
+As an example, ``policy-based/swanctl.conf`` or ``route-based/swanctl.conf``
+files provide an example configuration to initialize connections between
+two endpoints.
 
-You may update the file based on your need and Copy into:
+Please Note: ``swanctl.conf`` depends on type of plugin that was installed.
+
+You may update the file based on your need and copy into:
 ``/etc/swanctl/conf.d/swanctl.conf``
 
 Configuration VPP
