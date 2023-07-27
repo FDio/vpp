@@ -102,7 +102,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
     {
       /* allocate tx buffers */
       err = memif_buffer_alloc (s->conn, s->tx_qid, s->tx_bufs, r->rx_buf_num,
-				&s->tx_buf_num, 2048);
+				&s->tx_buf_num, s->buffer_size);
       /* suppress full ring error MEMIF_ERR_NOBUF_RING */
       if (err != MEMIF_ERR_SUCCESS && err != MEMIF_ERR_NOBUF_RING)
 	{
@@ -114,6 +114,7 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       for (i = 0; i < s->tx_buf_num; i++)
 	{
 	  memcpy (s->tx_bufs[i].data, r->rx_bufs[i].data, r->rx_bufs[i].len);
+	  s->tx_bufs[i].flags = r->rx_bufs[i].flags;
 	  s->tx_bufs[i].len = r->rx_bufs[i].len;
 	}
 
@@ -183,6 +184,7 @@ print_help ()
 	  "path. Default: /run/vpp/memif.sock\n");
   printf ("\t-i\tInterface id. Default: 0\n");
   printf ("\t-t\tInterface id2. Default: 1\n");
+  printf ("\t-b\tBuffer Size. Default: 2048\n");
   printf ("\t-h\tShow help and exit.\n");
   printf ("\t-v\tShow libmemif and memif version information and exit.\n");
 }
@@ -205,7 +207,7 @@ main (int argc, char *argv[])
   memset (&intf0, 0, sizeof (intf0));
   memset (&intf1, 0, sizeof (intf1));
 
-  while ((opt = getopt (argc, argv, "rsithv")) != -1)
+  while ((opt = getopt (argc, argv, "r:s:i:t:b:h:v")) != -1)
     {
       switch (opt)
 	{
@@ -232,6 +234,9 @@ main (int argc, char *argv[])
 	  break;
 	case 't':
 	  id1 = atoi (optarg);
+	  break;
+	case 'b':
+	  intf1.buffer_size = intf0.buffer_size = atoi (optarg);
 	  break;
 	case 'h':
 	  print_help ();
@@ -274,6 +279,10 @@ main (int argc, char *argv[])
   strncpy (memif_conn_args.interface_name, IF_NAME0,
 	   sizeof (memif_conn_args.interface_name));
   memif_conn_args.is_master = is_master;
+  if (intf0.buffer_size)
+    memif_conn_args.buffer_size = intf0.buffer_size;
+  else
+    memif_conn_args.buffer_size = intf0.buffer_size = intf1.buffer_size = 2048;
 
   err = memif_create (&intf0.conn, &memif_conn_args, on_connect, on_disconnect,
 		      on_interrupt, (void *) &intf0);
