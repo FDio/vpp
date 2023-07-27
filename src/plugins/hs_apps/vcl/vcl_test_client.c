@@ -1013,6 +1013,7 @@ print_usage_and_exit (void)
     "  -T <txbuf-size>  Test Cfg: tx buffer size.\n"
     "  -U               Run Uni-directional test.\n"
     "  -B               Run Bi-directional test.\n"
+    "  -b <bytes>       Total number of bytes transferred\n"
     "  -V               Verbose mode.\n"
     "  -I <N>           Use N sessions.\n"
     "  -s <N>           Use N sessions.\n"
@@ -1028,7 +1029,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chnp:w:xXE:I:N:R:T:UBV6DLs:q:S")) != -1)
+  while ((c = getopt (argc, argv, "chnp:w:xXE:I:N:R:T:b:UBV6DLs:q:S")) != -1)
     switch (c)
       {
       case 'c':
@@ -1156,6 +1157,21 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 		   ctrl->cfg.txbuf_size, VCL_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
+	break;
+      case 'b':
+	if (sscanf (optarg, "0x%lu", &ctrl->cfg.total_bytes) != 1)
+	  if (sscanf (optarg, "%ld", &ctrl->cfg.total_bytes) != 1)
+	    {
+	      vtwrn ("Invalid value for option -%c!", c);
+	      print_usage_and_exit ();
+	    }
+	if (ctrl->cfg.total_bytes % ctrl->cfg.txbuf_size)
+	  {
+	    vtwrn ("total bytes must be mutliple of txbuf size(0x%lu)!",
+		   ctrl->cfg.txbuf_size);
+	    print_usage_and_exit ();
+	  }
+	ctrl->cfg.num_writes = ctrl->cfg.total_bytes / ctrl->cfg.txbuf_size;
 	break;
 
       case 'U':
