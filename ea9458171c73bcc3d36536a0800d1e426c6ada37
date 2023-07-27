@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e528c26_97c1232a",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-27T16:39:07Z",
+      "side": 1,
+      "message": "I think it would be more readable if you use first instead of b here and the line below",
+      "revId": "ea9458171c73bcc3d36536a0800d1e426c6ada37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19c97d44_d8f2d632",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-07-27T16:39:07Z",
+      "side": 1,
+      "message": "I think it would be more readable if you use last instead of b here",
+      "revId": "ea9458171c73bcc3d36536a0800d1e426c6ada37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
