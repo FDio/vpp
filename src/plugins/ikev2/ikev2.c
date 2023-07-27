@@ -184,6 +184,7 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
     return 0;
 
   vec_add2 (rv, proposal, 1);
+  clib_memset (proposal, 0, sizeof (*proposal)); // AYXX
 
   vec_foreach (proposal, proposals)
   {
@@ -421,11 +422,14 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   ikev2_sa_transform_t *t = 0, *t2;
   ikev2_main_t *km = &ikev2_main;
 
+  clib_memset (sa, 0, sizeof (*sa)); /* AYXX */
+
   /*move some data to the new SA */
 #define _(A) ({void* __tmp__ = (A); (A) = 0; __tmp__;})
   sa->i_nonce = _(sai->i_nonce);
   sa->i_dh_data = _(sai->i_dh_data);
   sa->dh_private_key = _(sai->dh_private_key);
+  sa->dh_shared_key = _ (sai->dh_shared_key);
   ip_address_copy (&sa->iaddr, &sai->iaddr);
   ip_address_copy (&sa->raddr, &sai->raddr);
   sa->is_initiator = sai->is_initiator;
@@ -3042,7 +3046,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
       udp_header_t *udp0;
       ike_header_t *ike0;
       ikev2_sa_t *sa0 = 0;
-      ikev2_sa_t sa;		/* temporary store for SA */
+      ikev2_sa_t sa = { 0 }; /* temporary store for SA */ // AYXX
       u32 rlen, slen = 0;
       int ip_hdr_sz = 0;
       int is_req = 0;
@@ -3204,6 +3208,10 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  (&sai->init_response_received, 0, 1))
 			{
 			  ikev2_complete_sa_data (sa0, sai);
+			  if (!sa0->r_proposals)
+			    {
+			      goto dispatch0;
+			    }
 			  ikev2_calc_keys (sa0);
 			  ikev2_sa_auth_init (sa0);
 			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
