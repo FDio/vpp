@@ -318,15 +318,15 @@ punt_reason_dump_walk_cb (vlib_punt_reason_t id, const u8 * name, void *args)
   punt_reason_dump_walk_ctx_t *ctx = args;
   vl_api_punt_reason_details_t *mp;
 
-  if (ctx->name)
+  if (vec_len (ctx->name) > 0)
     {
       /* user requested a specific punt-reason */
       if (vec_cmp (name, ctx->name))
-	/* not the reasonn we're lookgin for */
+	/* not the reason we're looking for */
 	return 1;
     }
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + vec_len (name));
+  mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
     return (0);
 
@@ -335,7 +335,7 @@ punt_reason_dump_walk_cb (vlib_punt_reason_t id, const u8 * name, void *args)
 
   mp->context = ctx->context;
   mp->reason.id = clib_host_to_net_u32 (id);
-  vl_api_vec_to_api_string (name, &mp->reason.name);
+  strncpy ((char *) mp->reason.name, (char *) name, ARRAY_LEN (mp->reason.name) - 1);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -346,7 +346,6 @@ static void
 vl_api_punt_reason_dump_t_handler (vl_api_punt_reason_dump_t * mp)
 {
   vl_api_registration_t *reg;
-
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -354,7 +353,7 @@ vl_api_punt_reason_dump_t_handler (vl_api_punt_reason_dump_t * mp)
   punt_reason_dump_walk_ctx_t ctx = {
     .reg = reg,
     .context = mp->context,
-    .name = vl_api_from_api_to_new_vec (mp, &mp->reason.name),
+    .name = format (0, "%s", mp->reason.name),
   };
 
   punt_reason_walk (punt_reason_dump_walk_cb, &ctx);
