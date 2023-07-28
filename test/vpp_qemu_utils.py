@@ -4,6 +4,8 @@
 
 import subprocess
 import sys
+import os
+import multiprocessing as mp
 
 
 def can_create_namespaces():
@@ -240,3 +242,64 @@ def list_namespace(ns):
         subprocess.run(["ip", "netns", "exec", ns, "ip", "addr"])
     except subprocess.CalledProcessError as e:
         raise Exception("Error listing namespace IP:", e.output)
+
+
+def libmemif_test_app(memif_sock_path, logger):
+    """Build & run the libmemif test_app for memif interface testing."""
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+    ws_root = os.path.dirname(test_dir)
+    libmemif_app = os.path.join(
+        ws_root, "extras", "libmemif", "build", "examples", "test_app"
+    )
+
+    def build_libmemif_app():
+        if not os.path.exists(libmemif_app):
+            print(f"Building app:{libmemif_app} for memif interface testing")
+            libmemif_app_dir = os.path.join(ws_root, "extras", "libmemif", "build")
+            if not os.path.exists(libmemif_app_dir):
+                os.makedirs(libmemif_app_dir)
+            os.chdir(libmemif_app_dir)
+            try:
+                p = subprocess.run(["cmake", ".."], capture_output=True)
+                logger.debug(p.stdout)
+                if p.returncode != 0:
+                    print(f"libmemif app:{libmemif_app} cmake error:{p.stderr}")
+                    sys.exit(1)
+                p = subprocess.run(["make"], capture_output=True)
+                logger.debug(p.stdout)
+                if p.returncode != 0:
+                    print(f"Error building libmemif app:{p.stderr}")
+                    sys.exit(1)
+            except subprocess.CalledProcessError as e:
+                raise Exception("Error building libmemif_test_app:", e.output)
+
+    def start_libmemif_app():
+        """Restart once if the initial run fails."""
+        max_tries = 2
+        run = 0
+        if not os.path.exists(libmemif_app):
+            raise Exception(
+                f"Error could not locate the libmemif test app:{libmemif_app}"
+            )
+        args = [libmemif_app, "-b", "9216", "-s", memif_sock_path]
+        while run < max_tries:
+            try:
+                process = subprocess.run(args, capture_output=True)
+                logger.debug(process.stdout)
+                if process.returncode != 0:
+                    msg = f"Error starting libmemif app:{libmemif_app}"
+                    logger.error(msg)
+                    raise Exception(msg)
+            except Exception:
+                msg = f"re-starting libmemif app:{libmemif_app}"
+                logger.error(msg)
+                continue
+            else:
+                break
+            finally:
+                run += 1
+
+    build_libmemif_app()
+    process = mp.Process(target=start_libmemif_app)
+    process.start()
+    return process

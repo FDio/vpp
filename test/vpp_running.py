@@ -26,6 +26,7 @@ def use_running(cls):
         RunningVPP.get_set_vpp_sock_files()
         cls.get_stats_sock_path = RunningVPP.get_stats_sock_path
         cls.get_api_sock_path = RunningVPP.get_api_sock_path
+        cls.get_memif_sock_path = RunningVPP.get_memif_sock_path
         cls.run_vpp = RunningVPP.run_vpp
         cls.quit_vpp = RunningVPP.quit_vpp
         cls.vpp = RunningVPP
@@ -34,9 +35,9 @@ def use_running(cls):
 
 
 class RunningVPP:
-
     api_sock = ""  # api_sock file path
     stats_sock = ""  # stats sock_file path
+    memif_sock = ""  # memif sock path
     socket_dir = ""  # running VPP's socket directory
     pid = None  # running VPP's pid
     returncode = None  # indicates to the framework that VPP is running
@@ -48,6 +49,10 @@ class RunningVPP:
     @classmethod
     def get_api_sock_path(cls):
         return cls.api_sock
+
+    @classmethod
+    def get_memif_sock_path(cls):
+        return cls.memif_sock
 
     @classmethod
     def run_vpp(cls):
@@ -113,6 +118,8 @@ class RunningVPP:
                     cls.api_sock = os.path.abspath(sock_file)
                 elif "stats.sock" in sock_file:
                     cls.stats_sock = os.path.abspath(sock_file)
+                elif "memif.sock" in sock_file:
+                    cls.memif_sock = os.path.abspath(sock_file)
             if not cls.api_sock:
                 print(
                     f"Error: Could not find a valid api.sock file "
