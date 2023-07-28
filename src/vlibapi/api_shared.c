@@ -601,8 +601,8 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
           .n_enum_strings = 2,
           .enum_strings =
           {
-            "barrier",
             "mp-safe",
+            "barrier",
           }
         };
       /* *INDENT-ON* */
