@@ -1633,9 +1633,6 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   if (!radv_info)
     return (VNET_API_ERROR_IP6_NOT_ENABLED);
 
-  /* Start off believing that we're going to send radv's */
-  radv_info->send_radv = 1;
-
   if ((max_interval != 0) && (min_interval == 0))
     min_interval = .75 * max_interval;
 
