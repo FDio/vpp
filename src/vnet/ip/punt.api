@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.2.1";
+option version = "2.2.2";
 import "vnet/ip/ip_types.api";
 
 /** \brief The types of packets to be punted
@@ -134,7 +134,7 @@ autoreply define punt_socket_deregister {
 typedef punt_reason
 {
     u32 id;
-    string name[];
+    string name[64];
 };
 
 /** \brief Dump all or one of the exception punt reasons
