@@ -651,6 +651,10 @@ class VppTestCase(CPUInterface, unittest.TestCase):
         return "%s/api.sock" % cls.tempdir
 
     @classmethod
+    def get_memif_sock_path(cls):
+        return "%s/memif.sock" % cls.tempdir
+
+    @classmethod
     def get_api_segment_prefix(cls):
         return os.path.basename(cls.tempdir)  # Only used for VAPI
 

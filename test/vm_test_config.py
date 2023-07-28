@@ -318,5 +318,15 @@ test_config = {
             "server_if_checksum_offload": 0,
             "x_connect_mode": "L3",
         },
+        {
+            "id": 27,
+            "client_if_type": "tap,memif",
+            "client_if_version": 2,
+            "client_if_checksum_offload": 0,
+            "server_if_type": "tap,memif",
+            "server_if_version": 2,
+            "server_if_checksum_offload": 0,
+            "x_connect_mode": "L2",
+        },
     ],
 }

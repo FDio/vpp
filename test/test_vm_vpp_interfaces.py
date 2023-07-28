@@ -9,6 +9,7 @@ from vpp_qemu_utils import (
     set_interface_mtu,
     disable_interface_gso,
     add_namespace_route,
+    libmemif_test_app,
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase, VppTestRunner
@@ -20,7 +21,7 @@ from vm_test_config import test_config
 
 #
 # Tests for:
-# - tapv2, tunv2 & af_packet_v2 & v3 interfaces.
+# - tapv2, tunv2, af_packet_v2/v3 & memif interfaces.
 # - reads test config from the file vm_test_config.py
 # - Uses iPerf to send TCP/IP streams to VPP
 #   - VPP ingress interface runs the iperf client
@@ -75,7 +76,11 @@ def create_test(test_name, test, ip_version, mtu):
             vpp_interfaces=self.vpp_interfaces,
             linux_interfaces=self.linux_interfaces,
         )
-        # Start the Iperf server in dual stack mode & run iperf client
+        if "memif" in self.if_types:
+            self.logger.debug("Starting libmemif test_app for memif test")
+            self.memif_process = libmemif_test_app(
+                memif_sock_path=self.get_memif_sock_path(), logger=self.logger
+            )
         if result is True:
             start_iperf(ip_version=6, server_only=True, logger=self.logger)
             self.assertTrue(
@@ -151,8 +156,11 @@ class TestVPPInterfacesQemu(VppTestCase):
         3. Cross-Connect interfaces in VPP using L2 or L3.
         """
         super(TestVPPInterfacesQemu, self).setUp()
-        client_if_type = test["client_if_type"]
-        server_if_type = test["server_if_type"]
+        # Need to support multiple interface types as the memif interface
+        # in VPP is connected to the iPerf client & server by x-connecting
+        # to a tap interface in their respective namespaces.
+        client_if_types = test["client_if_type"].split(",")
+        server_if_types = test["server_if_type"].split(",")
         client_if_version = test["client_if_version"]
         server_if_version = test["server_if_version"]
         x_connect_mode = test["x_connect_mode"]
@@ -183,6 +191,11 @@ class TestVPPInterfacesQemu(VppTestCase):
         )
         vpp_server_nexthop = str(ip_interface(vpp_server_prefix).ip)
         create_namespace([client_namespace, server_namespace])
+        # IPerf client & server ingress/egress interface indexes in VPP
+        self.tap_interfaces = []
+        self.memif_interfaces = []
+        self.ingress_if_idxes = []
+        self.egress_if_idxes = []
         self.vpp_interfaces = []
         self.linux_interfaces = []
         enable_client_if_gso = test.get("client_if_gso", 0)
@@ -192,155 +205,197 @@ class TestVPPInterfacesQemu(VppTestCase):
         enable_client_if_checksum_offload = test.get("client_if_checksum_offload", 0)
         enable_server_if_checksum_offload = test.get("server_if_checksum_offload", 0)
         ## Handle client interface types
-        if client_if_type == "af_packet":
-            create_host_interface(
-                af_packet_config["iprf_client_interface_on_linux"],
-                af_packet_config["iprf_client_interface_on_vpp"],
-                client_namespace,
-                layer2["client_ip4_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["client_ip4_prefix"],
-                layer2["client_ip6_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["client_ip6_prefix"],
-            )
-            self.ingress_if_idx = self.create_af_packet(
-                version=client_if_version,
-                host_if_name=af_packet_config["iprf_client_interface_on_vpp"],
-                enable_gso=enable_client_if_gso,
-            )
-            self.vpp_interfaces.append(self.ingress_if_idx)
-            self.linux_interfaces.append(
-                ["", af_packet_config["iprf_client_interface_on_vpp"]]
-            )
-            self.linux_interfaces.append(
-                [client_namespace, af_packet_config["iprf_client_interface_on_linux"]]
-            )
-            if enable_client_if_gso == 0:
-                disable_interface_gso(
-                    "", af_packet_config["iprf_client_interface_on_vpp"]
+        for client_if_type in client_if_types:
+            if client_if_type == "af_packet":
+                create_host_interface(
+                    af_packet_config["iprf_client_interface_on_linux"],
+                    af_packet_config["iprf_client_interface_on_vpp"],
+                    client_namespace,
+                    layer2["client_ip4_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["client_ip4_prefix"],
+                    layer2["client_ip6_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["client_ip6_prefix"],
                 )
-                disable_interface_gso(
-                    client_namespace, af_packet_config["iprf_client_interface_on_linux"]
+                self.ingress_if_idx = self.create_af_packet(
+                    version=client_if_version,
+                    host_if_name=af_packet_config["iprf_client_interface_on_vpp"],
+                    enable_gso=enable_client_if_gso,
                 )
-        elif client_if_type == "tap" or client_if_type == "tun":
-            self.ingress_if_idx = self.create_tap_tun(
-                id=101,
-                host_namespace=client_namespace,
-                ip_version=ip_version,
-                host_ip4_prefix=layer2["client_ip4_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["client_ip4_prefix"],
-                host_ip6_prefix=layer2["client_ip6_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["client_ip6_prefix"],
-                host_ip4_gw=vpp_client_nexthop
-                if x_connect_mode == "L3" and ip_version == 4
-                else None,
-                host_ip6_gw=vpp_client_nexthop
-                if x_connect_mode == "L3" and ip_version == 6
-                else None,
-                int_type=client_if_type,
-                host_if_name=f"{client_if_type}0",
-                enable_gso=enable_client_if_gso,
-                enable_gro=enable_client_if_gro,
-                enable_checksum_offload=enable_client_if_checksum_offload,
-            )
-            self.vpp_interfaces.append(self.ingress_if_idx)
-            self.linux_interfaces.append([client_namespace, f"{client_if_type}0"])
-            # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
-            disable_interface_gso(client_namespace, f"{client_if_type}0")
-        else:
-            print(
-                f"Unsupported client interface type: {client_if_type} "
-                f"for test - ID={test['id']}"
-            )
-            sys.exit(1)
-
-        if server_if_type == "af_packet":
-            create_host_interface(
-                af_packet_config["iprf_server_interface_on_linux"],
-                af_packet_config["iprf_server_interface_on_vpp"],
-                server_namespace,
-                server_ip4_prefix,
-                server_ip6_prefix,
-            )
-            self.egress_if_idx = self.create_af_packet(
-                version=server_if_version,
-                host_if_name=af_packet_config["iprf_server_interface_on_vpp"],
-                enable_gso=enable_server_if_gso,
-            )
-            self.vpp_interfaces.append(self.egress_if_idx)
-            self.linux_interfaces.append(
-                ["", af_packet_config["iprf_server_interface_on_vpp"]]
-            )
-            self.linux_interfaces.append(
-                [server_namespace, af_packet_config["iprf_server_interface_on_linux"]]
-            )
-            if enable_server_if_gso == 0:
-                disable_interface_gso(
-                    "", af_packet_config["iprf_server_interface_on_vpp"]
+                self.ingress_if_idxes.append(self.ingress_if_idx)
+                self.vpp_interfaces.append(self.ingress_if_idx)
+                self.linux_interfaces.append(
+                    ["", af_packet_config["iprf_client_interface_on_vpp"]]
                 )
-                disable_interface_gso(
-                    server_namespace, af_packet_config["iprf_server_interface_on_linux"]
+                self.linux_interfaces.append(
+                    [
+                        client_namespace,
+                        af_packet_config["iprf_client_interface_on_linux"],
+                    ]
                 )
-        elif server_if_type == "tap" or server_if_type == "tun":
-            self.egress_if_idx = self.create_tap_tun(
-                id=102,
-                host_namespace=server_namespace,
-                ip_version=ip_version,
-                host_ip4_prefix=layer2["server_ip4_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["server_ip4_prefix"],
-                host_ip6_prefix=layer2["server_ip6_prefix"]
-                if x_connect_mode == "L2"
-                else layer3["server_ip6_prefix"],
-                int_type=server_if_type,
-                host_if_name=f"{server_if_type}0",
-                enable_gso=enable_server_if_gso,
-                enable_gro=enable_server_if_gro,
-                enable_checksum_offload=enable_server_if_checksum_offload,
-            )
-            self.vpp_interfaces.append(self.egress_if_idx)
-            self.linux_interfaces.append([server_namespace, f"{server_if_type}0"])
-            # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
-            disable_interface_gso(server_namespace, f"{server_if_type}0")
-        else:
-            print(
-                f"Unsupported server interface type: {server_if_type} "
-                f"for test - ID={test['id']}"
-            )
-            sys.exit(1)
-
-        if x_connect_mode == "L2":
-            self.l2_connect_interfaces(1, self.ingress_if_idx, self.egress_if_idx)
-        elif x_connect_mode == "L3":
-            # L3 connect client & server side
-            vrf_id = layer3["ip4_vrf"] if ip_version == 4 else layer3["ip6_vrf"]
-            self.l3_connect_interfaces(
-                ip_version,
-                vrf_id,
-                (self.ingress_if_idx, vpp_client_prefix),
-                (self.egress_if_idx, vpp_server_prefix),
-            )
-            # Setup namespace routing
-            if ip_version == 4:
-                add_namespace_route(client_namespace, "0.0.0.0/0", vpp_client_nexthop)
-                add_namespace_route(server_namespace, "0.0.0.0/0", vpp_server_nexthop)
+                if enable_client_if_gso == 0:
+                    disable_interface_gso(
+                        "", af_packet_config["iprf_client_interface_on_vpp"]
+                    )
+                    disable_interface_gso(
+                        client_namespace,
+                        af_packet_config["iprf_client_interface_on_linux"],
+                    )
+            elif client_if_type == "tap" or client_if_type == "tun":
+                self.ingress_if_idx = self.create_tap_tun(
+                    id=101,
+                    host_namespace=client_namespace,
+                    ip_version=ip_version,
+                    host_ip4_prefix=layer2["client_ip4_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["client_ip4_prefix"],
+                    host_ip6_prefix=layer2["client_ip6_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["client_ip6_prefix"],
+                    host_ip4_gw=vpp_client_nexthop
+                    if x_connect_mode == "L3" and ip_version == 4
+                    else None,
+                    host_ip6_gw=vpp_client_nexthop
+                    if x_connect_mode == "L3" and ip_version == 6
+                    else None,
+                    int_type=client_if_type,
+                    host_if_name=f"{client_if_type}0",
+                    enable_gso=enable_client_if_gso,
+                    enable_gro=enable_client_if_gro,
+                    enable_checksum_offload=enable_client_if_checksum_offload,
+                )
+                self.tap_interfaces.append(self.ingress_if_idx)
+                self.ingress_if_idxes.append(self.ingress_if_idx)
+                self.vpp_interfaces.append(self.ingress_if_idx)
+                self.linux_interfaces.append([client_namespace, f"{client_if_type}0"])
+                # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
+                disable_interface_gso(client_namespace, f"{client_if_type}0")
+            elif client_if_type == "memif":
+                self.ingress_if_idx = self.create_memif(
+                    memif_id=0, mode=0 if x_connect_mode == "L2" else 1
+                )
+                self.memif_interfaces.append(self.ingress_if_idx)
+                self.ingress_if_idxes.append(self.ingress_if_idx)
+                self.vpp_interfaces.append(self.ingress_if_idx)
             else:
-                add_namespace_route(client_namespace, "::/0", vpp_client_nexthop)
-                add_namespace_route(server_namespace, "::/0", vpp_server_nexthop)
+                print(
+                    f"Unsupported client interface type: {client_if_type} "
+                    f"for test - ID={test['id']}"
+                )
+                sys.exit(1)
+        for server_if_type in server_if_types:
+            if server_if_type == "af_packet":
+                create_host_interface(
+                    af_packet_config["iprf_server_interface_on_linux"],
+                    af_packet_config["iprf_server_interface_on_vpp"],
+                    server_namespace,
+                    server_ip4_prefix,
+                    server_ip6_prefix,
+                )
+                self.egress_if_idx = self.create_af_packet(
+                    version=server_if_version,
+                    host_if_name=af_packet_config["iprf_server_interface_on_vpp"],
+                    enable_gso=enable_server_if_gso,
+                )
+                self.egress_if_idxes.append(self.egress_if_idx)
+                self.vpp_interfaces.append(self.egress_if_idx)
+                self.linux_interfaces.append(
+                    ["", af_packet_config["iprf_server_interface_on_vpp"]]
+                )
+                self.linux_interfaces.append(
+                    [
+                        server_namespace,
+                        af_packet_config["iprf_server_interface_on_linux"],
+                    ]
+                )
+                if enable_server_if_gso == 0:
+                    disable_interface_gso(
+                        "", af_packet_config["iprf_server_interface_on_vpp"]
+                    )
+                    disable_interface_gso(
+                        server_namespace,
+                        af_packet_config["iprf_server_interface_on_linux"],
+                    )
+            elif server_if_type == "tap" or server_if_type == "tun":
+                self.egress_if_idx = self.create_tap_tun(
+                    id=102,
+                    host_namespace=server_namespace,
+                    ip_version=ip_version,
+                    host_ip4_prefix=layer2["server_ip4_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["server_ip4_prefix"],
+                    host_ip6_prefix=layer2["server_ip6_prefix"]
+                    if x_connect_mode == "L2"
+                    else layer3["server_ip6_prefix"],
+                    int_type=server_if_type,
+                    host_if_name=f"{server_if_type}0",
+                    enable_gso=enable_server_if_gso,
+                    enable_gro=enable_server_if_gro,
+                    enable_checksum_offload=enable_server_if_checksum_offload,
+                )
+                self.tap_interfaces.append(self.egress_if_idx)
+                self.egress_if_idxes.append(self.egress_if_idx)
+                self.vpp_interfaces.append(self.egress_if_idx)
+                self.linux_interfaces.append([server_namespace, f"{server_if_type}0"])
+                # Seeing TCP timeouts if tx=on & rx=on Linux tap & tun interfaces
+                disable_interface_gso(server_namespace, f"{server_if_type}0")
+            elif server_if_type == "memif":
+                self.egress_if_idx = self.create_memif(
+                    memif_id=1, mode=0 if x_connect_mode == "L2" else 1
+                )
+                self.memif_interfaces.append(self.egress_if_idx)
+                self.egress_if_idxes.append(self.egress_if_idx)
+                self.vpp_interfaces.append(self.egress_if_idx)
+            else:
+                print(
+                    f"Unsupported server interface type: {server_if_type} "
+                    f"for test - ID={test['id']}"
+                )
+                sys.exit(1)
+        self.if_types = set(client_if_types).union(set(server_if_types))
+        # for memif testing: tapv2, memif & libmemif_app are connected
+        if "memif" not in self.if_types:
+            if x_connect_mode == "L2":
+                self.l2_connect_interfaces(1, self.ingress_if_idx, self.egress_if_idx)
+            elif x_connect_mode == "L3":
+                # L3 connect client & server side
+                vrf_id = layer3["ip4_vrf"] if ip_version == 4 else layer3["ip6_vrf"]
+                self.l3_connect_interfaces(
+                    ip_version,
+                    vrf_id,
+                    (self.ingress_if_idx, vpp_client_prefix),
+                    (self.egress_if_idx, vpp_server_prefix),
+                )
+                # Setup namespace routing
+                if ip_version == 4:
+                    add_namespace_route(
+                        client_namespace, "0.0.0.0/0", vpp_client_nexthop
+                    )
+                    add_namespace_route(
+                        server_namespace, "0.0.0.0/0", vpp_server_nexthop
+                    )
+                else:
+                    add_namespace_route(client_namespace, "::/0", vpp_client_nexthop)
+                    add_namespace_route(server_namespace, "::/0", vpp_server_nexthop)
+        else:
+            # connect: ingress tap & memif & egress tap and memif interfaces
+            if x_connect_mode == "L2":
+                self.l2_connect_interfaces(1, *self.ingress_if_idxes)
+                self.l2_connect_interfaces(2, *self.egress_if_idxes)
         # Wait for Linux IPv6 stack to become ready
         if ip_version == 6:
             time.sleep(2)
 
     def tearDown(self):
         try:
-            self.vapi.tap_delete_v2(self.ingress_if_idx)
+            for interface_if_idx in self.tap_interfaces:
+                self.vapi.tap_delete_v2(sw_if_index=interface_if_idx)
         except Exception:
             pass
         try:
-            self.vapi.tap_delete_v2(self.egress_if_idx)
+            for interface_if_idx in self.memif_interfaces:
+                self.vapi.memif_delete(sw_if_index=interface_if_idx)
         except Exception:
             pass
         try:
@@ -379,6 +434,11 @@ class TestVPPInterfacesQemu(VppTestCase):
         except Exception:
             pass
         try:
+            self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
+            self.vapi.bridge_domain_add_del_v2(bd_id=2, is_add=0)
+        except Exception:
+            pass
+        try:
             delete_namespace(
                 [
                     client_namespace,
@@ -389,6 +449,12 @@ class TestVPPInterfacesQemu(VppTestCase):
             pass
         try:
             stop_iperf()
+        except Exception:
+            pass
+        try:
+            if self.memif_process:
+                self.memif_process.terminate()
+                self.memif_process.join()
         except Exception:
             pass
 
@@ -527,6 +593,21 @@ class TestVPPInterfacesQemu(VppTestCase):
                 sw_if_index=sw_if_index, enable_disable=0
             )
         # Admin up
+        self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
+        return sw_if_index
+
+    def create_memif(self, memif_id, mode):
+        """Create memif interface in VPP.
+
+        Parameters:
+        memif_id: A unique ID for the memif interface
+        mode: 0 = ethernet, 1 = ip, 2 = punt/inject
+        """
+        # create memif interface with role=0 (i.e. master)
+        result = self.vapi.memif_create_v2(
+            role=0, mode=mode, id=memif_id, buffer_size=9216
+        )
+        sw_if_index = result.sw_if_index
         self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
         return sw_if_index
 
