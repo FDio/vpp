@@ -176,6 +176,9 @@ vlib_pci_function_level_reset (vlib_main_t *vm, vlib_pci_dev_handle_t h)
     return err;
 
   offset = cfg.cap_ptr;
+  /* Make gcc happy, otherwise gcc fails build due to cap not set if offset ==
+   * 0 */
+  cap = (pci_capability_pcie_t *) (cfg.data + offset);
 
   while (offset)
     {
@@ -410,4 +413,3 @@ VLIB_CLI_COMMAND (show_pci_command, static) = {
   .short_help = "show pci [all]",
   .function = show_pci_fn,
 };
-
