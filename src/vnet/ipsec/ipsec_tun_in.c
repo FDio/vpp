@@ -278,6 +278,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  next[0] = ipsec_ip6_if_no_tunnel (node, b[0], esp0, ip60);
+		  vlib_buffer_advance (b[0], -buf_rewind0);
 		  n_no_tunnel++;
 		  goto trace00;
 		}
