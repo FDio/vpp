@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "a589b56cd60a9766f48e3a329014030eeb07df22",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31048b83_7e6c3cec",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2023-07-28T13:41:58Z",
+      "side": 1,
+      "message": "Hello! Could you please take a look at patch please ?",
+      "revId": "a589b56cd60a9766f48e3a329014030eeb07df22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
