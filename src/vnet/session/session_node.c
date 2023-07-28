@@ -1613,6 +1613,7 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 {
   transport_send_params_t *sp = &wrk->ctx.sp;
   session_t *s = wrk->ctx.s;
+  clib_llist_index_t ei;
   u32 n_packets;
 
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
@@ -1626,8 +1627,13 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   sp->max_burst_size = clib_min (SESSION_NODE_FRAME_SIZE - *n_tx_packets,
 				 TRANSPORT_PACER_MAX_BURST_PKTS);
 
+  /* Grab elt index since app transports can enqueue events on tx */
+  ei = clib_llist_entry_index (wrk->event_elts, elt);
+
   n_packets = transport_custom_tx (session_get_transport_proto (s), s, sp);
   *n_tx_packets += n_packets;
+
+  elt = clib_llist_elt (wrk->event_elts, ei);
 
   if (s->flags & SESSION_F_CUSTOM_TX)
     {
