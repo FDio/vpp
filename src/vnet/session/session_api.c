@@ -85,7 +85,7 @@ static int
 mq_send_session_accepted_cb (session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-  session_accepted_msg_t m = { 0 };
+  session_accepted_msg_t m = {};
   fifo_segment_t *eq_seg;
   session_t *listener;
   application_t *app;
@@ -143,7 +143,10 @@ mq_send_session_accepted_cb (session_t * s)
 				&m.original_dst_ip4, &m.original_dst_port);
     }
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, s->thread_index,
+                            SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
+  //   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof
+  //   (m));
 
   return 0;
 }
@@ -152,12 +155,14 @@ static inline void
 mq_send_session_close_evt (app_worker_t * app_wrk, session_handle_t sh,
 			   session_evt_type_t evt_type)
 {
-  session_disconnected_msg_t m = { 0 };
+  session_disconnected_msg_t m = {};
 
   m.handle = sh;
   m.context = app_wrk->api_client_index;
 
-  app_wrk_send_ctrl_evt (app_wrk, evt_type, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, session_thread_from_handle (sh), evt_type,
+                            &m, sizeof (m));
+//   app_wrk_send_ctrl_evt (app_wrk, evt_type, &m, sizeof (m));
 }
 
 static inline void
@@ -211,7 +216,7 @@ int
 mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 			      session_t * s, session_error_t err)
 {
-  session_connected_msg_t m = { 0 };
+  session_connected_msg_t m = {};
   transport_connection_t *tc;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
@@ -277,7 +282,9 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
 snd_msg:
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_CONNECTED, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, s->thread_index, SESSION_CTRL_EVT_CONNECTED,
+                            &m, sizeof (m));
+//   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_CONNECTED, &m, sizeof (m));
 
   return 0;
 }
@@ -286,7 +293,7 @@ int
 mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			  session_handle_t handle, int rv)
 {
-  session_bound_msg_t m = { 0 };
+  session_bound_msg_t m = {};
   transport_endpoint_t tep;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
@@ -330,7 +337,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
 snd_msg:
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_BOUND, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, ls->thread_index, SESSION_CTRL_EVT_BOUND,
+                            &m, sizeof (m));
+//   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_BOUND, &m, sizeof (m));
 
   return 0;
 }
@@ -339,19 +348,21 @@ void
 mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 			u32 context, int rv)
 {
-  session_unlisten_reply_msg_t m = { 0 };
+  session_unlisten_reply_msg_t m = {};
 
   m.context = context;
   m.handle = sh;
   m.retval = rv;
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_UNLISTEN_REPLY, &m,
-			 sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, session_thread_from_handle (sh),
+                            SESSION_CTRL_EVT_UNLISTEN_REPLY, &m, sizeof (m));
+  //   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_UNLISTEN_REPLY, &m,
+  // 			 sizeof (m));
 }
 
 static void
 mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
 {
-  session_migrated_msg_t m = { 0 };
+  session_migrated_msg_t m = {};
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   application_t *app;
@@ -368,13 +379,15 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, thread_index);
   m.segment_handle = SESSION_INVALID_HANDLE;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_MIGRATED, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, s->thread_index,
+                            SESSION_CTRL_EVT_MIGRATED, &m, sizeof (m));
+//   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_MIGRATED, &m, sizeof (m));
 }
 
 static int
 mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
 {
-  session_app_add_segment_msg_t m = { 0 };
+  session_app_add_segment_msg_t m = {};
   vl_api_registration_t *reg;
   app_worker_t *app_wrk;
   fifo_segment_t *fs;
@@ -410,8 +423,11 @@ mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
   strncpy ((char *) m.segment_name, (char *) sp->name,
 	   sizeof (m.segment_name) - 1);
 
-  app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
-			    sizeof (m), sp->fd);
+  app_wrk_program_ctrl_msg_fd (app_wrk, vlib_get_thread_index (),
+                               SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
+                               sizeof (m), sp->fd);
+  //   app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
+  // 			    sizeof (m), sp->fd);
 
   return 0;
 }
@@ -419,7 +435,7 @@ mq_send_add_segment_cb (u32 app_wrk_index, u64 segment_handle)
 static int
 mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
 {
-  session_app_del_segment_msg_t m = { 0 };
+  session_app_del_segment_msg_t m = {};
   vl_api_registration_t *reg;
   app_worker_t *app_wrk;
 
@@ -433,8 +449,10 @@ mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
 
   m.segment_handle = segment_handle;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
-			 sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, vlib_get_thread_index (),
+                            SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m, sizeof (m));
+  //   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
+  // 			 sizeof (m));
 
   return 0;
 }
@@ -442,7 +460,7 @@ mq_send_del_segment_cb (u32 app_wrk_index, u64 segment_handle)
 static void
 mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
 {
-  session_cleanup_msg_t m = { 0 };
+  session_cleanup_msg_t m = {};
   app_worker_t *app_wrk;
 
   /* Propagate transport cleanup notifications only if app didn't close */
@@ -457,32 +475,47 @@ mq_send_session_cleanup_cb (session_t * s, session_cleanup_ntf_t ntf)
   m.handle = session_handle (s);
   m.type = ntf;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_CLEANUP, &m, sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, s->thread_index, SESSION_CTRL_EVT_CLEANUP,
+                            &m, sizeof (m));
+  //   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_CLEANUP, &m, sizeof
+  //   (m));
 }
 
 static int
 mq_send_io_rx_event (session_t *s)
 {
-  session_event_t *mq_evt;
-  svm_msg_q_msg_t mq_msg;
+  session_event_t m = {};
   app_worker_t *app_wrk;
-  svm_msg_q_t *mq;
-
-  if (svm_fifo_has_event (s->rx_fifo))
-    return 0;
 
   app_wrk = app_worker_get (s->app_wrk_index);
-  mq = app_wrk->event_queue;
 
-  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+  m.event_type = SESSION_IO_EVT_RX;
+  m.session_index = s->rx_fifo->shr->client_session_index;
+  m.as_u64[1] = s->session_index;
 
-  mq_evt->event_type = SESSION_IO_EVT_RX;
-  mq_evt->session_index = s->rx_fifo->shr->client_session_index;
+  (void)svm_fifo_set_event (s->rx_fifo);
+  app_wrk_program_io_msg (app_wrk, s->thread_index, &m);
 
-  (void) svm_fifo_set_event (s->rx_fifo);
+  //   session_event_t *mq_evt;
+  //   svm_msg_q_msg_t mq_msg;
+  //   app_worker_t *app_wrk;
+  //   svm_msg_q_t *mq;
 
-  svm_msg_q_add_raw (mq, &mq_msg);
+  //   if (svm_fifo_has_event (s->rx_fifo))
+  //     return 0;
+
+  //   app_wrk = app_worker_get (s->app_wrk_index);
+  //   mq = app_wrk->event_queue;
+
+  //   mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  //   mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  //   mq_evt->event_type = SESSION_IO_EVT_RX;
+  //   mq_evt->session_index = s->rx_fifo->shr->client_session_index;
+
+  //   (void) svm_fifo_set_event (s->rx_fifo);
+
+  //   svm_msg_q_add_raw (mq, &mq_msg);
 
   return 0;
 }
@@ -491,17 +524,24 @@ static int
 mq_send_io_tx_event (session_t *s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-  svm_msg_q_t *mq = app_wrk->event_queue;
-  session_event_t *mq_evt;
-  svm_msg_q_msg_t mq_msg;
+  session_event_t m = {};
 
-  mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+  m.event_type = SESSION_IO_EVT_TX;
+  m.session_index = s->tx_fifo->shr->client_session_index;
 
-  mq_evt->event_type = SESSION_IO_EVT_TX;
-  mq_evt->session_index = s->tx_fifo->shr->client_session_index;
+  app_wrk_program_io_msg (app_wrk, s->thread_index, &m);
 
-  svm_msg_q_add_raw (mq, &mq_msg);
+  //   svm_msg_q_t *mq = app_wrk->event_queue;
+  //   session_event_t *mq_evt;
+  //   svm_msg_q_msg_t mq_msg;
+
+  //   mq_msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
+  //   mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
+
+  //   mq_evt->event_type = SESSION_IO_EVT_TX;
+  //   mq_evt->session_index = s->tx_fifo->shr->client_session_index;
+
+  //   svm_msg_q_add_raw (mq, &mq_msg);
 
   return 0;
 }
@@ -1243,7 +1283,7 @@ VL_MSG_API_REAPER_FUNCTION (application_reaper_cb);
 static int
 mq_send_add_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
 {
-  session_app_add_segment_msg_t m = { 0 };
+  session_app_add_segment_msg_t m = {};
   app_worker_t *app_wrk;
   fifo_segment_t *fs;
   ssvm_private_t *sp;
@@ -1263,8 +1303,11 @@ mq_send_add_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
   strncpy ((char *) m.segment_name, (char *) sp->name,
 	   sizeof (m.segment_name) - 1);
 
-  app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
-			    sizeof (m), sp->fd);
+  app_wrk_program_ctrl_msg_fd (app_wrk, vlib_get_thread_index (),
+                               SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
+                               sizeof (m), sp->fd);
+  //   app_wrk_send_ctrl_evt_fd (app_wrk, SESSION_CTRL_EVT_APP_ADD_SEGMENT, &m,
+  // 			    sizeof (m), sp->fd);
 
   return 0;
 }
@@ -1272,15 +1315,17 @@ mq_send_add_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
 static int
 mq_send_del_segment_sapi_cb (u32 app_wrk_index, u64 segment_handle)
 {
-  session_app_del_segment_msg_t m = { 0 };
+  session_app_del_segment_msg_t m = {};
   app_worker_t *app_wrk;
 
   app_wrk = app_worker_get (app_wrk_index);
 
   m.segment_handle = segment_handle;
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
-			 sizeof (m));
+  app_wrk_program_ctrl_msg (app_wrk, vlib_get_thread_index (),
+                            SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m, sizeof (m));
+//   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_APP_DEL_SEGMENT, &m,
+// 			 sizeof (m));
 
   return 0;
 }

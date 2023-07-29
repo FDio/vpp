@@ -39,6 +39,16 @@ typedef struct app_wrk_postponed_msg_
   u8 data[SESSION_CTRL_MSG_TX_MAX_SIZE];
 } app_wrk_postponed_msg_t;
 
+typedef struct app_wrk_pending_msg_
+{
+  u32 len;
+  u8 event_type;
+  u8 ring;
+  u8 is_sapi;
+  int fd;
+  u8 data[SESSION_CTRL_MSG_TX_MAX_SIZE];
+} app_wrk_pending_msg_t;
+
 typedef struct app_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -88,6 +98,9 @@ typedef struct app_worker_
 
   /** Vector of detached listener segment managers */
   u32 *detached_seg_managers;
+
+  /** Fifo of messages postponed because of mq congestion */
+  app_wrk_pending_msg_t **pending_mq_msgs;
 } app_worker_t;
 
 typedef struct app_worker_map_
@@ -378,10 +391,19 @@ int app_worker_del_segment_notify (app_worker_t * app_wrk,
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
+app_wrk_pending_msg_t *app_wrk_reserve_msg (app_worker_t *app_wrk,
+                                            u32 thread_index);
+void app_wrk_program_io_msg (app_worker_t *app_wrk, u32 thread_index,
+                             session_event_t *msg);
+void app_wrk_program_ctrl_msg (app_worker_t *app_wrk, u32 thread_index,
+                               u8 evt_type, void *msg, u32 msg_len);
+void app_wrk_program_ctrl_msg_fd (app_worker_t *app_wrk, u32 thread_index,
+                                  u8 evt_type, void *msg, u32 msg_len, int fd);
 void app_wrk_send_ctrl_evt_fd (app_worker_t *app_wrk, u8 evt_type, void *msg,
 			       u32 msg_len, int fd);
 void app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
 			    u32 msg_len);
+int app_wrk_send_fd (app_worker_t *app_wrk, int fd);
 u8 app_worker_mq_wrk_is_congested (app_worker_t *app_wrk, u32 thread_index);
 void app_worker_set_mq_wrk_congested (app_worker_t *app_wrk, u32 thread_index);
 void app_worker_unset_wrk_mq_congested (app_worker_t *app_wrk,

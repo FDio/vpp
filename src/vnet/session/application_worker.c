@@ -36,6 +36,7 @@ app_worker_alloc (application_t * app)
   clib_spinlock_init (&app_wrk->detached_seg_managers_lock);
   vec_validate (app_wrk->wrk_evts, vlib_num_workers ());
   vec_validate (app_wrk->wrk_mq_congested, vlib_num_workers ());
+  vec_validate (app_wrk->pending_mq_msgs, vlib_num_workers ());
   APP_DBG ("New app %v worker %u", app->name, app_wrk->wrk_index);
   return app_wrk;
 }
@@ -657,7 +658,7 @@ app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
   return 0;
 }
 
-static int
+int
 app_wrk_send_fd (app_worker_t *app_wrk, int fd)
 {
   if (!appns_sapi_enabled ())
@@ -781,6 +782,73 @@ app_wrk_send_ctrl_evt (app_worker_t *app_wrk, u8 evt_type, void *msg,
 		       u32 msg_len)
 {
   app_wrk_send_ctrl_evt_inline (app_wrk, evt_type, msg, msg_len, -1);
+}
+
+app_wrk_pending_msg_t *
+app_wrk_reserve_msg (app_worker_t *app_wrk, u32 thread_index)
+{
+  app_wrk_pending_msg_t *pm;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+  clib_fifo_add2 (app_wrk->pending_mq_msgs[thread_index], pm);
+  return pm;
+  //   clib_memcpy_fast (pm->data, msg, msg_len);
+  //   pm->event_type = evt_type;
+  //   pm->ring = ring;
+  //   pm->len = msg_len;
+  //   pm->fd = fd;
+
+  //   if (clib_fifo_elts (app_wrk->postponed_mq_msgs) == 1)
+  //     {
+  //       app_wrk_mq_rpc_ags_t args = { .thread_index = vlib_get_thread_index
+  //       (),
+  // 				    .app_wrk_index = app_wrk->wrk_index };
+
+  //       session_send_rpc_evt_to_thread_force (
+  // 	args.thread_index, app_wrk_handle_mq_postponed_msgs,
+  // 	uword_to_pointer (args.as_uword, void *));
+  //     }
+}
+
+void
+app_wrk_program_io_msg (app_worker_t *app_wrk, u32 thread_index, session_event_t *msg)
+{
+  app_wrk_pending_msg_t *pm;
+
+  pm = app_wrk_reserve_msg (app_wrk, thread_index);
+  pm->event_type = msg->event_type;
+  pm->len = sizeof (session_event_t);
+  pm->ring = SESSION_MQ_IO_EVT_RING;
+  pm->fd = -1;
+  clib_memcpy_fast (pm->data, msg, sizeof (session_event_t));
+}
+
+void
+app_wrk_program_ctrl_msg (app_worker_t *app_wrk, u32 thread_index, u8 evt_type,
+                          void *msg, u32 msg_len)
+{
+  app_wrk_pending_msg_t *pm;
+
+  pm = app_wrk_reserve_msg (app_wrk, thread_index);
+  pm->event_type = evt_type;
+  pm->len = msg_len;
+  pm->ring = SESSION_MQ_CTRL_EVT_RING;
+  pm->fd = -1;
+  clib_memcpy_fast (pm->data, msg, msg_len);
+}
+
+void
+app_wrk_program_ctrl_msg_fd (app_worker_t *app_wrk, u32 thread_index,
+                             u8 evt_type, void *msg, u32 msg_len, int fd)
+{
+  app_wrk_pending_msg_t *pm;
+
+  pm = app_wrk_reserve_msg (app_wrk, thread_index);
+  pm->event_type = evt_type;
+  pm->len = msg_len;
+  pm->ring = SESSION_MQ_CTRL_EVT_RING;
+  pm->fd = fd;
+  clib_memcpy_fast (pm->data, msg, msg_len);
 }
 
 u8
