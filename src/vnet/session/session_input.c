@@ -29,57 +29,58 @@ mq_event_ring_index (session_evt_type_t et)
 					     SESSION_MQ_IO_EVT_RING);
 }
 
+static int count_del_cleanup;
+static int count_to_flush;
+// static int count_i_flushed;
 void
-app_worker_del_all_events (app_worker_t *app_wrk)
+app_worker_del_all_events (app_worker_t *app_wrk, u32 thread_index)
 {
-  session_worker_t *wrk;
+//   session_worker_t *wrk;
   session_event_t *evt;
-  u32 thread_index;
   session_t *s;
-  int i;
+//   int i;
 
-  for (thread_index = 0; thread_index < vec_len (app_wrk->wrk_evts);
-       thread_index++)
+   count_to_flush = clib_fifo_elts (app_wrk->wrk_evts[thread_index]);
+   while (clib_fifo_elts (app_wrk->wrk_evts[thread_index]))
     {
-      for (i = 0; i < clib_fifo_elts (app_wrk->wrk_evts[thread_index]); i++)
-	{
-	  evt = clib_fifo_head (app_wrk->wrk_evts[thread_index]);
-	  switch (evt->event_type)
-	    {
-	    case SESSION_CTRL_EVT_MIGRATED:
-	      s = session_get (evt->session_index, thread_index);
-	      transport_cleanup (session_get_transport_proto (s),
-				 s->connection_index, s->thread_index);
-	      session_free (s);
-	      break;
-	    case SESSION_CTRL_EVT_CLEANUP:
-	      s = session_get (evt->as_u64[0] & 0xffffffff, thread_index);
-	      if (evt->as_u64[0] >> 32 != SESSION_CLEANUP_SESSION)
-		break;
-	      if (!evt->as_u64[1])
-		{
-		  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
-		  session_free (s);
-		}
-	      else
-		{
-		  uword_to_pointer (evt->as_u64[1],
-				    void (*) (session_t * s)) (s);
-		}
-	      break;
-	    case SESSION_CTRL_EVT_HALF_CLEANUP:
-	      s = ho_session_get (evt->session_index);
-	      pool_put_index (app_wrk->half_open_table, s->ho_index);
-	      session_free (s);
-	      break;
-	    default:
-	      break;
-	    }
-	  clib_fifo_advance_head (app_wrk->wrk_evts[thread_index], 1);
-	}
-      wrk = session_main_get_worker (thread_index);
-      clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
+      clib_fifo_sub2 (app_wrk->wrk_evts[thread_index], evt);
+      switch (evt->event_type)
+        {
+        case SESSION_CTRL_EVT_MIGRATED:
+          s = session_get (evt->session_index, thread_index);
+          transport_cleanup (session_get_transport_proto (s),
+                             s->connection_index, s->thread_index);
+          session_free (s);
+          break;
+        case SESSION_CTRL_EVT_CLEANUP:
+          if (evt->as_u64[0] >> 32 != SESSION_CLEANUP_SESSION)
+            break;
+          count_del_cleanup += 1;
+          s = session_get (evt->as_u64[0] & 0xffffffff, thread_index);
+          if (!evt->as_u64[1])
+            {
+              segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
+              session_free (s);
+            }
+          else
+            {
+              uword_to_pointer (evt->as_u64[1], void (*) (session_t *s)) (s);
+            }
+          break;
+        case SESSION_CTRL_EVT_HALF_CLEANUP:
+          s = ho_session_get (evt->session_index);
+          pool_put_index (app_wrk->half_open_table, s->ho_index);
+          session_free (s);
+          break;
+        default:
+          break;
+        }
+//       clib_fifo_advance_head (app_wrk->wrk_evts[thread_index], 1);
     }
+//     count_i_flushed = i;
+
+//   wrk = session_main_get_worker (thread_index);
+//   clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
 }
 
 always_inline int
@@ -133,9 +134,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
 	case SESSION_IO_EVT_TX:
-	  // case SESSION_IO_EVT_BUILTIN_TX:
 	  s = session_get (evt->session_index, thread_index);
-	  // TODO make sure the function always exists
 	  app->cb_fns.builtin_app_tx_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_BOUND:
@@ -225,9 +224,6 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  app->cb_fns.del_segment_callback (app_wrk->wrk_index,
 					    evt->as_u64[1]);
 	  break;
-	// NEEDED ???
-	// case SESSION_CTRL_EVT_RPC:
-	//   break;
 	default:
 	  clib_warning ("unexpected event: %u", evt->event_type);
 	  ASSERT (0);
@@ -270,12 +266,21 @@ session_wrk_flush_events (session_worker_t *wrk)
   while (app_wrk_index != ~0)
     {
       app_wrk = app_worker_get_if_valid (app_wrk_index);
-      /* app_wrk events are flushed on free, so should be valid here */
-      ASSERT (app_wrk != 0);
+
+      if (PREDICT_FALSE (app_wrk->is_pending_free))
+        {
+          app_worker_del_all_events (app_wrk, thread_index);
+          clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
+          app_worker_maybe_free (app_wrk, thread_index);
+          app_wrk_index = clib_bitmap_next_set (wrk->app_wrks_pending_ntf,
+                                                app_wrk_index + 1);
+          continue;
+        }
+
       app_wrk_flush_wrk_events (app_wrk, thread_index);
 
       if (!clib_fifo_elts (app_wrk->wrk_evts[thread_index]))
-	clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
+        clib_bitmap_set (wrk->app_wrks_pending_ntf, app_wrk->wrk_index, 0);
 
       app_wrk_index =
 	clib_bitmap_next_set (wrk->app_wrks_pending_ntf, app_wrk_index + 1);

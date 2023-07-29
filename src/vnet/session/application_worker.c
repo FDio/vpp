@@ -56,6 +56,58 @@ app_worker_get_if_valid (u32 wrk_index)
 }
 
 void
+app_worker_free2 (app_worker_t *app_wrk)
+{
+  for (int i = 0; i < vec_len (app_wrk->wrk_evts); i++)
+    clib_fifo_free (app_wrk->wrk_evts[i]);
+
+  vec_free (app_wrk->wrk_evts);
+  vec_free (app_wrk->wrk_mq_congested);
+
+  // XXX remove
+  clib_fifo_free (app_wrk->postponed_mq_msgs);
+  clib_spinlock_free (&app_wrk->postponed_mq_msgs_lock);
+
+  if (CLIB_DEBUG)
+    clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
+  pool_put (app_workers, app_wrk);
+}
+
+static int
+app_worker_free_rpc (void *args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u32 wrk_index = pointer_to_uword (args);
+  app_worker_t *app_wrk;
+
+  vlib_worker_thread_barrier_sync (vm);
+
+  app_wrk = app_worker_get (wrk_index);
+  app_worker_free2 (app_wrk);
+
+  vlib_worker_thread_barrier_release (vm);
+
+  return 0;
+}
+
+void
+app_worker_maybe_free (app_worker_t *app_wrk, u32 thread_index)
+{
+  u32 fm, val = ~(1 << thread_index);
+
+  if (__atomic_or_fetch (&app_wrk->to_free_mask, 1 << thread_index,
+                         __ATOMIC_RELAXED))
+    {
+      clib_warning ("already freed?! mask %u", app_wrk->to_free_mask);
+      return;
+    }
+  fm = __atomic_and_fetch (&app_wrk->to_free_mask, val, __ATOMIC_RELAXED);
+  if (fm == 0)
+    session_send_rpc_evt_to_thread (
+        0, app_worker_free_rpc, uword_to_pointer (app_wrk->wrk_index, void *));
+}
+
+void
 app_worker_free (app_worker_t * app_wrk)
 {
   application_t *app = application_get (app_wrk->app_index);
@@ -66,16 +118,6 @@ app_worker_free (app_worker_t * app_wrk)
   session_t *ls;
   u32 sm_index;
   int i;
-
-  /*
-   * Cleanup vpp wrk events
-   */
-  app_worker_del_all_events (app_wrk);
-  for (i = 0; i < vec_len (app_wrk->wrk_evts); i++)
-    clib_fifo_free (app_wrk->wrk_evts[i]);
-
-  vec_free (app_wrk->wrk_evts);
-  vec_free (app_wrk->wrk_mq_congested);
 
   /*
    *  Listener cleanup
@@ -139,13 +181,20 @@ app_worker_free (app_worker_t * app_wrk)
   vec_free (app_wrk->detached_seg_managers);
   clib_spinlock_free (&app_wrk->detached_seg_managers_lock);
 
-  // XXX remove
-  clib_fifo_free (app_wrk->postponed_mq_msgs);
-  clib_spinlock_free (&app_wrk->postponed_mq_msgs_lock);
+  /*
+   * Cleanup vpp wrk events
+   */
 
-  if (CLIB_DEBUG)
-    clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
-  pool_put (app_workers, app_wrk);
+//   app_worker_del_all_events (app_wrk);
+  for (i = 0; i < vec_len (app_wrk->wrk_evts); i++)
+    if (clib_fifo_elts (app_wrk->wrk_evts[i]))
+        app_wrk->to_free_mask |= 1 << i;
+
+  if (app_wrk->to_free_mask) {
+	app_wrk->is_pending_free = 1;
+	return;
+  }
+  app_worker_free2 (app_wrk);
 }
 
 application_t *
@@ -792,11 +841,21 @@ app_worker_add_event (app_worker_t *app_wrk, session_t *s,
     }
 }
 
+static int add_custom_cln;
+static int count_enqueued;
+
 void
 app_worker_add_event_custom (app_worker_t *app_wrk, u32 thread_index,
 			     session_event_t *evt)
 {
+  if (evt->event_type == SESSION_CTRL_EVT_CLEANUP
+      && (evt->as_u64[0] >> 32) == SESSION_CLEANUP_SESSION)
+    add_custom_cln += 1;
+
+  u32 fsize = clib_fifo_elts (app_wrk->wrk_evts[thread_index]);
   clib_fifo_add1 (app_wrk->wrk_evts[thread_index], *evt);
+  ASSERT (fsize + 1 == clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
+  count_enqueued = clib_fifo_elts (app_wrk->wrk_evts[thread_index]);
 
   /* First event for this app_wrk. Schedule it for handling in session input */
   if (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 1)

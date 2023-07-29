@@ -214,15 +214,19 @@ session_alloc (u32 thread_index)
   return s;
 }
 
+static int count_n_free;
 void
 session_free (session_t * s)
 {
   session_worker_t *wrk = &session_main.wrk[s->thread_index];
-
+count_n_free += 1;
+u32 pre_clean = pool_elts (wrk->sessions);
   SESSION_EVT (SESSION_EVT_FREE, s);
   if (CLIB_DEBUG)
     clib_memset (s, 0xFA, sizeof (*s));
   pool_put (wrk->sessions, s);
+  if (pre_clean != pool_elts (wrk->sessions) + 1)
+    os_panic ();
 }
 
 u8
@@ -267,6 +271,10 @@ session_cleanup (session_t *s)
   session_free (s);
 }
 
+static int count_cleanup;
+static int count_cleanup_ntf;
+static int count_cleanup_trans;
+static int count_cleanup_ntf_session;
 static void
 session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
 {
@@ -276,11 +284,18 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
   if (!app_wrk)
     {
       if (ntf == SESSION_CLEANUP_TRANSPORT)
-	return;
+	{
+		count_cleanup_trans += 1;
+		return;
+	}
 
+count_cleanup +=1 ;
       session_cleanup (s);
       return;
     }
+    count_cleanup_ntf +=1 ;
+    if (ntf != SESSION_CLEANUP_TRANSPORT)
+    count_cleanup_ntf_session +=1;
   app_worker_cleanup_notify (app_wrk, s, ntf);
 }
 
@@ -1176,7 +1191,6 @@ void
 session_transport_delete_notify (transport_connection_t * tc)
 {
   session_t *s;
-
   /* App might've been removed already */
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
@@ -1655,6 +1669,8 @@ session_transport_half_close (session_t *s)
 			s->thread_index);
 }
 
+static int count_close_closed;
+static int count_not_deleted;
 /**
  * Notify transport the session can be disconnected. This should eventually
  * result in a delete notification that allows us to cleanup session state.
@@ -1667,6 +1683,9 @@ session_transport_close (session_t * s)
 {
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
+	count_close_closed +=1;
+	if (s->session_state < SESSION_STATE_TRANSPORT_DELETED)
+	 count_not_deleted+=1;
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
 	session_set_state (s, SESSION_STATE_CLOSED);
       /* If transport is already deleted, just free the session */

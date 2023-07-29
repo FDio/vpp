@@ -74,6 +74,8 @@ typedef struct app_worker_
 
   u8 app_is_builtin;
 
+  u8 is_pending_free;
+  
   /** Pool of half-open session handles. Tracked in case worker detaches */
   session_handle_t *half_open_table;
 
@@ -94,6 +96,8 @@ typedef struct app_worker_
 
   /** Lock to add/sub message from ref @postponed_mq_msgs */
   clib_spinlock_t postponed_mq_msgs_lock;
+
+  u32 to_free_mask;
 } app_worker_t;
 
 typedef struct app_worker_map_
@@ -337,6 +341,7 @@ app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
 int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
+void app_worker_maybe_free (app_worker_t *app_wrk, u32 thread_index);
 int app_worker_connect_session (app_worker_t *app, session_endpoint_cfg_t *sep,
 				session_handle_t *rsh);
 session_error_t app_worker_start_listen (app_worker_t *app_wrk,
@@ -374,7 +379,7 @@ void app_worker_add_event (app_worker_t *app_wrk, session_t *s,
 void app_worker_add_event_custom (app_worker_t *app_wrk, u32 thread_index,
 				  session_event_t *evt);
 int app_wrk_flush_wrk_events (app_worker_t *app_wrk, u32 thread_index);
-void app_worker_del_all_events (app_worker_t *app_wrk);
+// void app_worker_del_all_events (app_worker_t *app_wrk);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
