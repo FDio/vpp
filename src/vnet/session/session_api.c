@@ -85,7 +85,8 @@ static int
 mq_send_session_accepted_cb (session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-  session_accepted_msg_t m = { 0 };
+  session_accepted_msg_t m = {};
+  app_wrk_pending_msg_t *pm;
   fifo_segment_t *eq_seg;
   session_t *listener;
   application_t *app;
@@ -143,7 +144,14 @@ mq_send_session_accepted_cb (session_t * s)
 				&m.original_dst_ip4, &m.original_dst_port);
     }
 
-  app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  pm = app_wrk_reserve_msg (app_wrk, s->thread_index);
+  pm->event_type = SESSION_CTRL_EVT_ACCEPTED;
+  pm->len = sizeof (m);
+  pm->ring = SESSION_MQ_CTRL_EVT_RING;
+  clib_memcpy_fast(&pm->data, &m, sizeof (m)); 
+
+//   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_ACCEPTED, &m, sizeof (m));
 
   return 0;
 }
