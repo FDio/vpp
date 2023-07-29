@@ -71,6 +71,54 @@ app_worker_del_all_events (app_worker_t *app_wrk)
     }
 }
 
+static void
+app_worker_flush_pending_msg (app_worker_t *app_wrk, u32 thread_index)
+{
+  svm_msg_q_t *mq = app_wrk->event_queue;
+  svm_msg_q_msg_t _mq_msg, *mq_msg = &_mq_msg;
+  app_wrk_pending_msg_t *pm;
+  u8 ring_index, mq_was_cong;
+
+  mq_was_cong = app_worker_mq_wrk_is_congested (app_wrk, thread_index);
+  if (mq_try_lock (mq))
+    {
+      app_worker_set_mq_wrk_congested (app_wrk, thread_index);
+      return 0;
+    }
+
+  while (clib_fifo_elts (app_wrk->pending_mq_msgs))
+    {
+      pm = clib_fifo_head (app_wrk->pending_mq_msgs);
+      ring_index = mq_event_ring_index (pm->event_type);
+
+      if (svm_msg_q_or_ring_is_full (mq, ring_index))
+	{
+	  app_worker_set_mq_wrk_congested (app_wrk, thread_index);
+	  goto mq_unlock;
+	}
+
+      mq_msg = svm_msg_q_alloc_msg_w_ring (mq, pm->ring, ring_index) evt =
+	svm_msg_q_msg_data (mq, mq_msg);
+      clib_memset (evt, 0, sizeof (*evt));
+      evt->event_type = pm->event_type;
+      clib_memcpy_fast (evt->data, pm->data, pm->len);
+
+      if (pm->fd != -1)
+	app_wrk_send_fd (app_wrk, pm->fd);
+
+      svm_msg_q_add_raw (mq, &mq_msg);
+
+      clib_fifo_advance_head (app_wrk->pending_mq_msgs, 1);
+    }
+
+mq_unlock:
+
+  svm_msg_q_unlock (mq);
+
+  if (mq_was_cong && !clib_fifo_elts (app_wrk->pending_mq_msgs))
+    app_worker_unset_wrk_mq_congested (app_wrk, thread_index);
+}
+
 always_inline int
 app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 				u8 is_builtin)
@@ -82,31 +130,30 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
   u8 ring_index, mq_is_cong;
   session_t *s;
 
-  n_evts = clib_min (n_evts, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
-
   if (!is_builtin)
     {
-      mq_is_cong = app_worker_mq_is_congested (app_wrk);
-      if (mq_try_lock (mq))
+      if (app_worker_mq_wrk_is_congested (app_wrk, thread_index))
 	{
-	  app_worker_set_mq_wrk_congested (app_wrk, thread_index);
-	  return 0;
+	  app_worker_flush_pending_msg (app_wrk, thread_index);
+	  if (app_worker_mq_wrk_is_congested (app_wrk, thread_index))
+	    return 0;
 	}
     }
+  n_evts = clib_min (n_evts, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
+
+  //   if (!is_builtin)
+  //     {
+  //       mq_is_cong = app_worker_mq_is_congested (app_wrk);
+  //       if (mq_try_lock (mq))
+  // 	{
+  // 	  app_worker_set_mq_wrk_congested (app_wrk, thread_index);
+  // 	  return 0;
+  // 	}
+  //     }
 
   for (i = 0; i < n_evts; i++)
     {
       evt = clib_fifo_head (app_wrk->wrk_evts[thread_index]);
-      if (!is_builtin)
-	{
-	  ring_index = mq_event_ring_index (evt->event_type);
-	  if (svm_msg_q_or_ring_is_full (mq, ring_index))
-	    {
-	      app_worker_set_mq_wrk_congested (app_wrk, thread_index);
-	      break;
-	    }
-	}
-
       switch (evt->event_type)
 	{
 	case SESSION_IO_EVT_RX:
@@ -216,11 +263,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
     }
 
   if (!is_builtin)
-    {
-      svm_msg_q_unlock (mq);
-      if (mq_is_cong && i == n_evts)
-	app_worker_unset_wrk_mq_congested (app_wrk, thread_index);
-    }
+    app_worker_flush_pending_msg (app_wrk, thread_index);
 
   return 0;
 }
