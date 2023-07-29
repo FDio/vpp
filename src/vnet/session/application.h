@@ -90,7 +90,7 @@ typedef struct app_worker_
   u32 *detached_seg_managers;
 
   /** Fifo of messages postponed because of mq congestion */
-  app_wrk_postponed_msg_t *postponed_mq_msgs;
+  app_wrk_postponed_msg_t **postponed_mq_msgs;
 
   /** Lock to add/sub message from ref @postponed_mq_msgs */
   clib_spinlock_t postponed_mq_msgs_lock;
