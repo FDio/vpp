@@ -39,6 +39,16 @@ typedef struct app_wrk_postponed_msg_
   u8 data[SESSION_CTRL_MSG_TX_MAX_SIZE];
 } app_wrk_postponed_msg_t;
 
+typedef struct app_wrk_pending_msg_
+{
+  u32 len;
+  u8 event_type;
+  u8 ring;
+  u8 is_sapi;
+  int fd;
+  u8 data[SESSION_CTRL_MSG_TX_MAX_SIZE];
+} app_wrk_pending_msg_t;
+
 typedef struct app_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -90,7 +100,7 @@ typedef struct app_worker_
   u32 *detached_seg_managers;
 
   /** Fifo of messages postponed because of mq congestion */
-  app_wrk_postponed_msg_t *postponed_mq_msgs;
+  app_wrk_pending_msg_t **postponed_mq_msgs;
 
   /** Lock to add/sub message from ref @postponed_mq_msgs */
   clib_spinlock_t postponed_mq_msgs_lock;

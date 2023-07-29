@@ -85,18 +85,27 @@ static int
 mq_send_session_accepted_cb (session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
-  session_accepted_msg_t m = { 0 };
+  session_accepted_msg_t *m;
   fifo_segment_t *eq_seg;
   session_t *listener;
   application_t *app;
 
+  app_wrk_pending_msg_t *rm;
+
+  rm = app_wrk_reserve_ctrl_msg (app_wrk, vlib_get_thread_index ());
+  rm->event_type = SESSION_CTRL_EVT_ACCEPTED;
+  rm->len = sizeof(*m);
+
+  m = (session_accepted_msg_t *)rm->data;
+  clib_memset (m, 0, sizeof (m));
+
   app = application_get (app_wrk->app_index);
 
-  m.context = app->app_index;
-  m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
-  m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
-  m.segment_handle = session_segment_handle (s);
-  m.flags = s->flags;
+  m->context = app->app_index;
+  m->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+  m->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
+  m->segment_handle = session_segment_handle (s);
+  m->flags = s->flags;
 
   eq_seg = application_get_rx_mqs_segment (app);
 
