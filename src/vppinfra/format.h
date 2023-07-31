@@ -304,6 +304,9 @@ unformat_function_t unformat_eof;
 /* Parse memory size e.g. 100, 100k, 100m, 100g. */
 unformat_function_t unformat_memory_size;
 
+/* Unformat C string array, takes array length as 2nd argument */
+unformat_function_t unformat_c_string_array;
+
 /* Format base 10 e.g. 100, 100K, 100M, 100G */
 u8 *format_base10 (u8 *s, va_list *va);
 
