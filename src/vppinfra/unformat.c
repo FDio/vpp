@@ -1086,6 +1086,30 @@ unformat_data_size (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+__clib_export uword
+unformat_c_string_array (unformat_input_t *input, va_list *va)
+{
+  char *str = va_arg (*va, char *);
+  u32 array_len = va_arg (*va, u32);
+  uword c, rv = 0;
+  u8 *s = 0;
+
+  if (unformat (input, "%v", &s) == 0)
+    return 0;
+
+  c = vec_len (s);
+
+  if (c > 0 && c < array_len)
+    {
+      clib_memcpy (str, s, c);
+      str[c] = 0;
+      rv = 1;
+    }
+
+  vec_free (s);
+  return rv;
+}
+
 #endif /* CLIB_UNIX */
 
 
