@@ -689,13 +689,15 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   crypto_sw_scheduler_per_thread_data_t *ptd;
+  u32 i;
 
   vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  vec_foreach (ptd, cm->per_thread_data)
+  for (i = 0; i < tm->n_vlib_mains; i++)
   {
-    ptd->self_crypto_enabled = 1;
+    ptd = cm->per_thread_data + i;
+    ptd->self_crypto_enabled = i > 0 || vlib_num_workers () < 1;
 
     ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].head = 0;
     ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].tail = 0;
