@@ -39,7 +39,6 @@ autoreply define det44_plugin_enable_disable {
   u32 inside_vrf;
   u32 outside_vrf;
   bool enable;
-  option status="in_progress";
 };
 
 /** \brief Enable/disable DET44 feature on the interface
@@ -55,7 +54,6 @@ autoreply define det44_interface_add_del_feature {
   bool is_add;
   bool is_inside;
   vl_api_interface_index_t sw_if_index;
-  option status="in_progress";
 };
 
 /** \brief Dump interfaces with DET44 feature
@@ -65,7 +63,6 @@ autoreply define det44_interface_add_del_feature {
 define det44_interface_dump {
   u32 client_index;
   u32 context;
-  option status="in_progress";
 };
 
 /** \brief DET44 interface details response
@@ -78,7 +75,6 @@ define det44_interface_details {
   bool is_inside;
   bool is_outside;
   vl_api_interface_index_t sw_if_index;
-  option status="in_progress";
 };
 
 /** \brief Add/delete DET44 mapping
