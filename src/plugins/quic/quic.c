@@ -784,12 +784,10 @@ quic_on_stream_destroy (quicly_stream_t * stream, int err)
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_ctx_t *sctx = quic_ctx_get (stream_data->ctx_id,
 				   stream_data->thread_index);
-  session_t *stream_session = session_get (sctx->c_s_index,
-					   sctx->c_thread_index);
   QUIC_DBG (2, "DESTROYED_STREAM: session 0x%lx (%U)",
 	    session_handle (stream_session), quic_format_err, err);
 
-  stream_session->session_state = SESSION_STATE_CLOSED;
+  session_transport_closing_notify (&sctx->connection);
   session_transport_delete_notify (&sctx->connection);
 
   quic_increment_counter (QUIC_ERROR_CLOSED_STREAM, 1);
