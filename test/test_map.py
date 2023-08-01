@@ -53,7 +53,12 @@ class TestMAP(VppTestCase):
 
     def tearDown(self):
         super(TestMAP, self).tearDown()
+
         for i in self.pg_interfaces:
+            for t in (0, 1):
+                self.vapi.map_if_enable_disable(
+                    is_enable=0, sw_if_index=i.sw_if_index, is_translation=t
+                )
             i.unconfig_ip4()
             i.unconfig_ip6()
             i.admin_down()
