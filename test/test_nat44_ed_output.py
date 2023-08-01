@@ -219,10 +219,10 @@ class TestNAT44EDOutput(VppTestCase):
             / IP(src=local_host, dst=remote_host)
             / TCP(sport=local_sport, dport=remote_dport, flags="FA", seq=300, ack=101)
         )
-        pg1.add_stream(p)
+        pg0.add_stream(p)
         self.pg_enable_capture()
         self.pg_start()
-        pg0.assert_nothing_captured(0)
+        pg1.assert_nothing_captured(0)
 
         sessions = self.vapi.nat44_user_session_dump(pg0.remote_ip4, 0)
         self.assertEqual(0, len(sessions))

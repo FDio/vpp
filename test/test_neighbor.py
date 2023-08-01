@@ -2065,6 +2065,7 @@ class ARPTestCase(VppTestCase):
             table_id=1,
         ).add_vpp_config()
 
+        p2[Ether].dst = self.pg3.local_mac
         rxs = self.send_and_expect(self.pg3, [p2], self.pg1)
         for rx in rxs:
             self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.2", "10.0.1.128")

@@ -134,7 +134,7 @@ class TestLinuxCP(VppTestCase):
                 p = (
                     Ether(src=phy.local_mac, dst=phy.remote_hosts[j].mac)
                     / IP(src=phy.local_ip4, dst=phy.remote_hosts[j].ip4)
-                    / UDP(sport=1234, dport=1234)
+                    / UDP(sport=1234, dport=2000 + j)
                     / Raw()
                 )
 
@@ -165,7 +165,7 @@ class TestLinuxCP(VppTestCase):
                 p = (
                     Ether(dst=phy.local_mac, src=phy.remote_hosts[j].mac)
                     / IP(dst=phy.local_ip4, src=phy.remote_hosts[j].ip4)
-                    / UDP(sport=1234, dport=1234)
+                    / UDP(sport=1234, dport=1000 + j)
                     / Raw()
                 )
 
