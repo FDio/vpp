@@ -329,7 +329,6 @@ define sr_policies_v2_details
   u32 fib_table;
   u8 num_sid_lists;
   vl_api_srv6_sid_list_t sid_lists[num_sid_lists];
-  option in_progress;
 };
 
 /** \brief Dump the list of SR policies along with actual segment list index on VPP
