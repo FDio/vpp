@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e7f282e1_40a278d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-08-01T15:44:49Z",
+      "side": 1,
+      "message": "Hello Dave,\nCould you please take a look at this small patch?",
+      "revId": "6361c640e4e137a2b42fffb95890794ba0c256a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
