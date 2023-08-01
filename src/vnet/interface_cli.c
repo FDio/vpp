@@ -1161,6 +1161,40 @@ VLIB_CLI_COMMAND (set_interface_promiscuous_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+skip_dmac_check_cmd (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index;
+  u32 flags = ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK;
+  ethernet_main_t *em = &ethernet_main;
+  ethernet_interface_t *eif;
+
+  if (unformat (input, "on %U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+    ;
+  else if (unformat (input, "off %U", unformat_ethernet_interface, vnm,
+		     &hw_if_index))
+    flags = 0;
+  else
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  eif = ethernet_get_interface (em, hw_if_index);
+  if (!eif)
+    return clib_error_return (0, "not supported");
+
+  ethernet_set_flags (vnm, hw_if_index, flags);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_interface_skip_dmac_check_cmd, static) = {
+  .path = "set interface skip-destination-mac-check",
+  .short_help =
+    "set interface skip-destination-mac-check [on|off] <interface>",
+  .function = skip_dmac_check_cmd,
+};
+
+static clib_error_t *
 mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();

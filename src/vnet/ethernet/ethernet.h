@@ -170,6 +170,14 @@ typedef struct ethernet_interface
   /* Set interface to accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL 1
 
+  /* Skip destination MAC check before  L3 nodes */
+#define ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK 2
+
+#define ethernet_skip_dmac_check(ei)                                          \
+  ((ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3) ||                         \
+   ((ei->flags & ETHERNET_INTERFACE_FLAGS_SET_OPN_MASK) ==                    \
+    ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK))
+
   /* Callback, e.g. to turn on/off promiscuous mode */
   vnet_eth_if_callbacks_t cb;
 

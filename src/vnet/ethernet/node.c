@@ -225,8 +225,7 @@ identify_subint (ethernet_main_t * em,
       // A unicast packet arriving on an L3 interface must have a dmac
       // matching the interface mac. If interface has STATUS_L3 bit set
       // mac filter is already done.
-      if ((!*is_l2) && ei &&
-	  (!(ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)))
+      if ((!*is_l2) && ei && !ethernet_skip_dmac_check (ei))
 	{
 	  u64 dmacs[2];
 	  u8 dmacs_bad[2];
@@ -839,7 +838,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 nexts[VLIB_FRAME_SIZE], *next;
   u16 etypes[VLIB_FRAME_SIZE], *etype = etypes;
   u64 dmacs[VLIB_FRAME_SIZE], *dmac = dmacs;
-  u8 dmacs_bad[VLIB_FRAME_SIZE];
+  u8 dmacs_bad[VLIB_FRAME_SIZE], *dmac_bad = dmacs_bad;
   u64 tags[VLIB_FRAME_SIZE], *tag = tags;
   u16 slowpath_indices[VLIB_FRAME_SIZE];
   u16 n_slowpath, i;
@@ -946,6 +945,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 #endif
 
   etype = etypes;
+  dmac_bad = dmacs_bad;
   n_left = n_packets;
   next = nexts;
   n_slowpath = 0;
@@ -969,6 +969,14 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    r = ((e16 != et16_vlan) & (e16 != et16_dot1ad)) & next16_l2;
+
+	  if (dmac_check && main_is_l3)
+	    {
+	      u16x16 dmac_bad16 =
+		u16x16_from_u8x16 (u8x16_load_unaligned (dmac_bad));
+	      r &= dmac_bad16 == zero;
+	    }
+
 	  u16x16_store_unaligned (r, next);
 
 	  if (!u16x16_is_all_zero (r == zero))
@@ -988,28 +996,34 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  etype += 16;
+	  dmac_bad += 16;
 	  next += 16;
 	  n_left -= 16;
 	  i += 16;
 	  continue;
 	}
 #endif
-      if (main_is_l3 && etype[0] == et_ip4)
-	next[0] = next_ip4;
-      else if (main_is_l3 && etype[0] == et_ip6)
-	next[0] = next_ip6;
-      else if (main_is_l3 && etype[0] == et_mpls)
-	next[0] = next_mpls;
-      else if (main_is_l3 == 0 &&
-	       etype[0] != et_vlan && etype[0] != et_dot1ad)
-	next[0] = next_l2;
-      else
+      next[0] = 0;
+      if (main_is_l3)
 	{
-	  next[0] = 0;
-	  slowpath_indices[n_slowpath++] = i;
+	  if (etype[0] == et_ip4)
+	    next[0] = next_ip4;
+	  else if (etype[0] == et_ip6)
+	    next[0] = next_ip6;
+	  else if (etype[0] == et_mpls)
+	    next[0] = next_mpls;
 	}
+      else if (etype[0] != et_vlan && etype[0] != et_dot1ad)
+	next[0] = next_l2;
+
+      if (dmac_check && main_is_l3 && dmac_bad[0])
+	next[0] = 0;
+
+      if (!next[0])
+	slowpath_indices[n_slowpath++] = i;
 
       etype += 1;
+      dmac_bad += 1;
       next += 1;
       n_left -= 1;
       i += 1;
@@ -1052,7 +1066,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      /* untagged packet with not well known etyertype */
+	      /* untagged packet with not well known ethertype */
 	      if (last_unknown_etype != etype)
 		{
 		  last_unknown_etype = etype;
@@ -1093,13 +1107,14 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
   subint_config_t *subint0 = &intf0->untagged_subint;
 
   int main_is_l3 = (subint0->flags & SUBINT_CONFIG_L2) == 0;
-  int int_is_l3 = ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3;
+  int skip_dmac_check = ethernet_skip_dmac_check (ei);
 
   if (main_is_l3)
     {
-      if (int_is_l3 ||		/* DMAC filter already done by NIC */
+      if (skip_dmac_check || /* DMAC filter already done by NIC */
 	  ((hi->l2_if_count != 0) && (hi->l3_if_count == 0)))
-	{			/* All L2 usage - DMAC check not needed */
+	/* All L2 usage - DMAC check not needed */
+	{
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 1, ip4_cksum_ok, 0);
 	}
@@ -1112,8 +1127,8 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
-      if (hi->l3_if_count == 0)
-	{			/* All L2 usage - DMAC check not needed */
+      if (hi->l3_if_count == 0) /* All L2 usage - DMAC check not needed */
+	{
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 0, ip4_cksum_ok, 0);
 	}
@@ -1314,7 +1329,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei && (ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3))
+		  if (ei && ethernet_skip_dmac_check (ei))
 		    goto skip_dmac_check01;
 
 		  dmacs[0] = *(u64 *) e0;
@@ -1558,7 +1573,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  if (ei && ei->flags & ETHERNET_INTERFACE_FLAG_STATUS_L3)
+		  if (ei && ethernet_skip_dmac_check (ei))
 		    goto skip_dmac_check0;
 
 		  dmacs[0] = *(u64 *) e0;
