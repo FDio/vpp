@@ -124,6 +124,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_PROMISC, 0);
       break;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+    case ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK:
       dpdk_device_flag_set (xd, DPDK_DEVICE_FLAG_PROMISC, 1);
       break;
     default:

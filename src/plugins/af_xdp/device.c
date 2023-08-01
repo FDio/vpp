@@ -90,10 +90,11 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 
   switch (flags)
     {
-    case 0:
+    case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set unicast not supported yet");
       return ~0;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+    case ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK:
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
 		  "set promiscuous not supported yet");
       return ~0;
