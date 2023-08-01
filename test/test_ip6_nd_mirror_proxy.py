@@ -175,7 +175,7 @@ class TestNDPROXY(VppTestCase):
         redirect.add_vpp_config()
 
         echo_reply = (
-            Ether(dst=self.pg0.remote_mac, src=self.pg0.local_mac)
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
             / IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6)
             / ICMPv6EchoReply(seq=1, id=id)
         )

@@ -387,7 +387,7 @@ class TestTraceFilterInner(TemplateTraceFilter):
 
     def __gen_encrypt_pkt(self, scapy_sa, pkt):
         return Ether(
-            src=self.pg0.local_mac, dst=self.pg0.remote_mac
+            src=self.pg0.remote_mac, dst=self.pg0.local_mac
         ) / scapy_sa.encrypt(pkt)
 
     def test_encrypted_encap(self):

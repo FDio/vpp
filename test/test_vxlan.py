@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
-from util import ip4_range, reassemble4
+from util import ip4_range, reassemble4, StatsDiff
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -501,18 +501,25 @@ class TestVxlanL2Mode(VppTestCase):
 
         # Expect ARP request
         rx = self.send_and_expect(self.pg1, [p], self.pg0)
-        for p in rx:
-            self.assertEqual(p[Ether].dst, self.pg0.remote_mac)
-            self.assertEqual(p[Ether].src, self.pg0.local_mac)
-            self.assertEqual(p[ARP].op, 1)
-            self.assertEqual(p[ARP].pdst, dstIP)
+        for r in rx:
+            self.assertEqual(r[Ether].dst, self.pg0.remote_mac)
+            self.assertEqual(r[Ether].src, self.pg0.local_mac)
+            self.assertEqual(r[ARP].op, 1)
+            self.assertEqual(r[ARP].pdst, dstIP)
 
         # Resolve ARP
         VppNeighbor(self, t.sw_if_index, self.pg1.remote_mac, dstIP).add_vpp_config()
 
         # Send packets
         NUM_PKTS = 128
-        rx = self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
+        rx = self.send_and_expect(
+            self.pg1,
+            p * NUM_PKTS,
+            self.pg0,
+            stats_diff=StatsDiff(
+                {"err": {"/err/vxlan4-encap/good packets encapsulated": NUM_PKTS}}
+            ),
+        )
         self.assertEqual(NUM_PKTS, len(rx))
 
 
