@@ -480,6 +480,7 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	    }
 	  /* fall through */
 	case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+	case ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK:
 	  ei->flags &= ~ETHERNET_INTERFACE_FLAG_STATUS_L3;
 	  return ei->cb.flag_change (vnm, hi, opn_flags);
 	default:
