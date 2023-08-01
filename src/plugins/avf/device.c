@@ -1326,6 +1326,7 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
       ad->flags &= ~AVF_DEVICE_F_PROMISC;
       break;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+    case ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK:
       ad->flags |= AVF_DEVICE_F_PROMISC;
       break;
     default:
