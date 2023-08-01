@@ -19,7 +19,7 @@
     used to control the crypto SW scheduler plugin
 */
 
-option version = "0.1.0";
+option version = "1.1.0";
 
 
  /** \brief crypto sw scheduler: Enable or disable workers
