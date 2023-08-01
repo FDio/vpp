@@ -201,6 +201,7 @@ rdma_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
     case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
       return rdma_dev_set_ucast (rd);
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
+    case ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK:
       return rdma_dev_set_promisc (rd);
     }
 
