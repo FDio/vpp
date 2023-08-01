@@ -1024,19 +1024,17 @@ vl_api_sw_interface_set_interface_name_t_handler (
 {
   vl_api_sw_interface_set_interface_name_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
   clib_error_t *error;
   int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
 
   if (mp->name[0] == 0)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
-  if (si == 0)
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
       goto out;
     }
 
@@ -1048,6 +1046,7 @@ vl_api_sw_interface_set_interface_name_t_handler (
     }
 
 out:
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_INTERFACE_NAME_REPLY);
 }
 
