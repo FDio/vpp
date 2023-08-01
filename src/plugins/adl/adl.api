@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.1";
+option version = "1.0.1";
 
 import "vnet/interface_types.api";
 
