@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "0.3.0";
+option version = "1.3.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
