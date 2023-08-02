@@ -49,31 +49,41 @@ always_inline u32
 ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
-  tcp_header_t *tcp;
-  udp_header_t *udp = (void *) (ip + 1);
-  gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  const tcp_header_t *tcp;
+  const udp_header_t *udp = (void *) (ip + 1);
+  const gtpv1u_header_t *gtpu = (void *) (udp + 1);
   u64 a, b, c;
   u64 t1, t2;
   u32 t3;
   uword is_tcp_udp = 0;
-  uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
   u8 protocol = ip->protocol;
+  uword is_udp = protocol == IP_PROTOCOL_UDP;
 
-  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) || is_udp))
+  if (PREDICT_TRUE ((protocol == IP_PROTOCOL_TCP) || is_udp))
     {
       is_tcp_udp = 1;
       tcp = (void *) (ip + 1);
     }
-  else if (ip->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
+  else
     {
-      ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *) (ip + 1);
-      if ((hbh->protocol == IP_PROTOCOL_TCP) ||
-	  (hbh->protocol == IP_PROTOCOL_UDP))
+      const void *cur = ip + 1;
+      if (protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
+	{
+	  const ip6_hop_by_hop_header_t *hbh = cur;
+	  protocol = hbh->protocol;
+	  cur = hbh + (hbh->length + 1) * 8;
+	}
+      if (protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	{
+	  const ip6_fragment_ext_header_t *frag = cur;
+	  protocol = frag->protocol;
+	  cur = frag + 1;
+	}
+      if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP)
 	{
 	  is_tcp_udp = 1;
-	  tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
+	  tcp = cur;
 	}
-      protocol = hbh->protocol;
     }
 
   t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
