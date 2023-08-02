@@ -13,6 +13,7 @@ ForEachMacros:
   - 'clib_bitmap_foreach'
   - 'pool_foreach'
   - 'pool_foreach_index'
+  - 'pool_foreach_pointer'
   - 'vec_foreach'
   - 'vec_foreach_backwards'
   - 'vec_foreach_index'
