@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4418ec8e_e8b18bd3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-08-02T16:34:23Z",
+      "side": 1,
+      "message": "lgtm, thanks Florin ! 😊",
+      "revId": "d5156fa4325da78604a3cc8396da74ff607cb1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
