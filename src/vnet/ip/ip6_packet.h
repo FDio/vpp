@@ -441,6 +441,13 @@ typedef CLIB_PACKED (struct {
 }) ip6_router_alert_option_t;
 
 typedef CLIB_PACKED (struct {
+  u8 protocol;
+  u8 reserved;
+  u16 fragoff;
+  u32 id;
+}) ip6_fragment_ext_header_t;
+
+typedef CLIB_PACKED (struct {
   u8 next_hdr;
   /* Length of this header plus option data in 8 byte units. */
   u8 n_data_u64s;
