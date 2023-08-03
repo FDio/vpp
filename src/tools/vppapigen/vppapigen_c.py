@@ -1263,7 +1263,8 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a)
     for t in objs:
         # Outbound (to network) messages are identified by message nomenclature
         # i.e. message names ending with these suffixes are 'to network'
-        if t.name.endswith("_reply") or t.name.endswith("_details"):
+        t_name = "".join(t.name.split("_v2"))  # for ip_neighbor_event_v2
+        if t_name.rsplit("_", 1)[-1] in ("reply", "details", "event"):
             t.to_network = True
         else:
             t.to_network = False
