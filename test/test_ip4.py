@@ -1228,6 +1228,11 @@ class TestIPLoadBalance(VppTestCase):
         src_mpls_pkts = []
         src_gtp_pkts = []
 
+        #
+        # An array of big packets which should be fragmented
+        #
+        frag_ip_pkts = []
+
         for ii in range(NUM_PKTS):
             internal_src_ip_hdr = IP(dst="10.0.0.1", src="20.0.0.1")
 
@@ -1255,6 +1260,16 @@ class TestIPLoadBalance(VppTestCase):
                     / Raw(b"\xa5" * 100)
                 )
             )
+
+            src_ip_hdr = (
+                IP(dst="10.0.0.1", src="20.0.0.1")
+                / UDP(sport=1234, dport=1234 + ii)
+                / Raw(b"\xa5" * 2000)
+            )
+            for p in src_ip_hdr.fragment(500):
+                frag_ip_pkts.append(
+                    Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / p
+                )
 
             src_ip_hdr = (
                 IP(dst="10.0.0.1", src="20.0.0.%d" % ii)
@@ -1317,6 +1332,8 @@ class TestIPLoadBalance(VppTestCase):
         )
         n_mpls_pg0 = len(rx[0])
 
+        self.send_and_expect_only(self.pg0, frag_ip_pkts, self.pg2)
+
         #
         # change the router ID and expect the distribution changes
         #
@@ -1372,7 +1389,7 @@ class TestIPLoadBalance(VppTestCase):
             self.pg0, src_gtp_pkts, [self.pg1, self.pg2]
         )
 
-        self.send_and_expect_only(self.pg0, port_gtp_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, port_gtp_pkts, self.pg1)
 
         #
         # change the flow hash config back to defaults
