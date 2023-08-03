@@ -577,6 +577,7 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
 			   u8 transport_proto)
 {
   session_t *listener;
+  session_handle_t sh;
   u64 handle;
   u32 sm_index;
   u8 sst;
@@ -584,13 +585,12 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
   sst = session_type_from_proto_and_ip (transport_proto,
 					fib_proto == FIB_PROTOCOL_IP4);
 
-  /* *INDENT-OFF* */
    hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
-     listener = listen_session_get_from_handle (handle);
+     sh = session_handle_from_u64 (handle);
+     listener = listen_session_get_from_handle (sh);
      if (listener->session_type == sst && (listener->flags & SESSION_F_PROXY))
        return listener;
    }));
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -956,7 +956,7 @@ u8 *
 format_app_worker_listener (u8 * s, va_list * args)
 {
   app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
-  u64 handle = va_arg (*args, u64);
+  session_handle_t handle = va_arg (*args, session_handle_t);
   u32 sm_index = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
   session_t *listener;

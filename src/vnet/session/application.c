@@ -1438,7 +1438,8 @@ vnet_shutdown_session (vnet_shutdown_args_t *a)
     return SESSION_E_OWNER;
 
   /* We're peeking into another's thread pool. Make sure */
-  ASSERT (s->session_index == session_index_from_handle (a->handle));
+//   ASSERT (s->session_index == session_index_from_handle (a->handle));
+  ASSERT (s->session_index == a->handle.session_index);
 
   session_half_close (s);
   return 0;
@@ -1459,7 +1460,8 @@ vnet_disconnect_session (vnet_disconnect_args_t *a)
     return SESSION_E_OWNER;
 
   /* We're peeking into another's thread pool. Make sure */
-  ASSERT (s->session_index == session_index_from_handle (a->handle));
+//   ASSERT (s->session_index == session_index_from_handle (a->handle));
+  ASSERT (s->session_index == a->handle.session_index);
 
   session_close (s);
   return 0;
@@ -1476,7 +1478,7 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
   if (!old_wrk)
     return SESSION_E_INVALID_APPWRK;
 
-  hash_unset (old_wrk->listeners_table, listen_session_get_handle (s));
+  hash_unset (old_wrk->listeners_table, s->session_handle.as_u64);
   if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL
       && s->rx_fifo)
     segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);

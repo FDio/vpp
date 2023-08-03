@@ -814,16 +814,16 @@ session_enqueue_notify_rpc (void *arg)
 void
 session_enqueue_notify_thread (session_handle_t sh)
 {
-  u32 thread_index = session_thread_from_handle (sh);
-  u32 session_index = session_index_from_handle (sh);
+//   u32 thread_index = session_thread_from_handle (sh);
+//   u32 session_index = session_index_from_handle (sh);
 
   /*
    * Pass session index (u32) as opposed to handle (u64) in case pointers
    * are not 64-bit.
    */
-  session_send_rpc_evt_to_thread (thread_index,
+  session_send_rpc_evt_to_thread (sh.thread_index,
 				  session_enqueue_notify_rpc,
-				  uword_to_pointer (session_index, void *));
+				  uword_to_pointer (sh.session_index, void *));
 }
 
 int
@@ -936,7 +936,7 @@ session_stream_connect_notify (transport_connection_t * tc,
 
   s = session_get (new_si, new_ti);
   session_set_state (s, SESSION_STATE_READY);
-  session_lookup_add_connection (tc, session_handle (s));
+  session_lookup_add_connection (tc, session_handle (s).as_u64);
 
   if (app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, opaque))
     {
@@ -1069,7 +1069,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->flags |= SESSION_F_IS_MIGRATING;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-    session_lookup_add_connection (tc, session_handle (new_s));
+    session_lookup_add_connection (tc, session_handle (new_s).as_u64);
 
   app_wrk = app_worker_get_if_valid (new_s->app_wrk_index);
   if (app_wrk)
@@ -1291,7 +1291,8 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
   int rv;
 
   s = session_alloc_for_connection (tc);
-  s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
+  s->listener_handle = (session_handle_t){ .thread_index = thread_index,
+                                           .session_index = listener_index };
   session_set_state (s, SESSION_STATE_CREATED);
 
   if ((rv = app_worker_init_accepted (s)))
@@ -1300,7 +1301,7 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
       return rv;
     }
 
-  session_lookup_add_connection (tc, session_handle (s));
+  session_lookup_add_connection (tc, session_handle (s).as_u64);
 
   /* Shoulder-tap the server */
   if (notify)
@@ -1335,7 +1336,7 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
       return rv;
     }
 
-  session_lookup_add_connection (tc, session_handle (s));
+  session_lookup_add_connection (tc, session_handle (s).as_u64);
   session_set_state (s, SESSION_STATE_ACCEPTING);
 
   app_wrk = app_worker_get (s->app_wrk_index);
@@ -1384,7 +1385,7 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   sh = session_handle (s);
   *rsh = sh;
 
-  session_lookup_add_connection (tc, sh);
+  session_lookup_add_connection (tc, sh.as_u64);
   return app_worker_connect_notify (app_wrk, s, SESSION_E_NONE, rmt->opaque);
 }
 
@@ -1756,7 +1757,7 @@ session_segment_handle (session_t * s)
   svm_fifo_t *f;
 
   if (!s->rx_fifo)
-    return SESSION_INVALID_HANDLE;
+    return SEGMENT_INVALID_HANDLE;
 
   f = s->rx_fifo;
   return segment_manager_make_segment_handle (f->segment_manager,

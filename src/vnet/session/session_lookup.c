@@ -1384,7 +1384,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 
   if (!is_local)
     {
-      session = session_get_from_handle (kvp->value);
+      session = session_get_from_handle (session_handle_from_u64 (kvp->value));
       app_wrk = app_worker_get (session->app_wrk_index);
       app_name = application_name_from_index (app_wrk->app_index);
       str = format (0, "[%U] %U:%d->%U:%d", format_transport_proto_short,
@@ -1395,7 +1395,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
     }
   else
     {
-      session = session_get_from_handle (kvp->value);
+      session = session_get_from_handle (session_handle_from_u64 (kvp->value));
       app_wrk = app_worker_get (session->app_wrk_index);
       app_name = application_name_from_index (app_wrk->app_index);
       str = format (0, "[%U] %U:%d", format_transport_proto_short, key->proto,

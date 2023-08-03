@@ -31,7 +31,7 @@ typedef struct ec_session_
   u64 bytes_sent;
   u64 bytes_to_receive;
   u64 bytes_received;
-  u64 vpp_session_handle;
+  session_handle_t vpp_session_handle;
 } ec_session_t;
 
 typedef struct ec_worker_

@@ -57,7 +57,7 @@ typedef struct
   u64 byte_index;
   u32 **rx_retries;
   u8 transport_proto;
-  u64 listener_handle;		/**< Session handle of the root listener */
+  session_handle_t listener_handle;		/**< Session handle of the root listener */
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;

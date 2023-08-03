@@ -651,7 +651,8 @@ dtls_migrate_ctx (void *arg)
   u32 ctx_handle, thread_index;
   session_t *us;
 
-  thread_index = session_thread_from_handle (ctx->tls_session_handle);
+//   thread_index = session_thread_from_handle (ctx->tls_session_handle);
+  thread_index = ctx->tls_session_handle.thread_index;
   ASSERT (thread_index == vlib_get_thread_index ());
 
   ctx_handle = tls_ctx_attach (ctx->tls_ctx_engine, thread_index, ctx);
@@ -677,7 +678,8 @@ dtls_migrate_ctx (void *arg)
 static void
 dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
 {
-  u32 new_thread = session_thread_from_handle (new_sh);
+  //u32 new_thread = session_thread_from_handle (new_sh);
+  u32 new_thread = new_sh.thread_index;
   tls_ctx_t *ctx, *cloned_ctx;
 
   /* Migrate dtls context to new thread */
@@ -951,17 +953,19 @@ tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 u8 *
 format_tls_ctx (u8 * s, va_list * args)
 {
-  u32 tcp_si, tcp_ti, ctx_index, ctx_engine;
+//   u32 tcp_si, tcp_ti, ctx_index, ctx_engine;
+  u32 ctx_index, ctx_engine;
   tls_ctx_t *ctx = va_arg (*args, tls_ctx_t *);
   char *proto;
 
   proto = ctx->tls_type == TRANSPORT_PROTO_TLS ? "TLS" : "DTLS";
-  session_parse_handle (ctx->tls_session_handle, &tcp_si, &tcp_ti);
+//   session_parse_handle (ctx->tls_session_handle, &tcp_si, &tcp_ti);
   tls_ctx_parse_handle (ctx->tls_ctx_handle, &ctx_index, &ctx_engine);
-  s =
-    format (s, "[%d:%d][%s] app_wrk %u index %u engine %u ts %d:%d",
-	    ctx->c_thread_index, ctx->c_s_index, proto,
-	    ctx->parent_app_wrk_index, ctx_index, ctx_engine, tcp_ti, tcp_si);
+  s = format (s, "[%d:%d][%s] app_wrk %u index %u engine %u ts %d:%d",
+              ctx->c_thread_index, ctx->c_s_index, proto,
+              ctx->parent_app_wrk_index, ctx_index, ctx_engine,
+              ctx->tls_session_handle.thread_index,
+              ctx->tls_session_handle.session_index);
 
   return s;
 }

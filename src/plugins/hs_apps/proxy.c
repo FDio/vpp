@@ -151,7 +151,7 @@ proxy_try_close_session (session_t * s, int is_active_open)
 
       if (!ps->po_disconnected)
 	{
-	  ASSERT (ps->vpp_server_handle != SESSION_INVALID_HANDLE);
+	  ASSERT (session_handle_is_valid (&ps->vpp_server_handle));
 	  a->handle = ps->vpp_server_handle;
 	  a->app_index = pm->server_app_index;
 	  vnet_disconnect_session (a);
@@ -168,7 +168,7 @@ proxy_try_close_session (session_t * s, int is_active_open)
       if (!ps->ao_disconnected && !ps->active_open_establishing)
 	{
 	  /* Proxy session closed before active open */
-	  if (ps->vpp_active_open_handle != SESSION_INVALID_HANDLE)
+	  if (session_handle_is_valid (ps->vpp_active_open_handle))
 	    {
 	      a->handle = ps->vpp_active_open_handle;
 	      a->app_index = pm->active_open_app_index;
@@ -198,7 +198,7 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
       ps->server_rx_fifo->master_thread_index = ps->po_thread_index;
 
       /* Passive open already cleaned up */
-      if (ps->vpp_server_handle == SESSION_INVALID_HANDLE)
+      if (!session_handle_is_valid (&ps->vpp_server_handle))
 	{
 	  ASSERT (s->rx_fifo->refcnt == 1);
 
@@ -218,7 +218,7 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
     {
       ps->vpp_server_handle = SESSION_INVALID_HANDLE;
 
-      if (ps->vpp_active_open_handle == SESSION_INVALID_HANDLE)
+      if (!session_handle_is_valid (&ps->vpp_active_open_handle))
 	{
 	  if (!ps->active_open_establishing)
 	    proxy_session_free (ps);
@@ -450,7 +450,7 @@ proxy_tx_callback (session_t * proxy_s)
 
   /* Force ack on active open side to update rcv wnd. Make sure it's done on
    * the right thread */
-  void *arg = uword_to_pointer (ps->vpp_active_open_handle, void *);
+  void *arg = uword_to_pointer (ps->vpp_active_open_handle.as_u64, void *);
   session_send_rpc_evt_to_thread (ps->server_rx_fifo->master_thread_index,
 				  proxy_force_ack, arg);
 
@@ -618,7 +618,7 @@ active_open_tx_callback (session_t * ao_s)
   if (!ps)
     goto unlock;
 
-  if (ps->vpp_server_handle == ~0)
+  if (ps->vpp_server_handle.as_u64 == ~0)
     goto unlock;
 
   proxy_s = session_get_from_handle (ps->vpp_server_handle);

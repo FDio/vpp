@@ -526,7 +526,8 @@ srtp_migrate_ctx (void *arg)
 
   old_thread_index = ctx->c_thread_index;
   old_ctx_index = ctx->c_c_index;
-  thread_index = session_thread_from_handle (ctx->srtp_session_handle);
+//   thread_index = session_thread_from_handle (ctx->srtp_session_handle);
+  thread_index = ctx->srtp_session_handle.thread_index;
   ASSERT (thread_index == vlib_get_thread_index ());
 
   ctx_handle = srtp_ctx_attach (thread_index, ctx);
@@ -553,7 +554,8 @@ srtp_migrate_ctx (void *arg)
 static void
 srtp_session_migrate_callback (session_t *us, session_handle_t new_sh)
 {
-  u32 new_thread = session_thread_from_handle (new_sh);
+//   u32 new_thread = session_thread_from_handle (new_sh);
+  u32 new_thread = new_sh.thread_index;
   srtp_tc_t *ctx, *cloned_ctx;
 
   ctx = srtp_ctx_get_w_thread (us->opaque, us->thread_index);
@@ -834,12 +836,14 @@ u8 *
 format_srtp_ctx (u8 *s, va_list *args)
 {
   srtp_tc_t *ctx = va_arg (*args, srtp_tc_t *);
-  u32 udp_si, udp_ti;
+//   u32 udp_si, udp_ti;
 
-  session_parse_handle (ctx->srtp_session_handle, &udp_si, &udp_ti);
+//   session_parse_handle (ctx->srtp_session_handle, &udp_si, &udp_ti);
   s = format (s, "[%d:%d][SRTP] app_wrk %u index %u udp %d:%d",
-	      ctx->c_thread_index, ctx->c_s_index, ctx->parent_app_wrk_index,
-	      ctx->srtp_ctx_handle, udp_ti, udp_si);
+              ctx->c_thread_index, ctx->c_s_index, ctx->parent_app_wrk_index,
+              ctx->srtp_ctx_handle, ctx->srtp_session_handle.thread_index,
+              ctx->srtp_session_handle.session_index);
+  //       ctx->srtp_ctx_handle, udp_ti, udp_si);
 
   return s;
 }

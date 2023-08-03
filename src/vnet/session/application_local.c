@@ -978,7 +978,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   if (lh == SESSION_DROP_HANDLE)
     return SESSION_E_FILTERED;
 
-  if (lh == SESSION_INVALID_HANDLE)
+  if (lh.as_u64 == SESSION_INVALID_HANDLE.as_u64)
     goto global_scope;
 
   ll = listen_session_get_from_handle (lh);

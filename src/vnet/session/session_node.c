@@ -427,7 +427,8 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
 
   /* Mail this back from the main thread. We're not polling in main
    * thread so we're using other workers for notifications. */
-  if (session_thread_from_handle (mp->handle) == 0 && vlib_num_workers () &&
+//   if (session_thread_from_handle (mp->handle) == 0 && vlib_num_workers () &&
+  if (mp->handle.thread_index == 0 && vlib_num_workers () &&
       vlib_get_thread_index () != 0)
     {
       session_wrk_send_evt_to_main (wrk, elt);
@@ -485,15 +486,16 @@ session_mq_reset_reply_handler (void *data)
   app_worker_t *app_wrk;
   session_t *s;
   application_t *app;
-  u32 index, thread_index;
+//   u32 index, thread_index;
 
   mp = (session_reset_reply_msg_t *) data;
   app = application_lookup (mp->context);
   if (!app)
     return;
 
-  session_parse_handle (mp->handle, &index, &thread_index);
-  s = session_get_if_valid (index, thread_index);
+//   session_parse_handle (mp->handle, &index, &thread_index);
+//   s = session_get_if_valid (index, thread_index);
+  s = session_get_if_valid (mp->handle.session_index, mp->handle.thread_index);
 
   /* No session or not the right session */
   if (!s || s->session_state < SESSION_STATE_TRANSPORT_CLOSING)

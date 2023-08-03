@@ -46,7 +46,7 @@ static char *quic_error_strings[] = {
 quic_main_t quic_main;
 static void quic_update_timer (quic_ctx_t * ctx);
 static void quic_check_quic_session_connected (quic_ctx_t * ctx);
-static int quic_reset_connection (u64 udp_session_handle,
+static int quic_reset_connection (session_handle_t udp_session_handle,
 				  quic_rx_packet_ctx_t * pctx);
 static void quic_proto_on_close (u32 ctx_index, u32 thread_index);
 
@@ -496,7 +496,7 @@ quic_get_quicly_ctx_from_ctx (quic_ctx_t * ctx)
 }
 
 static quicly_context_t *
-quic_get_quicly_ctx_from_udp (u64 udp_session_handle)
+quic_get_quicly_ctx_from_udp (session_handle_t udp_session_handle)
 {
   session_t *udp_session = session_get_from_handle (udp_session_handle);
   quic_ctx_t *ctx =
@@ -1210,7 +1210,7 @@ quic_expired_timers_dispatch (u32 * expired_timers)
 static int
 quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
 {
-  uint64_t quic_session_handle;
+  session_handle_t quic_session_handle;
   session_t *stream_session;
   quic_stream_data_t *stream_data;
   quicly_stream_t *stream;
@@ -1222,7 +1222,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   int rv;
 
   /*  Find base session to which the user want to attach a stream */
-  quic_session_handle = session_handle (quic_session);
+  quic_session_handle = quic_session->session_handle;
   QUIC_DBG (2, "Opening new stream (qsession %u)", quic_session_handle);
 
   if (session_type_transport_proto (quic_session->session_type) !=
@@ -1898,13 +1898,14 @@ quic_udp_session_reset_callback (session_t * s)
 static void
 quic_udp_session_migrate_callback (session_t * s, session_handle_t new_sh)
 {
-  u32 new_thread = session_thread_from_handle (new_sh);
+//   u32 new_thread = session_thread_from_handle (new_sh);
+  u32 new_thread = new_sh.thread_index;
   quic_ctx_t *ctx;
 
   QUIC_DBG (2, "Session %x migrated to %lx", s->session_index, new_sh);
   QUIC_ASSERT (vlib_get_thread_index () == s->thread_index);
   ctx = quic_ctx_get (s->opaque, s->thread_index);
-  QUIC_ASSERT (ctx->udp_session_handle == session_handle (s));
+  QUIC_ASSERT (ctx->udp_session_handle.as_u64 == s->session_handle.as_u64);
 
   ctx->udp_session_handle = new_sh;
 #if QUIC_DEBUG >= 1
@@ -1930,7 +1931,7 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->c_thread_index = udp_session->thread_index;
   ctx->c_c_index = ctx_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
-  ctx->udp_session_handle = session_handle (udp_session);
+  ctx->udp_session_handle = udp_session->session_handle;
   QUIC_DBG (2, "ACCEPTED UDP 0x%lx", ctx->udp_session_handle);
   ctx->listener_ctx_id = udp_listen_session->opaque;
   lctx = quic_ctx_get (udp_listen_session->opaque,
@@ -2131,7 +2132,9 @@ quic_accept_connection (quic_rx_packet_ctx_t * pctx)
   quic_session->connection_index = ctx->c_c_index;
   quic_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, ctx->udp_is_ip4);
-  quic_session->listener_handle = lctx->c_s_index;
+  quic_session->listener_handle
+      = (session_handle_t){ .session_index = lctx->c_s_index,
+                            .thread_index = 0 };
 
   /* Register connection in connections map */
   quic_make_connection_key (&kv, quicly_get_master_id (conn));
@@ -2159,7 +2162,7 @@ quic_accept_connection (quic_rx_packet_ctx_t * pctx)
 }
 
 static int
-quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
+quic_reset_connection (session_handle_t udp_session_handle, quic_rx_packet_ctx_t * pctx)
 {
   /* short header packet; potentially a dead connection. No need to check the
    * length of the incoming packet, because loop is prevented by authenticating
@@ -2198,7 +2201,7 @@ quic_reset_connection (u64 udp_session_handle, quic_rx_packet_ctx_t * pctx)
 }
 
 static int
-quic_process_one_rx_packet (u64 udp_session_handle, svm_fifo_t * f,
+quic_process_one_rx_packet (session_handle_t udp_session_handle, svm_fifo_t * f,
 			    u32 fifo_offset, quic_rx_packet_ctx_t * pctx)
 {
   size_t plen;
@@ -2283,7 +2286,7 @@ quic_udp_session_rx_callback (session_t * udp_session)
   quic_ctx_t *ctx = NULL, *prev_ctx = NULL;
   svm_fifo_t *f = udp_session->rx_fifo;
   u32 max_deq;
-  u64 udp_session_handle = session_handle (udp_session);
+  session_handle_t udp_session_handle = session_handle (udp_session);
   int rv = 0;
   u32 thread_index = vlib_get_thread_index ();
   u32 cur_deq, fifo_offset, max_packets, i;

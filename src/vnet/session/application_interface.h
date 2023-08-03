@@ -117,7 +117,7 @@ typedef struct _vnet_bind_args_t
   /*
    * Results
    */
-  u64 handle;
+  session_handle_t handle;
 } vnet_listen_args_t;
 
 typedef struct _vnet_unlisten_args_t
@@ -125,7 +125,7 @@ typedef struct _vnet_unlisten_args_t
   union
   {
     char *uri;
-    u64 handle;			/**< Session handle */
+    session_handle_t handle;	/**< Session handle */
   };
   u32 app_index;		/**< Owning application index */
   u32 wrk_map_index;		/**< App's local pool worker index */
@@ -347,7 +347,7 @@ STATIC_ASSERT (sizeof (session_listen_uri_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
 typedef struct session_bound_msg_
 {
   u32 context;
-  u64 handle;
+  session_handle_t handle;
   i32 retval;
   u8 lcl_is_ip4;
   u8 lcl_ip[16];
@@ -370,15 +370,15 @@ typedef struct session_unlisten_msg_
 typedef struct session_unlisten_reply_msg_
 {
   u32 context;
-  u64 handle;
+  session_handle_t handle;
   i32 retval;
 } __clib_packed session_unlisten_reply_msg_t;
 
 typedef struct session_accepted_msg_
 {
   u32 context;
-  u64 listener_handle;
-  u64 handle;
+  session_handle_t listener_handle;
+  session_handle_t handle;
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;
@@ -395,7 +395,7 @@ typedef struct session_accepted_reply_msg_
 {
   u32 context;
   i32 retval;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_accepted_reply_msg_t;
 
 typedef struct session_connect_msg_
@@ -410,7 +410,7 @@ typedef struct session_connect_msg_
   u8 is_ip4;
   ip46_address_t ip;
   ip46_address_t lcl_ip;
-  u64 parent_handle;
+  session_handle_t parent_handle;
   u32 ckpair_index;
   u8 crypto_engine;
   u8 flags;
@@ -435,7 +435,7 @@ typedef struct session_connected_msg_
 {
   u32 context;
   i32 retval;
-  u64 handle;
+  session_handle_t handle;
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;
@@ -465,33 +465,33 @@ typedef struct session_disconnected_msg_
 {
   u32 client_index;
   u32 context;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_disconnected_msg_t;
 
 typedef struct session_disconnected_reply_msg_
 {
   u32 context;
   i32 retval;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_disconnected_reply_msg_t;
 
 typedef struct session_reset_msg_
 {
   u32 client_index;
   u32 context;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_reset_msg_t;
 
 typedef struct session_reset_reply_msg_
 {
   u32 context;
   i32 retval;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_reset_reply_msg_t;
 
 typedef struct session_req_worker_update_msg_
 {
-  u64 session_handle;
+  session_handle_t session_handle;
 } __clib_packed session_req_worker_update_msg_t;
 
 /* NOTE: using u16 for wrk indices because message needs to fit in 18B */
@@ -500,12 +500,12 @@ typedef struct session_worker_update_msg_
   u32 client_index;
   u16 wrk_index;
   u16 req_wrk_index;
-  u64 handle;
+  session_handle_t handle;
 } __clib_packed session_worker_update_msg_t;
 
 typedef struct session_worker_update_reply_msg_
 {
-  u64 handle;
+  session_handle_t handle;
   uword rx_fifo;
   uword tx_fifo;
   u64 segment_handle;

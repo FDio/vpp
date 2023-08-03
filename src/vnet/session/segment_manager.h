@@ -80,6 +80,7 @@ typedef struct _segment_manager
 } segment_manager_t;
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
+#define SEGMENT_INVALID_HANDLE ((u64) ~0)
 
 segment_manager_t *segment_manager_alloc (void);
 int segment_manager_init (segment_manager_t * sm);

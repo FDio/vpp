@@ -110,8 +110,8 @@ openssl_ctx_attach (u32 thread_index, void *ctx_ptr)
   (*oc)->ctx.c_thread_index = thread_index;
 
   sh = (*oc)->ctx.tls_session_handle;
-  BIO_set_data ((*oc)->rbio, uword_to_pointer (sh, void *));
-  BIO_set_data ((*oc)->wbio, uword_to_pointer (sh, void *));
+  BIO_set_data ((*oc)->rbio, uword_to_pointer (sh.as_u64, void *));
+  BIO_set_data ((*oc)->wbio, uword_to_pointer (sh.as_u64, void *));
 
   return ((*oc)->openssl_ctx_index);
 }

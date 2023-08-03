@@ -210,7 +210,7 @@ BIO_new_dtls (session_handle_t sh)
   b = BIO_new (dtls_bio_method);
 
   /* Initialize the BIO */
-  BIO_set_data (b, uword_to_pointer (sh, void *));
+  BIO_set_data (b, uword_to_pointer (sh.as_u64, void *));
   BIO_set_init (b, 1);
 
   return b;

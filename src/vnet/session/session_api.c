@@ -357,16 +357,18 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   application_t *app;
   u32 thread_index;
 
-  thread_index = session_thread_from_handle (new_sh);
+//   thread_index = session_thread_from_handle (new_sh);
+  thread_index = new_sh.thread_index;
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_get (app_wrk->app_index);
   eq_seg = application_get_rx_mqs_segment (app);
 
-  m.handle = session_handle (s);
+//   m.handle = session_handle (s);
+  m.handle = s->session_handle;
   m.new_handle = new_sh;
   m.vpp_thread_index = thread_index;
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, thread_index);
-  m.segment_handle = SESSION_INVALID_HANDLE;
+  m.segment_handle = SEGMENT_INVALID_HANDLE;
 
   app_wrk_send_ctrl_evt (app_wrk, SESSION_CTRL_EVT_MIGRATED, &m, sizeof (m));
 }

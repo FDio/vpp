@@ -20,10 +20,23 @@
 #include <vnet/session/transport_types.h>
 
 #define SESSION_INVALID_INDEX ((u32)~0)
-#define SESSION_INVALID_HANDLE ((u64)~0)
 #define SESSION_CTRL_MSG_MAX_SIZE 86
 #define SESSION_CTRL_MSG_TX_MAX_SIZE 160
 #define SESSION_NODE_FRAME_SIZE 128
+#define SESSION_INVALID_HANDLE ((session_handle_t){.as_u64 = (u64) ~0})
+
+typedef u8 session_type_t;
+// typedef u64 session_handle_t;
+
+typedef union
+{
+  u64 as_u64;
+  struct
+  {
+    u32 thread_index;
+    u32 session_index;
+  } __clib_packed;
+} __attribute__ ((__transparent_union__)) session_handle_t;
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
@@ -62,7 +75,7 @@ typedef struct _session_endpoint_cfg
   u32 opaque;
   u32 ns_index;
   u8 original_tp;
-  u64 parent_handle;
+  session_handle_t parent_handle;
   session_endpoint_cfg_flags_t flags;
   transport_endpt_ext_cfg_t *ext_cfg;
 } session_endpoint_cfg_t;
@@ -99,7 +112,8 @@ typedef struct _session_endpoint_cfg
     .peer = TRANSPORT_ENDPOINT_NULL, .transport_proto = 0,                    \
     .app_wrk_index = ENDPOINT_INVALID_INDEX,                                  \
     .opaque = ENDPOINT_INVALID_INDEX,                                         \
-    .parent_handle = SESSION_INVALID_HANDLE, .ext_cfg = 0,                    \
+    .parent_handle = SESSION_INVALID_HANDLE, 				\
+    .ext_cfg = 0,                    \
   }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
@@ -124,9 +138,6 @@ session_endpoint_is_zero (session_endpoint_t * sep)
 {
   return ip_is_zero (&sep->ip, sep->is_ip4);
 }
-
-typedef u8 session_type_t;
-typedef u64 session_handle_t;
 
 typedef enum
 {
@@ -197,20 +208,27 @@ typedef struct session_
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 
+  union
+  {
+    struct
+    {
+      /** Index of the thread that allocated the session */
+      u32 thread_index;
+
+      /** Index in thread pool where session was allocated */
+      u32 session_index;
+    };
+    session_handle_t session_handle;
+  };
+
   /** Type built from transport and network protocol types */
   session_type_t session_type;
 
   /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
-  /** Index in thread pool where session was allocated */
-  u32 session_index;
-
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
-
-  /** Index of the thread that allocated the session */
-  u8 thread_index;
 
   /** Session flags. See @ref session_flags_t */
   u32 flags;
@@ -299,48 +317,72 @@ session_tx_is_dgram (session_t * s)
 }
 
 always_inline session_handle_t
+session_handle_from_u64 (u64 sh)
+{
+  return (session_handle_t) {.as_u64 = sh};
+}
+
+always_inline u8
+session_handle_is_valid (const session_handle_t *sh)
+{
+  return sh->as_u64 != ((u64)~0);
+}
+
+/*XXX*/
+always_inline session_handle_t
 session_handle (session_t * s)
 {
-  return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  //   return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  return s->session_handle;
 }
 
-always_inline u32
-session_index_from_handle (session_handle_t handle)
-{
-  return handle & 0xFFFFFFFF;
-}
+/*XXX*/
+// always_inline u32
+// session_index_from_handle (session_handle_t handle)
+// {
+//   return handle & 0xFFFFFFFF;
+// }
 
-always_inline u32
-session_thread_from_handle (session_handle_t handle)
-{
-  return handle >> 32;
-}
+// /*XXXX*/
+// always_inline u32
+// session_thread_from_handle (session_handle_t handle)
+// {
+//   return handle >> 32;
+// }
+// /*XXX*/
+// always_inline void
+// session_parse_handle (session_handle_t handle, u32 * index,
+// 		      u32 * thread_index)
+// {
+//   *index = session_index_from_handle (handle);
+//   *thread_index = session_thread_from_handle (handle);
+// }
 
-always_inline void
-session_parse_handle (session_handle_t handle, u32 * index,
-		      u32 * thread_index)
-{
-  *index = session_index_from_handle (handle);
-  *thread_index = session_thread_from_handle (handle);
-}
-
+/*XXX*/
 static inline session_handle_t
 session_make_handle (u32 session_index, u32 data)
 {
-  return (((u64) data << 32) | (u64) session_index);
+  session_handle_t sh = {
+	.session_index = session_index,
+  	.thread_index = data
+  };
+  return sh;
+//   return (((u64) data << 32) | (u64) session_index);
 }
 
-always_inline u32
-session_handle_index (session_handle_t ho_handle)
-{
-  return (ho_handle & 0xffffffff);
-}
+// /*XXX*/
+// always_inline u32
+// session_handle_index (session_handle_t ho_handle)
+// {
+//   return (ho_handle & 0xffffffff);
+// }
 
-always_inline u32
-session_handle_data (session_handle_t ho_handle)
-{
-  return (ho_handle >> 32);
-}
+// /*XXX*/
+// always_inline u32
+// session_handle_data (session_handle_t ho_handle)
+// {
+//   return (ho_handle >> 32);
+// }
 
 typedef enum
 {
