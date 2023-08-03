@@ -636,8 +636,8 @@ session_vlib_thread_is_cl_thread (void)
  * Listen sessions
  */
 
-always_inline u64
-listen_session_get_handle (session_t * s)
+always_inline session_handle_t
+listen_session_get_handle (session_t *s)
 {
   ASSERT (s->session_state == SESSION_STATE_LISTENING ||
 	  session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC);

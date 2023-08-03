@@ -126,7 +126,20 @@ session_endpoint_is_zero (session_endpoint_t * sep)
 }
 
 typedef u8 session_type_t;
-typedef u64 session_handle_t;
+// typedef u64 session_handle_t;
+
+typedef struct session_handle_
+{
+  union
+  {
+    struct
+    {
+      u32 session_index;
+      u32 thread_index;
+    };
+    u64 as_u64;
+  };
+} session_handle_t;
 
 typedef enum
 {
@@ -197,20 +210,20 @@ typedef struct session_
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 
+  /** Index of the thread that allocated the session */
+  u32 thread_index;
+
+  /** Index in thread pool where session was allocated */
+  u32 session_index;
+
   /** Type built from transport and network protocol types */
   session_type_t session_type;
 
   /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
-  /** Index in thread pool where session was allocated */
-  u32 session_index;
-
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
-
-  /** Index of the thread that allocated the session */
-  u8 thread_index;
 
   /** Session flags. See @ref session_flags_t */
   u32 flags;
@@ -301,7 +314,8 @@ session_tx_is_dgram (session_t * s)
 always_inline session_handle_t
 session_handle (session_t * s)
 {
-  return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  //   return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  return *((session_handle_t *) &s->thread_index);
 }
 
 always_inline u32
