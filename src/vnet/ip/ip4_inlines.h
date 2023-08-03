@@ -56,9 +56,12 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   tcp_header_t *tcp = (void *) (ip + 1);
   udp_header_t *udp = (void *) (ip + 1);
   gtpv1u_header_t *gtpu = (void *) (udp + 1);
-  u32 a, b, c, t1, t2;
+  u32 a, b, c;
   uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
   uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
+  uword is_whole = !ip4_is_fragment (ip);
+  u32 t1 = 0;
+  u32 t2 = 0;
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
     ? ip->src_address.data_u32 : 0;
@@ -68,11 +71,11 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
 
-  t1 = is_tcp_udp ? tcp->src : 0;
-  t2 = is_tcp_udp ? tcp->dst : 0;
-
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
+  if (is_tcp_udp && (flow_hash_config & IP_FLOW_HASH_SRC_PORT) && is_whole)
+    {
+      t1 = tcp->src;
+      t2 = tcp->dst;
+    }
 
   if (flow_hash_config & IP_FLOW_HASH_SYMMETRIC)
     {
