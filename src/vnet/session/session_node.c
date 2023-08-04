@@ -491,15 +491,13 @@ session_mq_reset_reply_handler (void *data)
   app_worker_t *app_wrk;
   session_t *s;
   application_t *app;
-  u32 index, thread_index;
 
   mp = (session_reset_reply_msg_t *) data;
   app = application_lookup (mp->context);
   if (!app)
     return;
 
-  session_parse_handle (mp->handle, &index, &thread_index);
-  s = session_get_if_valid (index, thread_index);
+  s = session_get_from_handle_if_valid (mp->handle);
 
   /* No session or not the right session */
   if (!s || s->session_state < SESSION_STATE_TRANSPORT_CLOSING)

@@ -58,10 +58,10 @@ void
 app_worker_free (app_worker_t * app_wrk)
 {
   application_t *app = application_get (app_wrk->app_index);
+  session_handle_t handle, *handles = 0, *sh;
   vnet_unlisten_args_t _a, *a = &_a;
-  u64 handle, *handles = 0, *sm_indices = 0;
   segment_manager_t *sm;
-  session_handle_t *sh;
+  u64 *sm_indices = 0;
   session_t *ls;
   u32 sm_index;
   int i;
@@ -853,7 +853,7 @@ u8 *
 format_app_worker_listener (u8 * s, va_list * args)
 {
   app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
-  u64 handle = va_arg (*args, u64);
+  session_handle_t handle = va_arg (*args, u64);
   u32 sm_index = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
   session_t *listener;
