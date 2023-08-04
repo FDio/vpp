@@ -392,23 +392,18 @@ session_get_if_valid (u64 si, u32 thread_index)
 }
 
 always_inline session_t *
-session_get_from_handle (session_handle_t handle)
+session_get_from_handle (session_handle_tu_t handle)
 {
   session_main_t *smm = &session_main;
-  u32 session_index, thread_index;
-  session_parse_handle (handle, &session_index, &thread_index);
-  return pool_elt_at_index (smm->wrk[thread_index].sessions, session_index);
+  return pool_elt_at_index (smm->wrk[handle.thread_index].sessions,
+			    handle.session_index);
 }
 
 always_inline session_t *
-session_get_from_handle_if_valid (session_handle_t handle)
+session_get_from_handle_if_valid (session_handle_tu_t handle)
 {
-  u32 session_index, thread_index;
-  session_parse_handle (handle, &session_index, &thread_index);
-  return session_get_if_valid (session_index, thread_index);
+  return session_get_if_valid (handle.session_index, handle.thread_index);
 }
-
-u64 session_segment_handle (session_t * s);
 
 /**
  * Get session from handle and avoid pool validation if no same thread
@@ -416,20 +411,18 @@ u64 session_segment_handle (session_t * s);
  * Peekers are fine because pool grows with barrier (see @ref session_alloc)
  */
 always_inline session_t *
-session_get_from_handle_safe (u64 handle)
+session_get_from_handle_safe (session_handle_tu_t handle)
 {
-  u32 thread_index = session_thread_from_handle (handle);
-  session_worker_t *wrk = &session_main.wrk[thread_index];
+  session_worker_t *wrk = &session_main.wrk[handle.thread_index];
 
-  if (thread_index == vlib_get_thread_index ())
+  if (handle.thread_index == vlib_get_thread_index ())
     {
-      return pool_elt_at_index (wrk->sessions,
-				session_index_from_handle (handle));
+      return pool_elt_at_index (wrk->sessions, handle.session_index);
     }
   else
     {
       /* Don't use pool_elt_at index to avoid pool bitmap reallocs */
-      return wrk->sessions + session_index_from_handle (handle);
+      return wrk->sessions + handle.session_index;
     }
 }
 
@@ -478,6 +471,7 @@ void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
 			   u8 is_lcl);
 int session_transport_attribute (session_t *s, u8 is_get,
 				 transport_endpt_attr_t *attr);
+u64 session_segment_handle (session_t *s);
 
 u8 *format_session (u8 * s, va_list * args);
 uword unformat_session (unformat_input_t * input, va_list * args);
@@ -654,8 +648,8 @@ session_vlib_thread_is_cl_thread (void)
  * Listen sessions
  */
 
-always_inline u64
-listen_session_get_handle (session_t * s)
+always_inline session_handle_t
+listen_session_get_handle (session_t *s)
 {
   ASSERT (s->session_state == SESSION_STATE_LISTENING ||
 	  session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC);
