@@ -16,6 +16,24 @@
       "message": "does this treat a packet with a fragment header as if it contained the TCP header?",
       "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9cf29c9_8fead8d8",
+        "filename": "src/vnet/ip/ip6_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-04T14:49:34Z",
+      "side": 1,
+      "message": "Yes, this is the same behavior as ipv4 flow hash. I considered changing that, but even if we were defaulting to 2-tuple for fragments you still end up with fragmented and non-fragmented packets taking different paths.\nSo if you want consistent path in face of fragmentation, you must configure to 3-tuple flow-hash altogether.",
+      "parentUuid": "e52b6d92_cdf7fe48",
+      "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
