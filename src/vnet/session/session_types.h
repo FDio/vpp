@@ -25,6 +25,26 @@
 #define SESSION_CTRL_MSG_TX_MAX_SIZE 160
 #define SESSION_NODE_FRAME_SIZE 128
 
+typedef u8 session_type_t;
+typedef u64 session_handle_t;
+typedef struct session_handle_s_
+{
+  u32 session_index;
+  u32 thread_index;
+} session_handle_st;
+
+STATIC_ASSERT (sizeof (session_handle_st) == sizeof (u64), "size mismatch");
+
+typedef union session_handle_tu_
+{
+  u64 handle;
+  struct
+  {
+    u32 session_index;
+    u32 thread_index;
+  };
+} __attribute__ ((__transparent_union__)) session_handle_tu_t;
+
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
   _(u8, transport_proto)					\
@@ -125,9 +145,6 @@ session_endpoint_is_zero (session_endpoint_t * sep)
   return ip_is_zero (&sep->ip, sep->is_ip4);
 }
 
-typedef u8 session_type_t;
-typedef u64 session_handle_t;
-
 typedef enum
 {
   SESSION_CLEANUP_TRANSPORT,
@@ -197,20 +214,20 @@ typedef struct session_
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 
+  /** Index in thread pool where session was allocated */
+  u32 session_index;
+
+  /** Index of the thread that allocated the session */
+  u32 thread_index;
+
   /** Type built from transport and network protocol types */
   session_type_t session_type;
 
   /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
-  /** Index in thread pool where session was allocated */
-  u32 session_index;
-
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
-
-  /** Index of the thread that allocated the session */
-  u8 thread_index;
 
   /** Session flags. See @ref session_flags_t */
   u32 flags;
@@ -301,7 +318,8 @@ session_tx_is_dgram (session_t * s)
 always_inline session_handle_t
 session_handle (session_t * s)
 {
-  return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  //   return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  return *((session_handle_t *) &s->session_index);
 }
 
 always_inline u32
