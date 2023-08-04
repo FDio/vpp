@@ -159,8 +159,8 @@ typedef struct vcl_session_
   svm_fifo_t *ct_tx_fifo;
   vcl_session_msg_t *accept_evts_fifo;
 
-  u64 vpp_handle;
-  u64 parent_handle;
+  session_handle_t vpp_handle;
+  session_handle_t parent_handle;
   u32 listener_index;		/**< index of parent listener (if any) */
   int n_accepted_sessions;	/**< sessions accepted by this listener */
   vppcom_epoll_t vep;
