@@ -25,6 +25,19 @@
 #define SESSION_CTRL_MSG_TX_MAX_SIZE 160
 #define SESSION_NODE_FRAME_SIZE 128
 
+typedef u8 session_type_t;
+typedef u64 session_handle_t;
+
+typedef union session_handle_tu_
+{
+  session_handle_t handle;
+  struct
+  {
+    u32 session_index;
+    u32 thread_index;
+  };
+} __attribute__ ((__transparent_union__)) session_handle_tu_t;
+
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
   _(u8, transport_proto)					\
@@ -125,9 +138,6 @@ session_endpoint_is_zero (session_endpoint_t * sep)
   return ip_is_zero (&sep->ip, sep->is_ip4);
 }
 
-typedef u8 session_type_t;
-typedef u64 session_handle_t;
-
 typedef enum
 {
   SESSION_CLEANUP_TRANSPORT,
@@ -198,20 +208,27 @@ typedef struct session_
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 
+  union
+  {
+    session_handle_t handle;
+    struct
+    {
+      /** Index in thread pool where session was allocated */
+      u32 session_index;
+
+      /** Index of the thread that allocated the session */
+      u32 thread_index;
+    };
+  };
+
   /** Type built from transport and network protocol types */
   session_type_t session_type;
 
   /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
-  /** Index in thread pool where session was allocated */
-  u32 session_index;
-
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
-
-  /** Index of the thread that allocated the session */
-  u8 thread_index;
 
   /** Session flags. See @ref session_flags_t */
   u32 flags;
@@ -299,45 +316,35 @@ session_tx_is_dgram (session_t * s)
 always_inline session_handle_t
 session_handle (session_t * s)
 {
-  return ((u64) s->thread_index << 32) | (u64) s->session_index;
+  return s->handle;
 }
 
 always_inline u32
-session_index_from_handle (session_handle_t handle)
+session_index_from_handle (session_handle_tu_t handle)
 {
-  return handle & 0xFFFFFFFF;
+  return handle.session_index;
 }
 
 always_inline u32
-session_thread_from_handle (session_handle_t handle)
+session_thread_from_handle (session_handle_tu_t handle)
 {
-  return handle >> 32;
+  return handle.thread_index;
 }
 
 always_inline void
-session_parse_handle (session_handle_t handle, u32 * index,
-		      u32 * thread_index)
+session_parse_handle (session_handle_tu_t handle, u32 *index,
+		      u32 *thread_index)
 {
-  *index = session_index_from_handle (handle);
-  *thread_index = session_thread_from_handle (handle);
+  *index = handle.session_index;
+  *thread_index = handle.thread_index;
 }
 
 static inline session_handle_t
 session_make_handle (u32 session_index, u32 data)
 {
-  return (((u64) data << 32) | (u64) session_index);
-}
-
-always_inline u32
-session_handle_index (session_handle_t ho_handle)
-{
-  return (ho_handle & 0xffffffff);
-}
-
-always_inline u32
-session_handle_data (session_handle_t ho_handle)
-{
-  return (ho_handle >> 32);
+  return ((session_handle_tu_t){ .session_index = session_index,
+				 .thread_index = data })
+    .handle;
 }
 
 typedef enum
