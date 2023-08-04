@@ -33,6 +33,24 @@
       "message": "the first fragment and the subsequent ones will use different data to hash, so they will potentially take different paths. does it matter then that subsequent fragments can take different paths?",
       "revId": "a3185d5a45a7a2e6153697e83cd599c71e1de8f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2779f89b_b169af55",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-08-04T14:34:53Z",
+      "side": 1,
+      "message": "while in general I agree that there\u0027s no RFC regarding how load-balancing should be implemented, I have 2 points:\n\n- I have an anycast service and I found out that sometimes for a big packets I receive 1 fragment on 1 node and the next one on another. ofc, anycast is just a poor man\u0027s l4 load-balancing, but I don\u0027t have anything better that that.\n\n- IMO default 5-tuple lb means that 1 session should be balanced on 1 link. for the 2nd and subsequent fragments we cannot say what were the ports, so it\u0027s easier just to ignore them.",
+      "parentUuid": "1c8a1dd0_0df67df7",
+      "revId": "a3185d5a45a7a2e6153697e83cd599c71e1de8f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
