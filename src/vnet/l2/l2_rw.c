@@ -400,7 +400,7 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to add a l2 rewrite entry to change the destination mac of
  * the packet to aa:bb:cc:dd:ee:ff (where ffffffffffff00000000000000000000
- * is Ethernet header's mask,aabbccddeeff00000000000000000000 is Ethernet 
+ * is Ethernet header's mask,aabbccddeeff00000000000000000000 is Ethernet
  * header's value):
  * @cliexcmd{l2 rewrite entry mask ffffffffffff00000000000000000000 value aabbccddeeff00000000000000000000}
 ?*/
@@ -474,16 +474,16 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
  * Apply the rule to the interface.The following example how to use classify
  * entry and Layer 2-Rewrite entry to modify the packet ethernet header on the
  * interface
- * 
+ *
  * @cliexpar
- * Example use the classify to filter packets that do not need to be modified(where 
+ * Example use the classify to filter packets that do not need to be modified(where
  * 192.168.68.34 is the destination ip of the data packet,8080 is the destination port
  * of the packet):
  * @cliexcmd{classify table mask l3 ip4 dst l4 dst_port}
  * @cliexcmd{classify session acl-hit-next permit table-index 0 match l3 ip4 dst 192.168.68.34 l4 dst_port 8080}
- * 
+ *
  * @cliexpar
- * Example apply classify and l2 rewrite rules to the interface(where YusurK2Eth6/0/1/3 
+ * Example apply classify and l2 rewrite rules to the interface(where YusurK2Eth6/0/1/3
  * is Yusur interface,\"table 0\" mean Table-Idx is 0,\"miss 0\" mean the packet that match
  * the classify miss will be modified according to the l2 rewrite entry with index 0):
  * @cliexcmd{set interface l2 rewrite YusurK2Eth6/0/1/3 table 0 miss-index 0}
@@ -519,7 +519,7 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
  * This command displays the l2 Rewrite entries of the interfaces.
  *
  * @cliexpar
- * Example of how to display the the l2 rewrite rules on the interface: 
+ * Example of how to display the the l2 rewrite rules on the interface:
  * @cliexstart{show l2 rewrite interfaces}
  * sw_if_index:4 table-index:0 miss-index:0
  * @cliexend
