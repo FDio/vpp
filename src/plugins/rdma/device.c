@@ -882,7 +882,7 @@ sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t * addr)
   unformat_input_t in;
   u8 *s;
 
-  s = clib_sysfs_link_to_name (path);
+  s = clib_file_get_resolved_basename (path);
   if (!s)
     return 0;
 

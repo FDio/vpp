@@ -253,16 +253,14 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
   static int uio_new_id_needed = 1;
   struct dirent *e;
   struct ifreq ifr;
-  u8 *s, *driver_name;
+  u8 *s = 0, *driver_name;
   DIR *dir;
   int fd;
 
   dev_dir_name = format (0, "%s/%U", sysfs_vmbus_dev_path,
 			 format_vlib_vmbus_addr, addr);
-  s = format (0, "%v/driver%c", dev_dir_name, 0);
 
-  driver_name = clib_sysfs_link_to_name ((char *) s);
-  vec_reset_length (s);
+  driver_name = clib_file_get_resolved_basename ("%v/driver", dev_dir_name);
 
   /* skip if not using the Linux kernel netvsc driver */
   if (!driver_name || strcmp ("hv_netvsc", (char *) driver_name) != 0)
