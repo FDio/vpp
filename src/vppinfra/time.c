@@ -74,7 +74,6 @@ clock_frequency_from_proc_filesystem (void)
 {
   f64 cpu_freq = 1e9;		/* better than 40... */
   f64 ppc_timebase = 0;		/* warnings be gone */
-  int fd;
   unformat_input_t input;
 
 /* $$$$ aarch64 kernel doesn't report "cpu MHz" */
@@ -83,26 +82,24 @@ clock_frequency_from_proc_filesystem (void)
 #endif
 
   cpu_freq = 0;
-  fd = open ("/proc/cpuinfo", 0);
-  if (fd < 0)
-    return cpu_freq;
-
-  unformat_init_clib_file (&input, fd);
 
   ppc_timebase = 0;
-  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+  if (unformat_init_file (&input, "/proc/cpuinfo"))
     {
-      if (unformat (&input, "cpu MHz : %f", &cpu_freq))
-	cpu_freq *= 1e6;
-      else if (unformat (&input, "timebase : %f", &ppc_timebase))
-	;
-      else
-	unformat_skip_line (&input);
+      while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (&input, "cpu MHz : %f", &cpu_freq))
+	    cpu_freq *= 1e6;
+	  else if (unformat (&input, "timebase : %f", &ppc_timebase))
+	    ;
+	  else
+	    unformat_skip_line (&input);
+	}
+
+      unformat_free (&input);
     }
-
-  unformat_free (&input);
-
-  close (fd);
+  else
+    return cpu_freq;
 
   /* Override CPU frequency with time base for PPC. */
   if (ppc_timebase != 0)
@@ -117,21 +114,19 @@ static f64
 clock_frequency_from_sys_filesystem (void)
 {
   f64 cpu_freq = 0.0;
-  int fd;
   unformat_input_t input;
 
   /* Time stamp always runs at max frequency. */
   cpu_freq = 0;
-  fd = open ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", 0);
-  if (fd < 0)
-    goto done;
 
-  unformat_init_clib_file (&input, fd);
-  (void) unformat (&input, "%f", &cpu_freq);
-  cpu_freq *= 1e3;		/* measured in kHz */
-  unformat_free (&input);
-  close (fd);
-done:
+  if (unformat_init_file (
+	&input, "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"))
+    {
+      if (unformat (&input, "%f", &cpu_freq))
+	cpu_freq *= 1e3; /* measured in kHz */
+      unformat_free (&input);
+    }
+
   return cpu_freq;
 }
 

@@ -129,30 +129,28 @@ format(s, "[0x%x] %s ([0x%02x] %s) stepping 0x%x", f, a, m, c, stepping);
     return format (s, "unknown (family 0x%02x model 0x%02x)", family, model);
 
 #elif __aarch64__
-  int fd;
   unformat_input_t input;
   u32 implementer, primary_part_number, variant, revision;
 
-  fd = open ("/proc/cpuinfo", 0);
-  if (fd < 0)
-    return format (s, "unknown");
-
-  unformat_init_clib_file (&input, fd);
-  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+  if (unformat_init_file (&input, "/proc/cpuinfo"))
     {
-      if (unformat (&input, "CPU implementer%_: 0x%x", &implementer))
-	;
-      else if (unformat (&input, "CPU part%_: 0x%x", &primary_part_number))
-	;
-      else if (unformat (&input, "CPU variant%_: 0x%x", &variant))
-	;
-      else if (unformat (&input, "CPU revision%_: %u", &revision))
-	;
-      else
-	unformat_skip_line (&input);
+      while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (&input, "CPU implementer%_: 0x%x", &implementer))
+	    ;
+	  else if (unformat (&input, "CPU part%_: 0x%x", &primary_part_number))
+	    ;
+	  else if (unformat (&input, "CPU variant%_: 0x%x", &variant))
+	    ;
+	  else if (unformat (&input, "CPU revision%_: %u", &revision))
+	    ;
+	  else
+	    unformat_skip_line (&input);
+	}
+      unformat_free (&input);
     }
-  unformat_free (&input);
-  close (fd);
+  else
+    return format (s, "unknown");
 
 #define _(i,p,a,c,_format) if ((implementer == i) && (primary_part_number == p)){ \
 	if (_format)\
