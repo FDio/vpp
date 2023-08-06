@@ -163,6 +163,8 @@ clib_file_write (clib_file_t * f)
   return f->write_function (f);
 }
 
+u8 *clib_file_get_resolved_basename (char *fmt, ...);
+
 #endif /* included_clib_file_h */
 
 /*

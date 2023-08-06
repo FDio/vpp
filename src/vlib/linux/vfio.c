@@ -185,10 +185,8 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
   int fd;
 
   *is_noiommu = 0;
-  s =
-    format (s, "/sys/bus/pci/devices/%U/iommu_group%c", format_vlib_pci_addr,
-	    addr, 0);
-  tmpstr = clib_sysfs_link_to_name ((char *) s);
+  tmpstr = clib_file_get_resolved_basename (
+    "/sys/bus/pci/devices/%U/iommu_group", format_vlib_pci_addr, addr);
   if (tmpstr)
     {
       iommu_group = atoi ((char *) tmpstr);

@@ -293,16 +293,13 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
     goto error;
   di->revision = tmp;
 
-  vec_reset_length (f);
-  f = format (f, "%v/driver%c", dev_dir_name, 0);
-  di->driver_name = clib_sysfs_link_to_name ((char *) f);
+  di->driver_name =
+    clib_file_get_resolved_basename ("%v/driver", dev_dir_name);
   if (!di->driver_name)
     di->driver_name = format (0, "<NONE>%c", 0);
 
   di->iommu_group = -1;
-  vec_reset_length (f);
-  f = format (f, "%v/iommu_group%c", dev_dir_name, 0);
-  tmpstr = clib_sysfs_link_to_name ((char *) f);
+  tmpstr = clib_file_get_resolved_basename ("%v/iommu_group", dev_dir_name);
   if (tmpstr)
     {
       di->iommu_group = atoi ((char *) tmpstr);
@@ -506,9 +503,7 @@ vlib_pci_bind_to_uio (vlib_main_t *vm, vlib_pci_addr_t *addr,
 	}
     }
 
-  s = format (s, "%v/driver%c", dev_dir_name, 0);
-  driver_name = clib_sysfs_link_to_name ((char *) s);
-  vec_reset_length (s);
+  driver_name = clib_file_get_resolved_basename ("%v/driver", dev_dir_name);
 
   if (driver_name &&
       ((strcmp ("vfio-pci", (char *) driver_name) == 0) ||

@@ -87,32 +87,6 @@ clib_sysfs_read (char *file_name, char *fmt, ...)
   return 0;
 }
 
-__clib_export u8 *
-clib_sysfs_link_to_name (char *link)
-{
-  char *p, buffer[64];
-  unformat_input_t in;
-  u8 *s = 0;
-  int r;
-
-  r = readlink (link, buffer, sizeof (buffer) - 1);
-
-  if (r < 0)
-    return 0;
-
-  buffer[r] = 0;
-  p = strrchr (buffer, '/');
-
-  if (!p)
-    return 0;
-
-  unformat_init_string (&in, p + 1, strlen (p + 1));
-  if (unformat (&in, "%s", &s) != 1)
-    clib_unix_warning ("no string?");
-  unformat_free (&in);
-
-  return s;
-}
 
 clib_error_t *
 clib_sysfs_set_nr_hugepages (int numa_node, int log2_page_size, int nr)

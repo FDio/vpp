@@ -38,12 +38,14 @@
 #include <vppinfra/error.h>
 #include <vppinfra/os.h>
 #include <vppinfra/unix.h>
+#include <vppinfra/format.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>		/* writev */
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
+#include <limits.h>
 
 __clib_export __thread uword __os_thread_index = 0;
 __clib_export __thread uword __os_numa_index = 0;
@@ -129,6 +131,35 @@ clib_file_contents (char *file, u8 ** result)
     *result = v;
 
   return error;
+}
+
+__clib_export u8 *
+clib_file_get_resolved_basename (char *fmt, ...)
+{
+  va_list va;
+  char *p, buffer[PATH_MAX];
+  u8 *link, *s = 0;
+  int r;
+
+  va_start (va, fmt);
+  link = va_format (0, fmt, &va);
+  va_end (va);
+  vec_add1 (link, 0);
+
+  r = readlink ((char *) link, buffer, sizeof (buffer) - 1);
+  vec_free (link);
+
+  if (r < 1)
+    return 0;
+
+  p = buffer + r - 1;
+  while (p > buffer && p[-1] != '/')
+    p--;
+
+  while (p[0])
+    vec_add1 (s, p++[0]);
+
+  return s;
 }
 
 clib_error_t *
