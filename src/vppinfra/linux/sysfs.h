@@ -22,8 +22,6 @@ clib_error_t *clib_sysfs_write (char *file_name, char *fmt, ...);
 
 clib_error_t *clib_sysfs_read (char *file_name, char *fmt, ...);
 
-u8 *clib_sysfs_link_to_name (char *link);
-
 clib_error_t *clib_sysfs_set_nr_hugepages (int numa_node,
 					   int log2_page_size, int nr);
 clib_error_t *clib_sysfs_get_nr_hugepages (int numa_node,
