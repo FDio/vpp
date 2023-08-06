@@ -18,6 +18,7 @@ ForEachMacros:
   - 'vec_foreach_backwards'
   - 'vec_foreach_index'
   - 'vec_foreach_index_backwards'
+  - 'vec_foreach_pointer'
   - 'vlib_foreach_rx_tx'
   - 'foreach_vlib_main'
   - 'foreach_set_bit_index'
