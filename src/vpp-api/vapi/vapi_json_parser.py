@@ -196,12 +196,18 @@ class Message(object):
                             "array `%s' doesn't have reference to member "
                             "containing the actual length" % (name, field[1])
                         )
-                    if field[0] == "string" and field[2] > 0:
-                        field_type = json_parser.lookup_type_like_id("u8")
+                    if field[0] == "string" and field[2] == 0:
+                        field_type = json_parser.lookup_type_like_id("vl_api_string_t")
+                        p = field_class(field_name=field[1], field_type=field_type)
+                    else:
+                        if field[0] == "string" and field[2] > 0:
+                            field_type = json_parser.lookup_type_like_id("u8")
 
-                    p = field_class(
-                        field_name=field[1], field_type=field_type, array_len=field[2]
-                    )
+                        p = field_class(
+                            field_name=field[1],
+                            field_type=field_type,
+                            array_len=field[2],
+                        )
                 elif l == 4:
                     nelem_field = None
                     for f in fields:
@@ -254,13 +260,31 @@ class StructType(Type, Struct):
                 p = field_class(field_name=field[1], field_type=field_type)
             elif len(field) == 3:
                 if field[2] == 0:
-                    raise ParseError(
-                        "While parsing type `%s': array `%s' has "
-                        "variable length" % (name, field[1])
+                    if name == "vl_api_string_t":
+                        p = None
+                        for f in fields:
+                            if f.name == "length":
+                                nelem_field = f
+                                p = field_class(
+                                    field_name=field[1],
+                                    field_type=field_type,
+                                    array_len=field[2],
+                                    nelem_field=nelem_field,
+                                )
+                                break
+                        if p is None:
+                            raise ParseError(
+                                "While parsing type `%s': missing `length'" % name
+                            )
+                    else:
+                        raise ParseError(
+                            "While parsing type `%s': array `%s' has "
+                            "variable length" % (name, field[1])
+                        )
+                else:
+                    p = field_class(
+                        field_name=field[1], field_type=field_type, array_len=field[2]
                     )
-                p = field_class(
-                    field_name=field[1], field_type=field_type, array_len=field[2]
-                )
             elif len(field) == 4:
                 nelem_field = None
                 for f in fields:
@@ -343,7 +367,13 @@ class JsonParser(object):
             ]
         }
 
-        self.types["string"] = simple_type_class("vl_api_string_t")
+        self.types["string"] = simple_type_class("u8")
+        self.types["vl_api_string_t"] = struct_type_class(
+            ["vl_api_string_t", ["u32", "length"], ["u8", "buf", 0]],
+            self,
+            field_class,
+            logger,
+        )
         self.replies = set()
         self.events = set()
         self.simple_type_class = simple_type_class
