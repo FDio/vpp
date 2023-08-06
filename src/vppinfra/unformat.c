@@ -36,6 +36,7 @@
 */
 
 #include <vppinfra/format.h>
+#include <fcntl.h>
 
 /* Call user's function to fill input buffer. */
 __clib_export uword
@@ -1045,11 +1046,43 @@ clib_file_fill_buffer (unformat_input_t * input)
     return input->index;
 }
 
+static void
+unformat_path_free (unformat_input_t *input)
+{
+  int fd = pointer_to_uword (input->fill_buffer_arg);
+  close (fd);
+}
+
 __clib_export void
 unformat_init_clib_file (unformat_input_t * input, int file_descriptor)
 {
   unformat_init (input, clib_file_fill_buffer,
 		 uword_to_pointer (file_descriptor, void *));
+}
+
+__clib_export uword
+unformat_init_path (unformat_input_t *input, char *fmt, ...)
+{
+  va_list va;
+  u8 *path;
+  int fd;
+
+  va_start (va, fmt);
+  path = va_format (0, fmt, &va);
+  va_end (va);
+  vec_add1 (path, 0);
+
+  fd = open ((char *) path, 0);
+  vec_free (path);
+
+  if (fd >= 0)
+    {
+      unformat_init (input, clib_file_fill_buffer,
+		     uword_to_pointer (fd, void *));
+      input->free = unformat_path_free;
+      return 1;
+    }
+  return 0;
 }
 
 /* Take input from Unix environment variable. */
