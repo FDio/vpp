@@ -193,7 +193,7 @@ START_TEST (test_loopbacks_1)
 
   { // new context
     bool seen[num_ifs] = {0};
-    Sw_interface_dump d (con);
+    Sw_interface_dump d (con, 0);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -232,7 +232,7 @@ START_TEST (test_loopbacks_1)
     }
 
   { // new context
-    Sw_interface_dump d (con);
+    Sw_interface_dump d (con, 0);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);
@@ -347,7 +347,7 @@ START_TEST (test_loopbacks_2)
     }
 
   Sw_interface_dump_cb<num_ifs> swdcb (ccbs);
-  Sw_interface_dump d (con, std::ref (swdcb));
+  Sw_interface_dump d (con, 0, std::ref (swdcb));
   auto rv = d.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
   WAIT_FOR_RESPONSE (d, rv);
@@ -373,7 +373,7 @@ START_TEST (test_loopbacks_2)
     }
 
   { // new context
-    Sw_interface_dump d (con);
+    Sw_interface_dump d (con, 0);
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
     WAIT_FOR_RESPONSE (d, rv);

@@ -605,7 +605,7 @@ START_TEST (test_loopbacks_1)
     {
       dctx.last_called = false;
       clib_memset (&seen, 0, sizeof (seen));
-      dump = vapi_alloc_sw_interface_dump (ctx);
+      dump = vapi_alloc_sw_interface_dump (ctx, 0);
       while (VAPI_EAGAIN ==
 	     (rv =
 	      vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb,
@@ -634,7 +634,7 @@ START_TEST (test_loopbacks_1)
     }
   dctx.last_called = false;
   clib_memset (&seen, 0, sizeof (seen));
-  dump = vapi_alloc_sw_interface_dump (ctx);
+  dump = vapi_alloc_sw_interface_dump (ctx, 0);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -763,7 +763,7 @@ START_TEST (test_loopbacks_2)
   bool seen[num_ifs];
   clib_memset (&seen, 0, sizeof (seen));
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
-  vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
+  vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx, 0);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -803,7 +803,7 @@ START_TEST (test_loopbacks_2)
     }
   clib_memset (&seen, 0, sizeof (seen));
   dctx.last_called = false;
-  dump = vapi_alloc_sw_interface_dump (ctx);
+  dump = vapi_alloc_sw_interface_dump (ctx, 0);
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -922,7 +922,7 @@ START_TEST (test_no_response_2)
 {
   printf ("--- Simulate no response to dump message ---\n");
   vapi_error_e rv;
-  vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
+  vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx, 0);
   dump->header._vl_msg_id = ~0;	/* malformed ID causes vpp to drop the msg */
   int no_called = 0;
   while (VAPI_EAGAIN ==
