@@ -87,6 +87,24 @@
       "parentUuid": "541aaf27_b2d5d14a",
       "revId": "ff5372983219ff8048062e67d281242bb334c92a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "79e1c596_3fe19f56",
+        "filename": "test/asf/test_ipsec_default.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-08-07T08:17:06Z",
+      "side": 1,
+      "message": "I tried to check IPsec XFRM implementation\n\nBehavior of plain traffic like TCP, UDP, ICMP are same w.r.t inbound processing \nFor plain traffic , routing and inbound policy , both are in action to take decision where routing table is taking decision early. e.g. case 3 \n\nFor inbound traffic : \nTuple [ DST IP, Protocol Type, SPI, ]\n1 ) encrypted packet matches tuple in SPD ,  resolved SA and do decapsulation and decryption \n2)  plain packet(UDP, TCP, ICMP) partial matches  tuple in SPD , dropped with error “XfrmInTmplMismatch” \n3)  plain packet(UDP, TCP, ICMP) does not matches tuple in SPD , bypassed \n\nTo avoid case 2 , we can setup policy without SA (excluding TMPL field) – Bypass  \nip netns exec ipsec_end_b ip xfrm policy add src 192.168.1.100/24 dst 192.168.2.100/24 dir in priority 2070 action block/allow \n\nInbound SA and Policy:-  \n\nip netns exec ipsec_end_a ip xfrm state add src 192.168.1.100 dst 192.168.2.100 proto esp spi 0x53fa0fdd mode transport reqid 16386 replay-window 32 auth \"hmac(sha1)\" 0x55f01ac07e15e437115dde0aedd18a822ba9f81e enc \"cbc(aes)\" 0x6aed4975adf006d65c76f63923a6265b sel src 0.0.0.0/0 dst 0.0.0.0/0\nip netns exec ipsec_end_a ip xfrm policy add dir out src 192.168.1.100 dst 192.168.2.100 ptype main action allow priority 2080 tmpl src 192.168.1.100 dst 192.168.2.100 proto esp spi 0x53fa0fdd reqid 16386 mode transport\n\nip netns exec ipsec_end_b ip xfrm state add src 192.168.1.100 dst 192.168.2.100 proto esp spi 0x53fa0fdd mode transport reqid 16386 replay-window 32 auth \"hmac(sha1)\" 0x55f01ac07e15e437115dde0aedd18a822ba9f81e enc \"cbc(aes)\" 0x6aed4975adf006d65c76f63923a6265b sel src 0.0.0.0/0 dst 0.0.0.0/0\nip netns exec ipsec_end_b ip xfrm policy add dir in src 192.168.1.100 dst 192.168.2.100 ptype main action allow priority 2080 tmpl src 192.168.1.100 dst 192.168.2.100 proto esp spi 0x53fa0fdd reqid 16386 mode transport\nip netns exec ipsec_end_b ip xfrm policy add dir fwd src 192.168.1.100 dst 192.168.2.100 ptype main action allow priority 2080 tmpl src 192.168.1.100 dst 192.168.2.100 proto esp spi 0x53fa0fdd reqid 16386 mode transport",
+      "parentUuid": "eb2dd81b_0fa26354",
+      "revId": "ff5372983219ff8048062e67d281242bb334c92a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
