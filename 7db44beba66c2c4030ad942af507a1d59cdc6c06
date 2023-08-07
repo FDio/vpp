@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a81e324f_0a986b29",
+        "filename": "src/plugins/cnat/cnat.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-07T13:20:12Z",
+      "side": 1,
+      "message": "I don\u0027t think it\u0027s true anymore in all cases, right?",
+      "revId": "7db44beba66c2c4030ad942af507a1d59cdc6c06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea5b2985_792781fa",
+        "filename": "src/plugins/cnat/cnat_translation.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-07T13:20:12Z",
+      "side": 1,
+      "message": "you should probably use __clib_packed instead",
+      "revId": "7db44beba66c2c4030ad942af507a1d59cdc6c06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8408aa94_669036aa",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-07T13:20:12Z",
+      "side": 1,
+      "message": "maybe update the comment here?",
+      "revId": "7db44beba66c2c4030ad942af507a1d59cdc6c06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
