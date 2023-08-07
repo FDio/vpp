@@ -513,9 +513,9 @@ vcl_session_reset_handler (vcl_worker_t * wrk,
     }
 
   /* Caught a reset before actually accepting the session */
-  if (session->session_state == VCL_STATE_LISTEN)
+  if (session->session_state == VCL_STATE_LISTEN ||
+      session->session_state == VCL_STATE_LISTEN_NO_MQ)
     {
-
       if (!vcl_flag_accepted_session (session, reset_msg->handle,
 				      VCL_ACCEPTED_F_RESET))
 	VDBG (0, "session was not accepted!");
@@ -706,7 +706,8 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
     return 0;
 
   /* Caught a disconnect before actually accepting the session */
-  if (session->session_state == VCL_STATE_LISTEN)
+  if (session->session_state == VCL_STATE_LISTEN ||
+      session->session_state == VCL_STATE_LISTEN_NO_MQ)
     {
       if (!vcl_flag_accepted_session (session, msg->handle,
 				      VCL_ACCEPTED_F_CLOSED))
