@@ -50,6 +50,23 @@
       "message": "perftest-3n-alt mrrANDnic_intel*ANDdrv_vfio_pciANDethip4ipsec*tnlswasync-scheduler-*",
       "revId": "2b4de53d52a41c32a8b659f8a2686fcbb77a7cac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f8763a1_2c972b4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-08-08T12:36:17Z",
+      "side": 1,
+      "message": "perftest-3n-icx mrrANDnic_intel-xxv710ANDdrv_vfio_pciANDethip4ipsec*tnlswasync-scheduler-*",
+      "revId": "2b4de53d52a41c32a8b659f8a2686fcbb77a7cac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
