@@ -34,6 +34,24 @@
       "parentUuid": "e52b6d92_cdf7fe48",
       "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d103f9d_49be2493",
+        "filename": "src/vnet/ip/ip6_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-08-08T09:49:07Z",
+      "side": 1,
+      "message": "Stanislav is proposing a change to the v4 behaviour to use a 3 tuple: https://gerrit.fd.io/r/c/vpp/+/39317\n\nI would propose we are consistent with 4 and 6 and use the 3 tuple. What do you think?",
+      "parentUuid": "f9cf29c9_8fead8d8",
+      "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
