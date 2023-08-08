@@ -1054,7 +1054,15 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       if (s->session_state == VCL_STATE_CLOSED)
 	break;
-      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+      /* We do not postpone for blocking sessions or listen sessions because:
+       * 1. Blocking sessions are not part of epoll instead they're used in a
+       *    synchronous manner, such as read/write and etc.
+       * 2. Listen sessions that have not yet been accepted can't change to
+       *    VPP_CLOSING state instead can been marked as ACCEPTED_F_CLOSED.
+       */
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK) &&
+	  !(s->session_state == VCL_STATE_LISTEN ||
+	    s->session_state == VCL_STATE_LISTEN_NO_MQ))
 	{
 	  s->session_state = VCL_STATE_VPP_CLOSING;
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
@@ -1075,7 +1083,15 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       if (s->session_state == VCL_STATE_CLOSED)
 	break;
-      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
+      /* We do not postpone for blocking sessions or listen sessions because:
+       * 1. Blocking sessions are not part of epoll instead they're used in a
+       *    synchronous manner, such as read/write and etc.
+       * 2. Listen sessions that have not yet been accepted can't change to
+       *    DISCONNECT state instead can been marked as ACCEPTED_F_RESET.
+       */
+      if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK) &&
+	  !(s->session_state == VCL_STATE_LISTEN ||
+	    s->session_state == VCL_STATE_LISTEN_NO_MQ))
 	{
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
 	  s->session_state = VCL_STATE_DISCONNECT;
