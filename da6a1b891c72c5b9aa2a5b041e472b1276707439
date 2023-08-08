@@ -52,6 +52,24 @@
       "parentUuid": "f9cf29c9_8fead8d8",
       "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7547029_96f76ae8",
+        "filename": "src/vnet/ip/ip6_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-08T10:13:28Z",
+      "side": 1,
+      "message": "I wonder, it still means fragmented packets will use a different path than non-fragmented packets. Preserving fragment ordering is a bit better, but how much better? Anyway, I do not have a strong opinion, but I do agree we want v4 and v6 behaving the same way. So I\u0027ll follow what is decided for v4 :)",
+      "parentUuid": "5d103f9d_49be2493",
+      "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
