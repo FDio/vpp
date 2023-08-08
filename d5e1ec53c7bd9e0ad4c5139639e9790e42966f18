@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ab03ecc_fe84117c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-08T04:58:06Z",
+      "side": 1,
+      "message": "I guess this was supposed to go in with the previous patch. Quick question inside",
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "199fb77d_26b86b3b",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-08T04:58:06Z",
+      "side": 1,
+      "message": "Wonder if the check lower shouldn\u0027t be done outside of this if, i.e., we shouldn\u0027t be checking if listener has non-block on it. If you manage to repro the issue can you test and also please add a comment to provide a bit of context",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
