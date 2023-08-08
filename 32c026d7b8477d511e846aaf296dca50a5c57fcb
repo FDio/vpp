@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48391fea_7e7c481f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-08-08T13:38:15Z",
+      "side": 1,
+      "message": "Tested successfully against lcp_itf_pair_get \u0026 its reply and details messages.",
+      "revId": "32c026d7b8477d511e846aaf296dca50a5c57fcb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
