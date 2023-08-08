@@ -398,8 +398,10 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
  * the provisioned mask and value, modifies the packet header.
  *
  * @cliexpar
- * @todo This is incomplete. This needs a detailed description and a
- * practical example.
+ * Example of how to add an l2 rewrite entry to change the destination mac of
+ * the packet to 00:8a:00:0d:0e:02 (where parameter mask is Ethernet header's mask,
+ * parameter value is Ethernet header's value):
+ * @cliexcmd{l2 rewrite entry mask ffffffffffff00000000000000000000 value 008a000d0e0200000000000000000000}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_entry_cli, static) = {
@@ -468,12 +470,22 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
 }
 
 /*?
- * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modifies the packet header.
+ * Apply the rule to the interface.The following example shows how to use classify
+ * entry and Layer 2-Rewrite entry to modify the packet ethernet header on the
+ * interface
  *
  * @cliexpar
- * @todo This is incomplete. This needs a detailed description and a
- * practical example.
+ * Example use the classify to filter packets that do not need to be modified (where
+ * 192.168.68.34 is the destination ip of the data packet, 8080 is the destination port
+ * of the packet):
+ * @cliexcmd{classify table mask l3 ip4 dst l4 dst_port}
+ * @cliexcmd{classify session acl-hit-next permit table-index 0 match l3 ip4 dst 192.168.68.34 l4 dst_port 8080}
+ *
+ * @cliexpar
+ * Example apply classify and l2 rewrite rules to the interface (where YusurK2Eth6/0/1/3
+ * is interface, \"table 0\" means Table Id is 0, \"miss 0\" means the packet that matchs
+ * the classify. miss will be modified according to the l2 rewrite entry with index 0):
+ * @cliexcmd{set interface l2 rewrite YusurK2Eth6/0/1/3 table 0 miss-index 0}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_interface_cli, static) = {
@@ -503,12 +515,13 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
 }
 
 /*?
- * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modifies the packet header.
+ * This command displays the l2 rewrite entries of the interfaces.
  *
  * @cliexpar
- * @todo This is incomplete. This needs a detailed description and a
- * practical example.
+ * Example of how to display the the l2 rewrite rules on the interface:
+ * @cliexstart{show l2 rewrite interfaces}
+ * sw_if_index:4 table-index:0 miss-index:0
+ * @cliexend
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_interfaces_cli, static) = {
@@ -537,12 +550,14 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
 }
 
 /*?
- * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modifies the packet header.
+ * This command displays all l2 rewrite entries.
  *
  * @cliexpar
- * @todo This is incomplete. This needs a detailed description and a
- * practical example.
+ * Example of how to display all l2 rewrite entries:
+ * @cliexstart{show l2 rewrite entries}
+ * 0 -  mask:ffffffffffff00000000000000000000 value:aabbccddeeff00000000000000000000
+ *    hits:0 skip_bytes:0
+ * @cliexend
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_entries_cli, static) = {
@@ -587,12 +602,14 @@ l2_rw_set_cli_fn (vlib_main_t * vm,
 }
 
 /*?
- * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modifies the packet header.
+ * Layer 2 rewrite can be enabled and disabled on each interface and on each bridge-domain.
+ * Use this command to manage l2 rewrite on bridge-domain.
  *
  * @cliexpar
- * @todo This is incomplete. This needs a detailed description and a
- * practical example.
+ * Example of how to enable rewrite (where 100 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain rewrite 100}
+ * Example of how to disable rewrite (where 100 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain rewrite 100 disable}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_set_cli, static) = {
