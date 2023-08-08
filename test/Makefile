@@ -200,7 +200,7 @@ ARG6=--step
 endif
 
 ARG7=
-ifneq ($(findstring $(TESTS_GCOV),1 y yes),)
+ifneq ($(findstring $(TEST_GCOV),1 y yes),)
 ARG7=--gcov
 endif
 
