@@ -16,6 +16,24 @@
       "message": "Thanks for the patch, however, the process for building the documentation now resides in the documentation itself.\n\nPlease replace the contents of this file with a single line describing this and the URL to the documentation output from the master branch:\n\n----\nThe current process for generating VPP documentation can be found at https://fd.io/docs/vpp/master/contributing/writingdocs.html",
       "revId": "ec9074d9763e3bc2b5469844fee97f0335934d2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e1b4aa4_bf4c6a58",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-08-08T21:20:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "97d9040c_96dfccd2",
+      "revId": "ec9074d9763e3bc2b5469844fee97f0335934d2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
