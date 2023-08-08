@@ -33,6 +33,244 @@
       "message": "The code is ready, please help to review",
       "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f81ede55_22453f8e",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/a l2/an l2/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0231559f_8677cc7f",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/mask`s parameter/parameter mask/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "436f7723_a4816d02",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/value`parameter/parameter value/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a98564e_159a1f1a",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/interface.The following example/interface. The following example shows/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5561aadf_9aefa655",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/modified(where/modified (where/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e520d448_c19c7807",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/,8080/, 8080/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ee2522c_e5d93cf2",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/interace(/interace (/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e534574_f5fa04be",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 492,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/interface,/interface, /\ns/is 0,/is 0, /\ns/mean Table/means Table/\ns/mean packet/means packet/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f62c1705_3a7af035",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/match/matches/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d42ff1ad_e00dcc0f",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/the classify/the classify./",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25fb473d_ac4dba0d",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/Rewrite/rewrite/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34de2f97_08c0ace8",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/Rewrite/rewrite/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d102009_8b520945",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/Rewrite/rewrite/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e44be67c_dbfbbf81",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 616,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-08-08T17:27:43Z",
+      "side": 1,
+      "message": "s/bridge-domains/l2 rewrite on bridge-domain/",
+      "revId": "707411b74897caaa1a9c1caa3907aaedd4a82b8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
