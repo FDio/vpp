@@ -434,6 +434,7 @@ define test
 	  VPP_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_INSTALL_PATH=$(BR)/install-$(1)-native/ \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
+	  TEST_GCOV=$(TEST_GCOV) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
 	  RND_SEED=$(RND_SEED) \
