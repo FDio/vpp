@@ -1056,6 +1056,12 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
 	{
+	  if (s->session_state == VCL_STATE_LISTEN ||
+	      s->session_state == VCL_STATE_LISTEN_NO_MQ)
+	    {
+	      vec_add1 (wrk->unhandled_evts_vector, *e);
+	      break;
+	    }
 	  s->session_state = VCL_STATE_VPP_CLOSING;
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
 	  vec_add2 (wrk->unhandled_evts_vector, ecpy, 1);
@@ -1077,6 +1083,12 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 	break;
       if (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK))
 	{
+	  if (s->session_state == VCL_STATE_LISTEN ||
+	      s->session_state == VCL_STATE_LISTEN_NO_MQ)
+	    {
+	      vec_add1 (wrk->unhandled_evts_vector, *e);
+	      break;
+	    }
 	  s->flags |= VCL_SESSION_F_PENDING_DISCONNECT;
 	  s->session_state = VCL_STATE_DISCONNECT;
 	  s->flags |= (VCL_SESSION_F_RD_SHUTDOWN | VCL_SESSION_F_WR_SHUTDOWN);
