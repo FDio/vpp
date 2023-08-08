@@ -16,6 +16,24 @@
       "message": "Thank, Hanlin! For reference, you can git amend a patch that you want to update and git review will make sure to upload it as a new patchset.",
       "revId": "696db20e332fcbecaaef9c5505cc2e132bfaa9e2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9dd4d5d9_e82c0f6f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-08T01:50:33Z",
+      "side": 1,
+      "message": "OK, I see. Now I git amend a patch and then execute git review again, then a new patch will been pushed.",
+      "parentUuid": "d2d81a41_a0143959",
+      "revId": "696db20e332fcbecaaef9c5505cc2e132bfaa9e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
