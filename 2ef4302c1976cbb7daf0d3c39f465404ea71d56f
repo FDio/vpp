@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81f513c6_9726b4ba",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-08-08T13:36:09Z",
+      "side": 1,
+      "message": "Tested successfully against sw_interface_dump using the name_filter field. Looks good to me.",
+      "revId": "2ef4302c1976cbb7daf0d3c39f465404ea71d56f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
