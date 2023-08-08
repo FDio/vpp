@@ -119,6 +119,7 @@ static uint32_t
 wg_index_set (vlib_main_t *vm, noise_remote_t *remote)
 {
   wg_main_t *wmp = &wg_main;
+  /* TODO: Make sure the same value cannot be generated twice in a row. */
   u32 rnd_seed = (u32) (vlib_time_now (wmp->vlib_main) * 1e6);
   u32 ret =
     wg_index_table_add (vm, &wmp->index_table, remote->r_peer_idx, rnd_seed);
