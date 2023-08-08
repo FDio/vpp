@@ -87,6 +87,24 @@
       "parentUuid": "aceb83e8_b1439af7",
       "revId": "a3185d5a45a7a2e6153697e83cd599c71e1de8f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a0a7fac_3473de31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-08-08T09:49:12Z",
+      "side": 1,
+      "message": "i think it is the correct approach. Ben is working on similar for v6: https://gerrit.fd.io/r/c/vpp/+/39309. let\u0027s converge on consistent behaviour.",
+      "parentUuid": "07da382e_3dd55093",
+      "revId": "a3185d5a45a7a2e6153697e83cd599c71e1de8f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
