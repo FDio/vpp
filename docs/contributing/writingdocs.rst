@@ -33,7 +33,7 @@ Delete all the generated files with the following:
 View the results
 ----------------
 
-If there are no errors during the build process, you should now have an ``index.html`` file in your ``vpp/docs/_build/html`` directory, which you can then view in your browser.
+If there are no errors during the build process, you should now have an ``index.html`` file in your ``vpp/build-root/docs/html`` directory, which you can then view in your browser.
 
 Whenever you make changes to your ``.rst`` files that you want to see, repeat this build process.
 
