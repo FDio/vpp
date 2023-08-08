@@ -109,7 +109,8 @@ typedef struct noise_remote
   f64 r_last_init;
 
   clib_rwlock_t r_keypair_lock;
-  noise_keypair_t *r_next, *r_current, *r_previous;
+  noise_keypair_t *r_current, *r_next, *r_previously_current,
+    *r_previously_next;
 } noise_remote_t;
 
 typedef struct noise_local
@@ -203,9 +204,15 @@ wg_get_active_keypair (noise_remote_t *r, uint32_t r_idx)
     {
       return r->r_current;
     }
-  else if (r->r_previous != NULL && r->r_previous->kp_local_index == r_idx)
+  else if (r->r_previously_current != NULL &&
+	   r->r_previously_current->kp_local_index == r_idx)
     {
-      return r->r_previous;
+      return r->r_previously_current;
+    }
+  else if (r->r_previously_next != NULL &&
+	   r->r_previously_next->kp_local_index == r_idx)
+    {
+      return r->r_previously_next;
     }
   else if (r->r_next != NULL && r->r_next->kp_local_index == r_idx)
     {

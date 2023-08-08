@@ -369,7 +369,7 @@ bool
 noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
 {
   noise_handshake_t *hs = &r->r_handshake;
-  noise_keypair_t kp, *next, *current, *previous;
+  noise_keypair_t kp, *current, *next, *previously_current, *previously_next;
 
   uint8_t key_send[NOISE_SYMMETRIC_KEY_LEN];
   uint8_t key_recv[NOISE_SYMMETRIC_KEY_LEN];
@@ -406,43 +406,35 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
   kp.kp_birthdate = vlib_time_now (vm);
   clib_memset (&kp.kp_ctr, 0, sizeof (kp.kp_ctr));
 
-  /* Now we need to add_new_keypair */
-  clib_rwlock_writer_lock (&r->r_keypair_lock);
   /* Activate barrier to synchronization keys between threads */
   vlib_worker_thread_barrier_sync (vm);
+  /* Now we need to add_new_keypair */
+  clib_rwlock_writer_lock (&r->r_keypair_lock);
   next = r->r_next;
   current = r->r_current;
-  previous = r->r_previous;
+  previously_current = r->r_previously_current;
+  previously_next = r->r_previously_next;
 
   if (kp.kp_is_initiator)
     {
-      if (next != NULL)
-	{
-	  r->r_next = NULL;
-	  r->r_previous = next;
-	  noise_remote_keypair_free (vm, r, &current);
-	}
-      else
-	{
-	  r->r_previous = current;
-	}
-
-      noise_remote_keypair_free (vm, r, &previous);
-
+      /* The key rotation moment for initiator. */
+      r->r_previously_current = current;
+      noise_remote_keypair_free (vm, r, &previously_current);
       r->r_current = noise_remote_keypair_allocate (r);
       *r->r_current = kp;
+      r->r_previously_next = next;
+      noise_remote_keypair_free (vm, r, &previously_next);
+      r->r_next = NULL;
     }
   else
     {
       noise_remote_keypair_free (vm, r, &next);
-      r->r_previous = NULL;
-      noise_remote_keypair_free (vm, r, &previous);
-
       r->r_next = noise_remote_keypair_allocate (r);
       *r->r_next = kp;
+      /* Do not rotate keys yet, our response may get lost. */
     }
-  vlib_worker_thread_barrier_release (vm);
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
+  vlib_worker_thread_barrier_release (vm);
 
   wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
 
@@ -459,10 +451,12 @@ noise_remote_clear (vlib_main_t * vm, noise_remote_t * r)
   clib_rwlock_writer_lock (&r->r_keypair_lock);
   noise_remote_keypair_free (vm, r, &r->r_next);
   noise_remote_keypair_free (vm, r, &r->r_current);
-  noise_remote_keypair_free (vm, r, &r->r_previous);
+  noise_remote_keypair_free (vm, r, &r->r_previously_current);
+  noise_remote_keypair_free (vm, r, &r->r_previously_next);
   r->r_next = NULL;
   r->r_current = NULL;
-  r->r_previous = NULL;
+  r->r_previously_current = NULL;
+  r->r_previously_next = NULL;
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
 }
 

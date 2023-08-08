@@ -636,12 +636,15 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
       clib_rwlock_writer_lock (&r->r_keypair_lock);
       if (kp == r->r_next && kp->kp_local_index == r_idx)
 	{
-	  noise_remote_keypair_free (vm, r, &r->r_previous);
-	  r->r_previous = r->r_current;
+	  /* The key rotation moment for responder. */
+	  r->r_previously_current = r->r_current;
 	  r->r_current = r->r_next;
+	  r->r_previously_next = NULL;
 	  r->r_next = NULL;
-
 	  ret = SC_CONN_RESET;
+	  /* "r" is live, some kinda barrier should be here? */
+	  noise_remote_keypair_free (vm, r, &r->r_previously_current);
+	  noise_remote_keypair_free (vm, r, &r->r_previously_next);
 	  clib_rwlock_writer_unlock (&r->r_keypair_lock);
 	  goto error;
 	}
