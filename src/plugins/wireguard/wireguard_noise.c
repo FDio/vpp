@@ -416,18 +416,10 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
 
   if (kp.kp_is_initiator)
     {
-      if (next != NULL)
-	{
-	  r->r_next = NULL;
-	  r->r_previous = next;
-	  noise_remote_keypair_free (vm, r, &current);
-	}
-      else
-	{
-	  r->r_previous = current;
-	}
-
+      noise_remote_keypair_free (vm, r, &next);
+      r->r_next = NULL;
       noise_remote_keypair_free (vm, r, &previous);
+      r->r_previous = current;
 
       r->r_current = noise_remote_keypair_allocate (r);
       *r->r_current = kp;
