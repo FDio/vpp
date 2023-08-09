@@ -342,6 +342,9 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		--output-file $(BUILD_COV_DIR)/extern-coverage.info
 	@lcov --remove $(BUILD_COV_DIR)/coverage.info \
 		"/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
+		"*_test.*" "*vat*" "*rdma*" "*/vpp-api/client/*" "*/plugins/af_packet/*" \
+		"*/plugins/af_xdp/*" "*/plugins/avf/*" "*/plugins/dma_intel/*" \
+		"*/plugins/hs_apps/*" "*/plugins/vmxnet3/*" "*/vnet/devices/virtio/*" \
 		-o $(BUILD_COV_DIR)/coverage-filtered.info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered.info \
 		--output-directory $(BUILD_COV_DIR)/html
