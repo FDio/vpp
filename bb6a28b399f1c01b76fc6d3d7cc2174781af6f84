@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d528b126_a0f5eb22",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "Overall looks good, I have a few comments",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f7ebb1e_413cb59d",
+        "filename": "src/plugins/tracenode/FEATURE.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "I would keep the description more generic, like \"allow trace filtering on encapsulated (inner) packets\" or similar",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7d4236e_87de09d0",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "should this be removed?",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7554d602_81e3d856",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "ip4-lookup is not a feature, and as the ip4-unicast feature arc always run before ip4-lookup, you can remove this",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bda35760_354b12ec",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "we should probably run after shallow reassembly \u0027ip4-sv-reassembly-feature\u0027 too",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac5f257e_96267a11",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "ip6-lookup is not a feature, and as the ip6-unicast feature arc always run before ip6-lookup, you can remove this",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35f58723_09067ce7",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "we should probably run after shallow reassembly \u0027ip6-sv-reassembly-feature\u0027 too",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9eeace8_2dcb033b",
+        "filename": "src/plugins/tracenode/tracenode.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "I\u0027m not sure we always want to enable reassembly... I think it should be the call of the user. They can enable reassembly if they want to, but that should not be done here",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2a80208_59d9bb8b",
+        "filename": "src/plugins/tracenode/tracenode.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-09T14:33:25Z",
+      "side": 1,
+      "message": "tnm was memset to 0 above, this is not needed",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
