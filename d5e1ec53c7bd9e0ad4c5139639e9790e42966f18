@@ -39,6 +39,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6d470a3_6fccdaf9",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-09T02:03:04Z",
+      "side": 1,
+      "message": "I am currently following the process for a non-listen session, which involves calling the vcl_session_disconnected_handler and returning without any event reports. I would like to suggest that we add the evt to the unhandled_evts_vector, regardless of whether it is a listen or non-listen session.",
+      "parentUuid": "199fb77d_26b86b3b",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
