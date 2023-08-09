@@ -23,9 +23,15 @@
 
 #define foreach_wg_output_error                                               \
   _ (NONE, "No error")                                                        \
-  _ (PEER, "Peer error")                                                      \
-  _ (KEYPAIR, "Keypair error")                                                \
+  _ (HANDOFF, "Handed off")                                                   \
+  _ (NO_ADJ_PEER, "No peer by adj")                                           \
+  _ (NO_IDX_PEER, "No peer by index")                                         \
+  _ (DEAD_PEER, "Peer dead")                                                  \
+  _ (KEYPAIR, "No current keypair")                                           \
   _ (NO_BUFFERS, "No buffers")                                                \
+  _ (REKEY_SCHEDULED, "Rekey scheduled")                                      \
+  _ (SC_FAILED, "Session lost")                                               \
+  _ (SUCCESS, "Success")                                                      \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
 
 typedef enum
@@ -418,6 +424,21 @@ wg_calc_checksum (vlib_main_t *vm, vlib_buffer_t *b)
     }
 }
 
+always_inline void
+wgo_one_count (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_output_error_t erno)
+{
+  vlib_node_increment_counter (vm, node->node_index, erno, 1);
+}
+
+always_inline void
+wgo_one_error (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_output_error_t erno)
+{
+  b[0]->error = node->errors[erno];
+  wgo_one_count (vm, node, b, erno);
+}
+
 /* is_ip4 - inner header flag */
 always_inline uword
 wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -491,15 +512,20 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  peeri = wg_peer_get_by_adj_index (adj_index);
 	  if (peeri == INDEX_INVALID)
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_ADJ_PEER);
 	      goto out;
 	    }
 	  peer = wg_peer_get (peeri);
 	}
 
-      if (!peer || wg_peer_is_dead (peer))
+      if (!peer)
 	{
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_IDX_PEER);
+	  goto out;
+	}
+      if (wg_peer_is_dead (peer))
+	{
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_DEAD_PEER);
 	  goto out;
 	}
       if (PREDICT_FALSE (~0 == peer->output_thread_index))
@@ -515,13 +541,14 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  noop_next[0] = WG_OUTPUT_NEXT_HANDOFF;
 	  err = WG_OUTPUT_NEXT_HANDOFF;
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_HANDOFF);
 	  goto next;
 	}
 
       if (PREDICT_FALSE (!peer->remote.r_current))
 	{
 	  wg_send_handshake_from_mt (peeri, false);
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_KEYPAIR);
 	  goto out;
 	}
 
@@ -529,7 +556,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
       if (n_bufs == 0)
 	{
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	  goto out;
 	}
 
@@ -563,7 +590,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	      goto out;
 	    }
 	}
@@ -577,7 +604,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u32 tmp_bi = 0;
 	  if (vlib_buffer_alloc (vm, &tmp_bi, 1) != 1)
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	      goto out;
 	    }
 	  lb = vlib_buffer_chain_buffer (vm, lb, tmp_bi);
@@ -641,6 +668,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
 	{
 	  wg_send_handshake_from_mt (peeri, false);
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_REKEY_SCHEDULED);
 	}
       else if (PREDICT_FALSE (state == SC_FAILED))
 	{
@@ -648,6 +676,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  wg_send_handshake_from_mt (peeri, false);
 	  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
 	  noop_next[0] = WG_OUTPUT_NEXT_ERROR;
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_SC_FALED);
 	  goto out;
 	}
 
@@ -692,6 +721,10 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_noop++;
 	  noop_next++;
 	  goto next_left;
+	}
+      else
+	{
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_SUCCESS);
 	}
       if (!is_async)
 	{
