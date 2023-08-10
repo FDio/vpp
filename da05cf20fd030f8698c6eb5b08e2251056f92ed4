@@ -16,6 +16,24 @@
       "message": "can we just call self.vapi.map_if_enable_disable() straight 2 times? using a loop looks a bit overkill?",
       "revId": "da05cf20fd030f8698c6eb5b08e2251056f92ed4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa93aed4_f2945d2b",
+        "filename": "test/test_map.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:05:25Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "78e30ffd_4833df67",
+      "revId": "da05cf20fd030f8698c6eb5b08e2251056f92ed4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
