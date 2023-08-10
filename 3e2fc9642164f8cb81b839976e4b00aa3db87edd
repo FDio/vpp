@@ -34,6 +34,24 @@
       "parentUuid": "1e72add3_2f6165b3",
       "revId": "3e2fc9642164f8cb81b839976e4b00aa3db87edd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3541efad_e9f2b554",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-10T18:14:53Z",
+      "side": 1,
+      "message": "Good question. Most of the apps in hs_apps are traffic generators and some are examples/utilities. It\u0027s okay not to check coverage for those, at least for now.",
+      "parentUuid": "c46abf88_a6361574",
+      "revId": "3e2fc9642164f8cb81b839976e4b00aa3db87edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
