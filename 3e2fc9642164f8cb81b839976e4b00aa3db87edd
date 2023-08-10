@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e72add3_2f6165b3",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-08-10T15:15:29Z",
+      "side": 1,
+      "message": "shouldn\u0027t hs_apps be part of unit tests?",
+      "revId": "3e2fc9642164f8cb81b839976e4b00aa3db87edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
