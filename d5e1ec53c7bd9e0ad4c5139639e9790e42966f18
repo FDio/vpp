@@ -111,6 +111,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40294ecc_8832c2f7",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-10T04:47:57Z",
+      "side": 1,
+      "message": "Ow, I think I understood now your previous point. In theory, we could have a pending accept event and then vcl_session_disconnected_handler would mark it such that the accept ends up with session in state vpp_closing. However, that session would still need a read/write/epoll ctl to ultimately notify the app of the close. \n\nProbably that\u0027s better than trying to generate an event for a session that\u0027s not yet epolled. So yes, let\u0027s handle not yet accepted sessions like the blocking ones.",
+      "parentUuid": "070a347b_efad7baa",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
