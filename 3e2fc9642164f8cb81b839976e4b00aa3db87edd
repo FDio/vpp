@@ -16,6 +16,24 @@
       "message": "shouldn\u0027t hs_apps be part of unit tests?",
       "revId": "3e2fc9642164f8cb81b839976e4b00aa3db87edd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c46abf88_a6361574",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-08-10T15:45:11Z",
+      "side": 1,
+      "message": "hs_apps are used in some of the make test testcases, but are external traffic generators.  We don\u0027t include test coverage for iperf, so I figured there\u0027s no need to report on the hs_apps either.\n\n@Florin, what do you think?\n\nFor complete test coverage of VPP Hoststack, the tests run under extras/hs-test framework will need to be run with coverage instrumentation. However, Hs-test testing is not running in the CI. Once that is in place, I will work on adding that coverage data to the daily coverage report job.",
+      "parentUuid": "1e72add3_2f6165b3",
+      "revId": "3e2fc9642164f8cb81b839976e4b00aa3db87edd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
