@@ -159,6 +159,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e529df62_3686c5e6",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-10T15:40:22Z",
+      "side": 1,
+      "message": "We don\u0027t call vcl_session_disconnected_handler if the message is postponed. Instead we check if the session is closed or doesn\u0027t need event, i.e., session might\u0027ve been closed or taken out of epoll while waiting for the event to be drained, so no event should be generated.",
+      "parentUuid": "7d4b9242_1f10417c",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
