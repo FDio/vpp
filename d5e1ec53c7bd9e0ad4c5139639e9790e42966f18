@@ -135,6 +135,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d4b9242_1f10417c",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-10T07:13:52Z",
+      "side": 1,
+      "message": "BTW, why we distiguish blocking and non-blocking session? Because in vcl_epoll_wait_handle_mq_event, we just process in the same way.",
+      "parentUuid": "40294ecc_8832c2f7",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
