@@ -23,9 +23,20 @@
 
 #define foreach_wg_output_error                                               \
   _ (NONE, "No error")                                                        \
-  _ (PEER, "Peer error")                                                      \
-  _ (KEYPAIR, "Keypair error")                                                \
+  _ (HANDOFF, "Handed off")                                                   \
+  _ (NO_ADJ_PEER, "No peer by adj")                                           \
+  _ (NO_IDX_PEER, "No peer by index")                                         \
+  _ (DEAD_PEER, "Peer dead")                                                  \
+  _ (NO_KEYPAIR, "No current keypair")                                        \
+  _ (KEYPAIR_INVALID, "Invalid keypair")                                      \
+  _ (REJECTED_TIME, "Rejected after time")                                    \
+  _ (REJECTED_RECV, "Rejected after received")                                \
+  _ (REJECTED_SENT, "Rejected after sent")                                    \
+  _ (REKEY_SENT, "Rekey after sent")                                          \
+  _ (REKEY_TIME, "Rekey after time")                                          \
   _ (NO_BUFFERS, "No buffers")                                                \
+  _ (SC_FAILED, "Session lost")                                               \
+  _ (SUCCESS, "Success")                                                      \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
 
 typedef enum
@@ -269,7 +280,7 @@ wg_output_tun_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   f->next_node_index[index] = next_node;
 }
 
-static_always_inline enum noise_state_crypt
+static_always_inline wg_output_error_t
 wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 		       vlib_buffer_t *b, vlib_buffer_t *lb,
 		       vnet_crypto_op_t **crypto_ops, noise_remote_t *r,
@@ -277,7 +288,7 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
 		       size_t srclen, uint8_t *dst, u32 bi, u8 *iv, f64 time)
 {
   noise_keypair_t *kp;
-  enum noise_state_crypt ret = SC_FAILED;
+  wg_output_error_t ret = WG_OUTPUT_ERROR_NO_KEYPAIR;
 
   if ((kp = r->r_current) == NULL)
     goto error;
@@ -288,12 +299,26 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
    *  - our receive counter to be less than REJECT_AFTER_MESSAGES
    *  - our send counter to be less than REJECT_AFTER_MESSAGES
    */
-  if (!kp->kp_valid ||
-      wg_birthdate_has_expired_opt (kp->kp_birthdate, REJECT_AFTER_TIME,
-				    time) ||
-      kp->kp_ctr.c_recv >= REJECT_AFTER_MESSAGES ||
-      ((*nonce = noise_counter_send (&kp->kp_ctr)) > REJECT_AFTER_MESSAGES))
-    goto error;
+  if (!kp->kp_valid)
+    {
+      ret = WG_OUTPUT_ERROR_KEYPAIR_INVALID;
+      goto error;
+    }
+  if (wg_birthdate_has_expired_opt (kp->kp_birthdate, REJECT_AFTER_TIME, time))
+    {
+      ret = WG_OUTPUT_ERROR_REJECTED_TIME;
+      goto error;
+    }
+  if (kp->kp_ctr.c_recv >= REJECT_AFTER_MESSAGES)
+    {
+      ret = WG_OUTPUT_ERROR_REJECTED_RECV;
+      goto error;
+    }
+  if ((*nonce = noise_counter_send (&kp->kp_ctr)) > REJECT_AFTER_MESSAGES)
+    {
+      ret = WG_OUTPUT_ERROR_REJECTED_SENT;
+      goto error;
+    }
 
   /* We encrypt into the same buffer, so the caller must ensure that buf
    * has NOISE_AUTHTAG_LEN bytes to store the MAC. The nonce and index
@@ -310,13 +335,19 @@ wg_output_tun_process (vlib_main_t *vm, wg_per_thread_data_t *ptd,
    *  - our send counter is valid and not less than REKEY_AFTER_MESSAGES
    *  - we're the initiator and our keypair is older than
    *    REKEY_AFTER_TIME seconds */
-  ret = SC_KEEP_KEY_FRESH;
-  if ((kp->kp_valid && *nonce >= REKEY_AFTER_MESSAGES) ||
-      (kp->kp_is_initiator && wg_birthdate_has_expired_opt (
-				kp->kp_birthdate, REKEY_AFTER_TIME, time)))
-    goto error;
+  if (kp->kp_valid && *nonce >= REKEY_AFTER_MESSAGES)
+    {
+      ret = WG_OUTPUT_ERROR_REKEY_SENT;
+      goto error;
+    }
+  if (kp->kp_is_initiator &&
+      wg_birthdate_has_expired_opt (kp->kp_birthdate, REKEY_AFTER_TIME, time))
+    {
+      ret = WG_OUTPUT_ERROR_REKEY_TIME;
+      goto error;
+    }
 
-  ret = SC_OK;
+  ret = WG_OUTPUT_ERROR_NONE;
 error:
   return ret;
 }
@@ -418,6 +449,21 @@ wg_calc_checksum (vlib_main_t *vm, vlib_buffer_t *b)
     }
 }
 
+always_inline void
+wgo_one_count (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_output_error_t erno)
+{
+  vlib_node_increment_counter (vm, node->node_index, erno, 1);
+}
+
+always_inline void
+wgo_one_error (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_output_error_t erno)
+{
+  b[0]->error = node->errors[erno];
+  wgo_one_count (vm, node, b, erno);
+}
+
 /* is_ip4 - inner header flag */
 always_inline uword
 wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -491,15 +537,20 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  peeri = wg_peer_get_by_adj_index (adj_index);
 	  if (peeri == INDEX_INVALID)
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_ADJ_PEER);
 	      goto out;
 	    }
 	  peer = wg_peer_get (peeri);
 	}
 
-      if (!peer || wg_peer_is_dead (peer))
+      if (!peer)
 	{
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_PEER];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_IDX_PEER);
+	  goto out;
+	}
+      if (wg_peer_is_dead (peer))
+	{
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_DEAD_PEER);
 	  goto out;
 	}
       if (PREDICT_FALSE (~0 == peer->output_thread_index))
@@ -515,13 +566,14 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  noop_next[0] = WG_OUTPUT_NEXT_HANDOFF;
 	  err = WG_OUTPUT_NEXT_HANDOFF;
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_HANDOFF);
 	  goto next;
 	}
 
       if (PREDICT_FALSE (!peer->remote.r_current))
 	{
 	  wg_send_handshake_from_mt (peeri, false);
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_KEYPAIR];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_KEYPAIR);
 	  goto out;
 	}
 
@@ -529,7 +581,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_bufs = vlib_buffer_chain_linearize (vm, b[0]);
       if (n_bufs == 0)
 	{
-	  b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	  wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	  goto out;
 	}
 
@@ -563,7 +615,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  else
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	      goto out;
 	    }
 	}
@@ -577,7 +629,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u32 tmp_bi = 0;
 	  if (vlib_buffer_alloc (vm, &tmp_bi, 1) != 1)
 	    {
-	      b[0]->error = node->errors[WG_OUTPUT_ERROR_NO_BUFFERS];
+	      wgo_one_error (vm, node, b, WG_OUTPUT_ERROR_NO_BUFFERS);
 	      goto out;
 	    }
 	  lb = vlib_buffer_chain_buffer (vm, lb, tmp_bi);
@@ -620,7 +672,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	crypto_ops = &ptd->crypto_ops;
 
-      enum noise_state_crypt state;
+      wg_output_error_t state;
 
       if (is_async)
 	{
@@ -638,16 +690,21 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    plain_data, plain_data_len, plain_data, n_sync, iv_data, time);
 	}
 
-      if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
+      if (PREDICT_FALSE (state == WG_OUTPUT_ERROR_REKEY_TIME ||
+			 state == WG_OUTPUT_ERROR_REKEY_SENT))
 	{
 	  wg_send_handshake_from_mt (peeri, false);
+	  wgo_one_count (vm, node, b, state);
 	}
-      else if (PREDICT_FALSE (state == SC_FAILED))
+      else if (PREDICT_FALSE (state == WG_OUTPUT_ERROR_REJECTED_TIME ||
+			      state == WG_OUTPUT_ERROR_REJECTED_RECV ||
+			      state == WG_OUTPUT_ERROR_REJECTED_SENT))
 	{
 	  // TODO: Maybe wrong
 	  wg_send_handshake_from_mt (peeri, false);
 	  wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
 	  noop_next[0] = WG_OUTPUT_NEXT_ERROR;
+	  wgo_one_count (vm, node, b, state);
 	  goto out;
 	}
 
@@ -692,6 +749,10 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_noop++;
 	  noop_next++;
 	  goto next_left;
+	}
+      else
+	{
+	  wgo_one_count (vm, node, b, WG_OUTPUT_ERROR_SUCCESS);
 	}
       if (!is_async)
 	{
