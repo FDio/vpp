@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "282b07ff_42ea3336",
+        "filename": "src/plugins/tracenode/FEATURE.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7f7ebb1e_413cb59d",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a7d4236e_87de09d0",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-08-09T14:33:25Z",
       "side": 1,
       "message": "should this be removed?",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77041983_56c9df24",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a7d4236e_87de09d0",
       "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "77717891_d804e202",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Well, `ip4-lookup` is defined as a feature in ip4_forward.c, but it is defined as last in arc, so indeed this line is not needed.",
+      "parentUuid": "7554d602_81e3d856",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bda35760_354b12ec",
@@ -82,6 +136,24 @@
       "writtenOn": "2023-08-09T14:33:25Z",
       "side": 1,
       "message": "we should probably run after shallow reassembly \u0027ip4-sv-reassembly-feature\u0027 too",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d091a0f1_965b5a8b",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bda35760_354b12ec",
       "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f150402_62348fe6",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ac5f257e_96267a11",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "35f58723_09067ce7",
@@ -116,6 +206,24 @@
       "writtenOn": "2023-08-09T14:33:25Z",
       "side": 1,
       "message": "we should probably run after shallow reassembly \u0027ip6-sv-reassembly-feature\u0027 too",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75ec2dbf_7912cc42",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "35f58723_09067ce7",
       "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -137,6 +245,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d500811e_7ccf280b",
+        "filename": "src/plugins/tracenode/tracenode.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c9eeace8_2dcb033b",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d2a80208_59d9bb8b",
@@ -150,6 +276,24 @@
       "writtenOn": "2023-08-09T14:33:25Z",
       "side": 1,
       "message": "tnm was memset to 0 above, this is not needed",
+      "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "717b71f4_011b3708",
+        "filename": "src/plugins/tracenode/tracenode.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-10T12:27:03Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d2a80208_59d9bb8b",
       "revId": "bb6a28b399f1c01b76fc6d3d7cc2174781af6f84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
