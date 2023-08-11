@@ -24,18 +24,38 @@
 
 #define foreach_wg_input_error                                                \
   _ (NONE, "No error")                                                        \
-  _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
-  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
-  _ (PEER, "Peer error")                                                      \
-  _ (INTERFACE, "Interface error")                                            \
-  _ (DECRYPTION, "Failed during decryption")                                  \
-  _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                        \
-  _ (HANDSHAKE_SEND, "Failed while sending Handshake")                        \
-  _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
+  _ (COOKIE_CONSUMED, "Cookie consumed")                                      \
+  _ (COOKIE, "Cookie sent")                                                   \
   _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                    \
   _ (COOKIE_SEND, "Failed during sending Cookie")                             \
+  _ (HANDOFF_DATA, "Data handed off")                                         \
+  _ (HANDOFF_HANDSHAKE, "Handshake handed off")                               \
+  _ (KEYPAIR, "Keypair not found")                                            \
+  _ (RECV_COUNT, "Bad recv count")                                            \
+  _ (NO_IDX_PEER, "No peer by index")                                         \
+  _ (DEAD_PEER, "Peer dead")                                                  \
+  _ (BAD_INIT, "Unconsumable initiation")                                     \
+  _ (BAD_RESP, "Unconsumable response")                                       \
+  _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
+  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
+  _ (REKEY_SCHEDULED, "Rekey scheduled")                                      \
+  _ (PEER, "Peer error")                                                      \
+  _ (INTERFACE, "Interface error")                                            \
+  _ (SC_FAILED, "Sc failed")                                                  \
+  _ (SC_RESET, "Rekeyed as responder")                                        \
+  _ (KEEPALIVE_UNSENT, "Keepalive unsent after good handshake")               \
+  _ (RESPONSE_UNSENT, "Failed sending handshake response")                    \
+  _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
+  _ (REPLY_SESSION, "Failed to start session upon reply")                     \
+  _ (REPLY_SENT, "Reply sent successfully")                                   \
+  _ (DECRYPTION, "Decryption error")                                          \
   _ (NO_BUFFERS, "No buffers")                                                \
+  _ (POST_PROCESS, "Post process error")                                      \
+  _ (POST_PROCESS_POST, "Post process post error")                            \
   _ (UNDEFINED, "Undefined error")                                            \
+  _ (PUNT, "Punt")                                                            \
+  _ (SUCCESS_DATA, "Success (data)")                                          \
+  _ (SUCCESS_HANDSHAKE, "Handshake success (initiator)")                      \
   _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
 
 typedef enum
@@ -135,6 +155,7 @@ static wg_input_error_t
 wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 		      u32 node_idx, u8 is_ip4)
 {
+  wg_input_error_t ret = WG_INPUT_ERROR_UNDEFINED;
   ASSERT (vm->thread_index == 0);
 
   enum cookie_mac_state mac_state;
@@ -181,7 +202,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    vm, &peer->cookie_maker, packet->nonce, packet->encrypted_cookie))
 	return WG_INPUT_ERROR_COOKIE_DECRYPTION;
 
-      return WG_INPUT_ERROR_NONE;
+      return WG_INPUT_ERROR_COOKIE_CONSUMED;
     }
 
   u32 len = (header->type == MESSAGE_HANDSHAKE_INITIATION ?
@@ -243,7 +264,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 					   wg_if->port, &src_ip, udp_src_port))
 	      return WG_INPUT_ERROR_COOKIE_SEND;
 
-	    return WG_INPUT_ERROR_NONE;
+	    return WG_INPUT_ERROR_COOKIE;
 	  }
 
 	noise_remote_t *rp;
@@ -256,15 +277,18 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	  }
 	else
 	  {
-	    return WG_INPUT_ERROR_PEER;
+	    return WG_INPUT_ERROR_BAD_INIT;
 	  }
 
 	wg_peer_update_endpoint (rp->r_peer_idx, &src_ip, udp_src_port);
 
 	if (PREDICT_FALSE (!wg_send_handshake_response (vm, peer)))
 	  {
-	    vlib_node_increment_counter (vm, node_idx,
-					 WG_INPUT_ERROR_HANDSHAKE_SEND, 1);
+	    ret = WG_INPUT_ERROR_RESPONSE_UNSENT;
+	  }
+	else
+	  {
+	    ret = WG_INPUT_ERROR_REPLY_SENT;
 	  }
 	break;
       }
@@ -280,7 +304,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 					   wg_if->port, &src_ip, udp_src_port))
 	      return WG_INPUT_ERROR_COOKIE_SEND;
 
-	    return WG_INPUT_ERROR_NONE;
+	    return WG_INPUT_ERROR_COOKIE;
 	  }
 
 	index_t peeri = INDEX_INVALID;
@@ -292,17 +316,17 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    peeri = *entry;
 	    peer = wg_peer_get (peeri);
 	    if (wg_peer_is_dead (peer))
-	      return WG_INPUT_ERROR_PEER;
+	      return WG_INPUT_ERROR_DEAD_PEER;
 	  }
 	else
-	  return WG_INPUT_ERROR_PEER;
+	  return WG_INPUT_ERROR_NO_IDX_PEER;
 
 	if (!noise_consume_response
 	    (vm, &peer->remote, resp->sender_index,
 	     resp->receiver_index, resp->unencrypted_ephemeral,
 	     resp->encrypted_nothing))
 	  {
-	    return WG_INPUT_ERROR_PEER;
+	    return WG_INPUT_ERROR_BAD_RESP;
 	  }
 
 	wg_peer_update_endpoint (peeri, &src_ip, udp_src_port);
@@ -314,13 +338,17 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    wg_timers_handshake_complete (peer);
 	    if (PREDICT_FALSE (!wg_send_keepalive (vm, peer)))
 	      {
-		vlib_node_increment_counter (vm, node_idx,
-					     WG_INPUT_ERROR_KEEPALIVE_SEND, 1);
+		ret = WG_INPUT_ERROR_KEEPALIVE_UNSENT;
 	      }
 	    else
 	      {
 		wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, true);
+		ret = WG_INPUT_ERROR_SUCCESS_HANDSHAKE;
 	      }
+	  }
+	else
+	  {
+	    ret = WG_INPUT_ERROR_REPLY_SESSION;
 	  }
 	break;
       }
@@ -330,10 +358,10 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 
   wg_timers_any_authenticated_packet_received (peer);
   wg_timers_any_authenticated_packet_traversal (peer);
-  return WG_INPUT_ERROR_NONE;
+  return ret;
 }
 
-static_always_inline int
+static_always_inline wg_input_error_t
 wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
 		       wg_peer_t *peer, message_data_t *data,
 		       bool *is_keepalive)
@@ -344,11 +372,11 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
 
   if ((kp = wg_get_active_keypair (&peer->remote, data->receiver_index)) ==
       NULL)
-    return -1;
+    return WG_INPUT_ERROR_KEYPAIR;
 
   if (!noise_counter_recv (&kp->kp_ctr, data->counter))
     {
-      return -1;
+      return WG_INPUT_ERROR_RECV_COUNT;
     }
 
   lb = b;
@@ -408,7 +436,7 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
 	is_ip4_inner ? WG_INPUT_NEXT_IP4_INPUT : WG_INPUT_NEXT_IP6_INPUT;
     }
 
-  return 0;
+  return WG_INPUT_ERROR_NONE;
 }
 
 static_always_inline void
@@ -684,6 +712,21 @@ wg_find_outer_addr_port (vlib_buffer_t *b, ip46_address_t *addr, u16 *port,
     }
 }
 
+always_inline void
+wgi_one_count (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_input_error_t erno)
+{
+  vlib_node_increment_counter (vm, node->node_index, erno, 1);
+}
+
+always_inline void
+wgi_one_error (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+	       wg_input_error_t erno)
+{
+  b[0]->error = node->errors[erno];
+  wgi_one_count (vm, node, b, erno);
+}
+
 always_inline uword
 wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 vlib_frame_t *frame, u8 is_ip4, u16 async_next_node)
@@ -774,9 +817,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (PREDICT_FALSE (!peer_idx))
 	    {
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
-	      b[0]->error = node->errors[WG_INPUT_ERROR_PEER];
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
+	      wgi_one_error (vm, node, b, WG_INPUT_ERROR_NO_IDX_PEER);
 	      goto out;
 	    }
 
@@ -794,6 +837,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      other_next[n_other] = WG_INPUT_NEXT_HANDOFF_DATA;
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
+	      wgi_one_count (vm, node, b, WG_INPUT_ERROR_HANDOFF_DATA);
 	      goto next;
 	    }
 
@@ -805,6 +849,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      b[0]->error = node->errors[WG_INPUT_ERROR_NO_BUFFERS];
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
+	      wgi_one_error (vm, node, b, WG_INPUT_ERROR_NO_BUFFERS);
 	      goto out;
 	    }
 
@@ -859,9 +904,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, false);
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
-	      b[0]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
+	      wgi_one_error (vm, node, b, WG_INPUT_ERROR_SC_FAILED);
 	      goto out;
 	    }
 	  if (!is_async)
@@ -878,15 +923,20 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (PREDICT_FALSE (state_cr == SC_CONN_RESET))
 	    {
 	      wg_timers_handshake_complete (peer);
+	      wgi_one_count (vm, node, b, WG_INPUT_ERROR_SC_RESET);
 	      goto next;
 	    }
 	  else if (PREDICT_FALSE (state_cr == SC_KEEP_KEY_FRESH))
 	    {
 	      wg_send_handshake_from_mt (peeri, false);
+	      wgi_one_count (vm, node, b, WG_INPUT_ERROR_REKEY_SCHEDULED);
 	      goto next;
 	    }
 	  else if (PREDICT_TRUE (state_cr == SC_OK))
-	    goto next;
+	    {
+	      wgi_one_count (vm, node, b, WG_INPUT_ERROR_SUCCESS_DATA);
+	      goto next;
+	    }
 	}
       else
 	{
@@ -896,22 +946,29 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      other_next[n_other] = WG_INPUT_NEXT_HANDOFF_HANDSHAKE;
 	      other_bi[n_other] = from[b - bufs];
 	      n_other += 1;
+	      wgi_one_count (vm, node, b, WG_INPUT_ERROR_HANDOFF_HANDSHAKE);
 	      goto next;
 	    }
 
 	  wg_input_error_t ret =
 	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4);
-	  if (ret != WG_INPUT_ERROR_NONE)
+	  if (ret != WG_INPUT_ERROR_RESPONSE_UNSENT &&
+	      ret != WG_INPUT_ERROR_KEEPALIVE_UNSENT &&
+	      ret != WG_INPUT_ERROR_COOKIE &&
+	      ret != WG_INPUT_ERROR_COOKIE_CONSUMED &&
+	      ret != WG_INPUT_ERROR_REPLY_SENT &&
+	      ret != WG_INPUT_ERROR_SUCCESS_HANDSHAKE)
 	    {
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
-	      b[0]->error = node->errors[ret];
 	      other_bi[n_other] = from[b - bufs];
 	      n_other += 1;
+	      wgi_one_error (vm, node, b, ret);
 	    }
 	  else
 	    {
 	      other_bi[n_other] = from[b - bufs];
 	      n_other += 1;
+	      wgi_one_count (vm, node, b, ret);
 	    }
 	}
 
@@ -950,6 +1007,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (PREDICT_FALSE (data_next[0] == WG_INPUT_NEXT_PUNT))
 	{
+	  wgi_one_count (vm, node, b, WG_INPUT_ERROR_PUNT);
 	  goto trace;
 	}
       if (n_left_from > 2)
@@ -987,13 +1045,18 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (PREDICT_TRUE (peer != NULL))
 	{
-	  if (PREDICT_FALSE (wg_input_post_process (vm, b[0], data_next, peer,
-						    data, &is_keepalive) < 0))
-	    goto trace;
+	  wg_input_error_t ret = wg_input_post_process (
+	    vm, b[0], data_next, peer, data, &is_keepalive);
+	  if (PREDICT_FALSE (WG_INPUT_ERROR_NONE != ret))
+	    {
+	      wgi_one_count (vm, node, b, ret);
+	      goto trace;
+	    }
 	}
       else
 	{
 	  data_next[0] = WG_INPUT_NEXT_PUNT;
+	  wgi_one_count (vm, node, b, WG_INPUT_ERROR_NO_IDX_PEER);
 	  goto trace;
 	}
 
@@ -1134,13 +1197,18 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       if (PREDICT_TRUE (peer != NULL))
 	{
-	  if (PREDICT_FALSE (wg_input_post_process (vm, b[0], next, peer, data,
-						    &is_keepalive) < 0))
-	    goto trace;
+	  wg_input_error_t ret =
+	    wg_input_post_process (vm, b[0], next, peer, data, &is_keepalive);
+	  if (PREDICT_FALSE (WG_INPUT_ERROR_NONE != ret))
+	    {
+	      wgi_one_count (vm, node, b, ret);
+	      goto trace;
+	    }
 	}
       else
 	{
 	  next[0] = WG_INPUT_NEXT_PUNT;
+	  wgi_one_count (vm, node, b, WG_INPUT_ERROR_NO_IDX_PEER);
 	  goto trace;
 	}
 
