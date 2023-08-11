@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a6f7741_93fac9d9",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-08-11T01:17:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f447150f_37a31688",
+      "revId": "66d21782daedb7ab36fb15f3a369ee706922682b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6970fd6b_08f97853",
@@ -69,6 +87,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bab59636_ee33009a",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 478,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-08-11T01:17:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6970fd6b_08f97853",
+      "revId": "66d21782daedb7ab36fb15f3a369ee706922682b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "976a7571_cf533dc8",
@@ -82,6 +118,24 @@
       "writtenOn": "2023-08-09T18:13:35Z",
       "side": 1,
       "message": "s/the the l2/the l2/",
+      "revId": "66d21782daedb7ab36fb15f3a369ee706922682b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6bbf8366_364a0684",
+        "filename": "src/vnet/l2/l2_rw.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-08-11T01:17:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "976a7571_cf533dc8",
       "revId": "66d21782daedb7ab36fb15f3a369ee706922682b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
