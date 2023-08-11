@@ -367,11 +367,9 @@ int
 app_worker_listened_notify (app_worker_t *app_wrk, session_handle_t alsh,
 			    u32 opaque, session_error_t err)
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_BOUND;
-  evt.session_handle = alsh;
-  evt.as_u64[1] = (u64) opaque << 32 | err;
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_BOUND,
+			  .as_u64[0] = alsh,
+			  .as_u64[1] = (u64) opaque << 32 | err };
 
   app_worker_add_event_custom (app_wrk, 0 /* thread index */, &evt);
 
@@ -382,11 +380,9 @@ int
 app_worker_unlisten_reply (app_worker_t *app_wrk, session_handle_t sh,
 			   u32 opaque, session_error_t err)
 {
-  session_event_t evt = {};
-
-  evt.event_type = SESSION_CTRL_EVT_UNLISTEN_REPLY;
-  evt.session_handle = sh;
-  evt.as_u64[1] = (u64) opaque << 32 | (u32) err;
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_UNLISTEN_REPLY,
+			  .as_u64[0] = sh,
+			  .as_u64[1] = (u64) opaque << 32 | (u32) err };
 
   app_worker_add_event_custom (app_wrk, 0 /* thread index */, &evt);
   return 0;
@@ -420,13 +416,10 @@ int
 app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
 			   session_error_t err, u32 opaque)
 {
-  session_event_t evt = {};
-  u32 thread_index;
-
-  evt.event_type = SESSION_CTRL_EVT_CONNECTED;
-  evt.session_index = s ? s->session_index : ~0;
-  evt.as_u64[1] = (u64) opaque << 32 | (u32) err;
-  thread_index = s ? s->thread_index : vlib_get_thread_index ();
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_CONNECTED,
+			  .as_u64[0] = s ? s->session_index : ~0,
+			  .as_u64[1] = (u64) opaque << 32 | (u32) err };
+  u32 thread_index = s ? s->thread_index : vlib_get_thread_index ();
 
   app_worker_add_event_custom (app_wrk, thread_index, &evt);
   return 0;
@@ -476,11 +469,9 @@ int
 app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
 			   session_cleanup_ntf_t ntf)
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_CLEANUP;
-  evt.as_u64[0] = (u64) ntf << 32 | s->session_index;
-  evt.as_u64[1] = pointer_to_uword (session_cleanup);
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_CLEANUP,
+			  .as_u64[0] = (u64) ntf << 32 | s->session_index,
+			  .as_u64[1] = pointer_to_uword (session_cleanup) };
 
   app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
 
@@ -492,11 +483,9 @@ app_worker_cleanup_notify_custom (app_worker_t *app_wrk, session_t *s,
 				  session_cleanup_ntf_t ntf,
 				  void (*cleanup_cb) (session_t *s))
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_CLEANUP;
-  evt.as_u64[0] = (u64) ntf << 32 | s->session_index;
-  evt.as_u64[1] = pointer_to_uword (cleanup_cb);
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_CLEANUP,
+			  .as_u64[0] = (u64) ntf << 32 | s->session_index,
+			  .as_u64[1] = pointer_to_uword (cleanup_cb) };
 
   app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
 
@@ -514,11 +503,9 @@ int
 app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			   session_handle_t new_sh)
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_MIGRATED;
-  evt.session_index = s->session_index;
-  evt.as_u64[1] = new_sh;
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_MIGRATED,
+			  .as_u64[0] = s->session_index,
+			  .as_u64[1] = new_sh };
 
   app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
   return 0;
@@ -651,10 +638,8 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
 int
 app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT;
-  evt.as_u64[1] = segment_handle;
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_APP_ADD_SEGMENT,
+			  .as_u64[1] = segment_handle };
 
   app_worker_add_event_custom (app_wrk, vlib_get_thread_index (), &evt);
 
@@ -664,10 +649,8 @@ app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 int
 app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
-  session_event_t evt;
-
-  evt.event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT;
-  evt.as_u64[1] = segment_handle;
+  session_event_t evt = { .event_type = SESSION_CTRL_EVT_APP_DEL_SEGMENT,
+			  .as_u64[1] = segment_handle };
 
   app_worker_add_event_custom (app_wrk, vlib_get_thread_index (), &evt);
 
