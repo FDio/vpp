@@ -183,6 +183,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c12ca414_22c205c5",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-11T03:40:14Z",
+      "side": 1,
+      "message": "Hmm. But why blocking sessions can\u0027t been postponed?",
+      "parentUuid": "e529df62_3686c5e6",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
