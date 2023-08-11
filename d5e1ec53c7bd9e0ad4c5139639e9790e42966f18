@@ -207,6 +207,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5457cbe4_28460ec4",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-11T15:37:53Z",
+      "side": 1,
+      "message": "Fair question. Expectation is that blocking sessions are not part of epoll instead they\u0027re used in a synchronous manner. So then in this function we\u0027re either 1) handling a burst of events received while blocking on read/write or 2) we\u0027re handling a burst of events in epoll_wait, more than fit in the events array provided by the app, some of which are for a blocking session which will eventually read/write and it will then be provided with updates. \n\nThat is, for 2) we\u0027re expecting blocking sessions to not be epolled.",
+      "parentUuid": "c12ca414_22c205c5",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
