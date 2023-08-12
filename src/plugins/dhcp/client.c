@@ -1165,7 +1165,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->sw_if_index = sw_if_index;
   a->hostname = hostname;
-  a->client_identifier = format (0, "vpp 1.1%c", 0);
+  a->client_identifier = format (0, "vpp 1.1%d%c", sw_if_index, 0);
   a->set_broadcast_flag = set_broadcast_flag;
 
   /*
