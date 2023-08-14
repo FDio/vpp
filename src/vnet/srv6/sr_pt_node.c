@@ -108,6 +108,10 @@ VLIB_NODE_FN (sr_pt_node)
       u32 n_left_to_next;
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
+      // Getting the timestamp (one for each batch of packets)
+      timestamp_64_t t64 = {};
+      unix_time_now_nsec_fraction (&t64.sec, &t64.nsec);
+
       // Single loop for potentially the last three packets
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -123,7 +127,6 @@ VLIB_NODE_FN (sr_pt_node)
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-	  timestamp_64_t t64 = {};
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  iface = vnet_buffer (b0)->sw_if_index[VLIB_TX];
@@ -132,7 +135,6 @@ VLIB_NODE_FN (sr_pt_node)
 	    {
 	      en0 = vlib_buffer_get_current (b0);
 	      ip0 = (void *) (en0 + 1);
-	      unix_time_now_nsec_fraction (&t64.sec, &t64.nsec);
 	      pt_midpoint_processing (vm, node, b0, ip0, ls, t64);
 	      pt_behavior = PT_BEHAVIOR_MID;
 	    }
