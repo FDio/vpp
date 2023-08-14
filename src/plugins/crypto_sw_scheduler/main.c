@@ -454,8 +454,9 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   vnet_crypto_async_frame_t *f = 0;
   crypto_sw_scheduler_queue_t *current_queue = 0;
   u32 tail, head;
-  u8 found = 0;
+  u8 found = 0, halves_run = 0;
 
+run_half_queues:
   /* get a pending frame to process */
   if (ptd->self_crypto_enabled)
     {
@@ -563,6 +564,16 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
       current_queue->jobs[tail] = 0;
 
       return f;
+    }
+
+  /* TODO: The other half needs to be checked only in (the interrupt mode or)
+   *       the interrupt state of the adaptive mode of the parent input node.
+   */
+  if (!found && halves_run < 2)
+    {
+      recheck_queues = 0;
+      halves_run += 1;
+      goto run_half_queues;
     }
 
   return 0;
