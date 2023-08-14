@@ -279,6 +279,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "78f05a51_3b56f2b0",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-14T02:53:06Z",
+      "side": 1,
+      "message": "In my understanding, we can\u0027t add evt to unhandled_evts_vector for a blocking listen session, right? Because blocking session not be epolled, then unhandled_evts_vector not be processed.\nThen this patch need not be changed?",
+      "parentUuid": "d79df655_853d739d",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
