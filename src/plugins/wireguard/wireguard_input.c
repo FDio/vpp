@@ -83,6 +83,7 @@ typedef struct
   index_t peer;
   u32 sender_index;
   u32 receiver_index;
+  u32 initiator_remote_peer_index;
 } wg_input_trace_t;
 
 typedef struct
@@ -119,6 +120,7 @@ format_wg_input_trace (u8 * s, va_list * args)
   s = format (s, "    Peer: %d\n", t->peer);
   s = format (s, "    Sender index: %d\n", t->sender_index);
   s = format (s, "    Receiver index: %d\n", t->receiver_index);
+  s = format (s, "    IRPI: %d\n", t->initiator_remote_peer_index);
   s = format (s, "    Length: %d\n", t->current_length);
   s = format (s, "    Keepalive: %s", t->is_keepalive ? "true" : "false");
 
@@ -161,7 +163,7 @@ is_ip4_header (u8 *data)
 static wg_input_error_t
 wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 		      u32 node_idx, u8 is_ip4, u32 *sender_pi,
-		      u32 *receiver_pi)
+		      u32 *receiver_pi, *u32 p_irpi)
 {
   wg_input_error_t ret = WG_INPUT_ERROR_UNDEFINED;
   ASSERT (vm->thread_index == 0);
@@ -266,6 +268,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
       {
 	message_handshake_initiation_t *message = current_b_data;
 	*sender_pi = message->sender_index;
+	*p_irpi = message->initiator_remote_peer_index;
 
 	if (packet_needs_cookie)
 	  {
@@ -294,7 +297,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 
 	wg_peer_update_endpoint (rp->r_peer_idx, &src_ip, udp_src_port);
 
-	if (PREDICT_FALSE (!wg_send_handshake_response (vm, peer)))
+	if (PREDICT_FALSE (!wg_send_handshake_response (vm, peer, *p_irpi)))
 	  {
 	    ret = WG_INPUT_ERROR_RESPONSE_UNSENT;
 	  }
@@ -309,6 +312,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	message_handshake_response_t *resp = current_b_data;
 	*sender_pi = resp->sender_index;
 	*receiver_pi = resp->receiver_index;
+	*p_irpi = resp->initiator_remote_peer_index;
 
 	if (packet_needs_cookie)
 	  {
@@ -783,7 +787,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   bool is_keepalive = false;
   u32 *peer_idx = NULL;
   index_t peeri = INDEX_INVALID;
-  u32 sender_index, receiver_index;
+  u32 sender_index, receiver_index, initiator_remote_peer_index;
 
   while (n_left_from > 0)
     {
@@ -799,6 +803,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       other_next[n_other] = WG_INPUT_NEXT_PUNT;
       data_nexts[n_data] = WG_INPUT_N_NEXT;
+      initiator_remote_peer_index = 0;
 
       header_type =
 	((message_header_t *) vlib_buffer_get_current (b[0]))->type;
@@ -967,9 +972,9 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto next;
 	    }
 
-	  wg_input_error_t ret =
-	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4,
-				  &sender_index, &receiver_index);
+	  wg_input_error_t ret = wg_handshake_process (
+	    vm, wmp, b[0], node->node_index, is_ip4, &sender_index,
+	    &receiver_index, &initiator_remote_peer_index);
 	  if (ret != WG_INPUT_ERROR_RESPONSE_UNSENT &&
 	      ret != WG_INPUT_ERROR_KEEPALIVE_UNSENT &&
 	      ret != WG_INPUT_ERROR_COOKIE &&
@@ -1001,6 +1006,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->peer = peer_idx ? peeri : INDEX_INVALID;
 	  t->sender_index = sender_index;
 	  t->receiver_index = receiver_index;
+	  t->initiator_remote_peer_index = initiator_remote_peer_index;
 	}
 
     next:
