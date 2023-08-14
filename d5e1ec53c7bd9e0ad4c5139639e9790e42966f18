@@ -303,6 +303,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d435ee8d_89ee7b15",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-08-14T16:33:14Z",
+      "side": 1,
+      "message": "Well, this is a session accepted on a blocking listener. unhandled_evts_vector is expected to be constantly processed, it\u0027s just that for blocking sessions we\u0027re not expecting those events to become epoll events. Nonetheless, your point stands. We shouldn\u0027t postpone that disconnect if listener was blocking. \n\nHowever, just realized that we should probably always just call disconnected/reset handlers if sessions have not yet been accepted. We already have the pending accept notification so we should be okay to just mark the session with VCL_ACCEPTED_F_CLOSED. So then the if on line 1057 should be:\n\n```\nif (vcl_session_has_attr (s, VCL_SESS_ATTR_NONBLOCK) \n    \u0026\u0026 !(s-\u003esession_state \u003d\u003d VCL_STATE_LISTEN \n       || s-\u003esession_state \u003d\u003d VCL_STATE_LISTEN_NO_MQ)) {}\n```\n\nThat is, we don\u0027t postpone events for not yet accepted sessions.",
+      "parentUuid": "78f05a51_3b56f2b0",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
