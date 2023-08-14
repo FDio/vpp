@@ -57,6 +57,7 @@ typedef struct message_header
 typedef struct message_handshake_initiation
 {
   message_header_t header;
+  u32 initiator_remote_peer_index;
   u32 sender_index;
   u8 unencrypted_ephemeral[NOISE_PUBLIC_KEY_LEN];
   u8 encrypted_static[noise_encrypted_len (NOISE_PUBLIC_KEY_LEN)];
@@ -67,6 +68,7 @@ typedef struct message_handshake_initiation
 typedef struct message_handshake_response
 {
   message_header_t header;
+  u32 initiator_remote_peer_index;
   u32 sender_index;
   u32 receiver_index;
   u8 unencrypted_ephemeral[NOISE_PUBLIC_KEY_LEN];
