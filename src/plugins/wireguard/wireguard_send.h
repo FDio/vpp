@@ -24,7 +24,8 @@ u8 *wg_build_rewrite (ip46_address_t *src_addr, u16 src_port,
 bool wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer);
 bool wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry);
 void wg_send_handshake_from_mt (u32 peer_index, bool is_retry);
-bool wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer);
+bool wg_send_handshake_response (vlib_main_t *vm, wg_peer_t *peer,
+				 uint32_t irpi);
 bool wg_send_handshake_cookie (vlib_main_t *vm, u32 sender_index,
 			       cookie_checker_t *cookie_checker,
 			       message_macs_t *macs,

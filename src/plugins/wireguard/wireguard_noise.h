@@ -155,13 +155,11 @@ void noise_remote_init (vlib_main_t *, noise_remote_t *, uint32_t,
 void noise_remote_precompute (vlib_main_t *, noise_remote_t *);
 
 /* Cryptographic functions */
-bool noise_create_initiation (vlib_main_t * vm, noise_remote_t *,
-			      uint32_t * s_idx,
-			      uint8_t ue[NOISE_PUBLIC_KEY_LEN],
-			      uint8_t es[NOISE_PUBLIC_KEY_LEN +
-					 NOISE_AUTHTAG_LEN],
-			      uint8_t ets[NOISE_TIMESTAMP_LEN +
-					  NOISE_AUTHTAG_LEN]);
+bool
+noise_create_initiation (vlib_main_t *vm, noise_remote_t *, uint32_t *p_idx,
+			 uint32_t *s_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+			 uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
+			 uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN]);
 
 bool noise_consume_initiation (vlib_main_t * vm, noise_local_t *,
 			       noise_remote_t **,

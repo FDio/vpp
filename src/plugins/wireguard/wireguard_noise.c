@@ -116,8 +116,8 @@ noise_remote_precompute (vlib_main_t *vm, noise_remote_t *r)
 
 /* Handshake functions */
 bool
-noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
-			 uint32_t * s_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+noise_create_initiation (vlib_main_t *vm, noise_remote_t *r, uint32_t *s_idx,
+			 uint32_t *p_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 			 uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
 			 uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN])
 {
@@ -160,6 +160,7 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   hs->hs_state = CREATED_INITIATION;
   hs->hs_local_index = noise_remote_handshake_index_get (vm, r);
   *s_idx = hs->hs_local_index;
+  *p_idx = r->r_peer_idx;
   ret = true;
 error:
   wg_secure_zero_memory (key, NOISE_SYMMETRIC_KEY_LEN);

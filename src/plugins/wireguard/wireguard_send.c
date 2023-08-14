@@ -172,12 +172,10 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
       wg_peer_is_dead (peer))
     return true;
 
-  if (noise_create_initiation (vm,
-			       &peer->remote,
-			       &packet.sender_index,
-			       packet.unencrypted_ephemeral,
-			       packet.encrypted_static,
-			       packet.encrypted_timestamp))
+  if (noise_create_initiation (
+	vm, &peer->remote, &packet.sender_index,
+	&packet.initiator_remote_peer_index, packet.unencrypted_ephemeral,
+	packet.encrypted_static, packet.encrypted_timestamp))
     {
       packet.header.type = MESSAGE_HANDSHAKE_INITIATION;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
@@ -302,7 +300,7 @@ out:
 }
 
 bool
-wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
+wg_send_handshake_response (vlib_main_t *vm, wg_peer_t *peer, uint32_t irpi)
 {
   message_handshake_response_t packet;
 
@@ -316,6 +314,7 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 			     packet.unencrypted_ephemeral,
 			     packet.encrypted_nothing))
     {
+      packet.initiator_remote_peer_index = irpi;
       packet.header.type = MESSAGE_HANDSHAKE_RESPONSE;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
 			sizeof (packet));
