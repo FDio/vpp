@@ -255,6 +255,30 @@
       },
       "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d79df655_853d739d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2023-08-14T02:35:50Z",
+      "side": 1,
+      "message": "Sorry, I missed the discussion earlier, I will submit a modification soon.",
+      "parentUuid": "f7146672_b070f130",
+      "range": {
+        "startLine": 1057,
+        "startChar": 0,
+        "endLine": 1057,
+        "endChar": 59
+      },
+      "revId": "d5e1ec53c7bd9e0ad4c5139639e9790e42966f18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
