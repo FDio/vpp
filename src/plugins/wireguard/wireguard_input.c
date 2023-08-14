@@ -81,6 +81,8 @@ typedef struct
   u16 current_length;
   bool is_keepalive;
   index_t peer;
+  u32 sender_index;
+  u32 receiver_index;
 } wg_input_trace_t;
 
 typedef struct
@@ -115,6 +117,8 @@ format_wg_input_trace (u8 * s, va_list * args)
   s = format (s, "Wireguard input: \n");
   s = format (s, "    Type: %U\n", format_wg_message_type, t->type);
   s = format (s, "    Peer: %d\n", t->peer);
+  s = format (s, "    Sender index: %d\n", t->sender_index);
+  s = format (s, "    Receiver index: %d\n", t->receiver_index);
   s = format (s, "    Length: %d\n", t->current_length);
   s = format (s, "    Keepalive: %s", t->is_keepalive ? "true" : "false");
 
@@ -156,7 +160,8 @@ is_ip4_header (u8 *data)
 
 static wg_input_error_t
 wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
-		      u32 node_idx, u8 is_ip4)
+		      u32 node_idx, u8 is_ip4, u32 *sender_pi,
+		      u32 *receiver_pi)
 {
   wg_input_error_t ret = WG_INPUT_ERROR_UNDEFINED;
   ASSERT (vm->thread_index == 0);
@@ -169,6 +174,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
   wg_peer_t *peer = NULL;
 
   void *current_b_data = vlib_buffer_get_current (b);
+  *sender_pi = 0;
+  *receiver_pi = 0;
 
   ip46_address_t src_ip;
   if (is_ip4)
@@ -194,6 +201,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     {
       message_handshake_cookie_t *packet =
 	(message_handshake_cookie_t *) current_b_data;
+      *receiver_pi = packet->receiver_index;
       u32 *entry =
 	wg_index_table_lookup (&wmp->index_table, packet->receiver_index);
       if (entry)
@@ -257,6 +265,7 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     case MESSAGE_HANDSHAKE_INITIATION:
       {
 	message_handshake_initiation_t *message = current_b_data;
+	*sender_pi = message->sender_index;
 
 	if (packet_needs_cookie)
 	  {
@@ -298,6 +307,8 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     case MESSAGE_HANDSHAKE_RESPONSE:
       {
 	message_handshake_response_t *resp = current_b_data;
+	*sender_pi = resp->sender_index;
+	*receiver_pi = resp->receiver_index;
 
 	if (packet_needs_cookie)
 	  {
@@ -772,6 +783,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   bool is_keepalive = false;
   u32 *peer_idx = NULL;
   index_t peeri = INDEX_INVALID;
+  u32 sender_index, receiver_index;
 
   while (n_left_from > 0)
     {
@@ -797,6 +809,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u8 *iv_data = b[0]->pre_data;
 	  u32 buf_idx = from[b - bufs];
 	  u32 n_bufs;
+	  sender_index = 0;
+	  receiver_index = data->receiver_index;
 	  peer_idx = wg_index_table_lookup (&wmp->index_table,
 					    data->receiver_index);
 
@@ -954,7 +968,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 
 	  wg_input_error_t ret =
-	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4);
+	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4,
+				  &sender_index, &receiver_index);
 	  if (ret != WG_INPUT_ERROR_RESPONSE_UNSENT &&
 	      ret != WG_INPUT_ERROR_KEEPALIVE_UNSENT &&
 	      ret != WG_INPUT_ERROR_COOKIE &&
@@ -984,6 +999,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->current_length = b[0]->current_length;
 	  t->is_keepalive = is_keepalive;
 	  t->peer = peer_idx ? peeri : INDEX_INVALID;
+	  t->sender_index = sender_index;
+	  t->receiver_index = receiver_index;
 	}
 
     next:
