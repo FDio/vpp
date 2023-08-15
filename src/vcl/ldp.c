@@ -2681,6 +2681,7 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       timeout = 0;
       if (rv >= maxevents)
 	goto done;
+      maxevents -= rv;
     }
   else if (PREDICT_FALSE (rv < 0))
     {
@@ -2693,7 +2694,7 @@ epoll_again:
 
   libc_evts = &events[rv];
   libc_num_ev =
-    libc_epoll_pwait (libc_epfd, libc_evts, maxevents - rv, timeout, sigmask);
+    libc_epoll_pwait (libc_epfd, libc_evts, maxevents, timeout, sigmask);
   if (libc_num_ev <= 0)
     {
       rv = rv >= 0 ? rv : -1;
