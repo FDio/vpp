@@ -563,7 +563,6 @@ class TestIPv4FibCrud(VppTestCase):
         return routes
 
     def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count, start=0):
-
         routes = []
         for i in range(count):
             r = VppIpRoute(

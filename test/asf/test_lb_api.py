@@ -22,7 +22,6 @@ class TestLbEmptyApi(asfframework.VppTestCase):
     """TestLbEmptyApi"""
 
     def test_lb_empty_vip_dump(self):
-
         # no records should  normally return [], but
         # lb initializes with a default VIP
         rv = self.vapi.lb_vip_dump()
@@ -30,7 +29,6 @@ class TestLbEmptyApi(asfframework.VppTestCase):
         self.assertEqual(rv, [], "Expected: [] Received: %r." % rv)
 
     def test_lb_empty_as_dump(self):
-
         # no records should return []
         rv = self.vapi.lb_as_dump()
         # print(rv)

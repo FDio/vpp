@@ -18,7 +18,6 @@ from . import process, parsers
 
 
 class SiphonSYSCFG(process.Siphon):
-
     name = "syscfg"
     identifier = "VLIB_CONFIG_FUNCTION"
 

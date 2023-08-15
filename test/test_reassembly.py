@@ -1098,7 +1098,7 @@ class TestIPv4MWReassembly(VppTestCase):
         first_packets = [[] for n in range(self.vpp_worker_count)]
         second_packets = [[] for n in range(self.vpp_worker_count)]
         rest_of_packets = [[] for n in range(self.vpp_worker_count)]
-        for (_, p) in self.pkt_infos:
+        for _, p in self.pkt_infos:
             wi = randrange(self.vpp_worker_count)
             second_packets[wi].append(p[0])
             if len(p) <= 1:
@@ -1930,7 +1930,7 @@ class TestIPv6MWReassembly(VppTestCase):
         first_packets = [[] for n in range(self.vpp_worker_count)]
         second_packets = [[] for n in range(self.vpp_worker_count)]
         rest_of_packets = [[] for n in range(self.vpp_worker_count)]
-        for (_, p) in self.pkt_infos:
+        for _, p in self.pkt_infos:
             wi = randrange(self.vpp_worker_count)
             second_packets[wi].append(p[0])
             if len(p) <= 1:

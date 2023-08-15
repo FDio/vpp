@@ -16,7 +16,6 @@ class VppBondInterface(VppInterface):
         mac_address="",
         id=0xFFFFFFFF,
     ):
-
         """Create VPP Bond interface"""
         super(VppBondInterface, self).__init__(test)
         self.mode = mode

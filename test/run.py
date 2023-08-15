@@ -51,6 +51,7 @@ pip_tools_version = "6.6.0"
 # Compiled pip requirements file
 pip_compiled_requirements_file = os.path.join(test_dir, "requirements-3.txt")
 
+
 # Gracefully exit after executing cleanup scripts
 # upon receiving a SIGINT or SIGTERM
 def handler(signum, frame):

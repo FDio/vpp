@@ -20,7 +20,6 @@ class VppVhostInterface(VppInterface):
         mac_address="",
         tag="",
     ):
-
         """Create VPP Vhost interface"""
         super(VppVhostInterface, self).__init__(test)
         self.is_server = is_server

@@ -801,7 +801,6 @@ class MethodHolder(VppTestCase):
         proto=IP_PROTOS.tcp,
         ignore_port=False,
     ):
-
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:

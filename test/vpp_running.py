@@ -34,7 +34,6 @@ def use_running(cls):
 
 
 class RunningVPP:
-
     api_sock = ""  # api_sock file path
     stats_sock = ""  # stats sock_file path
     socket_dir = ""  # running VPP's socket directory

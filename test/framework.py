@@ -1002,7 +1002,7 @@ class VppTestCase(CPUInterface, unittest.TestCase):
     @classmethod
     def pg_start(cls, trace=True):
         """Enable the PG, wait till it is done, then clean up"""
-        for (intf, worker) in cls._old_pcaps:
+        for intf, worker in cls._old_pcaps:
             intf.handle_old_pcap_file(intf.get_in_path(worker), intf.in_history_counter)
         cls._old_pcaps = []
         if trace:
@@ -1435,7 +1435,6 @@ class VppTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def sleep(cls, timeout, remark=None):
-
         # /* Allow sleep(0) to maintain win32 semantics, and as decreed
         #  * by Guido, only the main thread can be interrupted.
         # */
