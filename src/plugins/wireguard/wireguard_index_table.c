@@ -25,6 +25,7 @@ wg_index_table_add (vlib_main_t *vm, wg_index_table_t *table,
 {
   u32 key;
 
+  /* TODO: Add a non-repeating 32bit generator to pcg.h and use as singleton. */
   while (1)
     {
       key = random_u32 (&rnd_seed);
