@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser(description="MAP VPP configuration generator")
 parser.add_argument("-t", action="store", dest="mapmode")
 args = parser.parse_args()
 
+
 #
 # 1:1 Shared IPv4 address, shared BR
 #

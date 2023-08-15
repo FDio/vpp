@@ -183,7 +183,6 @@ class CStruct(Struct):
 
 
 class CSimpleType(SimpleType):
-
     swap_to_be_dict = {
         "i16": "htobe16",
         "u16": "htobe16",

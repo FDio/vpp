@@ -24,7 +24,6 @@ def listy(points):
 
 
 def plot_data(d):
-
     plt.figure(1)
 
     cwndx = listx(d["cwnd"])
