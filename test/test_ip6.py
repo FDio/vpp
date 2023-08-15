@@ -2975,7 +2975,6 @@ class TestIP6Input(VppTestCase):
         ]
     )
     def test_ip_input_no_replies(self, name, src, dst, l4, msg, timeout):
-
         self._testMethodDoc = "IPv6 Input Exception - %s" % name
 
         p_version = (

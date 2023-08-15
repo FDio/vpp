@@ -251,7 +251,6 @@ class Siphon(object):
     output."""
 
     def process(self, out=None):
-
         if out is None:
             out = sys.stdout
 

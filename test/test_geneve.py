@@ -23,7 +23,6 @@ class TestGeneve(BridgeDomain, VppTestCase):
         VppTestCase.__init__(self, *args)
 
     def encapsulate(self, pkt, vni):
-
         """
         Encapsulate the original payload frame by adding GENEVE header with its
         UDP, IP and Ethernet fields

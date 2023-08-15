@@ -159,7 +159,6 @@ class VppPGInterface(VppInterface):
 
         # keep
         try:
-
             if os.path.isfile(path):
                 name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % (
                     self.test.tempdir,

@@ -123,7 +123,6 @@ class ToJSON:
                 )
             )
         else:
-
             write(
                 '    cJSON_AddStringToObject(o, "{n}", (char *)a->{n});\n'.format(
                     n=o.fieldname

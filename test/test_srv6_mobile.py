@@ -34,7 +34,6 @@ class TestSRv6EndMGTP4E(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip4_dst = IPv4Address(str(self.ip4_dst))
         # 32bit prefix + 32bit IPv4 DA + 8bit + 32bit TEID + 24bit
         dst = b"\xaa" * 4 + ip4_dst.packed + b"\x11" + b"\xbb" * 4 + b"\x11" * 3
@@ -123,7 +122,6 @@ class TestSRv6TMGTP4D(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip4_dst = IPv4Address(str(self.ip4_dst))
 
         ip4_src = IPv4Address(str(self.ip4_src))
@@ -295,7 +293,6 @@ class TestSRv6EndMGTP6D(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip6_dst = IPv6Address(str(self.ip6_dst))
 
         ip6_src = IPv6Address(str(self.ip6_src))

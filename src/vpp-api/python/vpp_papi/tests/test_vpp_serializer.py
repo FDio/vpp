@@ -468,7 +468,6 @@ class TestAddType(unittest.TestCase):
         self.assertEqual(nt.something, 200)
 
     def test_abf(self):
-
         fib_mpls_label = VPPType(
             "vl_api_fib_mpls_label_t",
             [["u8", "is_uniform"], ["u32", "label"], ["u8", "ttl"], ["u8", "exp"]],
@@ -561,7 +560,6 @@ class TestAddType(unittest.TestCase):
         )
 
     def test_bier(self):
-
         bier_table_id = VPPType(
             "vl_api_bier_table_id_t",
             [["u8", "bt_set"], ["u8", "bt_sub_domain"], ["u8", "bt_hdr_len_id"]],

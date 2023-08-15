@@ -35,7 +35,6 @@ class TestSRv6uSIDSRH(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip6_dst = IPv6Address(str(self.ip6_dst))
 
         ip6_src = IPv6Address(str(self.ip6_src))
@@ -116,7 +115,6 @@ class TestSRv6uSID(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip6_dst = IPv6Address(str(self.ip6_dst))
 
         ip6_src = IPv6Address(str(self.ip6_src))
@@ -191,7 +189,6 @@ class TestSRv6uSIDFlexSRH(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip6_dst = IPv6Address(str(self.ip6_dst))
 
         ip6_src = IPv6Address(str(self.ip6_src))
@@ -272,7 +269,6 @@ class TestSRv6uSIDFlex(VppTestCase):
             raise
 
     def create_packets(self, inner):
-
         ip6_dst = IPv6Address(str(self.ip6_dst))
 
         ip6_src = IPv6Address(str(self.ip6_src))
