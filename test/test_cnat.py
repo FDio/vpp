@@ -470,7 +470,6 @@ class TestCNatTranslation(CnatCommonTestCase):
                     ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg2, 0, 5000)
 
     def _test_icmp(self):
-
         #
         # Testing ICMP
         #

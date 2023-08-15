@@ -142,7 +142,6 @@ class TestNAT44ED(VppTestCase):
         tag="",
         flags=0,
     ):
-
         if not (local_port and external_port):
             flags |= self.config_flags.NAT_IS_ADDR_ONLY
 
@@ -687,7 +686,6 @@ class TestNAT44ED(VppTestCase):
     def frag_in_order_in_plus_out(
         self, in_addr, out_addr, in_port, out_port, proto=IP_PROTOS.tcp
     ):
-
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:
@@ -743,7 +741,6 @@ class TestNAT44ED(VppTestCase):
     def frag_out_of_order_in_plus_out(
         self, in_addr, out_addr, in_port, out_port, proto=IP_PROTOS.tcp
     ):
-
         layer = self.proto2layer(proto)
 
         if proto == IP_PROTOS.tcp:

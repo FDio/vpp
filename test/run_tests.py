@@ -902,7 +902,6 @@ def parse_results(results):
 
 
 if __name__ == "__main__":
-
     print(f"Config is: {config}")
 
     if config.sanity:

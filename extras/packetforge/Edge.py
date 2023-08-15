@@ -45,7 +45,6 @@ class Edge:
 
         for start in startTokens:
             for end in endTokens:
-
                 edge = Edge()
 
                 edge.Start = start

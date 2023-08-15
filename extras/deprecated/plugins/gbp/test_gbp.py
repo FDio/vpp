@@ -1099,7 +1099,7 @@ class TestGBP(VppTestCase):
             # adj-fibs due to the fact the the BVI address has /32 and
             # the subnet is not attached.
             #
-            for (ip, fip) in zip(ep.ips, ep.fips):
+            for ip, fip in zip(ep.ips, ep.fips):
                 # Add static mappings for each EP from the 10/8 to 11/8 network
                 if ip_address(ip).version == 4:
                     flags = self.nat_config_flags.NAT_IS_ADDR_ONLY

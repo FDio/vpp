@@ -74,10 +74,10 @@ V=0
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=22.0.4
+PIP_VERSION=23.2.1
 # Keep in sync with requirements.txt
-PIP_TOOLS_VERSION=6.6.0
-PIP_SETUPTOOLS_VERSION=62.1.0
+PIP_TOOLS_VERSION=7.3.0
+PIP_SETUPTOOLS_VERSION=68.1.0
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 BUILD_COV_DIR=$(BR)/test-coverage
@@ -131,7 +131,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 .PHONY: refresh-deps
-refresh-deps: clean-deps $(PYTHON_DEPENDS)
+refresh-deps: clean-deps $(PIP_INSTALL_DONE) $(PYTHON_DEPENDS)
 
 .PHONY: clean-deps
 clean-deps:

@@ -26,7 +26,6 @@ from os import popen
 
 
 class IPsecIPv4Params:
-
     addr_type = socket.AF_INET
     addr_any = "0.0.0.0"
     addr_bcast = "255.255.255.255"
@@ -74,7 +73,6 @@ class IPsecIPv4Params:
 
 
 class IPsecIPv6Params:
-
     addr_type = socket.AF_INET6
     addr_any = "0::0"
     addr_bcast = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"

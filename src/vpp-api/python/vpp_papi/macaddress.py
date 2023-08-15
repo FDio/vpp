@@ -53,7 +53,6 @@ class MACAddress:
         return "%s(%s)" % (self.__class__.__name__, self.mac_string)
 
     def __eq__(self, other):
-
         if not isinstance(other, MACAddress):
             try:
                 # if it looks like a mac address, we'll take it.
