@@ -210,6 +210,11 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
   if ((r = l->l_upcall.u_remote_get (r_public)) == NULL)
     goto error;
 
+  /* When two peers initiate at the same time, higher sender index wins. */
+  if (r->r_handshake.hs_state == CREATED_INITIATION &&
+      s_idx <= r->r_handshake.hs_local_index)
+    goto error;
+
   /* ss */
   if (!noise_mix_ss (hs.hs_ck, key, r->r_ss))
     goto error;
