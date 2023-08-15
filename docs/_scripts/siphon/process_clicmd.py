@@ -19,7 +19,6 @@ import os
 
 
 class SiphonCLICMD(process.Siphon):
-
     name = "clicmd"
     identifier = "VLIB_CLI_COMMAND"
 

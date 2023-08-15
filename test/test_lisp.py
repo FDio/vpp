@@ -53,7 +53,6 @@ class ForeignAddressFactory(object):
 
 
 class Driver(metaclass=abc.ABCMeta):
-
     config_order = [
         "locator-sets",
         "locators",

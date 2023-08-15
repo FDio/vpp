@@ -163,7 +163,6 @@ class TestPPPoE(VppTestCase):
                 raise
 
     def verify_encaped_pppoe(self, src_if, capture, sent, session_id):
-
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):

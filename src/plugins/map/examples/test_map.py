@@ -11,6 +11,7 @@ for dir in args.inputdir:
     sys.path.append(dir)
 from vpp_papi import *
 
+
 #
 # 1:1 Shared IPv4 address, shared BR (16) VPP CLI
 #

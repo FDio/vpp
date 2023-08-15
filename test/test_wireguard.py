@@ -220,7 +220,7 @@ class VppWgPeer(VppObject):
                 self.allowed_ips.sort()
                 p.peer.allowed_ips.sort()
 
-                for (a1, a2) in zip(self.allowed_ips, p.peer.allowed_ips):
+                for a1, a2 in zip(self.allowed_ips, p.peer.allowed_ips):
                     if str(a1) != str(a2):
                         return False
                 return True

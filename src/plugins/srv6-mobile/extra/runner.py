@@ -24,7 +24,6 @@ class ContainerStartupError(Exception):
 
 
 class Container(object):
-
     tmp = "/tmp"
     cmd = "vppctl -s 0:5002"
     cmd_bash = "/bin/bash"
@@ -69,7 +68,6 @@ class Container(object):
 
     @classmethod
     def new(cls, client, image, name):
-
         temp = join(cls.tmp, name)
         if isdir(temp):
             rmtree(temp)
@@ -241,7 +239,6 @@ class Containers(object):
         self.image = image
 
     def tmp_render(self, path, template, kwargs):
-
         with open(path, "w") as fo:
             fo.write(template.render(**kwargs))
 
@@ -349,7 +346,6 @@ class Networks(object):
 
 
 class Program(object):
-
     image = "srv6m-image"
 
     name_prefix = "hck"
@@ -386,7 +382,6 @@ class Program(object):
         return "{}-{}".format(self.name_prefix, name)
 
     def stop_containers(self):
-
         for name in self.instance_names:
             instance = self.containers.get(self.get_name(name))
             if instance:
@@ -398,7 +393,6 @@ class Program(object):
                 network.rem()
 
     def start_containers(self):
-
         self.stop_containers()
 
         networks = list()
@@ -2457,7 +2451,6 @@ class Program(object):
             p.show2()
 
     def status_containers(self):
-
         print("Instances:")
 
         for i, name in enumerate(self.instance_names):
@@ -2585,7 +2578,6 @@ def get_args():
 
 
 def main(op=None, prefix=None, verbose=None, image=None, index=None, command=None):
-
     if verbose:
         basicConfig(level=verbose_levels[verbose])
 

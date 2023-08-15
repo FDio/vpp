@@ -130,7 +130,6 @@ def check_core_path(logger, core_path):
 
 
 class NumericConstant:
-
     desc_dict = {}
 
     def __init__(self, value):
