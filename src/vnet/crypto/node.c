@@ -190,8 +190,7 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   .name = "crypto-dispatch",
   .type = VLIB_NODE_TYPE_INPUT,
-  .flags = VLIB_NODE_FLAG_ADAPTIVE_MODE,
-  .state = VLIB_NODE_STATE_INTERRUPT,
+  .state = VLIB_NODE_STATE_POLLING,
   .format_trace = format_crypto_dispatch_trace,
 
   .n_errors = ARRAY_LEN(vnet_crypto_async_error_strings),
