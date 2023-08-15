@@ -70,6 +70,24 @@
       "parentUuid": "5d103f9d_49be2493",
       "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "08e0fb4c_9002c9ef",
+        "filename": "src/vnet/ip/ip6_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-08-15T11:45:54Z",
+      "side": 1,
+      "message": "I don\u0027t think we can solve it completely without keeping some state. I suggest to change the behaviour to send all the fragments of 1 packet to the same link. Current ipv4 implementation treats fragments as regular udp/tcp packets (reading some random bytes as ports).\n\nWhat do you think?",
+      "parentUuid": "e7547029_96f76ae8",
+      "revId": "da6a1b891c72c5b9aa2a5b041e472b1276707439",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
