@@ -2447,10 +2447,24 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       vcl_session_add_want_deq_ntf (s, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
-      disconnected_msg = (session_disconnected_msg_t *) e->data;
-      s = vcl_session_disconnected_handler (wrk, disconnected_msg);
-      if (!s)
-	break;
+      if (!e->postponed)
+	{
+	  disconnected_msg = (session_disconnected_msg_t *) e->data;
+	  s = vcl_session_disconnected_handler (wrk, disconnected_msg);
+	  if (!s)
+	    break;
+	}
+      else
+	{
+	  s = vcl_session_get (wrk, e->session_index);
+	  s->flags &= ~VCL_SESSION_F_PENDING_DISCONNECT;
+	}
+      if (vcl_session_is_closed (s))
+	{
+	  if (s && (s->flags & VCL_SESSION_F_PENDING_FREE))
+	    vcl_session_free (wrk, s);
+	  break;
+	}
       sid = s->session_index;
       if (sid < n_bits && except_map)
 	{
