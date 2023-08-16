@@ -173,6 +173,7 @@ enum cnat_snat_policy_table:u8
   CNAT_POLICY_INCLUDE_V4 = 0,
   CNAT_POLICY_INCLUDE_V6 = 1,
   CNAT_POLICY_POD = 2,
+  CNAT_POLICY_HOST = 3,
 };
 
 autoreply define cnat_snat_policy_add_del_if
