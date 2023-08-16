@@ -247,9 +247,9 @@ typedef struct
 #define _(a, b, ...) a b __VA_ARGS__;
   foreach_pci_config_reg
 #undef _
-} vlib_pci_config_mandatory_t;
+} vlib_pci_config_hdr_t;
 
-STATIC_ASSERT_SIZEOF (vlib_pci_config_mandatory_t, 64);
+STATIC_ASSERT_SIZEOF (vlib_pci_config_hdr_t, 64);
 
 typedef union
 {

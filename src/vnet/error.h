@@ -158,7 +158,8 @@
   _ (BUSY, -167, "Busy")                                                      \
   _ (BUG, -168, "Bug")                                                        \
   _ (FEATURE_ALREADY_DISABLED, -169, "Feature already disabled")              \
-  _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")
+  _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")                \
+  _ (TIMEOUT, -171, "Timeout")
 
 typedef enum
 {

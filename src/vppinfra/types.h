@@ -131,6 +131,9 @@ typedef u32 clib_address_t;
 #define CLIB_U32_MAX __UINT32_MAX__
 #define CLIB_U64_MAX __UINT64_MAX__
 
+#define CLIB_F64_MAX __DBL_MAX__
+#define CLIB_F32_MAX __FLT_MAX__
+
 #if clib_address_bits == 64
 #define CLIB_WORD_MAX  CLIB_I64_MAX
 #define CLIB_UWORD_MAX CLIB_U64_MAX
