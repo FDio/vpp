@@ -29,6 +29,8 @@ unformat_cnat_snat_interface_map_type (unformat_input_t *input, va_list *args)
     *a = CNAT_SNAT_IF_MAP_INCLUDE_V6;
   else if (unformat (input, "k8s"))
     *a = CNAT_SNAT_IF_MAP_INCLUDE_POD;
+  else if (unformat (input, "host"))
+    *a = CNAT_SNAT_IF_MAP_INCLUDE_HOST;
   else
     return 0;
   return 1;
@@ -48,6 +50,9 @@ format_cnat_snat_interface_map_type (u8 *s, va_list *args)
       break;
     case CNAT_SNAT_IF_MAP_INCLUDE_POD:
       s = format (s, "k8s pod");
+      break;
+    case CNAT_SNAT_IF_MAP_INCLUDE_HOST:
+      s = format (s, "k8s host");
       break;
     default:
       s = format (s, "(unknown)");
@@ -295,6 +300,14 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
   ip46_address_t *dst_addr = &session->key.cs_ip[VLIB_TX];
   u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
   u32 out_if = vnet_buffer (b)->sw_if_index[VLIB_TX];
+
+  /* we should never snat traffic that we punt to the host, pass traffic as it
+   * is for us */
+  if (clib_bitmap_get (cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_HOST],
+		       out_if))
+    {
+      return 0;
+    }
 
   /* source nat for outgoing connections */
   if (cnat_snat_policy_interface_enabled (in_if, af))

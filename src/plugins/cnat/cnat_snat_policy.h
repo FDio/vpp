@@ -45,6 +45,9 @@ typedef enum cnat_snat_interface_map_type_t_
   CNAT_SNAT_IF_MAP_INCLUDE_V4 = AF_IP4,
   CNAT_SNAT_IF_MAP_INCLUDE_V6 = AF_IP6,
   CNAT_SNAT_IF_MAP_INCLUDE_POD,
+  /* CNAT_SNAT_IF_MAP_INCLUDE_HOST is used for interfaces used for punt,
+     replicating uplink */
+  CNAT_SNAT_IF_MAP_INCLUDE_HOST,
   CNAT_N_SNAT_IF_MAP,
 } cnat_snat_interface_map_type_t;
 
