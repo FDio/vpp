@@ -28,7 +28,8 @@ enum crypto_op_class_type:u8
   CRYPTO_API_OP_BOTH,
 };
 
- /** \brief crypto: use polling or interrupt dispatch
+ /** \brief crypto: Use polling or interrupt dispatch.
+    Always unset the adaptive flag (that is why it is deprecated).
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param mode - dispatch mode
@@ -37,9 +38,26 @@ enum crypto_op_class_type:u8
 autoreply define crypto_set_async_dispatch
 {
   option deprecated;
+  option replaced_by="crypto_set_async_dispatch_v2";
   u32 client_index;
   u32 context;
   vl_api_crypto_dispatch_mode_t mode;
+};
+
+ /** \brief crypto: Change the way crypto operations are dispatched.
+    Use adaptive (or not) mode, starting in polling or interrupt state.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - dispatch initial state
+    @param adaptive - whether on not the state shall change depending on load
+*/
+
+autoreply define crypto_set_async_dispatch_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_crypto_dispatch_mode_t mode;
+  bool adaptive;
 };
 
  /** \brief crypto: set crypto handler
