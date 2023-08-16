@@ -134,6 +134,42 @@ clib_file_contents (char *file, u8 ** result)
 }
 
 __clib_export u8 *
+clib_file_read_all (u32 max_len, char *fmt, ...)
+{
+  va_list va;
+  u8 buffer[32];
+  u8 *path, *s = 0;
+  int len, rv, fd;
+
+  va_start (va, fmt);
+  path = va_format (0, fmt, &va);
+  va_end (va);
+  vec_add1 (path, 0);
+
+  fd = open ((char *) path, 0);
+  vec_free (path);
+
+  if (fd >= 0)
+    {
+      while (max_len)
+	{
+	  len = clib_min (max_len, sizeof (buffer));
+	  rv = read (fd, buffer, len);
+	  if (rv > 0)
+	    {
+	      vec_add (s, buffer, rv);
+	      max_len -= rv;
+	    }
+	  if (rv < len)
+	    break;
+	}
+      close (fd);
+    }
+
+  return s;
+}
+
+__clib_export u8 *
 clib_file_get_resolved_basename (char *fmt, ...)
 {
   va_list va;
@@ -216,11 +252,11 @@ os_exit (int code)
   exit (code);
 }
 
-void os_puts (u8 * string, uword string_length, uword is_error)
+void os_puts (u8 *string, uword string_length, uword is_error)
   __attribute__ ((weak));
 
 void
-os_puts (u8 * string, uword string_length, uword is_error)
+os_puts (u8 *string, uword string_length, uword is_error)
 {
   int cpu = os_get_thread_index ();
   int nthreads = os_get_nthreads ();
