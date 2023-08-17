@@ -89,6 +89,9 @@ typedef struct tcp_worker_ctx_
   /** vector of pending ack dequeues */
   u32 *pending_deq_acked;
 
+  /** vector of connections that received data*/
+  u32 *pending_rx_evts;
+
   /** vector of pending disconnect notifications */
   u32 *pending_disconnects;
 
@@ -104,13 +107,21 @@ typedef struct tcp_worker_ctx_
   /** Time measured in @ref TCP_TSTAMP_TICK used for time stamps */
   u32 time_tstamp;
 
-  /* Max timers to be handled per dispatch loop */
-  u32 max_timers_per_loop;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /* Fifo of pending timer expirations */
   u32 *pending_timers;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  /* Max timers to be handled per dispatch loop */
+  u32 max_timers_per_loop;
+
+  /* fifo of pending free requests */
+  tcp_cleanup_req_t *pending_cleanups;
+
+  /** vector of session indices that received data */
+  u32 *pending_rx_evts_si;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
@@ -118,16 +129,13 @@ typedef struct tcp_worker_ctx_
   /** tx buffer free list */
   u32 *tx_buffers;
 
-  /* fifo of pending free requests */
-  tcp_cleanup_req_t *pending_cleanups;
-
   /** Session layer edge indices to tcp output */
   u32 tco_next_node[2];
 
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline3);
 
   tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
