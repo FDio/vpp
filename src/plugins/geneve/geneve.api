@@ -62,6 +62,28 @@ define geneve_add_del_tunnel2_reply
   vl_api_interface_index_t sw_if_index;
 };
 
+define geneve_add_del_tunnel3
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_address_t local_address;
+  vl_api_address_t remote_address;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_next_index;
+  u32 vni;
+  bool l3_mode;
+  bool options_handled;
+};
+
+define geneve_add_del_tunnel3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
 define geneve_tunnel_dump
 {
   u32 client_index;
