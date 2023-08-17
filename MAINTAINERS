@@ -811,6 +811,11 @@ I:      bpf_trace_filter
 M:      Mohammed Hawari <mohammed@hawari.fr>
 F:      src/plugins/bpf_trace_filter
 
+Plugin - NPTv6
+I:      npt66
+M:      Ole Troan <otroan@employees.org>
+F:      src/plugins/npt66
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
