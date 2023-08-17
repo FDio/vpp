@@ -1,0 +1,16 @@
+---
+name: NPTv6
+maintainer: Ole Troan <otroan@employees.org>
+features:
+  - NPTv6
+
+description: "This plugin implements NPTv6 as described in RFC6296.
+              It supports arbitrary prefix lengths. And performs an
+              algorithmic mapping between internal and external IPv6 prefixes.
+              The mapping is checksum neutral.
+              The implementation is currently limited to a single statically configured binding
+              per interface.
+              A typical IPv6 CE use case, the external prefix would be learnt via DHCP PD
+              "
+state: development
+properties: [API, CLI, MULTITHREAD]
