@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4958aec6_c3490545",
+        "filename": "src/plugins/npt66/npt66.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-08-17T13:31:26Z",
+      "side": 1,
+      "message": "Should it be verified that external_plen \u003c\u003d internal_plen? It seems like it wouldn\u0027t work if you had an internal /64 translated to an external /96. external -\u003e internal packets would not necessarily be able to be translated to a valid internal address.",
+      "revId": "8fd4208a39c9db205d1cf3ed311a75c44e38ddb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
