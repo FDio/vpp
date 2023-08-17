@@ -1190,7 +1190,11 @@ class VppTestCase(CPUInterface, unittest.TestCase):
             c = c[thread][index]
         else:
             c = sum(x[index] for x in c)
-        self.assert_equal(c, expected_value, "counter `%s'" % counter)
+        self.logger.debug(
+            "validate counter `%s[%s]', expected: %s, real value: %s"
+            % (counter, index, expected_value, c)
+        )
+        self.assert_equal(c, expected_value, "counter `%s[%s]'" % (counter, index))
 
     def assert_packet_counter_equal(self, counter, expected_value):
         counter_value = self.get_counter(counter)
