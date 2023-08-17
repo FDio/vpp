@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright(c) 2023 Cisco Systems, Inc.
+
+option version = "0.0.1";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+autoendian autoreply define npt66_binding_add_del
+{
+    u32 client_index;
+    u32 context;
+
+    bool is_add;
+    vl_api_interface_index_t sw_if_index;
+    vl_api_ip6_prefix_t internal;
+    vl_api_ip6_prefix_t external;
+};
