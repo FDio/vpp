@@ -762,6 +762,8 @@ nodaemon
 noevaluate
 nonaddress
 nosyslog
+npt
+npt66
 ns
 nsess
 nsh
