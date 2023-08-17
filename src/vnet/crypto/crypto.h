@@ -488,7 +488,7 @@ u32 vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
 
-
+void vnet_crypto_set_async_dispatch (u8 mode, u8 adaptive);
 int vnet_crypto_set_handler2 (char *ops_handler_name, char *engine,
 			      crypto_op_class_type_t oct);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);

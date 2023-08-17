@@ -46,7 +46,21 @@ vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
   vl_api_crypto_set_async_dispatch_reply_t *rmp;
   int rv = 0;
 
+  vnet_crypto_set_async_dispatch ((u8) mp->mode, 0);
+
   REPLY_MACRO (VL_API_CRYPTO_SET_ASYNC_DISPATCH_REPLY);
+}
+
+static void
+vl_api_crypto_set_async_dispatch_v2_t_handler (
+  vl_api_crypto_set_async_dispatch_v2_t *mp)
+{
+  vl_api_crypto_set_async_dispatch_v2_reply_t *rmp;
+  int rv = 0;
+
+  vnet_crypto_set_async_dispatch ((u8) mp->mode, mp->adaptive ? 1 : 0);
+
+  REPLY_MACRO (VL_API_CRYPTO_SET_ASYNC_DISPATCH_V2_REPLY);
 }
 
 static void

@@ -605,6 +605,23 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
   return nn->next_idx;
 }
 
+void
+vnet_crypto_set_async_dispatch (u8 mode, u8 adaptive)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 i, node_index = crypto_main.crypto_node_index;
+  vlib_node_state_t state =
+    mode ? VLIB_NODE_STATE_INTERRUPT : VLIB_NODE_STATE_POLLING;
+
+  for (i = vlib_num_workers () > 0; i < tm->n_vlib_mains; i++)
+    {
+      vlib_main_t *ovm = vlib_get_main_by_index (i);
+      vlib_node_set_state (ovm, node_index, state);
+      vlib_node_set_flag (ovm, node_index, VLIB_NODE_FLAG_ADAPTIVE_MODE,
+			  adaptive);
+    }
+}
+
 int
 vnet_crypto_is_set_async_handler (vnet_crypto_async_op_id_t op)
 {
