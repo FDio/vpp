@@ -81,6 +81,24 @@ static void vl_api_geneve_add_del_tunnel2_reply_t_handler
     }
 }
 
+static void
+vl_api_geneve_add_del_tunnel3_reply_t_handler (
+  vl_api_geneve_add_del_tunnel3_reply_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
 static int
 api_sw_interface_set_geneve_bypass (vat_main_t * vam)
 {
@@ -304,6 +322,12 @@ api_geneve_add_del_tunnel (vat_main_t * vam)
 
 static int
 api_geneve_add_del_tunnel2 (vat_main_t * vam)
+{
+  return api_geneve_add_del_tunnel (vam);
+}
+
+static int
+api_geneve_add_del_tunnel3 (vat_main_t *vam)
 {
   return api_geneve_add_del_tunnel (vam);
 }

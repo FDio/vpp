@@ -127,6 +127,7 @@ static void vl_api_geneve_add_del_tunnel2_t_handler
     .decap_next_index = ntohl (mp->decap_next_index),
     .vni = ntohl (mp->vni),
     .l3_mode = mp->l3_mode,
+    .options_handled = 1,
   };
 
   ip_address_decode (&mp->remote_address, &a.remote);
@@ -155,6 +156,55 @@ out:
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_geneve_add_del_tunnel3_t_handler (vl_api_geneve_add_del_tunnel3_t *mp)
+{
+  vl_api_geneve_add_del_tunnel3_reply_t *rmp;
+  int rv = 0;
+  ip4_main_t *im = &ip4_main;
+
+  uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
+  if (!p)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_FIB;
+      goto out;
+    }
+
+  vnet_geneve_add_del_tunnel_args_t a = {
+    .is_add = mp->is_add,
+    .is_ip6 = mp->remote_address.af,
+    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
+    .encap_fib_index = p[0],
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .vni = ntohl (mp->vni),
+    .l3_mode = mp->l3_mode,
+    .options_handled = mp->options_handled,
+  };
+
+  ip_address_decode (&mp->remote_address, &a.remote);
+  ip_address_decode (&mp->local_address, &a.local);
+
+  /* Check src & dst are different */
+  if (ip46_address_cmp (&a.remote, &a.local) == 0)
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+  if (ip46_address_is_multicast (&a.remote) &&
+      !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
+
+  u32 sw_if_index = ~0;
+  rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
+
+out:
+  REPLY_MACRO2 (VL_API_GENEVE_ADD_DEL_TUNNEL3_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
 static void send_geneve_tunnel_details
