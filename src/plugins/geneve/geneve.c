@@ -222,15 +222,15 @@ const static fib_node_vft_t geneve_vft = {
   .fnv_back_walk = geneve_tunnel_back_walk,
 };
 
-
-#define foreach_copy_field                      \
-_(vni)                                          \
-_(mcast_sw_if_index)                            \
-_(encap_fib_index)                              \
-_(decap_next_index)                             \
-_(local)                                        \
-_(remote)					\
-_(l3_mode)
+#define foreach_copy_field                                                    \
+  _ (vni)                                                                     \
+  _ (mcast_sw_if_index)                                                       \
+  _ (encap_fib_index)                                                         \
+  _ (decap_next_index)                                                        \
+  _ (local)                                                                   \
+  _ (remote)                                                                  \
+  _ (l3_mode)                                                                 \
+  _ (options_handled)
 
 static int
 geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
@@ -667,6 +667,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   u8 l3_mode = 0;
+  u8 options_handled = 1;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;

@@ -5,14 +5,17 @@ from util import ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
+from vpp_object import VppObject
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.contrib.geneve import GENEVE
 
 import util
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpInterfaceAddress
 from vpp_ip import INVALID_INDEX
+
+from ipaddress import ip_address
 
 
 class TestGeneve(BridgeDomain, VppTestCase):
@@ -328,6 +331,99 @@ class TestGeneveL3(VppTestCase):
             local_address=self.pg0.local_ip4,
             remote_address=self.pg0.remote_ip4,
             vni=vni,
+        )
+
+
+class TestGeneveOptions(VppTestCase):
+    """GENEVE Options Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGeneveOptions, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+        except Exception:
+            super(TestGeneveOptions, cls).tearDownClass()
+            raise
+
+    def verify_options_handled(self, options_handled):
+        decap_next_ip4_input = self.vapi.add_node_next(
+            node_name="geneve4-input", next_name="ip4-input"
+        ).next_index
+
+        vni = 1234
+        g = GeneveTunnel3(
+            self,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            decap_next_index=decap_next_ip4_input,
+            options_handled=options_handled,
+        ).add_vpp_config()
+
+        VppIpInterfaceAddress(self, intf=g, addr="10.0.0.1", len=24).add_vpp_config()
+
+        pkt = IP(src="10.0.0.1", dst=self.pg0.remote_ip4) / ICMP()
+
+        geneve = GENEVE(vni=vni, proto=0x0800)
+        geneve_crit_bit_set = GENEVE(
+            vni=vni, proto=0x0800, critical=True, options=b"\0\0\x80\1\0\0\0\x0c"
+        )
+
+        encap = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=6081, dport=6081, chksum=0)
+        )
+
+        self.send_and_expect(self.pg0, encap / geneve / pkt, self.pg0)
+
+        if options_handled:
+            self.send_and_expect(self.pg0, encap / geneve_crit_bit_set / pkt, self.pg0)
+        else:
+            self.send_and_assert_no_replies(
+                self.pg0, encap / geneve_crit_bit_set / pkt, self.pg0
+            )
+
+    def test_options_handled_true(self):
+        """Packets with critical bit set are accepted when options_handled=1"""
+        self.verify_options_handled(True)
+
+    def test_options_handled_false(self):
+        """Packets with critical bit set are dropped when options_handled=0"""
+        self.verify_options_handled(False)
+
+
+class GeneveTunnel3(VppObject):
+    def __init__(self, test, **kv):
+        self._test = test
+        self._kv = kv
+
+    def add_vpp_config(self):
+        self.sw_if_index = self._test.vapi.geneve_add_del_tunnel3(
+            is_add=1, **self._kv
+        ).sw_if_index
+        self._test.registry.register(self, self._test.logger)
+        return self
+
+    def remove_vpp_config(self):
+        self._test.vapi.geneve_add_del_tunnel3(is_add=0, **self._kv)
+
+    def query_vpp_config(self):
+        attrs = (
+            ip_address(self._kv["local_address"]),
+            ip_address(self._kv["remote_address"]),
+            self._kv["vni"],
+        )
+        return any(
+            (g.src_address, g.dst_address, g.vni) == attrs
+            for g in self._test.vapi.geneve_tunnel_dump()
         )
 
 

@@ -108,7 +108,10 @@ geneve_input (vlib_main_t * vm,
 	  u32 next0, next1;
 	  ip4_header_t *ip4_0, *ip4_1;
 	  ip6_header_t *ip6_0, *ip6_1;
+	  udp_header_t *udp0, *udp1;
 	  geneve_header_t *geneve0, *geneve1;
+	  u32 udp_len0, udp_len1;
+	  u32 geneve_hdr_len0, geneve_hdr_len1;
 	  uword *p0, *p1;
 	  u32 tunnel_index0, tunnel_index1;
 	  geneve_tunnel_t *t0, *t1, *mt0 = NULL, *mt1 = NULL;
@@ -146,47 +149,30 @@ geneve_input (vlib_main_t * vm,
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
 	  vnet_geneve_hdr_1word_ntoh (geneve1);
 
-	  if (is_ip4)
-	    {
-	      vlib_buffer_advance
-		(b0, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
-	      vlib_buffer_advance
-		(b1, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
-	      ip4_0 = vlib_buffer_get_current (b0);
-	      ip4_1 = vlib_buffer_get_current (b1);
-	    }
-	  else
-	    {
-	      vlib_buffer_advance
-		(b0, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
-	      vlib_buffer_advance
-		(b1, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
-	      ip6_0 = vlib_buffer_get_current (b0);
-	      ip6_1 = vlib_buffer_get_current (b1);
-	    }
+	  udp0 = (udp_header_t *) ((u8 *) geneve0 - sizeof (udp_header_t));
+	  udp1 = (udp_header_t *) ((u8 *) geneve1 - sizeof (udp_header_t));
 
-	  /* pop (ip, udp, geneve) */
+	  udp_len0 = clib_net_to_host_u16 (udp0->length);
+	  udp_len1 = clib_net_to_host_u16 (udp1->length);
+
+	  geneve_hdr_len0 =
+	    GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve0);
+	  geneve_hdr_len1 =
+	    GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve1);
+
 	  if (is_ip4)
 	    {
-	      vlib_buffer_advance (b0,
-				   sizeof (*ip4_0) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve0));
-	      vlib_buffer_advance (b1,
-				   sizeof (*ip4_1) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve1));
+	      ip4_0 =
+		(ip4_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
+	      ip4_1 =
+		(ip4_header_t *) (b1->data + vnet_buffer (b1)->l3_hdr_offset);
 	    }
 	  else
 	    {
-	      vlib_buffer_advance (b0,
-				   sizeof (*ip6_0) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve0));
-	      vlib_buffer_advance (b1,
-				   sizeof (*ip6_1) + sizeof (udp_header_t) +
-				   GENEVE_BASE_HEADER_LENGTH +
-				   vnet_get_geneve_options_len (geneve1));
+	      ip6_0 =
+		(ip6_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
+	      ip6_1 =
+		(ip6_header_t *) (b1->data + vnet_buffer (b1)->l3_hdr_offset);
 	    }
 
 	  tunnel_index0 = ~0;
@@ -195,21 +181,16 @@ geneve_input (vlib_main_t * vm,
 	  tunnel_index1 = ~0;
 	  error1 = 0;
 
-	  if (PREDICT_FALSE
-	      (vnet_get_geneve_version (geneve0) != GENEVE_VERSION))
+	  if (PREDICT_FALSE (vnet_get_geneve_version (geneve0) !=
+			     GENEVE_VERSION) ||
+	      PREDICT_FALSE (geneve_hdr_len0 + sizeof (udp_header_t) >=
+			     udp_len0))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
 	      next0 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace0;
 	    }
-#if SUPPORT_OPTIONS_HEADER==1
-	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1))
-	    {
-	      error0 = GENEVE_ERROR_BAD_FLAGS;
-	      next0 = GENEVE_INPUT_NEXT_DROP;
-	      goto trace0;
-	    }
-#endif
+
 	  if (is_ip4)
 	    {
 	      key4_0.remote = ip4_0->src_address.as_u32;
@@ -317,6 +298,20 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next0:
+	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1) &&
+	      !t0->options_handled)
+	    {
+	      error0 = GENEVE_ERROR_BAD_FLAGS;
+	      next0 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace0;
+	    }
+
+	  /* Record UDP header offset in case someone down the pipeline wants
+	     to examine geneve header; pop geneve. */
+	  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+	  vnet_geneve_hdr_1word_hton (geneve0);
+	  vlib_buffer_advance (b0, geneve_hdr_len0);
+
 	  next0 = t0->decap_next_index;
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -362,21 +357,16 @@ geneve_input (vlib_main_t * vm,
 	      tr->vni_rsvd = vnet_get_geneve_vni (geneve0);
 	    }
 
-	  if (PREDICT_FALSE
-	      (vnet_get_geneve_version (geneve1) != GENEVE_VERSION))
+	  if (PREDICT_FALSE (vnet_get_geneve_version (geneve1) !=
+			     GENEVE_VERSION) ||
+	      PREDICT_FALSE (geneve_hdr_len1 + sizeof (udp_header_t) >=
+			     udp_len1))
 	    {
 	      error1 = GENEVE_ERROR_BAD_FLAGS;
 	      next1 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace1;
 	    }
-#if SUPPORT_OPTIONS_HEADER==1
-	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve1) == 1))
-	    {
-	      error1 = GENEVE_ERROR_BAD_FLAGS;
-	      next1 = GENEVE_INPUT_NEXT_DROP;
-	      goto trace1;
-	    }
-#endif
+
 	  if (is_ip4)
 	    {
 	      key4_1.remote = ip4_1->src_address.as_u32;
@@ -486,6 +476,20 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next1:
+	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve1) == 1) &&
+	      !t1->options_handled)
+	    {
+	      error1 = GENEVE_ERROR_BAD_FLAGS;
+	      next1 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace1;
+	    }
+
+	  /* Record UDP header offset in case someone down the pipeline wants
+	     to examine geneve header; pop geneve. */
+	  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
+	  vnet_geneve_hdr_1word_hton (geneve1);
+	  vlib_buffer_advance (b1, geneve_hdr_len1);
+
 	  next1 = t1->decap_next_index;
 	  sw_if_index1 = t1->sw_if_index;
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
@@ -543,7 +547,10 @@ geneve_input (vlib_main_t * vm,
 	  u32 next0;
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
+	  udp_header_t *udp0;
 	  geneve_header_t *geneve0;
+	  u32 udp_len0;
+	  u32 geneve_hdr_len0;
 	  uword *p0;
 	  u32 tunnel_index0;
 	  geneve_tunnel_t *t0, *mt0 = NULL;
@@ -566,55 +573,35 @@ geneve_input (vlib_main_t * vm,
 	  geneve0 = vlib_buffer_get_current (b0);
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
 
-	  if (is_ip4)
-	    {
-	      vlib_buffer_advance
-		(b0, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
-	      ip4_0 = vlib_buffer_get_current (b0);
-	    }
-	  else
-	    {
-	      vlib_buffer_advance
-		(b0, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
-	      ip6_0 = vlib_buffer_get_current (b0);
-	    }
+	  udp0 = (udp_header_t *) ((u8 *) geneve0 - sizeof (udp_header_t));
+	  udp_len0 = clib_net_to_host_u16 (udp0->length);
+	  geneve_hdr_len0 =
+	    GENEVE_BASE_HEADER_LENGTH + vnet_get_geneve_options_len (geneve0);
 
-	  /* pop (ip, udp, geneve) */
 	  if (is_ip4)
 	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip4_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
+	      ip4_0 =
+		(ip4_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
 	    }
 	  else
 	    {
-	      vlib_buffer_advance
-		(b0,
-		 sizeof (*ip6_0) + sizeof (udp_header_t) +
-		 GENEVE_BASE_HEADER_LENGTH +
-		 vnet_get_geneve_options_len (geneve0));
+	      ip6_0 =
+		(ip6_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
 	    }
 
 	  tunnel_index0 = ~0;
 	  error0 = 0;
 
-	  if (PREDICT_FALSE
-	      (vnet_get_geneve_version (geneve0) != GENEVE_VERSION))
+	  if (PREDICT_FALSE (vnet_get_geneve_version (geneve0) !=
+			     GENEVE_VERSION) ||
+	      PREDICT_FALSE (geneve_hdr_len0 + sizeof (udp_header_t) >=
+			     udp_len0))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
 	      next0 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace00;
 	    }
-#if SUPPORT_OPTIONS_HEADER==1
-	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1))
-	    {
-	      error0 = GENEVE_ERROR_BAD_FLAGS;
-	      next0 = GENEVE_INPUT_NEXT_DROP;
-	      goto trace00;
-	    }
-#endif
+
 	  if (is_ip4)
 	    {
 	      key4_0.remote = ip4_0->src_address.as_u32;
@@ -722,6 +709,20 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next00:
+	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1) &&
+	      !t0->options_handled)
+	    {
+	      error0 = GENEVE_ERROR_BAD_FLAGS;
+	      next0 = GENEVE_INPUT_NEXT_DROP;
+	      goto trace00;
+	    }
+
+	  /* Record UDP header offset in case someone down the pipeline wants
+	     to examine geneve header; pop geneve. */
+	  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
+	  vnet_geneve_hdr_1word_hton (geneve0);
+	  vlib_buffer_advance (b0, geneve_hdr_len0);
+
 	  next0 = t0->decap_next_index;
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
