@@ -140,6 +140,16 @@ typedef struct
   u32 sibling_index;
 
   u8 l3_mode;
+
+  /**
+   * Don't drop GENEVE packets with critical bit set as there are
+   * supposedly further nodes hooked after geneve*-input handling GENEVE
+   * options.
+   *
+   * GENEVE header is popped. Further nodes find it by following
+   * l4_hdr_offset which points to UDP header in encapsulated packet.
+   */
+  u8 options_handled;
 } geneve_tunnel_t;
 
 #define foreach_geneve_input_next        \
@@ -213,6 +223,7 @@ typedef struct
   u32 decap_next_index;
   u32 vni;
   u8 l3_mode;
+  u8 options_handled; /* see geneve_tunnel_t */
 } vnet_geneve_add_del_tunnel_args_t;
 
 int vnet_geneve_add_del_tunnel
