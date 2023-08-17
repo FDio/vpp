@@ -559,6 +559,30 @@ tcp_program_dequeue (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   tc->burst_acked += tc->bytes_acked;
 }
 
+static void
+tcp_handle_postponed_rx_events (tcp_worker_ctx_t *wrk)
+{
+  u32 thread_index, *tip;
+  tcp_connection_t *tc;
+
+  if (!vec_len (wrk->pending_rx_evts))
+    return;
+
+  thread_index = wrk->vm->thread_index;
+
+  vec_foreach (tip, wrk->pending_rx_evts)
+    {
+      tc = tcp_connection_get (*tip, thread_index);
+      tc->flags &= ~TRANSPORT_CONNECTION_F_RX_EVT;
+      vec_add1 (wrk->pending_rx_evts_si, tc->c_s_index);
+    }
+
+  session_wrk_flush_enqueue_events (thread_index, wrk->pending_rx_evts_si);
+
+  vec_set_len (wrk->pending_rx_evts, 0);
+  vec_set_len (wrk->pending_rx_evts_si, 0);
+}
+
 /**
  * Try to update snd_wnd based on feedback received from peer.
  *
@@ -1080,17 +1104,23 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
 /** Enqueue data for delivery to application */
 static int
-tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
-			  u16 data_len)
+tcp_session_enqueue_data (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
+			  vlib_buffer_t *b, u16 data_len)
 {
   int written, error = TCP_ERROR_ENQUEUED;
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
   written = session_enqueue_stream_connection (&tc->connection, b, 0,
-					       1 /* queue event */ , 1);
+					       0 /* queue event */, 1);
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
+
+  if (!(tc->c_flags & TRANSPORT_CONNECTION_F_RX_EVT) && (written > 0))
+    {
+      vec_add1 (wrk->pending_rx_evts, tc->c_c_index);
+      tc->flags |= TRANSPORT_CONNECTION_F_RX_EVT;
+    }
 
   /* Update rcv_nxt */
   if (PREDICT_TRUE (written == data_len))
@@ -1274,7 +1304,7 @@ in_order:
 
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
-  error = tcp_session_enqueue_data (tc, b, n_data_bytes);
+  error = tcp_session_enqueue_data (wrk, tc, b, n_data_bytes);
   tcp_program_ack (tc);
 
 done:
@@ -1443,9 +1473,10 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b += 1;
     }
 
-  session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
+  //   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
+  tcp_handle_postponed_rx_events (wrk);
   tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, from, frame->n_vectors);
 
@@ -1964,7 +1995,8 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_inc_counter (syn_sent, error, 1);
     }
 
-  session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
+  //   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
+  tcp_handle_postponed_rx_events (wrk);
   vlib_buffer_free (vm, from, frame->n_vectors);
   tcp_handle_disconnects (wrk);
 
@@ -2407,8 +2439,9 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       tcp_inc_counter (rcv_process, error, 1);
     }
 
-  session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
+  //   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   tcp_handle_postponed_dequeues (wrk);
+  tcp_handle_postponed_rx_events (wrk);
   tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, from, frame->n_vectors);
 

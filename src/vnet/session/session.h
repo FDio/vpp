@@ -783,6 +783,7 @@ do {									\
       return clib_error_return (0, "session layer is not enabled");	\
 } while (0)
 
+void session_wrk_flush_enqueue_events (u32 thread_index, u32 *session_indices);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					u32 thread_index);
 void session_queue_run_on_main_thread (vlib_main_t * vm);

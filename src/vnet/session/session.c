@@ -689,6 +689,24 @@ session_dequeue_notify (session_t *s)
   return 0;
 }
 
+void
+session_wrk_flush_enqueue_events (u32 thread_index, u32 *session_indices)
+{
+  session_t *s;
+  u32 *sip;
+
+  vec_foreach (sip, session_indices)
+    {
+      s = session_get (*sip, thread_index);
+      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
+			   0 /* TODO/not needed */);
+      if (s->flags & SESSION_F_RX_EVT)
+	continue;
+      s->flags |= SESSION_F_RX_EVT;
+      session_enqueue_notify_inline (s, 0);
+    }
+}
+
 /**
  * Flushes queue of sessions that are to be notified of new data
  * enqueued events.
