@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1599040f_b947686e",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1266,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-08-18T03:29:15Z",
+      "side": 1,
+      "message": "Hardcoding this to _v2 means that this will not work if there are more versions of ip_neighbor_event message (eg. _v3, _v4, etc.) or other autoendian messages that place the version identifier at the end.\n\nUnfortunately there is no enforcement of the placement of the version identifier in the api message nomenclature. :(",
+      "range": {
+        "startLine": 1266,
+        "startChar": 38,
+        "endLine": 1266,
+        "endChar": 44
+      },
+      "revId": "b40a57772ed578485b3ecf3af25e262c5431e760",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
