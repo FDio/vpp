@@ -181,7 +181,7 @@ Dynamic NAT (Minimal Required Configuration)
 
 ..
 
-   nat44 enable sessions 10000
+   nat44 plugin enable sessions 10000
 
 2) configure NAT interfaces, two options:
 
@@ -500,7 +500,7 @@ Timeouts
 Session Limiting
 ~~~~~~~~~~~~~~~~
 
-   nat44 enable sessions ``max-number``
+   nat44 plugin enable sessions ``max-number``
 
 Maximum number of sessions value is used on per-thread (per-worker)
 basis.
@@ -600,7 +600,7 @@ Enable nat44-ed plugin:
 
 ::
 
-   nat44 enable sessions 1000
+   nat44 plugin enable sessions 1000
 
 Configure inside interface:
 
@@ -700,7 +700,7 @@ Enable nat44-ed plugin:
 
 ::
 
-   nat44 enable sessions 1000
+   nat44 plugin enable sessions 1000
 
 Configure NAT interface:
 
