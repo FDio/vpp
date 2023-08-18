@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "04fc598f_244a2c82",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-08-18T16:58:08Z",
+      "side": 1,
+      "message": "spellcheck failure -- please update .../vpp/docs/spelling_wordlist.txt\n\nlocal verification \u003d\u003e \u0027make docs-spell\u0027",
+      "revId": "9ea17783f7d333f81f65a6a15bd98fade8907091",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
