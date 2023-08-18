@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54b04b2c_e1e02642",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-08-18T03:31:57Z",
+      "side": 1,
+      "message": "Adding \"Type: feature\" to the commit message will allow it to pass the checkstyle failure.",
+      "revId": "8576b80e770387df6be613c58f0c4a540500b78c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
