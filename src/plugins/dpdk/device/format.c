@@ -706,7 +706,7 @@ format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
   s = format (s, "Packet Offload Flags");
 
 #define _(F, S)                                                               \
-  if (*ol_flags & RTE_MBUF_F_##F)                                             \
+  if ((*ol_flags & RTE_MBUF_F_##F) == RTE_MBUF_F_##F)                         \
     {                                                                         \
       s = format (s, "\n%U%s (0x%04x) %s", format_white_space, indent,        \
 		  "PKT_" #F, RTE_MBUF_F_##F, S);                              \
