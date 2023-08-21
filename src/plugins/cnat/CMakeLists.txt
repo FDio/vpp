@@ -26,6 +26,11 @@ add_vpp_plugin(cnat
   cnat_src_policy.c
   cnat_maglev.c
 
+  INSTALL_HEADERS
+  cnat_error.def
+  cnat_snat_policy.h
+  cnat_types.h
+
   API_FILES
   cnat.api
 )
