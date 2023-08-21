@@ -15,6 +15,7 @@ add_vpp_plugin(cnat
   SOURCES
   cnat_api.c
   cnat_client.c
+  cnat_node.c
   cnat_node_snat.c
   cnat_node_vip.c
   cnat_node_feature.c
@@ -26,6 +27,17 @@ add_vpp_plugin(cnat
   cnat_snat_policy.c
   cnat_src_policy.c
   cnat_maglev.c
+
+  INSTALL_HEADERS
+  cnat_bihash.h
+  cnat_client.h
+  cnat_error.def
+  cnat_inline.h
+  cnat_node.h
+  cnat_snat_policy.h
+  cnat_session.h
+  cnat_translation.h
+  cnat_types.h
 
   API_FILES
   cnat.api
