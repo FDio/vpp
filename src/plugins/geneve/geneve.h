@@ -139,12 +139,22 @@ typedef struct
    */
   u32 sibling_index;
 
+  /**
+   * The l3 mode means geneve layer 3 tunnel
+   */
   u8 l3_mode;
+
+  /**
+   * the l3 mode emulated is geneve layer 2 tunnel acting as BVI
+   */
+  u8 l3_mode_emulated;
 } geneve_tunnel_t;
 
-#define foreach_geneve_input_next        \
-_(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")
+#define foreach_geneve_input_next                                             \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")                                                    \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")
 
 typedef enum
 {
@@ -200,6 +210,17 @@ extern vlib_node_registration_t geneve6_encap_node;
 
 u8 *format_geneve_encap_trace (u8 * s, va_list * args);
 
+#define foreach_geneve_flags                                                  \
+  _ (L3_MODE, 0)                                                              \
+  _ (L3_MODE_EMULATED, 1)
+
+typedef enum
+{
+#define _(a, b) GENEVE_FLAG_##a = (1 << b),
+  foreach_geneve_flags
+#undef _
+} geneve_flags_t;
+
 typedef struct
 {
   u8 is_add;
@@ -212,7 +233,7 @@ typedef struct
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;
-  u8 l3_mode;
+  geneve_flags_t geneve_flags;
 } vnet_geneve_add_del_tunnel_args_t;
 
 int vnet_geneve_add_del_tunnel
