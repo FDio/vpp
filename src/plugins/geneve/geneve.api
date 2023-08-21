@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "2.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -56,6 +56,32 @@ define geneve_add_del_tunnel2
 };
 
 define geneve_add_del_tunnel2_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+enum geneve_flags {
+     GENEVE_API_FLAG_L3_MODE = 1,
+     GENEVE_API_FLAG_L3_MODE_EMULATED = 2,
+};
+
+define geneve_add_del_tunnel3
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_address_t local_address;
+  vl_api_address_t remote_address;
+  vl_api_interface_index_t mcast_sw_if_index;
+  u32 encap_vrf_id;
+  u32 decap_next_index;
+  u32 vni;
+  vl_api_geneve_flags_t geneve_flags;
+};
+
+define geneve_add_del_tunnel3_reply
 {
   u32 context;
   i32 retval;

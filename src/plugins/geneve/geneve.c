@@ -80,8 +80,13 @@ format_geneve_tunnel (u8 * s, va_list * args)
 	      t->vni, t->encap_fib_index, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
-  s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
-  s = format (s, "l3-mode %u ", t->l3_mode);
+  if (t->l3_mode)
+    s = format (s, "l3-mode %u ", t->l3_mode);
+  else
+    {
+      s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
+      s = format (s, "l3-mode-emulated %u ", t->l3_mode_emulated);
+    }
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->remote)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
@@ -139,6 +144,13 @@ VNET_HW_INTERFACE_CLASS (geneve_hw_class) = {
   .build_rewrite = default_build_rewrite,
 };
 /* *INDENT-ON* */
+
+VNET_HW_INTERFACE_CLASS (geneve_l3_hw_class) = {
+  .name = "GENEVE_L3",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+  .format_header = format_geneve_header_with_length,
+  .build_rewrite = default_build_rewrite,
+};
 
 static void
 geneve_tunnel_restack_dpo (geneve_tunnel_t * t)
@@ -222,18 +234,16 @@ const static fib_node_vft_t geneve_vft = {
   .fnv_back_walk = geneve_tunnel_back_walk,
 };
 
-
-#define foreach_copy_field                      \
-_(vni)                                          \
-_(mcast_sw_if_index)                            \
-_(encap_fib_index)                              \
-_(decap_next_index)                             \
-_(local)                                        \
-_(remote)					\
-_(l3_mode)
+#define foreach_copy_field                                                    \
+  _ (vni)                                                                     \
+  _ (mcast_sw_if_index)                                                       \
+  _ (encap_fib_index)                                                         \
+  _ (decap_next_index)                                                        \
+  _ (local)                                                                   \
+  _ (remote)
 
 static int
-geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
+geneve_rewrite (geneve_tunnel_t *t, bool is_ip6)
 {
   union
   {
@@ -293,9 +303,15 @@ geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
 #endif
   vnet_set_geneve_oamframe_bit (geneve, 0);
   vnet_set_geneve_critical_bit (geneve, 0);
-  vnet_set_geneve_protocol (geneve, GENEVE_ETH_PROTOCOL);
 
-  vnet_geneve_hdr_1word_hton (geneve);
+  /*
+   * In l3_mode, geneve protocol type is set dynamically based on inner packet
+   */
+  if (!t->l3_mode)
+    {
+      vnet_set_geneve_protocol (geneve, GENEVE_ETH_PROTOCOL);
+      vnet_geneve_hdr_1word_hton (geneve);
+    }
 
   vnet_set_geneve_vni (geneve, t->vni);
 
@@ -359,6 +375,15 @@ mcast_shared_remove (ip46_address_t * remote)
   hash_unset_mem_free (&geneve_main.mcast_shared, remote);
 }
 
+static inline void
+geneve_set_tunnel_flags (geneve_tunnel_t *t, geneve_flags_t geneve_flags)
+{
+  if (geneve_flags & GENEVE_FLAG_L3_MODE)
+    t->l3_mode = 1;
+  else if (geneve_flags & GENEVE_FLAG_L3_MODE_EMULATED)
+    t->l3_mode_emulated = 1;
+}
+
 int vnet_geneve_add_del_tunnel
   (vnet_geneve_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
 {
@@ -371,7 +396,9 @@ int vnet_geneve_add_del_tunnel
   int rv;
   geneve4_tunnel_key_t key4;
   geneve6_tunnel_key_t key6;
+  u32 is_l3 = (a->geneve_flags & GENEVE_FLAG_L3_MODE);
   u32 is_ip6 = a->is_ip6;
+  u32 is_l3_mode_emulated = (a->geneve_flags & GENEVE_FLAG_L3_MODE_EMULATED);
 
   if (!is_ip6)
     {
@@ -396,7 +423,10 @@ int vnet_geneve_add_del_tunnel
 
       /*if not set explicitly, default to l2 */
       if (a->decap_next_index == ~0)
-	a->decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
+	{
+	  if (is_l3 == 0)
+	    a->decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
+	}
       if (!geneve_decap_next_is_valid (vxm, is_ip6, a->decap_next_index))
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
@@ -407,6 +437,8 @@ int vnet_geneve_add_del_tunnel
 #define _(x) t->x = a->x;
       foreach_copy_field;
 #undef _
+
+      geneve_set_tunnel_flags (t, a->geneve_flags);
 
       rv = geneve_rewrite (t, is_ip6);
       if (rv)
@@ -423,7 +455,7 @@ int vnet_geneve_add_del_tunnel
 	hash_set (vxm->geneve4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
 
       vnet_hw_interface_t *hi;
-      if (a->l3_mode)
+      if (is_l3_mode_emulated)
 	{
 	  vnet_eth_interface_registration_t eir = {};
 	  u32 t_idx = t - vxm->tunnels;
@@ -435,11 +467,17 @@ int vnet_geneve_add_del_tunnel
 	  eir.address = address;
 	  hw_if_index = vnet_eth_register_interface (vnm, &eir);
 	}
+      else if (is_l3)
+	{
+	  hw_if_index = vnet_register_interface (
+	    vnm, geneve_device_class.index, t - vxm->tunnels,
+	    geneve_l3_hw_class.index, t - vxm->tunnels);
+	}
       else
 	{
-	  hw_if_index = vnet_register_interface
-	    (vnm, geneve_device_class.index, t - vxm->tunnels,
-	     geneve_hw_class.index, t - vxm->tunnels);
+	  hw_if_index = vnet_register_interface (
+	    vnm, geneve_device_class.index, t - vxm->tunnels,
+	    geneve_hw_class.index, t - vxm->tunnels);
 	}
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -456,11 +494,13 @@ int vnet_geneve_add_del_tunnel
 			       ~0);
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = t - vxm->tunnels;
 
-      /* setup l2 input config with l2 feature and bd 0 to drop packet */
-      vec_validate (l2im->configs, sw_if_index);
-      l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
-      l2im->configs[sw_if_index].bd_index = 0;
-
+      if (is_l3 == 0)
+	{
+	  /* setup l2 input config with l2 feature and bd 0 to drop packet */
+	  vec_validate (l2im->configs, sw_if_index);
+	  l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
+	  l2im->configs[sw_if_index].bd_index = 0;
+	}
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
       si->flags &= ~VNET_SW_INTERFACE_FLAG_HIDDEN;
       vnet_sw_interface_set_flags (vnm, sw_if_index,
@@ -572,11 +612,12 @@ int vnet_geneve_add_del_tunnel
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, t->sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
 
-      /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
-		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
+      if (is_l3 == 0)
+	/* make sure tunnel is removed from l2 bd or xconnect */
+	set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
+			 L2_BD_PORT_TYPE_NORMAL, 0, 0);
 
-      if (t->l3_mode)
+      if (is_l3_mode_emulated)
 	ethernet_delete_interface (vnm, t->hw_if_index);
       else
 	vnet_delete_hw_interface (vnm, t->hw_if_index);
@@ -667,6 +708,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   u8 l3_mode = 0;
+  u8 l3_mode_emulated = 0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
@@ -690,6 +732,10 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "del"))
 	{
 	  is_add = 0;
+	}
+      else if (unformat (line_input, "l3"))
+	{
+	  l3_mode = 1;
 	}
       else if (unformat (line_input, "local %U",
 			 unformat_ip4_address, &local.ip4))
@@ -752,9 +798,9 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
-      else if (unformat (line_input, "l3-mode"))
+      else if (unformat (line_input, "l3-mode-emulated"))
 	{
-	  l3_mode = 1;
+	  l3_mode_emulated = 1;
 	}
       else
 	{
@@ -807,7 +853,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  if (decap_next_index == ~0)
+  if (!l3_mode && decap_next_index == ~0)
     {
       error = clib_error_return (0, "next node not found");
       goto done;
@@ -819,10 +865,22 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  if (l3_mode && l3_mode_emulated)
+    {
+      error = clib_error_return (
+	0, "l3 and l3-mode-emulated can not be enabled together");
+      goto done;
+    }
+
   clib_memset (a, 0, sizeof (*a));
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;
+
+  if (l3_mode)
+    a->geneve_flags |= GENEVE_FLAG_L3_MODE;
+  else if (l3_mode_emulated)
+    a->geneve_flags |= GENEVE_FLAG_L3_MODE_EMULATED;
 
 #define _(x) a->x = x;
   foreach_copy_field;
@@ -882,9 +940,10 @@ done:
 VLIB_CLI_COMMAND (create_geneve_tunnel_command, static) = {
   .path = "create geneve tunnel",
   .short_help =
-  "create geneve tunnel local <local-vtep-addr>"
-  " {remote <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [l3-mode] [del]",
+    "create geneve tunnel [l3] local <local-vtep-addr>"
+    " {remote <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
+    " [encap-vrf-id <nn>] [decap-next [l2|l3|node <name>]] [l3-mode-emulated] "
+    "[del]",
   .function = geneve_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */

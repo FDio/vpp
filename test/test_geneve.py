@@ -8,9 +8,11 @@ from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
 from scapy.contrib.geneve import GENEVE
 
 import util
+from vpp_papi import VppEnum
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
@@ -250,12 +252,12 @@ class TestGeneve(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show geneve tunnel"))
 
 
-class TestGeneveL3(VppTestCase):
-    """GENEVE L3 Test Case"""
+class TestGeneveL3Emulated(VppTestCase):
+    """GENEVE L3 emulated Test Case"""
 
     @classmethod
     def setUpClass(cls):
-        super(TestGeneveL3, cls).setUpClass()
+        super(TestGeneveL3Emulated, cls).setUpClass()
         try:
             cls.create_pg_interfaces(range(2))
             cls.interfaces = list(cls.pg_interfaces)
@@ -265,21 +267,21 @@ class TestGeneveL3(VppTestCase):
                 i.config_ip4()
                 i.resolve_arp()
         except Exception:
-            super(TestGeneveL3, cls).tearDownClass()
+            super(TestGeneveL3Emulated, cls).tearDownClass()
             raise
 
     @classmethod
     def tearDownClass(cls):
-        super(TestGeneveL3, cls).tearDownClass()
+        super(TestGeneveL3Emulated, cls).tearDownClass()
 
     def tearDown(self):
-        super(TestGeneveL3, self).tearDown()
+        super(TestGeneveL3Emulated, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show geneve tunnel"))
         self.logger.info(self.vapi.cli("show ip neighbor"))
 
-    def test_l3_packet(self):
+    def test_l3_emulated_packet(self):
         vni = 1234
         r = self.vapi.add_node_next(
             node_name="geneve4-input", next_name="ethernet-input"
@@ -328,6 +330,145 @@ class TestGeneveL3(VppTestCase):
             local_address=self.pg0.local_ip4,
             remote_address=self.pg0.remote_ip4,
             vni=vni,
+        )
+
+
+class TestGeneveL3(VppTestCase):
+    """GENEVE L3 Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGeneveL3, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.config_ip6()
+                i.disable_ipv6_ra()
+                i.resolve_arp()
+                i.resolve_ndp()
+        except Exception:
+            super(TestGeneveL3, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGeneveL3, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestGeneveL3, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show geneve tunnel"))
+        self.logger.info(self.vapi.cli("show ip neighbor"))
+
+    def test_l3_packet(self):
+        vni = 1234
+        geneve_flags = VppEnum.vl_api_geneve_flags_t.GENEVE_API_FLAG_L3_MODE
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=1,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            geneve_flags=geneve_flags,
+        )
+
+        #
+        # IPv4/IPv4
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24"
+        )
+
+        pkt4 = IP(src="10.0.0.2", dst="10.0.0.1") / ICMP()
+
+        encap4 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=6081, dport=6081, chksum=0)
+            / GENEVE(vni=vni)
+        )
+
+        rxs = self.send_and_expect(self.pg0, encap4 / pkt4 * 45, self.pg0)
+        for rx in rxs:
+            self.assertEqual(rx[ICMP].type, 0)  # echo reply
+
+        #
+        # IPv4/IPv6
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="fd01:3::3/64"
+        )
+
+        pkt6 = IPv6(src="fd01:3::1", dst="fd01:3::3") / ICMPv6EchoRequest()
+
+        rxs = self.send_and_expect(self.pg0, encap4 / pkt6 * 1, self.pg0)
+        for rx in rxs:
+            rx.show()
+            self.assertTrue(rx.haslayer(ICMPv6EchoReply))
+            self.assertEqual(
+                rx[ICMPv6EchoReply].type, ICMPv6EchoReply(type="Echo Reply").type
+            )  # echo reply
+
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=0,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            geneve_flags=geneve_flags,
+        )
+
+        #
+        # create Geneve IPv6 tunnel
+        #
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=1,
+            local_address=self.pg0.local_ip6,
+            remote_address=self.pg0.remote_ip6,
+            vni=vni,
+            geneve_flags=geneve_flags,
+        )
+
+        #
+        # IPv6/IPv4
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24"
+        )
+
+        encap6 = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
+            / UDP(sport=6081, dport=6081)
+            / GENEVE(vni=vni)
+        )
+
+        rxs = self.send_and_expect(self.pg0, encap6 / pkt4 * 45, self.pg0)
+        for rx in rxs:
+            self.assertEqual(rx[ICMP].type, 0)  # echo reply
+
+        #
+        # IPv6/IPv6
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="fd01:3::3/64"
+        )
+
+        rxs = self.send_and_expect(self.pg0, encap6 / pkt6 * 45, self.pg0)
+        for rx in rxs:
+            self.assertEqual(
+                rx[ICMPv6EchoReply].type, ICMPv6EchoReply(type="Echo Reply").type
+            )  # echo reply
+
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=0,
+            local_address=self.pg0.local_ip6,
+            remote_address=self.pg0.remote_ip6,
+            vni=vni,
+            geneve_flags=geneve_flags,
         )
 
 
