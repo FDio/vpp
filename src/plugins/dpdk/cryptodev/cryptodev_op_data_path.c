@@ -515,10 +515,13 @@ cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
       fe[2].status = cryptodev_status_conversion[cop[2]->op.status];
       fe[3].status = cryptodev_status_conversion[cop[3]->op.status];
 
-      err0 |= (fe[0].status == VNET_CRYPTO_OP_STATUS_COMPLETED) << n;
-      err1 |= (fe[1].status == VNET_CRYPTO_OP_STATUS_COMPLETED) << (n + 1);
-      err2 |= (fe[2].status == VNET_CRYPTO_OP_STATUS_COMPLETED) << (n + 2);
-      err3 |= (fe[3].status == VNET_CRYPTO_OP_STATUS_COMPLETED) << (n + 3);
+      err0 |= ((u64) (fe[0].status == VNET_CRYPTO_OP_STATUS_COMPLETED)) << n;
+      err1 |= ((u64) (fe[1].status == VNET_CRYPTO_OP_STATUS_COMPLETED))
+	      << (n + 1);
+      err2 |= ((u64) (fe[2].status == VNET_CRYPTO_OP_STATUS_COMPLETED))
+	      << (n + 2);
+      err3 |= ((u64) (fe[3].status == VNET_CRYPTO_OP_STATUS_COMPLETED))
+	      << (n + 3);
 
       cop += 4;
       fe += 4;

@@ -293,7 +293,7 @@ cryptodev_mark_frame_fill_err (vnet_crypto_async_frame_t *f, u64 current_err,
   for (i = index; i < (index + n); i++)
     f->elts[i].status = op_s;
 
-  err |= (~(~(0u) << n) << index);
+  err |= (~(~(0ull) << n) << index);
 
   return err;
 }
