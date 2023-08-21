@@ -20,6 +20,7 @@ find_program(VPP_VAPI_CPP_GEN vapi_cpp_gen.py)
 
 if(VPP_INCLUDE_DIR AND VPP_APIGEN)
   include_directories (${VPP_INCLUDE_DIR})
+  include_directories (${VPP_INCLUDE_DIR}/vpp_plugins)
 else()
   message(FATAL_ERROR "VPP headers, libraries and/or tools not found")
 endif()
