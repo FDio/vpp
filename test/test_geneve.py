@@ -250,12 +250,12 @@ class TestGeneve(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show geneve tunnel"))
 
 
-class TestGeneveL3(VppTestCase):
-    """GENEVE L3 Test Case"""
+class TestGeneveL3Emulated(VppTestCase):
+    """GENEVE L3 emulated Test Case"""
 
     @classmethod
     def setUpClass(cls):
-        super(TestGeneveL3, cls).setUpClass()
+        super(TestGeneveL3Emulated, cls).setUpClass()
         try:
             cls.create_pg_interfaces(range(2))
             cls.interfaces = list(cls.pg_interfaces)
@@ -265,21 +265,21 @@ class TestGeneveL3(VppTestCase):
                 i.config_ip4()
                 i.resolve_arp()
         except Exception:
-            super(TestGeneveL3, cls).tearDownClass()
+            super(TestGeneveL3Emulated, cls).tearDownClass()
             raise
 
     @classmethod
     def tearDownClass(cls):
-        super(TestGeneveL3, cls).tearDownClass()
+        super(TestGeneveL3Emulated, cls).tearDownClass()
 
     def tearDown(self):
-        super(TestGeneveL3, self).tearDown()
+        super(TestGeneveL3Emulated, self).tearDown()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.cli("show geneve tunnel"))
         self.logger.info(self.vapi.cli("show ip neighbor"))
 
-    def test_l3_packet(self):
+    def test_l3_emulated_packet(self):
         vni = 1234
         r = self.vapi.add_node_next(
             node_name="geneve4-input", next_name="ethernet-input"
@@ -328,6 +328,78 @@ class TestGeneveL3(VppTestCase):
             local_address=self.pg0.local_ip4,
             remote_address=self.pg0.remote_ip4,
             vni=vni,
+        )
+
+
+class TestGeneveL3(VppTestCase):
+    """GENEVE L3 Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGeneveL3, cls).setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+        except Exception:
+            super(TestGeneveL3, cls).tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGeneveL3, cls).tearDownClass()
+
+    def tearDown(self):
+        super(TestGeneveL3, self).tearDown()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show geneve tunnel"))
+        self.logger.info(self.vapi.cli("show ip neighbor"))
+
+    def test_l3_packet(self):
+        vni = 1234
+        r = self.vapi.add_node_next(
+            node_name="geneve4-input", next_name="ip4-input"
+        )
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=1,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            l3_mode=1,
+            decap_next_index=r.next_index,
+        )
+
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=r.sw_if_index, prefix="10.0.0.1/24"
+        )
+
+        pkt = (
+	    IP(src="10.0.0.2", dst="10.0.0.1")
+            / ICMP()
+        )
+
+        encap = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(sport=6081, dport=6081, chksum=0)
+            / GENEVE(vni=vni)
+        )
+
+        rxs = self.send_and_expect(self.pg0, encap / pkt * 45, self.pg0)
+        for rx in rxs:
+            self.assertEqual(rx[ICMP].type, 0)  # echo reply
+
+        r = self.vapi.geneve_add_del_tunnel3(
+            is_add=0,
+            local_address=self.pg0.local_ip4,
+            remote_address=self.pg0.remote_ip4,
+            vni=vni,
+            l3_mode=1,
         )
 
 
