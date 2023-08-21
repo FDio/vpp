@@ -49,6 +49,48 @@ typedef enum
 #define foreach_fixed_header6_offset            \
     _(0) _(1) _(2) _(3) _(4) _(5) _(6)
 
+always_inline void
+geneve_l3_mode_set_protocol_type (geneve_header_t *geneve, u8 is_inner_ip4,
+				  u8 is_inner_ip6)
+{
+  if (is_inner_ip4)
+    vnet_set_geneve_protocol (geneve, GENEVE_IP4_PROTOCOL);
+  else if (is_inner_ip6)
+    vnet_set_geneve_protocol (geneve, GENEVE_IP6_PROTOCOL);
+  vnet_geneve_hdr_1word_hton (geneve);
+}
+
+always_inline u32
+geneve_compute_flow_hash (vlib_buffer_t *b, u8 is_l3, u8 *is_inner_ip4,
+			  u8 *is_inner_ip6)
+{
+  u32 flow_hash0 = 0;
+
+  if (is_l3)
+    {
+      u8 *data = (u8 *) vlib_buffer_get_current (b);
+      switch (data[0] & 0xf0)
+	{
+	case 0x40:
+	  flow_hash0 = ip4_compute_flow_hash ((ip4_header_t *) data,
+					      IP_FLOW_HASH_DEFAULT);
+	  *is_inner_ip4 = 1;
+	  break;
+	case 0x60:
+	  flow_hash0 = ip6_compute_flow_hash ((ip6_header_t *) data,
+					      IP_FLOW_HASH_DEFAULT);
+	  *is_inner_ip6 = 1;
+	  break;
+	}
+    }
+  else
+    {
+      *is_inner_ip4 = *is_inner_ip6 = 0;
+      flow_hash0 = vnet_l2_compute_flow_hash (b);
+    }
+  return flow_hash0;
+}
+
 always_inline uword
 geneve_encap_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
@@ -96,6 +138,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	  u32 *copy_src_last1, *copy_dst_last1;
 	  u16 new_l0, new_l1;
 	  ip_csum_t sum0, sum1;
+	  u8 is_inner_ip4_0 = 0, is_inner_ip4_1 = 0;
+	  u8 is_inner_ip6_0 = 0, is_inner_ip6_1 = 0;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -116,10 +160,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
-
-	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
-	  flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
-
+	  flow_hash0 = flow_hash1 = 0;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
@@ -134,6 +175,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	  ALWAYS_ASSERT (t0 != NULL);
 
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  flow_hash0 = geneve_compute_flow_hash (
+	    b[0], t0->l3_mode, &is_inner_ip4_0, &is_inner_ip6_0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index1 != vnet_buffer (b[1])->sw_if_index[VLIB_TX])
@@ -148,6 +191,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	  ALWAYS_ASSERT (t1 != NULL);
 
 	  vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+	  flow_hash1 = geneve_compute_flow_hash (
+	    b[1], t1->l3_mode, &is_inner_ip4_1, &is_inner_ip6_1);
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
 	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));
@@ -219,6 +264,14 @@ geneve_encap_inline (vlib_main_t * vm,
 				      sizeof (*ip4_1));
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
+	      if (t0->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp0 + 1), is_inner_ip4_0,
+		  is_inner_ip6_0);
+	      if (t1->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp1 + 1), is_inner_ip4_1,
+		  is_inner_ip6_1);
 	    }
 	  else			/* ipv6 */
 	    {
@@ -268,6 +321,15 @@ geneve_encap_inline (vlib_main_t * vm,
 	      udp1 = (udp_header_t *) (ip6_1 + 1);
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
+
+	      if (t0->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp0 + 1), is_inner_ip4_0,
+		  is_inner_ip6_0);
+	      if (t1->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp1 + 1), is_inner_ip4_1,
+		  is_inner_ip6_1);
 
 	      /* IPv6 UDP checksum is mandatory */
 	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0],
@@ -350,7 +412,7 @@ geneve_encap_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  u32 flow_hash0;
+	  u32 flow_hash0 = 0;
 	  u32 len0;
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
@@ -359,6 +421,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	  u32 *copy_src_last0, *copy_dst_last0;
 	  u16 new_l0;
 	  ip_csum_t sum0;
+	  u8 is_inner_ip4_0 = 0, is_inner_ip6_0 = 0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -366,8 +429,6 @@ geneve_encap_inline (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-
-	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
@@ -382,6 +443,8 @@ geneve_encap_inline (vlib_main_t * vm,
 	  ALWAYS_ASSERT (t0 != NULL);
 
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  flow_hash0 = geneve_compute_flow_hash (
+	    b[0], t0->l3_mode, &is_inner_ip4_0, &is_inner_ip6_0);
 
 	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
 	  vlib_buffer_advance (b[0], -(word) _vec_len (t0->rewrite));
@@ -427,6 +490,10 @@ geneve_encap_inline (vlib_main_t * vm,
 				      sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
+	      if (t0->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp0 + 1), is_inner_ip4_0,
+		  is_inner_ip6_0);
 	    }
 
 	  else			/* ip6 path */
@@ -461,6 +528,10 @@ geneve_encap_inline (vlib_main_t * vm,
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
 
+	      if (t0->l3_mode)
+		geneve_l3_mode_set_protocol_type (
+		  (geneve_header_t *) (udp0 + 1), is_inner_ip4_0,
+		  is_inner_ip6_0);
 	      /* IPv6 UDP checksum is mandatory */
 	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b[0],
 								  ip6_0,

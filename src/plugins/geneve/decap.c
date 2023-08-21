@@ -66,6 +66,16 @@ validate_geneve_fib (vlib_buffer_t * b, geneve_tunnel_t * t, u32 is_ip4)
   return (fib_index == t->encap_fib_index);
 }
 
+always_inline u32
+geneve_decap_l3_mode_set_next_node (u16 inner_proto0)
+{
+  if (inner_proto0 == GENEVE_IP4_PROTOCOL)
+    return GENEVE_INPUT_NEXT_IP4_INPUT;
+  else if (inner_proto0 == GENEVE_IP6_PROTOCOL)
+    return GENEVE_INPUT_NEXT_IP6_INPUT;
+  return ~0;
+}
+
 always_inline uword
 geneve_input (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
@@ -116,6 +126,7 @@ geneve_input (vlib_main_t * vm,
 	  geneve6_tunnel_key_t key6_0, key6_1;
 	  u32 error0, error1;
 	  u32 sw_if_index0, sw_if_index1, len0, len1;
+	  u16 inner_proto0, inner_proto1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -145,6 +156,8 @@ geneve_input (vlib_main_t * vm,
 
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
 	  vnet_geneve_hdr_1word_ntoh (geneve1);
+	  inner_proto0 = vnet_get_geneve_protocol (geneve0);
+	  inner_proto1 = vnet_get_geneve_protocol (geneve1);
 
 	  if (is_ip4)
 	    {
@@ -317,7 +330,10 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next0:
-	  next0 = t0->decap_next_index;
+	  if (t0->l3_mode)
+	    next0 = geneve_decap_l3_mode_set_next_node (inner_proto0);
+	  else
+	    next0 = t0->decap_next_index;
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -486,7 +502,10 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next1:
-	  next1 = t1->decap_next_index;
+	  if (t1->l3_mode)
+	    next1 = geneve_decap_l3_mode_set_next_node (inner_proto1);
+	  else
+	    next1 = t1->decap_next_index;
 	  sw_if_index1 = t1->sw_if_index;
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -551,6 +570,7 @@ geneve_input (vlib_main_t * vm,
 	  geneve6_tunnel_key_t key6_0;
 	  u32 error0;
 	  u32 sw_if_index0, len0;
+	  u16 inner_proto0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -565,6 +585,7 @@ geneve_input (vlib_main_t * vm,
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
 	  vnet_geneve_hdr_1word_ntoh (geneve0);
+	  inner_proto0 = vnet_get_geneve_protocol (geneve0);
 
 	  if (is_ip4)
 	    {
@@ -722,7 +743,10 @@ geneve_input (vlib_main_t * vm,
 	    }
 
 	next00:
-	  next0 = t0->decap_next_index;
+	  if (t0->l3_mode)
+	    next0 = geneve_decap_l3_mode_set_next_node (inner_proto0);
+	  else
+	    next0 = t0->decap_next_index;
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 

@@ -97,6 +97,8 @@ typedef struct
 
 #define GENEVE_VERSION 0
 #define GENEVE_ETH_PROTOCOL 0x6558
+#define GENEVE_IP4_PROTOCOL 0x800
+#define GENEVE_IP6_PROTOCOL 0x86dd
 
 typedef struct
 {
