@@ -61,6 +61,9 @@ format_decap_next (u8 * s, va_list * args)
       return format (s, "drop");
     case GENEVE_INPUT_NEXT_L2_INPUT:
       return format (s, "l2");
+    case GENEVE_INPUT_NEXT_IP4_INPUT:
+    case GENEVE_INPUT_NEXT_IP6_INPUT:
+      return format (s, "l3");
     default:
       return format (s, "index %d", next_index);
     }
@@ -135,6 +138,7 @@ format_geneve_header_with_length (u8 * s, va_list * args)
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (geneve_hw_class) = {
   .name = "GENEVE",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
   .format_header = format_geneve_header_with_length,
   .build_rewrite = default_build_rewrite,
 };
@@ -233,7 +237,7 @@ _(remote)					\
 _(l3_mode)
 
 static int
-geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
+geneve_rewrite (geneve_tunnel_t *t, bool is_ip6, bool is_l3)
 {
   union
   {
@@ -293,7 +297,16 @@ geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
 #endif
   vnet_set_geneve_oamframe_bit (geneve, 0);
   vnet_set_geneve_critical_bit (geneve, 0);
-  vnet_set_geneve_protocol (geneve, GENEVE_ETH_PROTOCOL);
+
+  if (is_l3)
+    {
+      if (is_ip6)
+	vnet_set_geneve_protocol (geneve, GENEVE_IP6_PROTOCOL);
+      else
+	vnet_set_geneve_protocol (geneve, GENEVE_IP4_PROTOCOL);
+    }
+  else
+    vnet_set_geneve_protocol (geneve, GENEVE_ETH_PROTOCOL);
 
   vnet_geneve_hdr_1word_hton (geneve);
 
@@ -372,6 +385,7 @@ int vnet_geneve_add_del_tunnel
   geneve4_tunnel_key_t key4;
   geneve6_tunnel_key_t key6;
   u32 is_ip6 = a->is_ip6;
+  u32 is_l3 = a->l3_mode;
 
   if (!is_ip6)
     {
@@ -396,7 +410,14 @@ int vnet_geneve_add_del_tunnel
 
       /*if not set explicitly, default to l2 */
       if (a->decap_next_index == ~0)
-	a->decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
+	{
+	  if (is_l3 == 0)
+	    a->decap_next_index = GENEVE_INPUT_NEXT_L2_INPUT;
+	  else if (is_ip6)
+	    a->decap_next_index = GENEVE_INPUT_NEXT_IP6_INPUT;
+	  else
+	    a->decap_next_index = GENEVE_INPUT_NEXT_IP4_INPUT;
+	}
       if (!geneve_decap_next_is_valid (vxm, is_ip6, a->decap_next_index))
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
@@ -408,7 +429,7 @@ int vnet_geneve_add_del_tunnel
       foreach_copy_field;
 #undef _
 
-      rv = geneve_rewrite (t, is_ip6);
+      rv = geneve_rewrite (t, is_ip6, is_l3);
       if (rv)
 	{
 	  pool_put (vxm->tunnels, t);
@@ -423,7 +444,7 @@ int vnet_geneve_add_del_tunnel
 	hash_set (vxm->geneve4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
 
       vnet_hw_interface_t *hi;
-      if (a->l3_mode)
+      if (!is_l3)
 	{
 	  vnet_eth_interface_registration_t eir = {};
 	  u32 t_idx = t - vxm->tunnels;
@@ -456,11 +477,13 @@ int vnet_geneve_add_del_tunnel
 			       ~0);
       vxm->tunnel_index_by_sw_if_index[sw_if_index] = t - vxm->tunnels;
 
-      /* setup l2 input config with l2 feature and bd 0 to drop packet */
-      vec_validate (l2im->configs, sw_if_index);
-      l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
-      l2im->configs[sw_if_index].bd_index = 0;
-
+      if (is_l3 == 0)
+	{
+	  /* setup l2 input config with l2 feature and bd 0 to drop packet */
+	  vec_validate (l2im->configs, sw_if_index);
+	  l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
+	  l2im->configs[sw_if_index].bd_index = 0;
+	}
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
       si->flags &= ~VNET_SW_INTERFACE_FLAG_HIDDEN;
       vnet_sw_interface_set_flags (vnm, sw_if_index,
@@ -572,12 +595,13 @@ int vnet_geneve_add_del_tunnel
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, t->sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
 
-      /* make sure tunnel is removed from l2 bd or xconnect */
-      set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
-		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
-
-      if (t->l3_mode)
-	ethernet_delete_interface (vnm, t->hw_if_index);
+      if (!is_l3)
+	{
+	  /* make sure tunnel is removed from l2 bd or xconnect */
+	  set_int_l2_mode (vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0,
+			   L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  ethernet_delete_interface (vnm, t->hw_if_index);
+	}
       else
 	vnet_delete_hw_interface (vnm, t->hw_if_index);
 
@@ -644,6 +668,13 @@ unformat_decap_next (unformat_input_t * input, va_list * args)
 
   if (unformat (input, "l2"))
     *result = GENEVE_INPUT_NEXT_L2_INPUT;
+  else if (unformat (input, "l3"))
+    {
+      if (ipv4_set)
+	*result = GENEVE_INPUT_NEXT_IP4_INPUT;
+      else
+	*result = GENEVE_INPUT_NEXT_IP6_INPUT;
+    }
   else if (unformat (input, "node %U", unformat_vlib_node, vm, &node_index))
     *result = get_decap_next_for_node (node_index, ipv4_set);
   else if (unformat (input, "%d", &tmp))
@@ -882,9 +913,9 @@ done:
 VLIB_CLI_COMMAND (create_geneve_tunnel_command, static) = {
   .path = "create geneve tunnel",
   .short_help =
-  "create geneve tunnel local <local-vtep-addr>"
-  " {remote <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [l3-mode] [del]",
+    "create geneve tunnel local <local-vtep-addr>"
+    " {remote <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
+    " [encap-vrf-id <nn>] [decap-next [l2|l3|node <name>]] [l3-mode] [del]",
   .function = geneve_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */

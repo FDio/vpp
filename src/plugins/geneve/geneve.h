@@ -142,9 +142,11 @@ typedef struct
   u8 l3_mode;
 } geneve_tunnel_t;
 
-#define foreach_geneve_input_next        \
-_(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")
+#define foreach_geneve_input_next                                             \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")                                                    \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")
 
 typedef enum
 {

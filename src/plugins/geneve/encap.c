@@ -116,10 +116,7 @@ geneve_encap_inline (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 	  n_left_from -= 2;
-
-	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
-	  flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
-
+	  flow_hash0 = flow_hash1 = 0;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
@@ -129,6 +126,23 @@ geneve_encap_inline (vlib_main_t * vm,
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
+	      if (t0->l3_mode)
+		{
+		  u8 *data = (u8 *) vlib_buffer_get_current (b[0]);
+		  switch (data[0] & 0xf0)
+		    {
+		    case 0x40:
+		      flow_hash0 = ip4_compute_flow_hash (
+			(ip4_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    case 0x60:
+		      flow_hash0 = ip6_compute_flow_hash (
+			(ip6_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    }
+		}
+	      else
+		flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 	    }
 
 	  ALWAYS_ASSERT (t0 != NULL);
@@ -143,6 +157,23 @@ geneve_encap_inline (vlib_main_t * vm,
 	      t1 = &vxm->tunnels[hi1->dev_instance];
 	      /* Note: change to always set next1 if it may be set to drop */
 	      next1 = t1->next_dpo.dpoi_next_node;
+	      if (t1->l3_mode)
+		{
+		  u8 *data = (u8 *) vlib_buffer_get_current (b[1]);
+		  switch (data[0] & 0xf0)
+		    {
+		    case 0x40:
+		      flow_hash1 = ip4_compute_flow_hash (
+			(ip4_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    case 0x60:
+		      flow_hash1 = ip6_compute_flow_hash (
+			(ip6_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    }
+		}
+	      else
+		flow_hash1 = vnet_l2_compute_flow_hash (b[1]);
 	    }
 
 	  ALWAYS_ASSERT (t1 != NULL);
@@ -350,7 +381,7 @@ geneve_encap_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  u32 flow_hash0;
+	  u32 flow_hash0 = 0;
 	  u32 len0;
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
@@ -367,8 +398,6 @@ geneve_encap_inline (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 
-	  flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
-
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
@@ -377,6 +406,23 @@ geneve_encap_inline (vlib_main_t * vm,
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
+	      if (t0->l3_mode)
+		{
+		  u8 *data = (u8 *) vlib_buffer_get_current (b[0]);
+		  switch (data[0] & 0xf0)
+		    {
+		    case 0x40:
+		      flow_hash0 = ip4_compute_flow_hash (
+			(ip4_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    case 0x60:
+		      flow_hash0 = ip6_compute_flow_hash (
+			(ip6_header_t *) data, IP_FLOW_HASH_DEFAULT);
+		      break;
+		    }
+		}
+	      else
+		flow_hash0 = vnet_l2_compute_flow_hash (b[0]);
 	    }
 
 	  ALWAYS_ASSERT (t0 != NULL);
