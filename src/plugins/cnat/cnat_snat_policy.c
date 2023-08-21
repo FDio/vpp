@@ -342,7 +342,7 @@ cnat_snat_policy_k8s (vlib_buffer_t *b, ip_address_family_t af, ip4_header_t *ip
   return 0;
 }
 
-void
+__clib_export void
 cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
