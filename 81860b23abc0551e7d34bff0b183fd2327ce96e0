@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db30a05e_21c73e8b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-08-22T08:44:57Z",
+      "side": 1,
+      "message": "Tested the patch for `sw_interface_ip6nd_ra_details` and message size was calculated correctly.",
+      "revId": "81860b23abc0551e7d34bff0b183fd2327ce96e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
