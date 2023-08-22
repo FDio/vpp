@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2276798_55d53df7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-08-22T14:40:57Z",
+      "side": 1,
+      "message": "Hi Ole,\n\nI think the code looks fine. There is one anomaly that I noticed which would be good to correct before merging the patch - there is a binary file src/plugins/npt66/a.out which I am guessing was included by accident.\n\n-Matt",
+      "revId": "205de15c80ca3f5c586024a7db9f21a8ea36f8b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
