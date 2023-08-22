@@ -54,7 +54,7 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
-ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 PKG=deb
 else ifeq ($(filter rhel centos fedora opensuse-leap rocky,$(OS_ID)),$(OS_ID))
 PKG=rpm
@@ -291,7 +291,7 @@ $(BR)/.deps.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
 	make install-dep
 endif
-ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
@@ -319,7 +319,7 @@ bootstrap:
 
 .PHONY: install-dep
 install-dep:
-ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
