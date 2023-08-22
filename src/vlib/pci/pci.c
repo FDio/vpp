@@ -302,7 +302,7 @@ _vlib_pci_link_speed (u8 *s, u8 speed, u8 width)
     [1] = "2.5", [2] = "5.0", [3] = "8.0", [4] = "16.0", [5] = "32.0"
   };
 
-  if (speed > ARRAY_LEN (speeds) || speeds[speed] == 0)
+  if (speed >= ARRAY_LEN (speeds) || speeds[speed] == 0)
     s = format (s, "unknown speed");
   else
     s = format (s, "%s GT/s", speeds[speed]);
