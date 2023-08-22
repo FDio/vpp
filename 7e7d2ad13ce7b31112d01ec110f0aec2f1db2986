@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a944782c_3498f4cd",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2023-08-22T17:00:04Z",
+      "side": 1,
+      "message": "nit: typo s/compatiable/compatible",
+      "range": {
+        "startLine": 12,
+        "startChar": 39,
+        "endLine": 12,
+        "endChar": 51
+      },
+      "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0fc2b6c_7c03ff48",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2023-08-22T17:00:04Z",
+      "side": 1,
+      "message": "This change looks like its mostly just changing names, but I question whether it will compile/work with versions of the intel-ipsec-mb \u003c 1.4, and whether we want to maintain compatibility.",
+      "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92e05129_65843f8b",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2023-08-22T17:00:04Z",
+      "side": 1,
+      "message": "Suspect this won\u0027t compile with versions of intel-ipsec-mb \u003c 1.4, right?\n\nDo we need the following?\n\n#if IMB_VERSION_NUM \u003c IMB_VERSION(1, 4, 0)\n#define IMB_SHA_512_BLOCK_SIZE SHA_512_BLOCK_SIZE\n#endif",
+      "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
