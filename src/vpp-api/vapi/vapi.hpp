@@ -660,10 +660,11 @@ class Request : public Common_req
 {
 public:
   Request (Connection &con, Args... args,
-           std::function<vapi_error_e (Request<Req, Resp, Args...> &)>
-               callback = nullptr)
-      : Common_req{con}, callback{callback},
-        request{con, vapi_alloc<Req> (con, args...)}, response{con, nullptr}
+	   std::function<vapi_error_e (Request<Req, Resp, Args...> &)>
+	     callback = nullptr)
+      : Common_req{ con }, callback{ std::move (callback) },
+	request{ con, vapi_alloc<Req> (con, args...) }, response{ con,
+								  nullptr }
   {
   }
 
@@ -811,7 +812,7 @@ public:
     std::function<vapi_error_e (Stream<Req, Resp, StreamMessage, Args...> &)>
       cb = nullptr)
       : Common_req{ con }, request{ con, vapi_alloc<Req> (con, args...) },
-	response{ con, nullptr }, result_set{ con }, callback{ cb }
+	response{ con, nullptr }, result_set{ con }, callback{ std::move (cb) }
   {
   }
 
@@ -886,10 +887,10 @@ class Dump : public Common_req
 {
 public:
   Dump (Connection &con, Args... args,
-        std::function<vapi_error_e (Dump<Req, Resp, Args...> &)> callback =
-            nullptr)
-      : Common_req{con}, request{con, vapi_alloc<Req> (con, args...)},
-        result_set{con}, callback{callback}
+	std::function<vapi_error_e (Dump<Req, Resp, Args...> &)> callback =
+	  nullptr)
+      : Common_req{ con }, request{ con, vapi_alloc<Req> (con, args...) },
+	result_set{ con }, callback{ std::move (callback) }
   {
   }
 
@@ -953,9 +954,9 @@ template <typename M> class Event_registration : public Common_req
 {
 public:
   Event_registration (
-      Connection &con,
-      std::function<vapi_error_e (Event_registration<M> &)> callback = nullptr)
-      : Common_req{con}, result_set{con}, callback{callback}
+    Connection &con,
+    std::function<vapi_error_e (Event_registration<M> &)> callback = nullptr)
+      : Common_req{ con }, result_set{ con }, callback{ std::move (callback) }
   {
     if (!con.is_msg_available (M::get_msg_id ()))
       {
