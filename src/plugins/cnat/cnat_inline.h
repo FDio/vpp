@@ -128,7 +128,7 @@ always_inline void
 cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
 {
   if (rw->cts_flags & CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT)
-    cnat_free_port_cb (rw->tuple.port[VLIB_RX], rw->tuple.iproto);
+    cnat_free_port_cb (rw->fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
 }
 
 always_inline void
