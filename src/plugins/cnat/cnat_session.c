@@ -11,7 +11,7 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
-void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
+void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
 {
@@ -159,7 +159,8 @@ cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
-			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af);
+			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
+			      session->key.fib_index);
     }
 
   cnat_timestamp_free (session->value.cs_session_index);
@@ -174,7 +175,8 @@ cnat_session_free (cnat_session_t * session)
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
-			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af);
+			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
+			      session->key.fib_index);
     }
 
   cnat_timestamp_free (session->value.cs_session_index);
@@ -199,14 +201,36 @@ cnat_session_purge (void)
   return (0);
 }
 
+static int
+cnat_reverse_session_key (cnat_session_t *rsession, const cnat_timestamp_t *ts,
+			  const cnat_session_location_t loc, const cnat_timestamp_direction_t dir,
+			  const cnat_timestamp_direction_t rdir)
+{
+  const cnat_timestamp_rewrite_t *rw, *rrw;
+  u8 rw_index = loc + dir;
+  u8 rrw_index = loc + rdir;
+  u8 rw_bm = (1 << rw_index) | (1 << rrw_index);
+
+  if ((ts->ts_rw_bm & rw_bm) != rw_bm)
+    return 0;
+
+  rw = &ts->cts_rewrites[rw_index];
+  if (rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT)
+    return 0;
+
+  rrw = &ts->cts_rewrites[rrw_index];
+
+  cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1);
+  rsession->key.fib_index = rrw->fib_index;
+  return 1;
+}
+
 void
 cnat_reverse_session_free (cnat_session_t *session)
 {
   cnat_bihash_kv_t rkey = { 0 }, rvalue;
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
   cnat_timestamp_t *ts;
-  cnat_timestamp_rewrite_t *rw;
-  cnat_5tuple_t *tup = NULL;
   int rv;
 
   ASSERT (session->value.cs_session_index != 0);
@@ -215,32 +239,40 @@ cnat_reverse_session_free (cnat_session_t *session)
 
   /* Go through all the available rewrites for the session we have
    * find the closest to the output or return the input 5tuple */
-  int is_return = session->value.cs_flags & CNAT_SESSION_IS_RETURN ? CNAT_IS_RETURN : 0;
-  if (ts->ts_rw_bm & (1 << (is_return + CNAT_LOCATION_OUTPUT)))
-    {
-      rw = &ts->cts_rewrites[is_return + CNAT_LOCATION_OUTPUT];
-      if (!(rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT))
-	tup = &rw->tuple;
-    }
-  if (tup == NULL && ts->ts_rw_bm & (1 << (is_return + CNAT_LOCATION_FIB)))
-    {
-      rw = &ts->cts_rewrites[is_return + CNAT_LOCATION_FIB];
-      if (!(rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT))
-	tup = &rw->tuple;
-    }
-  if (tup == NULL && ts->ts_rw_bm & (1 << (is_return + CNAT_LOCATION_INPUT)))
-    {
-      rw = &ts->cts_rewrites[is_return + CNAT_LOCATION_INPUT];
-      if (!(rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT))
-	tup = &rw->tuple;
-    }
-  if (tup == NULL)
-    tup = &session->key.cs_5tuple;
 
-  // this computes the input packet for the sibling session (if it exists)
-  cnat_5tuple_copy (&rsession->key.cs_5tuple, tup, 1 /* swap */);
+  /* 1st determine directions to use */
+  cnat_timestamp_direction_t dir, rdir;
+  if (session->value.cs_flags & CNAT_SESSION_IS_RETURN)
+    {
+      dir = CNAT_IS_RETURN;
+      rdir = CNAT_IS_FWD;
+    }
+  else
+    {
+      dir = CNAT_IS_FWD;
+      rdir = CNAT_IS_RETURN;
+    }
+
+  /* try to find the right rewrite: INPUT > FIB > OUTPUT */
+  if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_INPUT, dir, rdir))
+    ;
+  else if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_FIB, dir, rdir))
+    ;
+  else if (cnat_reverse_session_key (rsession, ts, CNAT_LOCATION_OUTPUT, dir, rdir))
+    ;
+  else
+    {
+      /* nothing found, try to just swap the 5tuple... */
+      cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
+      rsession->key.fib_index = session->key.fib_index;
+    }
+
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
-    return;
+    {
+      ASSERT (0 && "same session");
+      return;
+    }
+
   rv = cnat_bihash_search_i2 (&cnat_session_db, &rkey, &rvalue);
   if (!rv)
     {

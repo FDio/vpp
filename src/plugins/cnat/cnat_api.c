@@ -179,7 +179,7 @@ vl_api_cnat_translation_del_t_handler (vl_api_cnat_translation_del_t * mp)
   vl_api_cnat_translation_del_reply_t *rmp;
   int rv;
 
-  rv = cnat_translation_delete (ntohl (mp->id));
+  rv = cnat_translation_delete (ntohl (mp->id), CNAT_FIB_TABLE);
 
   REPLY_MACRO (VL_API_CNAT_TRANSLATION_DEL_REPLY);
 }
@@ -306,15 +306,20 @@ vl_api_cnat_get_snat_addresses_t_handler (vl_api_cnat_get_snat_addresses_t
 					  * mp)
 {
   vl_api_cnat_get_snat_addresses_reply_t *rmp;
-  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
-  int rv = 0;
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get_default ();
+  int rv = cpe ? 0 : VNET_API_ERROR_FEATURE_DISABLED;
 
+  /* clang-format off */
   REPLY_MACRO2 (
     VL_API_CNAT_GET_SNAT_ADDRESSES_REPLY, ({
-      ip6_address_encode (&ip_addr_v6 (&cpm->snat_ip6.ce_ip), rmp->snat_ip6);
-      ip4_address_encode (&ip_addr_v4 (&cpm->snat_ip4.ce_ip), rmp->snat_ip4);
-      rmp->sw_if_index = clib_host_to_net_u32 (cpm->snat_ip6.ce_sw_if_index);
+      if (cpe)
+        {
+	  ip6_address_encode (&ip_addr_v6 (&cpe->snat_ip6.ce_ip), rmp->snat_ip6);
+	  ip4_address_encode (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), rmp->snat_ip4);
+	  rmp->sw_if_index = clib_host_to_net_u32 (cpe->snat_ip6.ce_sw_if_index);
+	}
     }));
+  /* clang-format on */
 }
 
 static void
@@ -325,12 +330,12 @@ vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t
   u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
   ip4_address_t ip4;
   ip6_address_t ip6;
-  int rv = 0;
+  int rv;
 
   ip4_address_decode (mp->snat_ip4, &ip4);
   ip6_address_decode (mp->snat_ip6, &ip6);
 
-  cnat_set_snat (&ip4, &ip6, sw_if_index);
+  rv = cnat_set_snat (CNAT_FIB_TABLE, CNAT_FIB_TABLE, &ip4, &ip6, sw_if_index);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_REPLY);
 }

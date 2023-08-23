@@ -232,7 +232,7 @@ cnat_translation_stack (cnat_translation_t * ct)
 }
 
 int
-cnat_translation_delete (u32 id)
+cnat_translation_delete (u32 id, u32 fib_index)
 {
   cnat_translation_t *ct;
   cnat_ep_trk_t *trk;
@@ -248,7 +248,7 @@ cnat_translation_delete (u32 id)
     cnat_tracker_release (trk);
 
   cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
-  cnat_client_translation_deleted (ct->ct_cci);
+  cnat_client_translation_deleted (ct->ct_cci, fib_index);
   cnat_translation_unwatch_addr (id, CNAT_RESOLV_ADDR_ANY);
   pool_put (cnat_translation_pool, ct);
 
@@ -277,7 +277,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   else
     {
       /* do we know of this ep's vip */
-      cci = cnat_client_add (&vip->ce_ip, flags);
+      cci = cnat_client_add (&vip->ce_ip, CNAT_FIB_TABLE, flags);
       cc = cnat_client_get (cci);
 
       ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
@@ -465,7 +465,8 @@ cnat_translation_purge (void)
     vec_add1(trs, tri);
   }
 
-  vec_foreach (trp, trs) cnat_translation_delete (*trp);
+  vec_foreach (trp, trs)
+  cnat_translation_delete (*trp, CNAT_FIB_TABLE);
 
   ASSERT (0 == pool_elts (cnat_translation_pool));
 
@@ -585,7 +586,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   if (INDEX_INVALID == del_index)
     cnat_translation_update (&vip, proto, paths, flags, lb_type, fhc);
   else
-    cnat_translation_delete (del_index);
+    cnat_translation_delete (del_index, CNAT_FIB_TABLE);
 
 done:
   vec_free (paths);
@@ -615,7 +616,7 @@ cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
     {
       ct->ct_vip.ce_flags &= ~CNAT_EP_FLAG_RESOLVED;
       ct->ct_cci = INDEX_INVALID;
-      cnat_client_translation_deleted (ct->ct_cci);
+      cnat_client_translation_deleted (ct->ct_cci, CNAT_FIB_TABLE);
       /* Are there remaining addresses ? */
       if (0 == cnat_resolve_addr (ar->sw_if_index, ar->af, address))
 	is_del = 0;
@@ -623,7 +624,7 @@ cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
 
   if (!is_del)
     {
-      ct->ct_cci = cnat_client_add (address, ct->flags);
+      ct->ct_cci = cnat_client_add (address, CNAT_FIB_TABLE, ct->flags);
       cnat_client_translation_added (ct->ct_cci);
       ip_address_copy (&ct->ct_vip.ce_ip, address);
       ct->ct_vip.ce_flags |= CNAT_EP_FLAG_RESOLVED;

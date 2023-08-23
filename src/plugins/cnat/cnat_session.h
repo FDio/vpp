@@ -36,7 +36,11 @@ typedef struct cnat_session_t_
      */
     cnat_5tuple_t cs_5tuple;
 
-    u16 __cs_pad;
+    u16 __cs_pad1;
+
+    u32 fib_index;
+
+    u32 __cs_pad2;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
@@ -150,5 +154,6 @@ extern void cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque);
 /**
  * Port cleanup callback
  */
-extern void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
+extern void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
+
 #endif
