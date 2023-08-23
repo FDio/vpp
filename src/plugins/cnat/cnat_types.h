@@ -218,6 +218,8 @@ typedef struct cnat_timestamp_rewrite_t_
    */
   u32 cts_dpoi_next_node;
 
+  u32 fib_index;
+
   cnat_cksum_diff_t cksum;
 
   u8 cts_flags;
