@@ -288,6 +288,10 @@ vl_socket_read_ready (clib_file_t * uf)
     }
 
   rp = vl_socket_get_registration (reg_index);
+  if (!rp)
+    {
+      return 0;
+    }
 
   /* Ignore unprocessed_input for now, n describes input_buffer for now. */
   n = read (uf->file_descriptor, socket_main.input_buffer,
