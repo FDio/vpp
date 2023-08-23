@@ -126,7 +126,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
-      cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id);
+      cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, CNAT_FIB_TABLE);
     }
 
   return rw;

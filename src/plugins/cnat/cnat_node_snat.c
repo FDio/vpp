@@ -4,6 +4,8 @@
  */
 
 #include <vlibmemory/api.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
 #include <cnat/cnat_node.h>
 #include <cnat/cnat_snat_policy.h>
 #include <cnat/cnat_inline.h>
@@ -22,7 +24,6 @@ static_always_inline cnat_timestamp_rewrite_t *
 cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
 				   cnat_timestamp_t *ts)
 {
-  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   cnat_timestamp_rewrite_t *rw = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
@@ -44,10 +45,15 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
       udp0 = (udp_header_t *) (ip6 + 1);
     }
 
-  if (!cpm->snat_policy)
+  u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get (af, fwd_fib_index);
+  if (!cpe)
+    return 0; /* no policy for this vrf */
+
+  if (!cpe->snat_policy)
     return (NULL);
 
-  do_snat = cpm->snat_policy (b, af, ip4, ip6, iproto, udp0);
+  do_snat = cpe->snat_policy (b, af, ip4, ip6, iproto, udp0);
   if (!do_snat)
     return (NULL);
 
@@ -66,27 +72,27 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 
   if (AF_IP4 == af)
     {
-      if (!(cpm->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
+      if (!(cpe->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	{
 	  rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	  return (rw);
 	}
 
-      rw->tuple.ip4[VLIB_RX].as_u32 = ip_addr_v4 (&cpm->snat_ip4.ce_ip).as_u32;
+      rw->tuple.ip4[VLIB_RX].as_u32 = ip_addr_v4 (&cpe->snat_ip4.ce_ip).as_u32;
     }
   else
     {
-      if (!(cpm->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
+      if (!(cpe->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	{
 	  rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	  return (rw);
 	}
 
-      ip6_address_copy (&rw->tuple.ip6[VLIB_RX], &ip_addr_v6 (&cpm->snat_ip6.ce_ip));
+      ip6_address_copy (&rw->tuple.ip6[VLIB_RX], &ip_addr_v6 (&cpe->snat_ip6.ce_ip));
     }
 
   sport = 0;
-  rv = cnat_allocate_port (&sport, iproto);
+  rv = cnat_allocate_port (fwd_fib_index, &sport, iproto);
   if (rv)
     {
       vlib_node_increment_counter (vm, cnat_snat_ip4_node.index, CNAT_ERROR_EXHAUSTED_PORTS, 1);
@@ -97,6 +103,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
+  rw->fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in FIB
@@ -108,13 +115,14 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 
   rrw->cts_lbi = (u32) ~0;
   rrw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_LOOKUP;
+  u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
+  rrw->fib_index = ret_fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
-  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id);
-
+  cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index);
   return (rw);
 }
 

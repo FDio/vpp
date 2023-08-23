@@ -43,12 +43,16 @@ typedef struct cnat_src_policy_main_
   cnat_vip_source_policy_t default_policy;
 
   /* Per proto source ports allocator for snat */
-  cnat_src_port_allocator_t *src_ports;
+  cnat_src_port_allocator_t (*src_ports)[CNAT_N_SPORT_PROTO];
 } cnat_src_policy_main_t;
 
 extern cnat_src_policy_main_t cnat_src_policy_main;
 
 void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
-int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
-void cnat_free_port (u16 port, ip_protocol_t iproto);
+int cnat_allocate_port (u32 fib_index, u16 *port, ip_protocol_t iproto);
+void cnat_free_port (u32 fib_index, u16 port, ip_protocol_t iproto);
+
+void cnat_init_port_allocator (u32 fib_index);
+void cnat_free_port_allocator (u32 fib_index);
+
 #endif

@@ -199,7 +199,7 @@ extern u32 cnat_translation_update (cnat_endpoint_t *vip,
  *
  * @param id the ID as returned from the create
  */
-extern int cnat_translation_delete (u32 id);
+extern int cnat_translation_delete (u32 id, u32 fib_index);
 
 /**
  * Callback function invoked during a walk of all translations

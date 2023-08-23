@@ -48,7 +48,7 @@ typedef enum cnat_snat_policy_type_t_
   CNAT_SNAT_POLICY_K8S = 2,
 } cnat_snat_policy_type_t;
 
-typedef struct cnat_snat_policy_main_t_
+typedef struct cnat_snat_policy_entry_t_
 {
   /* Longest prefix Match table for source NATing */
   cnat_snat_exclude_pfx_table_t excluded_pfx;
@@ -65,12 +65,23 @@ typedef struct cnat_snat_policy_main_t_
   /* Ip6 Address to use for source NATing */
   cnat_endpoint_t snat_ip6;
 
+  u32 cti;
+
+  u32 ret_fib_index4;
+  u32 ret_fib_index6;
+} cnat_snat_policy_entry_t;
+
+typedef struct cnat_snat_policy_main_t_
+{
+  cnat_snat_policy_entry_t *snat_policies_pool;
+  u32 *snat_policy_per_fwd_fib_index4;
+  u32 *snat_policy_per_fwd_fib_index6;
 } cnat_snat_policy_main_t;
 
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
 
-extern void cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6,
-			   u32 sw_if_index);
+extern int cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
+			  const ip6_address_t *ip6, u32 sw_if_index);
 extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
 extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);
 extern int cnat_set_snat_policy (cnat_snat_policy_type_t policy);
@@ -78,4 +89,21 @@ extern int cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
 					cnat_snat_interface_map_type_t table);
 
 int cnat_search_snat_prefix (ip46_address_t *addr, ip_address_family_t af);
+
+static_always_inline cnat_snat_policy_entry_t *
+cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_fib_index)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+  u32 *cp_fwd_fib_index =
+    AF_IP4 == af ? cpm->snat_policy_per_fwd_fib_index4 : cpm->snat_policy_per_fwd_fib_index6;
+  if (fwd_fib_index >= vec_len (cp_fwd_fib_index))
+    return 0;
+  u32 cpe_index = vec_elt (cp_fwd_fib_index, fwd_fib_index);
+  if (~0 == cpe_index)
+    return 0;
+  return pool_elt_at_index (cpm->snat_policies_pool, cpe_index);
+}
+
+cnat_snat_policy_entry_t *cnat_snat_policy_entry_get_default (void);
+
 #endif

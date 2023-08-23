@@ -7,7 +7,7 @@
 #define __CNAT_CLIENT_H__
 
 #include <cnat/cnat_types.h>
-#include <vppinfra/bihash_16_8.h>
+#include <vppinfra/bihash_24_8.h>
 
 /**
  * A client is a representation of an IP address behind the NAT.
@@ -73,10 +73,11 @@ typedef struct cnat_client_t_
 typedef struct cnat_client_learn_args_t_
 {
   ip_address_t addr;
+  u32 fib_index;
 } cnat_client_learn_args_t;
 
 extern u8 *format_cnat_client (u8 * s, va_list * args);
-extern void cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af);
+extern void cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af, u32 fib_index);
 
 extern cnat_client_t *cnat_client_pool;
 extern dpo_type_t cnat_client_dpo;
@@ -90,7 +91,7 @@ cnat_client_get (index_t i)
 /**
  * A translation that references this VIP was deleted
  */
-extern void cnat_client_translation_deleted (index_t cci);
+extern void cnat_client_translation_deleted (index_t cci, u32 fib_index);
 
 /**
  * A translation that references this VIP was added
@@ -100,9 +101,9 @@ extern void cnat_client_translation_added (index_t cci);
  * Called in the main thread by RPC from the workers to learn a
  * new client
  */
-extern void cnat_client_learn (const ip_address_t *addr);
+extern void cnat_client_learn (const cnat_client_learn_args_t *args);
 
-extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
+extern index_t cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags);
 
 /**
  * Check all the clients were purged by translation & session purge
@@ -116,7 +117,7 @@ extern void cnat_client_throttle_pool_process ();
  */
 typedef struct cnat_client_db_t_
 {
-  clib_bihash_16_8_t cc_ip_id_hash;
+  clib_bihash_24_8_t cc_ip_id_hash;
   /* Pool of addresses that have been throttled
      and need to be refcounted before calling
      cnat_client_free_by_ip */
@@ -130,14 +131,15 @@ extern cnat_client_db_t cnat_client_db;
  * Find a client from an IP4 address
  */
 static_always_inline cnat_client_t *
-cnat_client_ip4_find (const ip4_address_t * ip)
+cnat_client_ip4_find (const ip4_address_t *ip, u32 fib_index)
 {
-  clib_bihash_kv_16_8_t bkey, bval;
+  clib_bihash_kv_24_8_t bkey, bval;
 
   bkey.key[0] = ip->as_u32;
   bkey.key[1] = 0;
+  bkey.key[2] = fib_index;
 
-  if (clib_bihash_search_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
+  if (clib_bihash_search_24_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
     return (NULL);
 
   return (pool_elt_at_index (cnat_client_pool, bval.value));
@@ -147,14 +149,15 @@ cnat_client_ip4_find (const ip4_address_t * ip)
  * Find a client from an IP6 address
  */
 static_always_inline cnat_client_t *
-cnat_client_ip6_find (const ip6_address_t * ip)
+cnat_client_ip6_find (const ip6_address_t *ip, u32 fib_index)
 {
-  clib_bihash_kv_16_8_t bkey, bval;
+  clib_bihash_kv_24_8_t bkey, bval;
 
   bkey.key[0] = ip->as_u64[0];
   bkey.key[1] = ip->as_u64[1];
+  bkey.key[2] = fib_index;
 
-  if (clib_bihash_search_16_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
+  if (clib_bihash_search_24_8 (&cnat_client_db.cc_ip_id_hash, &bkey, &bval))
     return (NULL);
 
   return (pool_elt_at_index (cnat_client_pool, bval.value));
