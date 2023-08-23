@@ -821,8 +821,12 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   for (i = 1; i < vcm->n_workers; i++)
     {
       wrk = &vcm->workers[i];
-      pthread_create (&wrk->thread_handle, NULL, vtc_worker_loop,
-		      (void *) wrk);
+      if (pthread_create (&wrk->thread_handle, NULL, vtc_worker_loop,
+			  (void *) wrk))
+	{
+	  vtwrn ("pthread_create failed -- aborting!");
+	  return;
+	}
     }
   vtc_worker_loop (&vcm->workers[0]);
 
