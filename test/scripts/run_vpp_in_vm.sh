@@ -171,7 +171,7 @@ _EOF_
                  -nodefaults \
                  -name test_$(basename $INIT) \
                  -chardev stdio,mux=on,id=char0 \
-                 -mon chardev=char0,mode=readline,pretty=on \
+                 -mon chardev=char0,mode=readline \
                  -serial chardev:char0 \
                  -machine pc,accel=kvm,usb=off,mem-merge=off \
                  -cpu host \
