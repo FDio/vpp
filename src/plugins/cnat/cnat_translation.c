@@ -281,7 +281,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
   else
     {
       /* do we know of this ep's vip */
-      cci = cnat_client_add (&vip->ce_ip, flags);
+      cci = cnat_client_add (&vip->ce_ip, CNAT_FIB_TABLE, flags);
       cc = cnat_client_get (cci);
 
       ct = cnat_find_translation (cc->parent_cci, vip->ce_port, proto);
@@ -619,7 +619,7 @@ cnat_if_addr_add_del_translation_cb (addr_resolution_t * ar,
 
   if (!is_del)
     {
-      ct->ct_cci = cnat_client_add (address, ct->flags);
+      ct->ct_cci = cnat_client_add (address, CNAT_FIB_TABLE, ct->flags);
       cnat_client_translation_added (ct->ct_cci);
       ip_address_copy (&ct->ct_vip.ce_ip, address);
       ct->ct_vip.ce_flags |= CNAT_EP_FLAG_RESOLVED;

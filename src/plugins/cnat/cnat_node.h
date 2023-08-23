@@ -824,7 +824,7 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
  */
 
 static_always_inline void
-cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
+cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 {
   cnat_client_t *cc;
 
@@ -851,6 +851,7 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
     ip46_address_set_ip4 (&cl_args.addr.ip, &rw->tuple.ip4[VLIB_RX]);
   else
     ip46_address_set_ip6 (&cl_args.addr.ip, &rw->tuple.ip6[VLIB_RX]);
+  cl_args.fib_index = ret_fib_index;
 
   /* Throttle */
   clib_spinlock_lock (&cnat_client_db.throttle_lock);
@@ -877,12 +878,13 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id,
+		      u32 ret_fib_index)
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
 
-  cnat_rsession_create_client (rw);
+  cnat_rsession_create_client (rw, ret_fib_index);
 
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);

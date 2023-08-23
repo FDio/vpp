@@ -155,7 +155,7 @@ cnat_client_translation_deleted (index_t cci)
 }
 
 index_t
-cnat_client_add (const ip_address_t * ip, u8 flags)
+cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
 {
   cnat_client_t *cc;
   dpo_id_t tmp = DPO_INVALID;
@@ -198,9 +198,8 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
   fib_flags |= (flags & CNAT_FLAG_EXCLUSIVE) ?
     FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
 
-  fei = fib_table_entry_special_dpo_add (CNAT_FIB_TABLE,
-					 &pfx, cnat_fib_source, fib_flags,
-					 &tmp);
+  fei = fib_table_entry_special_dpo_add (fib_index, &pfx, cnat_fib_source,
+					 fib_flags, &tmp);
 
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cc->cc_fei = fei;
@@ -209,12 +208,12 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
 }
 
 void
-cnat_client_learn (const ip_address_t *addr)
+cnat_client_learn (const cnat_client_learn_args_t *args)
 {
   /* RPC call to add a client from the dataplane */
   index_t cci;
   cnat_client_t *cc;
-  cci = cnat_client_add (addr, 0 /* flags */);
+  cci = cnat_client_add (&args->addr, args->fib_index, 0 /* flags */);
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cnat_client_cnt_session (cc);
   /* Process throttled calls if any */

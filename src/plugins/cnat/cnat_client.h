@@ -83,6 +83,7 @@ typedef struct cnat_client_t_
 typedef struct cnat_client_learn_args_t_
 {
   ip_address_t addr;
+  u32 fib_index;
 } cnat_client_learn_args_t;
 
 extern u8 *format_cnat_client (u8 * s, va_list * args);
@@ -111,9 +112,10 @@ extern void cnat_client_translation_added (index_t cci);
  * Called in the main thread by RPC from the workers to learn a
  * new client
  */
-extern void cnat_client_learn (const ip_address_t *addr);
+extern void cnat_client_learn (const cnat_client_learn_args_t *args);
 
-extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
+extern index_t cnat_client_add (const ip_address_t *ip, u32 fib_index,
+				u8 flags);
 
 /**
  * Check all the clients were purged by translation & session purge
