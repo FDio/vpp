@@ -56,6 +56,24 @@
       "message": "Suspect this won\u0027t compile with versions of intel-ipsec-mb \u003c 1.4, right?\n\nDo we need the following?\n\n#if IMB_VERSION_NUM \u003c IMB_VERSION(1, 4, 0)\n#define IMB_SHA_512_BLOCK_SIZE SHA_512_BLOCK_SIZE\n#endif",
       "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf9b454e_b0d23319",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-08-23T14:38:10Z",
+      "side": 1,
+      "message": "Indeed other changes are breaking backward compatibility. It is possible to preserve it but then further work on this patch is needed.",
+      "parentUuid": "92e05129_65843f8b",
+      "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
