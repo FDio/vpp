@@ -867,13 +867,13 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
  */
 
 static_always_inline void
-cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
+cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 {
   cnat_client_t *cc;
 
   /* is this the first time we've seen this source address */
-  cc = (AF_IP4 == rw->tuple.af ? cnat_client_ip4_find (&rw->tuple.ip4[VLIB_RX]) :
-				 cnat_client_ip6_find (&rw->tuple.ip6[VLIB_RX]));
+  cc = (AF_IP4 == rw->tuple.af ? cnat_client_ip4_find (&rw->tuple.ip4[VLIB_RX], ret_fib_index) :
+				 cnat_client_ip6_find (&rw->tuple.ip6[VLIB_RX], ret_fib_index));
 
   if (cc)
     {
@@ -893,18 +893,19 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
     ip46_address_set_ip4 (&cl_args.addr.ip, &rw->tuple.ip4[VLIB_RX]);
   else
     ip46_address_set_ip6 (&cl_args.addr.ip, &rw->tuple.ip6[VLIB_RX]);
+  cl_args.fib_index = ret_fib_index;
 
   /* Throttle */
   clib_spinlock_lock (&cnat_client_db.throttle_lock);
 
-  p = hash_get_mem (cnat_client_db.throttle_mem, &cl_args.addr);
+  p = hash_get_mem (cnat_client_db.throttle_mem, &cl_args);
   if (p)
     {
       refcnt = p[0] + 1;
-      hash_set_mem (cnat_client_db.throttle_mem, &cl_args.addr, refcnt);
+      hash_set_mem (cnat_client_db.throttle_mem, &cl_args, refcnt);
     }
   else
-    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &cl_args.addr, 0);
+    hash_set_mem_alloc (&cnat_client_db.throttle_mem, &cl_args, 0);
 
   clib_spinlock_unlock (&cnat_client_db.throttle_lock);
 
@@ -918,12 +919,12 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index)
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
 
-  cnat_rsession_create_client (rw);
+  cnat_rsession_create_client (rw, ret_fib_index);
 
   /* For ICMP echo, the echo identifier is a single field mapped to both
    * ports in the 5-tuple. Sync port[VLIB_TX] with port[VLIB_RX] (which
@@ -934,6 +935,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id)
 
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
+  rsession->key.fib_index = ret_fib_index;
 
   rsession->value.cs_session_index = flow_id;
   rsession->value.cs_flags = CNAT_SESSION_FLAG_HAS_CLIENT | CNAT_SESSION_IS_RETURN;
@@ -1002,6 +1004,8 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
   cnat_session_t *session[4];
   u64 hash[4];
   int rv[4];
+  u32 *fib_index_by_sw_if_index =
+    AF_IP4 == af ? ip4_main.fib_index_by_sw_if_index : ip6_main.fib_index_by_sw_if_index;
 
   session[0] = ((cnat_session_t *) &bkey[0]);
   session[1] = ((cnat_session_t *) &bkey[1]);
@@ -1009,10 +1013,10 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
   session[3] = ((cnat_session_t *) &bkey[3]);
 
   /* this never changes */
-  session[0]->key.__cs_pad = 0;
-  session[1]->key.__cs_pad = 0;
-  session[2]->key.__cs_pad = 0;
-  session[3]->key.__cs_pad = 0;
+  session[0]->key.__cs_pad1 = session[0]->key.__cs_pad2 = 0;
+  session[1]->key.__cs_pad1 = session[1]->key.__cs_pad2 = 0;
+  session[2]->key.__cs_pad1 = session[2]->key.__cs_pad2 = 0;
+  session[3]->key.__cs_pad1 = session[3]->key.__cs_pad2 = 0;
 
   /* Kickstart our state */
   if (n_left >= 4)
@@ -1021,6 +1025,16 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       cnat_make_buffer_5tuple (b[1], af, (cnat_5tuple_t *) &bkey[1], 0, 0);
       cnat_make_buffer_5tuple (b[2], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
       cnat_make_buffer_5tuple (b[3], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
+
+      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
+      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[1]);
+      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[2]);
+      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[3]);
+
+      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
+      session[1]->key.fib_index = vnet_buffer (b[1])->ip.fib_index;
+      session[2]->key.fib_index = vnet_buffer (b[2])->ip.fib_index;
+      session[3]->key.fib_index = vnet_buffer (b[3])->ip.fib_index;
 
       hash[0] = cnat_bihash_hash (&bkey[0]);
       hash[1] = cnat_bihash_hash (&bkey[1]);
@@ -1072,6 +1086,16 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 	  cnat_make_buffer_5tuple (b[6], af, (cnat_5tuple_t *) &bkey[2], 0, 0);
 	  cnat_make_buffer_5tuple (b[7], af, (cnat_5tuple_t *) &bkey[3], 0, 0);
 
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[4]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[5]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[6]);
+	  ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[7]);
+
+	  session[0]->key.fib_index = vnet_buffer (b[4])->ip.fib_index;
+	  session[1]->key.fib_index = vnet_buffer (b[5])->ip.fib_index;
+	  session[2]->key.fib_index = vnet_buffer (b[6])->ip.fib_index;
+	  session[3]->key.fib_index = vnet_buffer (b[7])->ip.fib_index;
+
 	  hash[0] = cnat_bihash_hash (&bkey[0]);
 	  hash[1] = cnat_bihash_hash (&bkey[1]);
 	  hash[2] = cnat_bihash_hash (&bkey[2]);
@@ -1118,6 +1142,8 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 	vnet_feature_next_u16 (&next[0], b[0]);
 
       cnat_make_buffer_5tuple (b[0], af, (cnat_5tuple_t *) &bkey[0], 0, 0);
+      ip_lookup_set_buffer_fib_index (fib_index_by_sw_if_index, b[0]);
+      session[0]->key.fib_index = vnet_buffer (b[0])->ip.fib_index;
       hash[0] = cnat_bihash_hash (&bkey[0]);
 
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0], &bvalue[0]);
