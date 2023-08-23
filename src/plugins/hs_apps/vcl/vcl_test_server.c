@@ -862,6 +862,8 @@ main (int argc, char **argv)
       vsm->workers[i].wrk_index = i;
       rv = pthread_create (&vsm->workers[i].thread_handle, NULL,
 			   vts_worker_loop, (void *) &vsm->workers[i]);
+      if (rv)
+	vtfail ("pthread_create()", rv);
     }
 
   vts_worker_loop (&vsm->workers[0]);
