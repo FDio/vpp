@@ -46,7 +46,11 @@ typedef struct cnat_session_t_
      */
     cnat_5tuple_t cs_5tuple;
 
-    u16 __cs_pad;
+    u16 __cs_pad1;
+
+    u32 fib_index;
+
+    u32 __cs_pad2;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp

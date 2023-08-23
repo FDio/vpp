@@ -173,7 +173,8 @@ cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
 			      &session->key.cs_5tuple.ip6[VLIB_TX],
-			      session->key.cs_5tuple.af);
+			      session->key.cs_5tuple.af,
+			      session->key.fib_index);
     }
 
   cnat_timestamp_free (session->value.cs_session_index);
@@ -189,7 +190,8 @@ cnat_session_free (cnat_session_t * session)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
 			      &session->key.cs_5tuple.ip6[VLIB_TX],
-			      session->key.cs_5tuple.af);
+			      session->key.cs_5tuple.af,
+			      session->key.fib_index);
     }
 
   cnat_timestamp_free (session->value.cs_session_index);
