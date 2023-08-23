@@ -696,8 +696,8 @@ class TestCNatSourceNAT(CnatCommonTestCase):
 
     def _enable_disable_snat(self, is_enable=True):
         self.vapi.cnat_set_snat_addresses(
-            snat_ip4=self.pg2.remote_hosts[0].ip4,
-            snat_ip6=self.pg2.remote_hosts[0].ip6,
+            snat_ip4=self.pg2.remote_hosts[0].ip4 if is_enable else None,
+            snat_ip6=self.pg2.remote_hosts[0].ip6 if is_enable else None,
             sw_if_index=INVALID_INDEX,
         )
         self.vapi.feature_enable_disable(
@@ -713,21 +713,22 @@ class TestCNatSourceNAT(CnatCommonTestCase):
             sw_if_index=self.pg0.sw_if_index,
         )
 
-        policie_tbls = VppEnum.vl_api_cnat_snat_policy_table_t
-        self.vapi.cnat_set_snat_policy(
-            policy=VppEnum.vl_api_cnat_snat_policies_t.CNAT_POLICY_IF_PFX
-        )
-        for i in self.pg_interfaces:
-            self.vapi.cnat_snat_policy_add_del_if(
-                sw_if_index=i.sw_if_index,
-                is_add=1 if is_enable else 0,
-                table=policie_tbls.CNAT_POLICY_INCLUDE_V6,
+        if is_enable:
+            policie_tbls = VppEnum.vl_api_cnat_snat_policy_table_t
+            self.vapi.cnat_set_snat_policy(
+                policy=VppEnum.vl_api_cnat_snat_policies_t.CNAT_POLICY_IF_PFX
             )
-            self.vapi.cnat_snat_policy_add_del_if(
-                sw_if_index=i.sw_if_index,
-                is_add=1 if is_enable else 0,
-                table=policie_tbls.CNAT_POLICY_INCLUDE_V4,
-            )
+            for i in self.pg_interfaces:
+                self.vapi.cnat_snat_policy_add_del_if(
+                    sw_if_index=i.sw_if_index,
+                    is_add=1 if is_enable else 0,
+                    table=policie_tbls.CNAT_POLICY_INCLUDE_V6,
+                )
+                self.vapi.cnat_snat_policy_add_del_if(
+                    sw_if_index=i.sw_if_index,
+                    is_add=1 if is_enable else 0,
+                    table=policie_tbls.CNAT_POLICY_INCLUDE_V4,
+                )
 
     def setUp(self):
         super(TestCNatSourceNAT, self).setUp()
