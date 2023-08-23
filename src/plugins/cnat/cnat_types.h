@@ -167,7 +167,7 @@ typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
 } cnat_5tuple_t;
 
 static_always_inline void
-cnat_5tuple_copy (cnat_5tuple_t *dst, cnat_5tuple_t *src, u8 swap)
+cnat_5tuple_copy (cnat_5tuple_t *dst, const cnat_5tuple_t *src, u8 swap)
 {
   dst->af = src->af;
   if (src->af == AF_IP4)
@@ -207,6 +207,8 @@ typedef struct cnat_timestamp_rewrite_t_
    * Persist translation->ct_lb.dpoi_next_node
    */
   u32 cts_dpoi_next_node;
+
+  u32 fib_index;
 
   cnat_cksum_diff_t cksum;
 
