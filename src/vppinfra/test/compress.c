@@ -90,8 +90,6 @@ test_clib_compress_u64 (clib_error_t *err)
     }
 
   return err;
-
-  return err;
 }
 
 static clib_error_t *
