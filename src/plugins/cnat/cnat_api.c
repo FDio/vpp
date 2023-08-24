@@ -81,7 +81,7 @@ cnat_endpoint_encode (const cnat_endpoint_t * in,
   if (in->ce_flags & CNAT_EP_FLAG_RESOLVED)
     ip_address_encode2 (&in->ce_ip, &out->addr);
   else
-    clib_memset ((void *) &in->ce_ip, 0, sizeof (in->ce_ip));
+    clib_memset (&out->addr, 0, sizeof (out->addr));
 }
 
 static void
