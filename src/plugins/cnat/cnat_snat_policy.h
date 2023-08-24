@@ -92,7 +92,7 @@ typedef struct cnat_snat_policy_main_t_
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
 
 extern void cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index,
-			   ip4_address_t *ip4, ip6_address_t *ip6,
+			   const ip4_address_t *ip4, const ip6_address_t *ip6,
 			   u32 sw_if_index);
 extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
 extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);

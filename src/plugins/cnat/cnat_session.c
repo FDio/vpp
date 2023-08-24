@@ -21,7 +21,7 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
-void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
+void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
 {
