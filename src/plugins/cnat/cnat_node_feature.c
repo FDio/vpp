@@ -347,8 +347,9 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   cnat_timestamp_rewrite_t *rw = NULL;
   ip_protocol_t iproto;
 
+  u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
   cnat_snat_policy_entry_t *cpe =
-    cnat_snat_policy_entry_get (af, vnet_buffer (b)->ip.fib_index);
+    cnat_snat_policy_entry_get (af, fwd_fib_index);
   if (!cpe)
     return 0; /* no policy for this vrf */
 
@@ -384,6 +385,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u32) ~0;
+  rw->fib_index = (u32) ~0;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
 
@@ -410,7 +412,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
     }
 
   sport = 0;
-  rv = cnat_allocate_port (&sport, iproto);
+  rv = cnat_allocate_port (fwd_fib_index, &sport, iproto);
   if (rv)
     {
       vlib_node_registration_t *node = (AF_IP4 == af) ?
@@ -425,6 +427,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
+  rw->fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in input
@@ -436,6 +439,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 
   rrw->cts_lbi = (u32) ~0;
   rrw->cts_dpoi_next_node = (u32) ~0;
+  rrw->fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */);
 

@@ -16,6 +16,7 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_snat_policy.h>
 #include <cnat/cnat_translation.h>
+#include <cnat/cnat_src_policy.h>
 
 cnat_snat_policy_main_t cnat_snat_policy_main;
 
@@ -481,8 +482,8 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address,
 }
 
 __clib_export void
-cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, ip4_address_t *ip4,
-	       ip6_address_t *ip6, u32 sw_if_index)
+cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
+	       const ip6_address_t *ip6, u32 sw_if_index)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   cnat_snat_policy_entry_t *cpe4, *cpe6, *cpe;
@@ -508,6 +509,7 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, ip4_address_t *ip4,
       cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_SNAT,
 					     cnat_if_addr_add_del_snat_cb);
       cpe->snat_policy = cnat_snat_policy_none;
+      cnat_init_port_allocator (fwd_fib_index);
       index = cpe - cpm->snat_policies_pool;
     }
   else
@@ -526,6 +528,7 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, ip4_address_t *ip4,
       if (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index6))
 	vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) = ~0;
       cnat_snat_policy_entry_cleanup (cpe);
+      cnat_free_port_allocator (fwd_fib_index);
       pool_put_index (cpm->snat_policies_pool, index);
       return;
     }
