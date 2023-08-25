@@ -87,6 +87,21 @@ typedef struct svm_fifo_shr_
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 } svm_fifo_shared_t;
 
+typedef enum svm_fifo_async_op_type_
+{
+  SVM_FIFO_OP_ENQ,
+  SVM_FIFO_OP_ENQ_OOO,
+} svm_fifo_async_op_type_t;
+
+typedef struct svm_fifo_async_op_
+{
+  svm_fifo_async_op_type_t type;
+  u32 len;
+  u32 offset;
+  u32 opaque;
+  u8 *data;
+} svm_fifo_async_op_t;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -99,6 +114,11 @@ typedef struct _svm_fifo
   ooo_segment_t *ooo_segments;	 /**< Pool of ooo segments */
   u32 ooos_list_head;		 /**< Head of out-of-order linked-list */
   u32 ooos_newest;		 /**< Last segment to have been updated */
+
+  svm_fifo_async_op_t *ops;
+  //   svm_fifo_async_op_t *ops_ooo;
+
+  u64 tail_async;
 
   u8 flags;		  /**< fifo flags */
   u8 master_thread_index; /**< session layer thread index */

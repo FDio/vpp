@@ -688,6 +688,16 @@ ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 }
 
 static inline u32
+ooo_segment_offset_prod_async (svm_fifo_t *f, ooo_segment_t *s)
+{
+  u32 tail;
+  /* load-relaxed: producer owned index */
+  tail = f->tail_async != (u64) ~0 ? f->tail_async : f->shr->tail;
+
+  return (s->start - tail);
+}
+
+static inline u32
 ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
 {
   return s->length;
@@ -888,6 +898,11 @@ svm_fifo_set_deq_thresh (svm_fifo_t *f, u32 thresh)
 {
   f->shr->deq_thresh = thresh;
 }
+
+int svm_fifo_enqueue_async (svm_fifo_t *f, svm_fifo_async_op_t *op);
+int svm_fifo_enqueue_with_offset_async (svm_fifo_t *f,
+					svm_fifo_async_op_t *op);
+int svm_fifo_commit_async_ops (svm_fifo_t *f, svm_fifo_async_op_t **cops);
 
 #endif /* __included_ssvm_fifo_h__ */
 

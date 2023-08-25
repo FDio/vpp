@@ -639,7 +639,11 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
     {
       c = f_cptr (f, c->next);
       if (!c || c->enq_rb_index != RBTREE_TNIL_INDEX)
-	break;
+	{
+	  if (f->ooo_enq == 0)
+	    os_panic ();
+	  break;
+	}
 
       c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
 					    pointer_to_uword (c), f_pos_lt);
@@ -773,6 +777,7 @@ svm_fifo_free (svm_fifo_t * f)
     {
       /* ooo data is not allocated on segment heap */
       svm_fifo_free_chunk_lookup (f);
+      vec_free (f->ops);
       clib_mem_free (f);
     }
 }
@@ -1049,6 +1054,209 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 
   return len;
+}
+
+int
+svm_fifo_enqueue_async (svm_fifo_t *f, svm_fifo_async_op_t *op)
+{
+  u32 len, tail, head, free_count;
+  //   svm_fifo_chunk_t *old_tail_c;
+  //   svm_fifo_async_op_t *op;
+
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  tail = f->tail_async != (u64) ~0 ? f->tail_async : tail;
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+
+  if (PREDICT_FALSE (free_count == 0))
+    return SVM_FIFO_EFULL;
+
+  /* number of bytes we're going to copy */
+  len = clib_min (free_count, op->len);
+
+  //   if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))))
+  //     {
+  //       if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
+  // 	{
+  // 	  len = f_chunk_end (f_end_cptr (f)) - tail;
+  // 	  if (!len)
+  // 	    return SVM_FIFO_EGROW;
+  // 	}
+  //     }
+
+  //   old_tail_c = f_tail_cptr (f);
+
+  //   svm_fifo_copy_to_chunk (f, old_tail_c, tail, src, len,
+  //   &f->shr->tail_chunk);
+  op->len = len;
+  vec_add1 (f->ops, *op);
+  //   op->type = SVM_FIFO_OP_ENQ;
+  //   op->src = src;
+  //   op->len = len;
+  //   op->offset = 0;
+
+  tail = tail + len;
+
+  svm_fifo_trace_add (f, head, len, 2);
+
+  /* collect out-of-order segments */
+  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
+    {
+      u32 offset = ooo_segment_try_collect (f, len, &tail);
+      f->ops[vec_len (f->ops) - 1].offset = offset ? offset : ~0;
+      len += offset;
+      //       /* Tail chunk might've changed even if nothing was collected */
+      //       f->shr->tail_chunk =
+      // 	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
+      //       f->ooo_enq = 0;
+    }
+  //   /* store-rel: producer owned index (paired with load-acq in consumer) */
+  //   clib_atomic_store_rel_n (&f->shr->tail, tail);
+  f->tail_async = tail;
+
+  return len;
+}
+
+int
+svm_fifo_enqueue_with_offset_async (svm_fifo_t *f, svm_fifo_async_op_t *op)
+{
+  u32 tail, head, free_count;
+  //   fs_sptr_t last = F_INVALID_CPTR;
+  //   svm_fifo_async_op_t *op;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  tail = f->tail_async != (u64) ~0 ? f->tail_async : tail;
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  /* will this request fit? */
+  if ((op->len + op->offset) > free_count)
+    return SVM_FIFO_EFULL;
+
+  //   enq_pos = tail + offset;
+
+  //   if (f_pos_gt (enq_pos + len, f_chunk_end (f_end_cptr (f))))
+  //     {
+  //       if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, offset + len)))
+  // 	return SVM_FIFO_EGROW;
+  //     }
+
+  //   vec_add1 (f->ops_ooo, *op);
+  vec_add1 (f->ops, *op);
+  //   op->type = SVM_FIFO_OP_ENQ_OOO;
+  //   op->src = src;
+  //   op->len = len;
+  //   op->offset = offset;
+
+  svm_fifo_trace_add (f, op->offset, op->len, 1);
+  ooo_segment_add (f, op->offset, head, tail, op->len);
+
+  //   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
+  //     f_update_ooo_enq (f, enq_pos, enq_pos + len);
+
+  //   svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, src, len, &last);
+  //   if (last != F_INVALID_CPTR)
+  //     f->ooo_enq = f_cptr (f, last);
+
+  return 0;
+}
+
+int
+svm_fifo_commit_async_ops (svm_fifo_t *f, svm_fifo_async_op_t **cops)
+{
+  svm_fifo_chunk_t *old_tail_c;
+  svm_fifo_async_op_t *op;
+  u32 tail, head, enq_pos, opi;
+  fs_sptr_t last = F_INVALID_CPTR;
+
+  if (!vec_len (f->ops))
+    return 0;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  for (opi = 0; opi < vec_len (f->ops); opi++)
+    {
+      op = &f->ops[opi];
+      switch (op->type)
+	{
+	case SVM_FIFO_OP_ENQ:
+	  if (f_pos_gt (tail + op->len, f_chunk_end (f_end_cptr (f))))
+	    {
+	      if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, op->len)))
+		{
+		  u32 len = f_chunk_end (f_end_cptr (f)) - tail;
+		  if (!len)
+		    goto egrow;
+		}
+	    }
+
+	  old_tail_c = f_tail_cptr (f);
+	  svm_fifo_copy_to_chunk (f, old_tail_c, tail, op->data, op->len,
+				  &f->shr->tail_chunk);
+	  tail += op->len;
+	  ASSERT (f_pos_leq (tail, f->tail_async) ||
+		  f->tail_async == (u64) ~0);
+
+	  if (op->offset)
+	    {
+	      tail += op->offset != ~0 ? op->offset : 0;
+	      f->shr->tail_chunk =
+		f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
+	      // XXX removing ooo_enq because holes filled?
+	      //       f->ooo_enq = 0;
+	    }
+	  ASSERT (f_pos_leq (tail, f->tail_async) ||
+		  f->tail_async == (u64) ~0);
+	  break;
+	case SVM_FIFO_OP_ENQ_OOO:
+	  enq_pos = tail + op->offset;
+
+	  if (f_pos_gt (enq_pos + op->len, f_chunk_end (f_end_cptr (f))))
+	    {
+	      if (PREDICT_FALSE (
+		    f_try_chunk_alloc (f, head, tail, op->offset + op->len)))
+		goto egrow;
+	    }
+
+	  if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
+	    f_update_ooo_enq (f, enq_pos, enq_pos + op->len);
+
+	  last = F_INVALID_CPTR;
+	  svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, op->data, op->len,
+				  &last);
+	  if (last != F_INVALID_CPTR)
+	    f->ooo_enq = f_cptr (f, last);
+	  break;
+	}
+    }
+
+  /* store-rel: producer owned index (paired with load-acq in consumer) */
+  ASSERT (f->tail_async == tail);
+  if (f->tail_async != tail && f->tail_async != (u64) ~0)
+    os_panic ();
+  clib_atomic_store_rel_n (&f->shr->tail, tail);
+
+  //   *cops = vec_dup (f->ops);
+  vec_validate (*cops, vec_len (f->ops) - 1);
+  clib_memcpy_fast (*cops, f->ops, sizeof (f->ops[0]) * vec_len (f->ops));
+  vec_set_len (f->ops, 0);
+  f->tail_async = (u64) ~0;
+
+  return 0;
+
+egrow:
+  os_panic ();
+  opi -= 1;
+  *cops = vec_new (svm_fifo_async_op_t, opi);
+  clib_memcpy (cops, f->ops, opi * sizeof (svm_fifo_async_op_t));
+  vec_set_len (f->ops, vec_len (f->ops) - opi);
+
+  return SVM_FIFO_EGROW;
 }
 
 always_inline svm_fifo_chunk_t *
