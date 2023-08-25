@@ -1107,6 +1107,47 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
+static_always_inline void
+cnat_node_select_ip4 (ip4_address_t *dst, const ip4_address_t *src, u32 mask)
+{
+  if ((u32) ~0 == mask)
+    {
+      dst->as_u32 = src->as_u32;
+    }
+  else
+    {
+      ASSERT (0 == (src->as_u32 & mask));
+      u32 addr;
+#ifdef clib_crc32c_uses_intrinsics
+      addr = clib_crc32c ((void *) src, sizeof (*src));
+#else
+      addr = clib_xxhash (src->as_u32);
+#endif
+      dst->as_u32 = src->as_u32 | (addr & mask);
+    }
+}
+
+static_always_inline void
+cnat_node_select_ip6 (ip6_address_t *dst, const ip6_address_t *src, u64 mask)
+{
+  if ((u64) ~0 == mask)
+    {
+      ip6_address_copy (dst, src);
+    }
+  else
+    {
+      ASSERT (0 == (src->as_u64[1] & mask));
+      u64 addr;
+#ifdef clib_crc32c_uses_intrinsics
+      addr = clib_crc32c ((void *) src, sizeof (*src));
+#else
+      addr = clib_xxhash (ip6_address_hash_to_u64 (src));
+#endif
+      dst->as_u64[0] = src->as_u64[0];
+      dst->as_u64[1] = dst->as_u64[1] | (addr & mask);
+    }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
