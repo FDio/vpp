@@ -446,115 +446,6 @@ session_alloc_for_half_open (transport_connection_t *tc)
   return s;
 }
 
-/**
- * Discards bytes from buffer chain
- *
- * It discards n_bytes_to_drop starting at first buffer after chain_b
- */
-always_inline void
-session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
-				     vlib_buffer_t ** chain_b,
-				     u32 n_bytes_to_drop)
-{
-  vlib_buffer_t *next = *chain_b;
-  u32 to_drop = n_bytes_to_drop;
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-  while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
-    {
-      next = vlib_get_buffer (vm, next->next_buffer);
-      if (next->current_length > to_drop)
-	{
-	  vlib_buffer_advance (next, to_drop);
-	  to_drop = 0;
-	}
-      else
-	{
-	  to_drop -= next->current_length;
-	  next->current_length = 0;
-	}
-    }
-  *chain_b = next;
-
-  if (to_drop == 0)
-    b->total_length_not_including_first_buffer -= n_bytes_to_drop;
-}
-
-/**
- * Enqueue buffer chain tail
- */
-always_inline int
-session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
-			    u32 offset, u8 is_in_order)
-{
-  vlib_buffer_t *chain_b;
-  u32 chain_bi, len, diff;
-  vlib_main_t *vm = vlib_get_main ();
-  u8 *data;
-  u32 written = 0;
-  int rv = 0;
-
-  if (is_in_order && offset)
-    {
-      diff = offset - b->current_length;
-      if (diff > b->total_length_not_including_first_buffer)
-	return 0;
-      chain_b = b;
-      session_enqueue_discard_chain_bytes (vm, b, &chain_b, diff);
-      chain_bi = vlib_get_buffer_index (vm, chain_b);
-    }
-  else
-    chain_bi = b->next_buffer;
-
-  do
-    {
-      chain_b = vlib_get_buffer (vm, chain_bi);
-      data = vlib_buffer_get_current (chain_b);
-      len = chain_b->current_length;
-      if (!len)
-	continue;
-      if (is_in_order)
-	{
-	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
-	  if (rv == len)
-	    {
-	      written += rv;
-	    }
-	  else if (rv < len)
-	    {
-	      return (rv > 0) ? (written + rv) : written;
-	    }
-	  else if (rv > len)
-	    {
-	      written += rv;
-
-	      /* written more than what was left in chain */
-	      if (written > b->total_length_not_including_first_buffer)
-		return written;
-
-	      /* drop the bytes that have already been delivered */
-	      session_enqueue_discard_chain_bytes (vm, b, &chain_b, rv - len);
-	    }
-	}
-      else
-	{
-	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
-	  if (rv)
-	    {
-	      clib_warning ("failed to enqueue multi-buffer seg");
-	      return -1;
-	    }
-	  offset += len;
-	}
-    }
-  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	  ? chain_b->next_buffer : 0));
-
-  if (is_in_order)
-    return written;
-
-  return 0;
-}
-
 void
 session_fifo_tuning (session_t * s, svm_fifo_t * f,
 		     session_ft_action_t act, u32 len)
@@ -758,38 +649,53 @@ session_main_flush_enqueue_events (transport_proto_t transport_proto,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 int
-session_enqueue_stream_connection (transport_connection_t * tc,
-				   vlib_buffer_t * b, u32 offset,
+session_enqueue_stream_connection (transport_connection_t *tc,
+				   vlib_buffer_t *b, u32 bi, u32 offset,
 				   u8 queue_event, u8 is_in_order)
 {
   session_t *s;
-  int enqueued = 0, rv, in_order_off;
+  int enqueued = 0, rv;
 
   s = session_get (tc->s_index, tc->thread_index);
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo,
-				   b->current_length,
-				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
-			 && enqueued >= 0))
-	{
-	  in_order_off = enqueued > b->current_length ? enqueued : 0;
-	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
-	  if (rv > 0)
-	    enqueued += rv;
-	}
+      svm_fifo_async_op_t op = {
+	.type = SVM_FIFO_OP_ENQ,
+	.len = b->current_length,
+	.opaque = bi,
+	.data = vlib_buffer_get_current (b),
+      };
+      //       enqueued = svm_fifo_enqueue_async (s->rx_fifo,
+      //       b->current_length, vlib_buffer_get_current (b));
+      enqueued = svm_fifo_enqueue_async (s->rx_fifo, &op);
+      //       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      //                          && enqueued >= 0))
+      //         {
+      //           in_order_off = enqueued > b->current_length ? enqueued : 0;
+      //           rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
+      //           if (rv > 0)
+      //             enqueued += rv;
+      //         }
+
+//       if (vec_len (s->rx_fifo->ops) > 10)
+// 	session_flush_async_ops (s);
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
-					 b->current_length,
-					 vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
-	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
-      /* if something was enqueued, report even this as success for ooo
-       * segment handling */
+      svm_fifo_async_op_t op = { .type = SVM_FIFO_OP_ENQ_OOO,
+				 .len = b->current_length,
+				 .offset = offset,
+				 .opaque = bi,
+				 .data = vlib_buffer_get_current (b) };
+      rv = svm_fifo_enqueue_with_offset_async (s->rx_fifo, &op);
+      //       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
+      //       !rv))
+      // 	session_enqueue_chain_tail (s, b, offset + b->current_length,
+      // 0);
+      //       /* if something was enqueued, report even this as success for
+      //       ooo
+      //        * segment handling */
       return rv;
     }
 

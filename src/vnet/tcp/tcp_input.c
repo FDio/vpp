@@ -1105,13 +1105,13 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 /** Enqueue data for delivery to application */
 static int
 tcp_session_enqueue_data (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
-			  vlib_buffer_t *b, u16 data_len)
+			  vlib_buffer_t *b, u32 bi, u16 data_len)
 {
   int written, error = TCP_ERROR_ENQUEUED;
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
-  written = session_enqueue_stream_connection (&tc->connection, b, 0,
+  written = session_enqueue_stream_connection (&tc->connection, b, bi, 0,
 					       0 /* queue event */, 1);
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
@@ -1163,7 +1163,7 @@ tcp_session_enqueue_data (tcp_worker_ctx_t *wrk, tcp_connection_t *tc,
 
 /** Enqueue out-of-order data */
 static int
-tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
+tcp_session_enqueue_ooo (tcp_connection_t *tc, vlib_buffer_t *b, u32 bi,
 			 u16 data_len)
 {
   session_t *s0;
@@ -1173,10 +1173,9 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (data_len);
 
   /* Enqueue out-of-order data with relative offset */
-  rv = session_enqueue_stream_connection (&tc->connection, b,
-					  vnet_buffer (b)->tcp.seq_number -
-					  tc->rcv_nxt, 0 /* queue event */ ,
-					  0);
+  rv = session_enqueue_stream_connection (
+    &tc->connection, b, bi, vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt,
+    0 /* queue event */, 0);
 
   /* Nothing written */
   if (rv)
@@ -1200,7 +1199,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       newest = svm_fifo_newest_ooo_segment (s0->rx_fifo);
       if (newest)
 	{
-	  offset = ooo_segment_offset_prod (s0->rx_fifo, newest);
+	  //   offset = ooo_segment_offset_prod (s0->rx_fifo, newest);
+	  offset = ooo_segment_offset_prod_async (s0->rx_fifo, newest);
 	  ASSERT (offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
 	  start = tc->rcv_nxt + offset;
 	  end = start + ooo_segment_length (s0->rx_fifo, newest);
@@ -1247,8 +1247,8 @@ tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
  * It handles both in order or out-of-order data.
  */
 static int
-tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-		 vlib_buffer_t * b)
+tcp_segment_rcv (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, vlib_buffer_t *b,
+		 u32 bi)
 {
   u32 error, n_bytes_to_drop, n_data_bytes;
 
@@ -1292,7 +1292,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	}
 
       /* RFC2581: Enqueue and send DUPACK for fast retransmit */
-      error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
+      error = tcp_session_enqueue_ooo (tc, b, bi, n_data_bytes);
       tcp_program_dupack (tc);
       TCP_EVT (TCP_EVT_DUPACK_SENT, tc, vnet_buffer (b)->tcp);
       tc->errors.above_data_wnd += seq_gt (vnet_buffer (b)->tcp.seq_end,
@@ -1304,7 +1304,7 @@ in_order:
 
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
-  error = tcp_session_enqueue_data (wrk, tc, b, n_data_bytes);
+  error = tcp_session_enqueue_data (wrk, tc, b, bi, n_data_bytes);
   tcp_program_ack (tc);
 
 done:
@@ -1406,7 +1406,7 @@ always_inline uword
 tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
 {
-  u32 thread_index = vm->thread_index, n_left_from, *from;
+  u32 thread_index = vm->thread_index, n_left_from, *from, *to_free = 0, *bi;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[TCP_N_ERROR] = { 0 };
@@ -1419,6 +1419,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
+  bi = from;
 
   while (n_left_from > 0)
     {
@@ -1460,7 +1461,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* 7: process the segment text */
       if (vnet_buffer (b[0])->tcp.data_len)
-	error = tcp_segment_rcv (wrk, tc, b[0]);
+	error = tcp_segment_rcv (wrk, tc, b[0], bi[0]);
+      else
+	vec_add1 (to_free, bi[0]);
 
       /* 8: check the FIN bit */
       if (PREDICT_FALSE (tcp_is_fin (th)))
@@ -1471,6 +1474,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       n_left_from -= 1;
       b += 1;
+      bi += 1;
     }
 
   //   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
@@ -1478,7 +1482,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_postponed_rx_events (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, from, frame->n_vectors);
+  //   vlib_buffer_free (vm, from, frame->n_vectors);
+  vlib_buffer_free (vm, to_free, vec_len (to_free));
 
   return frame->n_vectors;
 }
@@ -1970,7 +1975,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (PREDICT_FALSE (vnet_buffer (b[0])->tcp.data_len))
 	{
 	  clib_warning ("rcvd data in syn-sent");
-	  error = tcp_segment_rcv (wrk, new_tc, b[0]);
+	  error = tcp_segment_rcv (wrk, new_tc, b[0], 0 /*XXX*/);
 	  if (error == TCP_ERROR_ACK_OK)
 	    error = TCP_ERROR_SYN_ACKS_RCVD;
 	}
@@ -2344,7 +2349,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	case TCP_STATE_FIN_WAIT_1:
 	case TCP_STATE_FIN_WAIT_2:
 	  if (vnet_buffer (b[0])->tcp.data_len)
-	    error = tcp_segment_rcv (wrk, tc, b[0]);
+	    error = tcp_segment_rcv (wrk, tc, b[0], 0 /* XXX */);
 	  /* Don't accept out of order fins lower */
 	  if (vnet_buffer (b[0])->tcp.seq_end != tc->rcv_nxt)
 	    goto drop;
