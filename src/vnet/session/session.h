@@ -162,6 +162,9 @@ typedef struct session_worker_
 
   session_wrk_stats_t stats;
 
+  u32 *to_free;
+  svm_fifo_async_op_t *cops;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
@@ -488,8 +491,8 @@ uword unformat_transport_connection (unformat_input_t * input,
  * Interface to transport protos
  */
 
-int session_enqueue_stream_connection (transport_connection_t * tc,
-				       vlib_buffer_t * b, u32 offset,
+int session_enqueue_stream_connection (transport_connection_t *tc,
+				       vlib_buffer_t *b, u32 bi, u32 offset,
 				       u8 queue_event, u8 is_in_order);
 int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
@@ -787,7 +790,7 @@ void session_wrk_flush_enqueue_events (u32 thread_index, u32 *session_indices);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					u32 thread_index);
 void session_queue_run_on_main_thread (vlib_main_t * vm);
-
+void session_flush_async_ops (session_t *s);
 /**
  * Add session node pending buffer with custom node
  *
