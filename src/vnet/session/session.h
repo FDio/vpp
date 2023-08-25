@@ -162,6 +162,9 @@ typedef struct session_worker_
 
   session_wrk_stats_t stats;
 
+  u32 *to_free;
+  svm_fifo_async_op_t *cops;
+
 #if SESSION_DEBUG
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
@@ -751,35 +754,52 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
  */
 always_inline int
 session_enqueue_stream_connection (transport_connection_t *tc,
-				   vlib_buffer_t *b, u32 offset,
+				   vlib_buffer_t *b, u32 bi, u32 offset,
 				   u8 queue_event, u8 is_in_order)
 {
   session_t *s;
-  int enqueued = 0, rv, in_order_off;
+  int enqueued = 0, rv;
 
   s = session_get (tc->s_index, tc->thread_index);
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
-			 enqueued >= 0))
-	{
-	  in_order_off = enqueued > b->current_length ? enqueued : 0;
-	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
-	  if (rv > 0)
-	    enqueued += rv;
-	}
+      svm_fifo_async_op_t op = {
+	.type = SVM_FIFO_OP_ENQ,
+	.len = b->current_length,
+	.opaque = bi,
+	.data = vlib_buffer_get_current (b),
+      };
+      //       enqueued = svm_fifo_enqueue_async (s->rx_fifo,
+      //       b->current_length, vlib_buffer_get_current (b));
+      enqueued = svm_fifo_enqueue_async (s->rx_fifo, &op);
+      //       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      //                          && enqueued >= 0))
+      //         {
+      //           in_order_off = enqueued > b->current_length ? enqueued : 0;
+      //           rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
+      //           if (rv > 0)
+      //             enqueued += rv;
+      //         }
+
+      //       if (vec_len (s->rx_fifo->ops) > 10)
+      // 	session_flush_async_ops (s);
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
-					 vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
-	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
-      /* if something was enqueued, report even this as success for ooo
-       * segment handling */
+      svm_fifo_async_op_t op = { .type = SVM_FIFO_OP_ENQ_OOO,
+				 .len = b->current_length,
+				 .offset = offset,
+				 .opaque = bi,
+				 .data = vlib_buffer_get_current (b) };
+      rv = svm_fifo_enqueue_with_offset_async (s->rx_fifo, &op);
+      //       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
+      //       !rv))
+      // 	session_enqueue_chain_tail (s, b, offset + b->current_length,
+      // 0);
+      //       /* if something was enqueued, report even this as success for
+      //       ooo
+      //        * segment handling */
       return rv;
     }
 
