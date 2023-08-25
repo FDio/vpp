@@ -116,7 +116,11 @@ typedef struct tcp_worker_ctx_
   u8 cached_opts[40];
 
   /** tx buffer free list */
-  u32 *tx_buffers;
+  union
+  {
+    u32 *tx_buffers;
+    u32 *to_free;
+  };
 
   /* fifo of pending free requests */
   tcp_cleanup_req_t *pending_cleanups;
