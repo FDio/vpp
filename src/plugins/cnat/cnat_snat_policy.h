@@ -65,6 +65,9 @@ typedef struct cnat_snat_policy_entry_t_
   /* Ip6 Address to use for source NATing */
   cnat_endpoint_t snat_ip6;
 
+  u64 snat_ip6_mask;
+  u32 snat_ip4_mask;
+
   u32 cti;
 
   u32 ret_fib_index4;
@@ -81,7 +84,8 @@ typedef struct cnat_snat_policy_main_t_
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
 
 extern int cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
-			  const ip6_address_t *ip6, u32 sw_if_index);
+			  u8 ip4_pfx_len, const ip6_address_t *ip6, u8 ip6_pfx_len,
+			  u32 sw_if_index);
 extern int cnat_snat_policy_add_pfx (ip_prefix_t *pfx);
 extern int cnat_snat_policy_del_pfx (ip_prefix_t *pfx);
 extern int cnat_set_snat_policy (cnat_snat_policy_type_t policy);
