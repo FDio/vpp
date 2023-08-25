@@ -484,8 +484,8 @@ uword unformat_transport_connection (unformat_input_t * input,
  * Interface to transport protos
  */
 
-int session_enqueue_stream_connection (transport_connection_t * tc,
-				       vlib_buffer_t * b, u32 offset,
+int session_enqueue_stream_connection (transport_connection_t *tc,
+				       vlib_buffer_t *b, u32 bi, u32 offset,
 				       u8 queue_event, u8 is_in_order);
 int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
