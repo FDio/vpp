@@ -77,8 +77,8 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 	  rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	  return (rw);
 	}
-
-      rw->tuple.ip4[VLIB_RX].as_u32 = ip_addr_v4 (&cpe->snat_ip4.ce_ip).as_u32;
+      cnat_node_select_ip4 (&rw->tuple.ip4[VLIB_RX], &ip_addr_v4 (&cpe->snat_ip4.ce_ip),
+			    cpe->snat_ip4_mask);
     }
   else
     {
@@ -87,8 +87,8 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 	  rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	  return (rw);
 	}
-
-      ip6_address_copy (&rw->tuple.ip6[VLIB_RX], &ip_addr_v6 (&cpe->snat_ip6.ce_ip));
+      cnat_node_select_ip6 (&rw->tuple.ip6[VLIB_RX], &ip_addr_v6 (&cpe->snat_ip6.ce_ip),
+			    cpe->snat_ip6_mask);
     }
 
   sport = 0;
