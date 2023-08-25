@@ -1127,4 +1127,53 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
 
   return frame->n_vectors;
 }
+
+static_always_inline void
+cnat_node_select_ip4 (ip4_address_t *ip, const ip4_address_t *pfx, u32 mask)
+{
+  if ((u32) ~0 == mask)
+    {
+      /* /32 prefix: copy the address */
+      ip->as_u32 = pfx->as_u32;
+    }
+  else
+    {
+      ASSERT (0 == (pfx->as_u32 & mask));
+      u32 addr;
+#ifdef clib_crc32c_uses_intrinsics
+      addr = clib_crc32c ((void *) ip, sizeof (*ip));
+#else
+      addr = clib_xxhash (ip->as_u32);
+#endif
+      ip->as_u32 = pfx->as_u32 | (addr & mask);
+    }
+}
+
+static_always_inline void
+cnat_node_select_ip6 (ip6_address_t *ip, const ip6_address_t *pfx, u64 mask)
+{
+  if ((u64) ~0 == mask)
+    {
+      /* /128 prefix: copy the address */
+      ip6_address_copy (ip, pfx);
+    }
+  else
+    {
+      ASSERT (0 == (pfx->as_u64[1] & mask));
+      union
+      {
+	u64 as_u64;
+	u32 as_u32[2];
+      } addr;
+#ifdef clib_crc32c_uses_intrinsics
+      addr.as_u32[0] = ip->as_u32[2];
+      addr.as_u32[1] = clib_crc32c ((void *) ip, sizeof (*ip));
+#else
+      addr.as_u64 = clib_xxhash (ip6_address_hash_to_u64 (ip));
+#endif
+      ip->as_u64[0] = pfx->as_u64[0];
+      ip->as_u64[1] = pfx->as_u64[1] | (addr.as_u64 & mask);
+    }
+}
+
 #endif

@@ -461,8 +461,8 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address, u8 i
 }
 
 __clib_export int
-cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
-	       const ip6_address_t *ip6, u32 sw_if_index)
+cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u8 ip4_pfx_len,
+	       const ip6_address_t *ip6, u8 ip6_pfx_len, u32 sw_if_index)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   cnat_snat_policy_entry_t *cpe4, *cpe6, *cpe;
@@ -471,6 +471,9 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
   int ip4_set = ip4 && ip4->as_u32 != 0;
   int ip6_set = ip6 && !ip6_address_is_zero (ip6);
   int is_delete = !sw_if_set && !ip4_set && !ip6_set;
+
+  if ((ip4_set && ip4_pfx_len > 32) || (ip6_set && (ip6_pfx_len < 64 || ip6_pfx_len > 128)))
+    return VNET_API_ERROR_INVALID_VALUE;
 
   cnat_lazy_init ();
 
@@ -519,9 +522,17 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
   if (sw_if_set || ip4_set)
     {
       if (ip4_set)
-	ip_address_set (&cpe->snat_ip4.ce_ip, ip4, AF_IP4);
+	{
+	  ip_address_set (&cpe->snat_ip4.ce_ip, ip4, AF_IP4);
+	  ASSERT (32 - ip4_pfx_len >= 0 && 32 - ip4_pfx_len <= 32);
+	  cpe->snat_ip4_mask = clib_host_to_net_u32 (((u32) 1 << (32 - ip4_pfx_len)) - 1);
+	  ip_addr_v4 (&cpe->snat_ip4.ce_ip).as_u32 &= ~cpe->snat_ip4_mask;
+	}
       else
-	ip_addr_version (&cpe->snat_ip4.ce_ip) = AF_IP4;
+	{
+	  ip_addr_version (&cpe->snat_ip4.ce_ip) = AF_IP4;
+	  cpe->snat_ip4_mask = (u32) ~0;
+	}
       cpe->snat_ip4.ce_sw_if_index = sw_if_index;
       cpe->ret_fib_index4 = ret_fib_index;
       cnat_resolve_ep (&cpe->snat_ip4);
@@ -534,9 +545,17 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
   if (sw_if_set || ip6_set)
     {
       if (ip6_set)
-	ip_address_set (&cpe->snat_ip6.ce_ip, ip6, AF_IP6);
+	{
+	  ip_address_set (&cpe->snat_ip6.ce_ip, ip6, AF_IP6);
+	  ASSERT (128 - ip6_pfx_len >= 0 && 128 - ip6_pfx_len <= 64);
+	  cpe->snat_ip6_mask = clib_host_to_net_u64 (((u64) 1 << (128 - ip6_pfx_len)) - 1);
+	  ip_addr_v6 (&cpe->snat_ip6.ce_ip).as_u64[1] &= ~cpe->snat_ip6_mask;
+	}
       else
-	ip_addr_version (&cpe->snat_ip6.ce_ip) = AF_IP6;
+	{
+	  ip_addr_version (&cpe->snat_ip6.ce_ip) = AF_IP6;
+	  cpe->snat_ip6_mask = (u64) ~0;
+	}
       cpe->snat_ip6.ce_sw_if_index = sw_if_index;
       cpe->ret_fib_index6 = ret_fib_index;
       cnat_resolve_ep (&cpe->snat_ip6);
@@ -590,7 +609,7 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, &ip6, sw_if_index);
+  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index);
   if (rv)
     {
       e = clib_error_return (0, "unknown error %d", rv);
