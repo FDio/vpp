@@ -71,6 +71,132 @@ app_worker_del_all_events (app_worker_t *app_wrk)
     }
 }
 
+// /**
+//  * Discards bytes from buffer chain
+//  *
+//  * It discards n_bytes_to_drop starting at first buffer after chain_b
+//  */
+// always_inline void
+// session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
+// 				     vlib_buffer_t ** chain_b,
+// 				     u32 n_bytes_to_drop)
+// {
+//   vlib_buffer_t *next = *chain_b;
+//   u32 to_drop = n_bytes_to_drop;
+//   ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+//   while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
+//     {
+//       next = vlib_get_buffer (vm, next->next_buffer);
+//       if (next->current_length > to_drop)
+// 	{
+// 	  vlib_buffer_advance (next, to_drop);
+// 	  to_drop = 0;
+// 	}
+//       else
+// 	{
+// 	  to_drop -= next->current_length;
+// 	  next->current_length = 0;
+// 	}
+//     }
+//   *chain_b = next;
+
+//   if (to_drop == 0)
+//     b->total_length_not_including_first_buffer -= n_bytes_to_drop;
+// }
+
+// /**
+//  * Enqueue buffer chain tail
+//  */
+// always_inline int
+// session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
+// 			    u32 offset, u8 is_in_order)
+// {
+//   vlib_buffer_t *chain_b;
+//   u32 chain_bi, len, diff;
+//   vlib_main_t *vm = vlib_get_main ();
+//   u8 *data;
+//   u32 written = 0;
+//   int rv = 0;
+
+//   if (is_in_order && offset)
+//     {
+//       diff = offset - b->current_length;
+//       if (diff > b->total_length_not_including_first_buffer)
+// 	return 0;
+//       chain_b = b;
+//       session_enqueue_discard_chain_bytes (vm, b, &chain_b, diff);
+//       chain_bi = vlib_get_buffer_index (vm, chain_b);
+//     }
+//   else
+//     chain_bi = b->next_buffer;
+
+//   do
+//     {
+//       chain_b = vlib_get_buffer (vm, chain_bi);
+//       data = vlib_buffer_get_current (chain_b);
+//       len = chain_b->current_length;
+//       if (!len)
+// 	continue;
+//       if (is_in_order)
+// 	{
+// 	  rv = svm_fifo_enqueue (s->rx_fifo, len, data);
+// 	  if (rv == len)
+// 	    {
+// 	      written += rv;
+// 	    }
+// 	  else if (rv < len)
+// 	    {
+// 	      return (rv > 0) ? (written + rv) : written;
+// 	    }
+// 	  else if (rv > len)
+// 	    {
+// 	      written += rv;
+
+// 	      /* written more than what was left in chain */
+// 	      if (written > b->total_length_not_including_first_buffer)
+// 		return written;
+
+// 	      /* drop the bytes that have already been delivered */
+// 	      session_enqueue_discard_chain_bytes (vm, b, &chain_b, rv - len);
+// 	    }
+// 	}
+//       else
+// 	{
+// 	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
+// 	  if (rv)
+// 	    {
+// 	      clib_warning ("failed to enqueue multi-buffer seg");
+// 	      return -1;
+// 	    }
+// 	  offset += len;
+// 	}
+//     }
+//   while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+// 	  ? chain_b->next_buffer : 0));
+
+//   if (is_in_order)
+//     return written;
+
+//   return 0;
+// }
+
+void
+session_flush_async_ops (session_t *s)
+{
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+  vlib_main_t *vm = wrk->vm;
+  svm_fifo_async_op_t *op;
+
+  svm_fifo_commit_async_ops (s->rx_fifo, &wrk->cops);
+
+  vec_foreach (op, wrk->cops)
+    vec_add1 (wrk->to_free, op->opaque);
+
+  vlib_buffer_free (vm, wrk->to_free, vec_len (wrk->to_free));
+  vec_set_len (wrk->to_free, 0);
+  vec_set_len (wrk->cops, 0);
+}
+
 always_inline int
 app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 				u8 is_builtin)
@@ -114,6 +240,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
 	  s->flags &= ~SESSION_F_RX_EVT;
+	  session_flush_async_ops (s);
 	  /* Application didn't confirm accept yet */
 	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
 			     s->session_state == SESSION_STATE_CONNECTING))
