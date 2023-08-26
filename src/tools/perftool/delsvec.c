@@ -49,8 +49,8 @@ static u8 **svec_cache;
 void delsvec_recycle_this_string (u8 *s)
 {
     if (s) {
-        _vec_len (s) = 0;
-        vec_add1(string_cache, s);
+	vec_set_len (s, 0);
+	vec_add1(string_cache, s);
     }
 }
 
@@ -60,8 +60,8 @@ void delsvec_recycle_this_svec (u8 **svec)
         if (svec_cache) {
             vec_free (svec_cache);
         }
-        _vec_len (svec) = 0;
-        svec_cache = svec;
+	vec_set_len (svec, 0);
+	svec_cache = svec;
     }
 }
 
@@ -88,8 +88,8 @@ u8 **delsvec(void *input_arg, char *fmt)
         dirflag=0;
         if (vec_len (string_cache) > 0) {
             this = string_cache [vec_len(string_cache)-1];
-            _vec_len (string_cache) = vec_len (string_cache) - 1;
-        } else 
+	    vec_set_len (string_cache, vec_len (string_cache) - 1);
+	} else 
             this = 0;
         /*
          * '*' means one of two things: match the rest of the input, 
