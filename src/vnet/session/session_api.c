@@ -468,7 +468,8 @@ mq_send_io_rx_event (session_t *s)
   app_worker_t *app_wrk;
   svm_msg_q_t *mq;
 
-  if (svm_fifo_has_event (s->rx_fifo))
+  if (svm_fifo_has_event (s->rx_fifo) ||
+      !svm_fifo_max_dequeue_prod (s->rx_fifo))
     return 0;
 
   app_wrk = app_worker_get (s->app_wrk_index);
