@@ -396,9 +396,13 @@ extern session_dbg_main_t session_dbg_main;
 #define session_evt_grp_dbg_lvl(_evt)                                         \
   session_dbg_main.grp_dbg_lvl[session_evt_grp (_evt)]
 #define SESSION_EVT(_evt, _args...)                                           \
-  if (PREDICT_FALSE (session_evt_grp_dbg_lvl (_evt) >=                        \
-		     session_evt_lvl (_evt)))                                 \
-  CC (_evt, _HANDLER) (_args)
+  do                                                                          \
+    {                                                                         \
+      if (PREDICT_FALSE (session_evt_grp_dbg_lvl (_evt) >=                    \
+			 session_evt_lvl (_evt)))                             \
+	CC (_evt, _HANDLER) (_args);                                          \
+    }                                                                         \
+  while (0)
 #else
 #define SESSION_EVT(_evt, _args...)
 #define SESSION_DBG(_fmt, _args...)
