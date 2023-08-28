@@ -640,6 +640,12 @@ session_enqueue_notify_inline (session_t *s, u8 is_cl)
 {
   app_worker_t *app_wrk;
 
+  if (svm_fifo_has_event (s->rx_fifo))
+    {
+      s->flags &= ~SESSION_F_RX_EVT;
+      return 0;
+    }
+
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (PREDICT_FALSE (!app_wrk))
     return -1;

@@ -2052,13 +2052,13 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
+      if (is_ct)
+	svm_fifo_unset_event (s->rx_fifo);
+      svm_fifo_unset_event (rx_fifo);
       if (is_nonblocking)
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
-	  if (is_ct)
-	    svm_fifo_unset_event (s->rx_fifo);
-	  svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
       while (svm_fifo_is_empty_cons (rx_fifo))
@@ -2164,11 +2164,13 @@ vppcom_session_read_segments (uint32_t session_handle,
 
   if (svm_fifo_is_empty_cons (rx_fifo))
     {
+      if (is_ct)
+	svm_fifo_unset_event (s->rx_fifo);
+      svm_fifo_unset_event (rx_fifo);
       if (is_nonblocking)
 	{
-	  if (is_ct)
-	    svm_fifo_unset_event (s->rx_fifo);
-	  svm_fifo_unset_event (rx_fifo);
+	  if (vcl_session_is_closing (s))
+	    return vcl_session_closing_error (s);
 	  return VPPCOM_EWOULDBLOCK;
 	}
       while (svm_fifo_is_empty_cons (rx_fifo))
