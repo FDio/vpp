@@ -675,7 +675,11 @@ vcl_session_add_want_deq_ntf (vcl_session_t *s, svm_fifo_deq_ntf_t evt)
 {
   svm_fifo_t *txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
   if (txf)
-    svm_fifo_add_want_deq_ntf (txf, evt);
+    {
+      svm_fifo_add_want_deq_ntf (txf, evt);
+      /* Request tx notification only if 3% of fifo is empty */
+      svm_fifo_set_deq_thresh (txf, 0.03 * svm_fifo_size (txf));
+    }
 }
 
 static inline void
