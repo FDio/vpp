@@ -245,6 +245,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u32 tx_queue_size;
   virtio_bind_t bind;
   u32 buffering_size;
   u32 virtio_flags;

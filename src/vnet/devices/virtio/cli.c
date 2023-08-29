@@ -31,6 +31,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   virtio_pci_create_if_args_t args;
   u64 feature_mask = (u64) ~ (0ULL);
   u32 buffering_size = 0;
+  u32 txq_size = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -43,6 +44,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	args.features = feature_mask;
+      if (unformat (line_input, "tx-queue-size %u", &txq_size))
+	args.tx_queue_size = txq_size;
       else if (unformat (line_input, "gso-enabled"))
 	args.gso_enabled = 1;
       else if (unformat (line_input, "csum-enabled"))
@@ -74,7 +77,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-		"[feature-mask <hex-mask>] [gso-enabled] [csum-enabled] "
+		"[feature-mask <hex-mask>] [tx-queue-size <size>] "
+		"[gso-enabled] [csum-enabled] "
 		"[buffering [size <buffering-szie>]] [packed] [bind [force]]",
   .function = virtio_pci_create_command_fn,
 };
