@@ -75,7 +75,7 @@ arm_init (vlib_main_t *vm, perfmon_source_t *src)
     - if the file exists and is 0, user access needs to be granted
       with 'sudo sysctl kernel/perf_user_access=1'
   */
-  u8 perf_user_access_enabled;
+  u32 perf_user_access_enabled;
   char *path = "/proc/sys/kernel/perf_user_access";
   err = clib_sysfs_read (path, "%u", &perf_user_access_enabled);
   if (err)
