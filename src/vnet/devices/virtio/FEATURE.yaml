@@ -11,6 +11,8 @@ features:
   - Support multi-queue, GSO, checksum offload, indirect descriptor,
     jumbo frame, and packed ring.
   - Support virtio 1.1 packed ring in vhost
+  - Support for tx queue size configuration (tested on host kernel 5.15
+    and qemu version 6.2.0)
 description: "Virtio implementation"
 missing:
   - API dump filtering by sw_if_index
