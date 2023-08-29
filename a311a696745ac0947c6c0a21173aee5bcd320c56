@@ -16,6 +16,24 @@
       "message": "I think we should probably log an error or reject the CLI if txq_size !\u003d queue_size.",
       "revId": "a311a696745ac0947c6c0a21173aee5bcd320c56",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e99c111_1f880560",
+        "filename": "src/vnet/devices/virtio/pci.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 753,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-08-29T09:23:28Z",
+      "side": 1,
+      "message": "As this change only works on latest kernel and qemu version. so failing on the older should not effect the device creation in VPP.",
+      "parentUuid": "df7a99ae_06a81219",
+      "revId": "a311a696745ac0947c6c0a21173aee5bcd320c56",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
