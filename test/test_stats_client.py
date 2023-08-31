@@ -4,7 +4,8 @@ import unittest
 import psutil
 from vpp_papi.vpp_stats import VPPStats
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 
