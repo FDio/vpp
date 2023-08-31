@@ -285,7 +285,12 @@ class VppPGInterface(VppInterface):
                     # bingo, got the packets we expected
                     return capture
                 elif len(capture.res) > expected_count:
-                    self.test.logger.error(ppc("Unexpected packets captured:", capture))
+                    self.test.logger.error(
+                        ppc(
+                            f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
+                            capture,
+                        )
+                    )
                     break
                 else:
                     self.test.logger.debug(
@@ -302,12 +307,11 @@ class VppPGInterface(VppInterface):
             if len(capture) > 0 and 0 == expected_count:
                 rem = f"\n{remark}" if remark else ""
                 raise UnexpectedPacketError(
-                    capture[0], f"\n({len(capture)} packets captured in total){rem}"
+                    capture[0],
+                    f"\n({len(capture)} packets captured in total){rem} on {name}",
                 )
-            raise Exception(
-                "Captured packets mismatch, captured %s packets, "
-                "expected %s packets on %s" % (len(capture.res), expected_count, name)
-            )
+            msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
+            raise Exception(f"{ppc(msg, capture)}")
         else:
             if 0 == expected_count:
                 return
@@ -355,8 +359,8 @@ class VppPGInterface(VppInterface):
         deadline = time.time() + timeout
         if not os.path.isfile(self.out_path):
             self.test.logger.debug(
-                "Waiting for capture file %s to appear, "
-                "timeout is %ss" % (self.out_path, timeout)
+                f"Waiting for capture file {self.out_path} to appear, timeout is {timeout}s\n"
+                f"{' '.join(format_stack(limit=10))}"
             )
         else:
             self.test.logger.debug("Capture file %s already exists" % self.out_path)
