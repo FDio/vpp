@@ -4,28 +4,22 @@ import unittest
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
-from scapy.layers.l2 import Ether, ARP, Dot1Q
+from scapy.layers.l2 import Ether, ARP
 
 from util import reassemble4
 from vpp_object import VppObject
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from template_ipsec import (
     TemplateIpsec,
-    IpsecTun4Tests,
     IpsecTun4,
-    mk_scapy_crypt_key,
-    config_tun_params,
 )
 from template_ipsec import (
     TemplateIpsec,
-    IpsecTun4Tests,
     IpsecTun4,
-    mk_scapy_crypt_key,
-    config_tun_params,
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
-from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect, VppIpsecInterface
 
 
 class VppLcpPair(VppObject):
