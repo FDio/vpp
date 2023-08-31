@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from config import config
-
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,
-    VppMplsLabel,
     VppIpTable,
-    FibPathProto,
 )
 from vpp_acl import AclRule, VppAcl
 

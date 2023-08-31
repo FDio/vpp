@@ -7,7 +7,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework import VppTestRunner
+from asfframework import VppTestRunner
 from template_ipsec import (
     TemplateIpsec,
     IpsecTra46Tests,

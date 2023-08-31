@@ -2,11 +2,10 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestString(VppTestCase):
+class TestString(VppAsfTestCase):
     """String Test Cases"""
 
     @classmethod

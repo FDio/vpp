@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import unittest
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
 from vpp_udp_decap import VppUdpDecap
@@ -20,7 +20,7 @@ from vpp_papi import VppEnum
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 

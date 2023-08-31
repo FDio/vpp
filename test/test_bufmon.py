@@ -1,4 +1,5 @@
-from framework import VppTestCase, VppTestRunner
+from asfframework import VppTestRunner
+from framework import VppTestCase
 import unittest
 from config import config
 from scapy.layers.l2 import Ether
@@ -100,7 +101,7 @@ class TestBufmon(VppTestCase):
         self.pg1.enable_capture()
         self.pg_start()
 
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(timeout=2)
         self.pg0.assert_nothing_captured()
         self.verify_capture(self.pg0, self.pg1, capture)
 

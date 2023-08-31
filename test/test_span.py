@@ -3,12 +3,12 @@
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
+from scapy.layers.l2 import Ether, GRE, ERSPAN
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
-from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel

@@ -4,11 +4,10 @@ import unittest
 import secrets
 import socket
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ipip_tun_interface import VppIpIpTunInterface
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdItfBinding, VppIpsecSpdEntry
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 
 from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw
