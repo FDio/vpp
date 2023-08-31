@@ -328,7 +328,7 @@ func linkSetNetns(ifName, ns string) error {
 	return nil
 }
 
-func newCommand(s []string, ns string) *exec.Cmd {
+func NewCommand(s []string, ns string) *exec.Cmd {
 	return appendNetns(s, ns)
 }
 

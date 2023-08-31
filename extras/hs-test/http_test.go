@@ -17,7 +17,7 @@ func (s *NsSuite) TestHttpTps() {
 	// configure vpp in the container
 	container.vppInstance.Vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	go StartWget(finished, client_ip, port, "test_file_10M", "client")
+	go s.StartWget(finished, client_ip, port, "test_file_10M", "client")
 	// wait for client
 	err := <-finished
 	s.AssertNil(err)
@@ -73,7 +73,7 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.Ip4AddressString()
 
 	defer func() { os.Remove(query) }()
-	go StartWget(finished, serverAddress, "80", query, "")
+	go s.StartWget(finished, serverAddress, "80", query, "")
 	s.AssertNil(<-finished)
 }
 

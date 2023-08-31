@@ -20,7 +20,7 @@ func testProxyHttpTcp(s *NsSuite) error {
 
 	s.Log("test file created...")
 
-	go StartHttpServer(serverRunning, stopServer, ":666", "server")
+	go s.StartHttpServer(serverRunning, stopServer, ":666", "server")
 	// TODO better error handling and recovery
 	<-serverRunning
 

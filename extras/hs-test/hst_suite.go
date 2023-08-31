@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -81,11 +82,11 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 
 func (s *HstSuite) SetupTest() {
 	s.SkipIfUnconfiguring()
-	s.setupVolumes()
+	s.SetupVolumes()
 	s.SetupContainers()
 }
 
-func (s *HstSuite) setupVolumes() {
+func (s *HstSuite) SetupVolumes() {
 	for _, volume := range s.volumes {
 		cmd := "docker volume create --name=" + volume
 		s.Log(cmd)
@@ -323,4 +324,82 @@ func (s *HstSuite) GetTestId() string {
 	}
 
 	return s.testIds[testName]
+}
+
+func (s *HstSuite) StartServerApp(running chan error, done chan struct{}, env []string) {
+	cmd := exec.Command("iperf3", "-4", "-s")
+	if env != nil {
+		cmd.Env = env
+	}
+	s.Log(cmd)
+	err := cmd.Start()
+	if err != nil {
+		msg := fmt.Errorf("failed to start iperf server: %v", err)
+		running <- msg
+		return
+	}
+	running <- nil
+	<-done
+	cmd.Process.Kill()
+}
+
+func (s *HstSuite) StartClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
+	defer func() {
+		clnCh <- nil
+	}()
+
+	nTries := 0
+
+	for {
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
+		if env != nil {
+			cmd.Env = env
+		}
+		s.Log(cmd)
+		o, err := cmd.CombinedOutput()
+		if err != nil {
+			if nTries > 5 {
+				clnCh <- fmt.Errorf("failed to start client app '%s'.\n%s", err, o)
+				return
+			}
+			time.Sleep(1 * time.Second)
+			nTries++
+			continue
+		} else {
+			clnRes <- fmt.Sprintf("Client output: %s", o)
+		}
+		break
+	}
+}
+
+func (s *HstSuite) StartHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
+	cmd := NewCommand([]string{"./http_server", addressPort}, netNs)
+	s.Log(cmd)
+	err := cmd.Start()
+	if err != nil {
+		fmt.Println("Failed to start http server")
+		return
+	}
+	running <- struct{}{}
+	<-done
+	cmd.Process.Kill()
+}
+
+func (s *HstSuite) StartWget(finished chan error, server_ip, port, query, netNs string) {
+	defer func() {
+		finished <- errors.New("wget error")
+	}()
+
+	cmd := NewCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+		netNs)
+	s.Log(cmd)
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
+		return
+	} else if !strings.Contains(string(o), "200 OK") {
+		finished <- fmt.Errorf("wget error: response not 200 OK")
+		return
+	}
+	finished <- nil
 }
