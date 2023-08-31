@@ -5,8 +5,8 @@ import socket
 import struct
 import six
 
-from framework import VppTestCase, VppTestRunner
-from framework import tag_run_solo
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_run_solo
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
