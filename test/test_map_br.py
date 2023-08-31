@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-import ipaddress
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import fragment_rfc791, fragment_rfc8200
 
-import scapy.compat
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP, IPerror, UDPerror
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6PacketTooBig
 from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply, IPerror6
