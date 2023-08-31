@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-from asfframework import VppTestCase
-from asfframework import tag_fixme_vpp_workers
+from asfframework import VppAsfTestCase, tag_fixme_vpp_workers
 
 
 @tag_fixme_vpp_workers
-class TestCounters(VppTestCase):
+class TestCounters(VppAsfTestCase):
     """Counters C Unit Tests"""
 
     @classmethod

@@ -2,11 +2,11 @@
 # Copyright (c) 2021 Graphiant, Inc.
 
 import unittest
-import scapy.compat
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 from vpp_policer import VppPolicer, PolicerAction, Dir
 

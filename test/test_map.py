@@ -3,7 +3,8 @@
 import ipaddress
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from util import fragment_rfc791, fragment_rfc8200
