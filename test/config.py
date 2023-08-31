@@ -408,6 +408,14 @@ parser.add_argument(
     "/var/run/user/${uid}/vpp.",
 )
 
+default_decode_pcaps = False
+parser.add_argument(
+    "--decode-pcaps",
+    action="store_true",
+    default=default_decode_pcaps,
+    help=f"if set, decode all pcap files from a test run (default: {default_decode_pcaps})",
+)
+
 config = parser.parse_args()
 
 ws = config.vpp_ws_dir
