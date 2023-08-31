@@ -3,7 +3,7 @@ import unittest
 import ipaddress
 
 from util import ppp
-from asfframework import VppTestRunner
+from framework import VppTestRunner
 from template_ipsec import IPSecIPv4Fwd
 from template_ipsec import IPSecIPv6Fwd
 

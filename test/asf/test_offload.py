@@ -2,11 +2,11 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestOffload(VppTestCase):
+class TestOffload(VppAsfTestCase):
     """Offload Unit Test Cases"""
 
     @classmethod

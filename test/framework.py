@@ -53,13 +53,10 @@ from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
 from vpp_running import use_running
 from test_result_code import TestResultCode
+from asfframework import VppAsfTestCase, VppDiedError
 
 
 logger = logging.getLogger(__name__)
-
-# Set up an empty logger for the testcase that can be overridden as necessary
-null_logger = logging.getLogger("VppTestCase")
-null_logger.addHandler(logging.NullHandler())
 
 
 if config.debug_framework:
@@ -71,43 +68,6 @@ if config.debug_framework:
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
-
-
-class VppDiedError(Exception):
-    """exception for reporting that the subprocess has died."""
-
-    signals_by_value = {
-        v: k
-        for k, v in signal.__dict__.items()
-        if k.startswith("SIG") and not k.startswith("SIG_")
-    }
-
-    def __init__(self, rv=None, testcase=None, method_name=None):
-        self.rv = rv
-        self.signal_name = None
-        self.testcase = testcase
-        self.method_name = method_name
-
-        try:
-            self.signal_name = VppDiedError.signals_by_value[-rv]
-        except (KeyError, TypeError):
-            pass
-
-        if testcase is None and method_name is None:
-            in_msg = ""
-        else:
-            in_msg = " while running %s.%s" % (testcase, method_name)
-
-        if self.rv:
-            msg = "VPP subprocess died unexpectedly%s with return code: %d%s." % (
-                in_msg,
-                self.rv,
-                " [%s]" % (self.signal_name if self.signal_name is not None else ""),
-            )
-        else:
-            msg = "VPP subprocess died unexpectedly%s." % in_msg
-
-        super(VppDiedError, self).__init__(msg)
 
 
 class _PacketInfo(object):
@@ -317,15 +277,15 @@ class CPUInterface(ABC):
 
 
 @use_running
-class VppTestCase(CPUInterface, unittest.TestCase):
+class VppTestCase(VppAsfTestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
 
-    extra_vpp_statseg_config = ""
-    extra_vpp_config = []
-    extra_vpp_plugin_config = []
-    logger = null_logger
+    #   extra_vpp_statseg_config = ""
+    #   extra_vpp_config = []
+    #   extra_vpp_plugin_config = []
+    #   logger = null_logger
     vapi_response_timeout = 5
     remove_configured_vpp_objects_on_tear_down = True
 

@@ -3,7 +3,7 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_policer import VppPolicer, PolicerAction
 
 # Default for the tests is 10s of "Green" packets at 8Mbps, ie. 10M bytes.
@@ -23,7 +23,7 @@ CBURST = 100000  # Committed burst in bytes
 EBURST = 200000  # Excess burst in bytes
 
 
-class TestPolicer(VppTestCase):
+class TestPolicer(VppAsfTestCase):
     """Policer Test Case"""
 
     def run_policer_test(

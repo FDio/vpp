@@ -5,7 +5,7 @@ import pexpect
 import time
 import signal
 from config import config
-from asfframework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether

@@ -18,7 +18,7 @@ import vpp_papi_provider
 F64_ONE = 1.0
 
 
-class TestEndian(asfframework.VppTestCase):
+class TestEndian(asfframework.VppAsfTestCase):
     """TestEndian"""
 
     def test_f64_endian_value(self):

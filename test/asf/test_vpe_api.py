@@ -14,12 +14,12 @@
 import datetime
 import time
 import unittest
-from asfframework import VppTestCase
+from asfframework import VppAsfTestCase
 
 enable_print = False
 
 
-class TestVpeApi(VppTestCase):
+class TestVpeApi(VppAsfTestCase):
     """TestVpeApi"""
 
     def test_log_dump_default(self):

@@ -7,7 +7,7 @@ import unittest
 import time
 import re
 
-from asfframework import VppTestCase
+from framework import VppTestCase
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from vpp_ip_route import VppIpRoute, VppRoutePath

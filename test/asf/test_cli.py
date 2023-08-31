@@ -7,10 +7,10 @@ import unittest
 
 from vpp_papi import VPPIOError
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestCLI(VppTestCase):
+class TestCLI(VppAsfTestCase):
     """CLI Test Case"""
 
     maxDiff = None
@@ -50,7 +50,7 @@ class TestCLI(VppTestCase):
         self.assertEqual(rv.retval, 0)
 
 
-class TestCLIExtendedVapiTimeout(VppTestCase):
+class TestCLIExtendedVapiTimeout(VppAsfTestCase):
     maxDiff = None
 
     @classmethod
