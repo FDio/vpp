@@ -16,7 +16,8 @@ import unittest
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):

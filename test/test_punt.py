@@ -1,35 +1,28 @@
 #!/usr/bin/env python3
-import binascii
 import random
 import socket
 import os
 import threading
-import struct
 import copy
 import fcntl
 import time
-
-from struct import unpack, unpack_from
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-from util import ppp, ppc
-from re import compile
-import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.l2 import Dot1Q
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
-from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
+from scapy.layers.inet6 import IPv6
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
+from vpp_sub_interface import VppDot1QSubint
 
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
