@@ -7,10 +7,10 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.packet import Raw
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestPcap(VppTestCase):
+class TestPcap(VppAsfTestCase):
     """Pcap Unit Test Cases"""
 
     @classmethod

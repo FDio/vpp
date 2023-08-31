@@ -3,11 +3,11 @@
 import unittest
 
 from config import config
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestMactime(VppTestCase):
+class TestMactime(VppAsfTestCase):
     """Mactime Unit Test Cases"""
 
     @classmethod

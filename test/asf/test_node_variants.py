@@ -2,7 +2,7 @@
 import re
 import unittest
 import platform
-from asfframework import VppTestCase
+from asfframework import VppAsfTestCase
 
 
 def checkX86():
@@ -19,7 +19,7 @@ def skipVariant(variant):
     return checkX86() and match is not None
 
 
-class TestNodeVariant(VppTestCase):
+class TestNodeVariant(VppAsfTestCase):
     """Test Node Variants"""
 
     @classmethod

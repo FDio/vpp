@@ -5,10 +5,10 @@ import unittest
 import os
 import signal
 from config import config
-from asfframework import VppTestCase, VppTestRunner, Worker
+from asfframework import VppAsfTestCase, VppTestRunner, Worker
 
 
-class VAPITestCase(VppTestCase):
+class VAPITestCase(VppAsfTestCase):
     """VAPI test"""
 
     @classmethod

@@ -7,7 +7,7 @@ import subprocess
 import signal
 from config import config
 from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner, Worker
+from framework import VppAsfTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -52,7 +52,7 @@ class QUICAppWorker(Worker):
         return False
 
 
-class QUICTestCase(VppTestCase):
+class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
     timeout = 20
