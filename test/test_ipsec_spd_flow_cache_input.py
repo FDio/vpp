@@ -1,4 +1,3 @@
-from os import remove
 import socket
 import unittest
 
