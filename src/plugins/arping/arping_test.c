@@ -154,6 +154,19 @@ vl_api_arping_reply_t_handler (vl_api_arping_reply_t *mp)
   vam->result_ready = 1;
 }
 
+static int
+api_arping_acd (vat_main_t *vam)
+{
+  // NOT YET IMPLEMENTED
+  return -99;
+}
+
+static void
+vl_api_arping_acd_reply_t_handler (vl_api_arping_reply_t *mp)
+{
+  // NOT YET IMPLEMENTED
+}
+
 #include <arping/arping.api_test.c>
 
 /*
