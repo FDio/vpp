@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 
 from scapy.layers.inet import IP, TCP
 from scapy.layers.inet6 import IPv6

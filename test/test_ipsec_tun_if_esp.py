@@ -8,8 +8,7 @@ from scapy.packet import Raw, bind_layers
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
-from framework import tag_fixme_vpp_workers
-from framework import VppTestRunner
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from template_ipsec import (
     TemplateIpsec,
     IpsecTun4Tests,
