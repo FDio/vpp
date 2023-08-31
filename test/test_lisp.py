@@ -8,8 +8,9 @@ from scapy.packet import bind_layers, Packet, Raw
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner
-from asf.lisp import (
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from lisp import (
     VppLocalMapping,
     VppLispAdjacency,
     VppLispLocator,

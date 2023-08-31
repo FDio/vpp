@@ -1,5 +1,4 @@
 from vpp_interface import VppInterface
-import socket
 from vpp_papi import VppEnum
 
 

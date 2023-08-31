@@ -6,10 +6,11 @@ import unittest
 from scapy.contrib.lacp import LACP, SlowProtocol, MarkerProtocol
 from scapy.layers.l2 import Ether
 
-from framework import VppTestCase, VppTestRunner
-from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from vpp_memif import VppSocketFilename, VppMemif
 from vpp_bond_interface import VppBondInterface
-from vpp_papi import VppEnum, MACAddress
+from vpp_papi import VppEnum
 
 bond_mac = "02:02:02:02:02:02"
 lacp_dst_mac = "01:80:c2:00:00:02"

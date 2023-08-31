@@ -10,8 +10,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.inet6 import IPv6ExtHdrFragment
-from framework import VppTestCase, VppTestRunner
-from framework import tag_fixme_vpp_workers
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from util import Host, ppp
 from ipaddress import IPv4Network, IPv6Network
 

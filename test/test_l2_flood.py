@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_l2 import L2_PORT_TYPE, BRIDGE_FLAGS
 

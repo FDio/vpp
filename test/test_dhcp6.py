@@ -22,9 +22,8 @@ from scapy.layers.dhcp6 import (
 from scapy.layers.inet6 import IPv6, Ether, UDP
 from scapy.utils6 import in6_mactoifaceid
 
-from framework import tag_fixme_vpp_workers
 from framework import VppTestCase
-from framework import tag_run_solo
+from asfframework import tag_fixme_vpp_workers, tag_run_solo
 from vpp_papi import VppEnum
 import util
 import os

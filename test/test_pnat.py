@@ -3,7 +3,8 @@
 
 import unittest
 from scapy.layers.inet import Ether, IP, UDP, ICMP
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 
 

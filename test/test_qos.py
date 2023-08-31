@@ -2,16 +2,15 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from vpp_ip import DpoProto
 from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,
     VppMplsRoute,
     VppMplsLabel,
     VppMplsTable,
-    FibPathProto,
 )
 
 import scapy.compat

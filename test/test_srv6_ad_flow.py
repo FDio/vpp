@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
 import unittest
-import binascii
-from socket import AF_INET6
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 import scapy.compat
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 

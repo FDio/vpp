@@ -2,10 +2,10 @@
 
 import unittest
 import random
-import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from util import ppp
 
 from scapy.packet import Raw

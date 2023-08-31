@@ -2,11 +2,10 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestAdl(VppTestCase):
+class TestAdl(VppAsfTestCase):
     """Allow/Deny Plugin Unit Test Cases"""
 
     @classmethod

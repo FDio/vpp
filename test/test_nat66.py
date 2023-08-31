@@ -1,50 +1,17 @@
 #!/usr/bin/env python3
 
-import ipaddress
-import random
-import socket
-import struct
 import unittest
-from io import BytesIO
 
-import scapy.compat
-from framework import VppTestCase, VppTestRunner
-from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
-from scapy.all import (
-    bind_layers,
-    Packet,
-    ByteEnumField,
-    ShortField,
-    IPField,
-    IntField,
-    LongField,
-    XByteField,
-    FlagsField,
-    FieldLenField,
-    PacketListField,
-)
-from scapy.data import IP_PROTOS
-from scapy.layers.inet import IP, TCP, UDP, ICMP
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import (
     IPv6,
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
-    ICMPv6ND_NS,
-    ICMPv6ND_NA,
-    ICMPv6NDOptDstLLAddr,
-    fragment6,
 )
-from scapy.layers.l2 import Ether, ARP, GRE
-from scapy.packet import Raw
-from syslog_rfc5424_parser import SyslogMessage, ParseError
-from syslog_rfc5424_parser.constants import SyslogSeverity
-from util import ip4_range
-from util import ppc, ppp
-from vpp_acl import AclRule, VppAcl, VppAclInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_neighbor import VppNeighbor
+from scapy.layers.l2 import Ether, GRE
+from util import ppp
 from vpp_papi import VppEnum
 
 

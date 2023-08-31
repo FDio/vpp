@@ -3,7 +3,6 @@
 import binascii
 import socket
 from socket import AF_INET, AF_INET6
-import unittest
 import sys
 from dataclasses import dataclass
 

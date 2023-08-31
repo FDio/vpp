@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from ipaddress import *
 
