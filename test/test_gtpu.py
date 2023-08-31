@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 
-import socket
 from util import ip4_range
 import unittest
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.gtp import GTP_U_Header
-from scapy.utils import atol
 
 import util
 from vpp_ip_route import VppIpRoute, VppRoutePath
