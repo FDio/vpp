@@ -6,9 +6,8 @@ import base64
 import os
 
 from hashlib import blake2s
-from scapy.packet import Packet
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.vxlan import VXLAN
@@ -29,15 +28,11 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
     NoEncryption,
 )
-from cryptography.hazmat.primitives.hashes import BLAKE2s, Hash
-from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.hazmat.backends import default_backend
 from noise.connection import NoiseConnection, Keypair
 
 from Crypto.Cipher import ChaCha20_Poly1305
 from Crypto.Random import get_random_bytes
 
-from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_interface import VppInterface
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -45,7 +40,7 @@ from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_object import VppObject
 from vpp_papi import VppEnum
-from framework import is_distro_ubuntu2204, is_distro_debian11, tag_fixme_vpp_debug
+from asfframework import is_distro_ubuntu2204, is_distro_debian11, tag_fixme_vpp_debug
 from framework import VppTestCase
 from re import compile
 import unittest

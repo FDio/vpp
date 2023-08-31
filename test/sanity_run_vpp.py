@@ -4,10 +4,10 @@ from __future__ import print_function
 from multiprocessing import Pipe
 import sys
 import os
-from framework import VppDiedError, VppTestCase, KeepAliveReporter
+from asfframework import VppDiedError, VppAsfTestCase, KeepAliveReporter
 
 
-class SanityTestCase(VppTestCase):
+class SanityTestCase(VppAsfTestCase):
     """Sanity test case - verify whether VPP is able to start"""
 
     cpus = [0]

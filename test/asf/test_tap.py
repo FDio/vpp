@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_devices import VppTAPInterface
 
 
@@ -10,7 +10,7 @@ def check_tuntap_driver_access():
 
 
 @unittest.skip("Requires root")
-class TestTAP(VppTestCase):
+class TestTAP(VppAsfTestCase):
     """TAP Test Case"""
 
     def test_tap_add_del(self):

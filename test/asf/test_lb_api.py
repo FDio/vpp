@@ -12,13 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import asfframework
-import ipaddress
+from asfframework import VppAsfTestCase
 
 DEFAULT_VIP = "lb_vip_details(_0=978, context=12, vip=vl_api_lb_ip_addr_t(pfx=IPv6Network(u'::/0'), protocol=<vl_api_ip_proto_t.IP_API_PROTO_RESERVED: 255>, port=0), encap=<vl_api_lb_encap_type_t.LB_API_ENCAP_TYPE_GRE4: 0>, dscp=<vl_api_ip_dscp_t.IP_API_DSCP_CS0: 0>, srv_type=<vl_api_lb_srv_type_t.LB_API_SRV_TYPE_CLUSTERIP: 0>, target_port=0, flow_table_length=0)"  # noqa
 
 
-class TestLbEmptyApi(asfframework.VppTestCase):
+class TestLbEmptyApi(VppAsfTestCase):
     """TestLbEmptyApi"""
 
     def test_lb_empty_vip_dump(self):
@@ -35,7 +34,7 @@ class TestLbEmptyApi(asfframework.VppTestCase):
         self.assertEqual(rv, [], "Expected: [] Received: %r." % rv)
 
 
-class TestLbApi(asfframework.VppTestCase):
+class TestLbApi(VppAsfTestCase):
     """TestLbApi"""
 
     def test_lb_vip_dump(self):
@@ -56,7 +55,7 @@ class TestLbApi(asfframework.VppTestCase):
         self.vapi.cli("lb vip 2001::/16 del")
 
 
-class TestLbAsApi(asfframework.VppTestCase):
+class TestLbAsApi(VppAsfTestCase):
     """TestLbAsApi"""
 
     def test_lb_as_dump(self):

@@ -1,10 +1,10 @@
-import binascii
 import socket
 import abc
+import reprlib
 
 from util import Host, mk_ll_addr
-from vpp_papi import mac_ntop, VppEnum
-from ipaddress import IPv4Network, IPv6Network
+from vpp_papi import VppEnum
+from ipaddress import IPv4Network
 
 try:
     text_type = unicode
@@ -238,7 +238,7 @@ class VppInterface(metaclass=abc.ABCMeta):
         else:
             raise Exception(
                 "Could not find interface with sw_if_index %d "
-                "in interface dump %s" % (self.sw_if_index, moves.reprlib.repr(r))
+                "in interface dump %s" % (self.sw_if_index, reprlib.repr(r))
             )
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
         self._local_ip6_ll = None

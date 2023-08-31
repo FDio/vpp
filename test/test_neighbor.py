@@ -2,10 +2,9 @@
 
 import unittest
 import os
-from socket import AF_INET, AF_INET6, inet_pton
 
-from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204, tag_fixme_debian11
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers, tag_fixme_ubuntu2204
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import (
     VppIpRoute,
@@ -19,7 +18,6 @@ from vpp_ip_route import (
 from vpp_papi import VppEnum
 from vpp_ip import VppIpPuntRedirect
 
-import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP, TCP

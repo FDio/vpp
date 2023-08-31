@@ -8,8 +8,8 @@ import unittest
 from io import BytesIO
 
 import scapy.compat
-from framework import tag_fixme_debian11, is_distro_debian11
-from framework import VppTestCase, VppTestRunner, VppLoInterface
+from framework import VppTestCase, VppLoInterface
+from asfframework import VppTestRunner, tag_fixme_debian11, is_distro_debian11
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import (
     bind_layers,

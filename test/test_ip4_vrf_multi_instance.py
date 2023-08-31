@@ -64,14 +64,13 @@
 
 import unittest
 import random
-import socket
 
-import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from util import ppp
 from vrf import VRFState
 

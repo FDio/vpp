@@ -1,12 +1,6 @@
-import socket
-
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether, GRE
-from scapy.packet import Raw
+from scapy.layers.inet import IP, ICMP
 
 from framework import VppTestCase
-from util import ppp
 from vpp_ip_route import VppIpInterfaceAddress, VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 

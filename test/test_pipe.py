@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from socket import AF_INET, AF_INET6, inet_pton
 import unittest
 from ipaddress import IPv4Network
 
@@ -7,7 +6,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from vpp_acl import AclRule, VppAcl, VppAclInterface

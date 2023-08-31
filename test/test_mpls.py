@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto, INVALID_INDEX
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
+from vpp_ip import INVALID_INDEX
 from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,

@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
-from __future__ import print_function
-import binascii
-import random
-import socket
-import unittest
-import time
-import re
-
-from asfframework import VppTestCase
-from vpp_object import VppObject
-from vpp_pg_interface import CaptureTimeoutError
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from ipaddress import ip_address, IPv4Address, IPv6Address
-from socket import AF_INET, AF_INET6
+from framework import VppTestCase
+from ipaddress import IPv4Address
 
 
 class TestIpfixExporter(VppTestCase):

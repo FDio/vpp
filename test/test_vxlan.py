@@ -3,7 +3,8 @@
 import socket
 from util import ip4_range, reassemble4
 import unittest
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
