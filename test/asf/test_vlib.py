@@ -5,7 +5,7 @@ import pexpect
 import time
 import signal
 from config import config
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
@@ -13,7 +13,7 @@ from scapy.packet import Raw
 
 
 @unittest.skipUnless(config.gcov, "part of code coverage tests")
-class TestVlib(VppTestCase):
+class TestVlib(VppAsfTestCase):
     """Vlib Unit Test Cases"""
 
     vpp_worker_count = 1
@@ -223,7 +223,7 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 
-class TestVlibFrameLeak(VppTestCase):
+class TestVlibFrameLeak(VppAsfTestCase):
     """Vlib Frame Leak Test Cases"""
 
     vpp_worker_count = 1

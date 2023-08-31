@@ -2,12 +2,12 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 import os
 
 
-class TestMpcap(VppTestCase):
+class TestMpcap(VppAsfTestCase):
     """Mpcap Unit Test Cases"""
 
     @classmethod

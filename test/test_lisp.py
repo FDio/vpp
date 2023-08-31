@@ -9,7 +9,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
-from asf.lisp import (
+from lisp import (
     VppLocalMapping,
     VppLispAdjacency,
     VppLispLocator,

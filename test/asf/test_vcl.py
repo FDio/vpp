@@ -7,7 +7,7 @@ import subprocess
 import signal
 import glob
 from config import config
-from asfframework import VppTestCase, VppTestRunner, Worker
+from asfframework import VppAsfTestCase, VppTestRunner, Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
 
 iperf3 = "/usr/bin/iperf3"
@@ -58,7 +58,7 @@ class VCLAppWorker(Worker):
         super(VCLAppWorker, self).__init__(self.args, logger, env, *args, **kwargs)
 
 
-class VCLTestCase(VppTestCase):
+class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
     session_startup = ["poll-main"]

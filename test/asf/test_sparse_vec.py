@@ -2,11 +2,11 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestSparseVec(VppTestCase):
+class TestSparseVec(VppAsfTestCase):
     """SparseVec Test Cases"""
 
     @classmethod
