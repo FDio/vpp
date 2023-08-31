@@ -15,12 +15,12 @@ func testProxyHttpTcp(s *NsSuite) error {
 
 	// create test file
 	err := exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
-	s.assertNil(err, "failed to run truncate command")
+	s.AssertNil(err, "failed to run truncate command")
 	defer func() { os.Remove(srcFile) }()
 
-	s.log("test file created...")
+	s.Log("test file created...")
 
-	go startHttpServer(serverRunning, stopServer, ":666", "server")
+	go StartHttpServer(serverRunning, stopServer, ":666", "server")
 	// TODO better error handling and recovery
 	<-serverRunning
 
@@ -28,24 +28,24 @@ func testProxyHttpTcp(s *NsSuite) error {
 		stopServer <- struct{}{}
 	}(stopServer)
 
-	s.log("http server started...")
+	s.Log("http server started...")
 
 	clientVeth := s.netInterfaces[clientInterface]
 	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused"+
 		" --retry-on-http-error=503 --tries=10"+
 		" -O %s %s:555/%s",
 		outputFile,
-		clientVeth.ip4AddressString(),
+		clientVeth.Ip4AddressString(),
 		srcFile,
 	)
-	s.log(c)
+	s.Log(c)
 	_, err = exechelper.CombinedOutput(c)
-	s.assertNil(err, "failed to run wget")
+	s.AssertNil(err, "failed to run wget")
 	stopServer <- struct{}{}
 
 	defer func() { os.Remove(outputFile) }()
 
-	s.assertNil(assertFileSize(outputFile, srcFile))
+	s.AssertFileSize(outputFile, srcFile)
 	return nil
 }
 
@@ -53,41 +53,41 @@ func configureVppProxy(s *NsSuite) {
 	serverVeth := s.netInterfaces[serverInterface]
 	clientVeth := s.netInterfaces[clientInterface]
 
-	testVppProxy := s.getContainerByName("vpp").vppInstance
-	output := testVppProxy.vppctl(
+	testVppProxy := s.GetContainerByName("vpp").vppInstance
+	output := testVppProxy.Vppctl(
 		"test proxy server server-uri tcp://%s/555 client-uri tcp://%s/666",
-		clientVeth.ip4AddressString(),
-		serverVeth.peer.ip4AddressString(),
+		clientVeth.Ip4AddressString(),
+		serverVeth.peer.Ip4AddressString(),
 	)
-	s.log("proxy configured...", output)
+	s.Log("proxy configured...", output)
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
 	configureVppProxy(s)
 	err := testProxyHttpTcp(s)
-	s.assertNil(err)
+	s.AssertNil(err)
 }
 
 func configureEnvoyProxy(s *NsSuite) {
-	envoyContainer := s.getContainerByName("envoy")
-	envoyContainer.create()
+	envoyContainer := s.GetContainerByName("envoy")
+	envoyContainer.Create()
 
 	serverVeth := s.netInterfaces[serverInterface]
 	address := struct {
 		Server string
 	}{
-		Server: serverVeth.peer.ip4AddressString(),
+		Server: serverVeth.peer.Ip4AddressString(),
 	}
-	envoyContainer.createConfig(
+	envoyContainer.CreateConfig(
 		"/etc/envoy/envoy.yaml",
 		"resources/envoy/proxy.yaml",
 		address,
 	)
-	s.assertNil(envoyContainer.start())
+	s.AssertNil(envoyContainer.Start())
 }
 
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
 	configureEnvoyProxy(s)
 	err := testProxyHttpTcp(s)
-	s.assertNil(err)
+	s.AssertNil(err)
 }

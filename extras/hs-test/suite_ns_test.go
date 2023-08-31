@@ -12,8 +12,8 @@ type NsSuite struct {
 
 func (s *NsSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.configureNetworkTopology("ns")
-	s.loadContainerTopology("ns")
+	s.ConfigureNetworkTopology("ns")
+	s.LoadContainerTopology("ns")
 }
 
 func (s *NsSuite) SetupTest() {
@@ -22,24 +22,24 @@ func (s *NsSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").
-		append("evt_qs_memfd_seg").
-		append("event-queue-length 100000").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").
+		Append("evt_qs_memfd_seg").
+		Append("event-queue-length 100000").Close()
 
 	cpus := s.AllocateCpus()
-	container := s.getContainerByName("vpp")
-	vpp, _ := container.newVppInstance(cpus, sessionConfig)
-	vpp.start()
+	container := s.GetContainerByName("vpp")
+	vpp, _ := container.NewVppInstance(cpus, sessionConfig)
+	vpp.Start()
 
-	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
-	s.assertNil(err)
-	s.assertNotEqual(0, idx)
+	idx, err := vpp.CreateAfPacket(s.netInterfaces[serverInterface])
+	s.AssertNil(err)
+	s.AssertNotEqual(0, idx)
 
-	idx, err = vpp.createAfPacket(s.netInterfaces[clientInterface])
-	s.assertNil(err)
-	s.assertNotEqual(0, idx)
+	idx, err = vpp.CreateAfPacket(s.netInterfaces[clientInterface])
+	s.AssertNil(err)
+	s.AssertNotEqual(0, idx)
 
-	container.exec("chmod 777 -R %s", container.getContainerWorkDir())
+	container.Exec("chmod 777 -R %s", container.GetContainerWorkDir())
 }

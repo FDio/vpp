@@ -36,7 +36,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func newContainer(yamlInput ContainerConfig) (*Container, error) {
+func NewContainer(yamlInput ContainerConfig) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -84,7 +84,7 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 				isDefaultWorkDir = isDefault.(bool)
 			}
 
-			container.addVolume(hostDir, containerDir, isDefaultWorkDir)
+			container.AddVolume(hostDir, containerDir, isDefaultWorkDir)
 
 		}
 	}
@@ -94,13 +94,13 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 			envVarMap := envVar.(ContainerConfig)
 			name := envVarMap["name"].(string)
 			value := envVarMap["value"].(string)
-			container.addEnvVar(name, value)
+			container.AddEnvVar(name, value)
 		}
 	}
 	return container, nil
 }
 
-func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
+func (c *Container) GetWorkDirVolume() (res Volume, exists bool) {
 	for _, v := range c.volumes {
 		if v.isDefaultWorkDir {
 			res = v
@@ -111,42 +111,42 @@ func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	return
 }
 
-func (c *Container) getHostWorkDir() (res string) {
-	if v, ok := c.getWorkDirVolume(); ok {
+func (c *Container) GetHostWorkDir() (res string) {
+	if v, ok := c.GetWorkDirVolume(); ok {
 		res = v.hostDir
 	}
 	return
 }
 
-func (c *Container) getContainerWorkDir() (res string) {
-	if v, ok := c.getWorkDirVolume(); ok {
+func (c *Container) GetContainerWorkDir() (res string) {
+	if v, ok := c.GetWorkDirVolume(); ok {
 		res = v.containerDir
 	}
 	return
 }
 
-func (c *Container) getContainerArguments() string {
+func (c *Container) GetContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host --rm"
-	args += c.getVolumesAsCliOption()
-	args += c.getEnvVarsAsCliOption()
+	args += c.GetVolumesAsCliOption()
+	args += c.GetEnvVarsAsCliOption()
 	args += " --name " + c.name + " " + c.image
 	args += " " + c.extraRunningArgs
 	return args
 }
 
-func (c *Container) create() error {
-	cmd := "docker create " + c.getContainerArguments()
-	c.suite.log(cmd)
+func (c *Container) Create() error {
+	cmd := "docker create " + c.GetContainerArguments()
+	c.suite.Log(cmd)
 	return exechelper.Run(cmd)
 }
 
-func (c *Container) start() error {
+func (c *Container) Start() error {
 	cmd := "docker start " + c.name
-	c.suite.log(cmd)
+	c.suite.Log(cmd)
 	return exechelper.Run(cmd)
 }
 
-func (c *Container) prepareCommand() (string, error) {
+func (c *Container) PrepareCommand() (string, error) {
 	if c.name == "" {
 		return "", fmt.Errorf("run container failed: name is blank")
 	}
@@ -155,14 +155,14 @@ func (c *Container) prepareCommand() (string, error) {
 	if c.runDetached {
 		cmd += " -d"
 	}
-	cmd += " " + c.getContainerArguments()
+	cmd += " " + c.GetContainerArguments()
 
-	c.suite.log(cmd)
+	c.suite.Log(cmd)
 	return cmd, nil
 }
 
-func (c *Container) combinedOutput() (string, error) {
-	cmd, err := c.prepareCommand()
+func (c *Container) CombinedOutput() (string, error) {
+	cmd, err := c.PrepareCommand()
 	if err != nil {
 		return "", err
 	}
@@ -171,8 +171,8 @@ func (c *Container) combinedOutput() (string, error) {
 	return string(byteOutput), err
 }
 
-func (c *Container) run() error {
-	cmd, err := c.prepareCommand()
+func (c *Container) Run() error {
+	cmd, err := c.PrepareCommand()
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (c *Container) run() error {
 	return exechelper.Run(cmd)
 }
 
-func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
+func (c *Container) AddVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
 	var volume Volume
 	volume.hostDir = hostDir
 	volume.containerDir = containerDir
@@ -188,7 +188,7 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 	c.volumes[hostDir] = volume
 }
 
-func (c *Container) getVolumesAsCliOption() string {
+func (c *Container) GetVolumesAsCliOption() string {
 	cliOption := ""
 
 	if len(c.volumes) > 0 {
@@ -200,11 +200,11 @@ func (c *Container) getVolumesAsCliOption() string {
 	return cliOption
 }
 
-func (c *Container) addEnvVar(name string, value string) {
+func (c *Container) AddEnvVar(name string, value string) {
 	c.envVars[name] = value
 }
 
-func (c *Container) getEnvVarsAsCliOption() string {
+func (c *Container) GetEnvVarsAsCliOption() string {
 	cliOption := ""
 	if len(c.envVars) == 0 {
 		return cliOption
@@ -216,7 +216,7 @@ func (c *Container) getEnvVarsAsCliOption() string {
 	return cliOption
 }
 
-func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*VppInstance, error) {
+func (c *Container) NewVppInstance(cpus []int, additionalConfigs ...Stanza) (*VppInstance, error) {
 	vpp := new(VppInstance)
 	vpp.container = c
 	vpp.cpus = cpus
@@ -225,12 +225,12 @@ func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*Vp
 	return vpp, nil
 }
 
-func (c *Container) copy(sourceFileName string, targetFileName string) error {
+func (c *Container) Copy(sourceFileName string, targetFileName string) error {
 	cmd := exec.Command("docker", "cp", sourceFileName, c.name+":"+targetFileName)
 	return cmd.Run()
 }
 
-func (c *Container) createFile(destFileName string, content string) error {
+func (c *Container) CreateFile(destFileName string, content string) error {
 	f, err := os.CreateTemp("/tmp", "hst-config")
 	if err != nil {
 		return err
@@ -243,7 +243,7 @@ func (c *Container) createFile(destFileName string, content string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	c.copy(f.Name(), destFileName)
+	c.Copy(f.Name(), destFileName)
 	return nil
 }
 
@@ -251,28 +251,28 @@ func (c *Container) createFile(destFileName string, content string) error {
  * Executes in detached mode so that the started application can continue to run
  * without blocking execution of test
  */
-func (c *Container) execServer(command string, arguments ...any) {
+func (c *Container) ExecServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
+	containerExecCommand := "docker exec -d" + c.GetEnvVarsAsCliOption() +
 		" " + c.name + " " + serverCommand
 	c.suite.T().Helper()
-	c.suite.log(containerExecCommand)
-	c.suite.assertNil(exechelper.Run(containerExecCommand))
+	c.suite.Log(containerExecCommand)
+	c.suite.AssertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) exec(command string, arguments ...any) string {
+func (c *Container) Exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
-	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
+	containerExecCommand := "docker exec" + c.GetEnvVarsAsCliOption() +
 		" " + c.name + " " + cliCommand
 	c.suite.T().Helper()
-	c.suite.log(containerExecCommand)
+	c.suite.Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err)
+	c.suite.AssertNil(err)
 	return string(byteOutput)
 }
 
-func (c *Container) getLogDirPath() string {
-	testId := c.suite.getTestId()
+func (c *Container) GetLogDirPath() string {
+	testId := c.suite.GetTestId()
 	testName := c.suite.T().Name()
 	logDirPath := logDir + testName + "/" + testId + "/"
 
@@ -284,13 +284,13 @@ func (c *Container) getLogDirPath() string {
 	return logDirPath
 }
 
-func (c *Container) saveLogs() {
+func (c *Container) SaveLogs() {
 	cmd := exec.Command("docker", "inspect", "--format='{{.State.Status}}'", c.name)
 	if output, _ := cmd.CombinedOutput(); !strings.Contains(string(output), "running") {
 		return
 	}
 
-	testLogFilePath := c.getLogDirPath() + "container-" + c.name + ".log"
+	testLogFilePath := c.GetLogDirPath() + "container-" + c.name + ".log"
 
 	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
 	output, err := cmd.CombinedOutput()
@@ -306,38 +306,38 @@ func (c *Container) saveLogs() {
 	f.Close()
 }
 
-func (c *Container) log() string {
+func (c *Container) Log() string {
 	cmd := "docker logs " + c.name
-	c.suite.log(cmd)
+	c.suite.Log(cmd)
 	o, err := exechelper.CombinedOutput(cmd)
-	c.suite.assertNil(err)
+	c.suite.AssertNil(err)
 	return string(o)
 }
 
-func (c *Container) stop() error {
+func (c *Container) Stop() error {
 	if c.vppInstance != nil && c.vppInstance.apiChannel != nil {
-		c.vppInstance.saveLogs()
-		c.vppInstance.disconnect()
+		c.vppInstance.SaveLogs()
+		c.vppInstance.Disconnect()
 	}
 	c.vppInstance = nil
-	c.saveLogs()
+	c.SaveLogs()
 	return exechelper.Run("docker stop " + c.name + " -t 0")
 }
 
-func (c *Container) createConfig(targetConfigName string, templateName string, values any) {
+func (c *Container) CreateConfig(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
 	f, err := os.CreateTemp("/tmp/hs-test/", "hst-config")
-	c.suite.assertNil(err)
+	c.suite.AssertNil(err)
 	defer os.Remove(f.Name())
 
 	err = template.Execute(f, values)
-	c.suite.assertNil(err)
+	c.suite.AssertNil(err)
 
 	err = f.Close()
-	c.suite.assertNil(err)
+	c.suite.AssertNil(err)
 
-	c.copy(f.Name(), targetConfigName)
+	c.Copy(f.Name(), targetConfigName)
 }
 
 func init() {

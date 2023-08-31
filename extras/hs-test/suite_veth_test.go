@@ -17,8 +17,8 @@ type VethsSuite struct {
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.configureNetworkTopology("2peerVeth")
-	s.loadContainerTopology("2peerVeth")
+	s.ConfigureNetworkTopology("2peerVeth")
+	s.LoadContainerTopology("2peerVeth")
 }
 
 func (s *VethsSuite) SetupTest() {
@@ -28,57 +28,57 @@ func (s *VethsSuite) SetupTest() {
 
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
 	// ... For server
-	serverContainer := s.getContainerByName("server-vpp")
+	serverContainer := s.GetContainerByName("server-vpp")
 
 	cpus := s.AllocateCpus()
-	serverVpp, _ := serverContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(serverVpp)
+	serverVpp, _ := serverContainer.NewVppInstance(cpus, sessionConfig)
+	s.AssertNotNil(serverVpp)
 
-	s.setupServerVpp()
+	s.SetupServerVpp()
 
 	// ... For client
-	clientContainer := s.getContainerByName("client-vpp")
+	clientContainer := s.GetContainerByName("client-vpp")
 
 	cpus = s.AllocateCpus()
-	clientVpp, _ := clientContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(clientVpp)
+	clientVpp, _ := clientContainer.NewVppInstance(cpus, sessionConfig)
+	s.AssertNotNil(clientVpp)
 
-	s.setupClientVpp()
+	s.SetupClientVpp()
 }
 
-func (s *VethsSuite) setupServerVpp() {
-	serverVpp := s.getContainerByName("server-vpp").vppInstance
+func (s *VethsSuite) SetupServerVpp() {
+	serverVpp := s.GetContainerByName("server-vpp").vppInstance
 
-	err := serverVpp.start()
-	s.assertNil(err)
+	err := serverVpp.Start()
+	s.AssertNil(err)
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
-	idx, err := serverVpp.createAfPacket(serverVeth)
-	s.assertNil(err)
-	s.assertNotEqual(0, idx)
+	idx, err := serverVpp.CreateAfPacket(serverVeth)
+	s.AssertNil(err)
+	s.AssertNotEqual(0, idx)
 
 	namespaceSecret := "1"
-	err = serverVpp.addAppNamespace(1, idx, namespaceSecret)
-	s.assertNil(err)
+	err = serverVpp.AddAppNamespace(1, idx, namespaceSecret)
+	s.AssertNil(err)
 }
 
-func (s *VethsSuite) setupClientVpp() {
-	clientVpp := s.getContainerByName("client-vpp").vppInstance
+func (s *VethsSuite) SetupClientVpp() {
+	clientVpp := s.GetContainerByName("client-vpp").vppInstance
 
-	err := clientVpp.start()
-	s.assertNil(err)
+	err := clientVpp.Start()
+	s.AssertNil(err)
 
 	clientVeth := s.netInterfaces[clientInterfaceName]
-	idx, err := clientVpp.createAfPacket(clientVeth)
-	s.assertNil(err)
-	s.assertNotEqual(0, idx)
+	idx, err := clientVpp.CreateAfPacket(clientVeth)
+	s.AssertNil(err)
+	s.AssertNotEqual(0, idx)
 
 	clientNamespaceSecret := "2"
-	err = clientVpp.addAppNamespace(2, idx, clientNamespaceSecret)
-	s.assertNil(err)
+	err = clientVpp.AddAppNamespace(2, idx, clientNamespaceSecret)
+	s.AssertNil(err)
 }

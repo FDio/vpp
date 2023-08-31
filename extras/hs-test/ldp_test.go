@@ -8,14 +8,14 @@ import (
 func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	var clnVclConf, srvVclConf Stanza
 
-	serverContainer := s.getContainerByName("server-vpp")
-	serverVclFileName := serverContainer.getHostWorkDir() + "/vcl_srv.conf"
+	serverContainer := s.GetContainerByName("server-vpp")
+	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
 
-	clientContainer := s.getContainerByName("client-vpp")
-	clientVclFileName := clientContainer.getHostWorkDir() + "/vcl_cln.conf"
+	clientContainer := s.GetContainerByName("client-vpp")
+	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
 
 	ldpreload := os.Getenv("HST_LDPRELOAD")
-	s.assertNotEqual("", ldpreload)
+	s.AssertNotEqual("", ldpreload)
 
 	ldpreload = "LD_PRELOAD=" + ldpreload
 
@@ -23,52 +23,52 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
 
-	s.log("starting VPPs")
+	s.Log("starting VPPs")
 
 	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/2",
-		clientContainer.getContainerWorkDir())
+		clientContainer.GetContainerWorkDir())
 	err := clnVclConf.
-		newStanza("vcl").
-		append("rx-fifo-size 4000000").
-		append("tx-fifo-size 4000000").
-		append("app-scope-local").
-		append("app-scope-global").
-		append("use-mq-eventfd").
-		append(clientAppSocketApi).close().
-		saveToFile(clientVclFileName)
-	s.assertNil(err)
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(clientAppSocketApi).Close().
+		SaveToFile(clientVclFileName)
+	s.AssertNil(err)
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/1",
-		serverContainer.getContainerWorkDir())
+		serverContainer.GetContainerWorkDir())
 	err = srvVclConf.
-		newStanza("vcl").
-		append("rx-fifo-size 4000000").
-		append("tx-fifo-size 4000000").
-		append("app-scope-local").
-		append("app-scope-global").
-		append("use-mq-eventfd").
-		append(serverAppSocketApi).close().
-		saveToFile(serverVclFileName)
-	s.assertNil(err)
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(serverAppSocketApi).Close().
+		SaveToFile(serverVclFileName)
+	s.AssertNil(err)
 
-	s.log("attaching server to vpp")
+	s.Log("attaching server to vpp")
 
 	srvEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+serverVclFileName)
-	go startServerApp(srvCh, stopServerCh, srvEnv)
+	go StartServerApp(srvCh, stopServerCh, srvEnv)
 
 	err = <-srvCh
-	s.assertNil(err)
+	s.AssertNil(err)
 
-	s.log("attaching client to vpp")
+	s.Log("attaching client to vpp")
 	var clnRes = make(chan string, 1)
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clientVclFileName)
-	serverVethAddress := s.netInterfaces[serverInterfaceName].ip4AddressString()
-	go startClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
-	s.log(<-clnRes)
+	serverVethAddress := s.netInterfaces[serverInterfaceName].Ip4AddressString()
+	go StartClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
+	s.Log(<-clnRes)
 
 	// wait for client's result
 	err = <-clnCh
-	s.assertNil(err)
+	s.AssertNil(err)
 
 	// stop server
 	stopServerCh <- struct{}{}

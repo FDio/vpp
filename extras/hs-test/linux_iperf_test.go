@@ -9,16 +9,16 @@ func (s *TapSuite) TestLinuxIperf() {
 		stopServerCh <- struct{}{}
 	}()
 
-	go startServerApp(srvCh, stopServerCh, nil)
+	go StartServerApp(srvCh, stopServerCh, nil)
 	err := <-srvCh
-	s.assertNil(err)
-	s.log("server running")
+	s.AssertNil(err)
+	s.Log("server running")
 
-	ipAddress := s.netInterfaces[tapInterfaceName].ip4AddressString()
-	go startClientApp(ipAddress, nil, clnCh, clnRes)
-	s.log("client running")
-	s.log(<-clnRes)
+	ipAddress := s.netInterfaces[tapInterfaceName].Ip4AddressString()
+	go StartClientApp(ipAddress, nil, clnCh, clnRes)
+	s.Log("client running")
+	s.Log(<-clnRes)
 	err = <-clnCh
-	s.assertNil(err)
-	s.log("Test completed")
+	s.AssertNil(err)
+	s.Log("Test completed")
 }

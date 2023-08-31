@@ -19,8 +19,8 @@ type (
 	InterfaceIndex       = interface_types.InterfaceIndex
 
 	NetConfig interface {
-		configure() error
-		unconfigure()
+		Configure() error
+		Unconfigure()
 		Name() string
 		Type() string
 	}
@@ -72,7 +72,7 @@ var (
 	}
 )
 
-func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterface, error) {
+func NewNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterface, error) {
 	var newInterface *NetInterface = &NetInterface{}
 	var err error
 	newInterface.ip4AddrAllocator = a
@@ -112,14 +112,14 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 
 	peer := cfg["peer"].(NetDevConfig)
 
-	if newInterface.peer, err = newNetworkInterface(peer, a); err != nil {
+	if newInterface.peer, err = NewNetworkInterface(peer, a); err != nil {
 		return &NetInterface{}, err
 	}
 
 	return newInterface, nil
 }
 
-func (n *NetInterface) configureUpState() error {
+func (n *NetInterface) ConfigureUpState() error {
 	err := setDevUp(n.Name(), "")
 	if err != nil {
 		return fmt.Errorf("set link up failed: %v", err)
@@ -127,7 +127,7 @@ func (n *NetInterface) configureUpState() error {
 	return nil
 }
 
-func (n *NetInterface) configureNetworkNamespace() error {
+func (n *NetInterface) ConfigureNetworkNamespace() error {
 	if n.networkNamespace != "" {
 		err := linkSetNetns(n.name, n.networkNamespace)
 		if err != nil {
@@ -137,9 +137,9 @@ func (n *NetInterface) configureNetworkNamespace() error {
 	return nil
 }
 
-func (n *NetInterface) configureAddress() error {
+func (n *NetInterface) ConfigureAddress() error {
 	if n.ip4Address != "" {
-		if err := addAddress(
+		if err := AddAddress(
 			n.Name(),
 			n.ip4Address,
 			n.networkNamespace,
@@ -151,35 +151,35 @@ func (n *NetInterface) configureAddress() error {
 	return nil
 }
 
-func (n *NetInterface) configure() error {
+func (n *NetInterface) Configure() error {
 	cmd := ipCommandMap[n.Type()](n)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("creating interface '%v' failed: %v", n.Name(), err)
 	}
 
-	if err := n.configureUpState(); err != nil {
+	if err := n.ConfigureUpState(); err != nil {
 		return err
 	}
 
-	if err := n.configureNetworkNamespace(); err != nil {
+	if err := n.ConfigureNetworkNamespace(); err != nil {
 		return err
 	}
 
-	if err := n.configureAddress(); err != nil {
+	if err := n.ConfigureAddress(); err != nil {
 		return err
 	}
 
 	if n.peer != nil && n.peer.name != "" {
-		if err := n.peer.configureUpState(); err != nil {
+		if err := n.peer.ConfigureUpState(); err != nil {
 			return err
 		}
 
-		if err := n.peer.configureNetworkNamespace(); err != nil {
+		if err := n.peer.ConfigureNetworkNamespace(); err != nil {
 			return err
 		}
 
-		if err := n.peer.configureAddress(); err != nil {
+		if err := n.peer.ConfigureAddress(); err != nil {
 			return err
 		}
 	}
@@ -187,7 +187,7 @@ func (n *NetInterface) configure() error {
 	return nil
 }
 
-func (n *NetInterface) unconfigure() {
+func (n *NetInterface) Unconfigure() {
 	delLink(n.name)
 }
 
@@ -199,18 +199,18 @@ func (n *NetInterface) Type() string {
 	return n.category
 }
 
-func (n *NetInterface) addressWithPrefix() AddressWithPrefix {
+func (n *NetInterface) AddressWithPrefix() AddressWithPrefix {
 	address, _ := ip_types.ParseAddressWithPrefix(n.ip4Address)
 	return address
 }
 
-func (n *NetInterface) ip4AddressWithPrefix() IP4AddressWithPrefix {
+func (n *NetInterface) Ip4AddressWithPrefix() IP4AddressWithPrefix {
 	ip4Prefix, _ := ip_types.ParseIP4Prefix(n.ip4Address)
 	ip4AddressWithPrefix := ip_types.IP4AddressWithPrefix(ip4Prefix)
 	return ip4AddressWithPrefix
 }
 
-func (n *NetInterface) ip4AddressString() string {
+func (n *NetInterface) Ip4AddressString() string {
 	return strings.Split(n.ip4Address, "/")[0]
 }
 
@@ -222,22 +222,22 @@ func (b *NetConfigBase) Type() string {
 	return b.category
 }
 
-func newNetNamespace(cfg NetDevConfig) (NetworkNamespace, error) {
+func NewNetNamespace(cfg NetDevConfig) (NetworkNamespace, error) {
 	var networkNamespace NetworkNamespace
 	networkNamespace.name = cfg["name"].(string)
 	networkNamespace.category = NetNs
 	return networkNamespace, nil
 }
 
-func (ns *NetworkNamespace) configure() error {
+func (ns *NetworkNamespace) Configure() error {
 	return addDelNetns(ns.name, true)
 }
 
-func (ns *NetworkNamespace) unconfigure() {
+func (ns *NetworkNamespace) Unconfigure() {
 	addDelNetns(ns.name, false)
 }
 
-func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
+func NewBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	var bridge NetworkBridge
 	bridge.name = cfg["name"].(string)
 	bridge.category = Bridge
@@ -252,11 +252,11 @@ func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	return bridge, nil
 }
 
-func (b *NetworkBridge) configure() error {
+func (b *NetworkBridge) Configure() error {
 	return addBridge(b.name, b.interfaces, b.networkNamespace)
 }
 
-func (b *NetworkBridge) unconfigure() {
+func (b *NetworkBridge) Unconfigure() {
 	delBridge(b.name, b.networkNamespace)
 }
 

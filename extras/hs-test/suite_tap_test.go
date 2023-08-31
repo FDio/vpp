@@ -11,5 +11,5 @@ type TapSuite struct {
 func (s *TapSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.configureNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap")
 }

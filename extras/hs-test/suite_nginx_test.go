@@ -15,8 +15,8 @@ type NginxSuite struct {
 
 func (s *NginxSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.loadNetworkTopology("2taps")
-	s.loadContainerTopology("nginxProxyAndServer")
+	s.LoadNetworkTopology("2taps")
+	s.LoadContainerTopology("nginxProxyAndServer")
 }
 
 func (s *NginxSuite) SetupTest() {
@@ -25,38 +25,38 @@ func (s *NginxSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
 	cpus := s.AllocateCpus()
 	// ... for proxy
-	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	proxyVpp, _ := vppProxyContainer.newVppInstance(cpus, sessionConfig)
-	proxyVpp.start()
+	vppProxyContainer := s.GetContainerByName(vppProxyContainerName)
+	proxyVpp, _ := vppProxyContainer.NewVppInstance(cpus, sessionConfig)
+	proxyVpp.Start()
 
 	clientInterface := s.netInterfaces[mirroringClientInterfaceName]
-	proxyVpp.createTap(clientInterface, 1)
+	proxyVpp.CreateTap(clientInterface, 1)
 
 	serverInterface := s.netInterfaces[mirroringServerInterfaceName]
-	proxyVpp.createTap(serverInterface, 2)
+	proxyVpp.CreateTap(serverInterface, 2)
 
-	nginxContainer := s.getTransientContainerByName(nginxProxyContainerName)
-	nginxContainer.create()
+	nginxContainer := s.GetTransientContainerByName(nginxProxyContainerName)
+	nginxContainer.Create()
 
 	values := struct {
 		Proxy  string
 		Server string
 	}{
-		Proxy:  clientInterface.peer.ip4AddressString(),
-		Server: serverInterface.ip4AddressString(),
+		Proxy:  clientInterface.peer.Ip4AddressString(),
+		Server: serverInterface.Ip4AddressString(),
 	}
-	nginxContainer.createConfig(
+	nginxContainer.CreateConfig(
 		"/nginx.conf",
 		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,
 	)
-	nginxContainer.start()
+	nginxContainer.Start()
 
-	proxyVpp.waitForApp("nginx-", 5)
+	proxyVpp.WaitForApp("nginx-", 5)
 }

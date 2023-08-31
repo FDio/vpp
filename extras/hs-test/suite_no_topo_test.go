@@ -13,8 +13,8 @@ type NoTopoSuite struct {
 
 func (s *NoTopoSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.loadNetworkTopology("tap")
-	s.loadContainerTopology("single")
+	s.LoadNetworkTopology("tap")
+	s.LoadContainerTopology("single")
 }
 
 func (s *NoTopoSuite) SetupTest() {
@@ -23,16 +23,16 @@ func (s *NoTopoSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
 	cpus := s.AllocateCpus()
-	container := s.getContainerByName(singleTopoContainerVpp)
-	vpp, _ := container.newVppInstance(cpus, sessionConfig)
-	vpp.start()
+	container := s.GetContainerByName(singleTopoContainerVpp)
+	vpp, _ := container.NewVppInstance(cpus, sessionConfig)
+	vpp.Start()
 
 	tapInterface := s.netInterfaces[tapInterfaceName]
 
-	vpp.createTap(tapInterface)
+	vpp.CreateTap(tapInterface)
 }
