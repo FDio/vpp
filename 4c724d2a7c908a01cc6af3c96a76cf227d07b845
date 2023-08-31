@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "762ce9cc_a769111d",
+        "filename": "src/plugins/tracenode/node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-31T08:51:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f443fd8_c7b5f338",
+      "revId": "4c724d2a7c908a01cc6af3c96a76cf227d07b845",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "986ffc4e_065fcd17",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eadb9024_81ee7d94",
+        "filename": "src/plugins/tracenode/tracenode.api",
+        "patchSetId": 10
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-31T08:51:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "986ffc4e_065fcd17",
+      "revId": "4c724d2a7c908a01cc6af3c96a76cf227d07b845",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dce2505f_73c36fd6",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-08-31T08:26:43Z",
       "side": 1,
       "message": "Missed it in previous reviews but I don\u0027t think you should use vnet namespace for this name.\nIt should be named tracenode_enable_disable() or similar.",
+      "revId": "4c724d2a7c908a01cc6af3c96a76cf227d07b845",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "38e4ad40_fe746f61",
+        "filename": "src/plugins/tracenode/tracenode.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-08-31T08:51:25Z",
+      "side": 1,
+      "message": "Thanks for catching that one, I think is a leftover from my first version when the feature was not a plugin.",
+      "parentUuid": "dce2505f_73c36fd6",
       "revId": "4c724d2a7c908a01cc6af3c96a76cf227d07b845",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
