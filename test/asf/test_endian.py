@@ -12,13 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import asfframework
+from asfframework import VppAsfTestCase
 import vpp_papi_provider
 
 F64_ONE = 1.0
 
 
-class TestEndian(asfframework.VppTestCase):
+class TestEndian(VppAsfTestCase):
     """TestEndian"""
 
     def test_f64_endian_value(self):

@@ -11,7 +11,8 @@ from vpp_qemu_utils import (
     add_namespace_route,
 )
 from vpp_iperf import start_iperf, stop_iperf
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from config import config
 from vpp_papi import VppEnum
 import time
