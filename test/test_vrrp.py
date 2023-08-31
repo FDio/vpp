@@ -12,7 +12,6 @@ import socket
 from socket import inet_pton, inet_ntop
 
 from vpp_object import VppObject
-from vpp_papi import VppEnum
 
 from scapy.packet import raw
 from scapy.layers.l2 import Ether, ARP
@@ -29,11 +28,12 @@ from scapy.layers.inet6 import (
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
 )
-from scapy.contrib.igmpv3 import IGMPv3, IGMPv3mr, IGMPv3gr
+from scapy.contrib.igmpv3 import IGMPv3, IGMPv3mr
 from scapy.layers.vrrp import IPPROTO_VRRP, VRRPv3
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from config import config
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from util import ip6_normalize
 
 VRRP_VR_FLAG_PREEMPT = 1

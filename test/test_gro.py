@@ -10,14 +10,11 @@
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
-from scapy.layers.inet6 import ipv6nh, IPerror6
-from scapy.layers.inet import TCP, ICMP
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.layers.inet6 import IPv6, Ether, IP
+from scapy.layers.inet import TCP
 
-from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_interface import VppInterface
+from framework import VppTestCase
+from asfframework import VppTestRunner
 
 
 """ Test_gro is a subclass of VPPTestCase classes.
