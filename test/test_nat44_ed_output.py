@@ -3,10 +3,11 @@
 
 import random
 import unittest
-from scapy.layers.inet import ICMP, Ether, IP, TCP
+from scapy.layers.inet import Ether, IP, TCP
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 
 

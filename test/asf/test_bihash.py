@@ -3,11 +3,10 @@
 import unittest
 
 from config import config
-from asfframework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestBihash(VppTestCase):
+class TestBihash(VppAsfTestCase):
     """Bihash Test Cases"""
 
     @classmethod

@@ -81,6 +81,7 @@ DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
 DEB_DEPENDS += nasm
 DEB_DEPENDS += iperf ethtool  # for 'make test TEST=vm_vpp_interfaces'
 DEB_DEPENDS += libpcap-dev
+DEB_DEPENDS += tshark
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 
@@ -197,6 +198,7 @@ ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
 endif
 
 ifeq ($(findstring y,$(UNATTENDED)),y)
+DEBIAN_FRONTEND=noninteractive
 CONFIRM=-y
 FORCE=--allow-downgrades --allow-remove-essential --allow-change-held-packages
 endif
