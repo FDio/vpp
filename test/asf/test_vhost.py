@@ -2,12 +2,12 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 
 from vpp_vhost_interface import VppVhostInterface
 
 
-class TesVhostInterface(VppTestCase):
+class TesVhostInterface(VppAsfTestCase):
     """Vhost User Test Case"""
 
     @classmethod

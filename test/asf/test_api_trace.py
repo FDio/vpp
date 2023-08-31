@@ -1,12 +1,12 @@
 import os
 import unittest
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_papi import VppEnum
 import json
 import shutil
 
 
-class TestJsonApiTrace(VppTestCase):
+class TestJsonApiTrace(VppAsfTestCase):
     """JSON API trace related tests"""
 
     @classmethod

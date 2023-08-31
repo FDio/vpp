@@ -2,7 +2,7 @@ import socket
 import unittest
 
 from util import ppp
-from asfframework import VppTestRunner
+from framework import VppTestRunner
 from template_ipsec import SpdFlowCacheTemplate
 
 
