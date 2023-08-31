@@ -7,7 +7,6 @@ import time
 from traceback import format_exc, format_stack
 
 from config import config
-import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface
@@ -230,7 +229,7 @@ class VppPGInterface(VppInterface):
             if not self.wait_for_capture_file(timeout):
                 return None
             output = rdpcap(self.out_path)
-            self.test.logger.debug("Capture has %s packets" % len(output.res))
+            self.test.logger.debug(f"Capture has {len(output.res)} packets")
         except:
             self.test.logger.debug(
                 "Exception in scapy.rdpcap (%s): %s" % (self.out_path, format_exc())
@@ -285,7 +284,12 @@ class VppPGInterface(VppInterface):
                     # bingo, got the packets we expected
                     return capture
                 elif len(capture.res) > expected_count:
-                    self.test.logger.error(ppc("Unexpected packets captured:", capture))
+                    self.test.logger.error(
+                        ppc(
+                            f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
+                            capture,
+                        )
+                    )
                     break
                 else:
                     self.test.logger.debug(
@@ -302,16 +306,15 @@ class VppPGInterface(VppInterface):
             if len(capture) > 0 and 0 == expected_count:
                 rem = f"\n{remark}" if remark else ""
                 raise UnexpectedPacketError(
-                    capture[0], f"\n({len(capture)} packets captured in total){rem}"
+                    capture[0],
+                    f"\n({len(capture)} packets captured in total){rem} on {name}",
                 )
-            raise Exception(
-                "Captured packets mismatch, captured %s packets, "
-                "expected %s packets on %s" % (len(capture.res), expected_count, name)
-            )
+            msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
+            raise Exception(f"{ppc(msg, capture)}")
         else:
             if 0 == expected_count:
                 return
-            raise Exception("No packets captured on %s" % name)
+            raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
 
     def assert_nothing_captured(
         self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
@@ -355,8 +358,8 @@ class VppPGInterface(VppInterface):
         deadline = time.time() + timeout
         if not os.path.isfile(self.out_path):
             self.test.logger.debug(
-                "Waiting for capture file %s to appear, "
-                "timeout is %ss" % (self.out_path, timeout)
+                f"Waiting for capture file {self.out_path} to appear, timeout is {timeout}s\n"
+                f"{' '.join(format_stack(limit=10))}"
             )
         else:
             self.test.logger.debug("Capture file %s already exists" % self.out_path)
@@ -455,8 +458,8 @@ class VppPGInterface(VppInterface):
                     return p
             self._test.sleep(0)  # yield
             poll = False
-        self.test.logger.debug("Timeout - no packets received")
-        raise CaptureTimeoutError("Packet didn't arrive within timeout")
+        self.test.logger.debug(f"Timeout ({timeout}) - no packets received")
+        raise CaptureTimeoutError(f"Packet didn't arrive within timeout ({timeout})")
 
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""

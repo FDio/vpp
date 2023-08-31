@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-import socket
 from util import ip4_range
 import unittest
 from config import config
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw, bind_layers
+from scapy.packet import bind_layers
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 
