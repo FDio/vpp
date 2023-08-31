@@ -8,10 +8,11 @@ from scapy.layers.l2 import Ether
 from scapy.layers.ppp import PPPoE, PPPoED, PPP
 from scapy.layers.inet import IP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_pppoe_interface import VppPppoeInterface
-from util import ppp, ppc
+from util import ppp
 
 
 class TestPPPoE(VppTestCase):

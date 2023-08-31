@@ -1,4 +1,5 @@
-from framework import VppTestCase, VppTestRunner
+from asfframework import VppTestRunner
+from framework import VppTestCase
 import unittest
 from config import config
 from scapy.layers.l2 import Ether

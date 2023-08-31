@@ -7,8 +7,8 @@ import subprocess
 import signal
 import glob
 from config import config
-from asfframework import VppTestCase, VppTestRunner, Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, FibPathProto
+from asfframework import VppAsfTestCase, VppTestRunner, Worker
+from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 iperf3 = "/usr/bin/iperf3"
 
@@ -58,7 +58,7 @@ class VCLAppWorker(Worker):
         super(VCLAppWorker, self).__init__(self.args, logger, env, *args, **kwargs)
 
 
-class VCLTestCase(VppTestCase):
+class VCLTestCase(VppAsfTestCase):
     """VCL Test Class"""
 
     session_startup = ["poll-main"]
@@ -84,7 +84,7 @@ class VCLTestCase(VppTestCase):
         self.timeout = 20
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
         self.pre_test_sleep = 0.3
-        self.post_test_sleep = 0.2
+        self.post_test_sleep = 1
         self.sapi_client_sock = ""
         self.sapi_server_sock = ""
 
