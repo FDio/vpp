@@ -65,7 +65,6 @@
 
 import unittest
 import random
-import socket
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -77,10 +76,10 @@ from scapy.layers.inet6 import (
     RouterAlert,
     IPv6ExtHdrHopByHop,
 )
-from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
-from scapy.pton_ntop import inet_ntop
+from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from util import ppp
 from vrf import VRFState
 

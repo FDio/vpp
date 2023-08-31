@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -52,7 +52,7 @@ def checkAll():
     return ret
 
 
-class TestTLS(VppTestCase):
+class TestTLS(VppAsfTestCase):
     """TLS Qat Test Case."""
 
     @classmethod

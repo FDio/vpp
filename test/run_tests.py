@@ -14,12 +14,14 @@ from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from config import config, num_cpus, available_cpus, max_vpp_cpus
-from framework import (
+from asfframework import (
     VppTestRunner,
-    VppTestCase,
     get_testcase_doc_name,
     get_test_description,
+    get_failed_testcase_linkname,
+    get_testcase_dirname,
 )
+from framework import VppTestCase
 from test_result_code import TestResultCode
 from debug import spawn_gdb
 from log import (
@@ -1057,6 +1059,13 @@ if __name__ == "__main__":
         )
         exit_code = 0
         while suites and attempts > 0:
+            for suite in suites:
+                failed_link = get_failed_testcase_linkname(
+                    config.failed_dir,
+                    f"{get_testcase_dirname(suite._tests[0].__class__.__name__)}",
+                )
+                if os.path.islink(failed_link):
+                    os.unlink(failed_link)
             results = run_forked(suites)
             exit_code, suites = parse_results(results)
             attempts -= 1
