@@ -2,12 +2,11 @@
 
 import unittest
 
-from asfframework import tag_fixme_vpp_workers
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner, tag_fixme_vpp_workers
 
 
 @tag_fixme_vpp_workers
-class TestFIB(VppTestCase):
+class TestFIB(VppAsfTestCase):
     """FIB Test Case"""
 
     @classmethod

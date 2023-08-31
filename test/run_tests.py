@@ -14,12 +14,12 @@ from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from config import config, num_cpus, available_cpus, max_vpp_cpus
-from framework import (
+from asfframework import (
     VppTestRunner,
-    VppTestCase,
     get_testcase_doc_name,
     get_test_description,
 )
+from framework import VppTestCase
 from test_result_code import TestResultCode
 from debug import spawn_gdb
 from log import (
