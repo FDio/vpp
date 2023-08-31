@@ -1,6 +1,5 @@
 from ipaddress import IPv4Address, AddressValueError
 from vpp_object import VppObject
-from vpp_papi import VppEnum
 
 
 class AuthMethod:

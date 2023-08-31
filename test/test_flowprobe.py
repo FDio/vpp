@@ -5,7 +5,6 @@ import random
 import socket
 import unittest
 import time
-import re
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -14,12 +13,17 @@ from scapy.layers.inet6 import IPv6
 from scapy.contrib.lacp import SlowProtocol, LACP
 
 from config import config
-from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204, tag_fixme_debian11
-from framework import is_distro_ubuntu2204, is_distro_debian11
-from framework import VppTestCase, VppTestRunner
-from framework import tag_run_solo
+from framework import VppTestCase
+from asfframework import (
+    tag_fixme_vpp_workers,
+    tag_fixme_ubuntu2204,
+    tag_fixme_debian11,
+    tag_run_solo,
+    is_distro_ubuntu2204,
+    is_distro_debian11,
+    VppTestRunner,
+)
 from vpp_object import VppObject
-from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -1394,6 +1398,10 @@ class DisableFP(MethodHolder):
         self.vapi.ipfix_flush()
         self.sleep(1, "wait before verifying no packets sent")
         self.collector.assert_nothing_captured()
+
+        # enable FPP feature so the remove_vpp_config() doesn't fail
+        # due to missing feature on interface.
+        ipfix.enable_flowprobe_feature()
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")

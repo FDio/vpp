@@ -1,5 +1,5 @@
 from config import config
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 import unittest
 import subprocess
 import tempfile
@@ -15,7 +15,7 @@ from vpp_qemu_utils import (
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
-class TestHttpStaticVapi(VppTestCase):
+class TestHttpStaticVapi(VppAsfTestCase):
     """enable the http static server [VAPI]"""
 
     @classmethod
@@ -83,7 +83,7 @@ class TestHttpStaticVapi(VppTestCase):
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
-class TestHttpStaticCli(VppTestCase):
+class TestHttpStaticCli(VppAsfTestCase):
     """enable the static http server [CLI]"""
 
     @classmethod

@@ -2,11 +2,11 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestTCP(VppTestCase):
+class TestTCP(VppAsfTestCase):
     """TCP Test Case"""
 
     @classmethod
@@ -93,7 +93,7 @@ class TestTCP(VppTestCase):
         ip_t10.remove_vpp_config()
 
 
-class TestTCPUnitTests(VppTestCase):
+class TestTCPUnitTests(VppAsfTestCase):
     "TCP Unit Tests"
 
     @classmethod

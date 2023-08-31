@@ -1,7 +1,8 @@
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from template_ipsec import TemplateIpsec, IPsecIPv4Params
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from template_ipsec import IPsecIPv4Params
 from vpp_papi import VppEnum
 
 from vpp_ipsec import VppIpsecSA

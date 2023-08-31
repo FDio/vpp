@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from asfframework import VppTestCase
+from asfframework import VppAsfTestCase
 
 
-class TestBuffers(VppTestCase):
+class TestBuffers(VppAsfTestCase):
     """Buffer C Unit Tests"""
 
     @classmethod
