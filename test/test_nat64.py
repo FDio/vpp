@@ -9,8 +9,13 @@ from io import BytesIO
 
 import scapy.compat
 from config import config
-from framework import tag_fixme_vpp_workers, tag_fixme_ubuntu2204, is_distro_ubuntu2204
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import (
+    tag_fixme_vpp_workers,
+    tag_fixme_ubuntu2204,
+    is_distro_ubuntu2204,
+    VppTestRunner,
+)
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP

@@ -2,9 +2,8 @@
 
 import unittest
 
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from framework import VppTestCase
+from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from vpp_ip_route import (
     VppIpMRoute,
     VppMRoutePath,
