@@ -2,10 +2,10 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestVppinfra(VppTestCase):
+class TestVppinfra(VppAsfTestCase):
     """Vppinfra Unit Test Cases"""
 
     @classmethod

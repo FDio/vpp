@@ -2,15 +2,12 @@
 """ Vpp HTTP tests """
 
 import unittest
-import os
-import subprocess
 import http.client
-from asfframework import VppTestCase, VppTestRunner, Worker
-from vpp_devices import VppTAPInterface
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
 @unittest.skip("Requires root")
-class TestHttpTps(VppTestCase):
+class TestHttpTps(VppAsfTestCase):
     """HTTP test class"""
 
     @classmethod

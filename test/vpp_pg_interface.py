@@ -5,9 +5,10 @@ from socket import inet_pton, inet_ntop
 import struct
 import time
 from traceback import format_exc, format_stack
+from sh import tshark
+from pathlib import Path
 
 from config import config
-import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface
@@ -146,31 +147,56 @@ class VppPGInterface(VppInterface):
         )
         self._cap_name = "pcap%u-sw_if_index-%s" % (self.pg_index, self.sw_if_index)
 
-    def handle_old_pcap_file(self, path, counter):
-        filename = os.path.basename(path)
-
+    def link_pcap_file(self, path, direction, counter):
         if not config.keep_pcaps:
-            try:
-                self.test.logger.debug(f"Removing {path}")
-                os.remove(path)
-            except OSError:
-                self.test.logger.debug(f"OSError: Could not remove {path}")
             return
-
-        # keep
+        filename = os.path.basename(path)
+        test_name = (
+            self.test_name
+            if hasattr(self, "test_name")
+            else f"suite{self.test.__name__}"
+        )
+        name = f"{self.test.tempdir}/{test_name}.[timestamp:{time.time():.8f}].{self.name}-{direction}-{counter:04}.{filename}"
+        if os.path.isfile(name):
+            self.test.logger.debug(
+                f"Skipping hard link creation: {name} already exists!"
+            )
+            return
         try:
             if os.path.isfile(path):
-                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % (
-                    self.test.tempdir,
-                    time.time(),
-                    self.name,
-                    counter,
-                    filename,
-                )
-                self.test.logger.debug("Renaming %s->%s" % (path, name))
-                shutil.move(path, name)
+                self.test.logger.debug(f"Creating hard link {path}->{name}")
+                os.link(path, name)
         except OSError:
-            self.test.logger.debug("OSError: Could not rename %s %s" % (path, filename))
+            self.test.logger.debug(
+                f"OSError: Could not create hard link {path}->{name}"
+            )
+
+    def remove_old_pcap_file(self, path):
+        try:
+            self.test.logger.debug(f"Removing {path}")
+            os.remove(path)
+        except OSError:
+            self.test.logger.debug(f"OSError: Could not remove {path}")
+        return
+
+    def decode_pcap_files(self, pcap_dir, filename_prefix):
+        # Generate tshark packet trace of testcase pcap files
+        pg_decode = f"{pcap_dir}/pcap-decode-{filename_prefix}.txt"
+        if os.path.isfile(pg_decode):
+            self.test.logger.debug(
+                f"The pg streams decode file already exists: {pg_decode}"
+            )
+            return
+        self.test.logger.debug(
+            f"Generating testcase pg streams decode file: {pg_decode}"
+        )
+        ts_opts = "-Vr"
+        for p in sorted(Path(pcap_dir).glob(f"{filename_prefix}*.pcap")):
+            self.test.logger.debug(f"Decoding {p}")
+            with open(f"{pg_decode}", "a", buffering=1) as f:
+                print(f"tshark {ts_opts} {p}", file=f)
+                tshark(ts_opts, f"{p}", _out=f)
+                print("", file=f)
 
     def enable_capture(self):
         """Enable capture on this packet-generator interface
@@ -179,7 +205,7 @@ class VppPGInterface(VppInterface):
         """
         # disable the capture to flush the capture
         self.disable_capture()
-        self.handle_old_pcap_file(self.out_path, self.out_history_counter)
+        self.remove_old_pcap_file(self.out_path)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
@@ -204,10 +230,14 @@ class VppPGInterface(VppInterface):
         :param pkts: iterable packets
 
         """
-        wrpcap(self.get_in_path(worker), pkts)
+        in_pcap = self.get_in_path(worker)
+        if os.path.isfile(in_pcap):
+            self.remove_old_pcap_file(in_pcap)
+        wrpcap(in_pcap, pkts)
         self.test.register_pcap(self, worker)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.get_input_cli(nb_replays, worker))
+        self.link_pcap_file(self.get_in_path(worker), "inp", self.in_history_counter)
 
     def generate_debug_aid(self, kind):
         """Create a hardlink to the out file with a counter and a file
@@ -230,7 +260,7 @@ class VppPGInterface(VppInterface):
             if not self.wait_for_capture_file(timeout):
                 return None
             output = rdpcap(self.out_path)
-            self.test.logger.debug("Capture has %s packets" % len(output.res))
+            self.test.logger.debug(f"Capture has {len(output.res)} packets")
         except:
             self.test.logger.debug(
                 "Exception in scapy.rdpcap (%s): %s" % (self.out_path, format_exc())
@@ -285,7 +315,12 @@ class VppPGInterface(VppInterface):
                     # bingo, got the packets we expected
                     return capture
                 elif len(capture.res) > expected_count:
-                    self.test.logger.error(ppc("Unexpected packets captured:", capture))
+                    self.test.logger.error(
+                        ppc(
+                            f"Unexpected packets captured, got {len(capture.res)}, expected {expected_count}:",
+                            capture,
+                        )
+                    )
                     break
                 else:
                     self.test.logger.debug(
@@ -302,16 +337,15 @@ class VppPGInterface(VppInterface):
             if len(capture) > 0 and 0 == expected_count:
                 rem = f"\n{remark}" if remark else ""
                 raise UnexpectedPacketError(
-                    capture[0], f"\n({len(capture)} packets captured in total){rem}"
+                    capture[0],
+                    f"\n({len(capture)} packets captured in total){rem} on {name}",
                 )
-            raise Exception(
-                "Captured packets mismatch, captured %s packets, "
-                "expected %s packets on %s" % (len(capture.res), expected_count, name)
-            )
+            msg = f"Captured packets mismatch, captured {len(capture.res)} packets, expected {expected_count} packets on {name}:"
+            raise Exception(f"{ppc(msg, capture)}")
         else:
             if 0 == expected_count:
                 return
-            raise Exception("No packets captured on %s" % name)
+            raise Exception(f"No packets captured on {name} (timeout = {timeout}s)")
 
     def assert_nothing_captured(
         self, timeout=1, remark=None, filter_out_fn=is_ipv6_misc
@@ -355,11 +389,12 @@ class VppPGInterface(VppInterface):
         deadline = time.time() + timeout
         if not os.path.isfile(self.out_path):
             self.test.logger.debug(
-                "Waiting for capture file %s to appear, "
-                "timeout is %ss" % (self.out_path, timeout)
+                f"Waiting for capture file {self.out_path} to appear, timeout is {timeout}s\n"
+                f"{' '.join(format_stack(limit=10))}"
             )
         else:
             self.test.logger.debug("Capture file %s already exists" % self.out_path)
+            self.link_pcap_file(self.out_path, "out", self.out_history_counter)
             return True
         while time.time() < deadline:
             if os.path.isfile(self.out_path):
@@ -372,6 +407,7 @@ class VppPGInterface(VppInterface):
         else:
             self.test.logger.debug("Timeout - capture file still nowhere")
             return False
+        self.link_pcap_file(self.out_path, "out", self.out_history_counter)
         return True
 
     def verify_enough_packet_data_in_pcap(self):
@@ -455,8 +491,8 @@ class VppPGInterface(VppInterface):
                     return p
             self._test.sleep(0)  # yield
             poll = False
-        self.test.logger.debug("Timeout - no packets received")
-        raise CaptureTimeoutError("Packet didn't arrive within timeout")
+        self.test.logger.debug(f"Timeout ({timeout}) - no packets received")
+        raise CaptureTimeoutError(f"Packet didn't arrive within timeout ({timeout})")
 
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""
