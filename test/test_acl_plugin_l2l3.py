@@ -25,9 +25,8 @@
 
 import copy
 import unittest
-from socket import inet_pton, AF_INET, AF_INET6
-from random import choice, shuffle
-from pprint import pprint
+from socket import AF_INET, AF_INET6
+from random import shuffle
 from ipaddress import ip_network
 from config import config
 
@@ -35,13 +34,13 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
+from scapy.layers.inet6 import IPv6, ICMPv6Unknown
+from scapy.layers.inet6 import IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_l2 import L2_PORT_TYPE
-import time
 
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 
