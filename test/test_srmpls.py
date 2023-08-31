@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 
 import unittest
-import socket
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,
     VppMplsRoute,
-    VppIpTable,
     VppMplsTable,
     VppMplsLabel,
 )
@@ -17,8 +15,8 @@ from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
+from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
 

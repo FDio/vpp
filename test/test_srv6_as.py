@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 
 import unittest
-import binascii
-from socket import AF_INET6
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
-from vpp_srv6 import (
-    SRv6LocalSIDBehaviors,
-    VppSRv6LocalSID,
-    VppSRv6Policy,
-    SRv6PolicyType,
-    VppSRv6Steering,
-    SRv6PolicySteeringTypes,
-)
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 import scapy.compat
 from scapy.packet import Raw

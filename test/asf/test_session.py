@@ -2,14 +2,17 @@
 
 import unittest
 
-from asfframework import tag_fixme_vpp_workers
-from asfframework import VppTestCase, VppTestRunner
-from asfframework import tag_run_solo
+from asfframework import (
+    VppAsfTestCase,
+    VppTestRunner,
+    tag_fixme_vpp_workers,
+    tag_run_solo,
+)
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
 @tag_fixme_vpp_workers
-class TestSession(VppTestCase):
+class TestSession(VppAsfTestCase):
     """Session Test Case"""
 
     @classmethod
@@ -106,7 +109,7 @@ class TestSession(VppTestCase):
 
 
 @tag_fixme_vpp_workers
-class TestSessionUnitTests(VppTestCase):
+class TestSessionUnitTests(VppAsfTestCase):
     """Session Unit Tests Case"""
 
     @classmethod
@@ -135,7 +138,7 @@ class TestSessionUnitTests(VppTestCase):
 
 
 @tag_run_solo
-class TestSegmentManagerTests(VppTestCase):
+class TestSegmentManagerTests(VppAsfTestCase):
     """SVM Fifo Unit Tests Case"""
 
     @classmethod
@@ -162,7 +165,7 @@ class TestSegmentManagerTests(VppTestCase):
 
 
 @tag_run_solo
-class TestSvmFifoUnitTests(VppTestCase):
+class TestSvmFifoUnitTests(VppAsfTestCase):
     """SVM Fifo Unit Tests Case"""
 
     @classmethod

@@ -1,5 +1,4 @@
 from vpp_tunnel_interface import VppTunnelInterface
-from ipaddress import ip_address
 from vpp_papi import VppEnum
 
 

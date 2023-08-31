@@ -2,10 +2,10 @@
 
 import unittest
 
-from asfframework import VppTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner
 
 
-class TestCrypto(VppTestCase):
+class TestCrypto(VppAsfTestCase):
     """Crypto Test Case"""
 
     @classmethod
