@@ -5,7 +5,7 @@ import ipaddress
 from subprocess import check_output, CalledProcessError
 
 import scapy.compat
-import framework
+import asfframework
 from config import config
 from log import RED, single_line_delim, double_line_delim
 from util import check_core_path, get_core_path
@@ -123,7 +123,7 @@ class PollHook(Hook):
         self.test.vpp.poll()
         if self.test.vpp.returncode is not None:
             self.test.vpp_dead = True
-            raise framework.VppDiedError(rv=self.test.vpp.returncode)
+            raise asfframework.VppDiedError(rv=self.test.vpp.returncode)
             core_path = get_core_path(self.test.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
