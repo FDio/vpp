@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 import unittest
-import random
 
-from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
-from util import Host, ppp
+from framework import VppTestCase
+from asfframework import VppTestRunner
+from util import Host
 
 
 class TestL2LearnLimit(VppTestCase):

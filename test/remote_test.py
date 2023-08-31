@@ -4,10 +4,9 @@ import inspect
 import os
 import reprlib
 import unittest
-from asfframework import VppTestCase
+from framework import VppTestCase
 from multiprocessing import Process, Pipe
 from pickle import dumps
-import sys
 
 from enum import IntEnum, IntFlag
 

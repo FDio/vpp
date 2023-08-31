@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from framework import VppTestCase
-from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from scapy.contrib.gtp import *
 from scapy.all import *

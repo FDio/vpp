@@ -2,16 +2,13 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from ipaddress import *
 
-import scapy.compat
-from scapy.contrib.mpls import MPLS
-from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
+from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
-from scapy.layers.dns import DNSRR, DNS, DNSQR
+from scapy.layers.dns import DNS, DNSQR
 
 
 class TestDns(VppTestCase):
