@@ -22,3 +22,4 @@ jsonschema; python_version >= '3.7'     # MIT
 dataclasses; python_version == '3.6'    # Apache-2.0
 black                                   # MIT https://github.com/psf/black
 pycryptodome                            # BSD, Public Domain
+sh                                      # MIT https://github.com/amoffat/sh
