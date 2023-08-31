@@ -4,8 +4,8 @@ from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from config import config
-
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import (
     VppIpRoute,

@@ -4,7 +4,8 @@ import unittest
 import socket
 import binascii
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

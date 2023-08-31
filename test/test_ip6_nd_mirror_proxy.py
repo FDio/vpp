@@ -1,28 +1,17 @@
 #!/usr/bin/env python3
 
 import unittest
-import os
-from socket import AF_INET6, inet_pton, inet_ntop
+from socket import inet_pton, inet_ntop
 
-from framework import tag_fixme_vpp_workers
-from framework import VppTestCase, VppTestRunner
-from vpp_neighbor import VppNeighbor, find_nbr
-from vpp_ip_route import (
-    VppIpRoute,
-    VppRoutePath,
-    find_route,
-    VppIpTable,
-    DpoProto,
-    FibPathType,
-    VppIpInterfaceAddress,
-)
+from framework import VppTestCase
+from asfframework import VppTestRunner
+
 from vpp_papi import VppEnum
 from vpp_ip import VppIpPuntRedirect
 
 import scapy.compat
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP, Dot1Q
-from scapy.layers.inet import IP, UDP, TCP
+from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import (
     IPv6,
     ipv6nh,
@@ -33,7 +22,7 @@ from scapy.layers.inet6 import (
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
 )
-from scapy.utils6 import in6_ptop, in6_getnsma, in6_getnsmac, in6_ismaddr
+from scapy.utils6 import in6_ptop, in6_getnsma, in6_getnsmac
 
 
 class TestNDPROXY(VppTestCase):

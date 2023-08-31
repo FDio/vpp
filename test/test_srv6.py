@@ -4,7 +4,8 @@ import unittest
 import binascii
 from socket import AF_INET6
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
 from vpp_srv6 import (
     SRv6LocalSIDBehaviors,
