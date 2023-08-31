@@ -8,7 +8,8 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
 from util import Host
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from collections import namedtuple
 

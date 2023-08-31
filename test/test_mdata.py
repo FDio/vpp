@@ -1,4 +1,5 @@
-from framework import VppTestCase, VppTestRunner
+from asfframework import VppTestRunner
+from framework import VppTestCase
 import unittest
 from config import config
 from scapy.layers.l2 import Ether
@@ -42,7 +43,7 @@ class TestMdataCli(VppTestCase):
             p = (
                 Ether(dst=src_if.local_mac, src=src_if.remote_mac)
                 / IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4)
-                / UDP(sport=randint(1000, 2000), dport=5678)
+                / UDP(sport=randint(49152, 65535), dport=5678)
                 / Raw(payload)
             )
 
@@ -57,6 +58,7 @@ class TestMdataCli(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
+                self.logger.debug(f"Converting payload to info for {packet[Raw]}")
                 # convert the payload to packet info object
                 payload_info = self.payload_to_info(packet[Raw])
                 # make sure the indexes match
