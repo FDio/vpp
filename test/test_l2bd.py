@@ -7,7 +7,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase
+from asfframework import VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 
