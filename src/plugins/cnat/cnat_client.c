@@ -84,14 +84,15 @@ cnat_client_destroy (cnat_client_t *cc, u32 fib_index)
 }
 
 void
-cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af, u32 fib_index)
+cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af, u32 fib_index,
+			int is_session)
 {
   cnat_client_t *cc;
   cc =
     (AF_IP4 == af ? cnat_client_ip4_find (ip4, fib_index) : cnat_client_ip6_find (ip6, fib_index));
   ASSERT (NULL != cc);
 
-  if (0 == cnat_client_uncnt_session (cc) && 0 == cc->tr_refcnt)
+  if (0 == cc->tr_refcnt && (!is_session || 0 == cnat_client_uncnt_session (cc)))
     cnat_client_destroy (cc, fib_index);
 }
 
@@ -150,19 +151,19 @@ cnat_client_translation_deleted (index_t cci, u32 fib_index)
 }
 
 index_t
-cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
+cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u8 flags)
 {
   cnat_client_t *cc;
   dpo_id_t tmp = DPO_INVALID;
   fib_node_index_t fei;
   dpo_proto_t dproto;
-  fib_prefix_t pfx;
+  fib_prefix_t fib_pfx;
   index_t cci;
   u32 fib_flags;
 
   /* check again if we need this client */
-  cc = (AF_IP4 == ip->version ? cnat_client_ip4_find (&ip->ip.ip4, fib_index) :
-				cnat_client_ip6_find (&ip->ip.ip6, fib_index));
+  cc = (AF_IP4 == pfx->version ? cnat_client_ip4_find (&pfx->ip.ip4, fib_index) :
+				 cnat_client_ip6_find (&pfx->ip.ip6, fib_index));
 
   if (NULL != cc)
     return (cc - cnat_client_pool);
@@ -176,15 +177,16 @@ cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
   cc->tr_refcnt = 0;
   cc->session_refcnt = 0;
 
-  ip_address_copy (&cc->cc_ip, ip);
+  ip_address_copy (&cc->cc_ip, pfx);
   cnat_client_db_add (cc, fib_index);
 
   if (flags & CNAT_TR_FLAG_NO_CLIENT)
     return (cci);
 
-  ip_address_to_fib_prefix (&cc->cc_ip, &pfx);
+  ip_address_to_fib_prefix (&cc->cc_ip, &fib_pfx);
+  fib_pfx.fp_len = pfx_len;
 
-  dproto = fib_proto_to_dpo (pfx.fp_proto);
+  dproto = fib_proto_to_dpo (fib_pfx.fp_proto);
   dpo_set (&tmp, cnat_client_dpo, dproto, cci);
   dpo_stack (cnat_client_dpo, dproto, &cc->cc_parent, drop_dpo_get (dproto));
 
@@ -192,12 +194,19 @@ cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
   fib_flags |= (flags & CNAT_FLAG_EXCLUSIVE) ?
     FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
 
-  fei = fib_table_entry_special_dpo_add (fib_index, &pfx, cnat_fib_source, fib_flags, &tmp);
+  fei = fib_table_entry_special_dpo_add (fib_index, &fib_pfx, cnat_fib_source, fib_flags, &tmp);
 
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cc->cc_fei = fei;
 
   return (cci);
+}
+
+index_t
+cnat_client_add (const ip_address_t *ip, u32 fib_index, u8 flags)
+{
+  u8 pfx_len = AF_IP4 == ip_addr_version (ip) ? 32 : 128;
+  return cnat_client_add_pfx (ip, pfx_len, fib_index, flags);
 }
 
 void
