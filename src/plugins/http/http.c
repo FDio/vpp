@@ -261,6 +261,7 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   as->connection_index = hc->c_c_index;
   as->app_wrk_index = hc->h_pa_wrk_index;
   as->session_state = SESSION_STATE_READY;
+  as->opaque = hc->h_pa_app_api_ctx;
   as->session_type = session_type_from_proto_and_ip (
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
 
