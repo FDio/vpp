@@ -16,6 +16,24 @@
       "message": "after merging",
       "revId": "40973c42a638ea0047ca2a4207f4efc60e98cf97",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5de5f3c7_af921950",
+        "filename": "extras/strongswan/vpp_sswan/docker/Dockerfile",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-09-01T09:39:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "97401139_86efa72f",
+      "revId": "40973c42a638ea0047ca2a4207f4efc60e98cf97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
