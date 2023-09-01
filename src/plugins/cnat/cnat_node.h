@@ -892,22 +892,25 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, int add_client)
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
-
-  cnat_rsession_create_client (rw, ret_fib_index);
 
   /* create the reverse flow key */
   cnat_5tuple_copy (&rsession->key.cs_5tuple, &rw->tuple, 1 /* swap */);
   rsession->key.fib_index = ret_fib_index;
 
   rsession->value.cs_session_index = flow_id;
-  rsession->value.cs_flags = CNAT_SESSION_FLAG_HAS_CLIENT | CNAT_SESSION_IS_RETURN;
+  rsession->value.cs_flags = CNAT_SESSION_IS_RETURN;
 
-  /* FIXME */
-  cnat_client_throttle_pool_process ();
+  if (add_client)
+    {
+      rsession->value.cs_flags |= CNAT_SESSION_FLAG_HAS_CLIENT;
+      cnat_rsession_create_client (rw, CNAT_FIB_TABLE);
+      cnat_client_throttle_pool_process (); /* FIXME */
+    }
+
   cnat_bihash_add_with_overwrite_cb (&cnat_session_db, &rkey, cnat_session_free_stale_cb, NULL);
 }
 
