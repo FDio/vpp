@@ -140,7 +140,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
   cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id,
-			ret_fib_index);
+			ret_fib_index, 0 /* add client */);
   return (rw);
 }
 
