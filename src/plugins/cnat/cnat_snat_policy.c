@@ -143,14 +143,19 @@ cnat_snat_policy_entry_init (cnat_snat_policy_entry_t *cpe)
 static void
 cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe)
 {
-  cnat_snat_exclude_pfx_table_t *excluded_pfx = &cpe->excluded_pfx;
-
-  if (!cnat_snat_policy_entry_is_init (cpe))
-    return; /* nothing to do */
-
-  clib_bihash_free_24_8 (&excluded_pfx->ip_hash);
-  for (int i = 0; i < CNAT_N_SNAT_IF_MAP; i++)
-    clib_bitmap_free (cpe->interface_maps[i]);
+  if (cpe->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED)
+    cnat_client_free_by_ip (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), 0, AF_IP4,
+			    cpe->ret_fib_index4, 0 /* is_session */);
+  if (cpe->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED)
+    cnat_client_free_by_ip (0, &ip_addr_v6 (&cpe->snat_ip6.ce_ip), AF_IP6,
+			    cpe->ret_fib_index6, 0 /* is_session */);
+  if (cnat_snat_policy_entry_is_init (cpe))
+    {
+      cnat_snat_exclude_pfx_table_t *excluded_pfx = &cpe->excluded_pfx;
+      clib_bihash_free_24_8 (&excluded_pfx->ip_hash);
+      for (int i = 0; i < CNAT_N_SNAT_IF_MAP; i++)
+	clib_bitmap_free (cpe->interface_maps[i]);
+    }
 }
 
 int
@@ -459,15 +464,21 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address,
 {
   cnat_snat_policy_entry_t *cpe;
   cnat_endpoint_t *ep;
+  u32 ret_fib_index;
 
   cpe = pool_elt_at_index (cnat_snat_policy_main.snat_policies_pool, ar->cti);
   ep = AF_IP4 == ar->af ? &cpe->snat_ip4 : &cpe->snat_ip6;
+  ret_fib_index = AF_IP4 == ar->af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
 
   if (!is_del && ep->ce_flags & CNAT_EP_FLAG_RESOLVED)
     return;
 
   if (is_del)
     {
+      /* remove installed client */
+      cnat_client_free_by_ip (&ip_addr_v4 (&ep->ce_ip),
+			      &ip_addr_v6 (&ep->ce_ip), ar->af, ret_fib_index,
+			      0 /* is_session */);
       ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVED;
       /* Are there remaining addresses ? */
       if (0 == cnat_resolve_addr (ar->sw_if_index, ar->af, address))
@@ -478,6 +489,7 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address,
     {
       ip_address_copy (&ep->ce_ip, address);
       ep->ce_flags |= CNAT_EP_FLAG_RESOLVED;
+      cnat_client_add (&ep->ce_ip, ret_fib_index, CNAT_FLAG_EXCLUSIVE);
     }
 }
 
@@ -567,6 +579,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       fwd_fib_index, INDEX_INVALID,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index) = index;
+      cnat_client_add_pfx (&cpe->snat_ip4.ce_ip, ip4_pfx_len, ret_fib_index,
+			   CNAT_FLAG_EXCLUSIVE);
     }
 
   if (sw_if_set || ip6_set)
@@ -593,6 +607,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       fwd_fib_index, INDEX_INVALID,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) = index;
+      cnat_client_add_pfx (&cpe->snat_ip6.ce_ip, ip6_pfx_len, ret_fib_index,
+			   CNAT_FLAG_EXCLUSIVE);
     }
 
   return 0;
