@@ -57,6 +57,7 @@ npt66_plugin_api_hookup (vlib_main_t *vm)
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "NPTv6",
+  .default_disabled = 1,
 };
 
 clib_error_t *

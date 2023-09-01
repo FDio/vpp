@@ -11,6 +11,9 @@ from scapy.packet import Raw
 
 class TestNPT66(VppTestCase):
     """NPTv6 Test Case"""
+    extra_vpp_plugin_config = [
+        "plugin npt66_plugin.so {enable}",
+    ]
 
     def setUp(self):
         super(TestNPT66, self).setUp()
