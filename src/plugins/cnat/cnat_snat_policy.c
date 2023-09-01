@@ -148,6 +148,11 @@ cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe)
   if (!cnat_snat_policy_entry_is_init (cpe))
     return; /* nothing to do */
 
+  cnat_client_free_by_ip (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), 0, AF_IP4,
+			  cpe->ret_fib_index4, 0 /* is_session */);
+  cnat_client_free_by_ip (0, &ip_addr_v6 (&cpe->snat_ip6.ce_ip), AF_IP6,
+			  cpe->ret_fib_index6, 0 /* is_session */);
+
   clib_bihash_free_24_8 (&excluded_pfx->ip_hash);
   for (int i = 0; i < CNAT_N_SNAT_IF_MAP; i++)
     clib_bitmap_free (cpe->interface_maps[i]);
@@ -567,6 +572,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       fwd_fib_index, INDEX_INVALID,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index) = index;
+      cnat_client_add_pfx (&cpe->snat_ip4.ce_ip, ip4_pfx_len, ret_fib_index,
+			   CNAT_FLAG_EXCLUSIVE);
     }
 
   if (sw_if_set || ip6_set)
@@ -593,6 +600,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
 				       fwd_fib_index, INDEX_INVALID,
 				       CLIB_CACHE_LINE_BYTES);
       vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) = index;
+      cnat_client_add_pfx (&cpe->snat_ip6.ce_ip, ip6_pfx_len, ret_fib_index,
+			   CNAT_FLAG_EXCLUSIVE);
     }
 
   return 0;
