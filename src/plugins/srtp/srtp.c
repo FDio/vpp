@@ -154,6 +154,7 @@ srtp_ctx_init_client (srtp_tc_t *ctx)
   app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
   app_session->connection_index = ctx->srtp_ctx_handle;
+  app_session->opaque = ctx->parent_app_api_context;
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_SRTP, ctx->udp_is_ip4);
 
