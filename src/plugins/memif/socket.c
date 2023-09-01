@@ -510,6 +510,16 @@ error:
   return err;
 }
 
+static void
+memif_protected_disconnect (memif_if_t *mif, clib_error_t *err)
+{
+  vlib_main_t *vm = vlib_get_main ();
+
+  vlib_worker_thread_barrier_sync (vm);
+  memif_disconnect (mif, err);
+  vlib_worker_thread_barrier_release (vm);
+}
+
 clib_error_t *
 memif_master_conn_fd_read_ready (clib_file_t * uf)
 {
@@ -543,7 +553,7 @@ memif_master_conn_fd_read_ready (clib_file_t * uf)
   err = memif_msg_receive (&mif, sock, uf);
   if (err)
     {
-      memif_disconnect (mif, err);
+      memif_protected_disconnect (mif, err);
       clib_error_free (err);
     }
   return 0;
@@ -558,7 +568,7 @@ memif_slave_conn_fd_read_ready (clib_file_t * uf)
   err = memif_msg_receive (&mif, mif->sock, uf);
   if (err)
     {
-      memif_disconnect (mif, err);
+      memif_protected_disconnect (mif, err);
       clib_error_free (err);
     }
   return 0;
@@ -608,7 +618,7 @@ memif_slave_conn_fd_error (clib_file_t * uf)
   clib_error_t *err;
 
   err = clib_error_return (0, "connection fd error");
-  memif_disconnect (mif, err);
+  memif_protected_disconnect (mif, err);
   clib_error_free (err);
 
   return 0;
@@ -630,7 +640,7 @@ memif_master_conn_fd_error (clib_file_t * uf)
       clib_error_t *err;
       mif = vec_elt_at_index (mm->interfaces, p[0]);
       err = clib_error_return (0, "connection fd error");
-      memif_disconnect (mif, err);
+      memif_protected_disconnect (mif, err);
       clib_error_free (err);
     }
   else
