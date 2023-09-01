@@ -1290,6 +1290,7 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
   stream_data->app_rx_data_len = 0;
   stream_data->app_tx_data_len = 0;
   stream_session->session_state = SESSION_STATE_READY;
+  stream_session->opaque = sep->opaque;
 
   /* For now we only reset streams. Cleanup will be triggered by timers */
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))

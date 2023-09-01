@@ -406,7 +406,7 @@ app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
 
   /* Allocate fifos for session, unless the app is a builtin proxy */
   if (application_is_builtin_proxy (app))
-    return 0;
+    return app->cb_fns.proxy_alloc_session_fifos (s);
 
   sm = app_worker_get_connect_segment_manager (app_wrk);
   return app_worker_alloc_session_fifos (sm, s);
