@@ -224,6 +224,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     }
 
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
+  app_session->opaque = ctx->parent_app_api_context;
 
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     goto failed;
