@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01b77b4c_eff29f9f",
+        "filename": "src/plugins/arping/arping_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-09-01T19:10:56Z",
+      "side": 0,
+      "message": "Do you want to mark the new API thread safe or not?",
+      "revId": "f234b0d4626d7e686422cc9dfd25958584f4931e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
