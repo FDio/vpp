@@ -74,6 +74,8 @@ typedef struct session_cb_vft_
   /** Delegate fifo-tuning-logic to application */
   int (*fifo_tuning_callback) (session_t * s, svm_fifo_t * f,
 			       session_ft_action_t act, u32 bytes);
+  /** Custom fifo allocation fo proxy */
+  int (*proxy_alloc_session_fifos) (session_t *s);
 
 } session_cb_vft_t;
 
