@@ -227,6 +227,24 @@
       "parentUuid": "df8ef7ab_c68b3f7e",
       "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b45ace70_fff6fbf0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2837
+      },
+      "writtenOn": "2023-09-01T14:22:41Z",
+      "side": 1,
+      "message": "I have another question, when will we support zero-copy of Mellanox nic?\nCurrently, Mellanox nic use kernel skb to send or receive packet, not af-xdp native mode.",
+      "parentUuid": "2d1c45ef_d79eed0b",
+      "revId": "84bf3fccf47d5f84f9ca0b75e9ec4e169b640531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
