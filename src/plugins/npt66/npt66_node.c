@@ -121,7 +121,6 @@ static int
 npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
 {
   int rv = 0;
-  clib_warning ("npt66_translate: before: %U", format_ip6_header, ip, 40);
   if (dir == VLIB_TX)
     {
       if (!ip6_prefix_cmp (ip->src_address, binding->internal,
@@ -147,9 +146,8 @@ npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
       ip->dst_address = ip6_prefix_copy (ip->dst_address, binding->internal,
 					 binding->internal_plen);
       rv = npt66_adjust_checksum (binding->internal_plen, true, binding->delta,
-				  &ip->src_address);
+				  &ip->dst_address);
     }
-  clib_warning ("npt66_translate: after: %U", format_ip6_header, ip, 40);
 done:
   return rv;
 }
