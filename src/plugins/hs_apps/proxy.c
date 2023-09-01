@@ -469,6 +469,43 @@ proxy_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
   proxy_try_delete_session (s, 0 /* is_active_open */ );
 }
 
+static int
+proxy_alloc_session_fifos (session_t *s)
+{
+  proxy_main_t *pm = &proxy_main;
+  svm_fifo_t *rxf, *txf;
+  proxy_session_t *ps;
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+  ps = proxy_session_get (s->opaque);
+
+  txf = ps->server_rx_fifo;
+  rxf = ps->server_tx_fifo;
+
+  /*
+   * Reset the active-open tx-fifo master indices so the active-open session
+   * will receive data, etc.
+   */
+  txf->shr->master_session_index = s->session_index;
+  txf->master_thread_index = s->thread_index;
+
+  /*
+   * Account for the active-open session's use of the fifos
+   * so they won't disappear until the last session which uses
+   * them disappears
+   */
+  txf->refcnt++;
+  txf->refcnt++;
+
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  s->rx_fifo = rxf;
+  s->tx_fifo = txf;
+
+  return 0;
+}
+
 static session_cb_vft_t proxy_session_cb_vft = {
   .session_accept_callback = proxy_accept_callback,
   .session_disconnect_callback = proxy_disconnect_callback,
@@ -478,7 +515,8 @@ static session_cb_vft_t proxy_session_cb_vft = {
   .builtin_app_tx_callback = proxy_tx_callback,
   .session_reset_callback = proxy_reset_callback,
   .session_cleanup_callback = proxy_cleanup_callback,
-  .fifo_tuning_callback = common_fifo_tuning_callback
+  .fifo_tuning_callback = common_fifo_tuning_callback,
+  .proxy_alloc_session_fifos = proxy_alloc_session_fifos,
 };
 
 static int
@@ -520,24 +558,6 @@ active_open_connected_callback (u32 app_index, u32 opaque,
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
       return -1;
     }
-
-  s->tx_fifo = ps->server_rx_fifo;
-  s->rx_fifo = ps->server_tx_fifo;
-
-  /*
-   * Reset the active-open tx-fifo master indices so the active-open session
-   * will receive data, etc.
-   */
-  s->tx_fifo->shr->master_session_index = s->session_index;
-  s->tx_fifo->master_thread_index = s->thread_index;
-
-  /*
-   * Account for the active-open session's use of the fifos
-   * so they won't disappear until the last session which uses
-   * them disappears
-   */
-  s->tx_fifo->refcnt++;
-  s->rx_fifo->refcnt++;
 
   s->opaque = opaque;
 
