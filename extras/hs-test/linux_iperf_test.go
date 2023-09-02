@@ -9,13 +9,13 @@ func (s *TapSuite) TestLinuxIperf() {
 		stopServerCh <- struct{}{}
 	}()
 
-	go startServerApp(srvCh, stopServerCh, nil)
+	go s.startServerApp(srvCh, stopServerCh, nil)
 	err := <-srvCh
 	s.assertNil(err)
 	s.log("server running")
 
 	ipAddress := s.netInterfaces[tapInterfaceName].ip4AddressString()
-	go startClientApp(ipAddress, nil, clnCh, clnRes)
+	go s.startClientApp(ipAddress, nil, clnCh, clnRes)
 	s.log("client running")
 	s.log(<-clnRes)
 	err = <-clnCh

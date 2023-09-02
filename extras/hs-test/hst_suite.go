@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -312,4 +314,82 @@ func (s *HstSuite) getTestId() string {
 	}
 
 	return s.testIds[testName]
+}
+
+func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
+	cmd := exec.Command("iperf3", "-4", "-s")
+	if env != nil {
+		cmd.Env = env
+	}
+	s.log(cmd)
+	err := cmd.Start()
+	if err != nil {
+		msg := fmt.Errorf("failed to start iperf server: %v", err)
+		running <- msg
+		return
+	}
+	running <- nil
+	<-done
+	cmd.Process.Kill()
+}
+
+func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan error, clnRes chan string) {
+	defer func() {
+		clnCh <- nil
+	}()
+
+	nTries := 0
+
+	for {
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
+		if env != nil {
+			cmd.Env = env
+		}
+		s.log(cmd)
+		o, err := cmd.CombinedOutput()
+		if err != nil {
+			if nTries > 5 {
+				clnCh <- fmt.Errorf("failed to start client app '%s'.\n%s", err, o)
+				return
+			}
+			time.Sleep(1 * time.Second)
+			nTries++
+			continue
+		} else {
+			clnRes <- fmt.Sprintf("Client output: %s", o)
+		}
+		break
+	}
+}
+
+func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
+	cmd := newCommand([]string{"./http_server", addressPort}, netNs)
+	err := cmd.Start()
+	s.log(cmd)
+	if err != nil {
+		fmt.Println("Failed to start http server")
+		return
+	}
+	running <- struct{}{}
+	<-done
+	cmd.Process.Kill()
+}
+
+func (s *HstSuite) startWget(finished chan error, server_ip, port, query, netNs string) {
+	defer func() {
+		finished <- errors.New("wget error")
+	}()
+
+	cmd := newCommand([]string{"wget", "--timeout=10", "--no-proxy", "--tries=5", "-O", "/dev/null", server_ip + ":" + port + "/" + query},
+		netNs)
+	s.log(cmd)
+	o, err := cmd.CombinedOutput()
+	if err != nil {
+		finished <- fmt.Errorf("wget error: '%v\n\n%s'", err, o)
+		return
+	} else if !strings.Contains(string(o), "200 OK") {
+		finished <- fmt.Errorf("wget error: response not 200 OK")
+		return
+	}
+	finished <- nil
 }

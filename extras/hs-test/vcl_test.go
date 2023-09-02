@@ -5,6 +5,16 @@ import (
 	"time"
 )
 
+const vclTemplate = `vcl {
+  app-socket-api %[1]s/var/run/app_ns_sockets/%[2]s
+  app-scope-global
+  app-scope-local
+  namespace-id %[2]s
+  namespace-secret %[2]s
+  use-mq-eventfd
+}
+`
+
 func (s *VethsSuite) testVclEcho(proto string) {
 	port := "12345"
 	srvVppCont := s.getContainerByName("server-vpp")
