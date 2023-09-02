@@ -137,10 +137,9 @@ func (vpp *VppInstance) start() error {
 			cont <- true
 		}()
 
-		// Start VPP in GDB and wait for user to attach it
-		vpp.container.execServer("su -c \"gdb -ex run --args vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
+		vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 		fmt.Println("run following command in different terminal:")
-		fmt.Println("docker exec -it " + vpp.container.name + " gdb -ex \"attach $(docker exec " + vpp.container.name + " pidof gdb)\"")
+		fmt.Println("docker exec -it " + vpp.container.name + " gdb -ex \"attach $(docker exec " + vpp.container.name + " pidof vpp)\"")
 		fmt.Println("Afterwards press CTRL+C to continue")
 		<-cont
 		fmt.Println("continuing...")
