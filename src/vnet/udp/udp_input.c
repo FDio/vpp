@@ -284,7 +284,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0],
 				  queue_event, &error0);
 	}
-      else if (s0->session_state == SESSION_STATE_READY)
+      else if (s0->session_state == SESSION_STATE_READY ||
+	       s0->session_state == SESSION_STATE_ACCEPTING)
 	{
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
 	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0], 1,
