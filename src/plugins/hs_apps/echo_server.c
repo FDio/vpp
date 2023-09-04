@@ -13,6 +13,7 @@
 * limitations under the License.
 */
 
+#include <hs_apps/hs_test.h>
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
@@ -58,6 +59,7 @@ typedef struct
   u32 **rx_retries;
   u8 transport_proto;
   u64 listener_handle;		/**< Session handle of the root listener */
+  u64 ctrl_listener_handle;
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
@@ -89,10 +91,21 @@ quic_echo_server_session_accept_callback (session_t * s)
   return 0;
 }
 
+static int
+echo_server_ctrl_session_accept_callback (session_t *s)
+{
+  s->session_state = SESSION_STATE_READY;
+  return 0;
+}
+
 int
 echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
+
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_ctrl_session_accept_callback (s);
+
   esm->vpp_queue[s->thread_index] =
     session_main_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
@@ -165,12 +178,46 @@ test_bytes (echo_server_main_t * esm, int actual_transfer)
   esm->byte_index += actual_transfer;
 }
 
+static void ec_set_echo_rx_callbacks (u8 no_echo);
+
+static int
+ec_setup_test (hs_test_cfg_t *c)
+{
+  return 0;
+}
+
+static int
+echo_server_rx_ctrl_callback (session_t *s)
+{
+  int rv;
+  u64 ack = 1;
+  hs_test_cfg_t cfg;
+  clib_memset (&cfg, 0, sizeof (cfg));
+
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (cfg), (u8 *) &cfg);
+  ASSERT (rv == sizeof (cfg));
+
+  rv = ec_setup_test (&cfg);
+  if (rv)
+    clib_warning ("setup test error");
+
+  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (ack), (u8 *) &ack);
+  session_send_io_evt_to_thread_custom (&s->session_index, s->thread_index,
+					SESSION_IO_EVT_TX);
+  ASSERT (rv == sizeof (ack));
+  return 0;
+}
+
 /*
  * If no-echo, just drop the data and be done with it.
  */
 int
 echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 {
+  echo_server_main_t *esm = &echo_server_main;
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_rx_ctrl_callback (s);
+
   svm_fifo_t *rx_fifo = s->rx_fifo;
   svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
   return 0;
@@ -193,6 +240,9 @@ echo_server_rx_callback (session_t * s)
 
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
+
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_rx_ctrl_callback (s);
 
   max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
   if (!esm->is_dgram)
@@ -305,6 +355,17 @@ static session_cb_vft_t echo_server_session_cb_vft = {
   .session_reset_callback = echo_server_session_reset_callback
 };
 
+static void
+ec_set_echo_rx_callbacks (u8 no_echo)
+{
+  if (no_echo)
+    echo_server_session_cb_vft.builtin_app_rx_callback =
+      echo_server_builtin_server_rx_callback_no_echo;
+  else
+    echo_server_session_cb_vft.builtin_app_rx_callback =
+      echo_server_rx_callback;
+}
+
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
@@ -316,12 +377,7 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
-  if (esm->no_echo)
-    echo_server_session_cb_vft.builtin_app_rx_callback =
-      echo_server_builtin_server_rx_callback_no_echo;
-  else
-    echo_server_session_cb_vft.builtin_app_rx_callback =
-      echo_server_rx_callback;
+  ec_set_echo_rx_callbacks (esm->no_echo);
   if (esm->transport_proto == TRANSPORT_PROTO_QUIC)
     echo_server_session_cb_vft.session_accept_callback =
       quic_echo_server_session_accept_callback;
@@ -390,6 +446,25 @@ echo_client_transport_needs_crypto (transport_proto_t proto)
 }
 
 static int
+echo_server_listen_ctrl ()
+{
+  echo_server_main_t *esm = &echo_server_main;
+  vnet_listen_args_t _args = { 0 }, *args = &_args;
+  session_error_t rv;
+
+  args->sep_ext.app_wrk_index = 0;
+
+  if ((rv = parse_uri (esm->server_uri, &args->sep_ext)))
+    return -1;
+  args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  args->app_index = esm->app_index;
+
+  rv = vnet_listen (args);
+  esm->ctrl_listener_handle = args->handle;
+  return rv;
+}
+
+static int
 echo_server_listen ()
 {
   i32 rv;
@@ -403,6 +478,7 @@ echo_server_listen ()
       return -1;
     }
   args->app_index = esm->app_index;
+  args->sep_ext.port += 1;
   if (echo_client_transport_needs_crypto (args->sep_ext.transport_proto))
     {
       session_endpoint_alloc_ext_cfg (&args->sep_ext,
@@ -445,6 +521,13 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   if (echo_server_attach (appns_id, appns_flags, appns_secret))
     {
       clib_warning ("failed to attach server");
+      return -1;
+    }
+  if (echo_server_listen_ctrl ())
+    {
+      clib_warning ("failed to start listening on ctrl session");
+      if (echo_server_detach ())
+	clib_warning ("failed to detach");
       return -1;
     }
   if (echo_server_listen ())

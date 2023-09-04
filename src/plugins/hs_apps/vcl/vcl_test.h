@@ -16,6 +16,7 @@
 #ifndef __vcl_test_h__
 #define __vcl_test_h__
 
+#include <hs_apps/hs_test.h>
 #include <netdb.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -46,24 +47,9 @@
 #define vt_atomic_add(_ptr, _val) 					\
   __atomic_fetch_add (_ptr, _val, __ATOMIC_RELEASE)
 
-#define VCL_TEST_TOKEN_HELP           	"#H"
-#define VCL_TEST_TOKEN_EXIT           	"#X"
-#define VCL_TEST_TOKEN_VERBOSE        	"#V"
-#define VCL_TEST_TOKEN_TXBUF_SIZE     	"#T:"
-#define VCL_TEST_TOKEN_NUM_TEST_SESS 	"#I:"
-#define VCL_TEST_TOKEN_NUM_WRITES     	"#N:"
-#define VCL_TEST_TOKEN_RXBUF_SIZE     	"#R:"
-#define VCL_TEST_TOKEN_SHOW_CFG       	"#C"
-#define VCL_TEST_TOKEN_RUN_UNI        	"#U"
-#define VCL_TEST_TOKEN_RUN_BI         	"#B"
-
 #define VCL_TEST_SERVER_PORT         	22000
 #define VCL_TEST_LOCALHOST_IPADDR    	"127.0.0.1"
 
-#define VCL_TEST_CFG_CTRL_MAGIC      	0xfeedface
-#define VCL_TEST_CFG_NUM_WRITES_DEF  	1000000
-#define VCL_TEST_CFG_TXBUF_SIZE_DEF  	8192
-#define VCL_TEST_CFG_RXBUF_SIZE_DEF  	(64*VCL_TEST_CFG_TXBUF_SIZE_DEF)
 #define VCL_TEST_CFG_BUF_SIZE_MIN    	128
 #define VCL_TEST_CFG_MAX_TEST_SESS	((uint32_t) 1e6)
 #define VCL_TEST_CFG_MAX_SELECT_SESS	512
@@ -73,43 +59,6 @@
 #define VCL_TEST_CTRL_LISTENER		(~0 - 1)
 #define VCL_TEST_DATA_LISTENER		(~0)
 #define VCL_TEST_DELAY_DISCONNECT	1
-#define VCL_TEST_SEPARATOR_STRING 	\
-  "  -----------------------------\n"
-typedef enum
-{
-  VCL_TEST_TYPE_NONE,
-  VCL_TEST_TYPE_ECHO,
-  VCL_TEST_TYPE_UNI,
-  VCL_TEST_TYPE_BI,
-  VCL_TEST_TYPE_EXIT,
-  VCL_TEST_TYPE_EXIT_CLIENT,
-} vcl_test_t;
-
-typedef enum
-{
-  VCL_TEST_CMD_SYNC,
-  VCL_TEST_CMD_START,
-  VCL_TEST_CMD_STOP,
-} vcl_test_cmd_t;
-
-typedef struct __attribute__ ((packed))
-{
-  uint32_t magic;
-  uint32_t seq_num;
-  uint32_t test;
-  uint32_t cmd;
-  uint32_t ctrl_handle;
-  uint32_t num_test_sessions;
-  uint32_t num_test_sessions_perq;
-  uint32_t num_test_qsessions;
-  uint32_t verbose;
-  uint32_t address_ip6;
-  uint32_t transport_udp;
-  uint64_t rxbuf_size;
-  uint64_t txbuf_size;
-  uint64_t num_writes;
-  uint64_t total_bytes;
-} vcl_test_cfg_t;
 
 typedef struct
 {
@@ -138,7 +87,7 @@ typedef struct vcl_test_session
   uint32_t rxbuf_size;
   char *txbuf;
   char *rxbuf;
-  vcl_test_cfg_t cfg;
+  hs_test_cfg_t cfg;
   vcl_test_stats_t stats;
   vcl_test_stats_t old_stats;
   int session_index;
@@ -159,7 +108,7 @@ vcl_test_worker_index (void)
 
 typedef struct
 {
-  int (*init) (vcl_test_cfg_t *cfg);
+  int (*init) (hs_test_cfg_t *cfg);
   int (*open) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*listen) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
   int (*accept) (int listen_fd, vcl_test_session_t *ts);
@@ -177,7 +126,7 @@ typedef struct
 {
   const vcl_test_proto_vft_t *protos[VPPCOM_PROTO_SRTP + 1];
   uint32_t ckpair_index;
-  vcl_test_cfg_t cfg;
+  hs_test_cfg_t cfg;
   vcl_test_wrk_t *wrk;
 } vcl_test_main_t;
 
@@ -203,36 +152,7 @@ vcl_test_stats_accumulate (vcl_test_stats_t * accum, vcl_test_stats_t * incr)
 }
 
 static inline void
-vcl_test_cfg_init (vcl_test_cfg_t * cfg)
-{
-  cfg->magic = VCL_TEST_CFG_CTRL_MAGIC;
-  cfg->test = VCL_TEST_TYPE_UNI;
-  cfg->ctrl_handle = ~0;
-  cfg->num_test_sessions = 1;
-  cfg->num_test_sessions_perq = 1;
-  cfg->verbose = 0;
-  cfg->rxbuf_size = VCL_TEST_CFG_RXBUF_SIZE_DEF;
-  cfg->num_writes = VCL_TEST_CFG_NUM_WRITES_DEF;
-  cfg->txbuf_size = VCL_TEST_CFG_TXBUF_SIZE_DEF;
-  cfg->total_bytes = cfg->num_writes * cfg->txbuf_size;
-}
-
-static inline int
-vcl_test_cfg_verify (vcl_test_cfg_t * cfg, vcl_test_cfg_t * valid_cfg)
-{
-  /* Note: txbuf & rxbuf on server are the same buffer,
-   *       so txbuf_size is not included in this check.
-   */
-  return ((cfg->magic == valid_cfg->magic)
-	  && (cfg->test == valid_cfg->test)
-	  && (cfg->verbose == valid_cfg->verbose)
-	  && (cfg->rxbuf_size == valid_cfg->rxbuf_size)
-	  && (cfg->num_writes == valid_cfg->num_writes)
-	  && (cfg->total_bytes == valid_cfg->total_bytes));
-}
-
-static inline void
-vcl_test_buf_alloc (vcl_test_cfg_t * cfg, uint8_t is_rxbuf, uint8_t ** buf,
+vcl_test_buf_alloc (hs_test_cfg_t * cfg, uint8_t is_rxbuf, uint8_t ** buf,
 		    uint32_t * bufsize)
 {
   uint32_t alloc_size = is_rxbuf ? cfg->rxbuf_size : cfg->txbuf_size;
@@ -274,69 +194,6 @@ vcl_test_session_buf_free (vcl_test_session_t *ts)
   ts->txbuf = 0;
 }
 
-static inline char *
-vcl_test_type_str (vcl_test_t t)
-{
-  switch (t)
-    {
-    case VCL_TEST_TYPE_NONE:
-      return "NONE";
-
-    case VCL_TEST_TYPE_ECHO:
-      return "ECHO";
-
-    case VCL_TEST_TYPE_UNI:
-      return "UNI";
-
-    case VCL_TEST_TYPE_BI:
-      return "BI";
-
-    case VCL_TEST_TYPE_EXIT:
-      return "EXIT";
-
-    default:
-      return "Unknown";
-    }
-}
-
-static inline void
-vcl_test_cfg_dump (vcl_test_cfg_t * cfg, uint8_t is_client)
-{
-  char *spc = "     ";
-
-  printf ("  test config (%p):\n"
-	  VCL_TEST_SEPARATOR_STRING
-	  "                 magic:  0x%08x\n"
-	  "               seq_num:  0x%08x\n"
-	  "%-5s             test:  %s (%d)\n"
-	  "           ctrl handle:  %d (0x%x)\n"
-	  "%-5s num test sockets:  %u (0x%08x)\n"
-	  "%-5s          verbose:  %s (%d)\n"
-	  "%-5s       rxbuf size:  %lu (0x%08lx)\n"
-	  "%-5s       txbuf size:  %lu (0x%08lx)\n"
-	  "%-5s       num writes:  %lu (0x%08lx)\n"
-	  "       client tx bytes:  %lu (0x%08lx)\n"
-	  VCL_TEST_SEPARATOR_STRING,
-	  (void *) cfg, cfg->magic, cfg->seq_num,
-	  is_client && (cfg->test == VCL_TEST_TYPE_UNI) ?
-	  "'" VCL_TEST_TOKEN_RUN_UNI "'" :
-	  is_client && (cfg->test == VCL_TEST_TYPE_BI) ?
-	  "'" VCL_TEST_TOKEN_RUN_BI "'" : spc,
-	  vcl_test_type_str (cfg->test), cfg->test,
-	  cfg->ctrl_handle, cfg->ctrl_handle,
-	  is_client ? "'" VCL_TEST_TOKEN_NUM_TEST_SESS "'" : spc,
-	  cfg->num_test_sessions, cfg->num_test_sessions,
-	  is_client ? "'" VCL_TEST_TOKEN_VERBOSE "'" : spc,
-	  cfg->verbose ? "on" : "off", cfg->verbose,
-	  is_client ? "'" VCL_TEST_TOKEN_RXBUF_SIZE "'" : spc,
-	  cfg->rxbuf_size, cfg->rxbuf_size,
-	  is_client ? "'" VCL_TEST_TOKEN_TXBUF_SIZE "'" : spc,
-	  cfg->txbuf_size, cfg->txbuf_size,
-	  is_client ? "'" VCL_TEST_TOKEN_NUM_WRITES "'" : spc,
-	  cfg->num_writes, cfg->num_writes,
-	  cfg->total_bytes, cfg->total_bytes);
-}
-
 static inline void
 vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 		     uint8_t show_rx, uint8_t show_tx, uint8_t verbose)
@@ -366,9 +223,9 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 
   if (show_tx)
     {
-      printf (VCL_TEST_SEPARATOR_STRING
+      printf (HS_TEST_SEPARATOR_STRING
 	      "  tx stats (0x%p):\n"
-	      VCL_TEST_SEPARATOR_STRING
+	      HS_TEST_SEPARATOR_STRING
 	      "         writes:  %lu (0x%08lx)\n"
 	      "       tx bytes:  %lu (0x%08lx)\n"
 	      "      tx eagain:  %u (0x%08x)\n"
@@ -380,9 +237,9 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
     }
   if (show_rx)
     {
-      printf (VCL_TEST_SEPARATOR_STRING
+      printf (HS_TEST_SEPARATOR_STRING
 	      "  rx stats (0x%p):\n"
-	      VCL_TEST_SEPARATOR_STRING
+	      HS_TEST_SEPARATOR_STRING
 	      "          reads:  %lu (0x%08lx)\n"
 	      "       rx bytes:  %lu (0x%08lx)\n"
 	      "      rx eagain:  %u (0x%08x)\n"
@@ -400,7 +257,7 @@ vcl_test_stats_dump (char *header, vcl_test_stats_t * stats,
 	    stats->start.tv_sec, stats->start.tv_nsec,
 	    stats->stop.tv_sec, stats->stop.tv_nsec);
 
-  printf (VCL_TEST_SEPARATOR_STRING);
+  printf (HS_TEST_SEPARATOR_STRING);
 }
 
 static inline double
@@ -579,9 +436,9 @@ dump_help (void)
 	  "\t\t\tExit test client & server."
 	  INDENT VCL_TEST_TOKEN_SHOW_CFG
 	  "\t\t\tShow the current test cfg."
-	  INDENT VCL_TEST_TOKEN_RUN_UNI
+	  INDENT HS_TEST_TOKEN_RUN_UNI
 	  "\t\t\tRun the Uni-directional test."
-	  INDENT VCL_TEST_TOKEN_RUN_BI
+	  INDENT HS_TEST_TOKEN_RUN_BI
 	  "\t\t\tRun the Bi-directional test."
 	  INDENT VCL_TEST_TOKEN_VERBOSE
 	  "\t\t\tToggle verbose setting."

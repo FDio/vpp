@@ -18,6 +18,7 @@
 #ifndef __included_echo_client_h__
 #define __included_echo_client_h__
 
+#include <hs_apps/hs_test.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
@@ -73,6 +74,7 @@ typedef struct
   /*
    * Configuration params
    */
+  hs_test_cfg_t cfg;
   u32 n_clients;			/**< Number of clients */
   u8 *connect_uri;			/**< URI for slave's connect */
   session_endpoint_cfg_t connect_sep;	/**< Sever session endpoint */
@@ -124,6 +126,7 @@ typedef enum ec_cli_signal_
 {
   EC_CLI_CONNECTS_DONE = 1,
   EC_CLI_CONNECTS_FAILED,
+  EC_CLI_SERVER_ACK_RCVD,
   EC_CLI_TEST_DONE
 } ec_cli_signal_t;
 
