@@ -106,7 +106,7 @@ again:
 	  conn->endpt.ip = wrk->conn_pool[i].ip;
 	  conn->is_alloc = 1;
 	  conn->session_index = i;
-	  vcl_test_cfg_init (&conn->cfg);
+	  hs_test_cfg_init (&conn->cfg);
 	  return (&wrk->conn_pool[i]);
 	}
     }
@@ -130,7 +130,7 @@ conn_pool_free (vcl_test_session_t *ts)
 }
 
 static inline void
-sync_config_and_reply (vcl_test_session_t *conn, vcl_test_cfg_t *rx_cfg)
+sync_config_and_reply (vcl_test_session_t *conn, hs_test_cfg_t *rx_cfg)
 {
   conn->cfg = *rx_cfg;
   vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, (uint8_t **) &conn->rxbuf,
@@ -140,7 +140,7 @@ sync_config_and_reply (vcl_test_session_t *conn, vcl_test_cfg_t *rx_cfg)
   if (conn->cfg.verbose)
     {
       vtinf ("(fd %d): Replying to cfg message!\n", conn->fd);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      hs_test_cfg_dump (&conn->cfg, 0 /* is_client */);
     }
   (void) vcl_test_write (conn, &conn->cfg, sizeof (conn->cfg));
 }
@@ -185,14 +185,14 @@ vts_wrk_cleanup_all (vcl_test_server_worker_t *wrk)
 
 static void
 vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
-	      vcl_test_cfg_t *rx_cfg)
+	      hs_test_cfg_t *rx_cfg)
 {
-  u8 is_bi = rx_cfg->test == VCL_TEST_TYPE_BI;
+  u8 is_bi = rx_cfg->test == HS_TEST_TYPE_BI;
   vcl_test_session_t *tc;
   char buf[64];
   int i;
 
-  if (rx_cfg->cmd == VCL_TEST_CMD_STOP)
+  if (rx_cfg->cmd == HS_TEST_CMD_STOP)
     {
       struct timespec stop;
       clock_gettime (CLOCK_REALTIME, &stop);
@@ -232,25 +232,25 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
 
       vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
 			   is_bi /* show_tx */ , conn->cfg.verbose);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      hs_test_cfg_dump (&conn->cfg, 0 /* is_client */);
       if (conn->cfg.verbose)
 	{
-	  vtinf ("  vcl server main\n" VCL_TEST_SEPARATOR_STRING
+	  vtinf ("  vcl server main\n" HS_TEST_SEPARATOR_STRING
 		 "       buf:  %p\n"
-		 "  buf size:  %u (0x%08x)\n" VCL_TEST_SEPARATOR_STRING,
+		 "  buf size:  %u (0x%08x)\n" HS_TEST_SEPARATOR_STRING,
 		 conn->rxbuf, conn->rxbuf_size, conn->rxbuf_size);
 	}
 
       sync_config_and_reply (conn, rx_cfg);
       memset (&conn->stats, 0, sizeof (conn->stats));
     }
-  else if (rx_cfg->cmd == VCL_TEST_CMD_SYNC)
+  else if (rx_cfg->cmd == HS_TEST_CMD_SYNC)
     {
       rx_cfg->ctrl_handle = conn->fd;
       vtinf ("Set control fd %d for test!", conn->fd);
       sync_config_and_reply (conn, rx_cfg);
     }
-  else if (rx_cfg->cmd == VCL_TEST_CMD_START)
+  else if (rx_cfg->cmd == HS_TEST_CMD_START)
     {
       vtinf ("Starting %s-directional Stream Test (fd %d)!",
 	     is_bi ? "Bi" : "Uni", conn->fd);
@@ -268,7 +268,7 @@ vts_server_process_rx (vcl_test_session_t *conn, int rx_bytes)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
 
-  if (conn->cfg.test == VCL_TEST_TYPE_BI)
+  if (conn->cfg.test == HS_TEST_TYPE_BI)
     {
       if (vsm->use_ds)
 	{
@@ -523,13 +523,13 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 }
 
 int
-vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
+vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, hs_test_cfg_t *rx_cfg,
 		     vcl_test_session_t *conn, int rx_bytes)
 {
   if (rx_cfg->verbose)
     {
       vtinf ("(fd %d): Received a cfg msg!", conn->fd);
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      hs_test_cfg_dump (rx_cfg, 0 /* is_client */);
     }
 
   if (rx_bytes != sizeof (*rx_cfg))
@@ -541,7 +541,7 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
       if (conn->cfg.verbose)
 	{
 	  vtinf ("(fd %d): Replying to cfg msg", conn->fd);
-	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+	  hs_test_cfg_dump (rx_cfg, 0 /* is_client */);
 	}
       conn->write (conn, &conn->cfg, sizeof (conn->cfg));
       return -1;
@@ -549,17 +549,17 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
 
   switch (rx_cfg->test)
     {
-    case VCL_TEST_TYPE_NONE:
-    case VCL_TEST_TYPE_ECHO:
+    case HS_TEST_TYPE_NONE:
+    case HS_TEST_TYPE_ECHO:
       sync_config_and_reply (conn, rx_cfg);
       break;
 
-    case VCL_TEST_TYPE_BI:
-    case VCL_TEST_TYPE_UNI:
+    case HS_TEST_TYPE_BI:
+    case HS_TEST_TYPE_UNI:
       vts_test_cmd (wrk, conn, rx_cfg);
       break;
 
-    case VCL_TEST_TYPE_EXIT:
+    case HS_TEST_TYPE_EXIT:
       vtinf ("Ctrl session fd %d closing!", conn->fd);
       vts_session_cleanup (conn);
       wrk->nfds--;
@@ -570,7 +570,7 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
 
     default:
       vtwrn ("Unknown test type %d", rx_cfg->test);
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      hs_test_cfg_dump (rx_cfg, 0 /* is_client */);
       break;
     }
 
@@ -652,7 +652,7 @@ vts_worker_loop (void *arg)
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_session_t *conn;
   int i, rx_bytes, num_ev;
-  vcl_test_cfg_t *rx_cfg;
+  hs_test_cfg_t *rx_cfg;
 
   if (wrk->wrk_index)
     vts_worker_init (wrk);
@@ -726,8 +726,8 @@ vts_worker_loop (void *arg)
 	  if (!wrk->wrk_index && conn->fd == vsm->ctrl->fd)
 	    {
 	      rx_bytes = conn->read (conn, conn->rxbuf, conn->rxbuf_size);
-	      rx_cfg = (vcl_test_cfg_t *) conn->rxbuf;
-	      if (rx_cfg->magic == VCL_TEST_CFG_CTRL_MAGIC)
+	      rx_cfg = (hs_test_cfg_t *) conn->rxbuf;
+	      if (rx_cfg->magic == HS_TEST_CFG_CTRL_MAGIC)
 		{
 		  vts_handle_ctrl_cfg (wrk, rx_cfg, conn, rx_bytes);
 		  if (!wrk->nfds)

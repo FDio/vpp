@@ -132,15 +132,14 @@ class QUICTestCase(VppTestCase):
 class QUICEchoIntTestCase(QUICTestCase):
     """QUIC Echo Internal Test Case"""
 
-    test_bytes = " test-bytes"
     extra_vpp_config = ["session", "{", "enable", "poll-main", "}"]
 
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
         self.client_args = (
-            f"uri {self.uri} fifo-size 64{self.test_bytes} appns {self.client_appns} "
+            f"uri {self.uri} fifo-size 64k appns {self.client_appns} "
         )
-        self.server_args = f"uri {self.uri} fifo-size 64 appns {self.server_appns} "
+        self.server_args = f"uri {self.uri} fifo-size 64k appns {self.server_appns} "
 
     def tearDown(self):
         super(QUICEchoIntTestCase, self).tearDown()
