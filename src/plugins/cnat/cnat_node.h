@@ -953,7 +953,7 @@ cnat_set_rw_next_node (vlib_buffer_t *b, const cnat_timestamp_rewrite_t *rw, u16
 {
   if (rw)
     {
-      *next0 = rw->cts_dpoi_next_node == (u32) ~0 ? *next0 : rw->cts_dpoi_next_node;
+      *next0 = rw->cts_dpoi_next_node == (u16) ~0 ? *next0 : rw->cts_dpoi_next_node;
       vnet_buffer (b)->ip.adj_index[VLIB_TX] =
 	rw->cts_lbi == (u32) ~0 ? vnet_buffer (b)->ip.adj_index[VLIB_TX] : rw->cts_lbi;
     }

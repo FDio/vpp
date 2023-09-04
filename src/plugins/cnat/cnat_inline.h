@@ -155,7 +155,15 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
   if (rv)
     {
       cnat_session_t *ksession = (cnat_session_t *) bkey;
-      ksession->value.cs_session_index = cnat_timestamp_new (now);
+      index_t session_index = cnat_timestamp_new (now);
+      ASSERT (session_index < (1 << 24) && "Too many sessions");
+      if (PREDICT_FALSE (session_index >= (1 << 24)))
+	{
+	  vnet_buffer2 (b)->session.generic_flow_id = 0;
+	  vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_ERR;
+	  return;
+	}
+      ksession->value.cs_session_index = session_index;
       ksession->value.cs_flags = 0;
       cnat_bihash_add_del_hash (&cnat_session_db, bkey, hash, 1 /* add */);
       vnet_buffer2 (b)->session.generic_flow_id = ksession->value.cs_session_index;
