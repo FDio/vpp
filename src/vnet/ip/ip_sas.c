@@ -127,6 +127,11 @@ ip4_sas_by_sw_if_index (u32 sw_if_index, const ip4_address_t *dst,
       if (ia->flags & IP_INTERFACE_ADDRESS_FLAG_STALE)
 	continue;
       tmp = ip_interface_address_get_address (lm4, ia);
+      if (dst == 0)
+	{
+	  bestsrc = tmp;
+	  break;
+	}
       l = ip4_sas_commonlen (tmp, dst);
       if (l > bestlen || bestsrc == 0)
 	{
