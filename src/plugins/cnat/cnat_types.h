@@ -198,6 +198,8 @@ typedef struct cnat_timestamp_rewrite_t_
    */
   cnat_5tuple_t tuple;
 
+  u32 fib_index;
+
   /**
    * The load balance object to use to forward
    */
@@ -206,9 +208,7 @@ typedef struct cnat_timestamp_rewrite_t_
   /**
    * Persist translation->ct_lb.dpoi_next_node
    */
-  u32 cts_dpoi_next_node;
-
-  u32 fib_index;
+  u16 cts_dpoi_next_node;
 
   cnat_cksum_diff_t cksum;
 
