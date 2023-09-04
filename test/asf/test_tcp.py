@@ -73,14 +73,14 @@ class TestTCP(VppTestCase):
 
         # Start builtin server and client
         uri = "tcp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 4 uri " + uri)
+        error = self.vapi.cli("test echo server appns 0 fifo-size 4k uri " + uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
             "test echo client mbytes 10 appns 1 "
-            + "fifo-size 4 no-output test-bytes "
+            + "fifo-size 4k no-output test-bytes "
             + "syn-timeout 2 uri "
             + uri
         )

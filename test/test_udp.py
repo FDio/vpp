@@ -746,16 +746,14 @@ class TestUDP(VppTestCase):
 
         # Start builtin server and client
         uri = "udp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli(
-            "test echo server appns 0 fifo-size 4 no-echo" + "uri " + uri
-        )
+        error = self.vapi.cli("test echo server appns 0 fifo-size 4k " + "uri " + uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
             "test echo client mbytes 10 appns 1 "
-            + "fifo-size 4 no-output test-bytes "
+            + "fifo-size 4k no-output "
             + "syn-timeout 2 no-return uri "
             + uri
         )
