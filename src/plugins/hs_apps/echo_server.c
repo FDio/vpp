@@ -13,6 +13,7 @@
 * limitations under the License.
 */
 
+#include <hs_apps/hs_test.h>
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
@@ -23,6 +24,8 @@
 #define DBG(_fmt, _args...)			\
     if (ECHO_SERVER_DBG) 				\
       clib_warning (_fmt, ##_args)
+
+static void ec_set_echo_rx_callbacks (u8 no_echo);
 
 typedef struct
 {
@@ -39,7 +42,7 @@ typedef struct
   /*
    * Config params
    */
-  u8 no_echo;			/**< Don't echo traffic */
+  hs_test_cfg_t cfg;
   u32 fifo_size;		/**< Fifo size */
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
@@ -53,11 +56,14 @@ typedef struct
   /*
    * Test state
    */
+  int (*rx_callback) (session_t *session);
+  u64 **session_handles;
   u8 **rx_buf;			/**< Per-thread RX buffer */
   u64 byte_index;
   u32 **rx_retries;
   u8 transport_proto;
   u64 listener_handle;		/**< Session handle of the root listener */
+  u64 ctrl_listener_handle;
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
@@ -89,10 +95,21 @@ quic_echo_server_session_accept_callback (session_t * s)
   return 0;
 }
 
+static int
+echo_server_ctrl_session_accept_callback (session_t *s)
+{
+  s->session_state = SESSION_STATE_READY;
+  return 0;
+}
+
 int
 echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
+
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_ctrl_session_accept_callback (s);
+
   esm->vpp_queue[s->thread_index] =
     session_main_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
@@ -100,6 +117,7 @@ echo_server_session_accept_callback (session_t * s)
   ASSERT (vec_len (esm->rx_retries) > s->thread_index);
   vec_validate (esm->rx_retries[s->thread_index], s->session_index);
   esm->rx_retries[s->thread_index][s->session_index] = 0;
+  vec_add1 (esm->session_handles[s->thread_index], session_handle (s));
   return 0;
 }
 
@@ -147,22 +165,94 @@ echo_server_redirect_connect_callback (u32 client_index, void *mp)
   return -1;
 }
 
-void
-test_bytes (echo_server_main_t * esm, int actual_transfer)
+static int
+ec_setup_test (echo_server_main_t *esm, hs_test_cfg_t *c)
 {
-  int i;
-  u32 my_thread_id = vlib_get_thread_index ();
+  clib_memcpy (&esm->cfg, c, sizeof (*c));
+  if (esm->cfg.test == HS_TEST_TYPE_UNI)
+    ec_set_echo_rx_callbacks (1 /* no echo */);
+  else
+    ec_set_echo_rx_callbacks (0 /* no echo */);
 
-  for (i = 0; i < actual_transfer; i++)
+  if (ECHO_SERVER_DBG)
+    hs_test_cfg_dump (&esm->cfg, 0);
+  return 0;
+}
+
+static int
+es_test_cmd_sync (echo_server_main_t *esm, session_t *s, hs_test_cfg_t *c)
+{
+  int rv;
+  rv = ec_setup_test (esm, c);
+  if (rv)
+    clib_warning ("setup test error!");
+
+  rv = svm_fifo_enqueue (s->tx_fifo, sizeof (esm->cfg), (u8 *) &esm->cfg);
+  session_send_io_evt_to_thread_custom (&s->session_index, s->thread_index,
+					SESSION_IO_EVT_TX);
+  return 0;
+}
+
+static int
+es_wrk_cleanup_session (void *args)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  u32 thread_index = pointer_to_uword (args);
+  session_handle_t *session_handles, *sh;
+  vnet_disconnect_args_t _a = {}, *a = &_a;
+
+  a->app_index = esm->app_index;
+
+  session_handles = esm->session_handles[thread_index];
+
+  vec_foreach (sh, session_handles)
     {
-      if (esm->rx_buf[my_thread_id][i] != ((esm->byte_index + i) & 0xff))
-	{
-	  clib_warning ("at %lld expected %d got %d", esm->byte_index + i,
-			(esm->byte_index + i) & 0xff,
-			esm->rx_buf[my_thread_id][i]);
-	}
+      a->handle = sh[0];
+      vnet_disconnect_session (a);
     }
-  esm->byte_index += actual_transfer;
+  return 0;
+}
+
+static void
+es_cleanup_sessions ()
+{
+  echo_server_main_t *esm = &echo_server_main;
+  uword thread_index;
+
+  for (thread_index = 0; thread_index < vec_len (esm->session_handles);
+       thread_index++)
+    {
+      session_send_rpc_evt_to_thread (thread_index, es_wrk_cleanup_session,
+				      uword_to_pointer (thread_index, void *));
+    }
+}
+
+static int
+echo_server_rx_ctrl_callback (session_t *s)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  hs_test_cfg_t cfg;
+  clib_memset (&cfg, 0, sizeof (cfg));
+  int rv;
+
+  rv = svm_fifo_dequeue (s->rx_fifo, sizeof (cfg), (u8 *) &cfg);
+  ASSERT (rv == sizeof (cfg));
+
+  switch (cfg.cmd)
+    {
+    case HS_TEST_CMD_SYNC:
+      return es_test_cmd_sync (esm, s, &cfg);
+      break;
+    case HS_TEST_CMD_START:
+      break;
+    case HS_TEST_CMD_STOP:
+      es_cleanup_sessions ();
+      break;
+    default:
+      clib_warning ("unknown command! %d", cfg.cmd);
+      break;
+    }
+  return 0;
 }
 
 /*
@@ -171,6 +261,10 @@ test_bytes (echo_server_main_t * esm, int actual_transfer)
 int
 echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 {
+  echo_server_main_t *esm = &echo_server_main;
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_rx_ctrl_callback (s);
+
   svm_fifo_t *rx_fifo = s->rx_fifo;
   svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
   return 0;
@@ -193,6 +287,9 @@ echo_server_rx_callback (session_t * s)
 
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
+
+  if (esm->ctrl_listener_handle == s->listener_handle)
+    return echo_server_rx_ctrl_callback (s);
 
   max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
   if (!esm->is_dgram)
@@ -264,7 +361,6 @@ echo_server_rx_callback (session_t * s)
 					    0 /* peek */ );
     }
   ASSERT (actual_transfer == max_transfer);
-  /* test_bytes (esm, actual_transfer); */
 
   /*
    * Echo back
@@ -296,14 +392,31 @@ echo_server_rx_callback (session_t * s)
   return 0;
 }
 
+int
+echo_server_rx_callback_common (session_t *s)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  return esm->rx_callback (s);
+}
+
 static session_cb_vft_t echo_server_session_cb_vft = {
   .session_accept_callback = echo_server_session_accept_callback,
   .session_disconnect_callback = echo_server_session_disconnect_callback,
   .session_connected_callback = echo_server_session_connected_callback,
   .add_segment_callback = echo_server_add_segment_callback,
-  .builtin_app_rx_callback = echo_server_rx_callback,
+  .builtin_app_rx_callback = echo_server_rx_callback_common,
   .session_reset_callback = echo_server_session_reset_callback
 };
+
+static void
+ec_set_echo_rx_callbacks (u8 no_echo)
+{
+  echo_server_main_t *esm = &echo_server_main;
+  if (no_echo)
+    esm->rx_callback = echo_server_builtin_server_rx_callback_no_echo;
+  else
+    esm->rx_callback = echo_server_rx_callback;
+}
 
 static int
 echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
@@ -316,12 +429,8 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
-  if (esm->no_echo)
-    echo_server_session_cb_vft.builtin_app_rx_callback =
-      echo_server_builtin_server_rx_callback_no_echo;
-  else
-    echo_server_session_cb_vft.builtin_app_rx_callback =
-      echo_server_rx_callback;
+  esm->rx_callback = echo_server_rx_callback;
+
   if (esm->transport_proto == TRANSPORT_PROTO_QUIC)
     echo_server_session_cb_vft.session_accept_callback =
       quic_echo_server_session_accept_callback;
@@ -390,6 +499,25 @@ echo_client_transport_needs_crypto (transport_proto_t proto)
 }
 
 static int
+echo_server_listen_ctrl ()
+{
+  echo_server_main_t *esm = &echo_server_main;
+  vnet_listen_args_t _args = { 0 }, *args = &_args;
+  session_error_t rv;
+
+  args->sep_ext.app_wrk_index = 0;
+
+  if ((rv = parse_uri (esm->server_uri, &args->sep_ext)))
+    return -1;
+  args->sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  args->app_index = esm->app_index;
+
+  rv = vnet_listen (args);
+  esm->ctrl_listener_handle = args->handle;
+  return rv;
+}
+
+static int
 echo_server_listen ()
 {
   i32 rv;
@@ -403,6 +531,7 @@ echo_server_listen ()
       return -1;
     }
   args->app_index = esm->app_index;
+  args->sep_ext.port += 1;
   if (echo_client_transport_needs_crypto (args->sep_ext.transport_proto))
     {
       session_endpoint_alloc_ext_cfg (&args->sep_ext,
@@ -435,9 +564,17 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   vec_validate (echo_server_main.vpp_queue, num_threads - 1);
   vec_validate (esm->rx_buf, num_threads - 1);
   vec_validate (esm->rx_retries, num_threads - 1);
+  vec_validate (esm->session_handles, num_threads - 1);
   for (i = 0; i < vec_len (esm->rx_retries); i++)
-    vec_validate (esm->rx_retries[i],
-		  pool_elts (session_main.wrk[i].sessions));
+    {
+      vec_validate (esm->rx_retries[i],
+		    pool_elts (session_main.wrk[i].sessions));
+      vec_validate (esm->session_handles[i],
+		    pool_elts (session_main.wrk[i].sessions));
+      clib_memset (esm->session_handles[i], ~0,
+		   sizeof (u64) * vec_len (esm->session_handles[i]));
+      vec_reset_length (esm->session_handles[i]);
+    }
   esm->rcv_buffer_size = clib_max (esm->rcv_buffer_size, esm->fifo_size);
   for (i = 0; i < num_threads; i++)
     vec_validate (esm->rx_buf[i], esm->rcv_buffer_size);
@@ -445,6 +582,13 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   if (echo_server_attach (appns_id, appns_flags, appns_secret))
     {
       clib_warning ("failed to attach server");
+      return -1;
+    }
+  if (echo_server_listen_ctrl ())
+    {
+      clib_warning ("failed to start listening on ctrl session");
+      if (echo_server_detach ())
+	clib_warning ("failed to detach");
       return -1;
     }
   if (echo_server_listen ())
@@ -469,7 +613,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int rv, is_stop = 0;
   clib_error_t *error = 0;
 
-  esm->no_echo = 0;
   esm->fifo_size = 64 << 10;
   esm->rcv_buffer_size = 128 << 10;
   esm->prealloc_fifos = 0;
@@ -482,8 +625,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "uri %s", &esm->server_uri))
 	server_uri_set = 1;
-      else if (unformat (input, "no-echo"))
-	esm->no_echo = 1;
       else if (unformat (input, "fifo-size %d", &esm->fifo_size))
 	esm->fifo_size <<= 10;
       else if (unformat (input, "rcv-buf-size %d", &esm->rcv_buffer_size))
@@ -568,13 +709,13 @@ cleanup:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (echo_server_create_command, static) =
-{
+VLIB_CLI_COMMAND (echo_server_create_command, static) = {
   .path = "test echo server",
-  .short_help = "test echo server proto <proto> [no echo][fifo-size <mbytes>]"
-      "[rcv-buf-size <bytes>][prealloc-fifos <count>]"
-      "[private-segment-count <count>][private-segment-size <bytes[m|g]>]"
-      "[uri <tcp://ip/port>]",
+  .short_help =
+    "test echo server proto <proto> [fifo-size <mbytes>]"
+    "[rcv-buf-size <bytes>][prealloc-fifos <count>]"
+    "[private-segment-count <count>][private-segment-size <bytes[m|g]>]"
+    "[uri <tcp://ip/port>]",
   .function = echo_server_create_command_fn,
 };
 /* *INDENT-ON* */

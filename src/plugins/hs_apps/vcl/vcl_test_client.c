@@ -52,7 +52,7 @@ struct vtc_worker_
   };
   pthread_t thread_handle;
   vtc_worker_run_fn *wrk_run_fn;
-  vcl_test_cfg_t cfg;
+  hs_test_cfg_t cfg;
 };
 
 typedef struct
@@ -62,7 +62,7 @@ typedef struct
   vppcom_endpt_t server_endpt;
   uint32_t cfg_seq_num;
   uint8_t dump_cfg;
-  vcl_test_t post_test;
+  hs_test_t post_test;
   uint8_t proto;
   uint8_t incremental_stats;
   uint32_t n_workers;
@@ -85,14 +85,14 @@ vcl_test_main_t vcl_test_main;
 static int
 vtc_cfg_sync (vcl_test_session_t * ts)
 {
-  vcl_test_cfg_t *rx_cfg = (vcl_test_cfg_t *) ts->rxbuf;
+  hs_test_cfg_t *rx_cfg = (hs_test_cfg_t *) ts->rxbuf;
   int rx_bytes, tx_bytes;
 
   vt_atomic_add (&ts->cfg.seq_num, 1);
   if (ts->cfg.verbose)
     {
       vtinf ("(fd %d): Sending config to server.", ts->fd);
-      vcl_test_cfg_dump (&ts->cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (&ts->cfg, 1 /* is_client */);
     }
   tx_bytes = ts->write (ts, &ts->cfg, sizeof (ts->cfg));
   if (tx_bytes < 0)
@@ -101,36 +101,36 @@ vtc_cfg_sync (vcl_test_session_t * ts)
       return tx_bytes;
     }
 
-  rx_bytes = ts->read (ts, ts->rxbuf, sizeof (vcl_test_cfg_t));
+  rx_bytes = ts->read (ts, ts->rxbuf, sizeof (hs_test_cfg_t));
   if (rx_bytes < 0)
     return rx_bytes;
 
-  if (rx_cfg->magic != VCL_TEST_CFG_CTRL_MAGIC)
+  if (rx_cfg->magic != HS_TEST_CFG_CTRL_MAGIC)
     {
       vtwrn ("(fd %d): Bad server reply cfg -- aborting!", ts->fd);
       return -1;
     }
-  if ((rx_bytes != sizeof (vcl_test_cfg_t))
-      || !vcl_test_cfg_verify (rx_cfg, &ts->cfg))
+  if ((rx_bytes != sizeof (hs_test_cfg_t)) ||
+      !hs_test_cfg_verify (rx_cfg, &ts->cfg))
     {
       vtwrn ("(fd %d): Invalid config received from server!", ts->fd);
-      if (rx_bytes != sizeof (vcl_test_cfg_t))
+      if (rx_bytes != sizeof (hs_test_cfg_t))
 	{
 	  vtinf ("\tRx bytes %d != cfg size %lu", rx_bytes,
-		 sizeof (vcl_test_cfg_t));
+		 sizeof (hs_test_cfg_t));
 	}
       else
 	{
-	  vcl_test_cfg_dump (rx_cfg, 1 /* is_client */ );
+	  hs_test_cfg_dump (rx_cfg, 1 /* is_client */);
 	  vtinf ("(fd %d): Valid config sent to server.", ts->fd);
-	  vcl_test_cfg_dump (&ts->cfg, 1 /* is_client */ );
+	  hs_test_cfg_dump (&ts->cfg, 1 /* is_client */);
 	}
       return -1;
     }
   if (ts->cfg.verbose)
     {
       vtinf ("(fd %d): Got config back from server.", ts->fd);
-      vcl_test_cfg_dump (rx_cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (rx_cfg, 1 /* is_client */);
     }
 
   return 0;
@@ -179,8 +179,8 @@ vtc_worker_alloc_sessions (vcl_test_client_worker_t *wrk)
 
       switch (ts->cfg.test)
 	{
-	case VCL_TEST_TYPE_UNI:
-	case VCL_TEST_TYPE_BI:
+	case HS_TEST_TYPE_UNI:
+	case HS_TEST_TYPE_BI:
 	  for (j = 0; j < ts->txbuf_size; j++)
 	    ts->txbuf[j] = j & 0xff;
 	  break;
@@ -239,8 +239,7 @@ vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
   while (__sync_lock_test_and_set (&stats_lock, 1))
     ;
 
-  if (ctrl->cfg.test == VCL_TEST_TYPE_BI
-      || ctrl->cfg.test == VCL_TEST_TYPE_ECHO)
+  if (ctrl->cfg.test == HS_TEST_TYPE_BI || ctrl->cfg.test == HS_TEST_TYPE_ECHO)
     show_rx = 1;
 
   for (i = 0; i < wrk->cfg.num_test_sessions; i++)
@@ -373,7 +372,7 @@ vtc_worker_run_select (vcl_test_client_worker_t *wrk)
       return rv;
     }
 
-  check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
+  check_rx = wrk->cfg.test != HS_TEST_TYPE_UNI;
   n_active_sessions = wrk->cfg.num_test_sessions;
 
   vtc_worker_start_transfer (wrk);
@@ -593,7 +592,7 @@ vtc_worker_run_epoll (vcl_test_client_worker_t *wrk)
     }
 
   n_active_sessions = rv;
-  check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
+  check_rx = wrk->cfg.test != HS_TEST_TYPE_UNI;
 
   vtc_worker_start_transfer (wrk);
   ts = wrk->next_to_send;
@@ -729,46 +728,43 @@ done:
 static void
 vtc_print_stats (vcl_test_session_t * ctrl)
 {
-  int is_echo = ctrl->cfg.test == VCL_TEST_TYPE_ECHO;
+  int is_echo = ctrl->cfg.test == HS_TEST_TYPE_ECHO;
   int show_rx = 0;
   char buf[64];
 
-  if (ctrl->cfg.test == VCL_TEST_TYPE_BI
-      || ctrl->cfg.test == VCL_TEST_TYPE_ECHO)
+  if (ctrl->cfg.test == HS_TEST_TYPE_BI || ctrl->cfg.test == HS_TEST_TYPE_ECHO)
     show_rx = 1;
 
   vcl_test_stats_dump ("CLIENT RESULTS", &ctrl->stats,
 		       show_rx, 1 /* show tx */ ,
 		       ctrl->cfg.verbose);
-  vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+  hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
 
   if (ctrl->cfg.verbose)
     {
-      vtinf ("  ctrl session info\n"
-	     VCL_TEST_SEPARATOR_STRING
+      vtinf ("  ctrl session info\n" HS_TEST_SEPARATOR_STRING
 	     "          fd:  %d (0x%08x)\n"
 	     "       rxbuf:  %p\n"
 	     "  rxbuf size:  %u (0x%08x)\n"
 	     "       txbuf:  %p\n"
-	     "  txbuf size:  %u (0x%08x)\n"
-	     VCL_TEST_SEPARATOR_STRING,
-	     ctrl->fd, (uint32_t) ctrl->fd,
-	     ctrl->rxbuf, ctrl->rxbuf_size, ctrl->rxbuf_size,
-	     ctrl->txbuf, ctrl->txbuf_size, ctrl->txbuf_size);
+	     "  txbuf size:  %u (0x%08x)\n" HS_TEST_SEPARATOR_STRING,
+	     ctrl->fd, (uint32_t) ctrl->fd, ctrl->rxbuf, ctrl->rxbuf_size,
+	     ctrl->rxbuf_size, ctrl->txbuf, ctrl->txbuf_size,
+	     ctrl->txbuf_size);
     }
 
   if (is_echo)
     snprintf (buf, sizeof (buf), "Echo");
   else
     snprintf (buf, sizeof (buf), "%s-directional Stream",
-	      ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+	      ctrl->cfg.test == HS_TEST_TYPE_BI ? "Bi" : "Uni");
 }
 
 static void
 vtc_echo_client (vcl_test_client_main_t * vcm)
 {
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  vcl_test_cfg_t *cfg = &ctrl->cfg;
+  hs_test_cfg_t *cfg = &ctrl->cfg;
   int rv;
 
   cfg->total_bytes = strlen (ctrl->txbuf) + 1;
@@ -788,12 +784,12 @@ static void
 vtc_stream_client (vcl_test_client_main_t * vcm)
 {
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  vcl_test_cfg_t *cfg = &ctrl->cfg;
+  hs_test_cfg_t *cfg = &ctrl->cfg;
   vcl_test_client_worker_t *wrk;
   uint32_t i, n_conn, n_conn_per_wrk;
 
   vtinf ("%s-directional Stream Test Starting!",
-	 ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+	 ctrl->cfg.test == HS_TEST_TYPE_BI ? "Bi" : "Uni");
 
   memset (&ctrl->stats, 0, sizeof (vcl_test_stats_t));
   cfg->total_bytes = cfg->num_writes * cfg->txbuf_size;
@@ -811,7 +807,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
     }
 
   vcm->test_running = 1;
-  ctrl->cfg.cmd = VCL_TEST_CMD_START;
+  ctrl->cfg.cmd = HS_TEST_CMD_START;
   if (vtc_cfg_sync (ctrl))
     {
       vtwrn ("test cfg sync failed -- aborting!");
@@ -834,7 +830,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
     ;
 
   vtinf ("Sending config on ctrl session (fd %d) for stats...", ctrl->fd);
-  ctrl->cfg.cmd = VCL_TEST_CMD_STOP;
+  ctrl->cfg.cmd = HS_TEST_CMD_STOP;
   if (vtc_cfg_sync (ctrl))
     {
       vtwrn ("test cfg sync failed -- aborting!");
@@ -843,8 +839,8 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
 
   vtc_print_stats (ctrl);
 
-  ctrl->cfg.cmd = VCL_TEST_CMD_SYNC;
-  ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
+  ctrl->cfg.cmd = HS_TEST_CMD_SYNC;
+  ctrl->cfg.test = HS_TEST_TYPE_ECHO;
   ctrl->cfg.total_bytes = 0;
   if (vtc_cfg_sync (ctrl))
     vtwrn ("post-test cfg sync failed!");
@@ -864,7 +860,7 @@ cfg_txbuf_size_set (void)
       ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
       vcl_test_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */ ,
 			  (uint8_t **) & ctrl->txbuf, &ctrl->txbuf_size);
-      vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
     vtwrn ("Invalid txbuf size (%lu) < minimum buf size (%u)!",
@@ -883,7 +879,7 @@ cfg_num_writes_set (void)
     {
       ctrl->cfg.num_writes = num_writes;
       ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
-      vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
     {
@@ -903,7 +899,7 @@ cfg_num_test_sessions_set (void)
       (num_test_sessions <= VCL_TEST_CFG_MAX_TEST_SESS))
     {
       ctrl->cfg.num_test_sessions = num_test_sessions;
-      vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
     {
@@ -925,7 +921,7 @@ cfg_rxbuf_size_set (void)
       ctrl->cfg.rxbuf_size = rxbuf_size;
       vcl_test_buf_alloc (&ctrl->cfg, 1 /* is_rxbuf */ ,
 			  (uint8_t **) & ctrl->rxbuf, &ctrl->rxbuf_size);
-      vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+      hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
     vtwrn ("Invalid rxbuf size (%lu) < minimum buf size (%u)!",
@@ -939,20 +935,19 @@ cfg_verbose_toggle (void)
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
 
   ctrl->cfg.verbose = ctrl->cfg.verbose ? 0 : 1;
-  vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
-
+  hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
 }
 
-static vcl_test_t
+static hs_test_t
 parse_input ()
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  vcl_test_t rv = VCL_TEST_TYPE_NONE;
+  hs_test_t rv = HS_TEST_TYPE_NONE;
 
   if (!strncmp (VCL_TEST_TOKEN_EXIT, ctrl->txbuf,
 		strlen (VCL_TEST_TOKEN_EXIT)))
-    rv = VCL_TEST_TYPE_EXIT;
+    rv = HS_TEST_TYPE_EXIT;
 
   else if (!strncmp (VCL_TEST_TOKEN_HELP, ctrl->txbuf,
 		     strlen (VCL_TEST_TOKEN_HELP)))
@@ -982,16 +977,16 @@ parse_input ()
 		     strlen (VCL_TEST_TOKEN_RXBUF_SIZE)))
     cfg_rxbuf_size_set ();
 
-  else if (!strncmp (VCL_TEST_TOKEN_RUN_UNI, ctrl->txbuf,
-		     strlen (VCL_TEST_TOKEN_RUN_UNI)))
-    rv = ctrl->cfg.test = VCL_TEST_TYPE_UNI;
+  else if (!strncmp (HS_TEST_TOKEN_RUN_UNI, ctrl->txbuf,
+		     strlen (HS_TEST_TOKEN_RUN_UNI)))
+    rv = ctrl->cfg.test = HS_TEST_TYPE_UNI;
 
-  else if (!strncmp (VCL_TEST_TOKEN_RUN_BI, ctrl->txbuf,
-		     strlen (VCL_TEST_TOKEN_RUN_BI)))
-    rv = ctrl->cfg.test = VCL_TEST_TYPE_BI;
+  else if (!strncmp (HS_TEST_TOKEN_RUN_BI, ctrl->txbuf,
+		     strlen (HS_TEST_TOKEN_RUN_BI)))
+    rv = ctrl->cfg.test = HS_TEST_TYPE_BI;
 
   else
-    rv = VCL_TEST_TYPE_ECHO;
+    rv = HS_TEST_TYPE_ECHO;
 
   return rv;
 }
@@ -1088,11 +1083,11 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	break;
 
       case 'X':
-	vcm->post_test = VCL_TEST_TYPE_EXIT;
+	vcm->post_test = HS_TEST_TYPE_EXIT;
 	break;
 
       case 'x':
-	vcm->post_test = VCL_TEST_TYPE_NONE;
+	vcm->post_test = HS_TEST_TYPE_NONE;
 	break;
 
       case 'E':
@@ -1103,7 +1098,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	    print_usage_and_exit ();
 	  }
 	strncpy (ctrl->txbuf, optarg, ctrl->txbuf_size);
-	ctrl->cfg.test = VCL_TEST_TYPE_ECHO;
+	ctrl->cfg.test = HS_TEST_TYPE_ECHO;
 	break;
 
       case 'N':
@@ -1179,11 +1174,11 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	break;
 
       case 'U':
-	ctrl->cfg.test = VCL_TEST_TYPE_UNI;
+	ctrl->cfg.test = HS_TEST_TYPE_UNI;
 	break;
 
       case 'B':
-	ctrl->cfg.test = VCL_TEST_TYPE_BI;
+	ctrl->cfg.test = HS_TEST_TYPE_BI;
 	break;
 
       case 'V':
@@ -1299,13 +1294,13 @@ vtc_ctrl_session_exit (void)
   int verbose = ctrl->cfg.verbose;
 
   /* Only clients exits, server can accept new connections */
-  if (vcm->post_test == VCL_TEST_TYPE_EXIT_CLIENT)
+  if (vcm->post_test == HS_TEST_TYPE_EXIT_CLIENT)
     return;
 
-  ctrl->cfg.test = VCL_TEST_TYPE_EXIT;
+  ctrl->cfg.test = HS_TEST_TYPE_EXIT;
   vtinf ("(fd %d): Sending exit cfg to server...", ctrl->fd);
   if (verbose)
-    vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
+    hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
   (void) vcl_test_write (ctrl, (uint8_t *) &ctrl->cfg, sizeof (ctrl->cfg));
   sleep (1);
 }
@@ -1334,7 +1329,7 @@ vtc_ctrl_session_init (vcl_test_client_main_t *vcm, vcl_test_session_t *ctrl)
   ctrl->read = vcl_test_read;
   ctrl->write = vcl_test_write;
 
-  ctrl->cfg.cmd = VCL_TEST_CMD_SYNC;
+  ctrl->cfg.cmd = HS_TEST_CMD_SYNC;
   rv = vtc_cfg_sync (ctrl);
   if (rv)
     {
@@ -1342,7 +1337,7 @@ vtc_ctrl_session_init (vcl_test_client_main_t *vcm, vcl_test_session_t *ctrl)
       return rv;
     }
 
-  ctrl->cfg.ctrl_handle = ((vcl_test_cfg_t *) ctrl->rxbuf)->ctrl_handle;
+  ctrl->cfg.ctrl_handle = ((hs_test_cfg_t *) ctrl->rxbuf)->ctrl_handle;
   memset (&ctrl->stats, 0, sizeof (ctrl->stats));
 
   return 0;
@@ -1400,9 +1395,9 @@ main (int argc, char **argv)
   int rv;
 
   vcm->n_workers = 1;
-  vcm->post_test = VCL_TEST_TYPE_EXIT_CLIENT;
+  vcm->post_test = HS_TEST_TYPE_EXIT_CLIENT;
 
-  vcl_test_cfg_init (&ctrl->cfg);
+  hs_test_cfg_init (&ctrl->cfg);
   vt_incercept_sigs ();
   vcl_test_session_buf_alloc (ctrl);
   vtc_process_opts (vcm, argc, argv);
@@ -1427,55 +1422,55 @@ main (int argc, char **argv)
   /* Update ctrl port to data port */
   vcm->server_endpt.port += 1;
 
-  while (ctrl->cfg.test != VCL_TEST_TYPE_EXIT)
+  while (ctrl->cfg.test != HS_TEST_TYPE_EXIT)
     {
       if (vcm->dump_cfg)
 	{
-	  vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
+	  hs_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
 	  vcm->dump_cfg = 0;
 	}
 
       switch (ctrl->cfg.test)
 	{
-	case VCL_TEST_TYPE_ECHO:
+	case HS_TEST_TYPE_ECHO:
 	  vtc_echo_client (vcm);
 	  break;
 
-	case VCL_TEST_TYPE_UNI:
-	case VCL_TEST_TYPE_BI:
+	case HS_TEST_TYPE_UNI:
+	case HS_TEST_TYPE_BI:
 	  vtc_stream_client (vcm);
 	  break;
 
-	case VCL_TEST_TYPE_EXIT:
+	case HS_TEST_TYPE_EXIT:
 	  continue;
 
-	case VCL_TEST_TYPE_NONE:
+	case HS_TEST_TYPE_NONE:
 	default:
 	  break;
 	}
       switch (vcm->post_test)
 	{
-	case VCL_TEST_TYPE_EXIT:
-	case VCL_TEST_TYPE_EXIT_CLIENT:
+	case HS_TEST_TYPE_EXIT:
+	case HS_TEST_TYPE_EXIT_CLIENT:
 	  switch (ctrl->cfg.test)
 	    {
-	    case VCL_TEST_TYPE_EXIT:
-	    case VCL_TEST_TYPE_UNI:
-	    case VCL_TEST_TYPE_BI:
-	    case VCL_TEST_TYPE_ECHO:
-	      ctrl->cfg.test = VCL_TEST_TYPE_EXIT;
+	    case HS_TEST_TYPE_EXIT:
+	    case HS_TEST_TYPE_UNI:
+	    case HS_TEST_TYPE_BI:
+	    case HS_TEST_TYPE_ECHO:
+	      ctrl->cfg.test = HS_TEST_TYPE_EXIT;
 	      continue;
 
-	    case VCL_TEST_TYPE_NONE:
+	    case HS_TEST_TYPE_NONE:
 	    default:
 	      break;
 	    }
 	  break;
 
-	case VCL_TEST_TYPE_NONE:
-	case VCL_TEST_TYPE_ECHO:
-	case VCL_TEST_TYPE_UNI:
-	case VCL_TEST_TYPE_BI:
+	case HS_TEST_TYPE_NONE:
+	case HS_TEST_TYPE_ECHO:
+	case HS_TEST_TYPE_UNI:
+	case HS_TEST_TYPE_BI:
 	default:
 	  break;
 	}
