@@ -98,6 +98,7 @@ typedef enum cnat_buffer_session_flag_t_
   /* do not create a return session in output */
   CNAT_BUFFER_SESSION_FLAG_NO_RETURN = (1 << 1),
 } cnat_buffer_session_flag_t;
+STATIC_ASSERT (CNAT_BUFFER_SESSION_FLAG_NO_RETURN < (1 << 4), "Value too big");
 
 extern u8 *format_cnat_timestamp (u8 *s, va_list *args);
 extern u8 *format_cnat_session (u8 * s, va_list * args);
