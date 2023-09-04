@@ -16,6 +16,24 @@
       "message": "Do you want to mark the new API thread safe or not?",
       "revId": "f234b0d4626d7e686422cc9dfd25958584f4931e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b3155b4_fb5e703e",
+        "filename": "src/plugins/arping/arping_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-04T14:31:28Z",
+      "side": 0,
+      "message": "Yes, should be same as the other API. Fixed. Thanks.",
+      "parentUuid": "01b77b4c_eff29f9f",
+      "revId": "f234b0d4626d7e686422cc9dfd25958584f4931e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
