@@ -276,7 +276,7 @@ vt_add_cert_key_pair ()
 }
 
 static int
-vt_tls_init (vcl_test_cfg_t *cfg)
+vt_tls_init (hs_test_cfg_t *cfg)
 {
   return vt_add_cert_key_pair ();
 }
@@ -384,7 +384,7 @@ static const vcl_test_proto_vft_t vcl_test_tls = {
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_TLS, vcl_test_tls);
 
 static int
-vt_dtls_init (vcl_test_cfg_t *cfg)
+vt_dtls_init (hs_test_cfg_t *cfg)
 {
   return vt_add_cert_key_pair ();
 }
@@ -492,7 +492,7 @@ static const vcl_test_proto_vft_t vcl_test_dtls = {
 VCL_TEST_REGISTER_PROTO (VPPCOM_PROTO_DTLS, vcl_test_dtls);
 
 static int
-vt_quic_init (vcl_test_cfg_t *cfg)
+vt_quic_init (hs_test_cfg_t *cfg)
 {
   vcl_test_main_t *vt = &vcl_test_main;
 
