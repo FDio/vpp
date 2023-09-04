@@ -18,6 +18,7 @@
 #ifndef __included_echo_client_h__
 #define __included_echo_client_h__
 
+#include <hs_apps/hs_test.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
 
@@ -69,10 +70,12 @@ typedef struct
 
   u32 cli_node_index;			/**< cli process node index */
   u32 app_index;			/**< app index after attach */
+  session_handle_t ctrl_session_handle; /**< control session handle */
 
   /*
    * Configuration params
    */
+  hs_test_cfg_t cfg;
   u32 n_clients;			/**< Number of clients */
   u8 *connect_uri;			/**< URI for slave's connect */
   session_endpoint_cfg_t connect_sep;	/**< Sever session endpoint */
@@ -99,12 +102,12 @@ typedef struct
    */
   u8 app_is_init;
   u8 test_client_attached;
-  u8 no_return;
+  u8 echo_bytes;
   u8 test_return_packets;
   int drop_packets;		/**< drop all packets */
   u8 prealloc_fifos;		/**< Request fifo preallocation */
   u8 prealloc_sessions;
-  u8 no_output;
+  u8 verbose;
   u8 test_bytes;
   u8 test_failed;
   u8 transport_proto;
@@ -124,6 +127,9 @@ typedef enum ec_cli_signal_
 {
   EC_CLI_CONNECTS_DONE = 1,
   EC_CLI_CONNECTS_FAILED,
+  EC_CLI_CFG_SYNC,
+  EC_CLI_START,
+  EC_CLI_STOP,
   EC_CLI_TEST_DONE
 } ec_cli_signal_t;
 
