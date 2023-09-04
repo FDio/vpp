@@ -66,7 +66,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
   rw->cts_lbi = (u32) ~0;
-  rw->cts_dpoi_next_node = (u32) ~0;
+  rw->cts_dpoi_next_node = (u16) ~0;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
@@ -113,8 +113,17 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
   rrw = &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << (CNAT_LOCATION_FIB + CNAT_IS_RETURN);
 
-  rrw->cts_lbi = (u32) ~0;
-  rrw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_LOOKUP;
+  if (cpe->flags & CNAT_SNAT_POLICY_FLAG_BUFFER_NEXT)
+    {
+      rrw->cts_lbi = vnet_buffer2 (b)->session.rrw_next_index;
+      rrw->cts_dpoi_next_node = vnet_buffer2 (b)->session.rrw_next_node;
+    }
+  else
+    {
+      rrw->cts_lbi = (u32) ~0;
+      rrw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_LOOKUP;
+    }
+
   u32 ret_fib_index = AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
   rrw->fib_index = ret_fib_index;
 
