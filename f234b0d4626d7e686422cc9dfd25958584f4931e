@@ -34,6 +34,24 @@
       "parentUuid": "01b77b4c_eff29f9f",
       "revId": "f234b0d4626d7e686422cc9dfd25958584f4931e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23630560_0a5a17d2",
+        "filename": "src/plugins/arping/arping_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-04T15:15:01Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "7b3155b4_fb5e703e",
+      "revId": "f234b0d4626d7e686422cc9dfd25958584f4931e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
