@@ -357,7 +357,7 @@ vl_api_cnat_set_snat_addresses_t_handler (vl_api_cnat_set_snat_addresses_t
   ip6_address_decode (mp->snat_ip6, &ip6);
 
   rv = cnat_set_snat (CNAT_FIB_TABLE, CNAT_FIB_TABLE, &ip4, 32, &ip6, 128,
-		      sw_if_index);
+		      sw_if_index, CNAT_SNAT_POLICY_FLAG_NONE);
 
   REPLY_MACRO (VL_API_CNAT_SET_SNAT_ADDRESSES_REPLY);
 }
