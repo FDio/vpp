@@ -138,9 +138,9 @@ class QUICEchoIntTestCase(QUICTestCase):
     def setUp(self):
         super(QUICEchoIntTestCase, self).setUp()
         self.client_args = (
-            f"uri {self.uri} fifo-size 64{self.test_bytes} appns {self.client_appns} "
+            f"uri {self.uri} fifo-size 64k{self.test_bytes} appns {self.client_appns} "
         )
-        self.server_args = f"uri {self.uri} fifo-size 64 appns {self.server_appns} "
+        self.server_args = f"uri {self.uri} fifo-size 64k appns {self.server_appns} "
 
     def tearDown(self):
         super(QUICEchoIntTestCase, self).tearDown()
@@ -167,7 +167,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     def test_quic_int_transfer(self):
         """QUIC internal transfer"""
         self.server()
-        self.client("no-output", "mbytes", "2")
+        self.client("mbytes", "2")
 
 
 @tag_fixme_vpp_workers
@@ -177,11 +177,11 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     def test_quic_serial_int_transfer(self):
         """QUIC serial internal transfer"""
         self.server()
-        self.client("no-output", "mbytes", "2")
-        self.client("no-output", "mbytes", "2")
-        self.client("no-output", "mbytes", "2")
-        self.client("no-output", "mbytes", "2")
-        self.client("no-output", "mbytes", "2")
+        self.client("mbytes", "2")
+        self.client("mbytes", "2")
+        self.client("mbytes", "2")
+        self.client("mbytes", "2")
+        self.client("mbytes", "2")
 
 
 @tag_fixme_vpp_workers
@@ -191,7 +191,7 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     def test_quic_int_multistream_transfer(self):
         """QUIC internal multi-stream transfer"""
         self.server()
-        self.client("nclients", "10", "mbytes", "1", "no-output")
+        self.client("nclients", "10", "mbytes", "1")
 
 
 class QUICEchoExtTestCase(QUICTestCase):
