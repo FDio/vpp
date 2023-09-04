@@ -16,6 +16,7 @@
 #ifndef __vcl_test_h__
 #define __vcl_test_h__
 
+#include <hs_apps/hs_test.h>
 #include <netdb.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -92,24 +93,7 @@ typedef enum
   VCL_TEST_CMD_STOP,
 } vcl_test_cmd_t;
 
-typedef struct __attribute__ ((packed))
-{
-  uint32_t magic;
-  uint32_t seq_num;
-  uint32_t test;
-  uint32_t cmd;
-  uint32_t ctrl_handle;
-  uint32_t num_test_sessions;
-  uint32_t num_test_sessions_perq;
-  uint32_t num_test_qsessions;
-  uint32_t verbose;
-  uint32_t address_ip6;
-  uint32_t transport_udp;
-  uint64_t rxbuf_size;
-  uint64_t txbuf_size;
-  uint64_t num_writes;
-  uint64_t total_bytes;
-} vcl_test_cfg_t;
+typedef hs_test_cfg_t vcl_test_cfg_t;
 
 typedef struct
 {
