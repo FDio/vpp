@@ -458,9 +458,11 @@ typedef struct
     /* cnat session */
     struct
     {
-      u32 generic_flow_id; /* unique identifier for the flow */
-      u8 state;		   /* new flow / return / etc... */
-      u8 flags;		   /* session flags to set */
+      u64 generic_flow_id : 24; /* unique identifier for the flow */
+      u64 rrw_next_index : 24;	/* next adj-index to be used for reverse flow */
+      u64 rrw_next_node : 8;	/* next-node to be used for reverse flow */
+      u64 state : 4;		/* new flow / return / etc... */
+      u64 flags : 4;		/* session flags to set */
     } session;
   };
 

@@ -473,7 +473,8 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address, u8 i
 
 __clib_export int
 cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u8 ip4_pfx_len,
-	       const ip6_address_t *ip6, u8 ip6_pfx_len, u32 sw_if_index)
+	       const ip6_address_t *ip6, u8 ip6_pfx_len, u32 sw_if_index,
+	       cnat_snat_policy_flags_t flags)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   cnat_snat_policy_entry_t *cpe4, *cpe6, *cpe;
@@ -527,6 +528,7 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
       cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_SNAT, cnat_if_addr_add_del_snat_cb);
       cpe->snat_policy = cnat_snat_policy_none;
       cnat_init_port_allocator (fwd_fib_index);
+      cpe->flags = flags;
       index = cpe - cpm->snat_policies_pool;
     }
 
@@ -622,7 +624,8 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index);
+  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index,
+		      CNAT_SNAT_POLICY_FLAG_NONE);
   if (rv)
     {
       e = clib_error_return (0, "unknown error %d", rv);
