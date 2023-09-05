@@ -129,6 +129,9 @@ func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host --rm"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
+	if *vppSourceFileDir != "" {
+		args += fmt.Sprintf(" -v %s:%s", *vppSourceFileDir, *vppSourceFileDir)
+	}
 	args += " --name " + c.name + " " + c.image
 	args += " " + c.extraRunningArgs
 	return args
