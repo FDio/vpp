@@ -239,6 +239,7 @@ extern vlib_node_registration_t udp4_punt_node;
 extern vlib_node_registration_t udp6_punt_node;
 extern vlib_node_registration_t udp4_punt_socket_node;
 extern vlib_node_registration_t udp6_punt_socket_node;
+extern vlib_node_registration_t icmp6_punt_socket_node;
 extern vlib_node_registration_t ip4_proto_punt_socket_node;
 extern vlib_node_registration_t ip6_proto_punt_socket_node;
 extern vlib_node_registration_t punt_socket_rx_node;

@@ -148,14 +148,31 @@ punt_socket_register_l4 (vlib_main_t * vm,
   punt_main_t *pm = &punt_main;
   punt_client_t *c;
 
-  /* For now we only support UDP punt */
-  if (protocol != IP_PROTOCOL_UDP)
-    return clib_error_return (0,
-			      "only UDP protocol (%d) is supported, got %d",
-			      IP_PROTOCOL_UDP, protocol);
-
   if (port == (u16) ~ 0)
-    return clib_error_return (0, "UDP port number required");
+    return clib_error_return (0, "Port number required");
+
+  u32 node_index;
+  switch (protocol)
+    {
+    case IP_PROTOCOL_UDP:
+      node_index = (af == AF_IP4 ? udp4_punt_socket_node.index :
+					 udp6_punt_socket_node.index);
+      udp_register_dst_port (vm, port, node_index, af == AF_IP4);
+      break;
+    case IP_PROTOCOL_ICMP6:
+      if (af != AF_IP6)
+	return clib_error_return (
+	  0, "only UDP or ICMP6 protocol (%d, %d) is supported, got %d",
+	  IP_PROTOCOL_UDP, IP_PROTOCOL_ICMP6, protocol);
+
+      node_index = icmp6_punt_socket_node.index;
+      icmp6_register_type (vm, port, node_index);
+      break;
+    default:
+      return clib_error_return (
+	0, "only UDP or ICMP6 protocol (%d) is supported, got %d",
+	IP_PROTOCOL_UDP, protocol);
+    }
 
   c = punt_client_l4_get (af, port);
 
@@ -172,12 +189,6 @@ punt_socket_register_l4 (vlib_main_t * vm,
   c->reg.punt.l4.port = port;
   c->reg.punt.l4.protocol = protocol;
   c->reg.punt.l4.af = af;
-
-  u32 node_index = (af == AF_IP4 ?
-		    udp4_punt_socket_node.index :
-		    udp6_punt_socket_node.index);
-
-  udp_register_dst_port (vm, port, node_index, af == AF_IP4);
 
   return (NULL);
 }
