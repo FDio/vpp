@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0440bb07_b6ed5f82",
+        "filename": "src/plugins/geneve/encap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "We don\u0027t know the GENEVE header protocol type yet as we will determine it based on inner packet and set it dynamically.",
+      "parentUuid": "eca0a3c9_aabef11d",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "cf7b4829_e63826d7",
         "filename": "src/plugins/geneve/encap.c",
         "patchSetId": 4
@@ -48,6 +66,24 @@
       "writtenOn": "2023-09-05T07:22:44Z",
       "side": 1,
       "message": "Same as above. And make an inline for this?",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb7196d4_f0cf4512",
+        "filename": "src/plugins/geneve/encap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cf7b4829_e63826d7",
       "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "86f4e8dc_5d93cf5c",
+        "filename": "src/plugins/geneve/geneve.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1309a7ab_e0e774ed",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dda2b1cb_33392c3a",
@@ -82,6 +136,24 @@
       "writtenOn": "2023-09-05T07:22:44Z",
       "side": 1,
       "message": "Isn\u0027t \"is_ip6\" the outer protocol, while what you are setting here is the inner protocol? (Or am I confused).\nRegardless this has to support IPvY over IPvX, so no coupling between inner and outer protocol type.",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "228e839c_fb0d9ba4",
+        "filename": "src/plugins/geneve/geneve.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dda2b1cb_33392c3a",
       "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b111d019_3fe0ff45",
+        "filename": "src/plugins/geneve/geneve.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07afea92_a0787356",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b71bfef4_c97d8a83",
@@ -116,6 +206,24 @@
       "writtenOn": "2023-09-05T07:22:44Z",
       "side": 1,
       "message": "For Geneve in L3 mode is there a use case for having the user select next node?\nShouldn\u0027t it behave like the other tunnel implementations where we decap into the ipv4 or ipv6 input arcs?",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "34909b8e_e949f5e2",
+        "filename": "test/test_geneve.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-09-05T13:38:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b71bfef4_c97d8a83",
       "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
