@@ -244,10 +244,9 @@ format_udp_punt_trace (u8 * s, va_list * args)
 }
 
 always_inline uword
-punt_socket_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame,
-		    punt_type_t pt, ip_address_family_t af)
+punt_socket_inline2 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame, punt_type_t pt,
+		     ip_address_family_t af, ip_protocol_t protocol)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 thread_index = vm->thread_index;
@@ -267,33 +266,42 @@ punt_socket_inline (vlib_main_t * vm,
       uword l;
       punt_packetdesc_t packetdesc;
       punt_client_t *c;
-
+      u16 port = 0;
       b = vlib_get_buffer (vm, buffers[i]);
 
       if (PUNT_TYPE_L4 == pt)
 	{
-	  /* Reverse UDP Punt advance */
-	  udp_header_t *udp;
-	  if (AF_IP4 == af)
+	  if (protocol == IP_PROTOCOL_UDP)
 	    {
-	      vlib_buffer_advance (b, -(sizeof (ip4_header_t) +
-					sizeof (udp_header_t)));
-	      ip4_header_t *ip = vlib_buffer_get_current (b);
-	      udp = (udp_header_t *) (ip + 1);
+	      /* Reverse UDP Punt advance */
+	      udp_header_t *udp;
+	      if (AF_IP4 == af)
+		{
+		  vlib_buffer_advance (
+		    b, -(sizeof (ip4_header_t) + sizeof (udp_header_t)));
+		  ip4_header_t *ip = vlib_buffer_get_current (b);
+		  udp = (udp_header_t *) (ip + 1);
+		}
+	      else
+		{
+		  vlib_buffer_advance (
+		    b, -(sizeof (ip6_header_t) + sizeof (udp_header_t)));
+		  ip6_header_t *ip = vlib_buffer_get_current (b);
+		  udp = (udp_header_t *) (ip + 1);
+		}
+	      port = clib_net_to_host_u16 (udp->dst_port);
 	    }
-	  else
+	  else if (protocol == IP_PROTOCOL_ICMP6)
 	    {
-	      vlib_buffer_advance (b, -(sizeof (ip6_header_t) +
-					sizeof (udp_header_t)));
 	      ip6_header_t *ip = vlib_buffer_get_current (b);
-	      udp = (udp_header_t *) (ip + 1);
+	      icmp46_header_t *icmp = ip6_next_header (ip);
+	      port = icmp->type;
 	    }
-
 	  /*
 	   * Find registerered client
 	   * If no registered client, drop packet and count
 	   */
-	  c = punt_client_l4_get (af, clib_net_to_host_u16 (udp->dst_port));
+	  c = punt_client_l4_get (af, port);
 	}
       else if (PUNT_TYPE_IP_PROTO == pt)
 	{
@@ -397,6 +405,14 @@ error:
   return n_packets;
 }
 
+always_inline uword
+punt_socket_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, punt_type_t pt,
+		    ip_address_family_t af)
+{
+  return punt_socket_inline2 (vm, node, frame, pt, af, IP_PROTOCOL_UDP);
+}
+
 static uword
 udp4_punt_socket (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
@@ -425,6 +441,14 @@ ip6_proto_punt_socket (vlib_main_t * vm,
 {
   return punt_socket_inline (vm, node, from_frame,
 			     PUNT_TYPE_IP_PROTO, AF_IP6);
+}
+
+static uword
+icmp6_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *from_frame)
+{
+  return punt_socket_inline2 (vm, node, from_frame, PUNT_TYPE_L4, AF_IP6,
+			      IP_PROTOCOL_ICMP6);
 }
 
 static uword
@@ -484,6 +508,16 @@ VLIB_REGISTER_NODE (exception_punt_socket_node) = {
   .n_errors = PUNT_N_ERROR,
   .error_strings = punt_error_strings,
 };
+VLIB_REGISTER_NODE (icmp6_punt_socket_node) = {
+  .function = icmp6_punt_socket,
+  .name = "ip6-icmp-punt-socket",
+  .format_trace = format_udp_punt_trace,
+  .flags = VLIB_NODE_FLAG_IS_DROP,
+  .vector_size = sizeof (u32),
+  .n_errors = PUNT_N_ERROR,
+  .error_strings = punt_error_strings,
+};
+
 /* *INDENT-ON* */
 
 typedef struct
