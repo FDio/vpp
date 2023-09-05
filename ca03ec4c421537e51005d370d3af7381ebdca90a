@@ -16,6 +16,108 @@
       "message": "recheck",
       "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eca0a3c9_aabef11d",
+        "filename": "src/plugins/geneve/encap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "It would probably be safer to use the Geneve header \"protocol type\".",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf7b4829_e63826d7",
+        "filename": "src/plugins/geneve/encap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "Same as above. And make an inline for this?",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1309a7ab_e0e774ed",
+        "filename": "src/plugins/geneve/geneve.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "Make these an enum since they are mutually exclusive",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dda2b1cb_33392c3a",
+        "filename": "src/plugins/geneve/geneve.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "Isn\u0027t \"is_ip6\" the outer protocol, while what you are setting here is the inner protocol? (Or am I confused).\nRegardless this has to support IPvY over IPvX, so no coupling between inner and outer protocol type.",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07afea92_a0787356",
+        "filename": "src/plugins/geneve/geneve.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "Probably same thing here, need to dynamically pick between v4 or v6.",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b71bfef4_c97d8a83",
+        "filename": "test/test_geneve.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-05T07:22:44Z",
+      "side": 1,
+      "message": "For Geneve in L3 mode is there a use case for having the user select next node?\nShouldn\u0027t it behave like the other tunnel implementations where we decap into the ipv4 or ipv6 input arcs?",
+      "revId": "ca03ec4c421537e51005d370d3af7381ebdca90a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
