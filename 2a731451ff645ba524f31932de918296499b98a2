@@ -16,6 +16,24 @@
       "message": "comment",
       "revId": "2a731451ff645ba524f31932de918296499b98a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33d96481_346adfce",
+        "filename": "src/vnet/ip-neighbor/ip4_neighbor.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2023-09-05T12:32:41Z",
+      "side": 1,
+      "message": "resolved",
+      "parentUuid": "e74442a3_febc4957",
+      "revId": "2a731451ff645ba524f31932de918296499b98a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
