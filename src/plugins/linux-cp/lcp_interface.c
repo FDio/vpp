@@ -782,6 +782,15 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
   const vnet_sw_interface_t *sw;
   const vnet_hw_interface_t *hw;
   const lcp_itf_pair_t *lip;
+  index_t lipi;
+
+  lipi = lcp_itf_pair_find_by_phy (phy_sw_if_index);
+
+  if (lipi != INDEX_INVALID)
+    {
+      LCP_ITF_PAIR_ERR ("pair_create: already created");
+      return VNET_API_ERROR_VALUE_EXIST;
+    }
 
   if (!vnet_sw_if_index_is_api_valid (phy_sw_if_index))
     {
