@@ -25,6 +25,7 @@ var isVerbose = flag.Bool("verbose", false, "verbose test output")
 var isUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var isVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
+var vppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 
 type HstSuite struct {
 	suite.Suite
