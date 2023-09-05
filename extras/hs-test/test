@@ -45,7 +45,7 @@ case "${i}" in
         tc_name="${i#*=}"
         if [ $tc_name != "all" ]; then
             single_test=1
-            args="$args -run $tc_name"
+            args="$args -run $tc_name -verbose"
         fi
 esac
 done
