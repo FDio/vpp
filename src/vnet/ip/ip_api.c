@@ -1058,6 +1058,38 @@ vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 }
 
 static void
+vl_api_ip6_mreceive_add_del_t_handler (vl_api_ip6_mreceive_add_del_t *mp)
+{
+  vl_api_ip6_mreceive_add_del_reply_t *rmp;
+  int rv = 0;
+  u32 fib_index = mfib_table_find_or_create_and_lock (
+    FIB_PROTOCOL_IP6, ntohl (mp->table), MFIB_SOURCE_DHCP);
+  ip46_address_t group;
+  clib_memcpy (&group.ip6, mp->group_address.address, sizeof (group.ip6));
+
+  mfib_prefix_t multicast_group = { .fp_len = mp->group_address.len,
+				    .fp_proto = FIB_PROTOCOL_IP6,
+				    .fp_grp_addr = group };
+
+  fib_route_path_t path_for_us = {
+    .frp_proto = DPO_PROTO_IP6,
+    .frp_addr = zero_addr,
+    .frp_sw_if_index = 0xffffffff,
+    .frp_fib_index = ~0,
+    .frp_weight = 1,
+    .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+  };
+  mfib_table_entry_path_update (fib_index, &multicast_group, MFIB_SOURCE_DHCP,
+				MFIB_ENTRY_FLAG_NONE, &path_for_us);
+  mfib_table_entry_update (fib_index, &multicast_group, MFIB_SOURCE_DHCP,
+			   MFIB_RPF_ID_NONE, MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+  mfib_table_lock (fib_index, FIB_PROTOCOL_IP6, MFIB_SOURCE_DHCP);
+
+  REPLY_MACRO (VL_API_IP6_MRECEIVE_ADD_DEL_REPLY);
+}
+
+static void
 send_ip_details (vpe_api_main_t * am,
 		 vl_api_registration_t * reg, u32 sw_if_index, u8 is_ipv6,
 		 u32 context)
