@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13bd67ed_ef255553",
+        "filename": "extras/strongswan/vpp_sswan/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-06T08:05:18Z",
+      "side": 1,
+      "message": "minor: \"uninstall\" in new line perhaps? As in other places either there is a one-liner or each command is in a new line.",
+      "revId": "c0a70a586d37dc08000ddfc2d27f0289a5bb740b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29864c7d_f6763f51",
+        "filename": "extras/strongswan/vpp_sswan/policy-based/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-06T08:05:18Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "c0a70a586d37dc08000ddfc2d27f0289a5bb740b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
