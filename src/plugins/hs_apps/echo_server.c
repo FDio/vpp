@@ -230,8 +230,7 @@ echo_server_rx_callback (session_t * s)
 	{
 	  /* TODO should be session_enqueue_notify(s) but quic tests seem
 	   * to fail if that's the case */
-	  if (session_send_io_evt_to_thread (rx_fifo,
-					     SESSION_IO_EVT_BUILTIN_RX))
+	  if (session_enqueue_notify(s))
 	    clib_warning ("failed to enqueue self-tap");
 
 	  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
