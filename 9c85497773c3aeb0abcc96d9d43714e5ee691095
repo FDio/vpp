@@ -16,6 +16,23 @@
       "message": "See [0] on how dramatically this improves NDR performance (PDR and MRR do not show much difference).\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/21/console.log.gz",
       "revId": "9c85497773c3aeb0abcc96d9d43714e5ee691095",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ce69d05_238b78a3",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-06T08:32:35Z",
+      "side": 1,
+      "message": "I can\u0027t think of a better fix at the top of my head.\nShould this not be clib_atomic_fetch_add()?",
+      "revId": "9c85497773c3aeb0abcc96d9d43714e5ee691095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
