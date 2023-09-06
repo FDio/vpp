@@ -17,6 +17,9 @@
  *------------------------------------------------------------------
  */
 
+#define _GNU_SOURCE
+#include <string.h>
+
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 
@@ -384,7 +387,6 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
       vec_add1 (filter, 0);	/* Ensure it's a C string for strcasecmp() */
     }
 
-  char *strcasestr (char *, char *);	/* lnx hdr file botch */
   /* *INDENT-OFF* */
   pool_foreach (swif, im->sw_interfaces)
    {
