@@ -1359,6 +1359,13 @@ api_ip6_mreceive_add_del (vat_main_t *vam)
   return -1;
 }
 
+static int
+api_ip_route_simple_add_del (vat_main_t *vam)
+{
+  // NOT IMPLEMENTED
+  return -1;
+}
+
 static void
 vl_api_ip_mroute_add_del_reply_t_handler (vl_api_ip_mroute_add_del_reply_t *mp)
 {

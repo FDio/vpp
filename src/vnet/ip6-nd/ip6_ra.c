@@ -2258,12 +2258,12 @@ static clib_error_t *
 ip6_ra_init (vlib_main_t * vm)
 {
   vlib_call_init_function (vm, icmp6_init);
-
+#if 0
   icmp6_register_type (vm, ICMP6_router_solicitation,
 		       ip6_icmp_router_solicitation_node.index);
   icmp6_register_type (vm, ICMP6_router_advertisement,
 		       ip6_icmp_router_advertisement_node.index);
-
+#endif
   ip6_ra_delegate_id = ip6_link_delegate_register (&ip6_ra_delegate_vft);
 
   return (NULL);

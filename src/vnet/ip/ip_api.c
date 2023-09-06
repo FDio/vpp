@@ -808,7 +808,37 @@ vl_api_ip_route_add_del_v2_t_handler (vl_api_ip_route_add_del_v2_t *mp)
 }
 
 void
-vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
+vl_api_ip_route_simple_add_del_t_handler (vl_api_ip_route_simple_add_del_t *mp)
+{
+  vl_api_ip_route_simple_add_del_reply_t *rmp;
+  int rv = 0;
+  ip46_address_t nh;
+  ip_address_decode (&mp->next_hop_address, &nh);
+
+  fib_prefix_t pfx;
+  ip_prefix_decode (&mp->prefix, &pfx);
+
+  fib_route_path_t rpath = {
+    .frp_proto =
+      pfx.fp_proto == FIB_PROTOCOL_IP4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6,
+    .frp_weight = 1,
+    .frp_fib_index = ~0,
+    .frp_addr = nh,
+    .frp_sw_if_index = ntohl (mp->next_hop_sw_if_index),
+  };
+  fib_route_path_t *rpaths = 0;
+  vec_add1 (rpaths, rpath);
+
+  u32 fib_index = fib_table_find (pfx.fp_proto, ntohl (mp->table_id));
+
+  fib_table_entry_path_add2 (fib_index, &pfx, FIB_SOURCE_API,
+			     FIB_ENTRY_FLAG_NONE, rpaths);
+  vec_free (rpaths);
+  REPLY_MACRO (VL_API_IP_ROUTE_SIMPLE_ADD_DEL_REPLY);
+}
+
+void
+vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t *mp)
 {
   vl_api_ip_route_lookup_reply_t *rmp = NULL;
   fib_route_path_t *rpaths = NULL, *rpath;

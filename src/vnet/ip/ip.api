@@ -226,6 +226,20 @@ define ip_route_add_del_v2_reply
   u32 stats_index;
 };
 
+/*
+ * A simpler add/del route wrapper
+ */
+autoreply define ip_route_simple_add_del
+{
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 table_id [default=0];
+  vl_api_prefix_t prefix;
+  vl_api_address_t next_hop_address;
+  vl_api_interface_index_t next_hop_sw_if_index [default=0xffffffff];
+};
+
 /** \brief Dump IP routes from a table
     @param client_index - opaque cookie to identify the sender
     @param src The entity adding the route. either 0 for default
