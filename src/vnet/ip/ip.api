@@ -523,6 +523,17 @@ define ip_address_details
   vl_api_address_with_prefix_t prefix;
 };
 
+/** \brief Add IPv6 multicast receive */
+autoreply define ip6_mreceive_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u32 table;
+  vl_api_ip6_prefix_t group_address;
+  bool is_add [default=true];
+};
+
 define ip_address_dump
 {
   u32 client_index;
