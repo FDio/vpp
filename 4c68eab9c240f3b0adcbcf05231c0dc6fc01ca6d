@@ -33,6 +33,23 @@
       "message": "Hello，Please give a review if you have time",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "532e12d0_a1f494af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-06T08:28:48Z",
+      "side": 1,
+      "message": "Dear Yanglong,\nApologies for the delay.\n\nUnder what circumstances do you see that assert being triggered?\nE.g. if the initial packet has a wrong checksum, or perhaps you set the checksum to 0 because you wanted checksum offload?\n\nOne alternative could be to remove that assert. Depending.",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
