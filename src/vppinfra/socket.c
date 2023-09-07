@@ -732,7 +732,7 @@ done:
 #if CLIB_LINUX
   if (netns_fd != -1)
     {
-      setns (CLONE_NEWNET, netns_fd);
+      setns (netns_fd, CLONE_NEWNET);
       close (netns_fd);
     }
 #endif
