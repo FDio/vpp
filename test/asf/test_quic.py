@@ -299,6 +299,7 @@ class QUICEchoExtTestCase(QUICTestCase):
 
     def validate_ext_test_results(self):
         server_result = self.worker_server.result
+        self.logger.debug(self.vapi.cli(f"show session verbose 2"))
         client_result = self.worker_client.result
         self.logger.info(f"Server worker result is `{server_result}'")
         self.logger.info(f"Client worker result is `{client_result}'")
