@@ -122,6 +122,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  s = session_get_from_handle_if_valid (evt->session_handle);
 	  if (!s || s->session_state == SESSION_STATE_ACCEPTING)
 	    break;
+	  s->flags &= ~SESSION_F_RX_EVT;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
 	case SESSION_IO_EVT_TX:
