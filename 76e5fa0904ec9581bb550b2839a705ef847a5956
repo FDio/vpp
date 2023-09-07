@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0c24135d_6a065278",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "Quick comments",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "575fa6af_9fe58864",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "Maybe add a comment here like \"sending config to server\". Optionally a log messages",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89a9557d_8e969974",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "connect_sep should always have TCP as transport.",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d76646d3_ddeba140",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1098,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "Send a test start message to server on control session",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8798e392_27b74c95",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1185,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "Send a done/exit message to server on control session",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b38c109_5dee4969",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-09-07T16:34:54Z",
+      "side": 1,
+      "message": "To have this be compatible with vcl_test_server/client, we should be sending back another config struct.",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
