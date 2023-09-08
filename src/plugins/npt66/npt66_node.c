@@ -126,7 +126,10 @@ npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
       if (!ip6_prefix_cmp (ip->src_address, binding->internal,
 			   binding->internal_plen))
 	{
-	  clib_warning ("npt66_translate: src address is not internal");
+	  clib_warning (
+	    "npt66_translate: src address is not internal (%U -> %U)",
+	    format_ip6_address, &ip->src_address, format_ip6_address,
+	    &ip->dst_address);
 	  goto done;
 	}
       ip->src_address = ip6_prefix_copy (ip->src_address, binding->external,
@@ -140,7 +143,10 @@ npt66_translate (ip6_header_t *ip, npt66_binding_t *binding, int dir)
       if (!ip6_prefix_cmp (ip->dst_address, binding->external,
 			   binding->external_plen))
 	{
-	  clib_warning ("npt66_translate: dst address is not external");
+	  clib_warning (
+	    "npt66_translate: dst address is not external (%U -> %U)",
+	    format_ip6_address, &ip->src_address, format_ip6_address,
+	    &ip->dst_address);
 	  goto done;
 	}
       ip->dst_address = ip6_prefix_copy (ip->dst_address, binding->internal,
@@ -177,7 +183,6 @@ npt66_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   /* Stage 1: build vector of flow hash (based on lookup mask) */
   while (n_left_from > 0)
     {
-      clib_warning ("DIRECTION: %u", dir);
       u32 sw_if_index = vnet_buffer (b[0])->sw_if_index[dir];
       u32 iph_offset =
 	dir == VLIB_TX ? vnet_buffer (b[0])->ip.save_rewrite_length : 0;
@@ -278,10 +283,8 @@ VLIB_REGISTER_NODE (npt66_output_node) = {
 VNET_FEATURE_INIT (npt66_input, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "npt66-input",
-  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (npt66_output, static) = {
   .arc_name = "ip6-output",
   .node_name = "npt66-output",
-  .runs_after = VNET_FEATURES ("ip4-sv-reassembly-output-feature"),
 };

@@ -49,17 +49,24 @@ npt66_binding_add_del (u32 sw_if_index, ip6_address_t *internal,
 		       int external_plen, bool is_add)
 {
   npt66_main_t *nm = &npt66_main;
+  int rv = 0;
+
+  /* Currently limited to a single binding per interface */
+  npt66_binding_t *b = npt66_interface_by_sw_if_index (sw_if_index);
 
   if (is_add)
     {
-
+      bool configure_feature = false;
       /* Ensure prefix lengths are less than or equal to a /64 */
       if (internal_plen > 64 || external_plen > 64)
 	return VNET_API_ERROR_INVALID_VALUE;
 
-      /* Create a binding entry */
-      npt66_binding_t *b;
-      pool_get_zero (nm->bindings, b);
+      /* Create a binding entry (or update existing) */
+      if (!b)
+	{
+	  pool_get_zero (nm->bindings, b);
+	  configure_feature = true;
+	}
       b->internal = *internal;
       b->internal_plen = internal_plen;
       b->external = *external;
@@ -78,6 +85,9 @@ npt66_binding_add_del (u32 sw_if_index, ip6_address_t *internal,
       delta = ip_csum_sub_even (delta, b->internal.as_u64[1]);
       delta = ip_csum_fold (delta);
       b->delta = delta;
+
+      if (configure_feature)
+	rv = npt66_feature_enable_disable (sw_if_index, is_add);
     }
   else
     {
@@ -87,10 +97,8 @@ npt66_binding_add_del (u32 sw_if_index, ip6_address_t *internal,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
       nm->interface_by_sw_if_index[sw_if_index] = ~0;
       pool_put (nm->bindings, b);
+      rv = npt66_feature_enable_disable (sw_if_index, is_add);
     }
-
-  /* Enable feature on interface */
-  int rv = npt66_feature_enable_disable (sw_if_index, is_add);
 
   return rv;
 }
