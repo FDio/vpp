@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f638eca8_dc952a99",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3008
+      },
+      "writtenOn": "2023-09-08T07:32:51Z",
+      "side": 1,
+      "message": "Hi there, why this was deprecated? Is there any link for the explaination?",
+      "revId": "8c1afb56b6a479d6595444238815c4ced0e754ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
