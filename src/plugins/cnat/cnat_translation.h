@@ -169,6 +169,11 @@ typedef struct cnat_translation_t_
    */
   cnat_lb_type_t lb_type;
 
+  /**
+   * Type of flow hash config
+   */
+  flow_hash_config_t fhc;
+
   union
   {
     u32 *lb_maglev;
