@@ -97,6 +97,7 @@ format_ikev2_gen_sa_error (u8 * s, va_list * args)
 typedef enum
 {
   IKEV2_NEXT_IP4_LOOKUP,
+  IKEV2_NEXT_IP4_HANDOFF,
   IKEV2_NEXT_IP4_ERROR_DROP,
   IKEV2_IP4_N_NEXT,
 } ikev2_ip4_next_t;
@@ -104,6 +105,7 @@ typedef enum
 typedef enum
 {
   IKEV2_NEXT_IP6_LOOKUP,
+  IKEV2_NEXT_IP6_HANDOFF,
   IKEV2_NEXT_IP6_ERROR_DROP,
   IKEV2_IP6_N_NEXT,
 } ikev2_ip6_next_t;
@@ -3191,6 +3193,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
+  u32 thread_index = vm->thread_index;
   ikev2_stats_t _stats, *stats = &_stats;
   int res;
 
@@ -3217,6 +3220,14 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
       int ip_hdr_sz = 0;
       int is_req = 0;
 
+      if (PREDICT_TRUE (thread_index != 0))
+	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       IKEV2_ERROR_HANDOFF, 1);
+
+	  next[0] = is_ip4 ? IKEV2_NEXT_IP4_HANDOFF : IKEV2_NEXT_IP6_HANDOFF;
+	  goto out;
+	}
       if (natt)
 	{
 	  u8 *ptr = vlib_buffer_get_current (b0);
@@ -3727,6 +3738,8 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  ikev2_delete_sa (ptd, sa0);
 	}
+
+    out:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
@@ -3780,6 +3793,7 @@ VLIB_REGISTER_NODE (ikev2_node_ip4,static) = {
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
     [IKEV2_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [IKEV2_NEXT_IP4_HANDOFF] = "ikev2-ip4-handoff",
     [IKEV2_NEXT_IP4_ERROR_DROP] = "error-drop",
   },
 };
@@ -3797,6 +3811,7 @@ VLIB_REGISTER_NODE (ikev2_node_ip4_natt,static) = {
   .n_next_nodes = IKEV2_IP4_N_NEXT,
   .next_nodes = {
     [IKEV2_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [IKEV2_NEXT_IP4_HANDOFF] = "ikev2-ip4-natt-handoff",
     [IKEV2_NEXT_IP4_ERROR_DROP] = "error-drop",
   },
 };
@@ -3814,6 +3829,7 @@ VLIB_REGISTER_NODE (ikev2_node_ip6,static) = {
   .n_next_nodes = IKEV2_IP6_N_NEXT,
   .next_nodes = {
     [IKEV2_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [IKEV2_NEXT_IP4_HANDOFF] = "ikev2-ip6-handoff",
     [IKEV2_NEXT_IP6_ERROR_DROP] = "error-drop",
   },
 };
@@ -5477,6 +5493,7 @@ ikev2_send_informational_request (ikev2_sa_t * sa)
     }
 
   dp = sa->dst_port ? sa->dst_port : ikev2_get_port (sa);
+
   ikev2_send_ike (km->vlib_main, src, dst, bi0, len, ikev2_get_port (sa), dp,
 		  sa->sw_if_index);
 }
@@ -5658,6 +5675,15 @@ ikev2_lazy_init (ikev2_main_t *km)
     vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
   if (!km->dns_resolve_name_ptr)
     ikev2_log_error ("cannot load symbols from dns plugin");
+
+  km->handoff_ip4_fq_index =
+    vlib_frame_queue_main_init (ikev2_node_ip4.index, 0);
+
+  km->handoff_ip4_natt_fq_index =
+    vlib_frame_queue_main_init (ikev2_node_ip4_natt.index, 0);
+
+  km->handoff_ip6_fq_index =
+    vlib_frame_queue_main_init (ikev2_node_ip6.index, 0);
 
   /* wake up ikev2 process */
   vlib_process_signal_event (vlib_get_first_main (),

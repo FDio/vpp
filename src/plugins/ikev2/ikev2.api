@@ -609,6 +609,12 @@ counters ikev2 {
     units "packets";
     description "IKE AUTH SA requests received";
   };
+  handoff {
+    severity info;
+    type counter64;
+    units "packets";
+    description "IKE packets handoff";
+  };
 };
 paths {
   "/err/ikev2-ip4" "ike";
