@@ -116,6 +116,13 @@ To get the VPP sources that are used to create the build, run the following comm
     $ git clone https://gerrit.fd.io/r/vpp
     $ cd vpp
 
+As VPP version is derived from git description (which is based on git tags),
+if you use an alternative way to download sources (e.g. from a tarball),
+the version information may be missing (leading to VPP failing to build).
+
+In that case, put your desired version string
+into (newly created) src/scripts/.version file.
+
 Build VPP Dependencies
 --------------------------------------
 
