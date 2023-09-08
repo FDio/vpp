@@ -124,6 +124,21 @@ format_cnat_lb_type (u8 *s, va_list *args)
   return (s);
 }
 
+u8 *
+format_flow_hash_config (u8 *s, va_list *args)
+{
+  flow_hash_config_t fhc = va_arg (*args, int);
+  if (IP_FLOW_HASH_DEFAULT == fhc)
+    s = format (s, "defaultflow");
+  if (IP_FLOW_HASH_SRC_ADDR == fhc)
+    s = format (s, "srcaddr");
+  if (IP_FLOW_HASH_DST_ADDR == fhc)
+    s = format (s, "dstaddr");
+  else
+    s = format (s, "unknown");
+  return (s);
+}
+
 uword
 unformat_cnat_lb_type (unformat_input_t *input, va_list *args)
 {
@@ -222,7 +237,7 @@ cnat_translation_stack (cnat_translation_t * ct)
       vec_add1 (ct->ct_active_paths, *trk);
 
   lbi = load_balance_create (vec_len (ct->ct_active_paths),
-			     fib_proto_to_dpo (fproto), IP_FLOW_HASH_DEFAULT);
+			     fib_proto_to_dpo (fproto), ct->fhc);
 
   ep_idx = 0;
   vec_foreach (trk, ct->ct_active_paths)
@@ -383,6 +398,7 @@ format_cnat_translation (u8 * s, va_list * args)
   s = format (s, "%U %U ", format_cnat_endpoint, &ct->ct_vip,
 	      format_ip_protocol, ct->ct_proto);
   s = format (s, "lb:%U ", format_cnat_lb_type, ct->lb_type);
+  s = format (s, "fhc:%U ", format_flow_hash_config, ct->fhc);
 
   vec_foreach (ck, ct->ct_paths)
     s = format (s, "\n%U", format_cnat_ep_trk, ck, 2);
