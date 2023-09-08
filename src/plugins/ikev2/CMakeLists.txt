@@ -27,6 +27,7 @@ add_vpp_plugin(ikev2
   ikev2_crypto.c
   ikev2_format.c
   ikev2_payload.c
+  ikev2_handoff.c
 
   API_FILES
   ikev2_types.api
