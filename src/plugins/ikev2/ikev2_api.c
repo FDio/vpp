@@ -491,6 +491,7 @@ vl_api_ikev2_child_sa_dump_t_handler (vl_api_ikev2_child_sa_dump_t * mp)
   vec_foreach (child, sa->childs)
   {
     u32 child_sa_index = child - sa->childs;
+    sai = ikev2_encode_sa_index (sai, tkm - im->per_thread_data);
     send_child_sa (child, mp, child_sa_index, sai);
   }
 }
