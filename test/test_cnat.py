@@ -110,11 +110,12 @@ class Endpoint(object):
 
 
 class Translation(VppObject):
-    def __init__(self, test, iproto, vip, paths):
+    def __init__(self, test, iproto, vip, paths, fhc):
         self._test = test
         self.vip = vip
         self.iproto = iproto
         self.paths = paths
+        self.fhc = fhc
         self.id = None
 
     def __str__(self):
@@ -140,6 +141,7 @@ class Translation(VppObject):
                 "ip_proto": self._vl4_proto(),
                 "n_paths": len(self.paths),
                 "paths": self._encoded_paths(),
+                "fhc": self.fhc,
             }
         )
         self._test.registry.register(self, self._test.logger)
@@ -381,6 +383,33 @@ class TestCNatTranslation(CnatCommonTestCase):
             i.admin_down()
         super(TestCNatTranslation, self).tearDown()
 
+    def cnat_fhc_translation(self):
+        """CNat Translation"""
+        self.logger.info(self.vapi.cli("sh cnat client"))
+        self.logger.info(self.vapi.cli("sh cnat translation"))
+
+        for nbr, translation in enumerate(self.mbtranslations):
+            vip = translation.vip
+
+            #
+            # Flows to the VIP with same ips and different source ports are loadbalanced identically
+            # in both cases of flow hash 0x03 (src ip and dst ip) and 0x08 (dst port)
+            #
+            ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+            for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
+                # from client to vip
+                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                dport1 = ctx.rxs[0][ctx.L4PROTO].dport
+                ctx._test.assertIn(dport1, [translation.paths[0][DST].port, translation.paths[1][DST].port])
+                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dport1)
+
+                ctx.cnat_send(self.pg0, src_pgi, sport+122, self.pg1, vip.ip, vip.port)
+                dport2 = ctx.rxs[0][ctx.L4PROTO].dport
+                ctx._test.assertIn(dport2, [translation.paths[0][DST].port, translation.paths[1][DST].port])
+                ctx.cnat_expect(self.pg0, src_pgi, sport+122, self.pg1, nbr, dport2)
+
+                ctx._test.assertEqual(dport1, dport2)
+
     def cnat_translation(self):
         """CNat Translation"""
         self.logger.info(self.vapi.cli("sh cnat client"))
@@ -494,6 +523,46 @@ class TestCNatTranslation(CnatCommonTestCase):
             ctx.cnat_expect(self.pg0, 0, 1234, self.pg2, 0, vip.port)
             ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
 
+    def _make_multi_backend_translations(self):
+        self.translations = []
+        self.mbtranslations = []
+        self.mbtranslations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30.0.0.5", port=5555, is_v6=False),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=0, port=4001, is_v6=False),
+                    ),
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=0, port=4005, is_v6=False),
+                    )
+                ],
+                0x03, # hash only on dst ip and src ip
+            ).add_vpp_config()
+        )
+        self.mbtranslations.append(
+            Translation(
+                self,
+                TCP,
+                Endpoint(ip="30.0.0.6", port=5555, is_v6=False),
+                [
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=1, port=4006, is_v6=False),
+                    ),
+                    (
+                        Endpoint(is_v6=False),
+                        Endpoint(pg=self.pg1, pgi=1, port=4007, is_v6=False),
+                    )
+                ],
+                0x08, # hash only on dst port
+            ).add_vpp_config()
+        )
+
     def _make_translations_v4(self):
         self.translations = []
         self.translations.append(
@@ -507,6 +576,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=0, port=4001, is_v6=False),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
         self.translations.append(
@@ -520,6 +590,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=1, port=4002, is_v6=False),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
         self.translations.append(
@@ -533,6 +604,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=2, port=4003, is_v6=False),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
 
@@ -549,6 +621,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=0, port=4001, is_v6=True),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
         self.translations.append(
@@ -562,6 +635,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=1, port=4002, is_v6=True),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
         self.translations.append(
@@ -575,6 +649,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                         Endpoint(pg=self.pg1, pgi=2, port=4003, is_v6=True),
                     )
                 ],
+                0x9f,
             ).add_vpp_config()
         )
 
@@ -597,6 +672,11 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation ipv4 """
         self._make_translations_v4()
         self.cnat_translation()
+
+    def test_cnat_fhc(self):
+        # """ CNat Translation flow hash config """
+        self._make_multi_backend_translations()
+        self.cnat_fhc_translation()
 
 
 class TestCNatSourceNAT(CnatCommonTestCase):
