@@ -116,6 +116,24 @@
       "parentUuid": "cf9b454e_b0d23319",
       "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "72d9bede_be5d8fa4",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-09-11T11:15:41Z",
+      "side": 1,
+      "message": "There is no compatibility issues in this vpp ipsec-mb 1.4 patch. \nInstead, it seems a VPP bug to me where compilation pickup the host  installed ipsec-mb lib instead from build-root lib.\n\nWe are correctly try to root cause the issue and try to fix it in a sperate patch.",
+      "parentUuid": "4dfc514e_3c024d8b",
+      "revId": "7e7d2ad13ce7b31112d01ec110f0aec2f1db2986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
