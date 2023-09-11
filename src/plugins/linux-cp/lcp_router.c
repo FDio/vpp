@@ -21,11 +21,13 @@
 #include <vlib/unix/plugin.h>
 #include <linux-cp/lcp_nl.h>
 #include <linux-cp/lcp_interface.h>
+#include <linux-cp/lcp_router.h>
 
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 #include <netlink/socket.h>
 #include <netlink/route/link.h>
+#include <netlink/route/link/vrf.h>
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
 #include <netlink/route/nexthop.h>
@@ -37,15 +39,6 @@
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip6_link.h>
-
-typedef struct lcp_router_table_t_
-{
-  uint32_t nlt_id;
-  fib_protocol_t nlt_proto;
-  u32 nlt_fib_index;
-  u32 nlt_mfib_index;
-  u32 nlt_refs;
-} lcp_router_table_t;
 
 static uword *lcp_router_table_db[FIB_PROTOCOL_MAX];
 static lcp_router_table_t *lcp_router_table_pool;
@@ -69,6 +62,10 @@ static fib_source_t lcp_rt_fib_src_dynamic;
 #define LCP_ROUTER_INFO(...) vlib_log_notice (lcp_router_logger, __VA_ARGS__);
 
 #define LCP_ROUTER_ERROR(...) vlib_log_err (lcp_router_logger, __VA_ARGS__);
+
+static void lcp_router_link_add_vrf (struct rtnl_link *rl);
+static void lcp_router_link_del_vrf (struct rtnl_link *rl);
+static void lcp_router_link_master (struct rtnl_link *rl, lcp_itf_pair_t *lip);
 
 static const mfib_prefix_t ip4_specials[] = {
   /* ALL prefixes are in network order */
@@ -151,6 +148,12 @@ static void
 lcp_router_link_del (struct rtnl_link *rl, void *ctx)
 {
   index_t lipi;
+
+  if (rtnl_link_is_vrf (rl))
+    {
+      lcp_router_link_del_vrf (rl);
+      return;
+    }
 
   if (!lcp_auto_subint ())
     return;
@@ -337,6 +340,12 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
   int up;
   vnet_main_t *vnm = vnet_get_main ();
 
+  if (rtnl_link_is_vrf (rl))
+    {
+      lcp_router_link_add_vrf (rl);
+      return;
+    }
+
   lipi = lcp_itf_pair_find_by_vif (rtnl_link_get_ifindex (rl));
   up = IFF_UP & rtnl_link_get_flags (rl);
 
@@ -411,6 +420,7 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 
       lcp_router_link_mtu (rl, lip->lip_phy_sw_if_index);
       lcp_router_link_addr (rl, lip);
+      lcp_router_link_master (rl, lip);
     }
   else if (lcp_auto_subint () && rtnl_link_is_vlan (rl))
     {
@@ -881,7 +891,7 @@ lcp_router_neigh_sync_end (void)
   LCP_ROUTER_INFO ("End synchronization of neighbors");
 }
 
-static lcp_router_table_t *
+lcp_router_table_t *
 lcp_router_table_find (uint32_t id, fib_protocol_t fproto)
 {
   uword *p;
@@ -892,6 +902,19 @@ lcp_router_table_find (uint32_t id, fib_protocol_t fproto)
     return pool_elt_at_index (lcp_router_table_pool, p[0]);
 
   return (NULL);
+}
+
+static lcp_router_table_t *
+lcp_router_table_find_by_if_index (u32 if_index)
+{
+  lcp_router_table_t *nlt;
+
+  pool_foreach (nlt, lcp_router_table_pool)
+    {
+      if (nlt->nlt_proto == FIB_PROTOCOL_IP4 && nlt->nlt_if_index == if_index)
+        return nlt;
+    }
+  return NULL;
 }
 
 static uint32_t
@@ -992,6 +1015,7 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
 	}
 
       fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
+      mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto, MFIB_SOURCE_PLUGIN_LOW);
 
       hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
       pool_put (lcp_router_table_pool, nlt);
@@ -1515,6 +1539,247 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
     }
 
   vec_free (ctx.lrtf_entries);
+}
+
+static void
+lcp_router_table_bind (int proto, u32 sw_if_index, u32 table_id)
+{
+  int err;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  LCP_ROUTER_INFO ("table_bind: Binding %U ip%s tableid %u",
+                   format_vnet_sw_if_index_name, vnm, sw_if_index,
+                   proto == FIB_PROTOCOL_IP6 ? "6" : "4", table_id);
+
+  err = ip_table_bind (proto, sw_if_index, table_id);
+  if (err)
+    LCP_ROUTER_ERROR("table_bind: Failed %U ip%s tableid %u error %d",
+                     format_vnet_sw_if_index_name, vnm, sw_if_index,
+                     proto == FIB_PROTOCOL_IP6 ? "6" : "4", table_id, err);
+}
+
+static void
+lcp_router_link_add_vrf (struct rtnl_link *rl)
+{
+  u32 table_id;
+  lcp_router_table_t *nlt;
+
+  if (rtnl_link_vrf_get_tableid (rl, &table_id))
+    {
+      LCP_ROUTER_ERROR ("link_add_vrf: VRF %s has no tableid", rtnl_link_get_name (rl));
+      return;
+    }
+
+  nlt = lcp_router_table_add_or_lock (table_id, FIB_PROTOCOL_IP4);
+  nlt->nlt_if_index = rtnl_link_get_ifindex (rl);
+
+  lcp_router_table_add_or_lock (table_id, FIB_PROTOCOL_IP6);
+}
+
+typedef struct lcp_itf_ip4_addresses_t_ {
+    ip4_address_t *ip4_addrs;
+    u32 *ip4_masks;
+} lcp_itf_ip4_addresses_t;
+
+static void
+lcp_itf_ip4_addresses_init (lcp_itf_ip4_addresses_t *a)
+{
+  a->ip4_addrs = NULL;
+  a->ip4_masks = NULL;
+}
+
+static void
+lcp_itf_ip4_addresses_get (lcp_itf_ip4_addresses_t *a, u32 sw_if_index)
+{
+  ip4_main_t *im4 = &ip4_main;
+  ip_interface_address_t *ia;
+
+  foreach_ip_interface_address (&im4->lookup_main, ia, sw_if_index, 0,
+  ({
+    ip4_address_t * x = (ip4_address_t *)
+      ip_interface_address_get_address (&im4->lookup_main, ia);
+    vec_add1 (a->ip4_addrs, x[0]);
+    vec_add1 (a->ip4_masks, ia->address_length);
+  }));
+}
+
+static void
+lcp_itf_ip4_addresses_add_del (lcp_itf_ip4_addresses_t *a, u32 sw_if_index, int del)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  int i;
+
+  for (i = 0; i < vec_len (a->ip4_addrs); i++)
+    ip4_add_del_interface_address (vm, sw_if_index, &a->ip4_addrs[i],
+                                   a->ip4_masks[i], del);
+}
+
+void
+lcp_itf_ip4_addresses_free (lcp_itf_ip4_addresses_t *a)
+{
+  vec_free (a->ip4_addrs);
+  vec_free (a->ip4_masks);
+}
+
+typedef struct lcp_itf_ip6_addresses_t_ {
+    ip6_address_t *ip6_addrs;
+    u32 *ip6_masks;
+} lcp_itf_ip6_addresses_t;
+
+static void
+lcp_itf_ip6_addresses_init (lcp_itf_ip6_addresses_t *a)
+{
+  a->ip6_addrs = NULL;
+  a->ip6_masks = NULL;
+}
+
+static void
+lcp_itf_ip6_addresses_get (lcp_itf_ip6_addresses_t *a, u32 sw_if_index)
+{
+  ip6_main_t *im6 = &ip6_main;
+  ip_interface_address_t *ia;
+
+  foreach_ip_interface_address (&im6->lookup_main, ia, sw_if_index, 0,
+  ({
+    ip6_address_t * x = (ip6_address_t *)
+      ip_interface_address_get_address (&im6->lookup_main, ia);
+    vec_add1 (a->ip6_addrs, x[0]);
+    vec_add1 (a->ip6_masks, ia->address_length);
+  }));
+}
+
+static void
+lcp_itf_ip6_addresses_add_del (lcp_itf_ip6_addresses_t *a, u32 sw_if_index, int del)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  int i;
+
+  for (i = 0; i < vec_len (a->ip6_addrs); i++)
+    ip6_add_del_interface_address (vm, sw_if_index, &a->ip6_addrs[i],
+                                   a->ip6_masks[i], del);
+}
+
+static void
+lcp_itf_ip6_addresses_free (lcp_itf_ip6_addresses_t *a)
+{
+  vec_free (a->ip6_addrs);
+  vec_free (a->ip6_masks);
+}
+
+typedef struct lcp_itf_addresses_t_ {
+  lcp_itf_ip4_addresses_t addresses4;
+  lcp_itf_ip6_addresses_t addresses6;
+} lcp_itf_addresses_t;
+
+static void
+lcp_itf_addresses_init (lcp_itf_addresses_t *a)
+{
+  lcp_itf_ip4_addresses_init (&a->addresses4);
+  lcp_itf_ip6_addresses_init (&a->addresses6);
+}
+
+static void
+lcp_itf_addresses_get (lcp_itf_addresses_t *a, int proto, u32 sw_if_index)
+{
+  if (proto == FIB_PROTOCOL_IP4)
+    lcp_itf_ip4_addresses_get (&a->addresses4, sw_if_index);
+  else
+    lcp_itf_ip6_addresses_get (&a->addresses6, sw_if_index);
+}
+
+static void
+lcp_itf_addresses_add_del (lcp_itf_addresses_t *a, int proto, u32 sw_if_index, int del)
+{
+  if (proto == FIB_PROTOCOL_IP4)
+    lcp_itf_ip4_addresses_add_del (&a->addresses4, sw_if_index, del);
+  else
+    lcp_itf_ip6_addresses_add_del (&a->addresses6, sw_if_index, del);
+}
+
+static void
+lcp_itf_addresses_free (lcp_itf_addresses_t *a)
+{
+  lcp_itf_ip4_addresses_free (&a->addresses4);
+  lcp_itf_ip6_addresses_free (&a->addresses6);
+}
+
+static void
+lcp_router_link_del_vrf (struct rtnl_link *rl)
+{
+  int proto, refs;
+  u32 table_id;
+  lcp_router_table_t *nlt;
+  const char *if_name;
+
+  if_name = rtnl_link_get_name (rl);
+  if (rtnl_link_vrf_get_tableid (rl, &table_id))
+    {
+      LCP_ROUTER_ERROR ("link_del_vrf: VRF %s has no tableid", if_name);
+      return;
+    }
+
+  for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+    {
+      nlt = lcp_router_table_find (table_id, proto);
+      if (nlt)
+        {
+          LCP_ROUTER_INFO ("link_del_vrf: Deleting ip%s table %u name %s",
+                           proto == FIB_PROTOCOL_IP6 ? "6" : "4",
+                           table_id, if_name);
+          do
+            {
+              refs = nlt->nlt_refs;
+              lcp_router_table_unlock (nlt);
+            } while (refs > 1);
+        }
+    }
+}
+
+static void
+lcp_router_link_master (struct rtnl_link *rl, lcp_itf_pair_t *lip)
+{
+  int proto;
+  u32 old_table_id, new_table_id, vrf_if_index, sw_if_index, old_fib_index;
+  lcp_router_table_t *nlt;
+  lcp_itf_addresses_t addresses;
+
+  vrf_if_index = rtnl_link_get_master (rl);
+  if (vrf_if_index)
+    {
+      nlt = lcp_router_table_find_by_if_index (vrf_if_index);
+      if (!nlt)
+        {
+          LCP_ROUTER_ERROR ("link_master: Cannot find table_id by VRF index:%u",
+                            vrf_if_index);
+          return;
+        }
+      new_table_id = nlt->nlt_id;
+    }
+  else
+    new_table_id = 0;
+
+  sw_if_index = lip->lip_phy_sw_if_index;
+
+  for (proto = FIB_PROTOCOL_IP4; proto <= FIB_PROTOCOL_IP6; proto++)
+    {
+      old_fib_index = fib_table_get_index_for_sw_if_index (proto, sw_if_index);
+      if (old_fib_index == ~0)
+        continue;
+
+      old_table_id = fib_table_get_table_id (old_fib_index, proto);
+
+      if (old_table_id == new_table_id)
+        continue;
+
+      lcp_itf_addresses_init (&addresses);
+      lcp_itf_addresses_get (&addresses, proto, sw_if_index);
+      lcp_itf_addresses_add_del (&addresses, proto, sw_if_index, 1);
+
+      lcp_router_table_bind (proto, sw_if_index, new_table_id);
+
+      lcp_itf_addresses_add_del (&addresses, proto, sw_if_index, 0);
+      lcp_itf_addresses_free (&addresses);
+    }
 }
 
 const nl_vft_t lcp_router_vft = {

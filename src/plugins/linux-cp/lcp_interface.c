@@ -21,6 +21,7 @@
 
 #include <linux-cp/lcp_interface.h>
 #include <netlink/route/link/vlan.h>
+#include <netlink/route/link/vrf.h>
 #include <linux/if_ether.h>
 
 #include <vnet/plugin/plugin.h>
@@ -371,7 +372,7 @@ lcp_netlink_add_link_vlan (int parent, u32 vlan, u16 proto, const char *name)
   return NULL;
 }
 
-static clib_error_t *
+clib_error_t *
 lcp_netlink_del_link (const char *name)
 {
   struct rtnl_link *link;
@@ -1213,6 +1214,38 @@ lcp_interface_init (vlib_main_t *vm)
   tcp_punt_unknown (vm, 1, 1);
 
   lcp_itf_pair_logger = vlib_log_register_class ("linux-cp", "itf");
+
+  return NULL;
+}
+
+clib_error_t *
+lcp_netlink_add_link_vrf (u32 table_id, const char *name)
+{
+  struct rtnl_link *link;
+  struct nl_sock *sk;
+  int err;
+
+  sk = nl_socket_alloc ();
+  if ((err = nl_connect (sk, NETLINK_ROUTE)) < 0) {
+      LCP_ITF_PAIR_ERR ("netlink_add_link_vrf: Netlink connect error: %s",
+		        nl_geterror (err));
+      return clib_error_return (NULL, "Unable to connect socket: %d", err);
+  }
+
+  link = rtnl_link_vrf_alloc ();
+
+  rtnl_link_set_link (link, 0);
+  rtnl_link_set_name (link, name);
+  rtnl_link_vrf_set_tableid (link, table_id);
+
+  if ((err = rtnl_link_add (sk, link, NLM_F_CREATE)) < 0) {
+      LCP_ITF_PAIR_ERR ("netlink_add_link_vrf: Link \"%s\" add error: %s",
+		        name, nl_geterror (err));
+      return clib_error_return (NULL, "Unable to add link %s: %d", name, err);
+  }
+
+  rtnl_link_put (link);
+  nl_close (sk);
 
   return NULL;
 }
