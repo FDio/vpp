@@ -97,6 +97,7 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   int rv = 0;
   u32 pi, n_paths;
   cnat_lb_type_t lb_type;
+  flow_hash_config_t flow_hash_config = 0;
 
   rv = ip_proto_decode (mp->translation.ip_proto, &ip_proto);
 
@@ -123,7 +124,10 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
     flags |= CNAT_FLAG_EXCLUSIVE;
 
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
-  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type);
+  flow_hash_config = (flow_hash_config_t) clib_net_to_host_u32 (
+    mp->translation.flow_hash_config);
+  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type,
+				flow_hash_config);
 
   vec_free (paths);
 

@@ -23,6 +23,7 @@ option version = "0.2.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/interface_types.api";
+import "vnet/ip/ip.api";
 
 enum cnat_translation_flags:u8
 {
@@ -71,6 +72,7 @@ typedef cnat_translation
   u8 flags;
   vl_api_cnat_lb_type_t lb_type;
   u32 n_paths;
+  vl_api_ip_flow_hash_config_v2_t flow_hash_config;
   vl_api_cnat_endpoint_tuple_t paths[n_paths];
 };
 
