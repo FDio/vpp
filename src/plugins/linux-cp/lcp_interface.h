@@ -181,6 +181,8 @@ int lcp_auto_subint (void);
 void lcp_set_sync (u8 is_auto);
 int lcp_sync (void);
 
+clib_error_t *lcp_netlink_del_link (const char *name);
+
 /* Set TAP and Linux host link state */
 void lcp_itf_set_link_state (const lcp_itf_pair_t *lip, u8 state);
 
@@ -197,6 +199,8 @@ void lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip);
 void lcp_itf_pair_sync_state (lcp_itf_pair_t *lip);
 void lcp_itf_pair_sync_state_hw (vnet_hw_interface_t *hi);
 void lcp_itf_pair_sync_state_all ();
+
+clib_error_t *lcp_netlink_add_link_vrf (u32 table_id, const char *name);
 
 /*
  * fd.io coding-style-patch-verification: ON

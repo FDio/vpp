@@ -15,12 +15,16 @@
  * limitations under the License.
  */
 
+#include <net/if.h>
+
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/devices/netlink.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_table.h>
 #include <vppinfra/linux/netns.h>
 #include <plugins/linux-cp/lcp_interface.h>
+#include <plugins/linux-cp/lcp_vrf.h>
 
 /* helper function to copy forward all sw interface link state flags
  * MTU, and IP addresses into their counterpart LIP interface.
@@ -356,6 +360,90 @@ lcp_itf_ip6_add_del_interface_addr (ip6_main_t *im, uword opaque,
     }
 }
 
+static void
+lcp_itf_ipX_table_bind (fib_protocol_t proto, u32 sw_if_index,
+			u32 new_fib_index, u32 old_fib_index)
+{
+  u32 new_table_id;
+  char if_name_buf[IF_NAMESIZE];
+  char *if_name;
+  const lcp_itf_pair_t *lip;
+  lcp_router_table_t *nlt;
+
+  if (!lcp_sync ())
+    return;
+
+  LCP_ITF_PAIR_DBG ("ip%s_table_bind: si:%U fib:%u->%u",
+		    proto == FIB_PROTOCOL_IP4 ? "4" : "6",
+		    format_vnet_sw_if_index_name, vnet_get_main (),
+		    sw_if_index, old_fib_index, new_fib_index);
+
+  new_table_id = fib_table_get_table_id (new_fib_index, proto);
+
+  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (sw_if_index));
+  if (!lip)
+    return;
+
+  if (new_table_id)
+    {
+      nlt = lcp_router_table_find (new_table_id, FIB_PROTOCOL_IP4);
+      if (!nlt || nlt->nlt_if_index == ~0)
+	return;
+
+      if_name = if_indextoname (nlt->nlt_if_index, if_name_buf);
+      if (!if_name)
+	return;
+
+      LCP_ITF_PAIR_DBG ("ip%s_table_bind: %U master:%s",
+			proto == FIB_PROTOCOL_IP4 ? "4" : "6",
+			format_lcp_itf_pair, lip, if_name);
+
+      vnet_netlink_set_link_master (lip->lip_vif_index, if_name);
+    }
+  else
+    {
+      LCP_ITF_PAIR_DBG ("ip%s_table_bind: %U nomaster",
+			proto == FIB_PROTOCOL_IP4 ? "4" : "6",
+			format_lcp_itf_pair, lip);
+
+      vnet_netlink_set_link_master (lip->lip_vif_index, "");
+    }
+}
+
+static void
+lcp_itf_ip4_table_bind (struct ip4_main_t *im, uword opaque, u32 sw_if_index,
+			u32 new_fib_index, u32 old_fib_index)
+{
+  lcp_itf_ipX_table_bind (FIB_PROTOCOL_IP4, sw_if_index, new_fib_index,
+			  old_fib_index);
+}
+
+static void
+lcp_itf_ip6_table_bind (struct ip6_main_t *im, uword opaque, u32 sw_if_index,
+			u32 new_fib_index, u32 old_fib_index)
+{
+  lcp_itf_ipX_table_bind (FIB_PROTOCOL_IP6, sw_if_index, new_fib_index,
+			  old_fib_index);
+}
+
+static clib_error_t *
+lcp_itf_ip_table_add_del (struct vnet_main_t *vnm, u32 table_id, u32 flags)
+{
+  char if_name[32];
+  clib_error_t *err = NULL;
+
+  snprintf (if_name, sizeof (if_name), "vpp-vrf%u", table_id);
+  if (flags)
+    err = lcp_netlink_add_link_vrf (table_id, if_name);
+  else
+    {
+      if (fib_table_find (FIB_PROTOCOL_IP4, table_id) == ~0 ||
+	  fib_table_find (FIB_PROTOCOL_IP6, table_id) == ~0)
+	err = lcp_netlink_del_link (if_name);
+    }
+  return err;
+}
+
 static clib_error_t *
 lcp_itf_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_create)
 {
@@ -427,6 +515,25 @@ lcp_itf_sync_init (vlib_main_t *vm)
   cb6.function = lcp_itf_ip6_add_del_interface_addr;
   cb6.function_opaque = 0;
   vec_add1 (im6->add_del_interface_address_callbacks, cb6);
+
+  vnet_main_t *vnm = &vnet_main;
+
+  ip4_table_bind_callback_t bind_cb4;
+  bind_cb4.function = lcp_itf_ip4_table_bind;
+  bind_cb4.function_opaque = FIB_PROTOCOL_IP4;
+  vec_add1 (im4->table_bind_callbacks, bind_cb4);
+
+  ip6_table_bind_callback_t bind_cb6;
+  bind_cb6.function = lcp_itf_ip6_table_bind;
+  bind_cb6.function_opaque = FIB_PROTOCOL_IP6;
+  vec_add1 (im6->table_bind_callbacks, bind_cb6);
+
+  static _vnet_ip_table_function_list_elt_t ip_table_add_del_cb;
+  ip_table_add_del_cb.fp = lcp_itf_ip_table_add_del;
+  ip_table_add_del_cb.next_ip_table_function =
+    vnm->ip_table_add_del_functions[VNET_ITF_FUNC_PRIORITY_LOW];
+  vnm->ip_table_add_del_functions[VNET_ITF_FUNC_PRIORITY_LOW] =
+    &ip_table_add_del_cb;
 
   return NULL;
 }
