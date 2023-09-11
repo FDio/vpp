@@ -137,6 +137,29 @@ unformat_cnat_lb_type (unformat_input_t *input, va_list *args)
   return 1;
 }
 
+u8 *
+format_flow_hash_config (u8 *s, va_list *args)
+{
+  flow_hash_config_t fhc = va_arg (*args, int);
+  if (IP_FLOW_HASH_SRC_ADDR == fhc)
+    s = format (s, "srcaddr");
+  else if (IP_FLOW_HASH_DST_ADDR == fhc)
+    s = format (s, "dstaddr");
+  else if (IP_FLOW_HASH_SRC_PORT == fhc)
+    s = format (s, "srcport");
+  else if (IP_FLOW_HASH_DST_PORT == fhc)
+    s = format (s, "dstport");
+  else if (IP_FLOW_HASH_PROTO == fhc)
+    s = format (s, "proto");
+  else if (IP_FLOW_HASH_REVERSE_SRC_DST == fhc)
+    s = format (s, "reverse");
+  else if (IP_FLOW_HASH_SYMMETRIC == fhc)
+    s = format (s, "symmetric");
+  else
+    s = format (s, "");
+  return (s);
+}
+
 /**
  * Add a translation to the bihash
  *
@@ -221,8 +244,18 @@ cnat_translation_stack (cnat_translation_t * ct)
     if (trk->ct_flags & CNAT_TRK_ACTIVE)
       vec_add1 (ct->ct_active_paths, *trk);
 
+  flow_hash_config_t result = 0;
+  if (ct->fhc[0] == 0)
+    result = IP_FLOW_HASH_DEFAULT;
+  else
+    {
+      for (int i = 0; i < 10; i++)
+	{
+	  result = result + ct->fhc[i];
+	}
+    }
   lbi = load_balance_create (vec_len (ct->ct_active_paths),
-			     fib_proto_to_dpo (fproto), IP_FLOW_HASH_DEFAULT);
+			     fib_proto_to_dpo (fproto), result);
 
   ep_idx = 0;
   vec_foreach (trk, ct->ct_active_paths)
@@ -263,7 +296,7 @@ cnat_translation_delete (u32 id)
 u32
 cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 			 cnat_endpoint_tuple_t *paths, u8 flags,
-			 cnat_lb_type_t lb_type)
+			 cnat_lb_type_t lb_type, flow_hash_config_t fhc[10])
 {
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
@@ -296,6 +329,10 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
       ct->ct_cci = cci;
       ct->index = ct - cnat_translation_pool;
       ct->lb_type = lb_type;
+      for (int i = 0; i < 10; i++)
+	{
+	  ct->fhc[i] = fhc[i];
+	}
 
       cnat_add_translation_to_db (cci, vip, proto, ct->index);
       cnat_client_translation_added (cci);
@@ -384,6 +421,16 @@ format_cnat_translation (u8 * s, va_list * args)
 	      format_ip_protocol, ct->ct_proto);
   s = format (s, "lb:%U ", format_cnat_lb_type, ct->lb_type);
 
+  if (ct->fhc[0] == 0)
+    s = format (s, "fhc:default");
+  else
+    {
+      s = format (s, "fhc:");
+      for (int i = 0; i < 10; i++)
+	{
+	  s = format (s, "%U ", format_flow_hash_config, ct->fhc[i]);
+	}
+    }
   vec_foreach (ck, ct->ct_paths)
     s = format (s, "\n%U", format_cnat_ep_trk, ck, 2);
 
@@ -576,8 +623,10 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 	}
     }
 
+  flow_hash_config_t fhc[10];
+  fhc[0] = 0;
   if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags, lb_type);
+    cnat_translation_update (&vip, proto, paths, flags, lb_type, fhc);
   else
     cnat_translation_delete (del_index);
 

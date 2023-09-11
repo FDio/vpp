@@ -97,6 +97,7 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   int rv = 0;
   u32 pi, n_paths;
   cnat_lb_type_t lb_type;
+  flow_hash_config_t fhc[10];
 
   rv = ip_proto_decode (mp->translation.ip_proto, &ip_proto);
 
@@ -123,7 +124,14 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
     flags |= CNAT_FLAG_EXCLUSIVE;
 
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
-  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type);
+  for (int i = 0; i < 10; i++)
+    {
+      if (mp->translation.fhc[i] == 0)
+	fhc[i] = (flow_hash_config_t) 0;
+      else
+	fhc[i] = (flow_hash_config_t) (1 << (mp->translation.fhc[i] - 1));
+    }
+  id = cnat_translation_update (&vip, ip_proto, paths, flags, lb_type, fhc);
 
   vec_free (paths);
 

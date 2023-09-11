@@ -169,6 +169,11 @@ typedef struct cnat_translation_t_
    */
   cnat_lb_type_t lb_type;
 
+  /**
+   * Type of flow hash config
+   */
+  flow_hash_config_t fhc[10];
+
   union
   {
     u32 *lb_maglev;
@@ -191,7 +196,8 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
 extern u32 cnat_translation_update (cnat_endpoint_t *vip,
 				    ip_protocol_t ip_proto,
 				    cnat_endpoint_tuple_t *backends, u8 flags,
-				    cnat_lb_type_t lb_type);
+				    cnat_lb_type_t lb_type,
+				    flow_hash_config_t fhc[10]);
 
 /**
  * Delete a translation
