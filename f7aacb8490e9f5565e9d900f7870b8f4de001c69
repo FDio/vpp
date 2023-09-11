@@ -105,6 +105,24 @@
       "parentUuid": "42085931_4dd4077b",
       "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0661f3bb_ac4d95a1",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-09-11T11:17:43Z",
+      "side": 1,
+      "message": "Ranjan,  can you remove the unnecessary spaces and make the / inline with line.78",
+      "parentUuid": "90a2fbfc_ba81477e",
+      "revId": "f7aacb8490e9f5565e9d900f7870b8f4de001c69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
