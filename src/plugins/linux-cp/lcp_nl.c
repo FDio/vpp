@@ -305,10 +305,6 @@ nl_link_sync_end (void)
 static void
 nl_route_dispatch (struct nl_object *obj, void *arg)
 {
-  /* nothing can be done without interface mappings */
-  if (!lcp_itf_num_pairs ())
-    return;
-
   switch (nl_object_get_msgtype (obj))
     {
     case RTM_NEWROUTE:
@@ -1012,7 +1008,7 @@ lcp_nl_init (vlib_main_t *vm)
     .pair_add_fn = lcp_nl_pair_add_cb,
   };
 
-  nm->nl_status = NL_STATUS_NOTIF_PROC;
+  nm->nl_status = NL_STATUS_SYNC;
   nm->clib_file_index = ~0;
   nm->nl_logger = vlib_log_register_class ("nl", "nl");
 
