@@ -1,6 +1,6 @@
 /* Hey Emacs use -*- mode: C -*- */
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2023 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -19,10 +19,11 @@
     used to control the ABF plugin
 */
 
-option version = "0.2.0";
+option version = "0.3.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/interface_types.api";
+import "vnet/ip/ip.api";
 
 enum cnat_translation_flags:u8
 {
@@ -71,6 +72,7 @@ typedef cnat_translation
   u8 flags;
   vl_api_cnat_lb_type_t lb_type;
   u32 n_paths;
+  vl_api_ip_flow_hash_config_t fhc;
   vl_api_cnat_endpoint_tuple_t paths[n_paths];
 };
 
