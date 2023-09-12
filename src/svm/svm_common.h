@@ -20,6 +20,7 @@
 
 #include <stdarg.h>
 #include <pthread.h>
+#include <sys/reg.h>
 #include <sys/user.h>
 #include <vppinfra/types.h>
 
