@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba36f211_efac2cb4",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-12T21:52:52Z",
+      "side": 1,
+      "message": "Recommended re-wording:\n\nif the github generated tarballs are used, the version information will be missing from the version file (.../src/scripts/.version) which is required by the version script when building in a non-git based workspace or the build will fail.  In that case, put the desired version string into .../src/scripts/.version to satisfy the requirements of the version script.\n\nAlternatively, the ``make dist`` command in a cloned git workspace will generate an xz compressed tarball of the source including the .../src/scripts/.version file containing the git hash using the standard nomenclature for VPP images.\n\nExtract the tarball using the -J option to decompress it using xz. For example,\n``tar xvJf ./build-root/vpp-23.10-rc0~184-g48cd559fb.tar.xz``",
+      "range": {
+        "startLine": 120,
+        "startChar": 0,
+        "endLine": 124,
+        "endChar": 47
+      },
+      "revId": "8012ae3febb22666d9eef417e1d9fbeec85ac86a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
