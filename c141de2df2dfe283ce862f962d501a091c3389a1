@@ -16,6 +16,24 @@
       "message": "Hi Gabriel, are you sure this change works with all nasty sswan configurations? The reason we chose policy based path instead of routing path was because of routing path is kinda hacky for ipsec in the first place.",
       "revId": "c141de2df2dfe283ce862f962d501a091c3389a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f6a9f402_3ee0c6cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-09-12T12:52:37Z",
+      "side": 1,
+      "message": "Hi Fan, I tested this plugin in host-to-host, network-to-network and I didn\u0027t find any issue. We collaborate with another team to get feedback with different test cases.",
+      "parentUuid": "afa76e44_64bc0de7",
+      "revId": "c141de2df2dfe283ce862f962d501a091c3389a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
