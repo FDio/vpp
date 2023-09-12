@@ -67,6 +67,23 @@
       "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/55/ : SUCCESS (skipped)\n\nFinally both NDR and PDR values look good.",
       "revId": "f35621fe51baba2ef064c6b46eb09bc60b7412fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4e98bd7_06b2f2ee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-12T12:42:07Z",
+      "side": 1,
+      "message": "The change looks genuine to me. Adaptive mode could be re-enabled by this change once it is improved. Thanks for the help!",
+      "revId": "f35621fe51baba2ef064c6b46eb09bc60b7412fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
