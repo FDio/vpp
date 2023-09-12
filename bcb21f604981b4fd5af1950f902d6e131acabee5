@@ -22,6 +22,30 @@
       },
       "revId": "bcb21f604981b4fd5af1950f902d6e131acabee5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27d46fec_d4ae9ac7",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-12T15:11:25Z",
+      "side": 1,
+      "message": "Removed this change and used concat where foreach_ipsecmb_cipher_op is used",
+      "parentUuid": "ec9a21e0_453d4fdc",
+      "range": {
+        "startLine": 85,
+        "startChar": 23,
+        "endLine": 85,
+        "endChar": 38
+      },
+      "revId": "bcb21f604981b4fd5af1950f902d6e131acabee5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
