@@ -16,6 +16,24 @@
       "message": "Hi there, why this was deprecated? Is there any link for the explaination?",
       "revId": "8c1afb56b6a479d6595444238815c4ced0e754ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c2898d4a_083adf98",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-12T21:28:42Z",
+      "side": 1,
+      "message": "IIRC, there was no maintainer, no known downstream consumer and was consuming a large amount of time being built in the CI jobs.",
+      "parentUuid": "f638eca8_dc952a99",
+      "revId": "8c1afb56b6a479d6595444238815c4ced0e754ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
