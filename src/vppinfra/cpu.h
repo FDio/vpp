@@ -36,7 +36,8 @@
   _ (thunderx2t99, "Marvell ThunderX2 T99")                                   \
   _ (qdf24xx, "Qualcomm CentriqTM 2400")                                      \
   _ (cortexa72, "ARM Cortex-A72")                                             \
-  _ (neoversen1, "ARM Neoverse N1")
+  _ (neoversen1, "ARM Neoverse N1")                                           \
+  _ (neoversen2, "ARM Neoverse N2")
 #else
 #define foreach_march_variant
 #endif
@@ -337,116 +338,115 @@ clib_get_pmu_counter_count (u8 *fixed, u8 *general)
 #endif
 }
 
-static inline u32
-clib_cpu_implementer ()
+typedef struct
 {
-  char buf[128];
-  static u32 implementer = -1;
+  struct
+  {
+    u8 implementer;
+    u16 part_num;
+  } aarch64;
+} clib_cpu_info_t;
 
-  if (-1 != implementer)
-    return implementer;
+const clib_cpu_info_t *clib_get_cpu_info ();
 
-  FILE *fp = fopen ("/proc/cpuinfo", "r");
-  if (!fp)
-    return implementer;
+/* ARM */
+#define AARCH64_CPU_IMPLEMENTER_ARM 0x41
+#define AARCH64_CPU_PART_CORTEXA72  0xd08
+#define AARCH64_CPU_PART_NEOVERSEN1 0xd0c
+#define AARCH64_CPU_PART_NEOVERSEN2 0xd49
 
-  while (!feof (fp))
-    {
-      if (!fgets (buf, sizeof (buf), fp))
-	break;
-      buf[127] = '\0';
-      if (strstr (buf, "CPU implementer"))
-	implementer = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
-      if (-1 != implementer)
-	break;
-    }
-  fclose (fp);
-
-  return implementer;
-}
-
-static inline u32
-clib_cpu_part ()
-{
-  char buf[128];
-  static u32 part = -1;
-
-  if (-1 != part)
-    return part;
-
-  FILE *fp = fopen ("/proc/cpuinfo", "r");
-  if (!fp)
-    return part;
-
-  while (!feof (fp))
-    {
-      if (!fgets (buf, sizeof (buf), fp))
-	break;
-      buf[127] = '\0';
-      if (strstr (buf, "CPU part"))
-	part = (u32) strtol (memchr (buf, ':', 128) + 2, NULL, 0);
-      if (-1 != part)
-	break;
-    }
-  fclose (fp);
-
-  return part;
-}
-
+/*cavium */
 #define AARCH64_CPU_IMPLEMENTER_CAVIUM      0x43
 #define AARCH64_CPU_PART_THUNDERX2          0x0af
 #define AARCH64_CPU_PART_OCTEONTX2T96       0x0b2
 #define AARCH64_CPU_PART_OCTEONTX2T98       0x0b1
-#define AARCH64_CPU_IMPLEMENTER_QDF24XX     0x51
+
+/* Qualcomm */
+#define AARCH64_CPU_IMPLEMENTER_QUALCOMM    0x51
 #define AARCH64_CPU_PART_QDF24XX            0xc00
-#define AARCH64_CPU_IMPLEMENTER_CORTEXA72   0x41
-#define AARCH64_CPU_PART_CORTEXA72          0xd08
-#define AARCH64_CPU_IMPLEMENTER_NEOVERSEN1  0x41
-#define AARCH64_CPU_PART_NEOVERSEN1         0xd0c
 
 static inline int
 clib_cpu_march_priority_octeontx2 ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_CAVIUM == clib_cpu_implementer ()) &&
-      ((AARCH64_CPU_PART_OCTEONTX2T96 == clib_cpu_part ())
-       || AARCH64_CPU_PART_OCTEONTX2T98 == clib_cpu_part ()))
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_CAVIUM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_OCTEONTX2T96 ||
+      info->aarch64.part_num == AARCH64_CPU_PART_OCTEONTX2T98)
     return 20;
+
   return -1;
 }
 
 static inline int
 clib_cpu_march_priority_thunderx2t99 ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_CAVIUM == clib_cpu_implementer ()) &&
-      (AARCH64_CPU_PART_THUNDERX2 == clib_cpu_part ()))
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_CAVIUM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_THUNDERX2)
     return 20;
+
   return -1;
 }
 
 static inline int
 clib_cpu_march_priority_qdf24xx ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_QDF24XX == clib_cpu_implementer ()) &&
-      (AARCH64_CPU_PART_QDF24XX == clib_cpu_part ()))
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_QUALCOMM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_QDF24XX)
     return 20;
+
   return -1;
 }
 
 static inline int
 clib_cpu_march_priority_cortexa72 ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_CORTEXA72 == clib_cpu_implementer ()) &&
-      (AARCH64_CPU_PART_CORTEXA72 == clib_cpu_part ()))
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_ARM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_CORTEXA72)
     return 10;
+
   return -1;
 }
 
 static inline int
 clib_cpu_march_priority_neoversen1 ()
 {
-  if ((AARCH64_CPU_IMPLEMENTER_NEOVERSEN1 == clib_cpu_implementer ()) &&
-      (AARCH64_CPU_PART_NEOVERSEN1 == clib_cpu_part ()))
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_ARM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_NEOVERSEN1)
     return 10;
+
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_neoversen2 ()
+{
+  const clib_cpu_info_t *info = clib_get_cpu_info ();
+
+  if (!info || info->aarch64.implementer != AARCH64_CPU_IMPLEMENTER_ARM)
+    return -1;
+
+  if (info->aarch64.part_num == AARCH64_CPU_PART_NEOVERSEN2)
+    return 10;
+
   return -1;
 }
 
