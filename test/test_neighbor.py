@@ -198,11 +198,11 @@ class ARPTestCase(VppTestCase):
         #  - all neighbor events on pg1
         #  - neighbor events for host[1] on pg1
         #
-        self.vapi.want_ip_neighbor_events(enable=1, pid=os.getpid())
-        self.vapi.want_ip_neighbor_events(
+        self.vapi.want_ip_neighbor_v3_events(enable=1, pid=os.getpid())
+        self.vapi.want_ip_neighbor_v3_events(
             enable=1, pid=os.getpid(), sw_if_index=self.pg1.sw_if_index
         )
-        self.vapi.want_ip_neighbor_events(
+        self.vapi.want_ip_neighbor_v3_events(
             enable=1,
             pid=os.getpid(),
             sw_if_index=self.pg1.sw_if_index,
@@ -251,7 +251,7 @@ class ARPTestCase(VppTestCase):
         self.logger.info(self.vapi.cli("show ip neighbor-watcher"))
 
         # this matches all of the listnerers
-        es = [self.vapi.wait_for_event(1, "ip_neighbor_event") for i in range(3)]
+        es = [self.vapi.wait_for_event(1, "ip_neighbor_v3_event") for i in range(3)]
         for e in es:
             self.assertEqual(str(e.neighbor.ip_address), self.pg1.remote_hosts[1].ip4)
 
@@ -290,7 +290,7 @@ class ARPTestCase(VppTestCase):
             is_static=1,
         )
         static_arp.add_vpp_config()
-        es = [self.vapi.wait_for_event(1, "ip_neighbor_event") for i in range(2)]
+        es = [self.vapi.wait_for_event(1, "ip_neighbor_v3_event") for i in range(2)]
         for e in es:
             self.assertEqual(str(e.neighbor.ip_address), self.pg1.remote_hosts[2].ip4)
 
@@ -318,11 +318,11 @@ class ARPTestCase(VppTestCase):
         #
         # remove all the listeners
         #
-        self.vapi.want_ip_neighbor_events(enable=0, pid=os.getpid())
-        self.vapi.want_ip_neighbor_events(
+        self.vapi.want_ip_neighbor_v3_events(enable=0, pid=os.getpid())
+        self.vapi.want_ip_neighbor_v3_events(
             enable=0, pid=os.getpid(), sw_if_index=self.pg1.sw_if_index
         )
-        self.vapi.want_ip_neighbor_events(
+        self.vapi.want_ip_neighbor_v3_events(
             enable=0,
             pid=os.getpid(),
             sw_if_index=self.pg1.sw_if_index,
@@ -2378,7 +2378,7 @@ class NeighborAgeTestCase(VppTestCase):
         #
         enum = VppEnum.vl_api_ip_neighbor_event_flags_t
 
-        self.vapi.want_ip_neighbor_events_v2(enable=1)
+        self.vapi.want_ip_neighbor_v3_events(enable=1)
         for ii in range(10):
             VppNeighbor(
                 self,
@@ -2387,7 +2387,7 @@ class NeighborAgeTestCase(VppTestCase):
                 self.pg0.remote_hosts[ii].ip4,
             ).add_vpp_config()
 
-            e = self.vapi.wait_for_event(1, "ip_neighbor_event_v2")
+            e = self.vapi.wait_for_event(1, "ip_neighbor_v3_event")
             self.assertEqual(e.flags, enum.IP_NEIGHBOR_API_EVENT_FLAG_ADDED)
             self.assertEqual(str(e.neighbor.ip_address), self.pg0.remote_hosts[ii].ip4)
             self.assertEqual(e.neighbor.mac_address, self.pg0.remote_hosts[ii].mac)
@@ -2399,7 +2399,7 @@ class NeighborAgeTestCase(VppTestCase):
 
         evs = []
         for ii in range(10):
-            e = self.vapi.wait_for_event(1, "ip_neighbor_event_v2")
+            e = self.vapi.wait_for_event(1, "ip_neighbor_v3_event")
             self.assertEqual(e.flags, enum.IP_NEIGHBOR_API_EVENT_FLAG_REMOVED)
             evs.append(e)
 
