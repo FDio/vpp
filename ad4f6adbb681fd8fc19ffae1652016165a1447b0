@@ -16,6 +16,23 @@
       "message": "perftest-3n-icx nic_intel-e810cqANDdrv_vfio_pciAND1cANDeth-ip4udpquicbase-vppecho",
       "revId": "ad4f6adbb681fd8fc19ffae1652016165a1447b0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c09e0db_0c879823",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-09-13T11:35:24Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-device-master-ubuntu2204-x86_64-1n-skx/2596/ : SUCCESS (skipped)\n\nThis fixes the connection issue and CSIT tests nominally pass with this. But it uncovers another issue, server side does not properly disconnect. CSIT code in this case happens to report zero bandwidth.\n\nAnyway, this is still a step in the right direction, so we can merge this. At minimum it would allow us to see the impact of other VPP changes.",
+      "revId": "ad4f6adbb681fd8fc19ffae1652016165a1447b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
