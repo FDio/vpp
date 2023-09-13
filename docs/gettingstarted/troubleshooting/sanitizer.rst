@@ -14,8 +14,11 @@ AddressSanitizer
 `AddressSanitizer <https://github.com/google/sanitizers/wiki/AddressSanitizer>`_  (aka ASan) is a memory
 error detector for C/C++. Think Valgrind but much faster.
 
-In order to use it, VPP must be recompiled with ASan support. It is implemented as a cmake
-build option, so all VPP targets should be supported. For example:
+In order to use it, VPP must be recompiled with ASan support.
+See developer documentation on prerequisites for :ref:`building VPP <building>`.
+
+ASan support is implemented as a cmake build option,
+so all VPP targets should be supported. For example:
 
 .. code-block:: console
 

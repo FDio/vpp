@@ -116,6 +116,22 @@ To get the VPP sources that are used to create the build, run the following comm
     $ git clone https://gerrit.fd.io/r/vpp
     $ cd vpp
 
+As VPP version is derived from git description (which is based on git tags),
+if the github generated tarballs are used, the version information
+will be missing from the version file (.../src/scripts/.version)
+which is required by the version script when building
+in a non-git based workspace or the build will fail.
+In that case, put the desired version string into
+.../src/scripts/.version to satisfy the requirements of the version script.
+
+Alternatively, the ``make dist`` command in a cloned git workspace
+will generate an xz compressed tarball of the source
+including the .../src/scripts/.version file containing the git hash
+using the standard nomenclature for VPP images.
+
+Extract the tarball using the -J option to decompress it using xz. For example,
+``tar xvJf ./build-root/vpp-23.10-rc0~184-g48cd559fb.tar.xz``
+
 Build VPP Dependencies
 --------------------------------------
 
