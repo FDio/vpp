@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "6cd4e74c016c4556840198a38bf96007b1c81ca0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "24dd7305_f81e3f3f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-13T17:06:40Z",
+      "side": 1,
+      "message": "Please run \u0027make fixstyle\u0027 and upload the changes to fix the checkstyle failure.",
+      "revId": "6cd4e74c016c4556840198a38bf96007b1c81ca0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
