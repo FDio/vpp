@@ -22,6 +22,30 @@
       },
       "revId": "8012ae3febb22666d9eef417e1d9fbeec85ac86a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc230e1c_002cd60c",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-13T13:37:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ba36f211_efac2cb4",
+      "range": {
+        "startLine": 120,
+        "startChar": 0,
+        "endLine": 124,
+        "endChar": 47
+      },
+      "revId": "8012ae3febb22666d9eef417e1d9fbeec85ac86a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
