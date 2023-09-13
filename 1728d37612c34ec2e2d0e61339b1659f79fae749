@@ -16,6 +16,23 @@
       "message": "Let us see if the default test selection still works properly.\ncsit-2n-clx-perftest",
       "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0411ec9a_9d86c082",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-09-13T08:39:06Z",
+      "side": 1,
+      "message": "Next attempt, hopefully with correct trigger now.\nperftest-2n-clx",
+      "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
