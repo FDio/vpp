@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d51bdf0_9c86971d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-13T08:53:28Z",
+      "side": 1,
+      "message": "Blocking it until discussion resolved. Figuring out if this is a compiler problem or a .api error. Could \"service {} help here?",
+      "revId": "c09eed3fab9ed9f5cd69f0e4b547349d3e9292fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
