@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "26de0a45_bfcc4501",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-13T06:23:07Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "ed7e8284_edc33290",
+      "revId": "53de6f9a05ed08bdfd286829defbab27b96e0a9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "12f47ea3_99ccf2fa",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-09-12T17:43:01Z",
       "side": 1,
       "message": "nit: the spacing is not even on some of these lines, causing the \"\\\" to appear on different columns on different lines.\n\nThe rest of this file uses (mostly) spaces, not tabs, for this kind of alignment. Since you\u0027re changing these lines already, you should fix the the alignment and consider using spaces instead of tabs.",
+      "revId": "53de6f9a05ed08bdfd286829defbab27b96e0a9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81190815_48d04b8d",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-13T06:23:07Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "12f47ea3_99ccf2fa",
       "revId": "53de6f9a05ed08bdfd286829defbab27b96e0a9a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
