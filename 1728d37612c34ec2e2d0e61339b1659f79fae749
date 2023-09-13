@@ -33,6 +33,23 @@
       "message": "Next attempt, hopefully with correct trigger now.\nperftest-2n-clx",
       "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c48c52ee_dfcc153c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-09-13T16:14:27Z",
+      "side": 1,
+      "message": "Maybe a small regression in ipv6? Trying to get better resolution using manual triggers in Jenkins. But even if it is, it will be only around half a percent.",
+      "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
