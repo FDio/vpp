@@ -1828,10 +1828,18 @@ fib_entry_pool_size (void)
     return (pool_elts(fib_entry_pool));
 }
 
-#if CLIB_DEBUG > 0
 void
 fib_table_assert_empty (const fib_table_t *fib_table)
 {
+  if (0 == fib_table->ft_total_route_counts)
+    return;
+
+  vlib_log_err (fib_entry_logger,
+		"BUG: %U table %d (index %d) is not empty",
+		format_fib_protocol, fib_table->ft_proto,
+		fib_table->ft_table_id, fib_table->ft_index);
+
+#if CLIB_DEBUG > 0
     fib_node_index_t *fei, *feis = NULL;
     fib_entry_t *fib_entry;
 
@@ -1848,8 +1856,8 @@ fib_table_assert_empty (const fib_table_t *fib_table)
     }
 
     ASSERT(0);
-}
 #endif
+}
 
 static clib_error_t *
 show_fib_entry_command (vlib_main_t * vm,
