@@ -780,7 +780,7 @@ error:
 }
 
 static int
-bypass_all (bool add, uint32_t spd_id, uint32_t sa_id)
+bypass_all (bool add, uint32_t spd_id, uint32_t sa_id, uint32_t priority)
 {
   vl_api_ipsec_spd_entry_add_del_t *mp;
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
@@ -800,7 +800,7 @@ bypass_all (bool add, uint32_t spd_id, uint32_t sa_id)
   mp->is_add = add;
   mp->entry.sa_id = ntohl (sa_id);
   mp->entry.spd_id = ntohl (spd_id);
-  mp->entry.priority = ntohl (INT_MAX - POLICY_PRIORITY_PASS - 1);
+  mp->entry.priority = ntohl (priority - POLICY_PRIORITY_PASS);
   mp->entry.is_outbound = 0;
   mp->entry.policy = ntohl (IPSEC_API_SPD_ACTION_BYPASS);
   memset (mp->entry.local_address_stop.un.ip6, 0xFF, 16);
@@ -890,7 +890,8 @@ error:
 }
 
 static int
-bypass_port (bool add, uint32_t spd_id, uint32_t sa_id, uint16_t port)
+bypass_port (bool add, uint32_t spd_id, uint32_t sa_id, uint16_t port,
+	     uint32_t priority)
 {
   vl_api_ipsec_spd_entry_add_del_t *mp;
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
@@ -907,14 +908,14 @@ bypass_port (bool add, uint32_t spd_id, uint32_t sa_id, uint16_t port)
   mp->is_add = add;
   mp->entry.sa_id = ntohl (sa_id);
   mp->entry.spd_id = ntohl (spd_id);
-  mp->entry.priority = ntohl (INT_MAX - POLICY_PRIORITY_PASS - 1);
+  mp->entry.priority = ntohl (priority - POLICY_PRIORITY_PASS);
   mp->entry.policy = ntohl (IPSEC_API_SPD_ACTION_BYPASS);
   memset (mp->entry.local_address_stop.un.ip6, 0xFF, 16);
   memset (mp->entry.remote_address_stop.un.ip6, 0xFF, 16);
   mp->entry.is_outbound = 0;
-  mp->entry.remote_port_start = mp->entry.local_port_start = ntohs (0);
-  mp->entry.remote_port_stop = mp->entry.local_port_stop = ntohs (0xFFFF);
-  mp->entry.protocol = IP_API_PROTO_HOPOPT;
+  mp->entry.remote_port_start = mp->entry.local_port_start = ntohs (port);
+  mp->entry.remote_port_stop = mp->entry.local_port_stop = ntohs (port);
+  mp->entry.protocol = IP_API_PROTO_UDP;
 
   if (vac->send (vac, (char *) mp, sizeof (*mp), &out, &out_len))
     {
@@ -961,19 +962,19 @@ error:
  * Add or remove a bypass policy
  */
 static status_t
-manage_bypass (bool add, uint32_t spd_id, uint32_t sa_id)
+manage_bypass (bool add, uint32_t spd_id, uint32_t sa_id, uint32_t priority)
 {
   uint16_t port;
   status_t rv;
 
-  bypass_all (add, spd_id, sa_id);
+  bypass_all (add, spd_id, sa_id, priority);
 
   port =
     lib->settings->get_int (lib->settings, "%s.port", IKEV2_UDP_PORT, lib->ns);
 
   if (port)
     {
-      rv = bypass_port (add, spd_id, sa_id, port);
+      rv = bypass_port (add, spd_id, sa_id, port, priority);
       if (rv != SUCCESS)
 	{
 	  return rv;
@@ -984,7 +985,7 @@ manage_bypass (bool add, uint32_t spd_id, uint32_t sa_id)
 				 IKEV2_NATT_PORT, lib->ns);
   if (port)
     {
-      rv = bypass_port (add, spd_id, sa_id, port);
+      rv = bypass_port (add, spd_id, sa_id, port, priority);
       if (rv != SUCCESS)
 	{
 	  return rv;
@@ -1012,7 +1013,7 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
   host_t *src = NULL, *dst = NULL, *addr = NULL;
   vl_api_ipsec_spd_entry_add_del_t *mp = NULL;
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp = NULL;
-  bool n_spd = false;
+  bool n_spd = false; /* is a new SPD? */
   vl_api_ipsec_spd_dump_t *mp_dump = NULL;
   vl_api_ipsec_spd_details_t *rmp_dump = NULL, *tmp = NULL;
 
@@ -1092,7 +1093,7 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
   mp->_vl_msg_id = htons (msg_id);
   mp->is_add = add;
   mp->entry.spd_id = htonl (spd->spd_id);
-  mp->entry.priority = htonl (INT_MAX - POLICY_PRIORITY_PASS);
+  mp->entry.priority = htonl (priority - POLICY_PRIORITY_DEFAULT);
   mp->entry.is_outbound = id->dir == POLICY_OUT;
   switch (data->type)
     {
@@ -1124,7 +1125,7 @@ manage_policy (private_kernel_vpp_ipsec_t *this, bool add,
       sad_id = sa->sa_id;
       if (n_spd)
 	{
-	  if (manage_bypass (TRUE, spd_id, ~0))
+	  if (manage_bypass (TRUE, spd_id, ~0, priority))
 	    {
 	      DBG1 (DBG_KNL, "manage_bypass %d failed!!!!", spd_id);
 	      goto error;
@@ -1263,7 +1264,7 @@ next:
 	    "policy_num's ref is 0, delete spd_id %d sw_if_index %d sad_id %x",
 	    spd->spd_id, spd->sw_if_index, sad_id);
 	  interface_add_del_spd (FALSE, spd->spd_id, spd->sw_if_index);
-	  manage_bypass (FALSE, spd->spd_id, sad_id);
+	  manage_bypass (FALSE, spd->spd_id, sad_id, priority);
 	  spd_add_del (FALSE, spd->spd_id);
 	  this->spds->remove (this->spds, interface);
 	  if (spd->if_name)
