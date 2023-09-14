@@ -52,6 +52,9 @@ typedef struct ping_run_t
 
 typedef struct ping_main_t
 {
+  /* API message ID base */
+  u16 msg_id_base;
+
   ip6_main_t *ip6_main;
   ip4_main_t *ip4_main;
   /* a vector of current ping runs. */
@@ -87,5 +90,22 @@ typedef enum
   ICMP46_ECHO_REPLY_NEXT_PUNT,
   ICMP46_ECHO_REPLY_N_NEXT,
 } icmp46_echo_reply_next_t;
+
+extern void set_cli_process_id_by_icmp_id_mt (vlib_main_t *vm, u16 icmp_id,
+					      uword cli_process_id);
+extern uword get_cli_process_id_by_icmp_id_mt (vlib_main_t *vm, u16 icmp_id);
+extern void clear_cli_process_id_by_icmp_id_mt (vlib_main_t *vm, u16 icmp_id);
+
+extern clib_error_t *ping_plugin_api_hookup (vlib_main_t *vm);
+extern send_ip46_ping_result_t send_ip4_ping (vlib_main_t *vm, u32 table_id,
+					      ip4_address_t *pa4,
+					      u32 sw_if_index, u16 seq_host,
+					      u16 id_host, u16 data_len,
+					      u32 burst, u8 verbose);
+extern send_ip46_ping_result_t send_ip6_ping (vlib_main_t *vm, u32 table_id,
+					      ip6_address_t *pa6,
+					      u32 sw_if_index, u16 seq_host,
+					      u16 id_host, u16 data_len,
+					      u32 burst, u8 verbose);
 
 #endif /* included_ping_ping_h */
