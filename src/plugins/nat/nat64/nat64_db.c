@@ -82,7 +82,7 @@ nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
   if (db->bib.bib_entries_num >= db->bib.limit)
     {
       db->free_addr_port_cb (db, out_addr, out_port, proto);
-      //nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
+      nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
       return 0;
     }
 
@@ -401,7 +401,7 @@ nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
 
   if (db->st.st_entries_num >= db->st.limit)
     {
-      //nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
+      nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
       return 0;
     }
 
