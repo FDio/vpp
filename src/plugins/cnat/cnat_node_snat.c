@@ -21,16 +21,15 @@ vlib_node_registration_t cnat_snat_ip4_node;
 vlib_node_registration_t cnat_snat_ip6_node;
 
 static_always_inline cnat_timestamp_rewrite_t *
-cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_t af,
-				   cnat_timestamp_t *ts)
+cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+				   ip_address_family_t af, cnat_timestamp_t *ts)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
   udp_header_t *udp0;
-  int rv, do_snat;
-  u16 sport;
+  int do_snat;
 
   if (AF_IP4 == af)
     {
@@ -91,18 +90,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 			    cpe->snat_ip6_mask);
     }
 
-  sport = 0;
-  rv = cnat_allocate_port (fwd_fib_index, &sport, iproto);
-  if (rv)
-    {
-      vlib_node_increment_counter (vm, cnat_snat_ip4_node.index, CNAT_ERROR_EXHAUSTED_PORTS, 1);
-      rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
-      return (rw);
-    }
-  rw->tuple.port[VLIB_RX] = sport;
-
   rw->cts_lbi = INDEX_INVALID;
-  rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
   rw->fib_index = fwd_fib_index;
 
   /*
@@ -131,8 +119,17 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
+  int sport_retries, sport_failures;
   cnat_rsession_create (rw, vnet_buffer2 (b)->session.generic_flow_id, ret_fib_index,
-			0 /* add client */);
+			0 /* add client */, &rw->tuple.port[VLIB_RX], &sport_retries,
+			&sport_failures);
+  if (sport_retries)
+    {
+      vlib_node_increment_counter (vm, node->node_index, CNAT_ERROR_RETRIES_PORTS, 1);
+      if (sport_failures)
+	vlib_node_increment_counter (vm, node->node_index, CNAT_ERROR_EXHAUSTED_PORTS, 1);
+    }
+
   return (rw);
 }
 
@@ -153,7 +150,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       rw = (ts->ts_rw_bm & (1 << CNAT_LOCATION_FIB)) ? &ts->cts_rewrites[CNAT_LOCATION_FIB] : NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    rw = cnat_snat_feature_new_flow_inline (vm, b, af, ts);
+    rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts);
 
   /* Return traffic is handled by cnat_node_vip */
 
