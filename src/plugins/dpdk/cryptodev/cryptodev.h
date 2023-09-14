@@ -32,6 +32,7 @@
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
 #define CRYPTODEV_MAX_N_SGL	   8 /**< maximum number of segments */
+#define CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE 8
 
 #define CRYPTODEV_IV_OFFSET  (offsetof (cryptodev_op_t, iv))
 #define CRYPTODEV_AAD_OFFSET (offsetof (cryptodev_op_t, aad))
@@ -312,7 +313,7 @@ cryptodev_cache_ring_push (cryptodev_cache_ring_t *r,
   u16 tail = r->tail;
   u16 n_cached = (head >= tail) ? (head - tail) :
 					(CRYPTODEV_CACHE_QUEUE_MASK - tail + head);
-  ERROR_ASSERT (n_cached < VNET_CRYPTO_FRAME_POOL_SIZE);
+  ERROR_ASSERT (n_cached < CRYPTODEV_CACHE_QUEUE_SIZE);
   ERROR_ASSERT (r->raw == 0 && r->frames[head].raw == 0 &&
 		r->frames[head].f == 0);
 #endif
