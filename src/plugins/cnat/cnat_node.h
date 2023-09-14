@@ -19,6 +19,14 @@
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
 
+/* how many time to retry when trying to allocate a source port? In the worst
+ * case, we have a single source ip (or everything collide on the same src
+ * ip). Then, if our port space 1024-65535 is full at 50%, we have a 50%
+ * chance of collision when randomly choosing a src port.
+ * Retrying 8 times mean we have 1/2^8 ~ 0.4% chance of failure (aka
+ * overwriting an existing session, breaking it) */
+#define CNAT_PORT_MAX_RETRIES 8
+
 extern u8 *format_cnat_trace (u8 *s, va_list *args);
 
 typedef void (*cnat_node_sub_t) (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
@@ -892,7 +900,8 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
  * the ingress traffic with the rewrite operation 'rw' applied
  * */
 static_always_inline void
-cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, int add_client)
+cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_index, int add_client,
+		      u16 *sport, int *sport_retries, int *sport_failures)
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
@@ -909,6 +918,46 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
       rsession->value.cs_flags |= CNAT_SESSION_FLAG_HAS_CLIENT;
       cnat_rsession_create_client (rw, CNAT_FIB_TABLE);
       cnat_client_throttle_pool_process (); /* FIXME */
+    }
+
+  if (sport)
+    {
+      /* Try to allocate the a new src port (hence a new dst port for the
+       * return session). */
+      *sport_retries = *sport_failures = 0;
+
+      /* We 1st try to use the original src port */
+      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey, 2 /* no overwrite */);
+      if (!rv)
+	return; /* success! */
+
+      /* The original src port is already in use, try something else: we'll
+       * generate random ports and try to use that instead.
+       * To do so, we recursively hash the flow id:
+       *  - flow_id is unique per flow, hence it's a unique seed per flow
+       *  - a 64-bits hash gives us up to 4x 16-bits port to try
+       */
+      u64 hash = flow_id;
+      for (int i = 0; i < (CNAT_PORT_MAX_RETRIES + 3) / 4; i++)
+	{
+	  u64 hash_ = hash = clib_xxhash (hash);
+	  for (int j = 0; j < 4; j++)
+	    {
+	      *sport = (hash_ & 0xffff);
+	      /* if port is below 1024, add 1024 */
+	      if (!(*sport & clib_host_to_net_u16 (~1023)))
+		*sport |= clib_host_to_net_u16 (1024);
+	      rsession->key.cs_5tuple.port[VLIB_TX] = *sport;
+	      (*sport_retries)++;
+	      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey, 2 /* no overwrite */);
+	      if (!rv)
+		return;	   /* success ! */
+	      hash_ >>= 2; /* try next port... */
+	    }
+	}
+
+      /* no luck so far, let's overwrite some previous unlucky session... */
+      (*sport_failures)++;
     }
 
   cnat_bihash_add_with_overwrite_cb (&cnat_session_db, &rkey, cnat_session_free_stale_cb, NULL);
