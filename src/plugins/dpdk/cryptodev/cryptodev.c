@@ -684,7 +684,7 @@ cryptodev_show_cache_rings_fn (vlib_main_t *vm, unformat_input_t *input,
 			     (CRYPTODEV_CACHE_QUEUE_MASK + 1) :
 		     (head > tail) ?
 			     (head - tail) :
-			     (CRYPTODEV_CACHE_QUEUE_MASK - tail + head);
+			     (CRYPTODEV_CACHE_QUEUE_MASK + 1 - tail + head);
 
       u16 enq_head = ring->enq_head;
       u16 deq_tail = ring->deq_tail;
@@ -701,21 +701,28 @@ cryptodev_show_cache_rings_fn (vlib_main_t *vm, unformat_input_t *input,
 	((tail == deq_tail) && (ring->frames[deq_tail].f == 0)) ? 0 :
 	((tail == deq_tail) && (ring->frames[deq_tail].f != 0)) ? 1 :
 	(deq_tail > tail) ? (deq_tail - tail + 1) :
-				  (CRYPTODEV_CACHE_QUEUE_MASK - tail + deq_tail - 1);
+				  (CRYPTODEV_CACHE_QUEUE_MASK - tail + deq_tail + 1);
+
+      u16 n_frames_pending =
+	((head == enq_head) && (ring->frames[enq_head].f == 0)) ?
+		0 :
+	((head == enq_head) && (ring->frames[enq_head].f != 0)) ?
+				  CRYPTODEV_CACHE_QUEUE_MASK + 1 :
+	(head > enq_head) ? (head - enq_head - 1) :
+				  (CRYPTODEV_CACHE_QUEUE_MASK - enq_head + head);
 
       if (vlib_num_workers () > 0 && thread_index == 0)
 	continue;
 
       vlib_cli_output (vm, "\n\n");
       vlib_cli_output (vm, "Frames total: %u", n_cached);
-      vlib_cli_output (vm, "Frames pending in the ring: %u",
-		       n_cached - n_frames_inflight - n_frames_processed);
+      vlib_cli_output (vm, "Frames pending in the ring: %u", n_frames_pending);
       vlib_cli_output (vm, "Frames inflight: %u", n_frames_inflight);
       vlib_cli_output (vm, "Frames dequed but not returned: %u",
 		       n_frames_processed);
       vlib_cli_output (vm, "Elements inflight: %u", cet->inflight);
-      vlib_cli_output (vm, "Head: %u", head);
-      vlib_cli_output (vm, "Tail: %u", tail);
+      vlib_cli_output (vm, "Head: %u, enq head: %u", head, enq_head);
+      vlib_cli_output (vm, "Tail: %u, deq_tail: %u", tail, deq_tail);
       vlib_cli_output (vm, "\n\n");
     }
   return 0;

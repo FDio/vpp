@@ -462,7 +462,7 @@ cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
   vnet_crypto_async_frame_t *frame = NULL;
   cryptodev_cache_ring_t *ring = &cet->cache_ring;
   u16 *const deq = &ring->deq_tail;
-  u16 n_deq, idx, left_to_deq, i;
+  u16 n_deq, left_to_deq;
   u16 max_to_deq = 0;
   u16 inflight = cet->inflight;
   u8 dequeue_more = 0;
@@ -472,29 +472,12 @@ cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
   u32 n_elts, n;
   u64 err0 = 0, err1 = 0, err2 = 0, err3 = 0; /* partial errors mask */
 
-  idx = ring->deq_tail;
-
-  for (i = 0; i < VNET_CRYPTO_FRAME_POOL_SIZE; i++)
-    {
-      u32 frame_inflight =
-	CRYPTODEV_CACHE_RING_GET_FRAME_ELTS_INFLIGHT (ring, idx);
-
-      if (PREDICT_TRUE (frame_inflight > 0))
-	break;
-      idx++;
-      idx &= (VNET_CRYPTO_FRAME_POOL_SIZE - 1);
-    }
-
-  ERROR_ASSERT (i != VNET_CRYPTO_FRAME_POOL_SIZE);
-  ring->deq_tail = idx;
-
   left_to_deq =
     ring->frames[*deq].f->n_elts - ring->frames[*deq].deq_elts_tail;
   max_to_deq = clib_min (left_to_deq, CRYPTODE_DEQ_MAX);
 
   /* deq field can be used to track frame that is currently dequeued
    based on that you can specify the amount of elements to deq for the frame */
-
   n_deq =
     rte_cryptodev_dequeue_burst (cet->cryptodev_id, cet->cryptodev_q,
 				 (struct rte_crypto_op **) cops, max_to_deq);
@@ -547,9 +530,14 @@ cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
   ring->frames[*deq].deq_elts_tail += n_deq;
   if (cryptodev_cache_ring_update_deq_tail (ring, deq))
     {
+      u32 processed =
+	ring->deq_tail > ring->tail ?
+		ring->deq_tail - ring->tail :
+		CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE - ring->tail + ring->deq_tail;
+
       *nb_elts_processed = frame->n_elts;
       *enqueue_thread_idx = frame->enqueue_thread_index;
-      dequeue_more = (max_to_deq < CRYPTODE_DEQ_MAX);
+      dequeue_more = (processed >= CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE);
     }
 
   cet->inflight = inflight;
