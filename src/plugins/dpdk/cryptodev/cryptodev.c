@@ -672,6 +672,7 @@ cryptodev_show_cache_rings_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   u32 thread_index = 0;
+  u16 i;
   vec_foreach_index (thread_index, cmt->per_thread_data)
     {
       cryptodev_engine_thread_t *cet = cmt->per_thread_data + thread_index;
@@ -681,10 +682,10 @@ cryptodev_show_cache_rings_fn (vlib_main_t *vm, unformat_input_t *input,
       u16 n_cached = ((head == tail) && (ring->frames[head].f == 0)) ?
 			     0 :
 		     ((head == tail) && (ring->frames[head].f != 0)) ?
-			     (CRYPTODEV_CACHE_QUEUE_MASK + 1) :
+			     (CRYPTODEV_CACHE_QUEUE_SIZE) :
 		     (head > tail) ?
 			     (head - tail) :
-			     (CRYPTODEV_CACHE_QUEUE_MASK - tail + head);
+			     (CRYPTODEV_CACHE_QUEUE_SIZE - tail + head);
 
       u16 enq_head = ring->enq_head;
       u16 deq_tail = ring->deq_tail;
@@ -692,30 +693,58 @@ cryptodev_show_cache_rings_fn (vlib_main_t *vm, unformat_input_t *input,
 	((enq_head == deq_tail) && (ring->frames[enq_head].f == 0)) ?
 		0 :
 	((enq_head == deq_tail) && (ring->frames[enq_head].f != 0)) ?
-		CRYPTODEV_CACHE_QUEUE_MASK + 1 :
+		CRYPTODEV_CACHE_QUEUE_SIZE :
 	(enq_head > deq_tail) ?
 		(enq_head - deq_tail) :
-		(CRYPTODEV_CACHE_QUEUE_MASK - deq_tail + enq_head);
+		(CRYPTODEV_CACHE_QUEUE_SIZE - 1 - deq_tail + enq_head);
 
       u16 n_frames_processed =
 	((tail == deq_tail) && (ring->frames[deq_tail].f == 0)) ? 0 :
 	((tail == deq_tail) && (ring->frames[deq_tail].f != 0)) ? 1 :
 	(deq_tail > tail) ? (deq_tail - tail + 1) :
-				  (CRYPTODEV_CACHE_QUEUE_MASK - tail + deq_tail - 1);
+				  (CRYPTODEV_CACHE_QUEUE_SIZE - tail + deq_tail);
+
+      u16 n_frames_pending =
+	((head == enq_head) && (ring->frames[enq_head].f == 0)) ?
+		0 :
+	((head == enq_head) && (ring->frames[enq_head].f != 0)) ?
+				  CRYPTODEV_CACHE_QUEUE_SIZE :
+	(head > enq_head) ? (head - enq_head - 1) :
+				  (CRYPTODEV_CACHE_QUEUE_SIZE - 1 - enq_head + head);
+
+      u16 elts_to_enq = (ring->frames[enq_head].f == 0) ?
+				0 :
+				(ring->frames[enq_head].n_elts -
+			   ring->frames[enq_head].enq_elts_head);
+      u16 elts_to_deq = (ring->frames[deq_tail].f == 0) ?
+				0 :
+				(ring->frames[deq_tail].n_elts -
+			   ring->frames[deq_tail].deq_elts_tail);
+
+      u32 elts_total = 0;
+
+      for (i = 0; i < CRYPTODEV_CACHE_QUEUE_SIZE; i++)
+	elts_total += ring->frames[i].n_elts;
 
       if (vlib_num_workers () > 0 && thread_index == 0)
 	continue;
 
       vlib_cli_output (vm, "\n\n");
-      vlib_cli_output (vm, "Frames total: %u", n_cached);
-      vlib_cli_output (vm, "Frames pending in the ring: %u",
-		       n_cached - n_frames_inflight - n_frames_processed);
+      vlib_cli_output (vm, "Frames cached in the ring: %u", n_cached);
+      vlib_cli_output (vm, "Frames cached but not processed: %u",
+		       n_frames_pending);
       vlib_cli_output (vm, "Frames inflight: %u", n_frames_inflight);
-      vlib_cli_output (vm, "Frames dequed but not returned: %u",
-		       n_frames_processed);
+      vlib_cli_output (vm, "Frames processed: %u", n_frames_processed);
+      vlib_cli_output (vm, "Elements total: %u", elts_total);
       vlib_cli_output (vm, "Elements inflight: %u", cet->inflight);
-      vlib_cli_output (vm, "Head: %u", head);
-      vlib_cli_output (vm, "Tail: %u", tail);
+      vlib_cli_output (vm, "Head index: %u", head);
+      vlib_cli_output (vm, "Tail index: %u", tail);
+      vlib_cli_output (vm, "Enqueued frame index: %u", enq_head);
+      vlib_cli_output (vm, "Dequeued frame index: %u", deq_tail);
+      vlib_cli_output (vm, "Elements in enq frame: %u, remining to enq: %u",
+		       ring->frames[enq_head].n_elts, elts_to_enq);
+      vlib_cli_output (vm, "Elements in deq frame: %u, remining to deq: %u",
+		       ring->frames[deq_tail].n_elts, elts_to_deq);
       vlib_cli_output (vm, "\n\n");
     }
   return 0;
