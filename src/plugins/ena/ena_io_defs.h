@@ -146,6 +146,55 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (ena_tx_desc_t, 16);
 
+#define foreach_ena_tx_meta_desc                                              \
+  /* len_ctrl */                                                              \
+  _ (10, req_id_lo)                                                           \
+  _ (2, _reserved0_10)                                                        \
+  _ (1, _reserved0_12)                                                        \
+  _ (1, _reserved0_13)                                                        \
+  _ (1, ext_valid)                                                            \
+  _ (1, _reserved0_15)                                                        \
+  _ (4, mss_hi)                                                               \
+  _ (1, eth_meta_type)                                                        \
+  _ (1, meta_store)                                                           \
+  _ (1, _reserved0_22)                                                        \
+  _ (1, meta_desc)                                                            \
+  _ (1, phase)                                                                \
+  _ (1, _reserved0_25)                                                        \
+  _ (1, first)                                                                \
+  _ (1, last)                                                                 \
+  _ (1, comp_req)                                                             \
+  _ (2, _reserved0_29)                                                        \
+  _ (1, _reserved0_31)                                                        \
+  /* word_1 */                                                                \
+  _ (6, req_id_hi)                                                            \
+  _ (26, _reserved1_6)                                                        \
+  /* word_2 */                                                                \
+  _ (8, l3_hdr_len)                                                           \
+  _ (8, l3_hdr_off)                                                           \
+  _ (6, l4_hdr_len_in_words)                                                  \
+  _ (10, mss_lo)
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+#define _(b, n) u32 n : (b);
+      foreach_ena_tx_meta_desc
+#undef _
+	u32 _reserved3_0;
+    };
+
+    u16x8 as_u16x8;
+    u32x4 as_u32x4;
+    u64x2 as_u64x2;
+  };
+} ena_tx_meta_desc_t;
+
+STATIC_ASSERT_SIZEOF (ena_tx_meta_desc_t, 16);
+
 typedef union
 {
   struct

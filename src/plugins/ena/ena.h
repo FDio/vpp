@@ -33,7 +33,8 @@
   _ (va_dma)                                                                  \
   _ (link_up)                                                                 \
   _ (admin_up)                                                                \
-  _ (error)
+  _ (error)                                                                   \
+  _ (tx_offloads)
 
 typedef enum
 {

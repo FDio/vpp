@@ -4,6 +4,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip.h>
 #include <vnet/devices/devices.h>
 #include <ena/ena.h>
 #include <ena/ena_inlines.h>
@@ -25,6 +26,7 @@ typedef struct
   ena_tx_desc_t *sqes;
   u64 *sqe_templates;
   u16 n_dropped_chain_too_long;
+  ena_tx_meta_desc_t *cached_md;
 } ena_tx_ctx_t;
 
 /* bits inside req_id which represent SQE index */
@@ -251,26 +253,87 @@ ena_txq_copy_sqes (ena_tx_ctx_t *ctx, u32 off, ena_tx_desc_t *s, u32 n_desc)
     }
 }
 
+// 1 choses manque:
+// - doit-on calculer les offsets d'abord ?
+static_always_inline void
+ena_set_tx_offload (ena_tx_ctx_t *ctx, vlib_buffer_t *b, ena_tx_desc_t *d,
+		    ena_tx_meta_desc_t *md)
+{
+  /* Is there any offload? */
+  if (PREDICT_TRUE (!((b->flags & VNET_BUFFER_F_OFFLOAD) |
+		      (b->flags & VNET_BUFFER_F_GSO))))
+    return;
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+    {
+      d->l3_csum_en = 1;
+      d->l3_proto_idx = (oflags & VNET_BUFFER_F_IS_IP4) ? ETHERNET_TYPE_IP4 :
+								ETHERNET_TYPE_IP6;
+    }
+
+  if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+    {
+      d->l4_csum_en = 1;
+      d->l4_proto_idx = IP_PROTOCOL_TCP;
+    }
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+    {
+      d->l4_csum_en = 1;
+      d->l4_proto_idx = IP_PROTOCOL_UDP;
+    }
+
+  md->l3_hdr_off = vnet_buffer (b)->l3_hdr_offset;
+  md->l3_hdr_len =
+    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset;
+
+  if (b->flags & VNET_BUFFER_F_GSO)
+    {
+      d->tso_en = 1;
+      md->l4_hdr_len_in_words = vnet_buffer2 (b)->gso_l4_hdr_sz / 32;
+    }
+}
+
 static_always_inline u32
 ena_txq_enq_one (vlib_main_t *vm, ena_tx_ctx_t *ctx, vlib_buffer_t *b0,
-		 ena_tx_desc_t *d, u16 n_free_desc, u32 *f, int use_iova)
+		 ena_tx_desc_t *d, u16 n_free_desc, u32 *f, int use_iova,
+		 int tx_offloads)
 {
-  const ena_tx_desc_t single = { .first = 1, .last = 1 };
+  ena_tx_desc_t first_desc;
+  ena_tx_meta_desc_t meta_desc = { .ext_valid = 1,
+				   .eth_meta_type = 1,
+				   .meta_store = 1,
+				   .meta_desc = 1,
+				   .first = 1 };
   vlib_buffer_t *b;
   u32 i, n;
+  u8 n_meta = 0;
 
-  /* non-chained buffer */
-  if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
+  if (tx_offloads)
+    ena_set_tx_offload (ctx, b0, &first_desc, &meta_desc);
+
+  /* if the meta descriptor has not changed, no need to send it again */
+  if (memcmp (&meta_desc, ctx->cached_md, sizeof (ena_tx_meta_desc_t)) == 0)
     {
-      ctx->n_bytes += ena_txq_wr_sqe (vm, b0, use_iova, d, 1, single);
-      f[0] = ctx->from[0];
-      ctx->from += 1;
-      ctx->n_packets_left -= 1;
-      return 1;
+      first_desc.first = 1;
+      /* non-chained buffer with no meta descriptor */
+      if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
+	{
+	  first_desc.last = 1;
+	  ctx->n_bytes += ena_txq_wr_sqe (vm, b0, use_iova, d, 1, first_desc);
+	  f[0] = ctx->from[0];
+	  ctx->from += 1;
+	  ctx->n_packets_left -= 1;
+	  return 1;
+	}
+    }
+  else
+    {
+      ctx->cached_md->as_u64x2 = meta_desc.as_u64x2;
+      n_meta = 1;
     }
 
   /* count number of buffers in chain */
-  for (n = 1, b = b0; b->flags & VLIB_BUFFER_NEXT_PRESENT; n++)
+  for (n = n_meta + 1, b = b0; b->flags & VLIB_BUFFER_NEXT_PRESENT; n++)
     b = vlib_get_buffer (vm, b->next_buffer);
 
   /* if chain is too long, drop packet */
@@ -287,12 +350,15 @@ ena_txq_enq_one (vlib_main_t *vm, ena_tx_ctx_t *ctx, vlib_buffer_t *b0,
   if (n > n_free_desc)
     return 0;
 
+  /* meta */
+  if (n_meta)
+    (d++)->as_u64x2 = ctx->cached_md->as_u64x2;
+
   /* first */
   f++[0] = ctx->from[0];
   ctx->from += 1;
   ctx->n_packets_left -= 1;
-  ctx->n_bytes +=
-    ena_txq_wr_sqe (vm, b0, use_iova, d++, n, (ena_tx_desc_t){ .first = 1 });
+  ctx->n_bytes += ena_txq_wr_sqe (vm, b0, use_iova, d++, n, first_desc);
 
   /* mid */
   for (i = 1, b = b0; i < n - 1; i++)
@@ -313,7 +379,8 @@ ena_txq_enq_one (vlib_main_t *vm, ena_tx_ctx_t *ctx, vlib_buffer_t *b0,
 }
 
 static_always_inline uword
-ena_txq_enq (vlib_main_t *vm, ena_tx_ctx_t *ctx, ena_txq_t *txq, int use_iova)
+ena_txq_enq (vlib_main_t *vm, ena_tx_ctx_t *ctx, ena_txq_t *txq, int use_iova,
+	     int tx_offloads)
 {
   vlib_buffer_t *b0, *b1, *b2, *b3;
   u32 *f = ctx->tmp_bi;
@@ -340,7 +407,8 @@ ena_txq_enq (vlib_main_t *vm, ena_tx_ctx_t *ctx, ena_txq_t *txq, int use_iova)
       clib_prefetch_load (vlib_get_buffer (vm, ctx->from[7]));
       b3 = vlib_get_buffer (vm, ctx->from[3]);
 
-      if (PREDICT_FALSE (((b0->flags | b1->flags | b2->flags | b3->flags) &
+      if (PREDICT_FALSE (!tx_offloads &&
+			 ((b0->flags | b1->flags | b2->flags | b3->flags) &
 			  VLIB_BUFFER_NEXT_PRESENT) == 0))
 	{
 	  ctx->n_bytes += ena_txq_wr_sqe (vm, b0, use_iova, d++, 1, single);
@@ -356,7 +424,8 @@ ena_txq_enq (vlib_main_t *vm, ena_tx_ctx_t *ctx, ena_txq_t *txq, int use_iova)
 	}
       else
 	{
-	  n = ena_txq_enq_one (vm, ctx, b0, d, n_desc_left, f, use_iova);
+	  n = ena_txq_enq_one (vm, ctx, b0, d, n_desc_left, f, use_iova,
+			       tx_offloads);
 	  if (n == 0)
 	    break;
 	  n_desc_left -= n;
@@ -370,7 +439,8 @@ ena_txq_enq (vlib_main_t *vm, ena_tx_ctx_t *ctx, ena_txq_t *txq, int use_iova)
       vlib_buffer_t *b0;
 
       b0 = vlib_get_buffer (vm, ctx->from[0]);
-      n = ena_txq_enq_one (vm, ctx, b0, d, n_desc_left, f, use_iova);
+      n = ena_txq_enq_one (vm, ctx, b0, d, n_desc_left, f, use_iova,
+			   tx_offloads);
       if (n == 0)
 	break;
       n_desc_left -= n;
@@ -431,6 +501,11 @@ VNET_DEVICE_CLASS_TX_FN (ena_device_class)
   ena_txq_t *txq = *pool_elt_at_index (ed->txqs, qid);
   u32 n_pkts = 0;
 
+  ena_tx_meta_desc_t cached_meta = { .ext_valid = 1,
+				     .eth_meta_type = 1,
+				     .meta_store = 1,
+				     .meta_desc = 1,
+				     .first = 1 };
   ena_tx_ctx_t ctx = { .log2_n_desc = txq->log2_n_desc,
 		       .mask = pow2_mask (ctx.log2_n_desc),
 		       .n_desc = 1U << ctx.log2_n_desc,
@@ -440,7 +515,8 @@ VNET_DEVICE_CLASS_TX_FN (ena_device_class)
 		       .from = vlib_frame_vector_args (frame),
 		       .sqe_templates = ena_txq_get_sqe_templates (txq),
 		       .sqes = txq->sqes,
-		       .sq_buffer_indices = txq->sq_buffer_indices };
+		       .sq_buffer_indices = txq->sq_buffer_indices,
+		       .cached_md = &cached_meta };
 
   if (ena_queue_state_set_in_use (&txq->state) == ENA_QUEUE_STATE_DISABLED)
     goto queue_disabled;
@@ -457,10 +533,10 @@ VNET_DEVICE_CLASS_TX_FN (ena_device_class)
       ctx.n_free_slots = ctx.n_desc - (txq->sq_head - txq->sq_tail);
 
       if (ed->va_dma)
-	while (ena_txq_enq (vm, &ctx, txq, /* va */ 1) > 0)
+	while (ena_txq_enq (vm, &ctx, txq, /* va */ 1, ed->tx_offloads) > 0)
 	  ;
       else
-	while (ena_txq_enq (vm, &ctx, txq, /* va */ 0) > 0)
+	while (ena_txq_enq (vm, &ctx, txq, /* va */ 0, ed->tx_offloads) > 0)
 	  ;
 
       if (ctx.n_packets_left == 0)
