@@ -208,8 +208,37 @@ STATIC_ASSERT_SIZEOF (ena_admin_feat_link_config_t, 12);
 
 typedef struct
 {
-  u32 tx;
-  u32 rx_supported;
+  union
+  {
+    struct
+    {
+      u8 tx_l3_ipv4_csum : 1;
+      /* For partial checksums, the checksum field is
+       expected to be set to the pseudo-header checksum */
+      u8 tx_l4_ipv4_csum_part : 1;
+      u8 tx_l4_ipv4_csum_full : 1;
+      u8 tx_l4_ipv6_csum_part : 1;
+      u8 tx_l4_ipv6_csum_full : 1;
+
+      u8 tso_ipv4 : 1;
+      u8 tso_ipv6 : 1;
+      u8 tso_esn : 1;
+    };
+    u32 tx;
+  };
+
+  union
+  {
+    struct
+    {
+      u8 rx_l3_ipv4_csum : 1;
+      u8 rx_l4_ipv4_csumt : 1;
+      u8 rx_l4_ipv6_csum : 1;
+      u8 rx_hash : 1;
+    };
+    u32 rx_supported;
+  };
+
   u32 rx_enabled;
 } ena_admin_feat_stateless_offload_config_t;
 

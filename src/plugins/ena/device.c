@@ -460,9 +460,27 @@ ena_create_if (vlib_main_t *vm, ena_create_if_args_t *args)
   vnet_hw_if_set_input_node (vnm, ed->hw_if_index, ena_input_node.index);
 
   /* set hw interface caps */
-  vnet_hw_if_set_caps (vnm, ed->hw_if_index,
-		       VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_MAC_FILTER |
-			 VNET_HW_IF_CAP_TX_CKSUM | VNET_HW_IF_CAP_TCP_GSO);
+  vnet_hw_if_caps_t caps = VNET_HW_IF_CAP_INT_MODE | VNET_HW_IF_CAP_MAC_FILTER;
+  if (ena_admin_feature_is_supported (ed, ENA_ADMIN_FEAT_ID_STATELESS_OFFLOAD_CONFIG))
+    {
+      ena_admin_feat_stateless_offload_config_t offloads;
+
+      if ((err = ena_admin_get_feature (
+	     vm, ed, ENA_ADMIN_FEAT_ID_STATELESS_OFFLOAD_CONFIG, &offloads)))
+       	goto done;
+
+      if (offloads.tx_l3_ipv4_csum)
+        caps |= VNET_HW_IF_CAP_TX_IP4_CKSUM;
+      if (offloads.tx_l4_ipv4_csum_full && offloads.tx_l4_ipv6_csum_full)
+        caps |= VNET_HW_IF_CAP_TX_UDP_CKSUM | VNET_HW_IF_CAP_TX_TCP_CKSUM;
+      if (offloads.tso_ipv4 && offloads.tso_ipv6)
+        caps |= VNET_HW_IF_CAP_TCP_GSO;
+
+      ed->tx_offloads = (offloads.tx_l3_ipv4_csum|offloads.tx_l4_ipv4_csum_full|offloads.tx_l4_ipv6_csum_full|offloads.tso_ipv4|offloads.tso_ipv6);
+    } else {
+      ed->tx_offloads = 0;
+    }
+  vnet_hw_if_set_caps (vnm, ed->hw_if_index, caps);
 
   for (u16 i = 0; i < n_rxq; i++)
     if ((err = ena_rx_queue_alloc (vm, ed, log2_rxq_sz, 0)))
