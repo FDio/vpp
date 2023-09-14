@@ -98,7 +98,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 			&ip_addr_v6 (&cpm->snat_ip6.ce_ip));
     }
 
-  sport = 0;
+  sport = rw->tuple.port[VLIB_RX];
   rv = cnat_allocate_port (&sport, iproto);
   if (rv)
     {
@@ -107,6 +107,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
       rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
       return (rw);
     }
+  rw->tuple.port[VLIB_RX] = sport;
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
