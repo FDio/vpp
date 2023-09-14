@@ -14,4 +14,9 @@
 add_vpp_plugin(ping
   SOURCES
   ping.c
+  ping.h
+  ping_api.c
+
+  API_FILES
+  ping.api
 )
