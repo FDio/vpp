@@ -722,8 +722,9 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 	      tup->ip4[VLIB_TX ^ swap].as_u32 = ip4->dst_address.as_u32;
 	      tup->ip4[VLIB_RX ^ swap].as_u32 = ip4->src_address.as_u32;
 	      tup->iproto = ip4->protocol;
-	      tup->port[VLIB_TX ^ swap] = echo->identifier;
-	      tup->port[VLIB_RX ^ swap] = echo->identifier;
+	      // we assume icmp.identifier is request.RX and reply.TX
+	      tup->port[VLIB_RX ^ swap] = icmp->type == ICMP4_echo_request ? echo->identifier : 0;
+	      tup->port[VLIB_TX ^ swap] = icmp->type == ICMP4_echo_request ? 0 : echo->identifier;
 	    }
 	}
       else if ((ip4->protocol == IP_PROTOCOL_UDP ||
@@ -771,8 +772,9 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af,
 	      ip6_address_copy (&tup->ip6[VLIB_TX ^ swap], &ip6->dst_address);
 	      ip6_address_copy (&tup->ip6[VLIB_RX ^ swap], &ip6->src_address);
 	      tup->iproto = ip6->protocol;
-	      tup->port[VLIB_TX ^ swap] = echo->identifier;
-	      tup->port[VLIB_RX ^ swap] = echo->identifier;
+	      // we assume icmp.identifier is request.RX and reply.TX
+	      tup->port[VLIB_RX ^ swap] = icmp->type == ICMP6_echo_request ? echo->identifier : 0;
+	      tup->port[VLIB_TX ^ swap] = icmp->type == ICMP6_echo_request ? 0 : echo->identifier;
 	    }
 	}
       else if (ip6->protocol == IP_PROTOCOL_UDP ||
