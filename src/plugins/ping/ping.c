@@ -100,7 +100,7 @@ format_ip46_ping_result (u8 * s, va_list * args)
  */
 
 
-static_always_inline uword
+inline uword
 get_cli_process_id_by_icmp_id_mt (vlib_main_t * vm, u16 icmp_id)
 {
   ping_main_t *pm = &ping_main;
@@ -121,7 +121,7 @@ get_cli_process_id_by_icmp_id_mt (vlib_main_t * vm, u16 icmp_id)
 }
 
 
-static_always_inline void
+inline void
 set_cli_process_id_by_icmp_id_mt (vlib_main_t * vm, u16 icmp_id,
 				  uword cli_process_id)
 {
@@ -145,7 +145,7 @@ have_found_and_set:
 }
 
 
-static_always_inline void
+inline void
 clear_cli_process_id_by_icmp_id_mt (vlib_main_t * vm, u16 icmp_id)
 {
   ping_main_t *pm = &ping_main;
@@ -1229,7 +1229,7 @@ done:
   return err;
 }
 
-static send_ip46_ping_result_t
+send_ip46_ping_result_t
 send_ip6_ping (vlib_main_t * vm,
 	       u32 table_id, ip6_address_t * pa6,
 	       u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
@@ -1241,7 +1241,7 @@ send_ip6_ping (vlib_main_t * vm,
 			 id_host, data_len, burst, verbose, 1 /* is_ip6 */ );
 }
 
-static send_ip46_ping_result_t
+send_ip46_ping_result_t
 send_ip4_ping (vlib_main_t * vm,
 	       u32 table_id, ip4_address_t * pa4,
 	       u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
@@ -1677,6 +1677,8 @@ ping_cli_init (vlib_main_t * vm)
 			  ip4_icmp_echo_request_node.index);
   icmp6_register_type (vm, ICMP6_echo_request,
 		       ip6_icmp_echo_request_node.index);
+
+  ping_plugin_api_hookup(vm);
 
   return 0;
 }
