@@ -32,6 +32,7 @@
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
 #define CRYPTODEV_MAX_N_SGL	   8 /**< maximum number of segments */
+#define CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE 8
 
 #define CRYPTODEV_IV_OFFSET  (offsetof (cryptodev_op_t, iv))
 #define CRYPTODEV_AAD_OFFSET (offsetof (cryptodev_op_t, aad))
@@ -303,19 +304,24 @@ cryptodev_cache_ring_push (cryptodev_cache_ring_t *r,
 			   vnet_crypto_async_frame_t *f)
 {
   u16 head = r->head;
+  u16 tail = r->tail;
+
   cryptodev_cache_ring_elt_t *ring_elt = &r->frames[head];
   /**
    * in debug mode we do the ring sanity test when a frame is enqueued to
    * the ring.
    **/
 #if CLIB_DEBUG > 0
-  u16 tail = r->tail;
   u16 n_cached = (head >= tail) ? (head - tail) :
 					(CRYPTODEV_CACHE_QUEUE_MASK - tail + head);
-  ERROR_ASSERT (n_cached < VNET_CRYPTO_FRAME_POOL_SIZE);
+  ERROR_ASSERT (n_cached < CRYPTODEV_CACHE_QUEUE_SIZE);
   ERROR_ASSERT (r->raw == 0 && r->frames[head].raw == 0 &&
 		r->frames[head].f == 0);
 #endif
+  /*the ring capacity is CRYPTODEV_CACHE_QUEUE_SIZE - 1*/
+  if (PREDICT_FALSE (head + 1) == tail)
+    return 0;
+
   ring_elt->f = f;
   ring_elt->n_elts = f->n_elts;
   /* update head */
