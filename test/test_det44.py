@@ -98,9 +98,9 @@ class TestDET44(VppTestCase):
         # natEvent
         self.assertEqual(scapy.compat.orb(record[230]), 13)
         # natQuotaExceededEvent
-        self.assertEqual(struct.pack("I", 3), record[466])
+        self.assertEqual(struct.pack("!I", 3), record[466])
         # maxEntriesPerUser
-        self.assertEqual(struct.pack("I", limit), record[473])
+        self.assertEqual(struct.pack("!I", limit), record[473])
         # sourceIPv4Address
         self.assertEqual(socket.inet_pton(socket.AF_INET, src_addr), record[8])
 
@@ -724,7 +724,7 @@ class TestDET44(VppTestCase):
 
         # verify IPFIX logging
         self.vapi.ipfix_flush()
-        capture = self.pg2.get_capture(2)
+        capture = self.pg2.get_capture(7)
         ipfix = IPFIXDecoder()
         # first load template
         for p in capture:
