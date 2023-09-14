@@ -108,6 +108,10 @@ typedef struct {
   /** nat data callbacks call counter */
   u16 call_counter;
 
+  /** rate-limit locks */
+  clib_spinlock_t addr_exhausted_lock;
+  clib_spinlock_t max_sessions_lock;
+  clib_spinlock_t max_bibs_lock;
 } nat_ipfix_logging_main_t;
 
 extern nat_ipfix_logging_main_t nat_ipfix_logging_main;
