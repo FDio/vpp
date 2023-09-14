@@ -32,6 +32,7 @@
 #define CRYPTODEV_MAX_IV_SIZE	   16
 #define CRYPTODEV_MAX_AAD_SIZE	   16
 #define CRYPTODEV_MAX_N_SGL	   8 /**< maximum number of segments */
+#define CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE 8
 
 #define CRYPTODEV_IV_OFFSET  (offsetof (cryptodev_op_t, iv))
 #define CRYPTODEV_AAD_OFFSET (offsetof (cryptodev_op_t, aad))
