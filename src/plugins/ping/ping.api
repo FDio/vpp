@@ -1,0 +1,46 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2013 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+autoreply define want_ping_events
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_t address;
+  u32 repeat [default=1];
+  f64 interval [default=1.0];
+};
+
+define ping_finished_event
+{
+  u32 client_index;
+  u32 request_count;
+  u32 reply_count;
+};
+
+service {
+  rpc want_ping_events returns want_ping_events_reply
+    events ping_finished_event;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
