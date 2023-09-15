@@ -50,6 +50,24 @@
       "message": "Maybe a small regression in ipv6? Trying to get better resolution using manual triggers in Jenkins. But even if it is, it will be only around half a percent.",
       "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3dcb187_d0dc43a6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2629
+      },
+      "writtenOn": "2023-09-15T10:54:36Z",
+      "side": 1,
+      "message": "Thank you for running the performance tests Vratko!\n\nIs 0.5% difference significant? In performance suites I\u0027ve used before it would be noise, but I\u0027m aware some suites are able to measure finer differences.",
+      "parentUuid": "c48c52ee_dfcc153c",
+      "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
