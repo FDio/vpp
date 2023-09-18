@@ -68,6 +68,24 @@
       "parentUuid": "c48c52ee_dfcc153c",
       "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "488be022_c8897268",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-09-18T12:44:14Z",
+      "side": 1,
+      "message": "It depends on the test case and testbed, some are more stable than others. In my experience, high-end CPUs combined with more complicated packet manipulation can be unstable. Sometimes it is just trial-to-trial variance, sometimes it is noticable performance change caused by an innocuous rebase. I guess small differences in compiler decisions regarding code layout may affect how successful various hardware prefetchers are under load.\n\nAnyway, ipv6 is usually on the less stable side and my additional runs did not find anything conclusive, so I classify all the result differences so far as noise.\nIn that case I look at runtime state and they look quite similar, so this is good to go.",
+      "parentUuid": "e3dcb187_d0dc43a6",
+      "revId": "1728d37612c34ec2e2d0e61339b1659f79fae749",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
