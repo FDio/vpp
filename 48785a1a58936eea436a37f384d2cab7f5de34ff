@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5f8c80b_a6b35075",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-09-18T10:53:37Z",
+      "side": 1,
+      "message": "@damjan Could you take a look this resolution if acceptable, we would like to get this patch merged for 23.10 release",
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
