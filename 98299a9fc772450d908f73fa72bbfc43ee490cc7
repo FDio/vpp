@@ -1,0 +1,147 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "923fec9b_21849728",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "Please add a testcase that verifies this code by using this api command instead of the cli command [0].\n\n[0] https://github.com/FDio/vpp/blob/master/test/test_ping.py#L76",
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f35f7a8_bc670f3f",
+        "filename": "src/plugins/ping/ping.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "Is it truly your intention to assign Cisco the copyright to this code?\n\nMost employers have an an agreement with their employees to assign copyright to the employer\u0027s corporation for all code created by employees.\n\nIf you are working independently, you may also retain copyrights for the code you have created. For example, https://github.com/FDio/vpp/blob/a05f93a9e53d0ade8669122592f7aae231adfffc/src/vppinfra/vector.c#L16",
+      "range": {
+        "startLine": 3,
+        "startChar": 3,
+        "endLine": 3,
+        "endChar": 50
+      },
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "456a1c9c_c69804fe",
+        "filename": "src/plugins/ping/ping.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "I\u0027d recommend making this \u0027want_ping_finished_events\u0027 to be more precisely aligned with the nomenclature used for the ping_finished event structure.",
+      "range": {
+        "startLine": 21,
+        "startChar": 17,
+        "endLine": 21,
+        "endChar": 33
+      },
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9612579_078271c0",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "This will most likely cause a negative performance impact, if the compiler chooses to ignore the inline hint and convert this from inlined code to a function call.  Instead of changing static_always_inline to inline, it would be best to move the whole function definition into ping.h verbatim, thus retaining the inlining of the function code.",
+      "range": {
+        "startLine": 102,
+        "startChar": 0,
+        "endLine": 102,
+        "endChar": 6
+      },
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3301ec51_0197a291",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "Same comment here, move the function definition to ping.h verbatim.",
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96829fd2_6b44bb67",
+        "filename": "src/plugins/ping/ping.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "Same comment here, move the function definition to ping.h verbatim.",
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62f25c6e_514ed94e",
+        "filename": "src/plugins/ping/ping_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T00:47:05Z",
+      "side": 1,
+      "message": "Same copyright comment.",
+      "range": {
+        "startLine": 3,
+        "startChar": 3,
+        "endLine": 3,
+        "endChar": 50
+      },
+      "revId": "98299a9fc772450d908f73fa72bbfc43ee490cc7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
