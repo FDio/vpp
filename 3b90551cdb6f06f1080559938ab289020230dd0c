@@ -34,6 +34,24 @@
       "parentUuid": "6a05404e_ee627232",
       "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ec67a7d_16c4e6f7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2575
+      },
+      "writtenOn": "2023-09-20T17:58:38Z",
+      "side": 1,
+      "message": "Hi Florin,\nThank you for looking on this.",
+      "parentUuid": "6a05404e_ee627232",
+      "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
