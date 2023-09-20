@@ -16,6 +16,24 @@
       "message": "This works but wonder if it wouldn\u0027t be better to just validate cli generated prefixes before sending to fib apis. \n\nAdding Neale as he\u0027ll have a better informed opinion than mine.",
       "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "37a66dd5_aebeb43e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2574
+      },
+      "writtenOn": "2023-09-20T16:03:15Z",
+      "side": 1,
+      "message": "Hi Florin,\nThank you for your involvement. \nIn this way I am covering this error even if the bad request is done from API, for example. \nBy just validate the prefix in the cli will not cover the APIs. \n\nRegards,\nGabi",
+      "parentUuid": "6a05404e_ee627232",
+      "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
