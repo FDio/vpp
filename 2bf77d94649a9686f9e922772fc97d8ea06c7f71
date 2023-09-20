@@ -50,6 +50,23 @@
       "message": "recheck",
       "revId": "2bf77d94649a9686f9e922772fc97d8ea06c7f71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dfbbf57a_d75755ce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T01:53:09Z",
+      "side": 1,
+      "message": "This gerrit change appears to be the same as https://gerrit.fd.io/r/c/vpp/+/37656\nPlease abandon whichever gerrit change you would prefer to remove from the review process.",
+      "revId": "2bf77d94649a9686f9e922772fc97d8ea06c7f71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
