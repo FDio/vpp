@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89692ae0_cdb3bcfe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T01:45:44Z",
+      "side": 1,
+      "message": "Is this change breaking for CSIT or does CSIT currently use v2?",
+      "revId": "8b3cb73a18e1d6a7972d68d6e91e274a2db23754",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
