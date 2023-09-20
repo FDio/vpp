@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9d86273d_91c19c0f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 0,
+      "message": "It\u0027s because u16 *const deq \u003d \u0026ring-\u003edeq_tail and deq is updated - so is deq_tail.",
+      "parentUuid": "b7ee881e_8f986396",
+      "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "623021f7_836867b5",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 2

@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e7a81264_e55cbd0f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "This situation can be reached - when the ring is full then head \u003d\u003d tail as head is incremented after writing an element to the ring - so when you will write last possible element all slots in the ring are occupied and head is pointing to the tail - the only action that is allowed in such situation is deq. So such situation cannot happen when you call  cryptodev_cache_ring_push - and then indeed we have an assert ERROR_ASSERT (n_cached \u003c VNET_CRYPTO_FRAME_POOL_SIZE) - but afer push it is possible that n_cached \u003d\u003d VNET_CRYPTO_FRAME_POOL_SIZE. Notice that we can gather ring stats in such situation. Also I think that our implmementation assumes that maximal number of elements in the ring is its size and not size - 1.",
+      "parentUuid": "cd0e69d1_b341f6b7",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "95d36680_9ea352ce",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2023-09-20T11:22:55Z",
       "side": 1,
       "message": "Why don\u0027t you use CRYPTODEV_CACHE_QUEUE_SIZE instead?",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "58be89d6_c5548acc",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "You are right - I\u0027ll correct that.",
+      "parentUuid": "95d36680_9ea352ce",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -71,6 +107,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "57c0dec3_58363eb2",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "pending in the ring is perhaps not the best name - it means frames that are pushed to the ring but not processed by the qat yet so basically it is a difference between head and enq_head - which points the last element enqueued to the qat",
+      "parentUuid": "5bec083f_6d8f5611",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "cd6a915c_1e320f77",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
         "patchSetId": 2
@@ -88,6 +142,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "18cb4450_b5f73d4a",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "Ok - I\u0027ll correct that.",
+      "parentUuid": "cd6a915c_1e320f77",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "21def400_ccd12980",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
         "patchSetId": 2
@@ -99,6 +171,41 @@
       "writtenOn": "2023-09-20T11:22:55Z",
       "side": 1,
       "message": "Why use a pointer here instead of using the same way as op_data_path?",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9327b713_c50dd026",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "Op data path follows this logic. See line 464 there.",
+      "parentUuid": "21def400_ccd12980",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12200939_fa805f77",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T11:53:11Z",
+      "side": 1,
+      "message": "This is the place where deq_tail is updated. If you think it is unclear I can remove deq variable.",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
