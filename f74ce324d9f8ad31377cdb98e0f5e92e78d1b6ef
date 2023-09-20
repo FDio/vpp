@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "697f11b3_6d7f75f4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-09-20T01:52:08Z",
+      "side": 1,
+      "message": "This gerrit change appears to be the same as https://gerrit.fd.io/r/c/vpp/+/39459\nPlease abandon whichever gerrit change you would prefer to remove from the review process.",
+      "revId": "f74ce324d9f8ad31377cdb98e0f5e92e78d1b6ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
