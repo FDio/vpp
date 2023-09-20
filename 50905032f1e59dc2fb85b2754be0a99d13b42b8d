@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd0e69d1_b341f6b7",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "((head \u003d\u003d tail) \u0026\u0026 (ring-\u003eframes[head].f !\u003d 0)) is the condition we should never reach. A ring\u0027s maximum number of elements stored is its size - 1. If you have seen the situation like this then we have a bug in enqueue.",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "95d36680_9ea352ce",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "Why don\u0027t you use CRYPTODEV_CACHE_QUEUE_SIZE instead?",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f61cd3f_b7792900",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "Same as above",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bec083f_6d8f5611",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "Same as above, also this worries me - we should not have pending frames number over CRYPTODEV_CACHE_QUEUE_SIZE - 1.\n\nAlso what is \"pending in the ring\"? I assume you want to find out how many frames in cryptodev enqueued but not dequeued, should it be the number between enq_head and deq_tail?",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cd6a915c_1e320f77",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "I think this output could be simplified a bit:\n\n1. Print the number of frames in the ring, if you want you can also print how many packets in total, current head/tail index as well.\n2. Print current frame index that is being enqueued, and how many elts yet to be enqueued to cryptodev in this frame.\n3. Print current frame index that is being dequeued, and how many elts yet to be dequeued to cryptodev in this frame - also inflight could be printed.\n4. I assume this is more useful to user, also head/tail/enq_head/deq_tail data are too code debugging specific.",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "21def400_ccd12980",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 1,
+      "message": "Why use a pointer here instead of using the same way as op_data_path?",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

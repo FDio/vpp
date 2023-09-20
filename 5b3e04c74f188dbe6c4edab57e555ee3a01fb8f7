@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ee881e_8f986396",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 0,
+      "message": "I don\u0027t see ring-\u003edeq_tail updated anywhere - are you sure your change is correct?",
+      "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "623021f7_836867b5",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-20T11:22:55Z",
+      "side": 0,
+      "message": "Again I don\u0027t see deq_tail is updated anywhere.",
+      "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
