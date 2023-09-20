@@ -16,6 +16,63 @@
       "message": "@damjan Could you take a look this resolution if acceptable, we would like to get this patch merged for 23.10 release",
       "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e478afe1_24f6cb20",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-09-20T14:05:43Z",
+      "side": 1,
+      "message": "avoid disabling formatting....",
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66e90150_5dcbaa21",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-09-20T14:05:43Z",
+      "side": 1,
+      "message": "please remove IMB_AUTH_HMAC_ prefix, and concat in _() macro bellow",
+      "range": {
+        "startLine": 71,
+        "startChar": 13,
+        "endLine": 71,
+        "endChar": 34
+      },
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef704aef_cf01a4f0",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-09-20T14:05:43Z",
+      "side": 1,
+      "message": "Please avoid formatting changes....",
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
