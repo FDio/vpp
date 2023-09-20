@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1818c6c5_ccbe39f5",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-20T20:14:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "575fa6af_9fe58864",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89a9557d_8e969974",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-09-07T16:34:54Z",
       "side": 1,
       "message": "connect_sep should always have TCP as transport.",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "087c6081_6d79a0c1",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 785,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-20T20:14:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89a9557d_8e969974",
       "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "63d8bad5_530f6d5b",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1098,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-20T20:14:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d76646d3_ddeba140",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8798e392_27b74c95",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3f50b40_593431a2",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1185,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-20T20:14:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8798e392_27b74c95",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3b38c109_5dee4969",
@@ -99,6 +171,24 @@
       "writtenOn": "2023-09-07T16:34:54Z",
       "side": 1,
       "message": "To have this be compatible with vcl_test_server/client, we should be sending back another config struct.",
+      "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8bcc70b5_faf4b937",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-20T20:14:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b38c109_5dee4969",
       "revId": "76e5fa0904ec9581bb550b2839a705ef847a5956",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
