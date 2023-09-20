@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "78826c13_3d60c955",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 687,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T22:15:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "58be89d6_c5548acc",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1f61cd3f_b7792900",
@@ -154,6 +172,24 @@
       "side": 1,
       "message": "Ok - I\u0027ll correct that.",
       "parentUuid": "cd6a915c_1e320f77",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "448586a5_646bc1a2",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-20T22:15:00Z",
+      "side": 1,
+      "message": "Please check if now it makes sense or need further polishment.",
+      "parentUuid": "18cb4450_b5f73d4a",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
