@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3180771d_4e63243f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 742,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-21T08:32:22Z",
+      "side": 1,
+      "message": "Current frame index being enqueued",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff2b0795_ffc6b61a",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 743,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-21T08:32:22Z",
+      "side": 1,
+      "message": "Current frame index being dequeued",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ca42bb2_a3ff7dc8",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 744,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-21T08:32:22Z",
+      "side": 1,
+      "message": "Elements in current frame to be enqueued: %u, waiting to be enqueued: %u",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

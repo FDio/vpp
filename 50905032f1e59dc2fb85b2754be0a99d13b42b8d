@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "568bca9e_02889345",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-21T08:32:22Z",
+      "side": 1,
+      "message": "Instead of making amendments here - I\u0027d suggest to change enqueue handler to add a check to see if head will \u003d\u003d tail after enqueue, if yes then return -1 and let crypto infra to free it. This helps simplifies this logic you are trying to add here - and fixes a problem we are facing right now - the CRYPTODEV_CACHE_QUEUE_MASK is useless and the ring logic is not satisfied at all because of number of elements will fit the whole ring (https://doc.dpdk.org/guides/prog_guide/ring_lib.html 8.5.4).",
+      "parentUuid": "e7a81264_e55cbd0f",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "95d36680_9ea352ce",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
         "patchSetId": 2
@@ -102,6 +120,24 @@
       "writtenOn": "2023-09-20T11:22:55Z",
       "side": 1,
       "message": "Same as above",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cab769fa_55bac92c",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-21T08:32:22Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1f61cd3f_b7792900",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
