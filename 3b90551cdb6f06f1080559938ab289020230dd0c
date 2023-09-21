@@ -52,6 +52,23 @@
       "parentUuid": "6a05404e_ee627232",
       "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38edeac1_86462fe7",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-09-21T00:09:12Z",
+      "side": 1,
+      "message": "i would prefer a new `fib_prefix_validate` function that is called here, and in a similar context for the API.\nThat way the \u0027surface\u0027 at which inputs are supposed to be valid can remain at the FIB API level.",
+      "revId": "3b90551cdb6f06f1080559938ab289020230dd0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
