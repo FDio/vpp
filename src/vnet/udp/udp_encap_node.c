@@ -319,7 +319,7 @@ VLIB_REGISTER_NODE (udp4o4_encap_node) = {
 VLIB_REGISTER_NODE (udp6o4_encap_node) = {
   .name = "udp6o4-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_udp6_encap_trace,
+  .format_trace = format_udp4_encap_trace,
   .n_next_nodes = 0,
   .sibling_of = "udp4o4-encap",
 };
@@ -342,7 +342,7 @@ VLIB_REGISTER_NODE (udp6o6_encap_node) = {
 VLIB_REGISTER_NODE (udp4o6_encap_node) = {
   .name = "udp4o6-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_udp4_encap_trace,
+  .format_trace = format_udp6_encap_trace,
   .n_next_nodes = 0,
   .sibling_of = "udp6o6-encap",
 };
