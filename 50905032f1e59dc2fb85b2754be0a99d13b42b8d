@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "72433a61_941faca1",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-22T12:49:10Z",
+      "side": 1,
+      "message": "Ok I will change the cache ring implementation, so that it follows the suggested logic.",
+      "parentUuid": "568bca9e_02889345",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "95d36680_9ea352ce",
         "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
         "patchSetId": 2
