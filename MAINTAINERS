@@ -194,7 +194,7 @@ VNET IPSec
 I:	ipsec
 M:	Neale Ranns <neale@graphiant.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
-M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/vnet/ipsec/
 
 VNET Crypto Infra
@@ -226,12 +226,12 @@ F:	src/plugins/crypto_openssl/
 Plugin - Crypto - ipsecmb
 I:	crypto-ipsecmb
 M:	Neale Ranns <neale@graphiant.com>
-M:      Fan Zhang <roy.fan.zhang@intel.com>
+M:      Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugins/crypto_ipsecmb/
 
 Plugin - Crypto - sw_scheduler
 I:	crypto-sw-scheduler
-M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugs/crypto_sw_scheduler/
 
 VNET L2
@@ -419,7 +419,7 @@ F:	src/plugins/dpdk/
 Plugin - DPDK Crypto
 I:	dpdk-cryptodev
 M:	Radu Nicolau <radu.nicolau@intel.com>
-M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugins/dpdk/cryptodev/
 
 Plugin - flowprobe
@@ -751,7 +751,7 @@ F:	src/plugins/cnat
 Plugin - Wireguard
 I:	wireguard
 M:	Artem Glazychev <artem.glazychev@xored.com>
-M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 F:	src/plugins/wireguard
 
 Packetforge
@@ -854,7 +854,7 @@ F:	src/extras/rpm/opensuse
 
 VPP StrongSwan Daemon
 I:	vpp-swan
-M:	Fan Zhang <roy.fan.zhang@intel.com>
+M:	Fan Zhang <fanzhang.oss@gmail.com>
 M:	Gabriel Oginski <gabrielx.oginski@intel.com>
 F:	extras/strongswan/vpp_sswan
 
