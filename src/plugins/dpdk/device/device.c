@@ -581,6 +581,36 @@ done:
 }
 
 static clib_error_t *
+dpdk_interface_set_rss_hash_key (struct vlib_main_t *vm,
+				 struct vnet_hw_interface_t *hi, u8 *hash_key)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hi->dev_instance);
+  u8 temp_key[vec_len (hi->rss_hash_key)];
+  u64 temp_hf;
+  struct rte_eth_rss_conf temp_conf = { temp_key, 0, 0 };
+  struct rte_eth_rss_conf rss_conf = { hash_key, vec_len (hash_key), 0 };
+  u32 ret;
+
+  rte_eth_dev_rss_hash_conf_get (xd->port_id, &temp_conf);
+  temp_hf = temp_conf.rss_hf;
+
+  rss_conf.rss_hf = temp_hf;
+  ret = rte_eth_dev_rss_hash_update (xd->port_id, &rss_conf);
+  if (ret == -EINVAL)
+    {
+      return vnet_error (VNET_ERR_KEY_LENGTH, "expected %u, got %u",
+			 vec_len (hi->rss_hash_key), rss_conf.rss_key_len * 2);
+    }
+  else if (ret == -ENOTSUP)
+    {
+      return vnet_error (VNET_ERR_UNSUPPORTED, "operation not supported");
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
 			       struct vnet_hw_interface_t *hi,
 			       clib_bitmap_t * bitmap)
@@ -741,6 +771,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .flow_ops_function = dpdk_flow_ops_fn,
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
   .rx_mode_change_function = dpdk_interface_rx_mode_change,
+  .set_rss_hash_key_function = dpdk_interface_set_rss_hash_key,
 };
 /* *INDENT-ON* */
 
