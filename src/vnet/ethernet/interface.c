@@ -833,6 +833,38 @@ loopback_instance_free (u32 instance)
   return 0;
 }
 
+clib_error_t *
+vnet_interface_set_rss_hash_key (vlib_main_t *vm, vnet_hw_interface_t *hi,
+				 u8 *key)
+{
+  clib_error_t *error = 0;
+  u8 *old_key = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hi->dev_class_index);
+
+  if (dev_class->set_rss_hash_key_function)
+    error = dev_class->set_rss_hash_key_function (vm, hi, key);
+  else
+    error = clib_error_return (
+      0, "setting rss hash key is not supported on this interface");
+
+  if (!error)
+    {
+      old_key = hi->rss_hash_key;
+      hi->rss_hash_key =
+	format (0, "%U", format_hex_bytes_no_wrap, key, vec_len (key));
+      vec_free (old_key);
+    }
+  else
+    {
+      vlib_cli_output (vm, "hw_set_rss_hash_key: %U", format_clib_error,
+		       error);
+    }
+
+  return error;
+}
+
 int
 vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 				u8 is_specified, u32 user_instance)

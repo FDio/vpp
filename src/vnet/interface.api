@@ -417,6 +417,44 @@ define sw_interface_get_mac_address_reply
   vl_api_mac_address_t mac_address;
 };
 
+/** \brief Set an interface's RSS hash key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose rss hash key will be set
+    @param rss_hash_key - the new rss hash key
+*/
+autoreply define sw_interface_set_rss_hash_key
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  string rss_hash_key[];
+};
+
+/** \brief Get interface's RSS hash key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose rss hash key will be returned
+*/
+define sw_interface_get_rss_hash_key
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Reply for get interface's RSS hash key
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param rss_hash_key - returned interface's RSS hash key
+*/
+define sw_interface_get_rss_hash_key_reply
+{
+  u32 context;
+  i32 retval;
+  string rss_hash_key[];
+};
+
 /** \brief Set an interface's rx-mode
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
