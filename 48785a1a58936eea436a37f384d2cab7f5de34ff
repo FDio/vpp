@@ -115,6 +115,24 @@
       "message": "Please avoid formatting changes....",
       "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "519118d3_3397e8e9",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-22T14:37:48Z",
+      "side": 1,
+      "message": "Based in default clang-format-11 in checkstyle.sh,  we need to put clang-format protection around all the #define modification.",
+      "parentUuid": "ef704aef_cf01a4f0",
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
