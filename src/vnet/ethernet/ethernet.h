@@ -474,6 +474,10 @@ int vnet_create_sub_interface (u32 sw_if_index, u32 id,
 			       u16 outer_vlan_id, u32 * sub_sw_if_index);
 int vnet_delete_sub_interface (u32 sw_if_index);
 
+clib_error_t *vnet_interface_set_rss_hash_key (vlib_main_t *vm,
+					       vnet_hw_interface_t *hi,
+					       u8 *key);
+
 // Perform ethernet subinterface classification table lookups given
 // the ports's sw_if_index and fields extracted from the ethernet header.
 // The resulting tables are used by identify_subint().

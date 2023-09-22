@@ -68,6 +68,8 @@ vpe_api_main_t vpe_api_main;
   _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                \
   _ (SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                      \
   _ (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)                      \
+  _ (SW_INTERFACE_SET_RSS_HASH_KEY, sw_interface_set_rss_hash_key)            \
+  _ (SW_INTERFACE_GET_RSS_HASH_KEY, sw_interface_get_rss_hash_key)            \
   _ (SW_INTERFACE_ADD_DEL_MAC_ADDRESS, sw_interface_add_del_mac_address)      \
   _ (SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)              \
   _ (SW_INTERFACE_GET_MAC_ADDRESS, sw_interface_get_mac_address)              \
@@ -929,6 +931,77 @@ static void vl_api_sw_interface_tag_add_del_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_TAG_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_rss_hash_key_t_handler (
+  vl_api_sw_interface_set_rss_hash_key_t *mp)
+{
+  vl_api_sw_interface_set_rss_hash_key_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_hw_interface_t *hi = NULL;
+  clib_error_t *error;
+  unformat_input_t rss_hash_key_input;
+  u8 *rss_hash_key;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  unformat_init_cstring (&rss_hash_key_input, (char *) mp->rss_hash_key.buf);
+  if (!unformat_user (&rss_hash_key_input, unformat_hex_string, &rss_hash_key))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  error = vnet_interface_set_rss_hash_key (vm, hi, rss_hash_key);
+  if (error)
+    {
+      rv = VNET_API_ERROR_UNSUPPORTED;
+      clib_error_report (error);
+      goto out;
+    }
+  unformat_free (&rss_hash_key_input);
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_RSS_HASH_KEY_REPLY);
+}
+
+static void
+vl_api_sw_interface_get_rss_hash_key_t_handler (
+  vl_api_sw_interface_get_rss_hash_key_t *mp)
+{
+  vl_api_sw_interface_get_rss_hash_key_reply_t *rmp;
+  vl_api_registration_t *reg;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_hw_interface_t *hi = NULL;
+  int rmp_length = sizeof (*rmp), rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+  if (hi && hi->rss_hash_key)
+    rmp_length += vec_len (hi->rss_hash_key);
+  rmp = vl_msg_api_alloc (rmp_length);
+  rmp->_vl_msg_id =
+    htons (REPLY_MSG_ID_BASE + VL_API_SW_INTERFACE_GET_RSS_HASH_KEY_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = htonl (rv);
+  if (hi && hi->rss_hash_key)
+    vl_api_c_string_to_api_string ((const char *) hi->rss_hash_key,
+				   &(rmp->rss_hash_key));
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void vl_api_sw_interface_add_del_mac_address_t_handler
