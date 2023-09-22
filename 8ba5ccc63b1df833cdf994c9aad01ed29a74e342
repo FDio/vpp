@@ -16,6 +16,24 @@
       "message": "Hi Nikita,\nThanks for the quick update. \n\nCan you please respond/resolve all of the comments (especially the ones about copyright) so this change can be merged?",
       "revId": "8ba5ccc63b1df833cdf994c9aad01ed29a74e342",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18388dbd_b5fa30e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3010
+      },
+      "writtenOn": "2023-09-22T10:10:50Z",
+      "side": 1,
+      "message": "Hi, all comments are resolved now",
+      "parentUuid": "2213c7f9_74ea5d96",
+      "revId": "8ba5ccc63b1df833cdf994c9aad01ed29a74e342",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
