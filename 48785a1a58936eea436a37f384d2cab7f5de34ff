@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c1fe7d75_5839e545",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-22T07:53:40Z",
+      "side": 1,
+      "message": "Removed",
+      "parentUuid": "e478afe1_24f6cb20",
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "66e90150_5dcbaa21",
@@ -48,6 +66,30 @@
       "writtenOn": "2023-09-20T14:05:43Z",
       "side": 1,
       "message": "please remove IMB_AUTH_HMAC_ prefix, and concat in _() macro bellow",
+      "range": {
+        "startLine": 71,
+        "startChar": 13,
+        "endLine": 71,
+        "endChar": 34
+      },
+      "revId": "48785a1a58936eea436a37f384d2cab7f5de34ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "555a5d7b_3e870862",
+        "filename": "src/plugins/crypto_ipsecmb/ipsecmb.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2023-09-22T07:53:40Z",
+      "side": 1,
+      "message": "Removed and concated IMB_AUTH_HMAC_ prefix",
+      "parentUuid": "66e90150_5dcbaa21",
       "range": {
         "startLine": 71,
         "startChar": 13,
