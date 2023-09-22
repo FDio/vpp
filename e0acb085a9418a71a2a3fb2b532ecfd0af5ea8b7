@@ -121,6 +121,24 @@
       "parentUuid": "5f6eee1c_b3de9a53",
       "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3cbba77_881ba680",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-09-22T09:30:33Z",
+      "side": 1,
+      "message": "I see you point of view, I created a new patch on the Gerrit: https://gerrit.fd.io/r/c/vpp/+/39549 \nCould you review?",
+      "parentUuid": "5fccce07_09d1f589",
+      "revId": "e0acb085a9418a71a2a3fb2b532ecfd0af5ea8b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
