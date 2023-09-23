@@ -938,15 +938,18 @@ tls_cleanup_ho (u32 ho_index)
 int
 tls_custom_tx_callback (void *session, transport_send_params_t * sp)
 {
-  session_t *app_session = (session_t *) session;
+  session_t *as = (session_t *) session;
   tls_ctx_t *ctx;
 
-  if (PREDICT_FALSE (app_session->session_state
-		     >= SESSION_STATE_TRANSPORT_CLOSED))
-    return 0;
+  if (PREDICT_FALSE (as->session_state >= SESSION_STATE_TRANSPORT_CLOSED ||
+		     as->session_state <= SESSION_STATE_ACCEPTING))
+    {
+      sp->flags |= TRANSPORT_SND_F_DESCHED;
+      return 0;
+    }
 
-  ctx = tls_ctx_get (app_session->connection_index);
-  return tls_ctx_write (ctx, app_session, sp);
+  ctx = tls_ctx_get (as->connection_index);
+  return tls_ctx_write (ctx, as, sp);
 }
 
 u8 *
