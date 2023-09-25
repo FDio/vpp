@@ -26,7 +26,7 @@ then
 	DOCKER_CONTAINER_NAME="$2"
 
 	echo "### Creating container $DOCKER_CONTAINER_NAME"
-	docker run -itd --name="$DOCKER_CONTAINER_NAME" --privileged --cap-add=ALL -p 8022:22 -v /mnt/huge:/mnt/huge -v /sys/bus/pci/devices:/sys/bus/pci/devices -v /sys/devices/system/node:/sys/devices/system/node -v /lib/modules:/lib/modules -v /dev:/dev --tmpfs /tmp --tmpfs /run --tmpfs /run/lock -v /sys/fs/cgroup:/sys/fs/cgroup:ro "$DOCKER_IMAGE_NAME_FULL"
+	docker run -itd --name="$DOCKER_CONTAINER_NAME" --privileged --cap-add=ALL -p 8022:22 -v /mnt/huge:/mnt/huge -v /sys/bus/pci/devices:/sys/bus/pci/devices -v /sys/devices/system/node:/sys/devices/system/node -v /lib/modules:/lib/modules -v /dev:/dev --tmpfs /tmp --tmpfs /run --tmpfs /run/lock --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw "$DOCKER_IMAGE_NAME_FULL"
         if [ $? -eq 0 ];
 	then
             docker exec -i "$DOCKER_CONTAINER_NAME" "/root/init_docker1.sh" || { echo "call init_docker1.sh failed"; exit 127; }
@@ -42,7 +42,7 @@ then
 	DOCKER_CONTAINER_NAME="$2"
 
 	echo "### Creating container $DOCKER_CONTAINER_NAME"
-	docker run -itd --name="$DOCKER_CONTAINER_NAME" --privileged --cap-add=ALL -p 8023:22 -v /mnt/huge:/mnt/huge -v /sys/bus/pci/devices:/sys/bus/pci/devices -v /sys/devices/system/node:/sys/devices/system/node -v /lib/modules:/lib/modules -v /dev:/dev --tmpfs /tmp --tmpfs /run --tmpfs /run/lock -v /sys/fs/cgroup:/sys/fs/cgroup:ro "$DOCKER_IMAGE_NAME_FULL"
+	docker run -itd --name="$DOCKER_CONTAINER_NAME" --privileged --cap-add=ALL -p 8023:22 -v /mnt/huge:/mnt/huge -v /sys/bus/pci/devices:/sys/bus/pci/devices -v /sys/devices/system/node:/sys/devices/system/node -v /lib/modules:/lib/modules -v /dev:/dev --tmpfs /tmp --tmpfs /run --tmpfs /run/lock --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw "$DOCKER_IMAGE_NAME_FULL"
         if [ $? -eq 0 ];
 	then
             docker exec -i "$DOCKER_CONTAINER_NAME" "/root/init_docker2.sh" || { echo "call init_docker2.sh failed"; exit 127; }
