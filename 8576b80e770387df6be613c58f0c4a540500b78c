@@ -34,6 +34,24 @@
       "parentUuid": "54b04b2c_e1e02642",
       "revId": "8576b80e770387df6be613c58f0c4a540500b78c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce2d29ca_61378fd1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2252
+      },
+      "writtenOn": "2023-09-25T20:30:30Z",
+      "side": 1,
+      "message": "Reformatted the patch a little to pass the coding style checks.",
+      "parentUuid": "1e1733e4_8bd94e22",
+      "revId": "8576b80e770387df6be613c58f0c4a540500b78c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
