@@ -673,6 +673,21 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       {
         continue;
       }
+    /* Mellanox BF, BFVF */
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0xa2d2 && d->device_id <= 0Xa2d3)
+      {
+        continue;
+      }
+    /* Mellanox BF2 */
+    else if (d->vendor_id == 0x15b3 && d->device_id == 0xa2d6)
+      {
+        continue;
+      }
+    /* Mellanox BF3 */
+    else if (d->vendor_id == 0x15b3 && d->device_id == 0xa2dc)
+      {
+        continue;
+      }
     /* Broadcom NetXtreme S, and E series only */
     else if (d->vendor_id == 0x14e4 &&
 	((d->device_id >= 0x16c0 &&
