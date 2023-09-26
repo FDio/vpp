@@ -298,6 +298,24 @@
       "message": "This is the place where deq_tail is updated. If you think it is unclear I can remove deq variable.",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f69c6ce_1ea34867",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-26T11:14:50Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "12200939_fa805f77",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

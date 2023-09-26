@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8cca0462_96f4c238",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-26T11:14:50Z",
+      "side": 1,
+      "message": "Some nit - please share your functional test results after next push.",
+      "revId": "8016661c95e952713714c7d4370f84b9f9a8174c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e4249d2_787ffa49",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-26T11:14:50Z",
+      "side": 1,
+      "message": "Looks redundant to 544.",
+      "revId": "8016661c95e952713714c7d4370f84b9f9a8174c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
