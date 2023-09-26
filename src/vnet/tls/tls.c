@@ -486,6 +486,9 @@ tls_session_accept_callback (session_t * tls_session)
    * on tls_session rx and potentially invalidating the session pool */
   app_session = session_alloc (ctx->c_thread_index);
   app_session->session_state = SESSION_STATE_CREATED;
+  app_session->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
+  app_session->connection_index = ctx->tls_ctx_handle;
   ctx->c_s_index = app_session->session_index;
 
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
