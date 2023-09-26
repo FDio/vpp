@@ -84,7 +84,8 @@ fib_entry_src_interface_update_glean (fib_entry_t *cover,
              * interface.
              * Ensure we are updating with a host in the connected's subnet
              */
-            if (fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx,
+            if ((fib_entry_get_flags_i(local) & FIB_ENTRY_FLAG_LOCAL) &&
+		fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx,
                                     &local->fe_prefix))
             {
                 adj->sub_type.glean.rx_pfx.fp_addr = local->fe_prefix.fp_addr;
