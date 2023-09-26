@@ -135,6 +135,12 @@ string(REPLACE ";" " " BUILD_TYPES_STR "${BUILD_TYPES}")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
 	     HELPSTRING "Build type - valid options are: ${BUILD_TYPES_STR}")
 
+set(VPP_EXCLUDED_PLUGINS
+  ""
+  CACHE
+  STRING "List of core plugins excluded from packaging and tests"
+)
+
 ##############################################################################
 # link time optimizations
 ##############################################################################
