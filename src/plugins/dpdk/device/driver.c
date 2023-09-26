@@ -91,7 +91,7 @@ static dpdk_driver_t dpdk_drivers[] = {
     .interface_name_prefix = "VhostEthernet",
   },
   {
-    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4 Family" },
+    .drivers = DPDK_DRIVERS ({ "mlx5_pci", "Mellanox ConnectX-4/5/6 Family" },
 			     { "net_enic", "Cisco VIC" }),
     .use_intel_phdr_cksum = 1,
   },
