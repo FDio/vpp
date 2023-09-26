@@ -34,6 +34,24 @@
       "parentUuid": "2f8d3185_db8b9599",
       "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c5649b8_7bea7cc4",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-09-26T15:24:08Z",
+      "side": 1,
+      "message": "not just added, but changed from continue (skip vlib_pci_bind_to_uio()) to pass and call it.",
+      "parentUuid": "473521a9_b2adac87",
+      "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
