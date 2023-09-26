@@ -52,6 +52,7 @@ class QUICAppWorker(Worker):
         return False
 
 
+@unittest.skipIf("quic" in config.excluded_plugins, "Exclude QUIC plugin tests")
 class QUICTestCase(VppTestCase):
     """QUIC Test Case"""
 
