@@ -29,6 +29,7 @@ from socket import inet_pton, AF_INET, AF_INET6
 from random import choice, shuffle
 from pprint import pprint
 from ipaddress import ip_network
+from config import config
 
 import scapy.compat
 from scapy.packet import Raw
@@ -45,6 +46,7 @@ import time
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 
 
+@unittest.skipIf("acl" in config.excluded_plugins, "Exclude ACL plugin tests")
 class TestACLpluginL2L3(VppTestCase):
     """TestACLpluginL2L3 Test Case"""
 

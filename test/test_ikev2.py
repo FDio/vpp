@@ -580,6 +580,7 @@ class IKEv2SA(object):
         return digest.finalize()
 
 
+@unittest.skipIf("ikev2" in config.excluded_plugins, "Exclude IKEv2 plugin tests")
 class IkePeer(VppTestCase):
     """common class for initiator and responder"""
 
@@ -1667,6 +1668,7 @@ class Ikev2Params(object):
             )
 
 
+@unittest.skipIf("ikev2" in config.excluded_plugins, "Exclude IKEv2 plugin tests")
 class TestApi(VppTestCase):
     """Test IKEV2 API"""
 
