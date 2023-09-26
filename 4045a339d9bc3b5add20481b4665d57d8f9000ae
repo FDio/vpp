@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "31f7b5b3_2dc0d98d",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 927,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-26T08:46:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "78e76ca8_f558e2d5",
+      "range": {
+        "startLine": 926,
+        "startChar": 9,
+        "endLine": 927,
+        "endChar": 17
+      },
+      "revId": "4045a339d9bc3b5add20481b4665d57d8f9000ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "13cb36d6_93ddc7cc",
@@ -64,6 +88,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6181764_eafe32ce",
+        "filename": "test/test_udp.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-26T08:46:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "13cb36d6_93ddc7cc",
+      "range": {
+        "startLine": 756,
+        "startChar": 28,
+        "endLine": 756,
+        "endChar": 37
+      },
+      "revId": "4045a339d9bc3b5add20481b4665d57d8f9000ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b31e200f_07334d75",
@@ -77,6 +125,30 @@
       "writtenOn": "2023-09-25T15:52:27Z",
       "side": 1,
       "message": "Off by default. Let\u0027s add something like `echo-bytes` to client config and have it exchanged over control channel, i.e., server will just inherit that as opposed to having cli to configure it.",
+      "range": {
+        "startLine": 757,
+        "startChar": 29,
+        "endLine": 757,
+        "endChar": 38
+      },
+      "revId": "4045a339d9bc3b5add20481b4665d57d8f9000ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "97eece7b_cc83930f",
+        "filename": "test/test_udp.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 757,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-09-26T08:46:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b31e200f_07334d75",
       "range": {
         "startLine": 757,
         "startChar": 29,
