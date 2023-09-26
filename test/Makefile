@@ -254,9 +254,17 @@ ifneq ($(EXTERN_APIDIR),)
 ARG17=--extern-apidir=$(EXTERN_APIDIR)
 endif
 
+EXC_PLUGINS_ARG=
+ifneq ($(VPP_EXCLUDED_PLUGINS),)
+# convert the comma-separated list into N invocations of the argument to exclude a plugin
+EXC_PLUGINS_ARG=$(shell echo "${VPP_EXCLUDED_PLUGINS}" | sed 's/\([^,]*\)/--excluded-plugin=\1/g; s/,/ /g')
+endif
+
+
+
 EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17)
 
-RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
+RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
 
 define retest-func

@@ -6,6 +6,7 @@ import base64
 import os
 
 from hashlib import blake2s
+from config import config
 from scapy.packet import Packet
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -509,6 +510,9 @@ def is_handshake_init(p):
     return wg_p[Wireguard].message_type == 1
 
 
+@unittest.skipIf(
+    "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
+)
 class TestWg(VppTestCase):
     """Wireguard Test Case"""
 
@@ -2848,6 +2852,9 @@ class WireguardHandoffTests(TestWg):
         """Multi-tunnel on the same port"""
 
 
+@unittest.skipIf(
+    "wireguard" in config.excluded_plugins, "Exclude Wireguard plugin tests"
+)
 class TestWgFIB(VppTestCase):
     """Wireguard FIB Test Case"""
 

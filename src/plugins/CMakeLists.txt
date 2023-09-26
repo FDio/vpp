@@ -23,7 +23,27 @@ FILE(GLOB files RELATIVE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
 )
+
+set(VPP_EXCLUDED_PLUGINS
+  ""
+  CACHE
+  STRING "Comma-separated list of core plugins excluded from packaging and tests"
+)
+
+# create the list of the plugins that we need to exclude from packaging
+SET(excluded_plugins "")
+STRING(REGEX REPLACE "[,]+" ";" exc_plugins "${VPP_EXCLUDED_PLUGINS}")
+foreach (e ${exc_plugins})
+  message(WARNING "Excluding plugin due to VPP_EXCLUDED_PLUGINS: '${e}'")
+  list(APPEND excluded_plugins ${e})
+endforeach()
+
 foreach (f ${files})
   get_filename_component(dir ${f} DIRECTORY)
-  add_subdirectory(${dir})
+
+  # if a plugin is in the list of excluded plugin, do not add that subdirectory
+  LIST(FIND excluded_plugins "${dir}" exc_index)
+  if(${exc_index} EQUAL "-1")
+    add_subdirectory(${dir})
+  endif()
 endforeach()

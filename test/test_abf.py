@@ -3,6 +3,8 @@
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
+from config import config
+
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import (
@@ -119,6 +121,11 @@ class VppAbfAttach(VppObject):
         return "abf-attach-%d-%d" % (self.policy_id, self.sw_if_index)
 
 
+@unittest.skipIf(
+    "acl" in config.excluded_plugins,
+    "Exclude ABF plugin tests due to absence of ACL plugin",
+)
+@unittest.skipIf("abf" in config.excluded_plugins, "Exclude ABF plugin tests")
 class TestAbf(VppTestCase):
     """ABF Test Case"""
 

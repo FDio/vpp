@@ -387,6 +387,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--excluded-plugin",
+    dest="excluded_plugins",
+    required=False,
+    action="append",
+    default=[],
+    help="Exclude the tests that indicate they require this plugin(s)",
+)
+
+parser.add_argument(
     "-d",
     "--socket-dir",
     dest="socket_dir",
