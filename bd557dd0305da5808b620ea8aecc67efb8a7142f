@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72c9eb39_6cab86d6",
+        "filename": "src/vnet/udp/udp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-09-26T02:46:20Z",
+      "side": 1,
+      "message": "how can it be invalid here, since the input is a pool_foreach.",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d3f2e8f_9ff678cd",
+        "filename": "src/vnet/udp/udp_encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-09-26T02:46:20Z",
+      "side": 1,
+      "message": "```\nreturn format(s, \"invalid udp-ecnap-id:%d\", uei);\n```",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e443b3f8_a4354afc",
+        "filename": "test/test_udp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-09-26T02:46:20Z",
+      "side": 1,
+      "message": "encap5",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
