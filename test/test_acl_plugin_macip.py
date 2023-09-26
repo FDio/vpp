@@ -11,6 +11,7 @@ from struct import pack, unpack
 import re
 import unittest
 from ipaddress import ip_network, IPv4Network, IPv6Network
+from config import config
 
 import scapy.compat
 from scapy.packet import Raw
@@ -39,6 +40,7 @@ from vpp_acl import (
 from vpp_papi import MACAddress
 
 
+@unittest.skipIf("acl" in config.excluded_plugins, "Exclude ACL plugin tests")
 class MethodHolder(VppTestCase):
     DEBUG = False
 
