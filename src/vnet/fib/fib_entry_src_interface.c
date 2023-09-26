@@ -87,8 +87,16 @@ fib_entry_src_interface_update_glean (fib_entry_t *cover,
             if (fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx,
                                     &local->fe_prefix))
             {
-                adj->sub_type.glean.rx_pfx.fp_addr = local->fe_prefix.fp_addr;
-                return (1);
+		fib_entry_src_t *local_src;
+
+		local_src = fib_entry_src_find (local, FIB_SOURCE_INTERFACE);
+		if (local_src != NULL)
+		  {
+		    adj->sub_type.glean.rx_pfx.fp_addr =
+		      local->fe_prefix.fp_addr;
+		    local_src->fes_flags |= FIB_ENTRY_SRC_FLAG_PROVIDES_GLEAN;
+		    return (1);
+		  }
             }
         }
     }
@@ -116,6 +124,52 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
     src->fes_pl = fib_path_list_create(pl_flags, paths);
 }
 
+typedef struct fesi_find_glean_ctx_t_ {
+  fib_node_index_t glean_node_index;
+} fesi_find_glean_ctx_t;
+
+static walk_rc_t
+fib_entry_src_interface_find_glean_walk (fib_entry_t *cover,
+					 fib_node_index_t covered,
+					 void *ctx)
+{
+  fesi_find_glean_ctx_t *find_glean_ctx = ctx;
+  fib_entry_t *covered_entry;
+  fib_entry_src_t *covered_src;
+
+  covered_entry = fib_entry_get (covered);
+  covered_src = fib_entry_src_find (covered_entry, FIB_SOURCE_INTERFACE);
+  if ((covered_src != NULL) &&
+      (covered_src->fes_flags & FIB_ENTRY_SRC_FLAG_PROVIDES_GLEAN))
+    {
+      find_glean_ctx->glean_node_index = covered;
+      return WALK_STOP;
+    }
+
+  return WALK_CONTINUE;
+}
+
+static fib_entry_t *
+fib_entry_src_interface_find_glean (fib_entry_t *cover)
+{
+  fib_entry_src_t *src;
+
+  src = fib_entry_src_find (cover, FIB_SOURCE_INTERFACE);
+  if (src == NULL)
+    /* the cover is not an interface source */
+    return NULL;
+
+  fesi_find_glean_ctx_t ctx = {
+    .glean_node_index = ~0,
+  };
+
+  fib_entry_cover_walk (cover, fib_entry_src_interface_find_glean_walk,
+			&ctx);
+
+  return (ctx.glean_node_index == ~0) ? NULL :
+					fib_entry_get (ctx.glean_node_index);
+}
+
 /*
  * Source activate. 
  * Called when the source is teh new longer best source on the entry
@@ -128,6 +182,8 @@ fib_entry_src_interface_activate (fib_entry_src_t *src,
 
     if (FIB_ENTRY_FLAG_LOCAL & src->fes_entry_flags)
     {
+	u8 update_glean;
+
 	/*
 	 * Track the covering attached/connected cover. This is so that
 	 * during an attached export of the cover, this local prefix is
@@ -141,10 +197,17 @@ fib_entry_src_interface_activate (fib_entry_src_t *src,
 
 	cover = fib_entry_get(src->u.interface.fesi_cover);
 
+	/*
+	 * Before adding as a child of the cover, check whether an existing
+	 * child has already been used to populate the glean adjacency. If so,
+	 * we don't need to update the adjacency.
+	 */
+	update_glean = (fib_entry_src_interface_find_glean (cover) == NULL);
 	src->u.interface.fesi_sibling =
 	    fib_entry_cover_track(cover, fib_entry_get_index(fib_entry));
 
-        fib_entry_src_interface_update_glean(cover, fib_entry);
+	if (update_glean)
+	  fib_entry_src_interface_update_glean(cover, fib_entry);
     }
 
     return (!0);
@@ -167,15 +230,19 @@ fib_entry_src_interface_deactivate (fib_entry_src_t *src,
     if (FIB_NODE_INDEX_INVALID != src->u.interface.fesi_cover)
     {
 	cover = fib_entry_get(src->u.interface.fesi_cover);
-
 	fib_entry_cover_untrack(cover, src->u.interface.fesi_sibling);
 
 	src->u.interface.fesi_cover = FIB_NODE_INDEX_INVALID;
 	src->u.interface.fesi_sibling = ~0;
 
-        fib_entry_cover_walk(cover,
-                             fib_entry_src_interface_update_glean_walk,
-                             NULL);
+	/* If this was the glean address, find a new one */
+	if (src->fes_flags & FIB_ENTRY_SRC_FLAG_PROVIDES_GLEAN)
+	  {
+	    fib_entry_cover_walk(cover,
+				fib_entry_src_interface_update_glean_walk,
+				NULL);
+	    src->fes_flags &= ~FIB_ENTRY_SRC_FLAG_PROVIDES_GLEAN;
+	  }
     }
 }
 

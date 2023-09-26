@@ -154,9 +154,13 @@ typedef enum fib_entry_src_attribute_t_ {
      */
     FIB_ENTRY_SRC_ATTRIBUTE_INHERITED,
     /**
+     * the source is currently used as glean src address
+     */
+    FIB_ENTRY_SRC_ATTRIBUTE_PROVIDES_GLEAN,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_SRC_ATTRIBUTE_LAST = FIB_ENTRY_SRC_ATTRIBUTE_INHERITED,
+    FIB_ENTRY_SRC_ATTRIBUTE_LAST = FIB_ENTRY_SRC_ATTRIBUTE_PROVIDES_GLEAN,
 } fib_entry_src_attribute_t;
 
 
@@ -166,6 +170,7 @@ typedef enum fib_entry_src_attribute_t_ {
     [FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE] = "active", \
     [FIB_ENTRY_SRC_ATTRIBUTE_STALE] = "stale",      \
     [FIB_ENTRY_SRC_ATTRIBUTE_INHERITED] = "inherited", \
+    [FIB_ENTRY_SRC_ATTRIBUTE_PROVIDES_GLEAN] = "provides-glean", \
 }
 
 #define FOR_EACH_FIB_SRC_ATTRIBUTE(_item)      		\
@@ -180,6 +185,7 @@ typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
     FIB_ENTRY_SRC_FLAG_STALE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_STALE),
     FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
+    FIB_ENTRY_SRC_FLAG_PROVIDES_GLEAN = (1 << FIB_ENTRY_SRC_ATTRIBUTE_PROVIDES_GLEAN),
 } __attribute__ ((packed)) fib_entry_src_flag_t;
 
 extern u8 * format_fib_entry_src_flags(u8 *s, va_list *args);
