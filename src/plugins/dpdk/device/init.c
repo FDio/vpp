@@ -519,8 +519,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       /* rss queues should be configured after dpdk_device_setup() */
       if (devconf->rss_queues)
 	{
-	  if (vnet_hw_interface_set_rss_queues (vnet_get_main (), hi,
-						devconf->rss_queues))
+	  if (vnet_interface_set_rss_queues (vlib_get_main (), hi,
+					     devconf->rss_queues))
 	    dpdk_log_warn ("[%u] Failed to set rss queues", port_id);
 	}
 

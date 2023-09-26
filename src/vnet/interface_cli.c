@@ -2001,7 +2001,7 @@ set_interface_rss_queues (vlib_main_t * vm, u32 hw_if_index,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
 
-  return vnet_hw_interface_set_rss_queues (vnm, hi, bitmap);
+  return vnet_interface_set_rss_queues (vm, hi, bitmap);
 }
 
 static clib_error_t *

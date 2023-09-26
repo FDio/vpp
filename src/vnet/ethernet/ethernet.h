@@ -478,6 +478,11 @@ clib_error_t *vnet_interface_set_rss_hash_key (vlib_main_t *vm,
 					       vnet_hw_interface_t *hi,
 					       u8 *key);
 
+/* set interface rss queues */
+clib_error_t *vnet_interface_set_rss_queues (vlib_main_t *vm,
+					     vnet_hw_interface_t *hi,
+					     clib_bitmap_t *bitmap);
+
 // Perform ethernet subinterface classification table lookups given
 // the ports's sw_if_index and fields extracted from the ethernet header.
 // The resulting tables are used by identify_subint().
