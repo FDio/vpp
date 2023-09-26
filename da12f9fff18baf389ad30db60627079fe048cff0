@@ -16,6 +16,24 @@
       "message": "why cx6 is changed here to vlib_pci_bind_to_uio()?\nwe have it running with current code already with ofed driver\n`$ vppctl sh hard 1 | fgrep device\n    pci: device 15b3:101e subsystem 15b3:0083 address 0000:8b:00.00 numa 0`",
       "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "473521a9_b2adac87",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 2252
+      },
+      "writtenOn": "2023-09-26T12:46:12Z",
+      "side": 1,
+      "message": "added CX6LX, which is 0x101f",
+      "parentUuid": "2f8d3185_db8b9599",
+      "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
