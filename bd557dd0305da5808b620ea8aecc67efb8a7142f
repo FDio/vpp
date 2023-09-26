@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "05914a17_cf156ccf",
+        "filename": "src/vnet/udp/udp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-09-26T07:53:25Z",
+      "side": 1,
+      "message": "current input is pool_forech_index, in case of pool bitmap is invalidated in parallel there\u0027s a little chance for race condition with current index is just freed. under such scenario pool_foreach_index is able to safely continue to the next index, so worth to have uei check in send_udp_encap_details as well",
+      "parentUuid": "72c9eb39_6cab86d6",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8d3f2e8f_9ff678cd",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f698cd36_88b02a5f",
+        "filename": "src/vnet/udp/udp_encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-09-26T07:53:25Z",
+      "side": 1,
+      "message": "changed to following, to fit existing format:\nreturn format(s, \"udp-encap:[%d]: invalid\", uei);",
+      "parentUuid": "8d3f2e8f_9ff678cd",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e443b3f8_a4354afc",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-09-26T02:46:20Z",
       "side": 1,
       "message": "encap5",
+      "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b36befb7_900c48eb",
+        "filename": "test/test_udp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2023-09-26T07:53:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e443b3f8_a4354afc",
       "revId": "bd557dd0305da5808b620ea8aecc67efb8a7142f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
