@@ -126,6 +126,8 @@ def generate_vpp_interface_tests():
                 setattr(TestVPPInterfacesQemu, test_name, test_func)
 
 
+# Run the Qemu tests solo as an experiment (they fail on debian11)
+@tag_run_solo
 class TestVPPInterfacesQemu(VppTestCase):
     """Test VPP interfaces inside a QEMU VM for IPv4/v6.
 

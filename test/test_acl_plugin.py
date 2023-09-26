@@ -5,6 +5,7 @@
 import unittest
 import random
 
+from config import config
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -20,6 +21,7 @@ from vpp_acl import AclRule, VppAcl, VppAclInterface, VppEtypeWhitelist
 from vpp_ip import INVALID_INDEX
 
 
+@unittest.skipIf("acl" in config.excluded_plugins, "Exclude ACL plugin tests")
 @tag_fixme_vpp_workers
 class TestACLplugin(VppTestCase):
     """ACL plugin Test Case"""
