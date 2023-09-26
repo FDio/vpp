@@ -2126,27 +2126,30 @@ class ARPTestCase(VppTestCase):
 
         #
         # add a local address in the same subnet
-        #  the source addresses are equivalent. VPP happens to
-        #  choose the last one that was added
+        #  the source addresses are equivalent.
+        # VPP leaves the glean address being used for a prefix
+        # in place until that address is deleted.
+        #
         conn3 = VppIpInterfaceAddress(self, self.pg1, "10.0.1.2", 24).add_vpp_config()
 
-        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
-        for rx in rxs:
-            self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.2", "10.0.1.128")
-
-        #
-        # remove
-        #
-        conn3.remove_vpp_config()
         rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
         for rx in rxs:
             self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.1", "10.0.1.128")
 
         #
-        # add back, this time remove the first one
+        # remove first address, which is currently in use
+        # the second address should be used now
         #
-        conn3 = VppIpInterfaceAddress(self, self.pg1, "10.0.1.2", 24).add_vpp_config()
+        conn2.remove_vpp_config()
+        rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
+        for rx in rxs:
+            self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.2", "10.0.1.128")
 
+        #
+        # add first address back. Second address should continue
+        # being used.
+        #
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.1.1", 24).add_vpp_config()
         rxs = self.send_and_expect(self.pg0, [p2], self.pg1)
         for rx in rxs:
             self.verify_arp_req(rx, self.pg1.local_mac, "10.0.1.2", "10.0.1.128")
