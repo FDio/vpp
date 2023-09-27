@@ -16,6 +16,46 @@
       "message": "recheck",
       "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01ecd837_a95648fb",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-09-27T13:34:37Z",
+      "side": 1,
+      "message": "Makes more sense to be in src/plugins/CMakeLists.txt",
+      "range": {
+        "startLine": 138,
+        "startChar": 0,
+        "endLine": 138,
+        "endChar": 24
+      },
+      "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80d68ff3_2ea39087",
+        "filename": "src/plugins/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-09-27T13:34:37Z",
+      "side": 1,
+      "message": "should we be strict here and expect specific delimiter here, i.e. \",\"",
+      "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
