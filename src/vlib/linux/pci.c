@@ -107,6 +107,7 @@ typedef struct
   vlib_pci_dev_handle_t handle;
   vlib_pci_addr_t addr;
   u32 numa_node;
+  u8 uuid[16];
 
   /* Resource file descriptors. */
   linux_pci_region_t *regions;
@@ -1032,7 +1033,8 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
 
   p->type = LINUX_PCI_DEVICE_TYPE_VFIO;
 
-  if ((err = linux_vfio_group_get_device_fd (&p->addr, &p->fd, &is_noiommu)))
+  if ((err = linux_vfio_group_get_device_fd (&p->addr, p->uuid, &p->fd,
+					     &is_noiommu)))
     return err;
 
   if (is_noiommu == 0)
@@ -1316,9 +1318,10 @@ vlib_pci_supports_virtual_addr_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   return p->supports_va_dma != 0;
 }
 
-clib_error_t *
-vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
-		      pci_device_id_t ids[], vlib_pci_dev_handle_t * handle)
+static clib_error_t *
+vlib_pci_device_open_inline (vlib_main_t *vm, vlib_pci_addr_t *addr, u8 *uuid,
+			     pci_device_id_t ids[],
+			     vlib_pci_dev_handle_t *handle)
 {
   linux_pci_main_t *lpm = &linux_pci_main;
   vlib_pci_device_info_t *di;
@@ -1355,6 +1358,8 @@ vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
    */
   p->io_fd = -1;
 
+  clib_memcpy_fast (p->uuid, uuid, 16);
+
   log_debug (p, "open vid:0x%04x did:0x%04x driver:%s iommu_group:%d",
 	     di->vendor_id, di->device_id, di->driver_name, di->iommu_group);
 
@@ -1380,6 +1385,24 @@ error:
     }
 
   return err;
+}
+
+clib_error_t *
+vlib_pci_device_open (vlib_main_t *vm, vlib_pci_addr_t *addr,
+		      pci_device_id_t ids[], vlib_pci_dev_handle_t *handle)
+{
+  u8 uuid[16];
+
+  clib_memset (uuid, 0, 16);
+  return vlib_pci_device_open_inline (vm, addr, uuid, ids, handle);
+}
+
+clib_error_t *
+vlib_pci_device_open_with_uuid (vlib_main_t *vm, vlib_pci_addr_t *addr,
+				u8 *uuid, pci_device_id_t ids[],
+				vlib_pci_dev_handle_t *handle)
+{
+  return vlib_pci_device_open_inline (vm, addr, uuid, ids, handle);
 }
 
 void
