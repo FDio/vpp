@@ -43,6 +43,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6f413a68_2b0e9ba5",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-09-27T14:10:45Z",
+      "side": 1,
+      "message": "I put it here because it seems to be a space where a lot of other variables are defined, so I made extrapolation that all of them are :-) I will move it in the next iteration then.",
+      "parentUuid": "01ecd837_a95648fb",
+      "range": {
+        "startLine": 138,
+        "startChar": 0,
+        "endLine": 138,
+        "endChar": 24
+      },
+      "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "80d68ff3_2ea39087",
         "filename": "src/plugins/CMakeLists.txt",
         "patchSetId": 2
@@ -54,6 +78,24 @@
       "writtenOn": "2023-09-27T13:34:37Z",
       "side": 1,
       "message": "should we be strict here and expect specific delimiter here, i.e. \",\"",
+      "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dfe6a650_4aed87d3",
+        "filename": "src/plugins/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-09-27T14:10:45Z",
+      "side": 1,
+      "message": "My initial rationale was \"space-separated with some flexibility\" in a fashion similar to shell variables. The \",\" would need to also deal with the case of user using \", \", and is subjectively a bit harder to read - but I am happy to adapt if that is the convention ?",
+      "parentUuid": "80d68ff3_2ea39087",
       "revId": "7529433af03ea527fa91ea187506a52da30c7a0b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
