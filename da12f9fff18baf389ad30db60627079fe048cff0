@@ -70,6 +70,24 @@
       "parentUuid": "3c5649b8_7bea7cc4",
       "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a0e8e02_d2b2e382",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 2252
+      },
+      "writtenOn": "2023-09-27T17:47:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b01217ad_531e0c7d",
+      "revId": "da12f9fff18baf389ad30db60627079fe048cff0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
