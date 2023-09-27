@@ -73,7 +73,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += gcovr lcov chrpath autoconf libnuma-dev
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += libffi-dev python3-ply libunwind-dev
-DEB_DEPENDS += cmake ninja-build python3-jsonschema python3-yaml
+DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev python3-pip
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
@@ -139,6 +139,7 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
+RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
@@ -205,7 +206,7 @@ RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
 RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
-RPM_SUSE_DEVEL_DEPS += libopenssl-devel lsb-release
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel libuuid-devel lsb-release
 RPM_SUSE_DEVEL_DEPS += libpcap-devel llvm-devel
 RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel
 

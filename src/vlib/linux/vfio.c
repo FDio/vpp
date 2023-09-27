@@ -174,8 +174,8 @@ error:
 }
 
 clib_error_t *
-linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
-				int *is_noiommu)
+linux_vfio_group_get_device_fd (vlib_pci_addr_t *addr, uuid_t uuid_token,
+				int *fdp, int *is_noiommu)
 {
   clib_error_t *err = 0;
   linux_pci_vfio_iommu_group_t *g;
@@ -218,7 +218,16 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
 
   g = get_vfio_iommu_group (iommu_group);
 
-  s = format (s, "%U%c", format_vlib_pci_addr, addr, 0);
+  if (uuid_is_null (uuid_token))
+    s = format (s, "%U%c", format_vlib_pci_addr, addr, 0);
+  else
+    {
+      char str[UUID_STR_LEN];
+
+      uuid_unparse (uuid_token, str);
+      s = format (s, "%U vf_token=%s%c", format_vlib_pci_addr, addr, str, 0);
+    }
+
   if ((fd = ioctl (g->fd, VFIO_GROUP_GET_DEVICE_FD, (char *) s)) < 0)
     {
       err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_GET_DEVICE_FD) '%U'",

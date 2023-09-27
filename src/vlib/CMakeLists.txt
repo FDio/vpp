@@ -159,7 +159,7 @@ add_vpp_library(vlib
   API_FILES
   pci/pci_types.api
 
-  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS} ${EPOLL_LIB}
+  LINK_LIBRARIES vppinfra svm uuid ${CMAKE_DL_LIBS} ${EPOLL_LIB}
 
   DEPENDS api_headers
 )

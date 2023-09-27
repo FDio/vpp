@@ -40,6 +40,8 @@
 #ifndef included_vlib_pci_h
 #define included_vlib_pci_h
 
+#include <uuid/uuid.h>
+
 #include <vlib/vlib.h>
 #include <vlib/pci/pci_config.h>
 
@@ -222,9 +224,14 @@ _(u8, io);
 
 #undef _
 
-clib_error_t *vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
+clib_error_t *vlib_pci_device_open (vlib_main_t *vm, vlib_pci_addr_t *addr,
 				    pci_device_id_t ids[],
-				    vlib_pci_dev_handle_t * handle);
+				    vlib_pci_dev_handle_t *handle);
+clib_error_t *vlib_pci_device_open_with_uuid (vlib_main_t *vm,
+					      vlib_pci_addr_t *addr,
+					      uuid_t uuid_token,
+					      pci_device_id_t ids[],
+					      vlib_pci_dev_handle_t *handle);
 void vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 clib_error_t *vlib_pci_map_region (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				   u32 resource, void **result);
