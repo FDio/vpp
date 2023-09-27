@@ -553,6 +553,72 @@ format_uword_bitmap (u8 *s, va_list *args)
   return s;
 }
 
+__clib_export uword
+unformat_uuid (unformat_input_t *input, va_list *args)
+{
+  u8 *addr = va_arg (*args, u8 *);
+  uword ret = 0;
+  u8 *s = 0;
+
+  if (!unformat (input, "%U", unformat_token, "a-zA-Z0-9-", &s))
+    return 0;
+
+  if (vec_len (s) != 36)
+    goto fail;
+
+  if (s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-')
+    goto fail;
+
+  clib_memmove (s + 8, s + 9, 4);
+  clib_memmove (s + 12, s + 14, 4);
+  clib_memmove (s + 16, s + 19, 4);
+  clib_memmove (s + 20, s + 24, 12);
+
+  for (int i = 0; i < 32; i++)
+    if (s[i] >= '0' && s[i] <= '9')
+      s[i] -= '0';
+    else if (s[i] >= 'A' && s[i] <= 'F')
+      s[i] -= 'A' - 10;
+    else if (s[i] >= 'a' && s[i] <= 'f')
+      s[i] -= 'a' - 10;
+    else
+      goto fail;
+
+  for (int i = 0; i < 16; i++)
+    addr[i] = s[2 * i] * 16 + s[2 * i + 1];
+
+  ret = 1;
+
+fail:
+  vec_free (s);
+  return ret;
+}
+
+/* Convert bus address to standard UUID string */
+__clib_export u8 *
+format_uuid (u8 *s, va_list *va)
+{
+  u8 *addr = va_arg (*va, u8 *);
+  u8 *bytes = addr;
+
+  for (int i = 0; i < 4; i++)
+    s = format (s, "%02x", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02x", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02x", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 2; i++)
+    s = format (s, "%02x", bytes++[0]);
+  vec_add1 (s, '-');
+  for (int i = 0; i < 6; i++)
+    s = format (s, "%02x", bytes++[0]);
+
+  return s;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

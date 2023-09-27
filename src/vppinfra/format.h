@@ -346,6 +346,19 @@ u8 *format_hexdump_u64 (u8 *s, va_list *va);
 /* Format bitmap of array of uword numbers */
 u8 *format_uword_bitmap (u8 *s, va_list *va);
 
+/*
+ * Unparse u8[16] to UUID string like:
+ * "f2c086b2-ff2e-11e8-88de-7bad0a57de05"
+ */
+u8 *format_uuid (u8 *s, va_list *va);
+
+/*
+ * Parse UUID represented in standard form like:
+ * "f2c086b2-ff2e-11e8-88de-7bad0a57de05" and convert
+ * it to u8[16]
+ */
+unformat_function_t unformat_uuid;
+
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
 /* Setup input from Unix file. */

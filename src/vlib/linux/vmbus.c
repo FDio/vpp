@@ -120,41 +120,8 @@ uword
 unformat_vlib_vmbus_addr (unformat_input_t *input, va_list *args)
 {
   vlib_vmbus_addr_t *addr = va_arg (*args, vlib_vmbus_addr_t *);
-  uword ret = 0;
-  u8 *s = 0;
 
-  if (!unformat (input, "%U", unformat_token, "a-zA-Z0-9-", &s))
-    return 0;
-
-  if (vec_len (s) != 36)
-    goto fail;
-
-  if (s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-')
-    goto fail;
-
-  clib_memmove (s + 8, s + 9, 4);
-  clib_memmove (s + 12, s + 14, 4);
-  clib_memmove (s + 16, s + 19, 4);
-  clib_memmove (s + 20, s + 24, 12);
-
-  for (int i = 0; i < 32; i++)
-    if (s[i] >= '0' && s[i] <= '9')
-      s[i] -= '0';
-    else if (s[i] >= 'A' && s[i] <= 'F')
-      s[i] -= 'A' - 10;
-    else if (s[i] >= 'a' && s[i] <= 'f')
-      s[i] -= 'a' - 10;
-    else
-      goto fail;
-
-  for (int i = 0; i < 16; i++)
-    addr->guid[i] = s[2 * i] * 16 + s[2 * i + 1];
-
-  ret = 1;
-
-fail:
-  vec_free (s);
-  return ret;
+  return unformat (input, "%U", unformat_uuid, addr->guid);
 }
 
 /* Convert bus address to standard UUID string */
@@ -162,24 +129,8 @@ u8 *
 format_vlib_vmbus_addr (u8 *s, va_list *va)
 {
   vlib_vmbus_addr_t *addr = va_arg (*va, vlib_vmbus_addr_t *);
-  u8 *bytes = addr->guid;
 
-  for (int i = 0; i < 4; i++)
-    s = format (s, "%02x", bytes++[0]);
-  vec_add1 (s, '-');
-  for (int i = 0; i < 2; i++)
-    s = format (s, "%02x", bytes++[0]);
-  vec_add1 (s, '-');
-  for (int i = 0; i < 2; i++)
-    s = format (s, "%02x", bytes++[0]);
-  vec_add1 (s, '-');
-  for (int i = 0; i < 2; i++)
-    s = format (s, "%02x", bytes++[0]);
-  vec_add1 (s, '-');
-  for (int i = 0; i < 6; i++)
-    s = format (s, "%02x", bytes++[0]);
-
-  return s;
+  return format (s, "%U", format_uuid, addr->guid);
 }
 
 /* workaround for mlx bug, bring lower device up before unbind */

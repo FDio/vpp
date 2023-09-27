@@ -222,9 +222,13 @@ _(u8, io);
 
 #undef _
 
-clib_error_t *vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
+clib_error_t *vlib_pci_device_open (vlib_main_t *vm, vlib_pci_addr_t *addr,
 				    pci_device_id_t ids[],
-				    vlib_pci_dev_handle_t * handle);
+				    vlib_pci_dev_handle_t *handle);
+clib_error_t *vlib_pci_device_open_with_uuid (vlib_main_t *vm,
+					      vlib_pci_addr_t *addr, u8 *uuid,
+					      pci_device_id_t ids[],
+					      vlib_pci_dev_handle_t *handle);
 void vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 clib_error_t *vlib_pci_map_region (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				   u32 resource, void **result);
