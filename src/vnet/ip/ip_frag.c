@@ -134,7 +134,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
     }
   else
     {
-      ip_frag_id = (++running_fragment_id);
+      ip_frag_id = clib_atomic_add_fetch (&running_fragment_id, 1);
       ip_frag_offset = 0;
       more = 0;
     }
@@ -413,7 +413,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
     from_b->current_length - (l2unfragmentablesize + sizeof (ip6_header_t));
   u16 ptr = 0;
 
-  ip_frag_id = ++running_fragment_id;	// Fix
+  ip_frag_id = clib_atomic_add_fetch (&running_fragment_id, 1);
 
   /* Do the actual fragmentation */
   while (rem)
