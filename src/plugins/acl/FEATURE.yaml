@@ -20,7 +20,7 @@ description: |-
         while inbound ACL matches it), which simplifies the design
         and operation. For TCP handling, the session processing
         tracks "established" (seen both SYN segments and seen ACKs for them),
-        and "transient" (all the other TCP states) sessions.
+        and "transient" (all the other TCP states) sessions..
 
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
