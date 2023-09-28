@@ -16,6 +16,23 @@
       "message": "not sure why wireguard tests are failing ...",
       "revId": "ee92bd5e8dbec4c60c1faf4dd5d8c2bad8cd8029",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eba61285_bc0c1843",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-09-28T19:45:07Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ee92bd5e8dbec4c60c1faf4dd5d8c2bad8cd8029",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
