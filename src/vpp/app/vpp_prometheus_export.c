@@ -242,6 +242,9 @@ main (int argc, char **argv)
 {
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
+  u16 port = SERVER_PORT;
+  char *usage =
+    "%s: usage [socket-name <name>] [port <0 - 65535>] <patterns> ...\n";
   int rv;
 
   /* Allocating 256MB heap */
@@ -255,23 +258,22 @@ main (int argc, char **argv)
     {
       if (unformat (a, "socket-name %s", &stat_segment_name))
 	;
+      else if (unformat (a, "port %d", &port))
+	;
       else if (unformat (a, "%s", &pattern))
 	{
 	  vec_add1 (patterns, pattern);
 	}
       else
 	{
-	  fformat (stderr,
-		   "%s: usage [socket-name <name>] <patterns> ...\n",
-		   argv[0]);
+	  fformat (stderr, usage, argv[0]);
 	  exit (1);
 	}
     }
 
   if (vec_len (patterns) == 0)
     {
-      fformat (stderr,
-	       "%s: usage [socket-name <name>] <patterns> ...\n", argv[0]);
+      fformat (stderr, usage, argv[0]);
       exit (1);
     }
 
@@ -283,7 +285,7 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  int fd = start_listen (SERVER_PORT);
+  int fd = start_listen (port);
   if (fd < 0)
     {
       exit (1);
