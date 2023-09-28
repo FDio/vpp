@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "772b81a6_fd16988c",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "9d86273d_91c19c0f",
+      "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "623021f7_836867b5",
@@ -49,6 +67,24 @@
       "writtenOn": "2023-09-20T11:22:55Z",
       "side": 0,
       "message": "Again I don\u0027t see deq_tail is updated anywhere.",
+      "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7271e8ee_dc84bfef",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 0,
+      "message": "Ack",
+      "parentUuid": "623021f7_836867b5",
       "revId": "5b3e04c74f188dbe6c4edab57e555ee3a01fb8f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

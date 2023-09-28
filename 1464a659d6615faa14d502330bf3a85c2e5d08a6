@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1def681b_bea2a198",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 742,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3180771d_4e63243f",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ff2b0795_ffc6b61a",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b79ba338_f474c2cf",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 743,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ff2b0795_ffc6b61a",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2ca42bb2_a3ff7dc8",
@@ -48,6 +84,24 @@
       "writtenOn": "2023-09-21T08:32:22Z",
       "side": 1,
       "message": "Elements in current frame to be enqueued: %u, waiting to be enqueued: %u",
+      "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2291e495_3255411e",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 744,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2ca42bb2_a3ff7dc8",
       "revId": "1464a659d6615faa14d502330bf3a85c2e5d08a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

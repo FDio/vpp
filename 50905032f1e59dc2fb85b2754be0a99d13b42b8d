@@ -72,6 +72,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9917b03c_6f261269",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "72433a61_941faca1",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "95d36680_9ea352ce",
@@ -195,6 +213,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "98ff2bf9_97053926",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "57c0dec3_58363eb2",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cd6a915c_1e320f77",
@@ -248,6 +284,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eedaaeed_e3f0a2b8",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "448586a5_646bc1a2",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "21def400_ccd12980",
@@ -279,6 +333,24 @@
       "side": 1,
       "message": "Op data path follows this logic. See line 464 there.",
       "parentUuid": "21def400_ccd12980",
+      "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bad244d_e21fb68f",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_raw_data_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-28T15:07:58Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "9327b713_c50dd026",
       "revId": "50905032f1e59dc2fb85b2754be0a99d13b42b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
