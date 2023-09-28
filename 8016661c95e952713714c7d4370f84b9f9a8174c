@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "77e4af73_69851446",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-28T11:30:51Z",
+      "side": 1,
+      "message": "yes, I\u0027ll do that",
+      "parentUuid": "8cca0462_96f4c238",
+      "revId": "8016661c95e952713714c7d4370f84b9f9a8174c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7e4249d2_787ffa49",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-09-26T11:14:50Z",
       "side": 1,
       "message": "Looks redundant to 544.",
+      "revId": "8016661c95e952713714c7d4370f84b9f9a8174c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f44d4733_13dc65ad",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev_op_data_path.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-09-28T11:30:51Z",
+      "side": 1,
+      "message": "you\u0027re right, let me clean that",
+      "parentUuid": "7e4249d2_787ffa49",
       "revId": "8016661c95e952713714c7d4370f84b9f9a8174c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
