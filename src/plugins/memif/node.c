@@ -319,14 +319,14 @@ memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
 				memif_per_thread_data_t *ptd,
 				vlib_buffer_t **b, u16 *next, int is_ip)
 {
-  vlib_buffer_t bt;
+  vlib_buffer_template_t bt;
   u16 *dl = ptd->desc_len;
   /* process buffer metadata */
 
   u32 n_left = ptd->n_packets;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  bt = ptd->buffer_template;
 
   while (n_left >= 8)
     {
@@ -382,7 +382,8 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
 			 u32 *bi, u16 *next, int is_ip)
 {
   u16 buffer_size = vlib_buffer_get_default_data_size (vm);
-  vlib_buffer_t *b0, *b1, *b2, *b3, bt;
+  vlib_buffer_t *b0, *b1, *b2, *b3;
+  vlib_buffer_template_t bt;
   memif_packet_op_t *po;
   /* process buffer metadata */
 
@@ -390,7 +391,7 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
   po = ptd->packet_ops;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  bt = ptd->buffer_template;
 
   while (n_from >= 8)
     {
@@ -904,13 +905,13 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  next0 = next1 = next2 = next3 = next_index;
 		  /* redirect if feature path enabled */
 		  vnet_feature_start_device_input (mif->sw_if_index, &next0,
-						   b0);
+						   &b0->template);
 		  vnet_feature_start_device_input (mif->sw_if_index, &next1,
-						   b1);
+						   &b1->template);
 		  vnet_feature_start_device_input (mif->sw_if_index, &next2,
-						   b2);
+						   &b2->template);
 		  vnet_feature_start_device_input (mif->sw_if_index, &next3,
-						   b3);
+						   &b3->template);
 		}
 	    }
 
@@ -959,7 +960,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  next0 = next_index;
 		  /* redirect if feature path enabled */
 		  vnet_feature_start_device_input (mif->sw_if_index, &next0,
-						   b0);
+						   &b0->template);
 		}
 	    }
 

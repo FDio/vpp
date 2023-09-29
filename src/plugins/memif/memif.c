@@ -1038,10 +1038,9 @@ memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args)
 	{
 	  memif_per_thread_data_t *ptd =
 	    vec_elt_at_index (mm->per_thread_data, i);
-	  vlib_buffer_t *bt = &ptd->buffer_template;
+	  vlib_buffer_template_t *bt = &ptd->buffer_template;
 	  clib_memset (bt, 0, sizeof (vlib_buffer_t));
 	  bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	  bt->total_length_not_including_first_buffer = 0;
 	  vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  vec_validate_aligned (ptd->copy_ops, 0, CLIB_CACHE_LINE_BYTES);

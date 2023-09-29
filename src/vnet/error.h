@@ -159,7 +159,8 @@
   _ (BUG, -168, "Bug")                                                        \
   _ (FEATURE_ALREADY_DISABLED, -169, "Feature already disabled")              \
   _ (FEATURE_ALREADY_ENABLED, -170, "Feature already enabled")                \
-  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")
+  _ (INVALID_PREFIX_LENGTH, -171, "Invalid prefix length")                    \
+  _ (TIMEOUT, -172, "Timeout")
 
 typedef enum
 {

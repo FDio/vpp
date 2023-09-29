@@ -366,7 +366,8 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  next_index = VNET_DEVICE_INPUT_NEXT_DROP;
       }
 
-    vnet_feature_start_device_input (tm->sw_if_index, &next_index, b);
+    vnet_feature_start_device_input (tm->sw_if_index, &next_index,
+				     &b->template);
 
     vlib_set_next_frame_buffer (vm, node, next_index, bi);
 
