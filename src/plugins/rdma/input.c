@@ -55,11 +55,10 @@ ibv_set_recv_wr_and_sge (struct ibv_recv_wr *w, struct ibv_sge *s, u64 va,
 }
 
 static_always_inline u32
-rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
-					    rdma_device_t * rd,
-					    rdma_rxq_t * rxq,
-					    rdma_per_thread_data_t * ptd,
-					    vlib_buffer_t * bt,
+rdma_device_legacy_input_refill_additional (vlib_main_t *vm, rdma_device_t *rd,
+					    rdma_rxq_t *rxq,
+					    rdma_per_thread_data_t *ptd,
+					    vlib_buffer_template_t *bt,
 					    u32 first_slot, u32 n_alloc)
 {
   int i;
@@ -121,9 +120,9 @@ rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
 }
 
 static_always_inline void
-rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
-			  rdma_rxq_t * rxq, vlib_buffer_t * bt,
-			  const int is_mlx5dv, const int is_striding)
+rdma_device_input_refill (vlib_main_t *vm, rdma_device_t *rd, rdma_rxq_t *rxq,
+			  vlib_buffer_template_t *bt, const int is_mlx5dv,
+			  const int is_striding)
 {
   u32 n_alloc, n;
   u16 ring_space;
@@ -379,9 +378,9 @@ rdma_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
-			vlib_buffer_t ** b, struct ibv_wc *wc,
-			u32 n_left_from, vlib_buffer_t * bt)
+rdma_device_input_bufs (vlib_main_t *vm, const rdma_device_t *rd,
+			vlib_buffer_t **b, struct ibv_wc *wc, u32 n_left_from,
+			vlib_buffer_template_t *bt)
 {
   u32 n_rx_bytes = 0;
 
@@ -746,11 +745,10 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
 }
 
 static_always_inline u32
-rdma_device_mlx5dv_fast_input (vlib_main_t * vm, rdma_rxq_t * rxq,
-			       vlib_buffer_t ** bufs,
-			       u32 qs_mask, vlib_buffer_t * bt,
-			       u32 * to_next, u32 n_rx_segs, u32 * bc,
-			       u32 bc_mask)
+rdma_device_mlx5dv_fast_input (vlib_main_t *vm, rdma_rxq_t *rxq,
+			       vlib_buffer_t **bufs, u32 qs_mask,
+			       vlib_buffer_template_t *bt, u32 *to_next,
+			       u32 n_rx_segs, u32 *bc, u32 bc_mask)
 {
   vlib_buffer_t **b = bufs;
   u32 n_left = n_rx_segs;
@@ -845,12 +843,12 @@ wrap_around:
 }
 
 static_always_inline u32
-rdma_device_mlx5dv_striding_rq_input (vlib_main_t * vm,
-				      rdma_per_thread_data_t * ptd,
-				      rdma_rxq_t * rxq,
-				      vlib_buffer_t * bt, u32 * to_next,
+rdma_device_mlx5dv_striding_rq_input (vlib_main_t *vm,
+				      rdma_per_thread_data_t *ptd,
+				      rdma_rxq_t *rxq,
+				      vlib_buffer_template_t *bt, u32 *to_next,
 				      int n_rx_segs, int *n_rx_packets,
-				      u32 * bc, int slow_path_needed)
+				      u32 *bc, int slow_path_needed)
 {
   u32 mask = rxq->size - 1;
   u32 n_rx_bytes = 0;
@@ -954,7 +952,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   rdma_rxq_t *rxq = vec_elt_at_index (rd->rxqs, qid);
   struct ibv_wc wc[VLIB_FRAME_SIZE];
   u32 __clib_aligned (32) byte_cnts[VLIB_FRAME_SIZE];
-  vlib_buffer_t bt;
+  vlib_buffer_template_t bt;
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
   int n_rx_packets, skip_ip4_cksum = 0;
   u32 mask = rxq->size - 1;
@@ -967,7 +965,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     n_rx_packets = ibv_poll_cq (rxq->cq, VLIB_FRAME_SIZE, wc);
 
   /* init buffer template */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  bt = ptd->buffer_template;
   vnet_buffer (&bt)->sw_if_index[VLIB_RX] = rd->sw_if_index;
   bt.buffer_pool_index = rd->pool;
 
@@ -977,7 +975,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* update buffer template for input feature arcs if any */
   next_index = rd->per_interface_next_index;
   if (PREDICT_FALSE (vnet_device_input_have_features (rd->sw_if_index)))
-    vnet_feature_start_device_input_x1 (rd->sw_if_index, &next_index, &bt);
+    vnet_feature_start_device_input_template (rd->sw_if_index, &next_index,
+					      &bt);
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 

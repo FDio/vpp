@@ -128,10 +128,9 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
   avf_tail_write (rxq->qrx_tail, slot);
 }
 
-
 static_always_inline uword
-avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
-		    u64 qw1, avf_rx_tail_t * t)
+avf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_template_t *bt,
+		    vlib_buffer_t *b, u64 qw1, avf_rx_tail_t *t)
 {
   vlib_buffer_t *hb = b;
   u32 tlnifb = 0, i = 0;
@@ -193,14 +192,14 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      avf_per_thread_data_t * ptd, u32 n_left,
 		      int maybe_multiseg)
 {
-  vlib_buffer_t bt;
+  vlib_buffer_template_t bt;
   vlib_buffer_t **b = ptd->bufs;
   u64 *qw1 = ptd->qw1s;
   avf_rx_tail_t *tail = ptd->tails;
   uword n_rx_bytes = 0;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  bt = ptd->buffer_template;
 
   while (n_left >= 4)
     {
@@ -270,7 +269,7 @@ avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 n_tail_desc = 0;
   u64 or_qw1 = 0;
   u32 *bi, *to_next, n_left_to_next;
-  vlib_buffer_t *bt = &ptd->buffer_template;
+  vlib_buffer_template_t *bt = &ptd->buffer_template;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u16 next = rxq->next;
   u16 size = rxq->size;
@@ -296,7 +295,8 @@ avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     next_index = ad->per_interface_next_index;
 
   if (PREDICT_FALSE (vnet_device_input_have_features (ad->sw_if_index)))
-    vnet_feature_start_device_input_x1 (ad->sw_if_index, &next_index, bt);
+    vnet_feature_start_device_input_template (ad->sw_if_index, &next_index,
+					      bt);
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 

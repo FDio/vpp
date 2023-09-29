@@ -3,7 +3,6 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/devices/devices.h>
 #include <vnet/interface/tx_queue_funcs.h>
 #include <vlib/unix/unix.h>
 

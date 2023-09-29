@@ -255,7 +255,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 mask = vring->queue_size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = virtio_n_left_to_process (vring, packed);
-  vlib_buffer_t bt = {};
+  vlib_buffer_template_t bt = {};
 
   if (n_left == 0)
     return 0;
@@ -271,7 +271,8 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = vif->per_interface_next_index;
 
       /* only for l2, redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input_template (vif->sw_if_index, &next_index,
+						&bt);
     }
 
   while (n_left)
