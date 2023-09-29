@@ -131,6 +131,9 @@ typedef u32 clib_address_t;
 #define CLIB_U32_MAX __UINT32_MAX__
 #define CLIB_U64_MAX __UINT64_MAX__
 
+#define CLIB_F64_MAX __DBL_MAX__
+#define CLIB_F32_MAX __FLT_MAX__
+
 #if clib_address_bits == 64
 #define CLIB_WORD_MAX  CLIB_I64_MAX
 #define CLIB_UWORD_MAX CLIB_U64_MAX
@@ -195,6 +198,12 @@ typedef i32 i32u __attribute__ ((aligned (1), __may_alias__));
 typedef i64 i64u __attribute__ ((aligned (1), __may_alias__));
 typedef word wordu __attribute__ ((aligned (1), __may_alias__));
 typedef uword uwordu __attribute__ ((aligned (1), __may_alias__));
+
+#define foreach_int(__var, ...)                                               \
+  for (int __int_array[] = { __VA_ARGS__ }, *__int_ptr = __int_array,         \
+	   __var = *__int_ptr;                                                \
+       __int_ptr - ARRAY_LEN (__int_array) < __int_array;                     \
+       __var = *++__int_ptr)
 
 #endif /* included_clib_types_h */
 
