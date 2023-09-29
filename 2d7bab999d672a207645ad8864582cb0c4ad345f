@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "2d7bab999d672a207645ad8864582cb0c4ad345f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da376f51_402749d8",
+        "filename": "extras/strongswan/vpp_sswan/docker/init_containers.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-09-29T13:27:12Z",
+      "side": 1,
+      "message": "Can you help describe what was the problem and how the fix helped?",
+      "revId": "2d7bab999d672a207645ad8864582cb0c4ad345f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
