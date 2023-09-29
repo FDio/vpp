@@ -20,6 +20,7 @@ ForEachMacros:
   - 'vec_foreach_index_backwards'
   - 'vec_foreach_pointer'
   - 'vlib_foreach_rx_tx'
+  - 'foreach_int'
   - 'foreach_vlib_main'
   - 'foreach_set_bit_index'
   - 'foreach_vlib_frame_bitmap_set_bit_index'
