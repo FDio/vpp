@@ -336,7 +336,7 @@ u32x8_scatter_one (u32x8 r, int index, void *p)
 }
 
 #define u32x8_gather_u32(base, indices, scale)                                \
-  (u32x8) _mm256_i32gather_epi32 (base, (__m256i) indices, scale)
+  (u32x8) _mm256_i32gather_epi32 ((const int *) base, (__m256i) indices, scale)
 
 #ifdef __AVX512F__
 #define u32x8_scatter_u32(base, indices, v, scale)                            \
