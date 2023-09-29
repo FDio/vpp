@@ -196,6 +196,12 @@ typedef i64 i64u __attribute__ ((aligned (1), __may_alias__));
 typedef word wordu __attribute__ ((aligned (1), __may_alias__));
 typedef uword uwordu __attribute__ ((aligned (1), __may_alias__));
 
+#define foreach_int(__var, ...)                                               \
+  for (int __int_array[] = { __VA_ARGS__ }, *__int_ptr = __int_array,         \
+	   __var = *__int_ptr;                                                \
+       __int_ptr - ARRAY_LEN (__int_array) < __int_array;                     \
+       __var = *++__int_ptr)
+
 #endif /* included_clib_types_h */
 
 /*
