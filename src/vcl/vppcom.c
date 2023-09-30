@@ -2029,7 +2029,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
       VDBG (0, "session %u[0x%llx] is not open! state 0x%x (%s)",
 	    s->session_index, s->vpp_handle, s->session_state,
 	    vcl_session_state_str (s->session_state));
-      return vcl_session_closed_error (s);
+      rx_fifo = vcl_session_is_ct (s) ? s->ct_rx_fifo : s->rx_fifo;
+      if (svm_fifo_is_empty_cons (rx_fifo))
+	return vcl_session_closed_error (s);
     }
 
   if (PREDICT_FALSE (s->flags & VCL_SESSION_F_RD_SHUTDOWN))
