@@ -1109,7 +1109,7 @@ tls_enable (vlib_main_t * vm, u8 is_en)
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
   tls_main_t *tm = &tls_main;
-  u32 fifo_size = 128 << 12;
+  u32 fifo_size = 512 << 10;
 
   if (!is_en)
     {

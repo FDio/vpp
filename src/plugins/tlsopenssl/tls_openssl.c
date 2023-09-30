@@ -163,7 +163,7 @@ openssl_lctx_get (u32 lctx_index)
     return -1;
 
 static int
-openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
+openssl_read_from_ssl_into_fifo (svm_fifo_t *f, SSL *ssl, u32 max_len)
 {
   int read, rv, n_fs, i;
   const int n_segs = 2;
@@ -174,6 +174,7 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   if (!max_enq)
     return 0;
 
+  max_enq = clib_min (max_len, max_enq);
   n_fs = svm_fifo_provision_chunks (f, fs, n_segs, max_enq);
   if (n_fs < 0)
     return 0;
@@ -533,9 +534,10 @@ static inline int
 openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  const u32 max_len = 128 << 10;
   session_t *app_session;
-  int read;
   svm_fifo_t *f;
+  int read;
 
   if (PREDICT_FALSE (SSL_in_init (oc->ssl)))
     {
@@ -549,7 +551,7 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
 
-  read = openssl_read_from_ssl_into_fifo (f, oc->ssl);
+  read = openssl_read_from_ssl_into_fifo (f, oc->ssl, max_len);
 
   /* Unrecoverable protocol error. Reset connection */
   if (PREDICT_FALSE (read < 0))
