@@ -1063,6 +1063,7 @@ format_tls_half_open (u8 * s, va_list * args)
 {
   u32 ho_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
+  u32 __clib_unused verbose = va_arg (*args, u32);
   session_t *tcp_ho;
   tls_ctx_t *ho_ctx;
 
