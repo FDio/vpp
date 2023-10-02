@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "65543b68_78d30812",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-10-02T12:11:52Z",
+      "side": 1,
+      "message": "Looking at the perf job results [0] I see some test cases are inconclusive, but some show regressions up to 5%. Comparing perfmon statistics [1] to [2], I see the newer ipsecmb version has more L2 misses.\nInterestingly, the parent is also faster than crypto_native plugin.\n\nI think users of stable/2310 will prefer the better performance using the older ipsecmb version. The newer ipsecmb version is already merged in master so its performance can be optimized for next release.\n\n[0] https://jenkins.fd.io/view/vpp/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/66/console\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/66/csit_current/0/log.html.gz#s1-s1-s1-s1-s2-t4-k2-k13-k22-k10-k1-k1-k1-k12\n[2] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/66/csit_parent/0/log.html.gz#s1-s1-s1-s1-s2-t4-k2-k13-k22-k10-k1-k1-k1-k12",
+      "revId": "c80aa6b1a762cdb5f2410ba7b405edec5e82d1dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
