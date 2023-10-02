@@ -50,6 +50,24 @@
       "message": "Can you help describe what was the problem and how the fix helped?",
       "revId": "2d7bab999d672a207645ad8864582cb0c4ad345f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "658d838f_cdbcdfd0",
+        "filename": "extras/strongswan/vpp_sswan/docker/init_containers.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-10-02T08:02:20Z",
+      "side": 1,
+      "message": "I observed that on Ubuntu 22.04 is not possible to run two containers with previous settings and during starting container I got error. This patch helps to run also on Ubuntu 22.04 and 20.04 - I tested with the both version of Ubuntu. \n\nNewer version of Ubuntu supports only v2 of \"cgroupns\" - and due to this, the fix is necessary.",
+      "parentUuid": "da376f51_402749d8",
+      "revId": "2d7bab999d672a207645ad8864582cb0c4ad345f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
