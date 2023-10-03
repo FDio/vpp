@@ -35,6 +35,8 @@ typedef struct transport_main_
   local_endpoint_t *local_endpoints;
   u32 *lcl_endpts_freelist;
   u32 port_allocator_seed;
+  u16 port_allocator_min_src_port;
+  u16 port_allocator_max_src_port;
   u8 lcl_endpts_cleanup_pending;
   clib_spinlock_t local_endpoints_lock;
 } transport_main_t;
@@ -597,8 +599,9 @@ int
 transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 			    transport_endpoint_cfg_t *rmt)
 {
-  u16 min = 1024, max = 65535;	/* XXX configurable ? */
   transport_main_t *tm = &tp_main;
+  u16 min = tm->port_allocator_min_src_port;
+  u16 max = tm->port_allocator_max_src_port;
   int tries, limit;
 
   limit = max - min;
@@ -971,6 +974,8 @@ transport_init (void)
 
   /* Initialize [port-allocator] random number seed */
   tm->port_allocator_seed = (u32) clib_cpu_time_now ();
+  tm->port_allocator_min_src_port = smm->port_allocator_min_src_port;
+  tm->port_allocator_max_src_port = smm->port_allocator_max_src_port;
 
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoints table",
 			 smm->local_endpoints_table_buckets,
