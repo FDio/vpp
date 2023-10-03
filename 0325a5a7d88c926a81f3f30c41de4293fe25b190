@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd013b6f_0824b0af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-10-03T15:05:42Z",
+      "side": 1,
+      "message": "Just a small naming comment, otherwise things look neat !",
+      "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f15b49fb_8fbe250e",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-10-03T15:05:42Z",
+      "side": 1,
+      "message": "Maybe we should call it `flow_hash_config` instead, just so that it\u0027s more transparent",
+      "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "378f9fda_0aa7bad7",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2023-10-03T15:05:42Z",
+      "side": 1,
+      "message": "Same thing for variables `flow_hash_config_t hash_config \u003d 0`",
+      "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
