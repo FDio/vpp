@@ -2171,6 +2171,8 @@ session_main_init (vlib_main_t * vm)
   smm->use_private_rx_mqs = 0;
   smm->no_adaptive = 0;
   smm->last_transport_proto_type = TRANSPORT_PROTO_HTTP;
+  smm->port_allocator_min_src_port = 1024;
+  smm->port_allocator_max_src_port = 65535;
 
   return 0;
 }
@@ -2268,6 +2270,10 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "local-endpoints-table-buckets %d",
 			 &smm->local_endpoints_table_buckets))
 	;
+      else if (unformat (input, "min-src-port %d", &tmp))
+	smm->port_allocator_min_src_port = tmp;
+      else if (unformat (input, "max-src-port %d", &tmp))
+	smm->port_allocator_max_src_port = tmp;
       else if (unformat (input, "enable"))
 	smm->session_enable_asap = 1;
       else if (unformat (input, "use-app-socket-api"))

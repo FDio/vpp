@@ -267,6 +267,10 @@ typedef struct session_main_
   u32 local_endpoints_table_memory;
   u32 local_endpoints_table_buckets;
 
+  /** Transport source port allocation range */
+  u16 port_allocator_min_src_port;
+  u16 port_allocator_max_src_port;
+
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
 
