@@ -503,6 +503,36 @@ flowprobe_create_state_tables (u32 active_timer)
   return error;
 }
 
+static clib_error_t *
+flowprobe_clear_state_if_index (u32 sw_if_index)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  clib_error_t *error = 0;
+  u32 worker_i;
+  u32 entry_i;
+
+  if (fm->active_timer)
+    {
+      vec_foreach_index (worker_i, fm->pool_per_worker)
+	{
+	  pool_foreach_index (entry_i, fm->pool_per_worker[worker_i])
+	    {
+	      flowprobe_entry_t *e =
+		pool_elt_at_index (fm->pool_per_worker[worker_i], entry_i);
+	      if (e->key.rx_sw_if_index == sw_if_index ||
+		  e->key.tx_sw_if_index == sw_if_index)
+		{
+		  tw_timer_stop_2t_1w_2048sl (fm->timers_per_worker[worker_i],
+					      e->passive_timer_handle);
+		  flowprobe_delete_by_index (worker_i, entry_i);
+		}
+	    }
+	}
+    }
+
+  return error;
+}
+
 static int
 validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
 			       u8 which)
@@ -548,6 +578,10 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
     {
       if (which == FLOW_VARIANT_L2)
 	{
+	  if (!is_add)
+	    {
+	      flowprobe_flush_callback_l2 ();
+	    }
 	  if (fm->record & FLOW_RECORD_L2)
 	    {
 	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
@@ -581,15 +615,25 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 	    }
 	}
       else if (which == FLOW_VARIANT_IP4)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip4,
-					 flowprobe_template_rewrite_ip4,
-					 is_add, &template_id);
+	{
+	  if (!is_add)
+	    {
+	      flowprobe_flush_callback_ip4 ();
+	    }
+	  rv = flowprobe_template_add_del (
+	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip4,
+	    flowprobe_template_rewrite_ip4, is_add, &template_id);
+	}
       else if (which == FLOW_VARIANT_IP6)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip6,
-					 flowprobe_template_rewrite_ip6,
-					 is_add, &template_id);
+	{
+	  if (!is_add)
+	    {
+	      flowprobe_flush_callback_ip6 ();
+	    }
+	  rv = flowprobe_template_add_del (
+	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip6,
+	    flowprobe_template_rewrite_ip6, is_add, &template_id);
+	}
     }
   if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
     {
@@ -643,6 +687,11 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
       flowprobe_create_state_tables (fm->active_timer);
       if (fm->active_timer)
 	vlib_process_signal_event (vm, flowprobe_timer_node.index, 1, 0);
+    }
+
+  if (!is_add && fm->initialized)
+    {
+      flowprobe_clear_state_if_index (sw_if_index);
     }
 
   return 0;

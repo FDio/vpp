@@ -1225,6 +1225,44 @@ class DisableFP(MethodHolder):
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
 
+    def test_no_leftover_flows_after_disabling(self):
+        """disable flowprobe feature and expect no leftover flows"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # enable ip4 datapath for an interface
+        # set active and passive timers
+        ipfix = VppCFLOW(
+            test=self,
+            active=3,
+            passive=4,
+            intf="pg3",
+            layer="l3",
+            datapath="ip4",
+            direction="rx",
+            mtu=100,
+        )
+        ipfix.add_vpp_config()
+
+        # template packet should arrive immediately
+        ipfix.verify_templates(count=1)
+
+        # send some ip4 packets
+        self.create_stream(src_if=self.pg3, dst_if=self.pg4, packets=5)
+        self.send_packets(src_if=self.pg3, dst_if=self.pg4)
+
+        # disable feature for the interface
+        # currently stored ip4 flows should be removed
+        ipfix.disable_flowprobe_feature()
+
+        # no leftover ip4 flows are expected
+        self.pg_enable_capture([self.collector])
+        self.sleep(12, "wait for leftover ip4 flows during three passive intervals")
+        self.collector.assert_nothing_captured()
+
+        # cleanup
+        ipfix.disable_exporter()
+
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 class ReenableFP(MethodHolder):
