@@ -955,8 +955,7 @@ flowprobe_flush_callback_l2 (void)
   flush_record (FLOW_VARIANT_L2_IP6);
 }
 
-
-static void
+void
 flowprobe_delete_by_index (u32 my_cpu_number, u32 poolindex)
 {
   flowprobe_main_t *fm = &flowprobe_main;
