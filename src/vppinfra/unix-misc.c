@@ -148,6 +148,7 @@ clib_file_get_resolved_basename (char *fmt, ...)
 
   r = readlink ((char *) link, buffer, sizeof (buffer) - 1);
   vec_free (link);
+  buffer[r] = 0;
 
   if (r < 1)
     return 0;
@@ -159,6 +160,7 @@ clib_file_get_resolved_basename (char *fmt, ...)
   while (p[0])
     vec_add1 (s, p++[0]);
 
+  vec_add1 (s, 0);
   return s;
 }
 
