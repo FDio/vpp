@@ -58,6 +58,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "719ede72_b0935196",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "de0f91d5_3b57b8b4",
+      "range": {
+        "startLine": 75,
+        "startChar": 2,
+        "endLine": 75,
+        "endChar": 30
+      },
+      "revId": "c4e8619ac5b10c667cbabb3a077a93895a57a62c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0236129a_4d5df750",
@@ -71,6 +95,30 @@
       "writtenOn": "2023-09-20T01:36:06Z",
       "side": 1,
       "message": "1. Check to see value that was sent in the api message is the default value as well:\n2. Either add braces here or remove them in the else clause so the braces are used consistently.\n\nif ((ct-\u003efhc \u003d\u003d 0) || (ct-\u003efhc \u003d\u003d IP_FLOW_HASH_DEFAULT))",
+      "range": {
+        "startLine": 391,
+        "startChar": 0,
+        "endLine": 391,
+        "endChar": 19
+      },
+      "revId": "c4e8619ac5b10c667cbabb3a077a93895a57a62c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf575ddb_0606d66d",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 391,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0236129a_4d5df750",
       "range": {
         "startLine": 391,
         "startChar": 0,
@@ -104,6 +152,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9978c6d_3b38ddd2",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d2a41a3b_a1315176",
+      "range": {
+        "startLine": 392,
+        "startChar": 19,
+        "endLine": 392,
+        "endChar": 32
+      },
+      "revId": "c4e8619ac5b10c667cbabb3a077a93895a57a62c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7b433f9e_90228304",
@@ -117,6 +189,30 @@
       "writtenOn": "2023-09-20T01:36:06Z",
       "side": 1,
       "message": "1. flow hash config is a bit field, please print it in hex. \n2. trailing space in this case is inconsistent with the previous case and appears to be unnecessary -- please remove it.\n\n\"fhc:0x%x\"",
+      "range": {
+        "startLine": 395,
+        "startChar": 21,
+        "endLine": 395,
+        "endChar": 30
+      },
+      "revId": "c4e8619ac5b10c667cbabb3a077a93895a57a62c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58893423_4c3831b5",
+        "filename": "src/plugins/cnat/cnat_translation.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b433f9e_90228304",
       "range": {
         "startLine": 395,
         "startChar": 21,

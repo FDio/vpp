@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1245ce7a_8b881157",
+        "filename": "src/plugins/cnat/cnat.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f15b49fb_8fbe250e",
+      "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "378f9fda_0aa7bad7",
@@ -48,6 +66,24 @@
       "writtenOn": "2023-10-03T15:05:42Z",
       "side": 1,
       "message": "Same thing for variables `flow_hash_config_t hash_config \u003d 0`",
+      "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26551d25_457b54f7",
+        "filename": "src/plugins/cnat/cnat_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2023-10-04T13:26:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "378f9fda_0aa7bad7",
       "revId": "0325a5a7d88c926a81f3f30c41de4293fe25b190",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
