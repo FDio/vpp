@@ -4,9 +4,9 @@ import ipaddress
 
 from util import ppp
 from framework import VppTestRunner
-from template_ipsec import IPSecIPv4Fwd
 from template_ipsec import IPSecIPv6Fwd
 from test_ipsec_esp import TemplateIpsecEsp
+from template_ipsec import SpdFastPathTemplate
 
 
 def debug_signal_handler(signal, frame):
@@ -20,7 +20,7 @@ import signal
 signal.signal(signal.SIGINT, debug_signal_handler)
 
 
-class SpdFastPathInbound(IPSecIPv4Fwd):
+class SpdFastPathInbound(SpdFastPathTemplate):
     # In test cases derived from this class, packets in IPv4 FWD path
     # are configured to go through IPSec inbound SPD policy lookup.
     # Note that order in which the rules are applied is
