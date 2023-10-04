@@ -16,6 +16,23 @@
       "message": "perftest-2n-icx nic_*ANDdrv_mlx5_coreAND1cAND0bANDeth-ip4tcphttp-ldpreload-nginx-*",
       "revId": "029f039d5d5022d536d2085993a9b7671d898767",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b3bdacc_0cc9a159",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-10-04T16:33:24Z",
+      "side": 1,
+      "message": "Not the cause of recent failures.",
+      "revId": "029f039d5d5022d536d2085993a9b7671d898767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
