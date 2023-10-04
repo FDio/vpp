@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42c30af2_58f057bf",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-10-04T12:57:21Z",
+      "side": 1,
+      "message": "Don\u0027t introduce extra changes in the test code.",
+      "revId": "81a7dd910a399b1c34989e1ed8c615d237eb8643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e06d503_05cbffac",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2123,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-10-04T12:57:21Z",
+      "side": 1,
+      "message": "Please correct to:\nMethod verify_l3_l4_capture verifies network and transport layer headers of the packet.\nAfter applying sa.encrypt() the interface id is a garbage, thus interface validation fails (scapy bug?).\nHowever our intent is to verify IP layer and above and that is covered.",
+      "revId": "81a7dd910a399b1c34989e1ed8c615d237eb8643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
