@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cffbc34c_9bd98573",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-10-05T08:31:37Z",
+      "side": 1,
+      "message": "This line is similar as on the master, probably you prepared patchset with diff between your patchset and top of master.",
+      "range": {
+        "startLine": 121,
+        "startChar": 46,
+        "endLine": 121,
+        "endChar": 61
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7461cf4e_3b250365",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-10-05T08:31:37Z",
+      "side": 1,
+      "message": "This line is similar as on the master, probably you prepared patchset with diff between your patchset and top of master.",
+      "range": {
+        "startLine": 341,
+        "startChar": 71,
+        "endLine": 341,
+        "endChar": 86
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd1126eb_3c329c1c",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-10-05T08:31:37Z",
+      "side": 1,
+      "message": "This line is similar as on the master, probably you prepared patchset with diff between your patchset and top of master.",
+      "range": {
+        "startLine": 637,
+        "startChar": 43,
+        "endLine": 637,
+        "endChar": 58
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
