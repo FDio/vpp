@@ -100,6 +100,8 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   memif_region_t *mr;
   memif_queue_t *mq;
   int i;
+  vlib_main_t *vm = vlib_get_main ();
+  int with_barrier = 0;
 
   if (mif == 0)
     return;
@@ -139,6 +141,12 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 	  clib_error_free (err);
 	}
       clib_mem_free (mif->sock);
+    }
+
+  if (vlib_worker_thread_barrier_held () == 0)
+    {
+      with_barrier = 1;
+      vlib_worker_thread_barrier_sync (vm);
     }
 
   /* *INDENT-OFF* */
@@ -198,6 +206,9 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   vec_free (mif->remote_name);
   vec_free (mif->remote_if_name);
   clib_fifo_free (mif->msg_queue);
+
+  if (with_barrier)
+    vlib_worker_thread_barrier_release (vm);
 }
 
 static clib_error_t *
