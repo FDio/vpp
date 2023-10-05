@@ -192,6 +192,9 @@ l2_bvi_create (u32 user_instance,
     *sw_if_indexp = si->sw_if_index;
 
     si->flood_class = VNET_FLOOD_CLASS_BVI;
+    /* Initialize the L2 input config of the BVI */
+    set_int_l2_mode (vm, vnm, MODE_L3, si->sw_if_index, 0,
+		     L2_BD_PORT_TYPE_NORMAL, 0, 0);
   }
 
   return 0;
