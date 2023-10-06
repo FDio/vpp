@@ -145,6 +145,22 @@ lcp_get_del_dynamic_on_link_down (void)
   return lcpm->del_dynamic_on_link_down;
 }
 
+void
+lcp_set_netlink_processing_active (u8 is_processing)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->netlink_processing_active = (is_processing != 0);
+}
+
+u8
+lcp_get_netlink_processing_active (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->netlink_processing_active;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

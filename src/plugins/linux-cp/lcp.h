@@ -29,6 +29,8 @@ typedef struct lcp_main_s
   u8 del_static_on_link_down;  /* Delete static routes when link goes down */
   u8 del_dynamic_on_link_down; /* Delete dynamic routes when link goes down */
   u8 test_mode;	      /* Set when Unit testing */
+  u8 netlink_processing_active; /* Set while a batch of Netlink messages are
+				   being processed */
 } lcp_main_t;
 
 extern lcp_main_t lcp_main;
@@ -51,6 +53,13 @@ u8 lcp_get_del_static_on_link_down (void);
  */
 void lcp_set_del_dynamic_on_link_down (u8 is_del);
 u8 lcp_get_del_dynamic_on_link_down (void);
+
+/**
+ * Get/Set when we're processing a batch of netlink messages.
+ * This is used to avoid looping messages between lcp-sync and netlink.
+ */
+void lcp_set_netlink_processing_active (u8 is_processing);
+u8 lcp_get_netlink_processing_active (void);
 
 #endif
 
