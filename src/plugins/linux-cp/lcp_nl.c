@@ -348,6 +348,8 @@ nl_route_process_msgs (void)
   nl_msg_info_t *msg_info;
   int err, n_msgs = 0;
 
+  lcp_set_netlink_processing_active (1);
+
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
@@ -364,6 +366,8 @@ nl_route_process_msgs (void)
     vec_delete (nm->nl_msg_queue, n_msgs, 0);
 
   NL_DBG ("Processed %u messages", n_msgs);
+
+  lcp_set_netlink_processing_active (0);
 
   return n_msgs;
 }
@@ -441,10 +445,15 @@ lcp_nl_recv_dump_replies (nl_sock_type_t sock_type, int msg_limit,
   int done = 0;
   int n_msgs = 0;
 
+  lcp_set_netlink_processing_active (1);
+
 continue_reading:
   n_bytes = nl_recv (sk_route, &nla, &buf, /* creds */ NULL);
   if (n_bytes <= 0)
-    return n_bytes;
+    {
+      lcp_set_netlink_processing_active (0);
+      return n_bytes;
+    }
 
   hdr = (struct nlmsghdr *) buf;
   while (nlmsg_ok (hdr, n_bytes))
@@ -521,6 +530,8 @@ continue_reading:
     goto continue_reading;
 
 out:
+  lcp_set_netlink_processing_active (0);
+
   nlmsg_free (msg);
   free (buf);
 
