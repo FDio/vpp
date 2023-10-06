@@ -77,10 +77,11 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 {
   application_t *app = application_get (app_wrk->app_index);
   svm_msg_q_t *mq = app_wrk->event_queue;
+  u8 ring_index, mq_is_cong, was_closed;
   session_event_t *evt;
   u32 n_evts = 128, i;
-  u8 ring_index, mq_is_cong;
   session_t *s;
+  int rv;
 
   n_evts = clib_min (n_evts, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
 
@@ -145,16 +146,39 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  break;
 	case SESSION_CTRL_EVT_ACCEPTED:
 	  s = session_get (evt->session_index, thread_index);
-	  app->cb_fns.session_accept_callback (s);
+	  was_closed = s->session_state >= SESSION_STATE_TRANSPORT_CLOSING;
+	  if (app->cb_fns.session_accept_callback (s))
+	    {
+	      session_close (s);
+	      s->app_wrk_index = ~0;
+	      break;
+	    }
+	  if (was_closed)
+	    app_worker_close_notify (app_wrk, s);
 	  break;
 	case SESSION_CTRL_EVT_CONNECTED:
 	  if (!(evt->as_u64[1] & 0xffffffff))
-	    s = session_get (evt->session_index, thread_index);
+	    {
+	      s = session_get (evt->session_index, thread_index);
+	      was_closed = s->session_state >= SESSION_STATE_TRANSPORT_CLOSING;
+	    }
 	  else
-	    s = 0;
-	  app->cb_fns.session_connected_callback (app_wrk->wrk_index,
-						  evt->as_u64[1] >> 32, s,
-						  evt->as_u64[1] & 0xffffffff);
+	    {
+	      s = 0;
+	    }
+	  rv = app->cb_fns.session_connected_callback (
+	    app_wrk->wrk_index, evt->as_u64[1] >> 32, s,
+	    evt->as_u64[1] & 0xffffffff);
+	  if (!s)
+	    break;
+	  if (rv)
+	    {
+	      session_close (s);
+	      s->app_wrk_index = ~0;
+	      break;
+	    }
+	  if (was_closed)
+	    app_worker_close_notify (app_wrk, s);
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
 	  s = session_get (evt->session_index, thread_index);
