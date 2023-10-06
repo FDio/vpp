@@ -1461,21 +1461,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   vlib_worker_thread_barrier_sync (vm);
   error = dpdk_lib_init (dm);
-
   if (error)
     clib_error_report (error);
-
-  if (dpdk_cryptodev_init)
-    {
-      error = dpdk_cryptodev_init (vm);
-      if (error)
-	{
-	  vlib_log_warn (dpdk_main.log_cryptodev, "%U", format_clib_error,
-			 error);
-	  clib_error_free (error);
-	}
-    }
-
   vlib_worker_thread_barrier_release (vm);
   tm->worker_thread_release = 1;
 
@@ -1549,10 +1536,19 @@ dpdk_init (vlib_main_t * vm)
   dm->log_default = vlib_log_register_class ("dpdk", 0);
   dm->log_cryptodev = vlib_log_register_class ("dpdk", "cryptodev");
 
+  if (dpdk_cryptodev_init)
+    {
+      error = dpdk_cryptodev_init (vm);
+      if (error)
+	vlib_log_warn (dm->log_cryptodev, "%U", format_clib_error, error);
+    }
+
   return error;
 }
 
-VLIB_INIT_FUNCTION (dpdk_init);
+VLIB_INIT_FUNCTION (dpdk_init) = {
+  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+};
 
 static clib_error_t *
 dpdk_worker_thread_init (vlib_main_t *vm)
