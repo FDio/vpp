@@ -348,6 +348,15 @@ nl_route_process_msgs (void)
   nl_msg_info_t *msg_info;
   int err, n_msgs = 0;
 
+  /* To avoid loops where VPP->LCP sync fights with LCP->VPP
+   * sync, we turn off the former if it's enabled, while we consume
+   * the netlink messages in this function, and put it back at the
+   * end of the function.
+   */
+  lcp_main_t *lcpm = &lcp_main;
+  u8 old_lcp_sync = lcpm->lcp_sync;
+  lcpm->lcp_sync = 0;
+
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
@@ -364,6 +373,8 @@ nl_route_process_msgs (void)
     vec_delete (nm->nl_msg_queue, n_msgs, 0);
 
   NL_DBG ("Processed %u messages", n_msgs);
+
+  lcpm->lcp_sync = old_lcp_sync;
 
   return n_msgs;
 }
@@ -441,10 +452,22 @@ lcp_nl_recv_dump_replies (nl_sock_type_t sock_type, int msg_limit,
   int done = 0;
   int n_msgs = 0;
 
+  /* To avoid loops where VPP->LCP sync fights with LCP->VPP
+   * sync, we turn off the former if it's enabled, while we consume
+   * the netlink messages in this function, and put it back when
+   * we return from the function.
+   */
+  lcp_main_t *lcpm = &lcp_main;
+  u8 old_lcp_sync = lcpm->lcp_sync;
+  lcpm->lcp_sync = 0;
+
 continue_reading:
   n_bytes = nl_recv (sk_route, &nla, &buf, /* creds */ NULL);
   if (n_bytes <= 0)
-    return n_bytes;
+    {
+      lcpm->lcp_sync = old_lcp_sync;
+      return n_bytes;
+    }
 
   hdr = (struct nlmsghdr *) buf;
   while (nlmsg_ok (hdr, n_bytes))
@@ -521,6 +544,8 @@ continue_reading:
     goto continue_reading;
 
 out:
+  lcpm->lcp_sync = old_lcp_sync;
+
   nlmsg_free (msg);
   free (buf);
 
