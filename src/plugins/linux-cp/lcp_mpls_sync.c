@@ -77,6 +77,8 @@ lcp_mpls_sync_state_cb (struct mpls_main_t *mm, uword opaque, u32 sw_if_index,
 		     format_lcp_itf_pair, lip);
 
   // If syncing is enabled, sync Linux state as well.
+  // This can happen regardless of lcp_get_netlink_processing_active(),
+  // provided it does not generate Netlink messages.
   if (!lcp_sync ())
     return;
 
