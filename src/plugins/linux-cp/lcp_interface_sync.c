@@ -37,7 +37,7 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
   u32 mtu;
   u32 netlink_mtu;
 
-  if (!lcp_sync ())
+  if (!lcp_sync () || lcp_get_netlink_processing_active ())
     return;
 
   sw =
@@ -176,7 +176,7 @@ lcp_itf_admin_state_change (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
 
-  if (!lcp_sync ())
+  if (!lcp_sync () || lcp_get_netlink_processing_active ())
     return 0;
 
   LCP_ITF_PAIR_DBG ("admin_state_change: sw %U %u",
@@ -223,7 +223,8 @@ lcp_itf_mtu_change (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   vnet_sw_interface_t *si;
   vnet_hw_interface_t *hi;
-  if (!lcp_sync ())
+
+  if (!lcp_sync () || lcp_get_netlink_processing_active ())
     return NULL;
 
   LCP_ITF_PAIR_DBG ("mtu_change: sw %U %u", format_vnet_sw_if_index_name, vnm,
@@ -271,7 +272,7 @@ lcp_itf_ip4_add_del_interface_addr (ip4_main_t *im, uword opaque,
   int curr_ns_fd = -1;
   int vif_ns_fd = -1;
 
-  if (!lcp_sync ())
+  if (!lcp_sync () || lcp_get_netlink_processing_active ())
     return;
 
   LCP_ITF_PAIR_DBG ("ip4_addr_%s: si:%U %U/%u", is_del ? "del" : "add",
@@ -320,7 +321,7 @@ lcp_itf_ip6_add_del_interface_addr (ip6_main_t *im, uword opaque,
   int curr_ns_fd = -1;
   int vif_ns_fd = -1;
 
-  if (!lcp_sync ())
+  if (!lcp_sync () || lcp_get_netlink_processing_active ())
     return;
 
   LCP_ITF_PAIR_DBG ("ip6_addr_%s: si:%U %U/%u", is_del ? "del" : "add",
