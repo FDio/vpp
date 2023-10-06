@@ -452,11 +452,12 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   uword start;
   uword size;
-  uword log2_page_size;
+  u8 log2_page_size;
   u8 index;
-  u32 numa_node;
+  u8 numa_node;
   u32 physmem_map_index;
   u32 data_size;
+  u32 alloc_size;
   u32 n_buffers;
   u32 n_avail;
   u32 *buffers;
