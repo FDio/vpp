@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f4197233_5463eefa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-10-06T10:54:31Z",
+      "side": 1,
+      "message": "recheck\n\nUnrelated failure - \nrun LDP thru host stack iperf3 test                                 2.36 FAIL [ temp dir used by test case: /tmp/vpp-unittest-SanityTestCase ]\n\nMessage: \u0027Symlink to failed testcase directory: /tmp/vpp-failed-unittests/vpp-unittest-TestVPPInterfacesQemu-FAILED -\u003e vpp-unittest-TestVPPInterfacesQemu\u0027",
+      "revId": "d3d2d4e2f9ec08c7874f64e7a894373a4a6ab1a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
