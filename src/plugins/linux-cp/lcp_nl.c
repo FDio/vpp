@@ -348,6 +348,15 @@ nl_route_process_msgs (void)
   nl_msg_info_t *msg_info;
   int err, n_msgs = 0;
 
+  /* To avoid loops where VPP->LCP sync fights with LCP->VPP
+   * sync, we turn off the former if it's enabled, while we consume
+   * the netlink messages in this function, and put it back at the
+   * end of the function.
+   */
+  lcp_main_t *lcpm = &lcp_main;
+  u8 old_lcp_sync = lcpm->lcp_sync;
+  lcpm->lcp_sync = 0;
+
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
@@ -364,6 +373,8 @@ nl_route_process_msgs (void)
     vec_delete (nm->nl_msg_queue, n_msgs, 0);
 
   NL_DBG ("Processed %u messages", n_msgs);
+
+  lcpm->lcp_sync = old_lcp_sync;
 
   return n_msgs;
 }
