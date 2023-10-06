@@ -456,6 +456,7 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
       a->app_index = mp->context;
       a->handle = mp->handle;
       vnet_disconnect_session (a);
+      s->app_wrk_index = SESSION_INVALID_INDEX;
       return;
     }
 
