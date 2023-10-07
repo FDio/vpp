@@ -558,8 +558,7 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
       return 0;
     }
 
-  /* If handshake just completed, session may still be in accepting state */
-  if (read && app_session->session_state >= SESSION_STATE_READY)
+  if (read)
     tls_notify_app_enqueue (ctx, app_session);
 
   if ((SSL_pending (oc->ssl) > 0) ||
