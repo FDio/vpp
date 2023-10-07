@@ -28,6 +28,8 @@ typedef struct lcp_main_s
   u8 lcp_sync;	      /* Automatically sync VPP changes to LCP */
   u8 del_static_on_link_down;  /* Delete static routes when link goes down */
   u8 del_dynamic_on_link_down; /* Delete dynamic routes when link goes down */
+  u16 num_rx_queues;
+  u16 num_tx_queues;
   u8 test_mode;	      /* Set when Unit testing */
   u8 netlink_processing_active; /* Set while a batch of Netlink messages are
 				   being processed */
