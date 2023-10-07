@@ -161,6 +161,28 @@ lcp_get_netlink_processing_active (void)
   return lcpm->netlink_processing_active;
 }
 
+void
+lcp_set_default_num_queues (u16 num_queues, u8 is_tx)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  if (is_tx)
+    lcpm->num_tx_queues = num_queues;
+  else
+    lcpm->num_rx_queues = num_queues;
+}
+
+u16
+lcp_get_default_num_queues (u8 is_tx)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  if (is_tx)
+    return lcpm->num_tx_queues;
+
+  return lcpm->num_rx_queues ?: vlib_num_workers ();
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
