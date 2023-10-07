@@ -227,7 +227,12 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_session->opaque = ctx->parent_app_api_context;
 
   if ((err = app_worker_init_connected (app_wrk, app_session)))
-    goto failed;
+    {
+      app_worker_connect_notify (app_wrk, 0, err, ctx->parent_app_api_context);
+      ctx->no_app_session = 1;
+      session_free (app_session);
+      return -1;
+    }
 
   app_session->session_state = SESSION_STATE_READY;
   parent_app_api_ctx = ctx->parent_app_api_context;
@@ -244,9 +249,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
 
   return 0;
 
-failed:
-  ctx->no_app_session = 1;
-  tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
 send_reply:
   return app_worker_connect_notify (app_wrk, 0, err,
 				    ctx->parent_app_api_context);
