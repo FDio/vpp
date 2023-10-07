@@ -112,16 +112,18 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	{
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
-	  s->flags &= ~SESSION_F_RX_EVT;
 	  /* Application didn't confirm accept yet */
-	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING))
+	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
+			     s->session_state == SESSION_STATE_CONNECTING))
 	    break;
+	  s->flags &= ~SESSION_F_RX_EVT;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
 	/* Handle sessions that might not be on current thread */
 	case SESSION_IO_EVT_BUILTIN_RX:
 	  s = session_get_from_handle_if_valid (evt->session_handle);
-	  if (!s || s->session_state == SESSION_STATE_ACCEPTING)
+	  if (!s || s->session_state == SESSION_STATE_ACCEPTING ||
+	      s->session_state == SESSION_STATE_CONNECTING)
 	    break;
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  app->cb_fns.builtin_app_rx_callback (s);
@@ -153,8 +155,16 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	      s->app_wrk_index = SESSION_INVALID_INDEX;
 	      break;
 	    }
-	  if (is_builtin && was_closed)
-	    app_worker_close_notify (app_wrk, s);
+	  if (is_builtin)
+	    {
+	      if (s->flags & SESSION_F_RX_EVT)
+		{
+		  s->flags &= ~SESSION_F_RX_EVT;
+		  app->cb_fns.builtin_app_rx_callback (s);
+		}
+	      if (was_closed)
+		app_worker_close_notify (app_wrk, s);
+	    }
 	  break;
 	case SESSION_CTRL_EVT_CONNECTED:
 	  if (!(evt->as_u64[1] & 0xffffffff))
@@ -177,6 +187,11 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	    }
 	  if (was_closed)
 	    app_worker_close_notify (app_wrk, s);
+	  if (s->flags & SESSION_F_RX_EVT)
+	    {
+	      s->flags &= ~SESSION_F_RX_EVT;
+	      app->cb_fns.builtin_app_rx_callback (s);
+	    }
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
 	  s = session_get (evt->session_index, thread_index);
