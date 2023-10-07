@@ -445,7 +445,7 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
   app_session = session_get_from_handle (ctx->app_session_handle);
   wrote = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo);
 
-  if (wrote && app_session->session_state >= SESSION_STATE_READY)
+  if (wrote)
     tls_notify_app_enqueue (ctx, app_session);
 
   if (ptls_ctx->read_buffer_offset || svm_fifo_max_dequeue (tcp_rx_fifo))
