@@ -514,7 +514,7 @@ tls_app_rx_callback (session_t * tls_session)
     return 0;
 
   ctx = tls_ctx_get (tls_session->opaque);
-  if (PREDICT_FALSE (ctx->no_app_session))
+  if (PREDICT_FALSE (ctx->no_app_session || ctx->app_closed))
     {
       TLS_DBG (1, "Local App closed");
       return 0;
