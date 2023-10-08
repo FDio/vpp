@@ -50,6 +50,24 @@
       "message": "Dear Yanglong,\nApologies for the delay.\n\nUnder what circumstances do you see that assert being triggered?\nE.g. if the initial packet has a wrong checksum, or perhaps you set the checksum to 0 because you wanted checksum offload?\n\nOne alternative could be to remove that assert. Depending.",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "725034ab_fc336c75",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-10-08T08:36:27Z",
+      "side": 1,
+      "message": "Problem scenarios:\nUse vpp\u0027s vcl to set up nginx as a transparent proxy, that is, change the destination ip to the bvi0 ip in vpp by configuring pnat rules, and then the above Assert problem will occur.\n\n\nPc1(7.7.7.6) \u003d\u003d\u003e  vpp(192.168.102.1) \u003d\u003d\u003d\u003evcl nginx(10001) \u003d\u003d\u003d\u003ePc2(7.7.7.7:15001)\nDo pnat for the traffic from pc1 to pc2 to nginx. \n\n-----------------------------------------------------------\nvpp configuration:\n\ncreate host-interface name  vpp1outside\nset interface state host-vpp1outside up\nset interface ip address host-vpp1outside 192.168.102.1/24\n\nset pnat translation interface host-vpp1outside match  dst 7.7.7.7 dport 15001 proto tcp rewrite dst 192.168.102.1 dport 10001 in\n\nset pnat translation interface host-vpp1outside match  src 192.168.102.1 sport 10001 proto tcp rewrite src 7.7.7.7 sport 15001 out",
+      "parentUuid": "532e12d0_a1f494af",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
