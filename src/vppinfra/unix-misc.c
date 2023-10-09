@@ -148,11 +148,11 @@ clib_file_get_resolved_basename (char *fmt, ...)
 
   r = readlink ((char *) link, buffer, sizeof (buffer) - 1);
   vec_free (link);
-  buffer[r] = 0;
 
   if (r < 1)
     return 0;
 
+  buffer[r] = 0;
   p = buffer + r - 1;
   while (p > buffer && p[-1] != '/')
     p--;
