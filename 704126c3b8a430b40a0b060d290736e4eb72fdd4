@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dcc48852_e6dd1f7f",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-10-09T21:52:53Z",
+      "side": 0,
+      "message": "please avoid remove/add unnecessary empty lines",
+      "revId": "704126c3b8a430b40a0b060d290736e4eb72fdd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
