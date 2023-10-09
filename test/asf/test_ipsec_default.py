@@ -3,7 +3,7 @@ import unittest
 
 from util import ppp
 from asfframework import VppTestRunner
-from template_ipsec import IPSecIPv4Fwd
+from template_ipsec import IpsecDefaultTemplate
 
 """
 When an IPSec SPD is configured on an interface, any inbound packets
@@ -32,7 +32,7 @@ packets are dropped as expected.
 """
 
 
-class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
+class IPSecInboundDefaultDrop(IpsecDefaultTemplate):
     """IPSec: inbound packets drop by default with no matching rule"""
 
     def test_ipsec_inbound_default_drop(self):
@@ -114,7 +114,7 @@ class IPSecInboundDefaultDrop(IPSecIPv4Fwd):
         self.verify_policy_match(pkt_count, inbound_policy)
 
 
-class IPSecOutboundDefaultDrop(IPSecIPv4Fwd):
+class IPSecOutboundDefaultDrop(IpsecDefaultTemplate):
     """IPSec: outbound packets drop by default with no matching rule"""
 
     def test_ipsec_inbound_default_drop(self):
