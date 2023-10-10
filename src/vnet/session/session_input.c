@@ -77,7 +77,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 {
   application_t *app = application_get (app_wrk->app_index);
   svm_msg_q_t *mq = app_wrk->event_queue;
-  u8 ring_index, mq_is_cong, was_closed;
+  u8 ring_index, mq_is_cong;
+  session_state_t old_state;
   session_event_t *evt;
   u32 n_evts = 128, i;
   session_t *s;
@@ -148,7 +149,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  break;
 	case SESSION_CTRL_EVT_ACCEPTED:
 	  s = session_get (evt->session_index, thread_index);
-	  was_closed = s->session_state >= SESSION_STATE_TRANSPORT_CLOSING;
+	  old_state = s->session_state;
 	  if (app->cb_fns.session_accept_callback (s))
 	    {
 	      session_close (s);
@@ -162,15 +163,18 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 		  s->flags &= ~SESSION_F_RX_EVT;
 		  app->cb_fns.builtin_app_rx_callback (s);
 		}
-	      if (was_closed)
-		app_worker_close_notify (app_wrk, s);
+	      if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
+		{
+		  session_set_state (s, old_state);
+		  app_worker_close_notify (app_wrk, s);
+		}
 	    }
 	  break;
 	case SESSION_CTRL_EVT_CONNECTED:
 	  if (!(evt->as_u64[1] & 0xffffffff))
 	    {
 	      s = session_get (evt->session_index, thread_index);
-	      was_closed = s->session_state >= SESSION_STATE_TRANSPORT_CLOSING;
+	      old_state = s->session_state;
 	    }
 	  else
 	    s = 0;
@@ -185,12 +189,15 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	      s->app_wrk_index = SESSION_INVALID_INDEX;
 	      break;
 	    }
-	  if (was_closed)
-	    app_worker_close_notify (app_wrk, s);
 	  if (s->flags & SESSION_F_RX_EVT)
 	    {
 	      s->flags &= ~SESSION_F_RX_EVT;
 	      app->cb_fns.builtin_app_rx_callback (s);
+	    }
+	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	    {
+	      session_set_state (s, old_state);
+	      app_worker_close_notify (app_wrk, s);
 	    }
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
