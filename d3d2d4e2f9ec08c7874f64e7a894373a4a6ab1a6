@@ -33,6 +33,23 @@
       "message": "hey folks - based on several reports of looping netlink messages, I backported the code from lcpng (https://github.com/pimvanpelt/lcpng/blob/main/lcpng_netlink.c#L246) which is immune to this problem. \n\nTwo folks who reported this problem, confirmed that this gerrit addresses their issue. Please take a look.",
       "revId": "d3d2d4e2f9ec08c7874f64e7a894373a4a6ab1a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75f0e7b7_7250d16e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-10-10T22:02:50Z",
+      "side": 1,
+      "message": "This seems like it would stop the problem in the typical case where asynchronous announcements are being processed, but it does not address the case where the netlink socket overflows and has to be re-opened. In this case, dump requests are sent and synchronous messages are processed. It seems like the same looping issue could occur.",
+      "revId": "d3d2d4e2f9ec08c7874f64e7a894373a4a6ab1a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
