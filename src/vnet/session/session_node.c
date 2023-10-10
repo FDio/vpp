@@ -1785,7 +1785,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       break;
     case SESSION_IO_EVT_RX:
       s = session_event_get_session (wrk, e);
-      if (!s)
+      if (!s || s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
 	break;
       transport_app_rx_evt (session_get_transport_proto (s),
 			    s->connection_index, s->thread_index);
