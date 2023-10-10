@@ -596,7 +596,7 @@ session_program_io_event (app_worker_t *app_wrk, session_t *s,
       /* Special events for connectionless sessions */
       et += SESSION_IO_EVT_BUILTIN_RX - SESSION_IO_EVT_RX;
 
-      ASSERT (s->thread_index == 0);
+      ASSERT (s->thread_index == 0 || et == SESSION_IO_EVT_TX_MAIN);
       session_event_t evt = {
 	.event_type = et,
 	.session_handle = session_handle (s),
