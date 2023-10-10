@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2cfb2faf_7810bcb6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-10T13:48:16Z",
+      "side": 1,
+      "message": "Please cherry-pick to stable/2310 after merge into master branch before RC2.",
+      "revId": "05cc62dd504bbb0fb230fcf3786ed7f4d5be2364",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
