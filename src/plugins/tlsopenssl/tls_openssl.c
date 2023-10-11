@@ -72,7 +72,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 
       SSL_free (oc->ssl);
       vec_free (ctx->srv_hostname);
-
+      SSL_CTX_free(oc->client_ssl_ctx);
 #ifdef HAVE_OPENSSL_ASYNC
   openssl_evt_free (ctx->evt_index, ctx->c_thread_index);
 #endif
@@ -739,30 +739,30 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
-  oc->ssl_ctx = SSL_CTX_new (method);
-  if (oc->ssl_ctx == NULL)
+  oc->client_ssl_ctx = SSL_CTX_new (method);
+  if (oc->client_ssl_ctx == NULL)
     {
       TLS_DBG (1, "SSL_CTX_new returned null");
       return -1;
     }
 
-  SSL_CTX_set_ecdh_auto (oc->ssl_ctx, 1);
-  SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+  SSL_CTX_set_ecdh_auto (oc->client_ssl_ctx, 1);
+  SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 #ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
     SSL_CTX_set_mode (oc->ssl_ctx, SSL_MODE_ASYNC);
 #endif
-  rv = SSL_CTX_set_cipher_list (oc->ssl_ctx, (const char *) om->ciphers);
+  rv = SSL_CTX_set_cipher_list (oc->client_ssl_ctx, (const char *) om->ciphers);
   if (rv != 1)
     {
       TLS_DBG (1, "Couldn't set cipher");
       return -1;
     }
 
-  SSL_CTX_set_options (oc->ssl_ctx, flags);
-  SSL_CTX_set_cert_store (oc->ssl_ctx, om->cert_store);
+  SSL_CTX_set_options (oc->client_ssl_ctx, flags);
+  SSL_CTX_set1_cert_store (oc->client_ssl_ctx, om->cert_store);
 
-  oc->ssl = SSL_new (oc->ssl_ctx);
+  oc->ssl = SSL_new (oc->client_ssl_ctx);
   if (oc->ssl == NULL)
     {
       TLS_DBG (1, "Couldn't initialize ssl struct");
