@@ -217,6 +217,7 @@ lb_node_get_hash (lb_main_t *lbm, vlib_buffer_t *p, u8 is_input_v4, u32 *hash,
       /* For per-port-vip case, ip lookup stores placeholder index */
       key.vip_prefix_index = *vip_idx;
       key.port = (u16) (ports & 0xFFFF);
+      key.rsv = 0;
       if (is_input_v4)
 	{
 	  key.protocol = ip40->protocol;
