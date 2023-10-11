@@ -1612,7 +1612,9 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
   clib_llist_index_t ei;
   u32 n_packets;
 
-  if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
+  if (PREDICT_FALSE ((s->session_state >= SESSION_STATE_TRANSPORT_CLOSED) ||
+		     (s->session_state == SESSION_STATE_CONNECTING &&
+		      (s->flags & SESSION_F_HALF_OPEN))))
     return 0;
 
   /* Clear custom-tx flag used to request reschedule for tx */
