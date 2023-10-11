@@ -554,6 +554,7 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 					       flowprobe_data_callback_l2,
 					       flowprobe_template_rewrite_l2,
 					       is_add, &template_id);
+	      fm->template_reports[flags] = (is_add) ? template_id : 0;
 	    }
 	  if (fm->record & FLOW_RECORD_L3 || fm->record & FLOW_RECORD_L4)
 	    {
@@ -576,20 +577,22 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 		flags | FLOW_RECORD_L2_IP4;
 	      fm->context[FLOW_VARIANT_L2_IP6].flags =
 		flags | FLOW_RECORD_L2_IP6;
-
-	      fm->template_reports[flags] = template_id;
 	    }
 	}
       else if (which == FLOW_VARIANT_IP4)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip4,
-					 flowprobe_template_rewrite_ip4,
-					 is_add, &template_id);
+	{
+	  rv = flowprobe_template_add_del (
+	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip4,
+	    flowprobe_template_rewrite_ip4, is_add, &template_id);
+	  fm->template_reports[flags] = (is_add) ? template_id : 0;
+	}
       else if (which == FLOW_VARIANT_IP6)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip6,
-					 flowprobe_template_rewrite_ip6,
-					 is_add, &template_id);
+	{
+	  rv = flowprobe_template_add_del (
+	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip6,
+	    flowprobe_template_rewrite_ip6, is_add, &template_id);
+	  fm->template_reports[flags] = (is_add) ? template_id : 0;
+	}
     }
   if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
     {
@@ -600,7 +603,6 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
   if (which != (u8) ~ 0)
     {
       fm->context[which].flags = fm->record;
-      fm->template_reports[flags] = (is_add) ? template_id : 0;
     }
 
   if (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_BOTH)
