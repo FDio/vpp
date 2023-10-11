@@ -7,7 +7,7 @@ from vpp_qemu_utils import can_create_namespaces
 
 def positive_int_or_default(default):
     def positive_integer(v):
-        if v is None or v == "":
+        if v is None or v == "" or int(v) == default:
             return default
         if int(v) <= 0:
             raise ValueError("value must be positive")
@@ -18,7 +18,7 @@ def positive_int_or_default(default):
 
 def positive_float_or_default(default):
     def positive_float(v):
-        if v is None or v == "":
+        if v is None or v == "" or float(v) == default:
             return default
         if float(v) <= 0:
             raise ValueError("value must be positive")
