@@ -33,7 +33,7 @@ typedef struct tls_ctx_openssl_
 {
   tls_ctx_t ctx;			/**< First */
   u32 openssl_ctx_index;
-  SSL_CTX *ssl_ctx;
+  SSL_CTX *client_ssl_ctx;
   SSL *ssl;
   BIO *rbio;
   BIO *wbio;
