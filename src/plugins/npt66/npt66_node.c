@@ -9,6 +9,7 @@
 #include <vnet/ip/ip6_packet.h>
 
 #include <npt66/npt66.h>
+#include <npt66/npt66.api_enum.h>
 
 typedef struct
 {
@@ -197,11 +198,17 @@ npt66_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       int rv = npt66_translate (ip, binding, dir);
       if (rv < 0)
 	{
-	  clib_warning ("npt66_translate failed");
+	  vlib_node_increment_counter (vm, node->node_index,
+				       NPT66_ERROR_TRANSLATION, 1);
 	  *next = NPT66_NEXT_DROP;
+	  goto next;
 	}
+      else if (dir == VLIB_TX)
+	vlib_node_increment_counter (vm, node->node_index, NPT66_ERROR_TX, 1);
+      else
+	vlib_node_increment_counter (vm, node->node_index, NPT66_ERROR_RX, 1);
 
-      /*next: */
+    next:
       next += 1;
       n_left_from -= 1;
       b += 1;
@@ -260,8 +267,8 @@ VLIB_REGISTER_NODE(npt66_input_node) = {
     .vector_size = sizeof(u32),
     .format_trace = format_npt66_trace,
     .type = VLIB_NODE_TYPE_INTERNAL,
-    // .n_errors = NPT66_N_ERROR,
-    // .error_counters = npt66_error_counters,
+    .n_errors = NPT66_N_ERROR,
+    .error_counters = npt66_error_counters,
     .n_next_nodes = NPT66_N_NEXT,
     .next_nodes =
         {
@@ -274,8 +281,8 @@ VLIB_REGISTER_NODE (npt66_output_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_npt66_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  // .n_errors = npt66_N_ERROR,
-  // .error_counters = npt66_error_counters,
+  .n_errors = NPT66_N_ERROR,
+  .error_counters = npt66_error_counters,
   .sibling_of = "npt66-input",
 };
 

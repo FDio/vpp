@@ -16,3 +16,25 @@ autoendian autoreply define npt66_binding_add_del
     vl_api_ip6_prefix_t internal;
     vl_api_ip6_prefix_t external;
 };
+
+counters npt66 {
+    rx {
+        severity info;
+        type counter64;
+        units "packets";
+        description "packets translated from external to internal";
+    };
+    tx {
+        severity info;
+        type counter64;
+        units "packets";
+        description "packets translated from internal to external";
+    };
+    translation {
+        severity error;
+        type counter64;
+        units "packets";
+        description "packet translation failed";
+    };
+
+};
