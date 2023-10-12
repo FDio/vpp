@@ -158,11 +158,6 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	    }
 	  if (is_builtin)
 	    {
-	      if (s->flags & SESSION_F_RX_EVT)
-		{
-		  s->flags &= ~SESSION_F_RX_EVT;
-		  app->cb_fns.builtin_app_rx_callback (s);
-		}
 	      if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 		{
 		  session_set_state (s, old_state);
@@ -188,11 +183,6 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	      session_close (s);
 	      s->app_wrk_index = SESSION_INVALID_INDEX;
 	      break;
-	    }
-	  if (s->flags & SESSION_F_RX_EVT)
-	    {
-	      s->flags &= ~SESSION_F_RX_EVT;
-	      app->cb_fns.builtin_app_rx_callback (s);
 	    }
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
