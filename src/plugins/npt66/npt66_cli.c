@@ -86,3 +86,36 @@ VLIB_CLI_COMMAND (set_npt66_binding_command, static) = {
 		"external <pfx> [del]",
   .function = set_npt66_binding_command_fn,
 };
+
+static u8 *
+format_npt66_binding (u8 *s, va_list *args)
+{
+  u32 index = va_arg (*args, u32);
+  npt66_binding_t *b = va_arg (*args, npt66_binding_t *);
+  s = format (s, "[%d] internal: %U/%d external: %U/%d", index,
+	      format_ip6_address, &b->internal, b->internal_plen,
+	      format_ip6_address, &b->external, b->external_plen);
+  return s;
+}
+
+static clib_error_t *
+show_npt66_bindings_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
+{
+  npt66_main_t *nm = &npt66_main;
+  npt66_binding_t *b;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  pool_foreach (b, nm->bindings)
+    {
+      vlib_cli_output (vm, "%U", format_npt66_binding, b - nm->bindings, b);
+    }
+  return error;
+}
+
+VLIB_CLI_COMMAND (show_npt66_bindings_command, static) = {
+  .path = "show npt66 bindings",
+  .short_help = "show npt66 bindings",
+  .function = show_npt66_bindings_command_fn,
+};
