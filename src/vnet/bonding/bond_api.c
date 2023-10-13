@@ -43,8 +43,11 @@ vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
   vl_api_bond_delete_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   rv = bond_delete_if (vm, sw_if_index);
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BOND_DELETE_REPLY);
 }
 
@@ -168,6 +171,8 @@ static void
   vl_api_sw_interface_set_bond_weight_reply_t *rmp;
   int rv = 0;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->sw_if_index = ntohl (mp->sw_if_index);
@@ -176,6 +181,7 @@ static void
   bond_set_intf_weight (vm, ap);
   rv = ap->rv;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_BOND_WEIGHT_REPLY);
 }
 
@@ -187,12 +193,15 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
   bond_detach_member_args_t _a, *ap = &_a;
   int rv = 0;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->member = ntohl (mp->sw_if_index);
   bond_detach_member (vm, ap);
   rv = ap->rv;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BOND_DETACH_SLAVE_REPLY);
 }
 
@@ -204,12 +213,15 @@ vl_api_bond_detach_member_t_handler (vl_api_bond_detach_member_t * mp)
   bond_detach_member_args_t _a, *ap = &_a;
   int rv = 0;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   clib_memset (ap, 0, sizeof (*ap));
 
   ap->member = ntohl (mp->sw_if_index);
   bond_detach_member (vm, ap);
   rv = ap->rv;
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BOND_DETACH_MEMBER_REPLY);
 }
 
