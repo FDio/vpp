@@ -181,23 +181,10 @@ vlib_buffer_copy_indices_to_ring (u32 * ring, u32 * src, u32 start,
     }
 }
 
-STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 static_always_inline void
-vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
+vlib_buffer_copy_template (vlib_buffer_t *b, vlib_buffer_template_t *bt)
 {
-#if defined CLIB_HAVE_VEC512
-  b->as_u8x64[0] = bt->as_u8x64[0];
-#elif defined (CLIB_HAVE_VEC256)
-  b->as_u8x32[0] = bt->as_u8x32[0];
-  b->as_u8x32[1] = bt->as_u8x32[1];
-#elif defined (CLIB_HAVE_VEC128)
-  b->as_u8x16[0] = bt->as_u8x16[0];
-  b->as_u8x16[1] = bt->as_u8x16[1];
-  b->as_u8x16[2] = bt->as_u8x16[2];
-  b->as_u8x16[3] = bt->as_u8x16[3];
-#else
-  clib_memcpy_fast (b, bt, 64);
-#endif
+  b->template = *bt;
 }
 
 always_inline u8
@@ -762,7 +749,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   vlib_buffer_pool_t *bp = 0;
   u8 buffer_pool_index = ~0;
   u32 n_queue = 0, queue[queue_size + 4];
-  vlib_buffer_t bt = { };
+  vlib_buffer_template_t bt = {};
 #if defined(CLIB_HAVE_VEC128)
   vlib_buffer_t bpi_mask = {.buffer_pool_index = ~0 };
   vlib_buffer_t bpi_vec = {};
@@ -778,7 +765,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   vlib_buffer_t *b = vlib_get_buffer (vm, buffers[0]);
   buffer_pool_index = b->buffer_pool_index;
   bp = vlib_get_buffer_pool (vm, buffer_pool_index);
-  vlib_buffer_copy_template (&bt, &bp->buffer_template);
+  bt = bp->buffer_template;
 #if defined(CLIB_HAVE_VEC128)
   bpi_vec.buffer_pool_index = buffer_pool_index;
 #endif
@@ -952,7 +939,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	  bpi_vec.buffer_pool_index = buffer_pool_index;
 #endif
 	  bp = vlib_get_buffer_pool (vm, buffer_pool_index);
-	  vlib_buffer_copy_template (&bt, &bp->buffer_template);
+	  bt = bp->buffer_template;
 	}
 
       vlib_buffer_validate (vm, b[0]);

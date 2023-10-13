@@ -252,7 +252,7 @@ typedef struct
     };				/* Specific to LEGACY RQ mode */
   };
 
-  vlib_buffer_t buffer_template;
+  vlib_buffer_template_t buffer_template;
 } rdma_per_thread_data_t;
 
 typedef struct

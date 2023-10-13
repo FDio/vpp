@@ -2726,7 +2726,7 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   else
     {
       /* Use the buffer we were handed. Reinitialize it... */
-      vlib_buffer_t bt = { };
+      vlib_buffer_template_t bt = {};
       /* push/pop the reference count */
       u8 save_ref_count = b0->ref_count;
       vlib_buffer_copy_template (b0, &bt);

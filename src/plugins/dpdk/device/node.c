@@ -45,8 +45,8 @@ STATIC_ASSERT (RTE_MBUF_F_RX_L4_CKSUM_BAD == (1ULL << 3),
 	       "bit number of RTE_MBUF_F_RX_L4_CKSUM_BAD is no longer 3!");
 
 static_always_inline uword
-dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
-			  struct rte_mbuf *mb, vlib_buffer_t * bt)
+dpdk_process_subseq_segs (vlib_main_t *vm, vlib_buffer_t *b,
+			  struct rte_mbuf *mb, vlib_buffer_template_t *bt)
 {
   u8 nb_seg = 1;
   struct rte_mbuf *mb_seg = 0;
@@ -173,13 +173,13 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
   u32 *flags, or_flags = 0;
-  vlib_buffer_t bt;
+  vlib_buffer_template_t bt;
 
   mb = ptd->mbufs;
   flags = ptd->flags;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  bt = ptd->buffer_template;
   while (n_left >= 8)
     {
       dpdk_prefetch_buffer_x4 (mb + 4);
@@ -357,7 +357,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 
   dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
 						  thread_index);
-  vlib_buffer_t *bt = &ptd->buffer_template;
+  vlib_buffer_template_t bt = ptd->buffer_template;
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
@@ -379,15 +379,15 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
     return 0;
 
   /* Update buffer template */
-  vnet_buffer (bt)->sw_if_index[VLIB_RX] = xd->sw_if_index;
-  bt->error = node->errors[DPDK_ERROR_NONE];
-  bt->flags = xd->buffer_flags;
+  vnet_buffer (&bt)->sw_if_index[VLIB_RX] = xd->sw_if_index;
+  bt.error = node->errors[DPDK_ERROR_NONE];
+  bt.flags = xd->buffer_flags;
   /* as DPDK is allocating empty buffers from mempool provided before interface
      start for each queue, it is safe to store this in the template */
-  bt->buffer_pool_index = rxq->buffer_pool_index;
-  bt->ref_count = 1;
-  vnet_buffer (bt)->feature_arc_index = 0;
-  bt->current_config_index = 0;
+  bt.buffer_pool_index = rxq->buffer_pool_index;
+  bt.ref_count = 1;
+  vnet_buffer (&bt)->feature_arc_index = 0;
+  bt.current_config_index = 0;
 
   /* receive burst of packets from DPDK PMD */
   if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
@@ -396,7 +396,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* as all packets belong to the same interface feature arc lookup
      can be don once and result stored in the buffer template */
   if (PREDICT_FALSE (vnet_device_input_have_features (xd->sw_if_index)))
-    vnet_feature_start_device_input (xd->sw_if_index, &next_index, bt);
+    vnet_feature_start_device_input (xd->sw_if_index, &next_index, &bt);
 
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags);

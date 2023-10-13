@@ -58,9 +58,6 @@ STATIC_ASSERT_FITS_IN (vlib_buffer_t, ref_count, 16);
 STATIC_ASSERT_FITS_IN (vlib_buffer_t, buffer_pool_index, 16);
 #endif
 
-/* Make sure that buffer template size is not accidentally changed */
-STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
-
 u16 __vlib_buffer_external_hdr_size = 0;
 
 uword
