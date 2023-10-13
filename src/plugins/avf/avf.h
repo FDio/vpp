@@ -320,7 +320,7 @@ typedef struct
   u64 qw1s[AVF_RX_VECTOR_SZ];
   u32 flow_ids[AVF_RX_VECTOR_SZ];
   avf_rx_tail_t tails[AVF_RX_VECTOR_SZ];
-  vlib_buffer_t buffer_template;
+  vlib_buffer_template_t buffer_template;
 } avf_per_thread_data_t;
 
 typedef struct

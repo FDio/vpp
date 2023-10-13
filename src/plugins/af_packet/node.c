@@ -275,7 +275,7 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 num_pkts = 0;
   u32 rx_frame_offset = 0;
   block_desc_t *bd = 0;
-  vlib_buffer_t bt = {};
+  vlib_buffer_template_t bt = {};
   u8 is_ip = (apif->mode == AF_PACKET_IF_MODE_IP);
 
   if (is_ip)
@@ -287,7 +287,8 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = apif->per_interface_next_index;
 
       /* redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input_template (apif->sw_if_index, &next_index,
+						&bt);
     }
 
   if ((((block_desc_t *) (block_start = rx_queue->rx_ring[block]))
@@ -581,7 +582,7 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u32 min_bufs = rx_queue->rx_req->req.tp_frame_size / n_buffer_bytes;
   u8 is_ip = (apif->mode == AF_PACKET_IF_MODE_IP);
-  vlib_buffer_t bt = {};
+  vlib_buffer_template_t bt = {};
 
   if (is_ip)
     {
@@ -594,7 +595,8 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = apif->per_interface_next_index;
 
       /* redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input_template (apif->sw_if_index, &next_index,
+						&bt);
     }
 
   n_free_bufs = vec_len (apm->rx_buffers[thread_index]);

@@ -285,7 +285,7 @@ typedef struct
   memif_desc_status_t *desc_status;
 
   /* buffer template */
-  vlib_buffer_t buffer_template;
+  vlib_buffer_template_t buffer_template;
 } memif_per_thread_data_t;
 
 typedef struct memif_dma_info
