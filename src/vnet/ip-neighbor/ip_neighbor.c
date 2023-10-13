@@ -797,7 +797,7 @@ ip_neighbor_cmd (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   ip_neighbor_flags_t flags;
   u32 sw_if_index = ~0;
-  int is_add = 1;
+  int is_add = 1, is_flush = 0;
   int count = 1;
 
   flags = IP_NEIGHBOR_FLAG_DYNAMIC;
@@ -811,6 +811,8 @@ ip_neighbor_cmd (vlib_main_t * vm,
 	;
       else if (unformat (input, "delete") || unformat (input, "del"))
 	is_add = 0;
+      else if (unformat (input, "flush"))
+	is_flush = 1;
       else if (unformat (input, "static"))
 	{
 	  flags |= IP_NEIGHBOR_FLAG_STATIC;
@@ -822,6 +824,13 @@ ip_neighbor_cmd (vlib_main_t * vm,
 	;
       else
 	break;
+    }
+
+  if (is_flush)
+    {
+      ip_neighbor_del_all (AF_IP4, sw_if_index);
+      ip_neighbor_del_all (AF_IP6, sw_if_index);
+      return NULL;
     }
 
   if (sw_if_index == ~0 ||
@@ -888,7 +897,7 @@ VLIB_CLI_COMMAND (ip_neighbor_command, static) = {
 };
 VLIB_CLI_COMMAND (ip_neighbor_command2, static) = {
   .path = "ip neighbor",
-  .short_help = "ip neighbor [del] <intfc> <ip-address> <mac-address> "
+  .short_help = "ip neighbor [del] [flush] <intfc> <ip-address> <mac-address> "
 		"[static] [no-fib-entry] [count <count>]",
   .function = ip_neighbor_cmd,
 };
