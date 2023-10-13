@@ -217,13 +217,14 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	   * Choose source address based on destination lookup
 	   * adjacency.
 	   */
-	  if (!fib_sas6_get (sw_if_index0, &ip0->dst_address, &src) ||
-	      !ip6_sas_by_sw_if_index (sw_if_index0, &ip0->dst_address, &src))
+	  const ip6_address_t *ll = ip6_get_link_local_address (sw_if_index0);
+	  if (!ll)
 	    {
 	      /* There is no address on the interface */
 	      p0->error = node->errors[IP6_NEIGHBOR_ERROR_NO_SOURCE_ADDRESS];
 	      continue;
 	    }
+	  ip6_address_copy (&src, ll);
 
 	  b0 = ip6_neighbor_probe (vm, vnm, sw_if_index0, thread_index, &src,
 				   &ip0->dst_address);
