@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a07b36d8_3bdc92b1",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 241,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2023-10-13T14:33:33Z",
+      "side": 0,
+      "message": "This check shouldn\u0027t be removed. You can add the additional check at the beginning of lcp_itf_pair_create(), but this one needs to stay also. lcp_itf_pair_add() can be called directly by lcp_router_link_add() when automatic subinterface creation is enabled. So lcp_itf_pair_add() should still make sure that a pair isn\u0027t being added if one already exists.",
+      "revId": "8d61c59c3f1e05e49b89a700a1640aa9bcebc6b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
