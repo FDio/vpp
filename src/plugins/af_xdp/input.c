@@ -202,7 +202,7 @@ af_xdp_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
 static_always_inline u32
 af_xdp_device_input_bufs (vlib_main_t *vm, const af_xdp_device_t *ad,
 			  af_xdp_rxq_t *rxq, u32 *bis, const u32 n_rx,
-			  vlib_buffer_t *bt, u32 idx)
+			  vlib_buffer_template_t *bt, u32 idx)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 offs[VLIB_FRAME_SIZE], *off = offs;
@@ -283,7 +283,7 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 {
   vnet_main_t *vnm = vnet_get_main ();
   af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
-  vlib_buffer_t bt;
+  vlib_buffer_template_t bt;
   u32 next_index, *to_next, n_left_to_next;
   u32 n_rx_packets, n_rx_bytes;
   u32 idx;
@@ -293,7 +293,7 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (PREDICT_FALSE (0 == n_rx_packets))
     goto refill;
 
-  vlib_buffer_copy_template (&bt, ad->buffer_template);
+  bt = *ad->buffer_template;
   next_index = ad->per_interface_next_index;
   if (PREDICT_FALSE (vnet_device_input_have_features (ad->sw_if_index)))
     vnet_feature_start_device_input (ad->sw_if_index, &next_index, &bt);

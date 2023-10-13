@@ -248,7 +248,7 @@ dns46_request_inline (vlib_main_t * vm,
 	      if (is_ip6)
 		vnet_send_dns6_reply (vm, dm, t0, ep0, b0);
 	      else
-		vnet_send_dns4_reply (vm, dm, t0, ep0, b0);
+		b0 = vnet_send_dns4_reply (vm, dm, t0, ep0, b0);
 	      next0 = DNS46_REQUEST_NEXT_IP_LOOKUP;
 	    }
 	  else

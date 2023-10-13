@@ -100,7 +100,7 @@ typedef struct
 
   af_xdp_rxq_t *rxqs;
   af_xdp_txq_t *txqs;
-  vlib_buffer_t *buffer_template;
+  vlib_buffer_template_t *buffer_template;
   u32 per_interface_next_index;
   u32 sw_if_index;
   u32 hw_if_index;

@@ -190,9 +190,9 @@ void
 vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
 			    dns_cache_entry_t * ep, ip4_address_t * server);
 
-void vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
-			   dns_pending_request_t * t, dns_cache_entry_t * ep,
-			   vlib_buffer_t * b0);
+vlib_buffer_t *vnet_send_dns4_reply (vlib_main_t *vm, dns_main_t *dm,
+				     dns_pending_request_t *t,
+				     dns_cache_entry_t *ep, vlib_buffer_t *b0);
 
 void vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
 			   dns_pending_request_t * t, dns_cache_entry_t * ep,

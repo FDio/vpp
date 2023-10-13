@@ -345,7 +345,7 @@ vnet_device_input_have_features (u32 sw_if_index)
 
 static_always_inline void
 vnet_feature_start_device_input (u32 sw_if_index, u32 *next0,
-				 vlib_buffer_t *b0)
+				 vlib_buffer_template_t *bt)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -356,11 +356,11 @@ vnet_feature_start_device_input (u32 sw_if_index, u32 *next0,
       (clib_bitmap_get
        (fm->sw_if_index_has_features[feature_arc_index], sw_if_index)))
     {
-      vnet_buffer (b0)->feature_arc_index = feature_arc_index;
-      b0->current_config_index =
+      vnet_buffer (bt)->feature_arc_index = feature_arc_index;
+      bt->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
-      vnet_get_config_data (&cm->config_main, &b0->current_config_index,
-			    next0, /* # bytes of config data */ 0);
+      vnet_get_config_data (&cm->config_main, &bt->current_config_index, next0,
+			    /* # bytes of config data */ 0);
     }
 }
 
