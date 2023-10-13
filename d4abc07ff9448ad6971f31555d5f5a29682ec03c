@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d2d7b523_4baee92d",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-10-13T07:55:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "823d01d2_fa078421",
+      "range": {
+        "startLine": 121,
+        "startChar": 46,
+        "endLine": 121,
+        "endChar": 61
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7461cf4e_3b250365",
@@ -95,6 +119,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "33fd1746_490bca26",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-10-13T07:55:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9698a1a2_4be7b907",
+      "range": {
+        "startLine": 341,
+        "startChar": 71,
+        "endLine": 341,
+        "endChar": 86
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dd1126eb_3c329c1c",
@@ -132,6 +180,30 @@
       "side": 1,
       "message": "This line was changed in this patch: https://gerrit.fd.io/r/c/vpp/+/38470",
       "parentUuid": "dd1126eb_3c329c1c",
+      "range": {
+        "startLine": 637,
+        "startChar": 43,
+        "endLine": 637,
+        "endChar": 58
+      },
+      "revId": "d4abc07ff9448ad6971f31555d5f5a29682ec03c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d6a5b17_f88ca8cb",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-10-13T07:55:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c717ba8_f82697a8",
       "range": {
         "startLine": 637,
         "startChar": 43,
