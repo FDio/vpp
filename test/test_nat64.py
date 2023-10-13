@@ -649,7 +649,7 @@ class TestNAT64(VppTestCase):
         capture = self.pg5.get_capture(len(pkts))
         packet = capture[0]
         try:
-            self.assertEqual(packet[IPv6].src, self.pg5.local_ip6)
+            self.assertEqual(packet[IPv6].src, self.pg5.local_ip6_ll)
             self.assertEqual(packet.haslayer(ICMPv6ND_NS), 1)
             tgt = packet[ICMPv6ND_NS].tgt
         except:

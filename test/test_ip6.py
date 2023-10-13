@@ -141,7 +141,7 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(in6_ptop(ns.tgt), in6_ptop(tgt_ip))
 
         # packet is from the router's local address
-        self.assertEqual(in6_ptop(rx[IPv6].src), intf.local_ip6)
+        self.assertEqual(in6_ptop(rx[IPv6].src), intf.local_ip6_ll)
 
         # Src link-layer options should have the router's MAC
         sll = rx[ICMPv6NDOptSrcLLAddr]

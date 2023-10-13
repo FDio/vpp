@@ -121,7 +121,7 @@ class TestNDPROXY(VppTestCase):
         rx = self.send_and_expect(self.pg1, [unicast_nd_req_from_host], self.pg0)
         self.assertEqual(rx[0][Ether].src, self.pg0.local_mac)
         self.assertEqual(rx[0][Ether].dst, in6_getnsmac(nsma))
-        self.assertEqual(rx[0][IPv6].src, self.pg0.local_ip6)
+        self.assertEqual(rx[0][IPv6].src, self.pg0.local_ip6_ll)
         self.assertEqual(rx[0][IPv6].dst, d)
         self.assertEqual(ipv6nh[rx[0][IPv6].nh], "ICMPv6")
         self.assertEqual(rx[0][ICMPv6ND_NS].tgt, self.pg0.remote_ip6)
