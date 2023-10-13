@@ -58,9 +58,6 @@ STATIC_ASSERT_FITS_IN (vlib_buffer_t, ref_count, 16);
 STATIC_ASSERT_FITS_IN (vlib_buffer_t, buffer_pool_index, 16);
 #endif
 
-/* Make sure that buffer template size is not accidentally changed */
-STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
-
 u16 __vlib_buffer_external_hdr_size = 0;
 
 uword
@@ -577,7 +574,7 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 	continue;
 
       b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
-      vlib_buffer_copy_template (b, &bp->buffer_template);
+      b->template = bp->buffer_template;
       bi = vlib_get_buffer_index (vm, b);
       bp->buffers[bp->n_avail++] = bi;
       vlib_get_buffer (vm, bi);
