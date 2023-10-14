@@ -667,6 +667,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
 
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   /* Make and write options */
   tcp_hdr_len = sizeof (tcp_header_t);
