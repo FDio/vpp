@@ -640,8 +640,8 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (mif->per_interface_next_index != ~0)
 	next_index = mif->per_interface_next_index;
       else
-	vnet_feature_start_device_input_x1 (mif->sw_if_index, &next_index,
-					    &ptd->buffer_template);
+	vnet_feature_start_device_input (mif->sw_if_index, &next_index,
+					 &ptd->buffer_template);
 
       vlib_get_new_next_frame (vm, node, next_index, to_next_bufs,
 			       n_left_to_next);
@@ -903,14 +903,14 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  next0 = next1 = next2 = next3 = next_index;
 		  /* redirect if feature path enabled */
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next0, b0);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next1, b1);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next2, b2);
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next3, b3);
+		  vnet_feature_start_device_input (mif->sw_if_index, &next0,
+						   b0);
+		  vnet_feature_start_device_input (mif->sw_if_index, &next1,
+						   b1);
+		  vnet_feature_start_device_input (mif->sw_if_index, &next2,
+						   b2);
+		  vnet_feature_start_device_input (mif->sw_if_index, &next3,
+						   b3);
 		}
 	    }
 
@@ -958,8 +958,8 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		{
 		  next0 = next_index;
 		  /* redirect if feature path enabled */
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next0, b0);
+		  vnet_feature_start_device_input (mif->sw_if_index, &next0,
+						   b0);
 		}
 	    }
 
@@ -1091,8 +1091,8 @@ CLIB_MARCH_FN (memif_dma_completion_cb, void, vlib_main_t *vm,
       if (mif->per_interface_next_index != ~0)
 	next_index = mif->per_interface_next_index;
       else
-	vnet_feature_start_device_input_x1 (mif->sw_if_index, &next_index,
-					    &ptd->buffer_template);
+	vnet_feature_start_device_input (mif->sw_if_index, &next_index,
+					 &ptd->buffer_template);
 
       vlib_get_new_next_frame (vm, dma_info->node, next_index, to_next_bufs,
 			       n_left_to_next);

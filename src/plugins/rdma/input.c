@@ -977,7 +977,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* update buffer template for input feature arcs if any */
   next_index = rd->per_interface_next_index;
   if (PREDICT_FALSE (vnet_device_input_have_features (rd->sw_if_index)))
-    vnet_feature_start_device_input_x1 (rd->sw_if_index, &next_index, &bt);
+    vnet_feature_start_device_input (rd->sw_if_index, &next_index, &bt);
 
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 

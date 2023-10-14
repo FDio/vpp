@@ -287,7 +287,7 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = apif->per_interface_next_index;
 
       /* redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input (apif->sw_if_index, &next_index, &bt);
     }
 
   if ((((block_desc_t *) (block_start = rx_queue->rx_ring[block]))
@@ -594,7 +594,7 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = apif->per_interface_next_index;
 
       /* redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input (apif->sw_if_index, &next_index, &bt);
     }
 
   n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
