@@ -271,7 +271,7 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	next_index = vif->per_interface_next_index;
 
       /* only for l2, redirect if feature path enabled */
-      vnet_feature_start_device_input_x1 (vif->sw_if_index, &next_index, &bt);
+      vnet_feature_start_device_input (vif->sw_if_index, &next_index, &bt);
     }
 
   while (n_left)

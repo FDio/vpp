@@ -68,7 +68,6 @@ typedef struct
 extern vnet_device_main_t vnet_device_main;
 extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
-extern const u32 device_input_next_node_flags[];
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
