@@ -396,7 +396,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* as all packets belong to the same interface feature arc lookup
      can be don once and result stored in the buffer template */
   if (PREDICT_FALSE (vnet_device_input_have_features (xd->sw_if_index)))
-    vnet_feature_start_device_input_x1 (xd->sw_if_index, &next_index, bt);
+    vnet_feature_start_device_input (xd->sw_if_index, &next_index, bt);
 
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags);
