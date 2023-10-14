@@ -2123,7 +2123,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	case TCP_STATE_SYN_RCVD:
 
 	  /* Make sure the segment is exactly right */
-	  if (tc->rcv_nxt != vnet_buffer (b[0])->tcp.seq_number || is_fin)
+	  if (tc->rcv_nxt != vnet_buffer (b[0])->tcp.seq_number)
 	    {
 	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
 	      error = TCP_ERROR_SEGMENT_INVALID;
@@ -2142,6 +2142,10 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      error = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
+
+	  /* Avoid notifying app if connection is about to be closed */
+	  if (PREDICT_FALSE (is_fin))
+	    break;
 
 	  /* Update rtt and rto */
 	  tcp_estimate_initial_rtt (tc);
@@ -2363,15 +2367,15 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			    tcp_cfg.closewait_time);
 	  break;
 	case TCP_STATE_SYN_RCVD:
-	  /* Send FIN-ACK, enter LAST-ACK and because the app was not
-	   * notified yet, set a cleanup timer instead of relying on
-	   * disconnect notify and the implicit close call. */
+	  /* Send FIN-ACK and enter TIME-WAIT, as opposed to LAST-ACK,
+	   * because the app was not notified yet and we want to avoid
+	   * session state transitions to ensure cleanup does not
+	   * propagate to app. */
 	  tcp_connection_timers_reset (tc);
 	  tc->rcv_nxt += 1;
 	  tcp_send_fin (tc);
-	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
-	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
-			 tcp_cfg.lastack_time);
+	  tcp_connection_set_state (tc, TCP_STATE_TIME_WAIT);
+	  tcp_program_cleanup (wrk, tc);
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
 	case TCP_STATE_CLOSING:
