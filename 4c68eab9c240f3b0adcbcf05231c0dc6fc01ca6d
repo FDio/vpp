@@ -120,6 +120,24 @@
       "parentUuid": "486a26f4_08a43328",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b5ed123_8eba4b49",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-16T16:20:16Z",
+      "side": 1,
+      "message": "Yup, if csum offload flag is on, no action. \n\n@yanlong, I suspect you already know this but just for completeness, a suboptimal solution to this would be to disable tcp csum offloading by adding to vpp\u0027s startup.conf `tcp { no-csum-offload }`",
+      "parentUuid": "68a7dda9_3b9c976e",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
