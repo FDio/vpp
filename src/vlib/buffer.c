@@ -539,6 +539,7 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 
   va_start (va, fmt);
   bp->name = va_format (0, fmt, &va);
+  vec_terminate_c_string (bp->name);
   va_end (va);
 
   vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
@@ -832,7 +833,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   clib_bitmap_t *bmp = 0, *bmp_has_memory = 0;
   u32 numa_node;
   vlib_buffer_pool_t *bp;
-  u8 *name = 0, first_valid_buffer_pool_index = ~0;
+  u8 first_valid_buffer_pool_index = ~0;
 
   vlib_buffer_main_alloc (vm);
 
@@ -917,7 +918,6 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 done:
   vec_free (bmp);
   vec_free (bmp_has_memory);
-  vec_free (name);
   return err;
 }
 
