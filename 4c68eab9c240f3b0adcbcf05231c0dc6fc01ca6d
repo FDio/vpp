@@ -68,6 +68,23 @@
       "parentUuid": "532e12d0_a1f494af",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "486a26f4_08a43328",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2023-10-16T09:55:02Z",
+      "side": 1,
+      "message": "Thanks! What is the use case where the ip checksum is zero?\nIs it a real packet that has the wrong checksum?\nOr is it PNAT incremental checksum that gets it wrong?\nThe assert is a left-over from when developing it, it\u0027s possible to just remove the assert (is disabled in release image anyway).",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
