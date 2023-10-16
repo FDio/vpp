@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b3eaee2_d28d519d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-10-16T11:59:53Z",
+      "side": 1,
+      "message": "recheck \n\nUnrelated test infra failure - VppDiedError: VPP subprocess died unexpectedly while running TestVPPInterfacesQemu",
+      "revId": "84e7ee3721a3b8bde1d1998c86f553b9f23428f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
