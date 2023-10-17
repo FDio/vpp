@@ -270,6 +270,8 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
 				   rxhi->sw_if_index, 1, 0, 0);
+      vnet_feature_enable_disable ("eth-port-rx", "l2-patch",
+				   rxhi->sw_if_index, 1, 0, 0);
     }
   else
     {
@@ -277,6 +279,8 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 			  /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
 
       vnet_feature_enable_disable ("device-input", "l2-patch",
+				   rxhi->sw_if_index, 0, 0, 0);
+      vnet_feature_enable_disable ("eth-port-rx", "l2-patch",
 				   rxhi->sw_if_index, 0, 0, 0);
       if (vec_len (l2pm->tx_next_by_rx_sw_if_index) > rx_sw_if_index)
 	{
