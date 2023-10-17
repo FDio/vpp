@@ -245,6 +245,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_record_t flags = fr->opaque.as_uword;
   bool collect_ip4 = false, collect_ip6 = false;
+  bool collect_l4 = false;
 
   stream = &exp->streams[fr->stream_index];
 
@@ -257,6 +258,10 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
       if (which == FLOW_VARIANT_L2_IP6)
 	flags |= FLOW_RECORD_L2_IP6;
     }
+  if (flags & FLOW_RECORD_L4)
+    {
+      collect_l4 = (which != FLOW_VARIANT_L2);
+    }
 
   field_count += flowprobe_template_common_field_count ();
   if (flags & FLOW_RECORD_L2)
@@ -265,7 +270,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
     field_count += flowprobe_template_ip4_field_count ();
   if (collect_ip6)
     field_count += flowprobe_template_ip6_field_count ();
-  if (flags & FLOW_RECORD_L4)
+  if (collect_l4)
     field_count += flowprobe_template_l4_field_count ();
 
   /* allocate rewrite space */
@@ -304,7 +309,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
     f = flowprobe_template_ip4_fields (f);
   if (collect_ip6)
     f = flowprobe_template_ip6_fields (f);
-  if (flags & FLOW_RECORD_L4)
+  if (collect_l4)
     f = flowprobe_template_l4_fields (f);
 
   /* Back to the template packet... */
