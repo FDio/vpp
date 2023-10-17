@@ -146,6 +146,8 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	      vnet_feature_enable_disable ("device-input",
 					   "p2p-ethernet-input",
 					   parent_if_index, 1, 0, 0);
+	      vnet_feature_enable_disable ("eth-rx-port", "p2p-ethernet-input",
+					   parent_if_index, 1, 0, 0);
 	      /* Set promiscuous mode on the l2 interface */
 	      ethernet_set_flags (vnm, parent_if_index,
 				  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
@@ -174,6 +176,9 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	      if (p2pm->p2p_ethernet_by_sw_if_index[parent_if_index] == 1)
 		{
 		  vnet_feature_enable_disable ("device-input",
+					       "p2p-ethernet-input",
+					       parent_if_index, 0, 0, 0);
+		  vnet_feature_enable_disable ("eth-rx-port",
 					       "p2p-ethernet-input",
 					       parent_if_index, 0, 0, 0);
 		  /* Disable promiscuous mode on the l2 interface */

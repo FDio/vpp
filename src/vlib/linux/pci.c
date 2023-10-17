@@ -886,6 +886,27 @@ vlib_pci_register_intx_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 }
 
 clib_error_t *
+vlib_pci_unregister_intx_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  linux_pci_irq_t *irq = &p->intx_irq;
+
+  if (irq->intx_handler == 0)
+    return 0;
+
+  clib_file_del_by_index (&file_main, irq->clib_file_index);
+  if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
+    {
+      close (irq->fd);
+      irq->fd = -1;
+    }
+
+  irq->intx_handler = 0;
+
+  return 0;
+}
+
+clib_error_t *
 vlib_pci_register_msix_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				u32 start, u32 count,
 				pci_msix_handler_function_t * msix_handler)
@@ -939,6 +960,33 @@ error:
 	  irq->fd = -1;
 	}
     }
+  return err;
+}
+
+clib_error_t *
+vlib_pci_unregister_msix_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
+				  u32 start, u32 count)
+{
+  clib_error_t *err = 0;
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  u32 i;
+
+  if (p->type != LINUX_PCI_DEVICE_TYPE_VFIO)
+    return clib_error_return (0, "vfio driver is needed for MSI-X interrupt "
+				 "support");
+
+  for (i = start; i < start + count; i++)
+    {
+      linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, i);
+
+      if (irq->fd != -1)
+	{
+	  clib_file_del_by_index (&file_main, irq->clib_file_index);
+	  close (irq->fd);
+	  irq->fd = -1;
+	}
+    }
+
   return err;
 }
 
