@@ -240,11 +240,16 @@ clib_error_t *vlib_pci_register_intx_handler (vlib_main_t * vm,
 					      vlib_pci_dev_handle_t h,
 					      pci_intx_handler_function_t *
 					      intx_handler);
+clib_error_t *vlib_pci_unregister_intx_handler (vlib_main_t *vm,
+						vlib_pci_dev_handle_t h);
 clib_error_t *vlib_pci_register_msix_handler (vlib_main_t * vm,
 					      vlib_pci_dev_handle_t h,
 					      u32 start, u32 count,
 					      pci_msix_handler_function_t *
 					      msix_handler);
+clib_error_t *vlib_pci_unregister_msix_handler (vlib_main_t *vm,
+						vlib_pci_dev_handle_t h,
+						u32 start, u32 count);
 clib_error_t *vlib_pci_enable_msix_irq (vlib_main_t * vm,
 					vlib_pci_dev_handle_t h, u16 start,
 					u16 count);
