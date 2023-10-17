@@ -33,19 +33,24 @@ clib_ring_header (void *v)
 }
 
 always_inline void
+clib_ring_reset (void *v)
+{
+  clib_ring_header_t *h = clib_ring_header (v);
+  h->next = 0;
+  h->n_enq = 0;
+}
+
+always_inline void
 clib_ring_new_inline (void **p, u32 elt_bytes, u32 size, u32 align)
 {
   void *v;
-  clib_ring_header_t *h;
   vec_attr_t va = { .elt_sz = elt_bytes,
 		    .hdr_sz = sizeof (clib_ring_header_t),
 		    .align = align };
 
   v = _vec_alloc_internal (size, &va);
 
-  h = clib_ring_header (v);
-  h->next = 0;
-  h->n_enq = 0;
+  clib_ring_reset (v);
   p[0] = v;
 }
 

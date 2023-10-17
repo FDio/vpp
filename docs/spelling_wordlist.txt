@@ -248,6 +248,7 @@ Dest
 det
 dev
 devbind
+dev_iavf
 df
 dhcp
 dhcp
