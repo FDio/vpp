@@ -138,6 +138,42 @@
       "parentUuid": "68a7dda9_3b9c976e",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9859477_5ed9f88f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-10-17T02:47:55Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "dc5c41d3_68326694",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4889d47c_db7e27bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-10-17T02:47:55Z",
+      "side": 1,
+      "message": "okay, thank you\n\nokay, thank you\n\nThat is to say, all messages interacting with vcl can only go through checksum hardware uninstallation, right? Just need to set \"tcp { no-csum-offload }\"\n@Florin Coras  @Ole Troan",
+      "parentUuid": "4b5ed123_8eba4b49",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
