@@ -396,6 +396,8 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
   if (mc->ssl.state != MBEDTLS_SSL_HANDSHAKE_OVER)
     return 0;
 
+  ctx->flags |= TLS_CONN_F_HS_DONE;
+
   /*
    * Handshake complete
    */
@@ -532,17 +534,10 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   return enq;
 }
 
-static u8
-mbedtls_handshake_is_over (tls_ctx_t * ctx)
-{
-  mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
-  return (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
-}
-
 static int
 mbedtls_transport_close (tls_ctx_t * ctx)
 {
-  if (!mbedtls_handshake_is_over (ctx))
+  if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
       session_close (session_get_from_handle (ctx->tls_session_handle));
       return 0;
@@ -554,7 +549,7 @@ mbedtls_transport_close (tls_ctx_t * ctx)
 static int
 mbedtls_transport_reset (tls_ctx_t *ctx)
 {
-  if (!mbedtls_handshake_is_over (ctx))
+  if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
       session_close (session_get_from_handle (ctx->tls_session_handle));
       return 0;
@@ -590,7 +585,6 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_init_client = mbedtls_ctx_init_client,
   .ctx_write = mbedtls_ctx_write,
   .ctx_read = mbedtls_ctx_read,
-  .ctx_handshake_is_over = mbedtls_handshake_is_over,
   .ctx_start_listen = mbedtls_start_listen,
   .ctx_stop_listen = mbedtls_stop_listen,
   .ctx_transport_close = mbedtls_transport_close,
