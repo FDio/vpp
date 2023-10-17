@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "704126c3b8a430b40a0b060d290736e4eb72fdd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e5a47bdd_bf317c58",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-10-17T12:43:30Z",
+      "side": 1,
+      "message": "Some cosmetic changes:\n1. Rename the function to \"ipsec_esp_packet_process()\"\n2. Please also create the similar inline function for ah.",
+      "revId": "704126c3b8a430b40a0b060d290736e4eb72fdd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
