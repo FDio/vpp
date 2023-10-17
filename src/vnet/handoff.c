@@ -244,6 +244,8 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 
   vnet_feature_enable_disable ("device-input", "worker-handoff",
 			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("port-rx-eth", "worker-handoff", sw_if_index,
+			       enable_disable, 0, 0);
   return rv;
 }
 
