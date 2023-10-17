@@ -144,7 +144,6 @@ typedef struct tls_engine_vft_
   int (*ctx_read) (tls_ctx_t * ctx, session_t * tls_session);
   int (*ctx_write) (tls_ctx_t * ctx, session_t * app_session,
 		    transport_send_params_t * sp);
-    u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
   int (*ctx_start_listen) (tls_ctx_t * ctx);
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
   int (*ctx_transport_close) (tls_ctx_t * ctx);
