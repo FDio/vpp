@@ -87,6 +87,9 @@ span_add_delete_entry (vlib_main_t * vm,
       if (enable_rx || disable_rx)
 	vnet_feature_enable_disable ("device-input", "span-input",
 				     src_sw_if_index, rx, 0, 0);
+      if (enable_rx || disable_rx)
+	vnet_feature_enable_disable ("eth-rx-port", "span-input",
+				     src_sw_if_index, rx, 0, 0);
       if (enable_tx || disable_tx)
 	vnet_feature_enable_disable ("interface-output", "span-output",
 				     src_sw_if_index, tx, 0, 0);
