@@ -28,6 +28,12 @@ from socket import inet_ntop
 from vpp_papi import VppEnum
 
 
+TMPL_COMMON_FIELD_COUNT = 6
+TMPL_L2_FIELD_COUNT = 3
+TMPL_L3_FIELD_COUNT = 4
+TMPL_L4_FIELD_COUNT = 3
+
+
 class VppCFLOW(VppObject):
     """CFLOW object for IPFIX exporter and Flowprobe feature"""
 
@@ -125,15 +131,18 @@ class VppCFLOW(VppObject):
     def query_vpp_config(self):
         return self._configured
 
-    def verify_templates(self, decoder=None, timeout=1, count=3):
+    def verify_templates(self, decoder=None, timeout=1, count=3, field_count_in=None):
         templates = []
         self._test.assertIn(count, (1, 2, 3))
         for _ in range(count):
             p = self._test.wait_for_cflow_packet(self._test.collector, 2, timeout)
             self._test.assertTrue(p.haslayer(IPFIX))
-            if decoder is not None and p.haslayer(Template):
+            self._test.assertTrue(p.haslayer(Template))
+            if decoder is not None:
                 templates.append(p[Template].templateID)
                 decoder.add_template(p.getlayer(Template))
+            if field_count_in is not None:
+                self._test.assertIn(p[Template].fieldCount, field_count_in)
         return templates
 
 
@@ -265,7 +274,13 @@ class MethodHolder(VppTestCase):
         return dst_if.get_capture(len(self.pkts))
 
     def verify_cflow_data_detail(
-        self, decoder, capture, cflow, data_set={1: "octets", 2: "packets"}, ip_ver="v4"
+        self,
+        decoder,
+        capture,
+        cflow,
+        data_set={1: "octets", 2: "packets"},
+        ip_ver="v4",
+        field_count=None,
     ):
         if self.debug_print:
             print(capture[0].show())
@@ -312,6 +327,9 @@ class MethodHolder(VppTestCase):
                         self.assertEqual(
                             int(binascii.hexlify(record[field]), 16), value
                         )
+            if field_count is not None:
+                for record in data:
+                    self.assertEqual(len(record), field_count)
 
     def verify_cflow_data_notimer(self, decoder, capture, cflows):
         idx = 0
@@ -683,19 +701,30 @@ class DatapathTestsHolder(object):
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")
 
-    def test_L23onL2(self):
-        """L2/3 data on L2 datapath"""
+    def test_L234onL2(self):
+        """L2/3/4 data on L2 datapath"""
         self.pg_enable_capture(self.pg_interfaces)
         self.pkts = []
 
         ipfix = VppCFLOW(
-            test=self, intf=self.intf1, layer="l2 l3", direction=self.direction
+            test=self, intf=self.intf1, layer="l2 l3 l4", direction=self.direction
         )
         ipfix.add_vpp_config()
 
         ipfix_decoder = IPFIXDecoder()
         # template packet should arrive immediately
-        templates = ipfix.verify_templates(ipfix_decoder, count=3)
+        tmpl_l2_field_count = TMPL_COMMON_FIELD_COUNT + TMPL_L2_FIELD_COUNT
+        tmpl_ip_field_count = (
+            TMPL_COMMON_FIELD_COUNT
+            + TMPL_L2_FIELD_COUNT
+            + TMPL_L3_FIELD_COUNT
+            + TMPL_L4_FIELD_COUNT
+        )
+        templates = ipfix.verify_templates(
+            ipfix_decoder,
+            count=3,
+            field_count_in=(tmpl_l2_field_count, tmpl_ip_field_count),
+        )
 
         # verify IPv4 and IPv6 flows
         for ip_ver in ("v4", "v6"):
@@ -717,11 +746,14 @@ class DatapathTestsHolder(object):
                     2: "packets",
                     256: 8 if ip_ver == "v4" else 56710,
                     4: 17,
+                    7: "sport",
+                    11: "dport",
                     src_ip_id: "src_ip",
                     dst_ip_id: "dst_ip",
                     61: (self.direction == "tx"),
                 },
                 ip_ver=ip_ver,
+                field_count=tmpl_ip_field_count,
             )
 
         # verify non-IP flow
@@ -742,6 +774,7 @@ class DatapathTestsHolder(object):
             capture,
             cflow,
             {2: "packets", 256: 2440, 61: (self.direction == "tx")},
+            field_count=tmpl_l2_field_count,
         )
 
         self.collector.get_capture(6)
