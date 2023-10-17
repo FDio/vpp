@@ -1000,24 +1000,28 @@ static u8 *
 format_tls_ctx_state (u8 * s, va_list * args)
 {
   tls_ctx_t *ctx;
-  session_t *ts;
+  session_t *as;
 
   ctx = va_arg (*args, tls_ctx_t *);
-  ts = session_get (ctx->c_s_index, ctx->c_thread_index);
-  if (ts->session_state == SESSION_STATE_LISTENING)
+  as = session_get (ctx->c_s_index, ctx->c_thread_index);
+  if (as->session_state == SESSION_STATE_LISTENING)
     s = format (s, "%s", "LISTEN");
   else
     {
-      if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
-	s = format (s, "%s", "CLOSED");
-      else if (ts->session_state == SESSION_STATE_APP_CLOSED)
-	s = format (s, "%s", "APP-CLOSED");
-      else if (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
-	s = format (s, "%s", "CLOSING");
-      else if (tls_ctx_handshake_is_over (ctx))
+      if (as->session_state == SESSION_STATE_READY)
 	s = format (s, "%s", "ESTABLISHED");
-      else
+      if (as->session_state == SESSION_STATE_CREATED)
 	s = format (s, "%s", "HANDSHAKE");
+      else if (as->session_state == SESSION_STATE_ACCEPTING)
+	s = format (s, "%s", "ACCEPTING");
+      else if (as->session_state == SESSION_STATE_CONNECTING)
+	s = format (s, "%s", "CONNECTING");
+      else if (as->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+	s = format (s, "%s", "CLOSED");
+      else if (as->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	s = format (s, "%s", "CLOSING");
+      else
+	s = format (s, "%s", "UNHANDLED %u", as->session_state);
     }
 
   return s;
