@@ -114,12 +114,6 @@ tls_ctx_app_close (tls_ctx_t *ctx)
   return tls_vfts[ctx->tls_ctx_engine].ctx_app_close (ctx);
 }
 
-static inline u8
-tls_ctx_handshake_is_over (tls_ctx_t *ctx)
-{
-  return tls_vfts[ctx->tls_ctx_engine].ctx_handshake_is_over (ctx);
-}
-
 static inline int
 tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id)
 {

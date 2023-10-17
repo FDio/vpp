@@ -1037,15 +1037,6 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
   return 0;
 }
 
-static u8
-openssl_handshake_is_over (tls_ctx_t * ctx)
-{
-  openssl_ctx_t *mc = (openssl_ctx_t *) ctx;
-  if (!mc->ssl)
-    return 0;
-  return SSL_is_init_finished (mc->ssl);
-}
-
 static int
 openssl_transport_close (tls_ctx_t * ctx)
 {
@@ -1054,7 +1045,7 @@ openssl_transport_close (tls_ctx_t * ctx)
     return 0;
 #endif
 
-  if (!openssl_handshake_is_over (ctx))
+  if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
       openssl_handle_handshake_failure (ctx);
       return 0;
@@ -1066,7 +1057,7 @@ openssl_transport_close (tls_ctx_t * ctx)
 static int
 openssl_transport_reset (tls_ctx_t *ctx)
 {
-  if (!openssl_handshake_is_over (ctx))
+  if (!(ctx->flags & TLS_CONN_F_HS_DONE))
     {
       openssl_handle_handshake_failure (ctx);
       return 0;
@@ -1166,7 +1157,6 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_init_client = openssl_ctx_init_client,
   .ctx_write = openssl_ctx_write,
   .ctx_read = openssl_ctx_read,
-  .ctx_handshake_is_over = openssl_handshake_is_over,
   .ctx_start_listen = openssl_start_listen,
   .ctx_stop_listen = openssl_stop_listen,
   .ctx_transport_close = openssl_transport_close,
