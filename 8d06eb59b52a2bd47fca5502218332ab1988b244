@@ -16,6 +16,24 @@
       "message": "The unit test changes use numeric constants 9 and 16 for the number of fields that are expected in packets. I think that is because there are 6 common fields, 3 L2, 4 L3, and 3 L4 so common + L2 -\u003e 9 and common + L2 + L3 + L4 -\u003e 16. Am I understanding that right?\n\nIf so, I think it might be easier to understand what those values mean if you declare numeric constants like common_fields \u003d 6, l2_fields \u003d 3, etc. And then instead of passing 9 as an argument to the verify function, you could pass common_fields + l2_fields.",
       "revId": "8d06eb59b52a2bd47fca5502218332ab1988b244",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "35fc27f7_e95defdf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-10-18T08:26:33Z",
+      "side": 1,
+      "message": "\u003e The unit test changes use numeric constants 9 and 16 for the number of fields that are expected in packets. I think that is because there are 6 common fields, 3 L2, 4 L3, and 3 L4 so common + L2 -\u003e 9 and common + L2 + L3 + L4 -\u003e 16. Am I understanding that right?\n\nYes, you are right.\n\n\u003e If so, I think it might be easier to understand what those values mean if you declare numeric constants like common_fields \u003d 6, l2_fields \u003d 3, etc. And then instead of passing 9 as an argument to the verify function, you could pass common_fields + l2_fields.\n\nRight, the tests already use many literals (especially for IPFIX information elements) and it makes sense to avoid adding more. I will change them to constants.",
+      "parentUuid": "514da958_3c434795",
+      "revId": "8d06eb59b52a2bd47fca5502218332ab1988b244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
