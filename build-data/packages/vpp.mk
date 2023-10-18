@@ -33,6 +33,9 @@ endif
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 vpp_cmake_args += -DVPP_EXCLUDED_PLUGINS="$(VPP_EXCLUDED_PLUGINS)"
 endif
+ifneq (${SOURCE_DATE_EPOCH}),)
+vpp_cmake_args += -DVPP_SOURCE_DATE_EPOCH="$(SOURCE_DATE_EPOCH)"
+endif
 
 ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
