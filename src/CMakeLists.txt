@@ -41,6 +41,16 @@ string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
 
 ##############################################################################
+# reproducible builds: pin the build timestamp derivation for CMake
+# need also env vars pinned: SOURCE_DATE_EPOCH, VPP_BUILD_HOST, VPP_BUILD_USER
+##############################################################################
+set(VPP_SOURCE_DATE_EPOCH
+   ""
+   CACHE
+   STRING "Artifact build timestamp for reproducible builds"
+)
+
+##############################################################################
 # compiler specifics
 ##############################################################################
 

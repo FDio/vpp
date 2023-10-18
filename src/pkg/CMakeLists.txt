@@ -18,11 +18,19 @@ endif()
 get_cmake_property(VPP_COMPONENTS COMPONENTS)
 string(REPLACE ";" " " VPP_COMPONENTS "${VPP_COMPONENTS}")
 
-execute_process(
-  COMMAND date -R
-  OUTPUT_VARIABLE TIMESTAMP
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(VPP_SOURCE_DATE_EPOCH STREQUAL "")
+   execute_process(
+      COMMAND date -R
+      OUTPUT_VARIABLE TIMESTAMP
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+else()
+   execute_process(
+      COMMAND date -R --date=@${VPP_SOURCE_DATE_EPOCH}
+      OUTPUT_VARIABLE TIMESTAMP
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+endif()
 
 # parse /etc/os-release
 file(READ "/etc/os-release" os_release)
