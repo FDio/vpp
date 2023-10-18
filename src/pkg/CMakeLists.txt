@@ -18,8 +18,23 @@ endif()
 get_cmake_property(VPP_COMPONENTS COMPONENTS)
 string(REPLACE ";" " " VPP_COMPONENTS "${VPP_COMPONENTS}")
 
+##############################################################################
+# pinned timestamp for reproducible builds
+##############################################################################
+set(VPP_SOURCE_DATE_EPOCH
+   ""
+   CACHE
+   STRING "Artifact build timestamp for reproducible builds"
+)
+
+if(VPP_SOURCE_DATE_EPOCH STREQUAL "")
+   set(VPP_TIMESTAMP_ARG "")
+else()
+   set(VPP_TIMESTAMP_ARG "--date=@${VPP_SOURCE_DATE_EPOCH}")
+endif()
+
 execute_process(
-  COMMAND date -R
+  COMMAND date -R ${VPP_TIMESTAMP_ARG}
   OUTPUT_VARIABLE TIMESTAMP
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )

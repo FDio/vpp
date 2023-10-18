@@ -41,6 +41,15 @@ string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
 
 ##############################################################################
+# pinned timestamp for reproducible builds
+##############################################################################
+set(VPP_SOURCE_DATE_EPOCH
+   ""
+   CACHE
+   STRING "Artifact build timestamp for reproducible builds"
+)
+
+##############################################################################
 # compiler specifics
 ##############################################################################
 

@@ -256,6 +256,43 @@ To build the debian packages, use the following command:
 
     $ make pkg-deb
 
+Reproducible builds on Debian
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default the VPP artifacts have various bits of
+information in them aimed at simplifying the identification
+during the development (like, the user name that built
+the package as well as the build times). By setting
+a few environment variables one can obtain bit-identical
+.deb files, assuming that the prerequisites installed
+in the build environment are identical.
+
+
+Setting and using the SOURCE_DATE_EPOCH variable takes
+care of most of the magic necessary.
+https://reproducible-builds.org/docs/source-date-epoch/
+
+The package vpp-ext-deps is already being built with that
+date set to date of the last modification of the subtree
+(similar logic to deriving the "number" for the package
+version)
+
+For the rest of the packages, pinning the following
+three variables should result in bit-identical
+artifacts across multiple runs in the build environment:
+
+   .. code-block:: console
+
+    export SOURCE_DATE_EPOCH=$(date +%s)
+    export VPP_BUILD_HOST="buildhost"
+    export VPP_BUILD_USER="builduser"
+
+If you want to reproduce the bit-identical builds across
+different environments, take a look at .buildinfo file
+which gets created alongside the .deb repositories -
+aside from the checksums of the packages, it has
+the full list of build dependencies and their versions.
+
 .. _rpmpackages:
 
 Building RPM Packages
