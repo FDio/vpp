@@ -192,6 +192,24 @@
       "parentUuid": "4889d47c_db7e27bb",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80e4edd1_8abfc180",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2023-10-18T02:26:51Z",
+      "side": 1,
+      "message": "Hello expert, I have a question. Is the design of strong binding between VCL and hardware checksum uninstallation unreasonable? I believe that using VCL does not necessarily mean that users must use hardware uninstallation, which is a bit strong binding.\n\nIs it reasonable to add a software assignment of checksum to the package sent by VCL by default? If the user sets \"TCP {no sum offload}\", they will proceed with hardware uninstallation. If not set, they will proceed with software assignment and verification @Florin Coras",
+      "parentUuid": "022773a2_2936d435",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
