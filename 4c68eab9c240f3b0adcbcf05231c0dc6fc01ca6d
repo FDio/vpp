@@ -210,6 +210,24 @@
       "parentUuid": "022773a2_2936d435",
       "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df83e5be_06fd72c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-18T16:06:11Z",
+      "side": 1,
+      "message": "VCL\u0027s connect/accept apis don\u0027t support it at this point but they could be extended to configure disabling of csum offload. On the other hand, builtin applications can easily update these attributes.\n\nNonetheless, expectation is that csum offload will be typically disabled only in scenarios where tcp/udp are encapsulated in protocols that do not properly handle csum offloading (e.g., vxlan), otherwise the interface infrastructure will handle csum computation if the underlying hw/sw interface does not support it.",
+      "parentUuid": "80e4edd1_8abfc180",
+      "revId": "4c68eab9c240f3b0adcbcf05231c0dc6fc01ca6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
