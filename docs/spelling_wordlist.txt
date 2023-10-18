@@ -110,6 +110,7 @@ bufferindex
 bufmon
 Bufmon
 bugfixing
+buildinfo
 buildingrst
 builtin
 builtinurl
