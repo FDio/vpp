@@ -421,6 +421,11 @@ api_dhcp_plugin_get_version (vat_main_t * vam)
 {
   return -1;
 }
+static int
+api_dhcp_client_detect_enable_disable (vat_main_t *vam)
+{
+  return -1;
+}
 
 static void
   vl_api_dhcp_plugin_get_version_reply_t_handler
