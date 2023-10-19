@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9e233be_89b96671",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Looks really good. Nits",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3061070a_d174a34e",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 652,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "maybe PREDICT_FALSE?",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b7f77e3_33d852f0",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 720,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "PREDICT_FALSE",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3fe645b_ce801f73",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 811,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "PREDICT_FALSE and use macro instead of ~0",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ceeee41e_d999e0f8",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 855,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Maybe move these near the other ec_ctrl_* functions",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d94c5f33_f020b20f",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1046,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Maybe have only one function that takes as argument the type of message",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6362a997_d99d150c",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Move to test setup together with esm-\u003ebyte_index",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62d9e60b_c36dcf5f",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Do this conditionally for udp for now. We should probably start tracking server sessions just like client does.",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "895533e4_17b4be84",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T18:58:31Z",
+      "side": 1,
+      "message": "Maybe prealloc esm-\u003esession_handles and other data structures once you know the number of clients",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
