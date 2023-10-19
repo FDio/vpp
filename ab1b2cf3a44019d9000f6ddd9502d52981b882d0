@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aa238210_aea61a7d",
+        "filename": "src/plugins/hs_apps/echo_client.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T19:02:45Z",
+      "side": 1,
+      "message": "Maybe prealloc the pool once we know the number of clients",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3061070a_d174a34e",
         "filename": "src/plugins/hs_apps/echo_client.c",
         "patchSetId": 18
@@ -133,6 +150,24 @@
       "writtenOn": "2023-10-19T18:58:31Z",
       "side": 1,
       "message": "Do this conditionally for udp for now. We should probably start tracking server sessions just like client does.",
+      "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00ae218a_92b409d7",
+        "filename": "src/plugins/hs_apps/echo_server.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-10-19T19:02:45Z",
+      "side": 1,
+      "message": "In a separate patch might be worth converting this to a vector of pools that explicitly track echo server sessions, with data including session handle and rx_retries and vpp_queue. \n\nThe session pools should be prealloc-able on test sync/start",
+      "parentUuid": "62d9e60b_c36dcf5f",
       "revId": "ab1b2cf3a44019d9000f6ddd9502d52981b882d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
