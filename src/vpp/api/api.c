@@ -163,6 +163,8 @@ show_log_details (vl_api_registration_t * reg, u32 context,
   ASSERT (0 == rmp->msg_class[class_len - 1]);
   ASSERT (0 == rmp->message[message_len - 1]);
 
+  vec_free (msg_class);
+
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
