@@ -420,6 +420,12 @@ I:	ena
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/dev_ena/
 
+Plugin - Marvell Octeon device driver
+I:	octeon
+M:	Monendra Singh Kushwaha <kmonendra@marvell.com>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/dev_octeon/
+
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
