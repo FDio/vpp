@@ -753,6 +753,23 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
   clib_spinlock_unlock (&bp->lock);
 }
 
+/** \brief return unused buffers back to pool
+    This function can be used to return buffers back to pool without going
+    trough vlib_buffer_free. Buffer metadata must not be modified in any
+    way before buffers are returned.
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffers - (u32 * ) buffer index array
+    @param n_buffers - (u32) number of buffers to free
+    @param buffer_pool_index - (u8) buffer pool index
+*/
+always_inline void
+vlib_buffer_unalloc_to_pool (vlib_main_t *vm, u32 *buffers, u32 n_buffers,
+			     u8 buffer_pool_index)
+{
+  vlib_buffer_pool_put (vm, buffer_pool_index, buffers, n_buffers);
+}
+
 static_always_inline void
 vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 			 int maybe_next)
