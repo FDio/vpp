@@ -1,0 +1,56 @@
+#!/bin/bash
+
+PKG=vpp-dep-octeon-roc
+URL=https://github.com/MarvellEmbeddedProcessors/marvell-vpp.git
+ARCH=$(dpkg --print-architecture)
+TMP_DIR=$(mktemp -d -p $PWD)
+
+set -eEuo pipefail
+
+err_handler()
+{
+  trap '' INT TERM EXIT ERR
+  echo "Cleaning up ${TMP_DIR}"
+  rm -rf ${TMP_DIR}
+  exit
+}
+trap "err_handler" INT TERM EXIT ERR
+
+SRC=${TMP_DIR}/src
+BUILD=${TMP_DIR}/build
+STAGE=${TMP_DIR}/pkg
+INSTALL_PREFIX=/opt/vpp/external/$(uname -m)
+
+git clone ${URL} ${SRC}
+VER=0.0.$(git -C ${SRC} rev-list --count HEAD)
+
+cat >> ${SRC}/CMakeLists.txt << __EOF__
+
+INSTALL(TARGETS octeon-roc)
+set(OCT_ROC_HEADERS \${OCT_ROC_HEADERS} platform.h util.h bitmap.h common.h memzone.h)
+foreach(file \${OCT_ROC_HEADERS})
+  get_filename_component(dir \${file} DIRECTORY)
+  INSTALL(FILES \${file} DESTINATION include/octeon-roc/\${dir})
+endforeach()
+__EOF__
+
+cmake -S ${SRC} -B ${BUILD}
+cmake --build ${BUILD} --parallel
+cmake --install ${BUILD} --prefix ${STAGE}${INSTALL_PREFIX}
+
+mkdir -p ${STAGE}/DEBIAN
+
+cat > ${STAGE}/DEBIAN/control << __EOF__
+Package: ${PKG}
+Version: ${VER}
+Architecture: ${ARCH}
+Maintainer: vpp-dev <vpp-dev@fd.io>
+Installed-Size: $(du -ks ${STAGE}|cut -f 1)
+Section: system
+Priority: extra
+Description: Marvell Octeon ROC library for VPP
+ See https://github.com/MarvellEmbeddedProcessors/marvell-vpp
+__EOF__
+
+DEB=${PKG}_${VER}_${ARCH}.deb
+dpkg-deb -b ${STAGE} ${DEB}
