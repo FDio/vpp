@@ -249,6 +249,7 @@ det
 dev
 devbind
 dev_iavf
+dev_octeon
 df
 dhcp
 dhcp
@@ -786,6 +787,7 @@ O'Driscoll
 oacl
 oam
 OAM
+octeon
 oddbuf
 Oddbuf
 offline
