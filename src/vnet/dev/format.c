@@ -157,6 +157,9 @@ format_vnet_dev_rx_queue_info (u8 *s, va_list *args)
 	      format_white_space, indent, rxq->rx_thread_index,
 	      rxq->enabled ? "en" : "dis", rxq->started ? "" : "not-",
 	      rxq->interrupt_mode ? "interrupt" : "polling");
+  if (rxq->port->rx_queue_ops.format_info)
+    s = format (s, "\n%U%U", format_white_space, indent,
+		rxq->port->rx_queue_ops.format_info, a, rxq);
 
   return s;
 }
@@ -178,6 +181,9 @@ format_vnet_dev_tx_queue_info (u8 *s, va_list *args)
   else
     s = format (s, "Used by thread%s %U", n > 1 ? "s" : "", format_bitmap_list,
 		txq->assigned_threads);
+  if (txq->port->tx_queue_ops.format_info)
+    s = format (s, "\n%U%U", format_white_space, indent,
+		txq->port->tx_queue_ops.format_info, a, txq);
 
   return s;
 }
