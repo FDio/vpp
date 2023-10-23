@@ -5,6 +5,7 @@ set -o pipefail -o errtrace -o nounset -o errexit
 # submitting any changes
 
 # defaults
+platform=default
 build_dir=.
 install_dir=/usr/local
 build_type=release
@@ -31,6 +32,7 @@ OPTIONS:
   --native-only, -n       Only compile for Native CPU (no multiarch)
   --wipe, -w              Wipe whole repo (except startup.* files)
   --sanitize, -s          Enable sanitizer (mem)
+  --platform, -p          Specify target platform
 __EOF__
 }
 
@@ -70,6 +72,15 @@ while (( "$#" )); do
     -t|--build-type)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         build_type=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -p|--platform)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        platform=$2
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -121,6 +132,7 @@ args+=("-DCMAKE_PREFIX_PATH=/opt/vpp/external/${arch}")
 args+=("-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
 args+=("-DCMAKE_INSTALL_PREFIX=${install_dir}")
 args+=("-DCMAKE_BUILD_TYPE:STRING=${build_type}")
+args+=("-DVPP_PLATFORM=${platform}")
 [ "${native_only}" == "yes" ] && args+=("-DVPP_BUILD_NATIVE_ONLY:BOOL=ON")
 
 [ "${wipe}" == "yes" ] && git clean -fdx --exclude=startup.\*
