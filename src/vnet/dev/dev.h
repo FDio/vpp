@@ -115,6 +115,7 @@ typedef struct
   vnet_dev_rx_queue_op_t *start;
   vnet_dev_rx_queue_op_no_rv_t *stop;
   vnet_dev_rx_queue_op_no_rv_t *free;
+  format_function_t *format_info;
 } vnet_dev_rx_queue_ops_t;
 
 typedef struct
@@ -123,6 +124,7 @@ typedef struct
   vnet_dev_tx_queue_op_t *start;
   vnet_dev_tx_queue_op_no_rv_t *stop;
   vnet_dev_tx_queue_op_no_rv_t *free;
+  format_function_t *format_info;
 } vnet_dev_tx_queue_ops_t;
 
 typedef struct
