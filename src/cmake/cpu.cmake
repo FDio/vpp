@@ -24,16 +24,21 @@ endmacro()
 ##############################################################################
 # Cache line size
 ##############################################################################
-if(DEFINED VPP_CACHE_LINE_SIZE)
-  # Cache line size assigned via cmake args
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  set(VPP_CACHE_LINE_SIZE 128)
-else()
-  set(VPP_CACHE_LINE_SIZE 64)
-endif()
 
-set(VPP_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE}
-    CACHE STRING "Target CPU cache line size")
+if(DEFINED VPP_PLATFORM_CACHE_LINE_SIZE)
+  set(VPP_CACHE_LINE_SIZE ${VPP_PLATFORM_CACHE_LINE_SIZE})
+else()
+  if(DEFINED VPP_CACHE_LINE_SIZE)
+    # Cache line size assigned via cmake args
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
+    set(VPP_CACHE_LINE_SIZE 128)
+  else()
+    set(VPP_CACHE_LINE_SIZE 64)
+  endif()
+
+  set(VPP_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE}
+      CACHE STRING "Target CPU cache line size")
+endif()
 
 set_log2_cacheline_size(VPP_LOG2_CACHE_LINE_SIZE ${VPP_CACHE_LINE_SIZE})
 
@@ -57,7 +62,9 @@ endif()
 # CPU optimizations and multiarch support
 ##############################################################################
 
-option(VPP_BUILD_NATIVE_ONLY "Build only for native CPU." OFF)
+if(NOT DEFINED VPP_PLATFORM)
+  option(VPP_BUILD_NATIVE_ONLY "Build only for native CPU." OFF)
+endif()
 
 macro(add_vpp_march_variant v)
   cmake_parse_arguments(ARG
@@ -104,14 +111,23 @@ macro(add_vpp_march_variant v)
   endif()
 endmacro()
 
-if(VPP_BUILD_NATIVE_ONLY)
+if(DEFINED VPP_PLATFORM)
+  if(DEFINED VPP_PLATFORM_MARCH_FLAGS)
+     set(VPP_DEFAULT_MARCH_FLAGS ${VPP_PLATFORM_MARCH_FLAGS})
+     check_c_compiler_flag(${VPP_DEFAULT_MARCH_FLAGS} compiler_flag_march)
+     if(NOT compiler_flag_march)
+       message(FATAL_ERROR "platform build with ${VPP_DEFAULT_MARCH_FLAGS} is not supported by compiler")
+     endif()
+  else()
+     set(VPP_DEFAULT_MARCH_FLAGS "")
+  endif()
+  set(MARCH_VARIANTS_NAMES "platform-only")
+elseif(VPP_BUILD_NATIVE_ONLY)
   set(VPP_BUILD_NATIVE_ARCH "native" CACHE STRING "native CPU -march= value.")
   set(VPP_DEFAULT_MARCH_FLAGS -march=${VPP_BUILD_NATIVE_ARCH})
-  if(VPP_BUILD_NATIVE_ONLY)
-    check_c_compiler_flag(${VPP_DEFAULT_MARCH_FLAGS} compiler_flag_march)
-    if(NOT compiler_flag_march)
-      message(FATAL_ERROR "Native-only build with ${VPP_DEFAULT_MARCH_FLAGS} is not supported by compiler")
-    endif()
+  check_c_compiler_flag(${VPP_DEFAULT_MARCH_FLAGS} compiler_flag_march)
+  if(NOT compiler_flag_march)
+    message(FATAL_ERROR "Native-only build with ${VPP_DEFAULT_MARCH_FLAGS} is not supported by compiler")
   endif()
   set(MARCH_VARIANTS_NAMES "native-only")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
