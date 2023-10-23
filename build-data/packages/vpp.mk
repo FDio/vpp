@@ -30,6 +30,9 @@ vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(vpp_cmake_prefix_path)"
 ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 endif
+ifneq ($(VPP_PLATFORM),)
+vpp_cmake_args += -DVPP_PLATFORM="$(VPP_PLATFORM)"
+endif
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 vpp_cmake_args += -DVPP_EXCLUDED_PLUGINS="$(VPP_EXCLUDED_PLUGINS)"
 endif
