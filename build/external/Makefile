@@ -35,6 +35,7 @@ CMAKE?=cmake
 endif
 
 ARCH_X86_64=$(filter x86_64,$(shell uname -m))
+AARCH64=$(filter aarch64,$(shell uname -m))
 
 include packages.mk
 include packages/ipsec-mb.mk
@@ -42,13 +43,14 @@ include packages/quicly.mk
 include packages/rdma-core.mk
 include packages/dpdk.mk
 include packages/xdp-tools.mk
+include packages/octeon-roc.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
 
 .PHONY: install
-install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install xdp-tools-install
+install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install xdp-tools-install $(if $(AARCH64), octeon-roc-install)
 
 .PHONY: config
 config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
