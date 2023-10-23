@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e8335169_261f6ec0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-23T15:13:06Z",
+      "side": 1,
+      "message": "Commit message comments:\n\n- 1st line should be \u0027tests: Added...\u0027 because there is no VPP stn code included in the commit\n\n- Type should be \u0027test\u0027",
+      "revId": "4f2492b24144c7ac80388f5219b4c1fac331aa38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
