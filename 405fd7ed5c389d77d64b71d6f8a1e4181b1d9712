@@ -33,6 +33,24 @@
       "message": "let\u0027s nul-terminate the name in vlib_buffer_pool_create() instead as it was before https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dcommit;h\u003d00686593c6ba8472392839137d50dd8996dacec3",
       "revId": "405fd7ed5c389d77d64b71d6f8a1e4181b1d9712",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "854264ea_5b61ad42",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 735,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-10-24T15:43:22Z",
+      "side": 1,
+      "message": "Fixed,now there\u0027s a vec_terminate_c_string call inside vlib_buffer_pool_create",
+      "parentUuid": "19ca3dc7_404d5957",
+      "revId": "405fd7ed5c389d77d64b71d6f8a1e4181b1d9712",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
