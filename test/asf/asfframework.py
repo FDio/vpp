@@ -20,7 +20,6 @@ from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
-from enum import Enum
 from abc import ABC, abstractmethod
 from struct import pack, unpack
 
@@ -47,6 +46,9 @@ from log import (
 from vpp_object import VppObjectRegistry
 from util import ppp, is_core_present
 from test_result_code import TestResultCode
+
+# TestCaseTag must be the same type in framework and asfframework
+from framework import TestCaseTag
 
 logger = logging.getLogger(__name__)
 
@@ -223,16 +225,6 @@ class KeepAliveReporter(object):
             desc = test.id()
 
         self.pipe.send((desc, config.vpp, test.tempdir, test.vpp.pid))
-
-
-class TestCaseTag(Enum):
-    # marks the suites that must run at the end
-    # using only a single test runner
-    RUN_SOLO = 1
-    # marks the suites broken on VPP multi-worker
-    FIXME_VPP_WORKERS = 2
-    # marks the suites broken when ASan is enabled
-    FIXME_ASAN = 3
 
 
 def create_tag_decorator(e):
