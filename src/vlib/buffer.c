@@ -537,6 +537,7 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
   va_start (va, fmt);
   bp->name = va_format (0, fmt, &va);
   va_end (va);
+  vec_terminate_c_string (bp->name);
 
   vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
 			CLIB_CACHE_LINE_BYTES);
