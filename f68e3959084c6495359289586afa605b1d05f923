@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "709bdcef_0d960dd9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-10-24T21:54:29Z",
+      "side": 1,
+      "message": "vlib_buffer_pool_t.neme is defined as u8 *, not char *, so it should be vector, not c string. Stats needs to be fixed instead...",
+      "revId": "f68e3959084c6495359289586afa605b1d05f923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
