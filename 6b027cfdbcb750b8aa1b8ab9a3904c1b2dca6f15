@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8d61edf5_27d88d7f",
+        "filename": "src/pkg/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-10-24T22:12:25Z",
+      "side": 0,
+      "message": "instead of having 2 instances of execute_prpcess here, simple variable which is either \"\" or \"--date\u003d.....\" will do the work....",
+      "revId": "6b027cfdbcb750b8aa1b8ab9a3904c1b2dca6f15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

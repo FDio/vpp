@@ -33,6 +33,57 @@
       "message": "recheck",
       "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5aea8cb8_5bd0196b",
+        "filename": "extras/scripts/reproduce-build.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-10-24T22:12:25Z",
+      "side": 1,
+      "message": "short docs/ entry instead?",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93c30028_58cb7d4a",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-10-24T22:12:25Z",
+      "side": 1,
+      "message": "IMO this kind of things should go into docs/ instead of abusing makefile....",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15b03502_5090b42f",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-10-24T22:12:25Z",
+      "side": 1,
+      "message": "move ot closet ot the place where variable is used (right above)",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
