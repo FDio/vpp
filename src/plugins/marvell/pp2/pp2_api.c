@@ -28,6 +28,7 @@
 #include <marvell/pp2/pp2.api_enum.h>
 #include <marvell/pp2/pp2.api_types.h>
 
+#define REPLY_MSG_ID_BASE (pp2->msg_id_base)
 #include <vlibapi/api_helper_macros.h>
 
 static void
@@ -48,12 +49,8 @@ vl_api_mrvl_pp2_create_t_handler (vl_api_mrvl_pp2_create_t * mp)
     {
       clib_error_free (args.error);
     }
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_MRVL_PP2_CREATE_REPLY + pp2->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_MRVL_PP2_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
@@ -78,7 +75,7 @@ vl_api_mrvl_pp2_delete_t_handler (vl_api_mrvl_pp2_delete_t * mp)
   mrvl_pp2_delete_if (dif);
 
 reply:
-  REPLY_MACRO (VL_API_MRVL_PP2_DELETE_REPLY + pp2->msg_id_base);
+  REPLY_MACRO (VL_API_MRVL_PP2_DELETE_REPLY);
 }
 
 #include <marvell/pp2/pp2.api.c>

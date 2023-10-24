@@ -22,7 +22,6 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <marvell/pp2/pp2.h>
 
