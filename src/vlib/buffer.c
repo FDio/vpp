@@ -732,9 +732,9 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node,
     return error;
 
 buffer_pool_create:
-  *index =
-    vlib_buffer_pool_create (vm, vlib_buffer_get_default_data_size (vm),
-			     physmem_map_index, "default-numa-%d", numa_node);
+  *index = vlib_buffer_pool_create (vm, vlib_buffer_get_default_data_size (vm),
+				    physmem_map_index, "default-numa-%d%c",
+				    numa_node, 0);
 
   if (*index == (u8) ~ 0)
     error = clib_error_return (0, "maximum number of buffer pools reached");
