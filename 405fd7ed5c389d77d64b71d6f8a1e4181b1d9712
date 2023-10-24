@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e4d1475_3999aa24",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-10-24T14:48:02Z",
+      "side": 1,
+      "message": "Hi, Damjan,\ncould you please look at this patch?\nIt fixes running VPP with ASAN.\n\nRegards,\nDmitry",
+      "revId": "405fd7ed5c389d77d64b71d6f8a1e4181b1d9712",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
