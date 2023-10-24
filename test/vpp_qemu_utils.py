@@ -6,11 +6,10 @@ import subprocess
 import sys
 
 
-def can_create_namespaces():
+def can_create_namespaces(namespace="vpp_chk_4212"):
     """Check if the environment allows creating the namespaces"""
 
     try:
-        namespace = "vpp_chk_4212"
         result = subprocess.run(["ip", "netns", "add", namespace], capture_output=True)
         if result.returncode != 0:
             return False
@@ -18,7 +17,7 @@ def can_create_namespaces():
         if result.returncode != 0:
             return False
         return True
-    except:
+    except Exception:
         return False
 
 
