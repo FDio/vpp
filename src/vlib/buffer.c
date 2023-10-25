@@ -603,7 +603,7 @@ format_vlib_buffer_pool (u8 * s, va_list * va)
     cached += bpt->n_cached;
   /* *INDENT-ON* */
 
-  s = format (s, "%-20s%=6d%=6d%=6u%=11u%=6u%=8u%=8u%=8u",
+  s = format (s, "%-20v%=6d%=6d%=6u%=11u%=6u%=8u%=8u%=8u",
 	      bp->name, bp->index, bp->numa_node, bp->data_size +
 	      sizeof (vlib_buffer_t) + vm->buffer_main->ext_hdr_size,
 	      bp->data_size, bp->n_buffers, bp->n_avail, cached,
@@ -897,16 +897,16 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
       continue;
 
     reg.entry_index =
-      vlib_stats_add_gauge ("/buffer-pools/%s/cached", bp->name);
+      vlib_stats_add_gauge ("/buffer-pools/%v/cached", bp->name);
     reg.collect_fn = buffer_gauges_collect_cached_fn;
     vlib_stats_register_collector_fn (&reg);
 
-    reg.entry_index = vlib_stats_add_gauge ("/buffer-pools/%s/used", bp->name);
+    reg.entry_index = vlib_stats_add_gauge ("/buffer-pools/%v/used", bp->name);
     reg.collect_fn = buffer_gauges_collect_used_fn;
     vlib_stats_register_collector_fn (&reg);
 
     reg.entry_index =
-      vlib_stats_add_gauge ("/buffer-pools/%s/available", bp->name);
+      vlib_stats_add_gauge ("/buffer-pools/%v/available", bp->name);
     reg.collect_fn = buffer_gauges_collect_available_fn;
     vlib_stats_register_collector_fn (&reg);
   }
