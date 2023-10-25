@@ -373,9 +373,9 @@ void lb_garbage_collection()
   }
 
   vec_foreach(i, to_be_removed_vips) {
-    vip = &lbm->vips[*i];
-    pool_put(lbm->vips, vip);
-    pool_free(vip->as_indexes);
+      vip = &lbm->vips[*i];
+      pool_free (vip->as_indexes);
+      pool_put (lbm->vips, vip);
   }
 
   vec_free(to_be_removed_vips);
