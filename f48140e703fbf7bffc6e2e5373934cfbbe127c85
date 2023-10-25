@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "963350cd_d6fa064f",
+        "filename": "test/test_mdata.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-25T01:57:49Z",
+      "side": 1,
+      "message": "Please use fd.io/docs/vpp/master as the root of the URL to ensure that the comment points to the latest documentation.",
+      "range": {
+        "startLine": 35,
+        "startChar": 14,
+        "endLine": 35,
+        "endChar": 38
+      },
+      "revId": "f48140e703fbf7bffc6e2e5373934cfbbe127c85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
