@@ -35,6 +35,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8adfc8ba_03e5fd5a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-10-25T11:22:32Z",
+      "side": 1,
+      "message": "Thanks a lot for the review and useful comments!\n\nIn the new revision I just uploaded I did my best to take care of them.",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5aea8cb8_5bd0196b",
@@ -48,6 +65,24 @@
       "writtenOn": "2023-10-24T22:12:25Z",
       "side": 1,
       "message": "short docs/ entry instead?",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2e3eccbf_7483cd73",
+        "filename": "extras/scripts/reproduce-build.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-10-25T11:22:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5aea8cb8_5bd0196b",
       "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +104,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ae79f8e_1f29fb04",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-10-25T11:22:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "93c30028_58cb7d4a",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "15b03502_5090b42f",
@@ -82,6 +135,24 @@
       "writtenOn": "2023-10-24T22:12:25Z",
       "side": 1,
       "message": "move ot closet ot the place where variable is used (right above)",
+      "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4af054f_5c96f153",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-10-25T11:22:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "15b03502_5090b42f",
       "revId": "8aa2bf381c7bc42eed4953bdefcdd1473fb5147a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
