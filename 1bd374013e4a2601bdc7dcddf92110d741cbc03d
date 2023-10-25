@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f94f18d_3ff809a6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-25T01:52:19Z",
+      "side": 1,
+      "message": "Please move this to the test/asf directory and use the VppAsfTestcase as the framework object as this test will not likely ever use scapy.",
+      "revId": "1bd374013e4a2601bdc7dcddf92110d741cbc03d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
