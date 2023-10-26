@@ -740,6 +740,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   e->packetcount = 0;
   e->octetcount = 0;
   e->last_exported = vlib_time_now (vm);
+  e->prot.tcp.flags = 0;
 
   b0->current_length = offset;
 

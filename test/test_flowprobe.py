@@ -33,6 +33,19 @@ TMPL_L2_FIELD_COUNT = 3
 TMPL_L3_FIELD_COUNT = 4
 TMPL_L4_FIELD_COUNT = 3
 
+IPFIX_TCP_FLAGS_ID = 6
+IPFIX_SRC_TRANS_PORT_ID = 7
+IPFIX_DST_TRANS_PORT_ID = 11
+
+TCP_F_FIN = 0x01
+TCP_F_SYN = 0x02
+TCP_F_RST = 0x04
+TCP_F_PSH = 0x08
+TCP_F_ACK = 0x10
+TCP_F_URG = 0x20
+TCP_F_ECE = 0x40
+TCP_F_CWR = 0x80
+
 
 class VppCFLOW(VppObject):
     """CFLOW object for IPFIX exporter and Flowprobe feature"""
@@ -508,6 +521,67 @@ class Flowprobe(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0000")
+
+    def test_flow_entry_reuse(self):
+        """Verify flow entry reuse doesn't accumulate meta info"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # enable ip4 datapath for an interface
+        # set active and passive timers
+        ipfix = VppCFLOW(
+            test=self,
+            active=2,
+            passive=3,
+            intf="pg3",
+            layer="l3 l4",
+            datapath="ip4",
+            direction="rx",
+            mtu=100,
+        )
+        ipfix.add_vpp_config()
+
+        # template packet should arrive immediately
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=1)
+
+        # make a tcp packet
+        self.pkts = [
+            (
+                Ether(src=self.pg3.remote_mac, dst=self.pg4.local_mac)
+                / IP(src=self.pg3.remote_ip4, dst=self.pg4.remote_ip4)
+                / TCP(sport=1234, dport=4321)
+                / Raw(b"\xa5" * 50)
+            )
+        ]
+
+        # send the tcp packet two times, each time with new set of flags
+        tcp_flags = (
+            TCP_F_SYN | TCP_F_ACK,
+            TCP_F_RST | TCP_F_PSH,
+        )
+        for f in tcp_flags:
+            self.pkts[0][TCP].flags = f
+            capture = self.send_packets(src_if=self.pg3, dst_if=self.pg4)
+
+            # verify meta info - packet/octet delta and tcp flags
+            cflow = self.wait_for_cflow_packet(self.collector, templates[0], timeout=6)
+            self.verify_cflow_data(ipfix_decoder, capture, cflow)
+            self.verify_cflow_data_detail(
+                ipfix_decoder,
+                capture,
+                cflow,
+                {
+                    IPFIX_TCP_FLAGS_ID: f,
+                    IPFIX_SRC_TRANS_PORT_ID: 1234,
+                    IPFIX_DST_TRANS_PORT_ID: 4321,
+                },
+            )
+
+        self.collector.get_capture(3)
+
+        # cleanup
+        ipfix.remove_vpp_config()
 
     def test_interface_dump(self):
         """Dump interfaces with IPFIX flow record generation enabled"""
