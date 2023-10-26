@@ -64,7 +64,7 @@ ec_session_alloc (ec_worker_t *wrk)
   ec_session_t *ecs;
 
   pool_get_zero (wrk->sessions, ecs);
-  ecs->data.session_index = ecs - wrk->sessions;
+  ecs->session_index = ecs - wrk->sessions;
   ecs->thread_index = wrk->thread_index;
 
   return ecs;
@@ -89,23 +89,24 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
   bytes_this_chunk =
     clib_min (test_buf_len - test_buf_offset, es->bytes_to_send);
 
-  if (!ecm->is_dgram)
+  if (!es->is_dgram)
     {
       if (ecm->no_copy)
 	{
-	  svm_fifo_t *f = es->data.tx_fifo;
+	  svm_fifo_t *f = es->tx_fifo;
 	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
 	  session_send_io_evt_to_thread_custom (
 	    &es->vpp_session_index, es->thread_index, SESSION_IO_EVT_TX);
 	}
       else
-	rv = app_send_stream (&es->data, test_data + test_buf_offset,
-			      bytes_this_chunk, 0);
+	rv =
+	  app_send_stream ((app_session_t *) es, test_data + test_buf_offset,
+			   bytes_this_chunk, 0);
     }
   else
     {
-      svm_fifo_t *f = es->data.tx_fifo;
+      svm_fifo_t *f = es->tx_fifo;
       u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
 
       if (max_enqueue < sizeof (session_dgram_hdr_t))
@@ -116,7 +117,7 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
       if (ecm->no_copy)
 	{
 	  session_dgram_hdr_t hdr;
-	  app_session_transport_t *at = &es->data.transport;
+	  app_session_transport_t *at = &es->transport;
 
 	  rv = clib_min (max_enqueue, bytes_this_chunk);
 
@@ -138,8 +139,9 @@ send_data_chunk (ec_main_t *ecm, ec_session_t *es)
 	{
 	  bytes_this_chunk = clib_min (bytes_this_chunk, max_enqueue);
 	  bytes_this_chunk = clib_min (bytes_this_chunk, 1460);
-	  rv = app_send_dgram (&es->data, test_data + test_buf_offset,
-			       bytes_this_chunk, 0);
+	  rv =
+	    app_send_dgram ((app_session_t *) es, test_data + test_buf_offset,
+			    bytes_this_chunk, 0);
 	}
     }
 
@@ -173,17 +175,13 @@ static void
 receive_data_chunk (ec_worker_t *wrk, ec_session_t *es)
 {
   ec_main_t *ecm = &ec_main;
-  svm_fifo_t *rx_fifo = es->data.rx_fifo;
+  svm_fifo_t *rx_fifo = es->rx_fifo;
   int n_read, i;
 
   if (ecm->cfg.test_bytes)
     {
-      if (!ecm->is_dgram)
-	n_read =
-	  app_recv_stream (&es->data, wrk->rx_buf, vec_len (wrk->rx_buf));
-      else
-	n_read =
-	  app_recv_dgram (&es->data, wrk->rx_buf, vec_len (wrk->rx_buf));
+      n_read =
+	app_recv ((app_session_t *) es, wrk->rx_buf, vec_len (wrk->rx_buf));
     }
   else
     {
@@ -597,27 +595,15 @@ quic_ec_session_connected_callback (u32 app_index, u32 api_context,
    * Setup session
    */
   es = ec_session_alloc (wrk);
+  hs_test_app_session_init (es, s);
 
   es->bytes_to_send = ecm->bytes_to_send;
   es->bytes_to_receive = ecm->echo_bytes ? ecm->bytes_to_send : 0ULL;
-  es->data.rx_fifo = s->rx_fifo;
-  es->data.rx_fifo->shr->client_session_index = es->data.session_index;
-  es->data.tx_fifo = s->tx_fifo;
-  es->data.tx_fifo->shr->client_session_index = es->data.session_index;
-  es->data.vpp_evt_q = wrk->vpp_event_queue;
   es->vpp_session_handle = session_handle (s);
   es->vpp_session_index = s->session_index;
-  s->opaque = es->data.session_index;
+  s->opaque = es->session_index;
 
-  if (ecm->is_dgram)
-    {
-      transport_connection_t *tc;
-      tc = session_get_transport (s);
-      clib_memcpy_fast (&es->data.transport, tc, sizeof (es->data.transport));
-      es->data.is_dgram = 1;
-    }
-
-  vec_add1 (wrk->conn_indices, es->data.session_index);
+  vec_add1 (wrk->conn_indices, es->session_index);
   clib_atomic_fetch_add (&ecm->ready_connections, 1);
   if (ecm->ready_connections == ecm->expected_connections)
     {
@@ -663,27 +649,15 @@ ec_session_connected_callback (u32 app_index, u32 api_context, session_t *s,
    * Setup session
    */
   es = ec_session_alloc (wrk);
+  hs_test_app_session_init (es, s);
 
   es->bytes_to_send = ecm->bytes_to_send;
   es->bytes_to_receive = ecm->echo_bytes ? ecm->bytes_to_send : 0ULL;
-  es->data.rx_fifo = s->rx_fifo;
-  es->data.rx_fifo->shr->client_session_index = es->data.session_index;
-  es->data.tx_fifo = s->tx_fifo;
-  es->data.tx_fifo->shr->client_session_index = es->data.session_index;
-  es->data.vpp_evt_q = wrk->vpp_event_queue;
   es->vpp_session_handle = session_handle (s);
   es->vpp_session_index = s->session_index;
-  s->opaque = es->data.session_index;
+  s->opaque = es->session_index;
 
-  if (ecm->is_dgram)
-    {
-      transport_connection_t *tc;
-      tc = session_get_transport (s);
-      clib_memcpy_fast (&es->data.transport, tc, sizeof (es->data.transport));
-      es->data.is_dgram = 1;
-    }
-
-  vec_add1 (wrk->conn_indices, es->data.session_index);
+  vec_add1 (wrk->conn_indices, es->session_index);
   clib_atomic_fetch_add (&ecm->ready_connections, 1);
   if (ecm->ready_connections == ecm->expected_connections)
     {
@@ -1194,7 +1168,6 @@ parse_config:
       goto cleanup;
     }
   ecm->transport_proto = ecm->connect_sep.transport_proto;
-  ecm->is_dgram = (ecm->transport_proto == TRANSPORT_PROTO_UDP);
 
   if (ecm->prealloc_sessions)
     ec_prealloc_sessions (ecm);

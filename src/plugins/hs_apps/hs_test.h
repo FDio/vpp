@@ -18,6 +18,7 @@
 #define __included_hs_test_t__
 
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session.h>
 
 #define HS_TEST_CFG_CTRL_MAGIC	   0xfeedface
 #define HS_TEST_CFG_TXBUF_SIZE_DEF 8192
@@ -189,5 +190,23 @@ hs_make_data_port (u16 p)
   p = clib_net_to_host_u16 (p);
   return clib_host_to_net_u16 (p + 1);
 }
+
+static inline void
+hs_test_app_session_init_ (app_session_t *as, session_t *s)
+{
+  as->rx_fifo = s->rx_fifo;
+  as->tx_fifo = s->tx_fifo;
+  as->vpp_evt_q = session_main_get_vpp_event_queue (s->thread_index);
+  if (session_get_transport_proto (s) == TRANSPORT_PROTO_UDP)
+    {
+      transport_connection_t *tc;
+      tc = session_get_transport (s);
+      clib_memcpy_fast (&as->transport, tc, sizeof (as->transport));
+      as->is_dgram = 1;
+    }
+}
+
+#define hs_test_app_session_init(_as, _s)                                     \
+  hs_test_app_session_init_ ((app_session_t *) (_as), (_s))
 
 #endif /* __included_hs_test_t__ */
