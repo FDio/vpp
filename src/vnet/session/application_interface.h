@@ -17,6 +17,7 @@
 
 #include <vlibmemory/api.h>
 #include <svm/message_queue.h>
+#include <vnet/session/session.h>
 #include <vnet/session/session_types.h>
 #include <vnet/tls/tls_test.h>
 #include <svm/fifo_segment.h>
@@ -579,6 +580,24 @@ typedef struct app_session_event_
   svm_msg_q_msg_t msg;
   session_event_t *evt;
 } __clib_packed app_session_evt_t;
+
+static inline void
+app_session_init_ (app_session_t *as, session_t *s)
+{
+  as->rx_fifo = s->rx_fifo;
+  as->tx_fifo = s->tx_fifo;
+  as->vpp_evt_q = session_main_get_vpp_event_queue (s->thread_index);
+  if (session_get_transport_proto (s) == TRANSPORT_PROTO_UDP)
+    {
+      transport_connection_t *tc;
+      tc = session_get_transport (s);
+      clib_memcpy_fast (&as->transport, tc, sizeof (as->transport));
+      as->is_dgram = 1;
+    }
+}
+
+#define app_session_init(_as, _s)                                             \
+  app_session_init_ ((app_session_t *) (_as), (_s))
 
 static inline void
 app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,

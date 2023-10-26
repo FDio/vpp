@@ -25,8 +25,10 @@
 typedef struct ec_session_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  app_session_t data;
-  u32 vpp_session_index;
+#define _(type, name) type name;
+  foreach_app_session_field
+#undef _
+    u32 vpp_session_index;
   u32 thread_index;
   u64 bytes_to_send;
   u64 bytes_sent;
@@ -87,7 +89,6 @@ typedef struct
   u32 private_segment_count;		/**< Number of private fifo segs */
   u64 private_segment_size;		/**< size of private fifo segs */
   u32 tls_engine;			/**< TLS engine mbedtls/openssl */
-  u8 is_dgram;
   u32 no_copy;				/**< Don't memcpy data to tx fifo */
   u32 quic_streams;			/**< QUIC streams per connection */
   u32 ckpair_index;			/**< Cert key pair for tls/quic */
