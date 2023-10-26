@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e26ddd2f_58307420",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-26T16:02:10Z",
+      "side": 1,
+      "message": "Thanks for this fix.\n\nPer the latest coverage report [0], this code is not currently verified by the existing \u0027make test\u0027 testcases, nor is there a specific testcase for mhash.c\n\nWould you be so kind as to identify how you reproduced this anomaly in your testing to verify the fix?\n\n[0] https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1/vpp-cov-verify-master-ubuntu2004-x86_64/475/vppinfra/mhash.c.gcov.html (Note: link expires after Nov 2, 2023)",
+      "revId": "ac390f32013122f7e0bf035cf856eecc148a4bac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
