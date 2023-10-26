@@ -1202,15 +1202,6 @@ virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
-static clib_error_t *
-virtio_subif_add_del_function (vnet_main_t * vnm,
-			       u32 hw_if_index,
-			       struct vnet_sw_interface_t *st, int is_add)
-{
-  /* Nothing for now */
-  return 0;
-}
-
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
@@ -1222,7 +1213,6 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .rx_redirect_to_node = virtio_set_interface_next_node,
   .clear_counters = virtio_clear_hw_interface_counters,
   .admin_up_down_function = virtio_interface_admin_up_down,
-  .subif_add_del_function = virtio_subif_add_del_function,
   .rx_mode_change_function = virtio_interface_rx_mode_change,
 };
 

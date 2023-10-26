@@ -677,15 +677,6 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return 0;			/* no error */
 }
 
-static clib_error_t *
-af_packet_subif_add_del_function (vnet_main_t * vnm,
-				  u32 hw_if_index,
-				  struct vnet_sw_interface_t *st, int is_add)
-{
-  /* Nothing for now */
-  return 0;
-}
-
 static clib_error_t *af_packet_set_mac_address_function
   (struct vnet_hw_interface_t *hi, const u8 * old_address, const u8 * address)
 {
@@ -789,7 +780,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .rx_redirect_to_node = af_packet_set_interface_next_node,
   .clear_counters = af_packet_clear_hw_interface_counters,
   .admin_up_down_function = af_packet_interface_admin_up_down,
-  .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
   .rx_mode_change_function = af_packet_interface_rx_mode_change,
 };

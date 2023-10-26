@@ -111,14 +111,6 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
   return 0;
 }
 
-static __clib_unused clib_error_t *
-bond_subif_add_del_function (vnet_main_t * vnm, u32 hw_if_index,
-			     struct vnet_sw_interface_t *st, int is_add)
-{
-  /* Nothing for now */
-  return 0;
-}
-
 static clib_error_t *
 bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -633,7 +625,6 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .format_device_name = format_bond_interface_name,
   .set_l2_mode_function = bond_set_l2_mode_function,
   .admin_up_down_function = bond_interface_admin_up_down,
-  .subif_add_del_function = bond_subif_add_del_function,
   .format_tx_trace = format_bond_tx_trace,
   .mac_addr_add_del_function = bond_add_del_mac_address,
 };

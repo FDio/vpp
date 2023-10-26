@@ -741,15 +741,6 @@ memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   return 0;
 }
 
-static clib_error_t *
-memif_subif_add_del_function (vnet_main_t * vnm,
-			      u32 hw_if_index,
-			      struct vnet_sw_interface_t *st, int is_add)
-{
-  /* Nothing for now */
-  return 0;
-}
-
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",
@@ -761,7 +752,6 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .rx_redirect_to_node = memif_set_interface_next_node,
   .clear_counters = memif_clear_hw_interface_counters,
   .admin_up_down_function = memif_interface_admin_up_down,
-  .subif_add_del_function = memif_subif_add_del_function,
   .rx_mode_change_function = memif_interface_rx_mode_change,
 };
 
