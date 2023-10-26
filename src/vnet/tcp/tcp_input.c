@@ -1909,7 +1909,9 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					     SESSION_E_NONE))
 	    {
 	      tcp_send_reset_w_pkt (new_tc, b[0], thread_index, is_ip4);
-	      tcp_connection_cleanup (new_tc);
+	      tcp_program_cleanup (wrk, new_tc);
+	      new_tc->state = TCP_STATE_CLOSED;
+	      new_tc->c_s_index = ~0;
 	      error = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto cleanup_ho;
 	    }
@@ -1930,8 +1932,10 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (session_stream_connect_notify (&new_tc->connection,
 					     SESSION_E_NONE))
 	    {
-	      tcp_connection_cleanup (new_tc);
 	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
+	      tcp_program_cleanup (wrk, new_tc);
+	      new_tc->state = TCP_STATE_CLOSED;
+	      new_tc->c_s_index = ~0;
 	      TCP_EVT (TCP_EVT_RST_SENT, tc);
 	      error = TCP_ERROR_CREATE_SESSION_FAIL;
 	      goto cleanup_ho;
