@@ -16,6 +16,29 @@
       "message": "recheck",
       "revId": "7900ffe0447f3f569f9f7a425742dad9df1fe68f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c83c0413_f888a1be",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-26T15:43:03Z",
+      "side": 1,
+      "message": "Instead of replicating this code here, it would be better to modify the function in  vpp_quem_utils.py by adding the parameter with the default that is hard-coded in it.  Thus any code which calls the function without providing a namespace will behave the same as the present code, and then the new code here will also work in the manner of this code.\n\ndef can_create_namespaces(namespace\u003d\"vpp_chk_4212\"):\n\nThen delete line 13 [0] : namepace \u003d \"vpp_chk_4212\"\n\n[0] https://github.com/FDio/vpp/blob/master/test/vpp_qemu_utils.py#L13",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 29,
+        "endChar": 0
+      },
+      "revId": "7900ffe0447f3f569f9f7a425742dad9df1fe68f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
