@@ -1433,8 +1433,27 @@ class DisableFP(MethodHolder):
         self.sleep(12, "wait for leftover ip4 flows during three passive intervals")
         self.collector.assert_nothing_captured()
 
+        # re-enable feature for the interface
+        ipfix.enable_flowprobe_feature()
+
+        # template packet should arrive immediately
+        ipfix_decoder = IPFIXDecoder()
+        self.vapi.ipfix_flush()
+        templates = ipfix.verify_templates(ipfix_decoder, count=1)
+
+        # send some ip4 packets
+        self.create_stream(src_if=self.pg3, dst_if=self.pg4, packets=5)
+        capture = self.send_packets(src_if=self.pg3, dst_if=self.pg4)
+
+        # verify meta info - packet/octet delta
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[0], timeout=8)
+        self.verify_cflow_data(ipfix_decoder, capture, cflow)
+
+        self.collector.get_capture(2)
+
         # cleanup
-        ipfix.disable_exporter()
+        ipfix.remove_vpp_config()
 
 
 @unittest.skipUnless(config.extended, "part of extended tests")

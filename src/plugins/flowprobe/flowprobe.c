@@ -527,6 +527,9 @@ flowprobe_clear_state_if_index (u32 sw_if_index)
 	      if (e->key.rx_sw_if_index == sw_if_index ||
 		  e->key.tx_sw_if_index == sw_if_index)
 		{
+		  e->packetcount = 0;
+		  e->octetcount = 0;
+		  e->prot.tcp.flags = 0;
 		  if (fm->passive_timer > 0)
 		    {
 		      tw_timer_stop_2t_1w_2048sl (
