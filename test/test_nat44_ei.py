@@ -641,17 +641,25 @@ class MethodHolder(VppTestCase):
             )
             # ingressVRFID
             self.assertEqual(struct.pack("!I", 0), record[234])
+            # destinationIPv4Address
+            self.assertEqual(
+                self.pg1.remote_ip4, str(ipaddress.IPv4Address(record[12]))
+            )
             # protocolIdentifier/sourceTransportPort
             # /postNAPTSourceTransportPort
+            # /destinationTransportPort
             if IP_PROTOS.icmp == scapy.compat.orb(record[4]):
                 self.assertEqual(struct.pack("!H", self.icmp_id_in), record[7])
                 self.assertEqual(struct.pack("!H", self.icmp_id_out), record[227])
+                self.assertEqual(struct.pack("!H", self.icmp_id_in), record[11])
             elif IP_PROTOS.tcp == scapy.compat.orb(record[4]):
                 self.assertEqual(struct.pack("!H", self.tcp_port_in), record[7])
                 self.assertEqual(struct.pack("!H", self.tcp_port_out), record[227])
+                self.assertEqual(struct.pack("!H", 20), record[11])
             elif IP_PROTOS.udp == scapy.compat.orb(record[4]):
                 self.assertEqual(struct.pack("!H", self.udp_port_in), record[7])
                 self.assertEqual(struct.pack("!H", self.udp_port_out), record[227])
+                self.assertEqual(struct.pack("!H", 20), record[11])
             else:
                 self.fail(f"Invalid protocol {scapy.compat.orb(record[4])}")
         self.assertEqual(3, nat44_ses_create_num)

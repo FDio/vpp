@@ -15,7 +15,7 @@
 vlib_node_registration_t nat_ipfix_flush_node;
 nat_ipfix_logging_main_t nat_ipfix_logging_main;
 
-#define NAT44_SESSION_CREATE_LEN 26
+#define NAT44_SESSION_CREATE_LEN   32
 #define NAT_ADDRESSES_EXHAUTED_LEN 13
 #define MAX_ENTRIES_PER_USER_LEN 21
 #define MAX_SESSIONS_LEN 17
@@ -25,7 +25,7 @@ nat_ipfix_logging_main_t nat_ipfix_logging_main;
 #define NAT64_BIB_LEN 38
 #define NAT64_SES_LEN 62
 
-#define NAT44_SESSION_CREATE_FIELD_COUNT 8
+#define NAT44_SESSION_CREATE_FIELD_COUNT   10
 #define NAT_ADDRESSES_EXHAUTED_FIELD_COUNT 3
 #define MAX_ENTRIES_PER_USER_FIELD_COUNT 5
 #define MAX_SESSIONS_FIELD_COUNT 4
@@ -43,6 +43,8 @@ typedef struct
   u16 src_port;
   u16 nat_src_port;
   u32 vrf_id;
+  u32 dst_ip;
+  u16 dst_port;
 } nat_ipfix_logging_nat44_ses_args_t;
 
 typedef struct
@@ -262,6 +264,10 @@ nat_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
       f->e_id_length = ipfix_e_id_length (0, postNAPTSourceTransportPort, 2);
       f++;
       f->e_id_length = ipfix_e_id_length (0, ingressVRFID, 4);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, destinationIPv4Address, 4);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, destinationTransportPort, 2);
       f++;
     }
   else if (event == NAT64_BIB_CREATE)
@@ -540,7 +546,8 @@ nat_ipfix_send (flow_report_main_t *frm, vlib_frame_t *f, vlib_buffer_t *b0,
 static void
 nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
 			     u32 nat_src_ip, ip_protocol_t proto, u16 src_port,
-			     u16 nat_src_port, u32 fib_index, int do_flush)
+			     u16 nat_src_port, u32 fib_index, u32 dst_ip,
+			     u16 dst_port, int do_flush)
 {
   nat_ipfix_logging_main_t *silm = &nat_ipfix_logging_main;
   nat_ipfix_per_thread_data_t *sitd = &silm->per_thread_data[thread_index];
@@ -622,6 +629,12 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
       vrf_id = clib_host_to_net_u32 (vrf_id);
       clib_memcpy_fast (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
+
+      clib_memcpy_fast (b0->data + offset, &dst_ip, sizeof (dst_ip));
+      offset += sizeof (dst_ip);
+
+      clib_memcpy_fast (b0->data + offset, &dst_port, sizeof (dst_port));
+      offset += sizeof (dst_port);
 
       b0->current_length += NAT44_SESSION_CREATE_LEN;
     }
@@ -1214,8 +1227,8 @@ nat_ipfix_flush (u32 thread_index)
 {
   int do_flush = 1;
 
-  nat_ipfix_logging_nat44_ses (thread_index,
-                                0, 0, 0, 0, 0, 0, 0, do_flush);
+  nat_ipfix_logging_nat44_ses (thread_index, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			       do_flush);
   nat_ipfix_logging_addr_exhausted (thread_index, 0, do_flush);
   nat_ipfix_logging_max_entries_per_usr (thread_index, 0, 0, do_flush);
   nat_ipfix_logging_max_ses (thread_index, 0, do_flush);
@@ -1273,13 +1286,13 @@ void
 nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
 				    u32 nat_src_ip, ip_protocol_t proto,
 				    u16 src_port, u16 nat_src_port,
-				    u32 fib_index)
+				    u32 fib_index, u32 dst_ip, u16 dst_port)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_CREATE, src_ip,
 			       nat_src_ip, proto, src_port, nat_src_port,
-			       fib_index, 0);
+			       fib_index, dst_ip, dst_port, 0);
 }
 
 /**
@@ -1289,13 +1302,13 @@ void
 nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
 				    u32 nat_src_ip, ip_protocol_t proto,
 				    u16 src_port, u16 nat_src_port,
-				    u32 fib_index)
+				    u32 fib_index, u32 dst_ip, u16 dst_port)
 {
   skip_if_disabled ();
 
   nat_ipfix_logging_nat44_ses (thread_index, NAT44_SESSION_DELETE, src_ip,
 			       nat_src_ip, proto, src_port, nat_src_port,
-			       fib_index, 0);
+			       fib_index, dst_ip, dst_port, 0);
 }
 
 /**

@@ -597,7 +597,8 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   /* log NAT event */
   nat_ipfix_logging_nat44_ses_create (
     thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32, s->proto,
-    s->in2out.port, s->out2in.port, s->in2out.fib_index);
+    s->in2out.port, s->out2in.port, s->in2out.fib_index,
+    s->ext_host_addr.as_u32, s->ext_host_port);
 
   nat_syslog_nat44_sadd (0, s->in2out.fib_index, &s->in2out.addr,
 			 s->in2out.port, &s->ext_host_nat_addr,

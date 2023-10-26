@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import ipaddress
+import socket
+import struct
 import unittest
 from io import BytesIO
 from random import randint, choice
@@ -8,11 +11,12 @@ import re
 import scapy.compat
 from framework import VppTestCase, VppLoInterface
 from asfframework import VppTestRunner
+from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
+from scapy.packet import Raw, bind_layers
 from statistics import variance
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
@@ -43,6 +47,9 @@ class TestNAT44ED(VppTestCase):
 
     max_sessions = 100
 
+    ipfix_src_port = 4739
+    ipfix_domain_id = 1
+
     def setUp(self):
         super().setUp()
         self.plugin_enable()
@@ -50,6 +57,11 @@ class TestNAT44ED(VppTestCase):
     def tearDown(self):
         super().tearDown()
         if not self.vpp_dead:
+            self.vapi.nat_ipfix_enable_disable(
+                domain_id=self.ipfix_domain_id, src_port=self.ipfix_src_port, enable=0
+            )
+            self.ipfix_src_port = 4739
+            self.ipfix_domain_id = 1
             self.plugin_disable()
 
     def plugin_enable(self, max_sessions=None):
@@ -995,6 +1007,54 @@ class TestNAT44ED(VppTestCase):
             )
             sessions = self.vapi.nat44_user_session_dump(server.ip4, 0)
             self.assertEqual(len(sessions), 0)
+
+    def verify_ipfix_nat44_ses(self, data):
+        """
+        Verify IPFIX NAT44ED session create/delete event
+
+        :param data: Decoded IPFIX data records
+        """
+        nat44_ses_create_num = 0
+        nat44_ses_delete_num = 0
+        self.assertEqual(6, len(data))
+        for record in data:
+            # natEvent
+            self.assertIn(scapy.compat.orb(record[230]), [4, 5])
+            if scapy.compat.orb(record[230]) == 4:
+                nat44_ses_create_num += 1
+            else:
+                nat44_ses_delete_num += 1
+            # sourceIPv4Address
+            self.assertEqual(self.pg0.remote_ip4, str(ipaddress.IPv4Address(record[8])))
+            # postNATSourceIPv4Address
+            self.assertEqual(
+                socket.inet_pton(socket.AF_INET, self.nat_addr), record[225]
+            )
+            # ingressVRFID
+            self.assertEqual(struct.pack("!I", 0), record[234])
+            # destinationIPv4Address
+            self.assertEqual(
+                self.pg1.remote_ip4, str(ipaddress.IPv4Address(record[12]))
+            )
+            # protocolIdentifier/sourceTransportPort
+            # /postNAPTSourceTransportPort
+            # /destinationTransportPort
+            if IP_PROTOS.icmp == scapy.compat.orb(record[4]):
+                self.assertEqual(struct.pack("!H", self.icmp_id_in), record[7])
+                self.assertEqual(struct.pack("!H", self.icmp_id_out), record[227])
+                self.assertEqual(struct.pack("!H", self.icmp_id_in), record[11])
+            elif IP_PROTOS.tcp == scapy.compat.orb(record[4]):
+                self.assertEqual(struct.pack("!H", self.tcp_port_in), record[7])
+                self.assertEqual(struct.pack("!H", self.tcp_port_out), record[227])
+                self.assertEqual(struct.pack("!H", 20), record[11])
+            elif IP_PROTOS.udp == scapy.compat.orb(record[4]):
+                self.assertEqual(struct.pack("!H", self.udp_port_in), record[7])
+                self.assertEqual(struct.pack("!H", self.udp_port_out), record[227])
+                self.assertEqual(struct.pack("!H", 20), record[11])
+            else:
+                self.fail(f"Invalid protocol {scapy.compat.orb(record[4])}")
+        self.assertEqual(3, nat44_ses_create_num)
+        self.assertEqual(3, nat44_ses_delete_num)
 
     def verify_syslog_sess(self, data, msgid, is_ip6=False):
         message = data.decode("utf-8")
@@ -3581,6 +3641,61 @@ class TestNAT44EDMW(TestNAT44ED):
         self.assertGreater(server1_n, 0)
         self.assertEqual(server2_n, 0)
         self.assertGreater(server3_n, 0)
+
+    def test_ipfix_nat44_sess(self):
+        """NAT44ED IPFIX logging NAT44ED session created/deleted"""
+        self.ipfix_domain_id = 10
+        self.ipfix_src_port = 20202
+        collector_port = 30303
+        bind_layers(UDP, IPFIX, dport=30303)
+
+        self.nat_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index, flags=flags, is_add=1
+        )
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index, is_add=1
+        )
+
+        self.vapi.set_ipfix_exporter(
+            collector_address=self.pg3.remote_ip4,
+            src_address=self.pg3.local_ip4,
+            path_mtu=512,
+            template_interval=10,
+            collector_port=collector_port,
+        )
+        self.vapi.nat_ipfix_enable_disable(
+            domain_id=self.ipfix_domain_id, src_port=self.ipfix_src_port, enable=1
+        )
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+
+        self.verify_capture_out(capture)
+        self.nat_add_address(self.nat_addr, is_add=0)
+        self.vapi.ipfix_flush()
+        capture = self.pg3.get_capture(7)
+
+        ipfix = IPFIXDecoder()
+        # first load template
+        for p in capture:
+            self.assertTrue(p.haslayer(IPFIX))
+            self.assertEqual(p[IP].src, self.pg3.local_ip4)
+            self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
+            self.assertEqual(p[UDP].sport, self.ipfix_src_port)
+            self.assertEqual(p[UDP].dport, collector_port)
+            self.assertEqual(p[IPFIX].observationDomainID, self.ipfix_domain_id)
+            if p.haslayer(Template):
+                ipfix.add_template(p.getlayer(Template))
+        # verify events in data set
+        for p in capture:
+            if p.haslayer(Data):
+                data = ipfix.decode_data_set(p.getlayer(Set))
+                self.verify_ipfix_nat44_ses(data)
 
     # put zzz in front of syslog test name so that it runs as a last test
     # setting syslog sender cannot be undone and if it is set, it messes

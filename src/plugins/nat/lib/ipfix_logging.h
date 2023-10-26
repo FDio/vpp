@@ -113,11 +113,13 @@ int nat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port);
 void nat_ipfix_logging_nat44_ses_create (u32 thread_index, u32 src_ip,
 					 u32 nat_src_ip, ip_protocol_t proto,
 					 u16 src_port, u16 nat_src_port,
-					 u32 fib_index);
+					 u32 fib_index, u32 dst_ip,
+					 u16 dst_port);
 void nat_ipfix_logging_nat44_ses_delete (u32 thread_index, u32 src_ip,
 					 u32 nat_src_ip, ip_protocol_t proto,
 					 u16 src_port, u16 nat_src_port,
-					 u32 fib_index);
+					 u32 fib_index, u32 dst_ip,
+					 u16 dst_port);
 void nat_ipfix_logging_addresses_exhausted(u32 thread_index, u32 pool_id);
 void nat_ipfix_logging_max_entries_per_user(u32 thread_index,
                                              u32 limit, u32 src_ip);
