@@ -25,8 +25,10 @@ static void es_set_echo_rx_callbacks (u8 no_echo);
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 session_index;
-  u64 vpp_session_handle;
+#define _(type, name) type name;
+  foreach_app_session_field
+#undef _
+    u64 vpp_session_handle;
   u32 vpp_session_index;
   u32 rx_retries;
   u8 byte_index;
@@ -57,7 +59,6 @@ typedef struct
   char *server_uri;		/**< Server URI */
   u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
   u32 ckpair_index;		/**< Cert and key for tls/quic */
-  u8 is_dgram;			/**< set if transport is dgram */
 
   /*
    * Test state
@@ -128,6 +129,7 @@ es_session_alloc_and_init (session_t *s)
   es_worker_t *wrk = es_worker_get (s->thread_index);
 
   es = es_session_alloc (wrk);
+  hs_test_app_session_init (es, s);
   es->vpp_session_index = s->session_index;
   es->vpp_session_handle = session_handle (s);
   s->opaque = es->session_index;
@@ -373,7 +375,6 @@ echo_server_rx_callback (session_t * s)
   svm_fifo_t *tx_fifo, *rx_fifo;
   echo_server_main_t *esm = &echo_server_main;
   u32 thread_index = vlib_get_thread_index ();
-  app_session_transport_t at;
   es_worker_t *wrk;
   es_session_t *es;
 
@@ -390,12 +391,9 @@ echo_server_rx_callback (session_t * s)
 
   wrk = es_worker_get (thread_index);
   max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
+  es = es_session_get (wrk, s->opaque);
 
-  if (!esm->is_dgram)
-    {
-      max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
-    }
-  else
+  if (es->is_dgram)
     {
       session_dgram_pre_hdr_t ph;
       svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) & ph);
@@ -403,11 +401,13 @@ echo_server_rx_callback (session_t * s)
       ASSERT (wrk->vpp_event_queue);
       max_enqueue -= sizeof (session_dgram_hdr_t);
     }
+  else
+    {
+      max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
+    }
 
   if (PREDICT_FALSE (max_dequeue == 0))
     return 0;
-
-  es = es_session_get (wrk, s->opaque);
 
   /* Number of bytes we're going to copy */
   max_transfer = clib_min (max_dequeue, max_enqueue);
@@ -439,18 +439,7 @@ echo_server_rx_callback (session_t * s)
     }
 
   vec_validate (wrk->rx_buf, max_transfer);
-  if (!esm->is_dgram)
-    {
-      actual_transfer =
-	app_recv_stream_raw (rx_fifo, wrk->rx_buf, max_transfer,
-			     0 /* don't clear event */, 0 /* peek */);
-    }
-  else
-    {
-      actual_transfer =
-	app_recv_dgram_raw (rx_fifo, wrk->rx_buf, max_transfer, &at,
-			    0 /* don't clear event */, 0 /* peek */);
-    }
+  actual_transfer = app_recv ((app_session_t *) es, wrk->rx_buf, max_transfer);
   ASSERT (actual_transfer == max_transfer);
 
   if (esm->cfg.test_bytes)
@@ -462,18 +451,7 @@ echo_server_rx_callback (session_t * s)
    * Echo back
    */
 
-  if (!esm->is_dgram)
-    {
-      n_written = app_send_stream_raw (tx_fifo, wrk->vpp_event_queue,
-				       wrk->rx_buf, actual_transfer,
-				       SESSION_IO_EVT_TX, 1 /* do_evt */, 0);
-    }
-  else
-    {
-      n_written = app_send_dgram_raw (tx_fifo, &at, wrk->vpp_event_queue,
-				      wrk->rx_buf, actual_transfer,
-				      SESSION_IO_EVT_TX, 1 /* do_evt */, 0);
-    }
+  n_written = app_send ((app_session_t *) es, wrk->rx_buf, actual_transfer, 0);
 
   if (n_written != max_transfer)
     es_err ("short trout! written %u read %u", n_written, max_transfer);
@@ -772,7 +750,6 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto cleanup;
     }
   esm->transport_proto = sep.transport_proto;
-  esm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
   if (rv)
