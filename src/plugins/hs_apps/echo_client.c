@@ -530,6 +530,11 @@ ec_ctrl_send (hs_test_cmd_t cmd)
     }
 
   s = session_get_from_handle_if_valid (ecm->ctrl_session_handle);
+  if (!s)
+    {
+      ec_err ("ctrl session not found");
+      return -1;
+    }
 
   ec_dbg ("sending test paramters to the server..");
   if (ecm->cfg.verbose)
