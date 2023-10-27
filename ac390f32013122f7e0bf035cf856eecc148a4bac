@@ -33,6 +33,23 @@
       "message": "Many apologies for the spam created by my previous comment.\n\nUnfortunately I had created a very poor trigger for the coverage job which caused the flood of job creation, effectively DOS\u0027ing the CI 😞.  This trigger has been changed and the CI cleaned up.",
       "revId": "ac390f32013122f7e0bf035cf856eecc148a4bac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cd82eff_b72e2051",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-10-27T01:56:50Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ac390f32013122f7e0bf035cf856eecc148a4bac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
