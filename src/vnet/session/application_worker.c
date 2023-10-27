@@ -369,7 +369,7 @@ app_worker_listened_notify (app_worker_t *app_wrk, session_handle_t alsh,
 {
   session_event_t evt = { .event_type = SESSION_CTRL_EVT_BOUND,
 			  .as_u64[0] = alsh,
-			  .as_u64[1] = (u64) opaque << 32 | err };
+			  .as_u64[1] = (u64) opaque << 32 | (u32) err };
 
   app_worker_add_event_custom (app_wrk, 0 /* thread index */, &evt);
 
