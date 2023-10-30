@@ -18,10 +18,9 @@ Run the linux DHCP setup and install VPP:
 
 .. code-block:: console
 
-    root@cone:/# resolvconf -d eth0
     root@cone:/# dhclient
-    root@cone:/# apt-get install -y wget
-    root@cone:/# echo "deb [trusted=yes] https://nexus.fd.io/content/repositories/fd.io.ubuntu.xenial.main/ ./" | sudo tee -a /etc/apt/sources.list.d/99fd.io.list
+    root@cone:/# apt-get install -y curl
+    root@cone:/# curl -s https://packagecloud.io/install/repositories/fdio/release/script.deb.sh | sudo bash
     root@cone:/# apt-get update
     root@cone:/# apt-get install -y --force-yes vpp
     root@cone:/# sh -c 'echo  \"\\ndpdk {\\n   no-pci\\n}\" >> /etc/vpp/startup.conf'

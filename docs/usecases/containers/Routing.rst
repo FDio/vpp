@@ -63,11 +63,9 @@ Run some commands to verify the changes:
     32: veth_link1    inet 172.16.1.2/24 scope global veth_link1\       valid_lft forever preferred_lft forever
     32: veth_link1    inet6 fe80::2c9d:83ff:fe33:37e/64 scope link \       valid_lft forever preferred_lft forever
 
-    root@cone:/# route
-    Kernel IP routing table
-    Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
-    default         172.16.1.1      0.0.0.0         UG    0      0        0 veth_link1
-    172.16.1.0      *               255.255.255.0   U     0      0        0 veth_link1
+    root@cone:/# ip route
+    default via 172.16.1.1 dev veth_link1
+    172.16.1.0/24 dev veth_link1 proto kernel scope link src 172.16.1.2
 
 
 We see that the IP has been assigned, as well as our default gateway.
