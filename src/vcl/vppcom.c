@@ -545,6 +545,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 	{
 	  session->session_state = VCL_STATE_DETACHED;
 	  session->vpp_handle = mp->handle;
+	  session->vpp_error = mp->retval;
 	  return sid;
 	}
       else
@@ -1161,7 +1162,10 @@ vppcom_wait_for_session_state_change (u32 session_index,
 	}
       if (session->session_state == VCL_STATE_DETACHED)
 	{
-	  return VPPCOM_ECONNREFUSED;
+	  if (session->vpp_error == SESSION_E_ALREADY_LISTENING)
+	    return VPPCOM_EADDRINUSE;
+	  else
+	    return VPPCOM_ECONNREFUSED;
 	}
 
       if (svm_msg_q_sub (wrk->app_event_queue, &msg, SVM_Q_NOWAIT, 0))
@@ -1678,7 +1682,7 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
   vcl_evt (VCL_EVT_BIND, session);
 
   if (session->session_type == VPPCOM_PROTO_UDP)
-    vppcom_session_listen (session_handle, 10);
+    return vppcom_session_listen (session_handle, 10);
 
   return VPPCOM_OK;
 }
