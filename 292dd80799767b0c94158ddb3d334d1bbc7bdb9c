@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5d962b52_476ba1fb",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-10-30T05:51:26Z",
+      "side": 1,
+      "message": "I have been through section’s in below RFC, my understanding is that , IPsec data traffic should use same port that IKE used during key and SA negotiation, NAT-T traffic should use destination 4500 or 500. Source port may be manipulated by NAT gateway.  We can have below as per RFC recommendation’s \n\nif (udp0-\u003echecksum \u003d\u003d 0 \u0026\u0026 (udp0-\u003edst_port \u003d\u003d 4500 || udp0-\u003edst_port \u003d\u003d 500  ))\n\nhttps://datatracker.ietf.org/doc/html/rfc5996#section-2.23\nhttps://datatracker.ietf.org/doc/html/rfc5996#section-2.11\nhttps://www.rfc-editor.org/rfc/rfc3948  \n\n\nLet me know if you are with us … will do modification accordingly",
+      "parentUuid": "f279c28b_39dfb452",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2cd7af41_b88d8f18",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 1
@@ -85,6 +103,24 @@
       "writtenOn": "2023-06-26T12:36:55Z",
       "side": 1,
       "message": "Let\u0027s do a simple check if (esp0-\u003espi) !\u003d 0 here. Since we are to follow RFC3948, let\u0027s follow it in full here.",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6645767_2723fe6f",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 563,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2023-10-30T05:51:26Z",
+      "side": 1,
+      "message": "in ipsec_udp_encap_esp_packet_process() we have already Similar check.",
+      "parentUuid": "2cd7af41_b88d8f18",
       "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
