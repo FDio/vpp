@@ -19,6 +19,14 @@
 #include <http/http.h>
 #include <hs_apps/http_cli.h>
 
+#define HCC_DEBUG 0
+
+#if HCC_DEBUG
+#define HCC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define HCC_DBG(_fmt, _args...)
+#endif
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -122,6 +130,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   http_msg_t msg;
   int rv;
 
+  HCC_DBG ("hc_index: %d", hc_index);
+
   if (err)
     {
       clib_warning ("connected error: hc_index(%d): %U", hc_index,
@@ -207,7 +217,7 @@ hcc_ts_rx_callback (session_t *ts)
       return 0;
     }
 
-  if (!hs->to_recv)
+  if (hs->to_recv == 0)
     {
       rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
       ASSERT (rv == sizeof (msg));
@@ -229,7 +239,7 @@ hcc_ts_rx_callback (session_t *ts)
   rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, hcm->http_response + curr);
   if (rv < 0)
     {
-      clib_warning ("app dequeue failed");
+      clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
       return -1;
     }
 
@@ -239,6 +249,7 @@ hcc_ts_rx_callback (session_t *ts)
   vec_set_len (hcm->http_response, curr + n_deq);
   ASSERT (hs->to_recv >= rv);
   hs->to_recv -= rv;
+  HCC_DBG ("app rcvd %d, remains %d", rv, hs->to_recv);
 
   if (hs->to_recv == 0)
     {
