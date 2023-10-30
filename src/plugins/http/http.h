@@ -61,9 +61,13 @@ typedef enum http_conn_state_
 
 typedef enum http_state_
 {
-  HTTP_STATE_WAIT_METHOD,
-  HTTP_STATE_WAIT_APP,
-  HTTP_STATE_IO_MORE_DATA,
+  HTTP_STATE_IDLE = 0,
+  HTTP_STATE_WAIT_APP_METHOD,
+  HTTP_STATE_WAIT_CLIENT_METHOD,
+  HTTP_STATE_WAIT_SERVER_REPLY,
+  HTTP_STATE_WAIT_APP_REPLY,
+  HTTP_STATE_CLIENT_IO_MORE_DATA,
+  HTTP_STATE_APP_IO_MORE_DATA,
   HTTP_N_STATES,
 } http_state_t;
 
@@ -232,7 +236,6 @@ typedef struct http_tc_
   u8 *rx_buf;
   u32 rx_buf_offset;
   http_buffer_t tx_buf;
-  u8 is_client;
   u32 to_recv;
   u32 bytes_dequeued;
 } http_conn_t;
@@ -262,6 +265,16 @@ typedef struct http_main_
   u64 add_seg_size;
   u32 fifo_size;
 } http_main_t;
+
+static inline int
+http_state_is_tx_valid (http_conn_t *hc)
+{
+  http_state_t state = hc->http_state;
+  return (state == HTTP_STATE_APP_IO_MORE_DATA ||
+	  state == HTTP_STATE_CLIENT_IO_MORE_DATA ||
+	  state == HTTP_STATE_WAIT_APP_REPLY ||
+	  state == HTTP_STATE_WAIT_APP_METHOD);
+}
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
 
