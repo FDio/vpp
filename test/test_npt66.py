@@ -89,7 +89,7 @@ class TestNPT66(VppTestCase):
 
                 replies = self.send_and_expect(recvif, reply, sendif)
                 for r in replies:
-                    r.show2()
+                    # r.show2()
                     self.assertEqual(str(p[IPv6].src), r[IPv6].dst)
                     original_cksum = r[ICMPv6EchoRequest].cksum
                     del r[ICMPv6EchoRequest].cksum
