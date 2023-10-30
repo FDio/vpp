@@ -19,6 +19,14 @@
 #include <http/http.h>
 #include <hs_apps/http_cli.h>
 
+#define HCC_DEBUG 1
+
+#if HCC_DEBUG
+#define HCC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define HCC_DBG(_fmt, _args...)
+#endif
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -121,6 +129,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   hcc_worker_t *wrk;
   http_msg_t msg;
   int rv;
+
+  HCC_DBG ("hc_index: %d", hc_index);
 
   if (err)
     {

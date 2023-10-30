@@ -47,6 +47,25 @@ const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
 };
 
+u8 *
+format_http_state (u8 *s, va_list *va)
+{
+  http_state_t state = va_arg (*va, http_state_t);
+
+  switch (state)
+    {
+    case HTTP_STATE_WAIT_METHOD:
+      return format (s, "wait method");
+    case HTTP_STATE_WAIT_APP:
+      return format (s, "wait app");
+    case HTTP_STATE_IO_MORE_DATA:
+      return format (s, "io data");
+    default:
+      break;
+    }
+  return format (s, "unknown");
+}
+
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
 {
@@ -265,6 +284,9 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   as->session_type = session_type_from_proto_and_ip (
     TRANSPORT_PROTO_HTTP, session_type_is_ip4 (ts->session_type));
 
+  HTTP_DBG (1, "half-open hc index %d,  hc index %d", ho_hc_index,
+	    new_hc_index);
+
   app_wrk = app_worker_get (hc->h_pa_wrk_index);
   if (!app_wrk)
     {
@@ -342,7 +364,7 @@ static const char *http_request_template = "GET %s HTTP/1.1\r\n"
 					   "Accept: */*\r\n";
 
 static u32
-send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
+http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
 {
   const u32 max_burst = 64 << 10;
   session_t *ts;
@@ -364,7 +386,7 @@ send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
 }
 
 static void
-send_error (http_conn_t *hc, http_status_code_t ec)
+http_send_error (http_conn_t *hc, http_status_code_t ec)
 {
   http_main_t *hm = &http_main;
   u8 *data;
@@ -376,12 +398,12 @@ send_error (http_conn_t *hc, http_status_code_t ec)
   now = clib_timebase_now (&hm->timebase);
   data = format (0, http_error_template, http_status_code_str[ec],
 		 format_clib_timebase_time, now);
-  send_data (hc, data, vec_len (data), 0);
+  http_send_data (hc, data, vec_len (data), 0);
   vec_free (data);
 }
 
 static int
-read_http_message (http_conn_t *hc)
+http_read_message (http_conn_t *hc)
 {
   u32 max_deq, cursize;
   session_t *ts;
@@ -430,7 +452,7 @@ v_find_index (u8 *vec, u32 offset, char *str)
  * waiting for request method from peer - parse request method and data
  */
 static http_sm_result_t
-state_srv_wait_method (http_conn_t *hc, transport_send_params_t *sp)
+http_state_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_status_code_t ec;
   app_worker_t *app_wrk;
@@ -440,7 +462,7 @@ state_srv_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   u32 len;
   u8 *buf;
 
-  rv = read_http_message (hc);
+  rv = http_read_message (hc);
 
   /* Nothing yet, wait for data or timer expire */
   if (rv)
@@ -474,7 +496,7 @@ state_srv_wait_method (http_conn_t *hc, transport_send_params_t *sp)
     }
   else
     {
-      HTTP_DBG (0, "Unknown http method");
+      HTTP_DBG (0, "Unknown http method %v", hc->rx_buf);
       ec = HTTP_STATUS_METHOD_NOT_ALLOWED;
       goto error;
     }
@@ -511,53 +533,25 @@ state_srv_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 
 error:
 
-  send_error (hc, ec);
+  http_send_error (hc, ec);
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
 
   return HTTP_SM_ERROR;
 }
 
-/**
- * waiting for data from app
- */
 static http_sm_result_t
-state_srv_wait_app (http_conn_t *hc, transport_send_params_t *sp)
+http_state_read_reply (http_conn_t *hc, session_t *s,
+		       transport_send_params_t *sp, http_msg_t *msg,
+		       http_status_code_t *sc)
 {
   http_main_t *hm = &http_main;
-  http_status_code_t ec;
-  http_msg_t msg;
-  session_t *as;
   u8 *header;
   u32 offset;
   f64 now;
-  int rv;
 
-  as = session_get_from_handle (hc->h_pa_session_handle);
-
-  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (msg), (u8 *) &msg);
-  ASSERT (rv == sizeof (msg));
-
-  if (msg.type != HTTP_MSG_REPLY || msg.data.type > HTTP_MSG_DATA_PTR)
-    {
-      clib_warning ("unexpected msg type from app %u", msg.type);
-      ec = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
-    }
-
-  ec = msg.code;
-
-  switch (msg.code)
-    {
-    case HTTP_STATUS_OK:
-    case HTTP_STATUS_MOVED:
-      break;
-    default:
-      goto error;
-    }
-
-  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type], as->tx_fifo,
-		    msg.data.len);
+  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg->data.type], s->tx_fifo,
+		    msg->data.len);
 
   /*
    * Add headers. For now:
@@ -568,35 +562,35 @@ state_srv_wait_app (http_conn_t *hc, transport_send_params_t *sp)
    */
   now = clib_timebase_now (&hm->timebase);
 
-  switch (msg.code)
+  switch (msg->code)
     {
     case HTTP_STATUS_OK:
       header =
-	format (0, http_response_template, http_status_code_str[msg.code],
+	format (0, http_response_template, http_status_code_str[msg->code],
 		/* Date */
 		format_clib_timebase_time, now,
 		/* Expires */
 		format_clib_timebase_time, now + 600.0,
 		/* Content type */
-		http_content_type_str[msg.content_type],
+		http_content_type_str[msg->content_type],
 		/* Length */
-		msg.data.len);
+		msg->data.len);
       break;
     case HTTP_STATUS_MOVED:
       header =
-	format (0, http_redirect_template, http_status_code_str[msg.code]);
+	format (0, http_redirect_template, http_status_code_str[msg->code]);
       /* Location: http(s)://new-place already queued up as data */
       break;
     default:
-      goto error;
+      return HTTP_SM_ERROR;
     }
 
-  offset = send_data (hc, header, vec_len (header), 0);
+  offset = http_send_data (hc, header, vec_len (header), 0);
   if (offset != vec_len (header))
     {
       clib_warning ("couldn't send response header!");
-      ec = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
+      *sc = HTTP_STATUS_INTERNAL_ERROR;
+      return HTTP_SM_ERROR;
     }
   vec_free (header);
 
@@ -607,19 +601,96 @@ state_srv_wait_app (http_conn_t *hc, transport_send_params_t *sp)
   sp->max_burst_size -= offset;
 
   return HTTP_SM_CONTINUE;
+}
+
+static http_sm_result_t
+http_state_read_request (http_conn_t *hc, session_t *s, http_msg_t *msg,
+			 http_status_code_t *sc)
+{
+  u8 *buf = 0, *request;
+  u32 offset;
+  int rv;
+
+  vec_validate (buf, msg->data.len - 1);
+  rv = svm_fifo_dequeue (s->tx_fifo, msg->data.len, buf);
+  ASSERT (rv == msg->data.len);
+
+  request = format (0, http_request_template, buf);
+  offset = http_send_data (hc, request, vec_len (request), 0);
+  if (offset != vec_len (request))
+    {
+      clib_warning ("sending request failed!");
+      *sc = HTTP_STATUS_INTERNAL_ERROR;
+      return HTTP_SM_ERROR;
+    }
+
+  hc->http_state = HTTP_STATE_WAIT_METHOD;
+
+  vec_free (buf);
+  vec_free (request);
+
+  return HTTP_SM_CONTINUE;
+}
+
+/**
+ * waiting for data from app
+ */
+static http_sm_result_t
+http_state_wait_app (http_conn_t *hc, transport_send_params_t *sp)
+{
+  http_status_code_t sc;
+  http_sm_result_t smr = HTTP_SM_ERROR;
+  http_msg_t msg;
+  session_t *as;
+  int rv;
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+
+  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+
+  if (msg.data.type > HTTP_MSG_DATA_PTR)
+    {
+      clib_warning ("no data");
+      sc = HTTP_STATUS_INTERNAL_ERROR;
+      goto error;
+    }
+
+  sc = msg.code;
+  if (msg.type == HTTP_MSG_REPLY)
+    {
+      switch (msg.code)
+	{
+	case HTTP_STATUS_OK:
+	case HTTP_STATUS_MOVED:
+	  break;
+	default:
+	  goto error;
+	}
+      smr = http_state_read_reply (hc, as, sp, &msg, &sc);
+    }
+  else if (msg.type == HTTP_MSG_REQUEST)
+    {
+      smr = http_state_read_request (hc, as, &msg, &sc);
+    }
+
+  if (smr == HTTP_SM_ERROR)
+    goto error;
+
+  return HTTP_SM_CONTINUE;
 
 error:
-
-  send_error (hc, ec);
+  clib_warning ("unexpected msg type from app %u", msg.type);
+  http_send_error (hc, sc);
   hc->http_state = HTTP_STATE_WAIT_METHOD;
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
-
   return HTTP_SM_STOP;
 }
 
 static http_sm_result_t
-state_srv_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
+/* state_srv_send_more_data (http_conn_t *hc, transport_send_params_t *sp) */
+http_state_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 {
   u32 max_send = 64 << 10, n_segs;
   http_buffer_t *hb = &hc->tx_buf;
@@ -668,8 +739,8 @@ state_srv_send_more_data (http_conn_t *hc, transport_send_params_t *sp)
   return HTTP_SM_STOP;
 }
 
-static int
-parse_http_header (http_conn_t *hc, int *content_length)
+int
+http_parse_header (http_conn_t *hc, int *content_length)
 {
   unformat_input_t input;
   int i, len;
@@ -722,7 +793,8 @@ parse_http_header (http_conn_t *hc, int *content_length)
   return 0;
 }
 
-static int
+#if 0
+ int
 state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
 {
   session_t *as;
@@ -730,9 +802,15 @@ state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   app_worker_t *app_wrk;
   int rv, content_length;
 
-  rv = read_http_message (hc);
+  rv = http_read_message (hc);
   if (rv)
     return HTTP_SM_STOP;
+
+  if (vec_len (hc->rx_buf) < 8)
+    {
+      ec = HTTP_STATUS_BAD_REQUEST;
+      goto error;
+    }
 
   msg.type = HTTP_MSG_REPLY;
   msg.content_type = HTTP_CONTENT_TEXT_HTML;
@@ -740,7 +818,7 @@ state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = 0;
 
-  rv = parse_http_header (hc, &content_length);
+  rv = http_parse_header (hc, &content_length);
   if (rv)
     {
       clib_warning ("failed to parse http reply");
@@ -782,6 +860,7 @@ state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
   app_worker_rx_notify (app_wrk, as);
   return HTTP_SM_STOP;
 }
+#endif
 
 static int
 cln_drain_rx_buf (http_conn_t *hc, session_t *ts, session_t *as)
@@ -814,7 +893,7 @@ cln_drain_rx_buf (http_conn_t *hc, session_t *ts, session_t *as)
   return 1;
 }
 
-static http_sm_result_t
+/* TODO static */ http_sm_result_t
 state_cln_recv_more_data (http_conn_t *hc, transport_send_params_t *sp)
 {
   session_t *as;
@@ -873,85 +952,30 @@ maybe_reschedule:
   return HTTP_SM_CONTINUE;
 }
 
-static http_sm_result_t
-state_cln_wait_app (http_conn_t *hc, transport_send_params_t *sp)
-{
-  session_t *as;
-  http_msg_t msg;
-  http_status_code_t ec;
-  u8 *buf = 0, *request;
-  u32 offset;
-  int rv;
-
-  as = session_get_from_handle (hc->h_pa_session_handle);
-  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (msg), (u8 *) &msg);
-  ASSERT (rv == sizeof (msg));
-  if (msg.type != HTTP_MSG_REQUEST || msg.data.type > HTTP_MSG_DATA_PTR)
-    {
-      clib_warning ("unexpected msg type from app %u", msg.type);
-      ec = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
-    }
-
-  vec_validate (buf, msg.data.len - 1);
-  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.len, buf);
-  ASSERT (rv == msg.data.len);
-
-  request = format (0, http_request_template, buf);
-  offset = send_data (hc, request, vec_len (request), 0);
-  if (offset != vec_len (request))
-    {
-      clib_warning ("sending request failed!");
-      ec = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
-    }
-
-  hc->http_state = HTTP_STATE_WAIT_METHOD;
-
-  vec_free (buf);
-  vec_free (request);
-
-  return HTTP_SM_CONTINUE;
-
-error:
-  send_error (hc, ec);
-  session_transport_closing_notify (&hc->connection);
-  http_disconnect_transport (hc);
-  return HTTP_SM_STOP;
-}
-
 typedef http_sm_result_t (*http_sm_handler) (http_conn_t *,
 					     transport_send_params_t *sp);
 
-static http_sm_handler srv_state_funcs[HTTP_N_STATES] = {
+static http_sm_handler state_funcs[HTTP_N_STATES] = {
   /* Waiting for GET, POST, etc. */
-  state_srv_wait_method,
+  http_state_wait_method, // TODO merge
   /* Wait for data from app */
-  state_srv_wait_app,
+  http_state_wait_app,
   /* Send more data */
-  state_srv_send_more_data,
-};
-
-static http_sm_handler cln_state_funcs[HTTP_N_STATES] = {
-  /* wait for reply */
-  state_cln_wait_method,
-  /* wait for data from app */
-  state_cln_wait_app,
-  /* receive more data */
-  state_cln_recv_more_data,
+  http_state_io_more_data, // TODO merge
 };
 
 static void
 http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_sm_result_t res;
-  http_sm_handler *state_fn =
-    hc->is_client ? cln_state_funcs : srv_state_funcs;
   do
     {
-      res = state_fn[hc->http_state](hc, sp);
+      res = state_funcs[hc->http_state](hc, sp);
       if (res == HTTP_SM_ERROR)
-	return;
+	{
+	  HTTP_DBG (1, "error in state machine %d", res);
+	  return;
+	}
     }
   while (res == HTTP_SM_CONTINUE);
 
@@ -959,7 +983,8 @@ http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp)
   http_conn_timer_update (hc);
 }
 
-static int
+#if 0
+/* TODO static */ int
 http_ts_server_rx_callback (session_t *ts, http_conn_t *hc)
 {
   if (hc->http_state != HTTP_STATE_WAIT_METHOD)
@@ -978,7 +1003,7 @@ http_ts_server_rx_callback (session_t *ts, http_conn_t *hc)
   return 0;
 }
 
-static int
+/* TODO static */ int
 http_ts_client_rx_callback (session_t *ts, http_conn_t *hc)
 {
   if (hc->http_state != HTTP_STATE_WAIT_METHOD &&
@@ -998,6 +1023,7 @@ http_ts_client_rx_callback (session_t *ts, http_conn_t *hc)
     }
   return 0;
 }
+#endif
 
 static int
 http_ts_rx_callback (session_t *ts)
@@ -1005,9 +1031,25 @@ http_ts_rx_callback (session_t *ts)
   http_conn_t *hc;
 
   hc = http_conn_get_w_thread (ts->opaque, ts->thread_index);
-  if (hc->is_client)
-    return http_ts_client_rx_callback (ts, hc);
-  return http_ts_server_rx_callback (ts, hc);
+  HTTP_DBG (1, "ts si %d, state %U", ts->session_index, format_http_state,
+	    hc->http_state);
+
+  if (hc->http_state != HTTP_STATE_WAIT_METHOD &&
+      hc->http_state != HTTP_STATE_IO_MORE_DATA)
+    {
+      clib_warning ("http in unexpected state %U (ts %d)", format_http_state,
+              hc->http_state, ts->session_index);
+      return 0;
+    }
+
+  http_req_run_state_machine (hc, 0);
+
+  if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
+    {
+      if (!svm_fifo_max_dequeue_cons (ts->rx_fifo))
+        session_transport_closing_notify (&hc->connection);
+    }
+  return 0;
 }
 
 int
@@ -1140,9 +1182,10 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc = http_conn_get_w_thread (hc_index, 0);
   hc->h_pa_wrk_index = sep->app_wrk_index;
   hc->h_pa_app_api_ctx = sep->opaque;
-  hc->is_client = 1;
   hc->state = HTTP_CONN_STATE_CONNECTING;
   cargs->api_context = hc_index;
+
+  HTTP_DBG (1, "hc ho_index %x", hc_index);
 
   if ((error = vnet_connect (cargs)))
     return error;
@@ -1271,6 +1314,8 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   u32 max_burst_sz, sent;
   http_conn_t *hc;
 
+  HTTP_DBG (1, "app session conn index %x", as->connection_index);
+
   hc = http_conn_get_w_thread (as->connection_index, as->thread_index);
   if (hc->http_state < HTTP_STATE_WAIT_APP)
     {
@@ -1278,6 +1323,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
 	clib_warning ("app data req state %u session state %u", hc->http_state,
 		      hc->state);
       svm_fifo_dequeue_drop_all (as->tx_fifo);
+      HTTP_DBG (1, "drop tx fifo");
       return 0;
     }
 
