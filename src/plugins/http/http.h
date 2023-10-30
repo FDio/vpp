@@ -232,7 +232,6 @@ typedef struct http_tc_
   u8 *rx_buf;
   u32 rx_buf_offset;
   http_buffer_t tx_buf;
-  u8 is_client;
   u32 to_recv;
   u32 bytes_dequeued;
 } http_conn_t;
