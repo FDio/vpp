@@ -110,6 +110,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "49eb4be4_62707c95",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2023-10-31T12:48:28Z",
+      "side": 1,
+      "message": "Still I think that request will be received on port 500 or 4500 - also when I took a look at the setup of ACL for NAT, then these ports have been taken into consideration, so for inbound traffic I think such check would be ok, but I agree that the safest approach is to restrain to checking checksum to be 0.",
+      "parentUuid": "d4a91701_d4cb2e73",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2cd7af41_b88d8f18",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 1
