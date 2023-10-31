@@ -435,7 +435,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
 	/* no ESN, therefore the hi-seq is always 0 */
 	*hi_seq_req = 0;
 
-      if (!ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
+      if (!ar_huge)
 	return 0;
 
       if (PREDICT_TRUE (seq > sa->seq))
@@ -448,7 +448,7 @@ ipsec_sa_anti_replay_and_sn_advance (const ipsec_sa_t *sa, u32 seq,
       return ipsec_sa_anti_replay_check (sa, seq, ar_huge);
     }
 
-  if (!ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
+  if (!ar_huge)
     {
       /* there's no AR configured for this SA, but in order
        * to know whether a packet has wrapped the hi ESN we need
@@ -737,7 +737,7 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_t *sa, u32 inc, bool ar_huge)
        * are forever lost */
       n_lost += inc - window_size;
 
-      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+      if (PREDICT_FALSE (ar_huge))
 	{
 	  clib_bitmap_zero (sa->replay_window_huge);
 	  clib_bitmap_set_no_check (sa->replay_window_huge,
