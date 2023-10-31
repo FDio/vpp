@@ -731,13 +731,14 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_t *sa, u32 inc, bool ar_huge)
   else
     {
       /* holes in the replay window are lost packets */
-      n_lost = window_size - IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN (sa);
+      n_lost = window_size -
+	       IPSEC_SA_ANTI_REPLAY_WINDOW_N_SEEN_KNOWN_WIN (sa, ar_huge);
 
       /* any sequence numbers that now fall outside the window
        * are forever lost */
       n_lost += inc - window_size;
 
-      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+      if (PREDICT_FALSE (ar_huge))
 	{
 	  clib_bitmap_zero (sa->replay_window_huge);
 	  clib_bitmap_set_no_check (sa->replay_window_huge,
