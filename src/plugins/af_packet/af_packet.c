@@ -19,6 +19,8 @@
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+#include <linux/ethtool.h>
+#include <linux/sockios.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <dirent.h>
@@ -58,6 +60,80 @@ VNET_HW_INTERFACE_CLASS (af_packet_ip_device_hw_interface_class, static) = {
 
 /*defined in net/if.h but clashes with dpdk headers */
 unsigned int if_nametoindex (const char *ifname);
+
+#define AF_PACKET_OFFLOAD_FLAG_RXCKSUM (1 << 0)
+#define AF_PACKET_OFFLOAD_FLAG_TXCKSUM (1 << 1)
+#define AF_PACKET_OFFLOAD_FLAG_SG      (1 << 2)
+#define AF_PACKET_OFFLOAD_FLAG_TSO     (1 << 3)
+#define AF_PACKET_OFFLOAD_FLAG_UFO     (1 << 4)
+#define AF_PACKET_OFFLOAD_FLAG_GSO     (1 << 5)
+#define AF_PACKET_OFFLOAD_FLAG_GRO     (1 << 6)
+
+#define AF_PACKET_OFFLOAD_FLAG_MASK                                           \
+  (AF_PACKET_OFFLOAD_FLAG_RXCKSUM | AF_PACKET_OFFLOAD_FLAG_TXCKSUM |          \
+   AF_PACKET_OFFLOAD_FLAG_SG | AF_PACKET_OFFLOAD_FLAG_TSO |                   \
+   AF_PACKET_OFFLOAD_FLAG_UFO | AF_PACKET_OFFLOAD_FLAG_GSO |                  \
+   AF_PACKET_OFFLOAD_FLAG_GRO)
+
+#define AF_PACKET_IOCTL(fd, a, ...)                                           \
+  if (ioctl (fd, a, __VA_ARGS__) < 0)                                         \
+    {                                                                         \
+      err = clib_error_return_unix (0, "ioctl(" #a ")");                      \
+      vlib_log_err (af_packet_main.log_class, "%U", format_clib_error, err);  \
+      goto done;                                                              \
+    }
+
+static u32
+af_packet_get_if_capabilities (u8 *host_if_name)
+{
+  struct ifreq ifr;
+  struct ethtool_value e; // { __u32 cmd; __u32 data; };
+  clib_error_t *err = 0;
+  int ctl_fd = -1;
+  u32 oflags = 0;
+
+  if ((ctl_fd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+      clib_warning ("Cannot open control socket");
+      goto done;
+    }
+
+  clib_memset (&ifr, 0, sizeof (ifr));
+  clib_memcpy (ifr.ifr_name, host_if_name,
+	       strlen ((const char *) host_if_name));
+  ifr.ifr_data = (void *) &e;
+
+  e.cmd = ETHTOOL_GRXCSUM;
+  AF_PACKET_IOCTL (ctl_fd, SIOCETHTOOL, &ifr);
+  if (e.data)
+    oflags |= AF_PACKET_OFFLOAD_FLAG_RXCKSUM;
+
+  e.cmd = ETHTOOL_GTXCSUM;
+  AF_PACKET_IOCTL (ctl_fd, SIOCETHTOOL, &ifr);
+  if (e.data)
+    oflags |= AF_PACKET_OFFLOAD_FLAG_TXCKSUM;
+
+  e.cmd = ETHTOOL_GTSO;
+  AF_PACKET_IOCTL (ctl_fd, SIOCETHTOOL, &ifr);
+  if (e.data)
+    oflags |= AF_PACKET_OFFLOAD_FLAG_TSO;
+
+  e.cmd = ETHTOOL_GGSO;
+  AF_PACKET_IOCTL (ctl_fd, SIOCETHTOOL, &ifr);
+  if (e.data)
+    oflags |= AF_PACKET_OFFLOAD_FLAG_GSO;
+
+  e.cmd = ETHTOOL_GGRO;
+  AF_PACKET_IOCTL (ctl_fd, SIOCETHTOOL, &ifr);
+  if (e.data)
+    oflags |= AF_PACKET_OFFLOAD_FLAG_GRO;
+
+done:
+  if (ctl_fd != -1)
+    close (ctl_fd);
+
+  return oflags;
+}
 
 static clib_error_t *
 af_packet_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
@@ -572,7 +648,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   u8 *host_if_name_dup = 0;
   int host_if_index = -1;
   int ret = 0;
-  u32 i = 0;
+  u32 oflags = 0, i = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, arg->host_if_name);
   if (p)
@@ -638,6 +714,9 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
       fd2 = -1;
     }
 
+  // check the host interface capabilities
+  oflags = af_packet_get_if_capabilities (arg->host_if_name);
+
   ret = is_bridge (arg->host_if_name);
   if (ret == 0)			/* is a bridge, ignore state */
     host_if_index = -1;
@@ -651,6 +730,7 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->host_if_name = host_if_name_dup;
   apif->per_interface_next_index = ~0;
   apif->mode = arg->mode;
+  apif->host_interface_oflags = oflags;
 
   if (arg->is_v2)
     apif->version = TPACKET_V2;
@@ -709,12 +789,19 @@ af_packet_create_if (af_packet_create_if_arg_t *arg)
   apif->is_qdisc_bypass_enabled =
     (arg->flags & AF_PACKET_IF_FLAGS_QDISC_BYPASS);
 
-  if (arg->flags & AF_PACKET_IF_FLAGS_CKSUM_GSO)
-    apif->is_cksum_gso_enabled = 1;
+  if (apif->host_interface_oflags & AF_PACKET_OFFLOAD_FLAG_TXCKSUM)
+    {
+      apif->is_cksum_gso_enabled = 1;
+      caps |= VNET_HW_IF_CAP_TX_IP4_CKSUM | VNET_HW_IF_CAP_TX_TCP_CKSUM |
+	      VNET_HW_IF_CAP_TX_UDP_CKSUM;
+    }
 
-  if (apif->is_cksum_gso_enabled)
-    caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
-	    VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+  if (apif->host_interface_oflags & AF_PACKET_OFFLOAD_FLAG_GSO)
+    {
+      apif->is_cksum_gso_enabled = 1;
+      caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_IP4_CKSUM |
+	      VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_UDP_CKSUM;
+    }
 
   vnet_hw_if_set_caps (vnm, apif->hw_if_index, caps);
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
