@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa024894_884477bc",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-10-31T08:41:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5feeb741_c743080b",
+      "revId": "f8fa511845479fde5cffb04c88de9646d9598282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7c286b09_2724811f",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-10-31T01:33:17Z",
       "side": 1,
       "message": "As per above, we can either move this to application_interface.c or just ask builtin apps to deal with this init themselves. Given that the udp check lower might eventually not be general enough, perhaps it\u0027d be better to do the latter.",
+      "revId": "f8fa511845479fde5cffb04c88de9646d9598282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c6e72f1_96edbe88",
+        "filename": "src/vnet/session/application_interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-10-31T08:41:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7c286b09_2724811f",
       "revId": "f8fa511845479fde5cffb04c88de9646d9598282",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
