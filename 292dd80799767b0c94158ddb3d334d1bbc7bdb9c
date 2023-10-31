@@ -92,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d4a91701_d4cb2e73",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-10-31T10:26:30Z",
+      "side": 1,
+      "message": "I see your point - sorry for making incorrect suggestions earlier.\nHowever, I do believe your original code change was the best we can do as suggested here: RFC 5996 - Internet Key Exchange Protocol Version 2 (IKEv2) (ietf.org)\nSection 2.11:\n\"...and IKE is designed to work even through Network Address Translation (NAT) boxes.  An implementation MUST accept incoming requests even if the source port is not 500 or 4500, and MUST respond to the address and port from which the request was\n   received...\"\nThis means the port number could be anything - so the best thing we could do may only check if checksum is 0...",
+      "parentUuid": "5d962b52_476ba1fb",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2cd7af41_b88d8f18",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 1
@@ -121,6 +139,24 @@
       "side": 1,
       "message": "in ipsec_udp_encap_esp_packet_process() we have already Similar check.",
       "parentUuid": "2cd7af41_b88d8f18",
+      "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80def55b_2e8ad6eb",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 563,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-10-31T10:26:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "f6645767_2723fe6f",
       "revId": "292dd80799767b0c94158ddb3d334d1bbc7bdb9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
