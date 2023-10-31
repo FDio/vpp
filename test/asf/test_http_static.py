@@ -6,7 +6,6 @@ import tempfile
 from vpp_qemu_utils import (
     create_host_interface,
     delete_host_interfaces,
-    can_create_namespaces,
     create_namespace,
     delete_namespace,
 )
@@ -15,8 +14,9 @@ from vpp_qemu_utils import (
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
 class TestHttpStaticVapi(VppTestCase):
-    """enable the http static server [VAPI]"""
+    """enable the http static server and send requests [VAPI]"""
 
     @classmethod
     def setUpClass(cls):
@@ -28,11 +28,9 @@ class TestHttpStaticVapi(VppTestCase):
         cls.temp2 = tempfile.NamedTemporaryFile()
         cls.temp2.write(b"Hello world2")
 
-        if not can_create_namespaces():
-            raise Exception("Unable to create namespace")
         create_namespace("HttpStatic")
-
         create_host_interface("vppHost", "vppOut", "HttpStatic", "10.10.1.1/24")
+
         cls.vapi.cli("create host-interface name vppOut")
         cls.vapi.cli("set int state host-vppOut up")
         cls.vapi.cli("set int ip address host-vppOut 10.10.1.2/24")
@@ -83,8 +81,9 @@ class TestHttpStaticVapi(VppTestCase):
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
 class TestHttpStaticCli(VppTestCase):
-    """enable the static http server [CLI]"""
+    """enable the static http server and send requests [CLI]"""
 
     @classmethod
     def setUpClass(cls):
@@ -96,11 +95,9 @@ class TestHttpStaticCli(VppTestCase):
         cls.temp2 = tempfile.NamedTemporaryFile()
         cls.temp2.write(b"Hello world2")
 
-        if not can_create_namespaces("vpp_chk_4212_2"):
-            raise Exception("Unable to create namespace")
         create_namespace("HttpStatic2")
-
         create_host_interface("vppHost2", "vppOut2", "HttpStatic2", "10.10.1.1/24")
+
         cls.vapi.cli("create host-interface name vppOut2")
         cls.vapi.cli("set int state host-vppOut2 up")
         cls.vapi.cli("set int ip address host-vppOut2 10.10.1.2/24")
