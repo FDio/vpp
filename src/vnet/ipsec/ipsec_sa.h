@@ -737,7 +737,7 @@ ipsec_sa_anti_replay_window_shift (ipsec_sa_t *sa, u32 inc, bool ar_huge)
        * are forever lost */
       n_lost += inc - window_size;
 
-      if (PREDICT_FALSE (ipsec_sa_is_set_ANTI_REPLAY_HUGE (sa)))
+      if (PREDICT_FALSE (ar_huge))
 	{
 	  clib_bitmap_zero (sa->replay_window_huge);
 	  clib_bitmap_set_no_check (sa->replay_window_huge,
