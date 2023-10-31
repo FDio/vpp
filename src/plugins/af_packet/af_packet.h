@@ -122,6 +122,7 @@ typedef struct
   u8 is_qdisc_bypass_enabled;
   u8 is_fanout_enabled;
   int *fds;
+  u32 host_interface_oflags;
 } af_packet_if_t;
 
 typedef struct
