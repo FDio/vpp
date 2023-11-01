@@ -86,10 +86,13 @@ class TestLB(VppTestCase):
         self.logger.info(self.vapi.cli("show lb vip verbose"))
 
     def getIPv4Flow(self, id):
-        return IP(
-            dst="90.0.%u.%u" % (id / 255, id % 255),
-            src="40.0.%u.%u" % (id / 255, id % 255),
-        ) / UDP(sport=10000 + id, dport=20000)
+        return (
+            IP(
+                dst="90.0.%u.%u" % (id / 255, id % 255),
+                src="40.0.%u.%u" % (id / 255, id % 255),
+            )
+            / UDP(sport=10000 + id, dport=20000)
+        )
 
     def getIPv6Flow(self, id):
         return IPv6(dst="2001::%u" % (id), src="fd00:f00d:ffff::%u" % (id)) / UDP(
