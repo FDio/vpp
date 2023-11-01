@@ -2125,15 +2125,6 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       switch (tc->state)
 	{
 	case TCP_STATE_SYN_RCVD:
-
-	  /* Make sure the segment is exactly right */
-	  if (tc->rcv_nxt != vnet_buffer (b[0])->tcp.seq_number)
-	    {
-	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
-	      error = TCP_ERROR_SEGMENT_INVALID;
-	      goto drop;
-	    }
-
 	  /*
 	   * If the segment acknowledgment is not acceptable, form a
 	   * reset segment,
