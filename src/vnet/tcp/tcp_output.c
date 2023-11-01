@@ -656,8 +656,8 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
   u8 tcp_hdr_len, flags = 0;
   tcp_header_t *th, *pkt_th;
   u32 seq, ack, bi;
-  ip4_header_t *ih4, *pkt_ih4;
-  ip6_header_t *ih6, *pkt_ih6;
+  ip4_header_t *pkt_ih4;
+  ip6_header_t *pkt_ih6;
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
@@ -699,28 +699,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
 
   th = vlib_buffer_push_tcp_net_order (b, pkt_th->dst_port, pkt_th->src_port,
 				       seq, ack, tcp_hdr_len, flags, 0);
-
-  /* Swap src and dst ip */
-  if (is_ip4)
-    {
-      ASSERT ((pkt_ih4->ip_version_and_header_length & 0xF0) == 0x40);
-      ih4 = vlib_buffer_push_ip4 (vm, b, &pkt_ih4->dst_address,
-				  &pkt_ih4->src_address, IP_PROTOCOL_TCP,
-				  tcp_csum_offload (tc));
-      th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
-    }
-  else
-    {
-      int bogus = ~0;
-      ASSERT ((pkt_ih6->ip_version_traffic_class_and_flow_label & 0xF0) ==
-	      0x60);
-      ih6 = vlib_buffer_push_ip6_custom (vm, b, &pkt_ih6->dst_address,
-					 &pkt_ih6->src_address,
-					 IP_PROTOCOL_TCP,
-					 tc->ipv6_flow_label);
-      th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
-      ASSERT (!bogus);
-    }
+  th->checksum = tcp_compute_checksum (tc, b);
 
   tcp_enqueue_half_open (wrk, tc, b, bi);
   TCP_EVT (TCP_EVT_RST_SENT, tc);
