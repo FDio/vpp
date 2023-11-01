@@ -2121,15 +2121,6 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       switch (tc->state)
 	{
 	case TCP_STATE_SYN_RCVD:
-
-	  /* Make sure the segment is exactly right */
-	  if (tc->rcv_nxt != vnet_buffer (b[0])->tcp.seq_number)
-	    {
-	      tcp_send_reset_w_pkt (tc, b[0], thread_index, is_ip4);
-	      error = TCP_ERROR_SEGMENT_INVALID;
-	      goto drop;
-	    }
-
 	  /*
 	   * If the segment acknowledgment is not acceptable, form a
 	   * reset segment,
@@ -2931,6 +2922,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
+	  clib_warning ("no listener? %u tcp dst port %u flags %x", error0,
+			ntohs (tcp_buffer_hdr (b[0])->dst_port),
+			tcp_buffer_hdr (b[0])->flags);
 	  tcp_input_set_error_next (tm, &next[0], &error0, is_ip4);
 	  tcp_inc_err_counter (err_counters, error0, 1);
 	}
