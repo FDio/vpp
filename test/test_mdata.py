@@ -42,7 +42,7 @@ class TestMdataCli(VppTestCase):
             p = (
                 Ether(dst=src_if.local_mac, src=src_if.remote_mac)
                 / IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4)
-                / UDP(sport=randint(1000, 2000), dport=5678)
+                / UDP(sport=randint(49152, 65535), dport=5678)
                 / Raw(payload)
             )
 
