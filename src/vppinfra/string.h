@@ -1161,6 +1161,13 @@ strstr_s_inline (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
   return EOK;
 }
 
+static_always_inline const char *
+clib_string_skip_prefix (const char *s, const char *prefix)
+{
+  uword len = __builtin_strlen (prefix);
+  return s + (__builtin_strncmp (s, prefix, len) ? 0 : len);
+}
+
 #endif /* included_clib_string_h */
 
 /*

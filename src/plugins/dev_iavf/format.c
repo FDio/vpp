@@ -110,24 +110,3 @@ format_iavf_port_status (u8 *s, va_list *args)
     s = format (s, "disabled");
   return s;
 }
-
-u8 *
-format_iavf_log (u8 *s, va_list *args)
-{
-  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
-  char *func = va_arg (*args, char *);
-
-  if (dev)
-    s = format (s, "%U", format_vnet_dev_addr, dev);
-  if (dev && func)
-    vec_add1 (s, ' ');
-  if (func)
-    {
-      if (strncmp (func, "iavf_", 5) == 0)
-	func += 5;
-      s = format (s, "%s", func);
-    }
-  vec_add1 (s, ':');
-  vec_add1 (s, ' ');
-  return s;
-}

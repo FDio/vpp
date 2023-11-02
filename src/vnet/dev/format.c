@@ -394,11 +394,7 @@ format_vnet_dev_log (u8 *s, va_list *args)
   if (dev && func)
     vec_add1 (s, ' ');
   if (func)
-    {
-      if (strncmp (func, "vnet_dev_", 9) == 0)
-	func += 9;
-      s = format (s, "%s", func);
-    }
+    s = format (s, "%s", func);
   vec_add1 (s, ':');
   vec_add1 (s, ' ');
   return s;

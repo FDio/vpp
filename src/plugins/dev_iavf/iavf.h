@@ -105,7 +105,6 @@ format_function_t format_virtchnl_status;
 format_function_t format_iavf_vf_cap_flags;
 format_function_t format_iavf_rx_trace;
 format_function_t format_iavf_port_status;
-format_function_t format_iavf_log;
 
 /* port.c */
 vnet_dev_rv_t iavf_port_init (vlib_main_t *, vnet_dev_port_t *);
@@ -157,8 +156,9 @@ iavf_reg_flush (iavf_device_t *ad)
 }
 
 #define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log.class, "%U" f, format_iavf_log,    \
-	    (dev), __func__, ##__VA_ARGS__)
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, iavf_log.class, "%U" f,                     \
+	    format_vnet_dev_log, (dev),                                       \
+	    clib_string_skip_prefix (__func__, "iavf_"), ##__VA_ARGS__)
 #define log_info(dev, f, ...)                                                 \
   vlib_log (VLIB_LOG_LEVEL_INFO, iavf_log.class, "%U: " f,                    \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
