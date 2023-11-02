@@ -613,6 +613,7 @@ format_function_t format_vnet_dev_rx_queue_info;
 format_function_t format_vnet_dev_tx_queue_info;
 format_function_t format_vnet_dev_flags;
 format_function_t format_vnet_dev_port_flags;
+format_function_t format_vnet_dev_log;
 unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
 

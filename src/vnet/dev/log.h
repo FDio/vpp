@@ -5,11 +5,10 @@
 #ifndef _VNET_DEV_LOG_H_
 #define _VNET_DEV_LOG_H_
 
-format_function_t format_vnet_dev_log;
-
 #define log_debug(dev, f, ...)                                                \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, dev_log.class, "%U" f, format_vnet_dev_log, \
-	    dev, __func__, ##__VA_ARGS__)
+	    dev, clib_string_skip_prefix (__func__, "vnet_dev_"),             \
+	    ##__VA_ARGS__)
 #define log_notice(dev, f, ...)                                               \
   vlib_log (VLIB_LOG_LEVEL_NOTICE, dev_log.class, "%U" f,                     \
 	    format_vnet_dev_log, dev, 0, ##__VA_ARGS__)
