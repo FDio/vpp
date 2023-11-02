@@ -33,6 +33,24 @@
       "message": "More stable like this?",
       "revId": "5de45815b42952a7da5ab1c05dabe456249f7446",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "44c26a3a_90f2a520",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 42
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-11-02T14:37:36Z",
+      "side": 1,
+      "message": "Yes it appears to have helped.\n\nI was seeing iperf tests complete but testcase marked as failure due to server being killed explicitly on clean up.  Presumably the timing of application being informed of connection reset increased, but I was not able to verify that hypothesis.",
+      "parentUuid": "444770a7_0b0d55c1",
+      "revId": "5de45815b42952a7da5ab1c05dabe456249f7446",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
