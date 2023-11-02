@@ -169,7 +169,6 @@ af_packet_set_rx_queues (vlib_main_t *vm, af_packet_if_t *apif)
 	template.error_function = af_packet_fd_error;
 	template.file_descriptor = rx_queue->fd;
 	template.private_data = rx_queue->queue_index;
-	template.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
 	template.description =
 	  format (0, "%U queue %u", format_af_packet_device_name,
 		  apif->dev_instance, rx_queue->queue_id);
