@@ -110,7 +110,9 @@ typedef struct
   _ (MAX_FRAME_SIZE)                                                          \
   _ (CHANGE_PRIMARY_HW_ADDR)                                                  \
   _ (ADD_SECONDARY_HW_ADDR)                                                   \
-  _ (REMOVE_SECONDARY_HW_ADDR)
+  _ (REMOVE_SECONDARY_HW_ADDR)                                                \
+  _ (RXQ_INTR_MODE_ENABLE)                                                    \
+  _ (RXQ_INTR_MODE_DISABLE)
 
 typedef enum
 {
@@ -124,12 +126,14 @@ typedef struct vnet_dev_port_cfg_change_req
 {
   vnet_dev_port_cfg_type_t type;
   u8 validated : 1;
+  u8 all_queues : 1;
 
   union
   {
     u8 promisc : 1;
     vnet_dev_hw_addr_t addr;
     u16 max_frame_size;
+    vnet_dev_queue_id_t queue_id;
   };
 
 } vnet_dev_port_cfg_change_req_t;
@@ -221,6 +225,8 @@ typedef struct vnet_dev_rx_queue
   u16 index;
   vnet_dev_counter_main_t *counter_main;
   CLIB_CACHE_LINE_ALIGN_MARK (runtime0);
+  vnet_dev_rx_queue_t *next_on_thread;
+  u8 interrupt_mode : 1;
   u8 enabled : 1;
   u8 started : 1;
   u8 suspended : 1;
@@ -230,7 +236,7 @@ typedef struct vnet_dev_rx_queue
   vnet_dev_rx_queue_rt_req_t runtime_request;
   CLIB_CACHE_LINE_ALIGN_MARK (runtime1);
   vlib_buffer_template_t buffer_template;
-  CLIB_ALIGN_MARK (private_data, 16);
+  CLIB_CACHE_LINE_ALIGN_MARK (driver_data);
   u8 data[];
 } vnet_dev_rx_queue_t;
 
@@ -296,6 +302,7 @@ typedef struct vnet_dev_port
     u8 feature_arc_index;
     u8 feature_arc : 1;
     u8 redirect_to_node : 1;
+    u8 default_is_intr_mode : 1;
     u32 tx_node_index;
     u32 hw_if_index;
     u32 sw_if_index;
@@ -568,27 +575,12 @@ void vnet_dev_poll_port_add (vlib_main_t *, vnet_dev_port_t *, f64,
 void vnet_dev_poll_port_remove (vlib_main_t *, vnet_dev_port_t *,
 				vnet_dev_port_op_no_rv_t *);
 
-/* runtime.c */
-typedef enum
-{
-  VNET_DEV_RT_OP_TYPE_UNKNOWN,
-  VNET_DEV_RT_OP_TYPE_RX_QUEUE,
-} __clib_packed vnet_dev_rt_op_type_t;
-
-typedef enum
-{
-  VNET_DEV_RT_OP_ACTION_UNKNOWN,
-  VNET_DEV_RT_OP_ACTION_START,
-  VNET_DEV_RT_OP_ACTION_STOP,
-} __clib_packed vnet_dev_rt_op_action_t;
-
 typedef struct
 {
   u16 thread_index;
-  u8 type : 4;
-  u8 action : 4;
   u8 completed;
-  vnet_dev_rx_queue_t *rx_queue;
+  u8 in_order;
+  vnet_dev_port_t *port;
 } vnet_dev_rt_op_t;
 
 vnet_dev_rv_t vnet_dev_rt_exec_ops (vlib_main_t *, vnet_dev_t *,
@@ -619,8 +611,7 @@ unformat_function_t unformat_vnet_dev_port_flags;
 
 typedef struct
 {
-  u8 n_rx_queues;
-  vnet_dev_rx_queue_t *rx_queues[4];
+  vnet_dev_rx_queue_t *first_rx_queue;
 } vnet_dev_rx_node_runtime_t;
 
 STATIC_ASSERT (sizeof (vnet_dev_rx_node_runtime_t) <=

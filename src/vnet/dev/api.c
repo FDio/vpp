@@ -143,6 +143,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   vnet_dev_t *dev = vnet_dev_by_id (args->device_id);
   vnet_dev_port_t *port = 0;
   u16 n_threads = vlib_get_n_threads ();
+  int default_is_intr_mode;
 
   log_debug (dev,
 	     "create_port_if: device '%s' port %u intf_name '%s' num_rx_q %u "
@@ -167,6 +168,13 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
 
   if (port->interface_created)
     return VNET_DEV_ERR_ALREADY_EXISTS;
+
+  default_is_intr_mode = (args->flags.e & VNET_DEV_PORT_F_INTERRUPT_MODE) != 0;
+  if (default_is_intr_mode && port->attr.caps.interrupt_mode == 0)
+    {
+      log_err (dev, "interrupt mode requested and port doesn't support it");
+      return VNET_DEV_ERR_NOT_SUPPORTED;
+    }
 
   if (args->num_rx_queues)
     {
@@ -207,6 +215,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
     port->intf.txq_sz = port->tx_queue_config.default_size;
 
   clib_memcpy (port->intf.name, args->intf_name, sizeof (port->intf.name));
+  port->intf.default_is_intr_mode = default_is_intr_mode;
 
   return vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_create);
 }

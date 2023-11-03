@@ -19,49 +19,36 @@ static vnet_dev_rt_op_t *rt_ops;
 static void
 _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
 {
-  if (op->type == VNET_DEV_RT_OP_TYPE_RX_QUEUE)
+  vnet_dev_port_t *port = op->port;
+  vnet_dev_rx_queue_t *previous = 0, *first = 0;
+  vnet_dev_rx_node_runtime_t *rtd;
+  vlib_node_state_t state = VLIB_NODE_STATE_DISABLED;
+  u32 node_index = port->intf.rx_node_index;
+
+  rtd = vlib_node_get_runtime_data (vm, node_index);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
     {
-      vnet_dev_rx_node_runtime_t *rtd;
-      vnet_dev_rx_queue_t *rxq = op->rx_queue;
-      u32 i, node_index = rxq->port->intf.rx_node_index;
+      if (q->rx_thread_index != vm->thread_index)
+	continue;
 
-      rtd = vlib_node_get_runtime_data (vm, node_index);
+      if (q->interrupt_mode == 0)
+	state = VLIB_NODE_STATE_POLLING;
+      else if (state != VLIB_NODE_STATE_POLLING)
+	state = VLIB_NODE_STATE_INTERRUPT;
 
-      if (op->action == VNET_DEV_RT_OP_ACTION_START)
-	{
-	  for (i = 0; i < rtd->n_rx_queues; i++)
-	    ASSERT (rtd->rx_queues[i] != op->rx_queue);
-	  rtd->rx_queues[rtd->n_rx_queues++] = op->rx_queue;
-	}
+      q->next_on_thread = 0;
+      if (previous == 0)
+	first = q;
+      else
+	previous->next_on_thread = q;
 
-      else if (op->action == VNET_DEV_RT_OP_ACTION_STOP)
-	{
-	  for (i = 0; i < rtd->n_rx_queues; i++)
-	    if (rtd->rx_queues[i] == op->rx_queue)
-	      break;
-	  ASSERT (i < rtd->n_rx_queues);
-	  rtd->n_rx_queues--;
-	  for (; i < rtd->n_rx_queues; i++)
-	    rtd->rx_queues[i] = rtd->rx_queues[i + 1];
-	}
-
-      if (rtd->n_rx_queues == 1)
-	vlib_node_set_state (vm, node_index, VLIB_NODE_STATE_POLLING);
-      else if (rtd->n_rx_queues == 0)
-	vlib_node_set_state (vm, node_index, VLIB_NODE_STATE_DISABLED);
-
-      __atomic_store_n (&op->completed, 1, __ATOMIC_RELEASE);
+      previous = q;
     }
-}
 
-static int
-_vnet_dev_rt_op_not_occured_before (vnet_dev_rt_op_t *first,
-				    vnet_dev_rt_op_t *current)
-{
-  for (vnet_dev_rt_op_t *op = first; op < current; op++)
-    if (op->rx_queue == current->rx_queue && op->completed == 0)
-      return 0;
-  return 1;
+  rtd->first_rx_queue = first;
+  vlib_node_set_state (vm, port->intf.rx_node_index, state);
+  __atomic_store_n (&op->completed, 1, __ATOMIC_RELEASE);
 }
 
 static uword
@@ -69,25 +56,26 @@ vnet_dev_rt_mgmt_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlib_frame_t *frame)
 {
   u16 thread_index = vm->thread_index;
-  vnet_dev_rt_op_t *ops = __atomic_load_n (&rt_ops, __ATOMIC_ACQUIRE);
-  vnet_dev_rt_op_t *op;
-  int come_back = 0;
+  vnet_dev_rt_op_t *op, *ops = __atomic_load_n (&rt_ops, __ATOMIC_ACQUIRE);
+  u32 n_pending = 0;
   uword rv = 0;
 
   vec_foreach (op, ops)
-    if (op->thread_index == thread_index)
-      {
-	if (_vnet_dev_rt_op_not_occured_before (ops, op))
-	  {
-	    _vnet_dev_rt_exec_op (vm, op);
-	    rv++;
-	  }
-	else
-	  come_back = 1;
-      }
+    {
+      if (!op->completed && op->thread_index == thread_index)
+	{
+	  if (op->in_order == 1 && n_pending)
+	    {
+	      vlib_node_set_interrupt_pending (vm, node->node_index);
+	      return rv;
+	    }
+	  _vnet_dev_rt_exec_op (vm, op);
+	  rv++;
+	}
 
-  if (come_back)
-    vlib_node_set_interrupt_pending (vm, node->node_index);
+      if (op->completed == 0)
+	n_pending++;
+    }
 
   return rv;
 }
@@ -98,25 +86,6 @@ VLIB_REGISTER_NODE (vnet_dev_rt_mgmt_node, static) = {
   .type = VLIB_NODE_TYPE_PRE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };
-
-u8 *
-format_vnet_dev_mgmt_op (u8 *s, va_list *args)
-{
-  vnet_dev_rt_op_t *op = va_arg (*args, vnet_dev_rt_op_t *);
-
-  char *types[] = {
-    [VNET_DEV_RT_OP_TYPE_RX_QUEUE] = "rx queue",
-  };
-  char *actions[] = {
-    [VNET_DEV_RT_OP_ACTION_START] = "start",
-    [VNET_DEV_RT_OP_ACTION_STOP] = "stop",
-  };
-
-  return format (s, "port %u %s %u %s on thread %u",
-		 op->rx_queue->port->port_id, types[op->type],
-		 op->rx_queue->queue_id, actions[op->action],
-		 op->thread_index);
-}
 
 vnet_dev_rv_t
 vnet_dev_rt_exec_ops (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_rt_op_t *ops,
@@ -129,23 +98,56 @@ vnet_dev_rt_exec_ops (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_rt_op_t *ops,
 
   ASSERT (rt_ops == 0);
 
+  if (vlib_worker_thread_barrier_held ())
+    {
+      for (op = ops; op < (ops + n_ops); op++)
+	{
+	  vlib_main_t *tvm = vlib_get_main_by_index (op->thread_index);
+	  _vnet_dev_rt_exec_op (tvm, op);
+	  log_debug (
+	    dev,
+	    "port %u rx node runtime update on thread %u executed locally",
+	    op->port->port_id, op->thread_index);
+	}
+      return VNET_DEV_OK;
+    }
+
+  while (n_ops)
+    {
+      if (op->thread_index != vm->thread_index)
+	break;
+
+      _vnet_dev_rt_exec_op (vm, op);
+      log_debug (
+	dev, "port %u rx node runtime update on thread %u executed locally",
+	op->port->port_id, op->thread_index);
+      op++;
+      n_ops--;
+    }
+
+  if (n_ops == 0)
+    return VNET_DEV_OK;
+
   for (op = ops; op < (ops + n_ops); op++)
     {
-      vlib_main_t *tvm = vlib_get_main_by_index (op->thread_index);
-
-      if ((vlib_worker_thread_barrier_held ()) ||
-	  (op->thread_index == vm->thread_index &&
-	   _vnet_dev_rt_op_not_occured_before (ops, op)))
+      if (op->thread_index == vm->thread_index &&
+	  (op->in_order == 0 || vec_len (remote_ops) == 0))
 	{
-	  _vnet_dev_rt_exec_op (tvm, op);
-	  log_debug (dev, "%U executed locally", format_vnet_dev_mgmt_op, op);
-	  continue;
+	  _vnet_dev_rt_exec_op (vm, op);
+	  log_debug (dev,
+		     "port %u rx node runtime update on thread "
+		     "%u executed locally",
+		     op->port->port_id, op->thread_index);
 	}
-
-      vec_add1 (remote_ops, *op);
-      log_debug (dev, "%U enqueued for remote execution",
-		 format_vnet_dev_mgmt_op, op);
-      remote_bmp = clib_bitmap_set (remote_bmp, op->thread_index, 1);
+      else
+	{
+	  vec_add1 (remote_ops, *op);
+	  log_debug (dev,
+		     "port %u rx node runtime update on thread %u "
+		     "enqueued for remote execution",
+		     op->port->port_id, op->thread_index);
+	  remote_bmp = clib_bitmap_set (remote_bmp, op->thread_index, 1);
+	}
     }
 
   if (remote_ops == 0)
@@ -164,7 +166,11 @@ vnet_dev_rt_exec_ops (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_rt_op_t *ops,
   vec_foreach (op, remote_ops)
     {
       while (op->completed == 0)
-	CLIB_PAUSE ();
+	vlib_process_suspend (vm, 5e-5);
+
+      log_debug (
+	dev, "port %u rx node runtime update on thread %u executed locally",
+	op->port->port_id, op->thread_index);
     }
 
   __atomic_store_n (&rt_ops, 0, __ATOMIC_RELAXED);

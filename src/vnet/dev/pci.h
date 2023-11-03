@@ -74,5 +74,7 @@ vnet_dev_rv_t vnet_dev_pci_msix_remove_handler (vlib_main_t *, vnet_dev_t *,
 vnet_dev_rv_t vnet_dev_pci_msix_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
 vnet_dev_rv_t vnet_dev_pci_msix_disable (vlib_main_t *, vnet_dev_t *, u16,
 					 u16);
+void vnet_dev_pci_msix_set_polling_thread (vlib_main_t *, vnet_dev_t *, u16,
+					   u16);
 
 #endif /* _VNET_DEV_PCI_H_ */

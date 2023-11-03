@@ -122,20 +122,15 @@ vnet_dev_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   vnet_dev_rt_op_t *ops = 0;
+  u16 n_threads = vlib_get_n_threads ();
 
   log_debug (dev, "stopping port %u", port->port_id);
 
-  foreach_vnet_dev_port_rx_queue (q, port)
-    if (q->started)
-      {
-	vnet_dev_rt_op_t op = {
-	  .type = VNET_DEV_RT_OP_TYPE_RX_QUEUE,
-	  .action = VNET_DEV_RT_OP_ACTION_STOP,
-	  .thread_index = q->rx_thread_index,
-	  .rx_queue = q,
-	};
-	vec_add1 (ops, op);
-      }
+  for (u16 i = 0; i < n_threads; i++)
+    {
+      vnet_dev_rt_op_t op = { .thread_index = i, .port = port };
+      vec_add1 (ops, op);
+    }
 
   vnet_dev_rt_exec_ops (vm, dev, ops, vec_len (ops));
   vec_free (ops);
@@ -195,6 +190,7 @@ vnet_dev_port_start_all_tx_queues (vlib_main_t *vm, vnet_dev_port_t *port)
 vnet_dev_rv_t
 vnet_dev_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
+  u16 n_threads = vlib_get_n_threads ();
   vnet_dev_t *dev = port->dev;
   vnet_dev_rt_op_t *ops = 0;
   vnet_dev_rv_t rv;
@@ -211,17 +207,11 @@ vnet_dev_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       return rv;
     }
 
-  foreach_vnet_dev_port_rx_queue (q, port)
-    if (q->enabled)
-      {
-	vnet_dev_rt_op_t op = {
-	  .type = VNET_DEV_RT_OP_TYPE_RX_QUEUE,
-	  .action = VNET_DEV_RT_OP_ACTION_START,
-	  .thread_index = q->rx_thread_index,
-	  .rx_queue = q,
-	};
-	vec_add1 (ops, op);
-      }
+  for (u16 i = 0; i < n_threads; i++)
+    {
+      vnet_dev_rt_op_t op = { .thread_index = i, .port = port };
+      vec_add1 (ops, op);
+    }
 
   vnet_dev_rt_exec_ops (vm, dev, ops, vec_len (ops));
   vec_free (ops);
@@ -356,10 +346,24 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 {
   vnet_dev_rv_t rv = VNET_DEV_OK;
   vnet_dev_hw_addr_t *a;
+  vnet_dev_rx_queue_t *rxq = 0;
+  u8 enable = 0;
 
   vnet_dev_port_validate (vm, port);
 
-  vnet_dev_port_cfg_change_req_validate (vm, port, req);
+  if (req->type == VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE ||
+      req->type == VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE)
+    {
+      if (req->all_queues == 0)
+	{
+	  rxq = vnet_dev_port_get_rx_queue_by_id (port, req->queue_id);
+	  if (rxq == 0)
+	    return VNET_DEV_ERR_BUG;
+	}
+    }
+
+  if ((rv = vnet_dev_port_cfg_change_req_validate (vm, port, req)))
+    return rv;
 
   if (port->port_ops.config_change)
     rv = port->port_ops.config_change (vm, port, req);
@@ -375,6 +379,43 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       port->promisc = req->promisc;
+      break;
+
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+      enable = 1;
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (req->all_queues)
+	{
+	  clib_bitmap_t *bmp = 0;
+	  vnet_dev_rt_op_t *ops = 0;
+	  u32 i;
+
+	  foreach_vnet_dev_port_rx_queue (q, port)
+	    {
+	      q->interrupt_mode = enable;
+	      bmp = clib_bitmap_set (bmp, q->rx_thread_index, 1);
+	    }
+
+	  clib_bitmap_foreach (i, bmp)
+	    {
+	      vnet_dev_rt_op_t op = { .port = port, .thread_index = i };
+	      vec_add1 (ops, op);
+	    }
+
+	  vnet_dev_rt_exec_ops (vm, port->dev, ops, vec_len (ops));
+	  clib_bitmap_free (bmp);
+	  vec_free (ops);
+	}
+      else
+	{
+	  rxq->interrupt_mode = enable;
+	  vnet_dev_rt_exec_ops (vm, port->dev,
+				&(vnet_dev_rt_op_t){
+				  .port = port,
+				  .thread_index = rxq->rx_thread_index,
+				},
+				1);
+	}
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
@@ -602,6 +643,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
 	port->intf.sw_if_index;
       /* poison to catch node not calling runtime update function */
       q->next_index = ~0;
+      q->interrupt_mode = port->intf.default_is_intr_mode;
       vnet_dev_rx_queue_rt_request (
 	vm, q, (vnet_dev_rx_queue_rt_req_t){ .update_next_index = 1 });
     }
