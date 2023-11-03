@@ -692,7 +692,6 @@ typedef struct
   /* Node runtime indices for input nodes with pending interrupts. */
   void *input_node_interrupts;
   void *pre_input_node_interrupts;
-  volatile u8 pending_interrupts;
 
   /* Input nodes are switched from/to interrupt to/from polling mode
      when average vector length goes above/below polling/interrupt

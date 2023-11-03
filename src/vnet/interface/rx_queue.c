@@ -252,13 +252,11 @@ vnet_hw_if_generate_rxq_int_poll_vector (vlib_main_t *vm,
 
   vec_reset_length (rt->rxq_vector_int);
 
-  while ((int_num = clib_interrupt_get_next (rt->rxq_interrupts, int_num)) !=
-	 -1)
+  while ((int_num = clib_interrupt_get_next_and_clear (rt->rxq_interrupts,
+						       int_num)) != -1)
     {
       vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, int_num);
       vnet_hw_if_rxq_poll_vector_t *pv;
-
-      clib_interrupt_clear (rt->rxq_interrupts, int_num);
 
       vec_add2 (rt->rxq_vector_int, pv, 1);
       pv->dev_instance = rxq->dev_instance;

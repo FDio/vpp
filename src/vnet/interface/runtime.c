@@ -289,10 +289,9 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 		{
 		  void *in = rt->rxq_interrupts;
 		  int int_num = -1;
-		  while ((int_num = clib_interrupt_get_next (in, int_num)) !=
-			 -1)
+		  while ((int_num = clib_interrupt_get_next_and_clear (
+			    in, int_num)) != -1)
 		    {
-		      clib_interrupt_clear (in, int_num);
 		      pending_int = clib_bitmap_set (pending_int, int_num, 1);
 		      last_int = clib_max (last_int, int_num);
 		    }

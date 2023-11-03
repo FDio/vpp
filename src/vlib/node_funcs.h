@@ -268,8 +268,6 @@ vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
     clib_interrupt_set_atomic (interrupts, n->runtime_index);
   else
     clib_interrupt_set (interrupts, n->runtime_index);
-
-  __atomic_store_n (&nm->pending_interrupts, 1, __ATOMIC_RELEASE);
 }
 
 always_inline vlib_process_t *

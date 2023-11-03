@@ -187,9 +187,9 @@ snort_deq_node_interrupt (vlib_main_t *vm, vlib_node_runtime_t *node,
   snort_instance_t *si;
   int inst = -1;
 
-  while ((inst = clib_interrupt_get_next (ptd->interrupts, inst)) != -1)
+  while ((inst = clib_interrupt_get_next_and_clear (ptd->interrupts, inst)) !=
+	 -1)
     {
-      clib_interrupt_clear (ptd->interrupts, inst);
       si = vec_elt_at_index (sm->instances, inst);
       qp = vec_elt_at_index (si->qpairs, vm->thread_index);
       u32 ready = __atomic_load_n (&qp->ready, __ATOMIC_ACQUIRE);

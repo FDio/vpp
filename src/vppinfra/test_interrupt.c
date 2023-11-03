@@ -33,10 +33,7 @@ int debug = 0;
 void
 set_and_check_bits (void *interrupts, int num_ints)
 {
-
-  int step;
-
-  for (step = 1; step < num_ints; step++)
+  for (int step = 1; step < num_ints; step++)
     {
       int int_num = -1;
       int expected = 0;
@@ -48,13 +45,15 @@ set_and_check_bits (void *interrupts, int num_ints)
 	  clib_interrupt_set (interrupts, i);
 	}
 
-      while ((int_num = clib_interrupt_get_next (interrupts, int_num)) != -1)
+      while ((int_num =
+		clib_interrupt_get_next_and_clear (interrupts, int_num)) != -1)
 	{
 	  debug ("    Got %d, expecting %d\n", int_num, expected);
 	  ASSERT (int_num == expected);
 	  expected += step;
-	  clib_interrupt_clear (interrupts, int_num);
 	}
+      int_num = clib_interrupt_get_next_and_clear (interrupts, -1);
+      ASSERT (int_num == -1);
     }
 }
 

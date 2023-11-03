@@ -249,6 +249,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     fpool
     hash
     heap
+    interrupt
     longjmp
     macros
     maplog
