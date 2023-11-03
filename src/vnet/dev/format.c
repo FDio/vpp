@@ -146,9 +146,10 @@ format_vnet_dev_rx_queue_info (u8 *s, va_list *args)
 
   s = format (s, "Size is %u, buffer pool index is %u", rxq->size,
 	      vnet_dev_get_rx_queue_buffer_pool_index (rxq));
-  s = format (s, "\n%UPolling thread is %u, %sabled, %sstarted",
+  s = format (s, "\n%UPolling thread is %u, %sabled, %sstarted, %s mode",
 	      format_white_space, indent, rxq->rx_thread_index,
-	      rxq->enabled ? "en" : "dis", rxq->started ? "" : "not-");
+	      rxq->enabled ? "en" : "dis", rxq->started ? "" : "not-",
+	      rxq->interrupt_mode ? "interrupt" : "polling");
 
   return s;
 }

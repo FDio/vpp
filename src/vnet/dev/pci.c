@@ -2,16 +2,15 @@
  * Copyright (c) 2023 Cisco Systems, Inc.
  */
 
-#include "vlib/pci/pci.h"
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/pci.h>
 #include <vnet/dev/log.h>
+#include <vlib/unix/unix.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "pci",
-  .default_syslog_level = VLIB_LOG_LEVEL_DEBUG,
 };
 
 static int
@@ -315,6 +314,18 @@ vnet_dev_pci_msix_add_handler (vlib_main_t *vm, vnet_dev_t *dev,
     }
 
   return VNET_DEV_OK;
+}
+
+void
+vnet_dev_pci_msix_set_polling_thread (vlib_main_t *vm, vnet_dev_t *dev,
+				      u16 line, u16 thread_index)
+{
+  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
+  u32 index;
+
+  index = vlib_pci_get_msix_file_index (vm, h, line);
+
+  clib_file_set_polling_thread (&file_main, index, thread_index);
 }
 
 vnet_dev_rv_t

@@ -60,6 +60,20 @@ vnet_dev_get_port_from_dev_instance (u32 dev_instance)
   return pool_elt_at_index (dm->ports_by_dev_instance, dev_instance)[0];
 }
 
+static_always_inline vnet_dev_port_t *
+vnet_dev_get_port_from_hw_if_index (u32 hw_if_index)
+{
+  vnet_hw_interface_t *hw;
+  vnet_dev_port_t *port;
+  hw = vnet_get_hw_interface (vnet_get_main (), hw_if_index);
+  port = vnet_dev_get_port_from_dev_instance (hw->dev_instance);
+
+  if (!port || port->intf.hw_if_index != hw_if_index)
+    return 0;
+
+  return port;
+}
+
 static_always_inline vnet_dev_t *
 vnet_dev_by_id (char *id)
 {
@@ -116,6 +130,26 @@ vnet_dev_get_port_by_id (vnet_dev_t *dev, vnet_dev_port_id_t port_id)
   foreach_vnet_dev_port (p, dev)
     if (p->port_id == port_id)
       return p;
+  return 0;
+}
+
+static_always_inline vnet_dev_rx_queue_t *
+vnet_dev_port_get_rx_queue_by_id (vnet_dev_port_t *port,
+				  vnet_dev_queue_id_t queue_id)
+{
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->queue_id == queue_id)
+      return q;
+  return 0;
+}
+
+static_always_inline vnet_dev_tx_queue_t *
+vnet_dev_port_get_tx_queue_by_id (vnet_dev_port_t *port,
+				  vnet_dev_queue_id_t queue_id)
+{
+  foreach_vnet_dev_port_tx_queue (q, port)
+    if (q->queue_id == queue_id)
+      return q;
   return 0;
 }
 
@@ -181,22 +215,24 @@ vnet_dev_get_tx_node_runtime (vlib_node_runtime_t *node)
   return (void *) node->runtime_data;
 }
 
-static_always_inline vnet_dev_rx_queue_t **
-foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node)
-{
-  vnet_dev_rx_node_runtime_t *rt = vnet_dev_get_rx_node_runtime (node);
-  return rt->rx_queues;
-}
-
-static_always_inline int
-vnet_dev_rx_queue_runtime_update (vnet_dev_rx_queue_t *rxq)
+static_always_inline vnet_dev_rx_queue_t *
+foreach_vnet_dev_rx_queue_runtime_helper (vlib_node_runtime_t *node,
+					  vnet_dev_rx_queue_t *rxq)
 {
   vnet_dev_port_t *port;
   vnet_dev_rx_queue_rt_req_t req;
-  int rv = 1;
+
+  if (rxq == 0)
+    rxq = vnet_dev_get_rx_node_runtime (node)->first_rx_queue;
+  else
+  next:
+    rxq = rxq->next_on_thread;
+
+  if (PREDICT_FALSE (rxq == 0))
+    return 0;
 
   if (PREDICT_TRUE (rxq->runtime_request.as_number == 0))
-    return 1;
+    return rxq;
 
   req.as_number =
     __atomic_exchange_n (&rxq->runtime_request.as_number, 0, __ATOMIC_ACQUIRE);
@@ -215,14 +251,19 @@ vnet_dev_rx_queue_runtime_update (vnet_dev_rx_queue_t *rxq)
   if (req.suspend_on)
     {
       rxq->suspended = 1;
-      rv = 0;
+      goto next;
     }
 
   if (req.suspend_off)
     rxq->suspended = 0;
 
-  return rv;
+  return rxq;
 }
+
+#define foreach_vnet_dev_rx_queue_runtime(q, node)                            \
+  for (vnet_dev_rx_queue_t * (q) =                                            \
+	 foreach_vnet_dev_rx_queue_runtime_helper (node, 0);                  \
+       q; (q) = foreach_vnet_dev_rx_queue_runtime_helper (node, q))
 
 static_always_inline void *
 vnet_dev_get_rt_temp_space (vlib_main_t *vm)
@@ -239,13 +280,5 @@ vnet_dev_set_hw_addr_eth_mac (vnet_dev_hw_addr_t *addr, const u8 *eth_mac_addr)
   clib_memcpy_fast (&ha.eth_mac, eth_mac_addr, sizeof (ha.eth_mac));
   *addr = ha;
 }
-
-#define foreach_vnet_dev_rx_queue_runtime(q, node)                            \
-  for (vnet_dev_rx_queue_t *                                                  \
-	 *__qp = foreach_vnet_dev_rx_queue_runtime_helper (node),             \
-	**__last = __qp + (vnet_dev_get_rx_node_runtime (node))->n_rx_queues, \
-	*(q) = *__qp;                                                         \
-       __qp < __last; __qp++, (q) = *__qp)                                    \
-    if (vnet_dev_rx_queue_runtime_update (q))
 
 #endif /* _VNET_DEV_FUNCS_H_ */

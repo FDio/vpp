@@ -173,7 +173,34 @@ clib_error_t *
 vnet_dev_rx_mode_change_fn (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 			    vnet_hw_if_rx_mode mode)
 {
-  return clib_error_return (0, "not supported");
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_dev_port_t *port =
+    vnet_dev_get_port_from_dev_instance (hw->dev_instance);
+  vnet_dev_rv_t rv;
+
+  if (!port)
+    return clib_error_return (0, "not for us");
+
+  if (qid >= (vnet_dev_queue_id_t) ~0)
+    return clib_error_return (0, "not supported");
+
+  vnet_dev_port_cfg_change_req_t req = {
+    .type = mode == VNET_HW_IF_RX_MODE_POLLING ?
+		    VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE :
+		    VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE,
+    .queue_id = qid,
+  };
+
+  if ((rv = vnet_dev_port_cfg_change_req_validate (vm, port, &req)))
+    return vnet_dev_port_err (
+      vm, port, rv, "rx queue interupt mode enable/disable not supported");
+
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, port, &req)))
+    return vnet_dev_port_err (
+      vm, port, rv, "device failed to enable/disable queue interrupt mode");
+
+  return 0;
 }
 
 void

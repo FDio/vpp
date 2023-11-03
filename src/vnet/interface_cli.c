@@ -54,6 +54,9 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 #include <vnet/hash/hash.h>
+#include <vnet/dev/dev.h>
+#include <vnet/dev/dev_funcs.h>
+
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1516,6 +1519,33 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   clib_error_t *error = 0;
   vnet_hw_interface_t *hw;
   u32 *queue_indices = 0;
+  vnet_dev_port_t *port;
+
+  port = vnet_dev_get_port_from_hw_if_index (hw_if_index);
+
+  if (port)
+    {
+      vlib_main_t *vm = vlib_get_main ();
+      vnet_dev_rv_t rv;
+
+      vnet_dev_port_cfg_change_req_t req = {
+	.type = mode == VNET_HW_IF_RX_MODE_POLLING ?
+			VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE :
+			VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE,
+	.queue_id = queue_id_valid ? queue_id : 0,
+	.all_queues = queue_id_valid ? 0 : 1,
+      };
+
+      if ((rv = vnet_dev_port_cfg_change_req_validate (vm, port, &req)))
+	return vnet_dev_port_err (
+	  vm, port, rv, "rx queue interupt mode enable/disable not supported");
+
+      if ((rv = vnet_dev_process_port_cfg_change_req (vm, port, &req)))
+	return vnet_dev_port_err (
+	  vm, port, rv,
+	  "device failed to enable/disable queue interrupt mode");
+      return 0;
+    }
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
