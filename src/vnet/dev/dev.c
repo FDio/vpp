@@ -391,7 +391,6 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.admin_up_down_function = vnet_dev_admin_up_down_fn,
 	.rx_redirect_to_node = vnet_dev_set_interface_next_node,
 	.clear_counters = vnet_dev_clear_hw_interface_counters,
-	.rx_mode_change_function = vnet_dev_rx_mode_change_fn,
 	.mac_addr_change_function = vnet_dev_port_mac_change,
 	.mac_addr_add_del_function = vnet_dev_add_del_mac_address,
 	.flow_ops_function = vnet_dev_flow_ops_fn,

@@ -503,8 +503,6 @@ clib_error_t *vnet_dev_interface_set_rss_queues (vnet_main_t *,
 						 vnet_hw_interface_t *,
 						 clib_bitmap_t *);
 void vnet_dev_clear_hw_interface_counters (u32);
-clib_error_t *vnet_dev_rx_mode_change_fn (vnet_main_t *, u32, u32,
-					  vnet_hw_if_rx_mode);
 void vnet_dev_set_interface_next_node (vnet_main_t *, u32, u32);
 
 /* port.c */
