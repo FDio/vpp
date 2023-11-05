@@ -585,7 +585,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv4 - IPIP
         #
         p47 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -628,7 +628,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv6 - IPIP
         #
         p67 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -726,7 +726,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv4 - IPIP
         #
         p48 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -769,7 +769,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv6 - IPIP
         #
         p68 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -877,7 +877,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv4 - IPSEC
         #
         ipsec44 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -915,7 +915,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv6 - IPSEC
         #
         ipsec46 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1012,7 +1012,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv4 - IPSEC
         #
         ipsec64 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1051,7 +1051,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv6 - IPSEC
         #
         ipsec66 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)

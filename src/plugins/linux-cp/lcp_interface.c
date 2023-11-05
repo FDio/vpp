@@ -266,6 +266,7 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   lip->lip_host_type = host_type;
   lip->lip_vif_index = host_index;
   lip->lip_namespace = vec_dup (ns);
+  lip->lip_saved_host_eth_if_flags = ~0;
 
   /*
    * First use of this host interface.
@@ -319,6 +320,19 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
 	  vnet_feature_enable_disable ("ip6-punt", "linux-cp-punt-l3", 0, 1,
 				       NULL, 0);
 	}
+    }
+
+  /* for TAP interfaces, skip DMAC check on the host interface */
+  if (lip->lip_host_type != LCP_ITF_HOST_TUN)
+    {
+      vnet_main_t *vm = vnet_get_main ();
+      vnet_hw_interface_t *hi =
+	vnet_get_sup_hw_interface (vm, lip->lip_host_sw_if_index);
+      ethernet_interface_t *ei = pool_elt_at_index (ethernet_main.interfaces,
+						    lip->lip_host_sw_if_index);
+      lip->lip_saved_host_eth_if_flags = ei->flags;
+      ethernet_set_flags (vm, hi->hw_if_index,
+			  ETHERNET_INTERFACE_FLAG_SKIP_DMAC_CHECK);
     }
 
   /* invoke registered callbacks for pair addition */
@@ -450,6 +464,15 @@ lcp_itf_pair_del (u32 phy_sw_if_index)
 				       NULL, 0);
 	}
     }
+
+  /* restore flags */
+  if (lip->lip_saved_host_eth_if_flags != ~0)
+    {
+      ethernet_interface_t *ei = pool_elt_at_index (ethernet_main.interfaces,
+						    lip->lip_host_sw_if_index);
+      ei->flags = lip->lip_saved_host_eth_if_flags;
+    }
+
   lip_db_by_phy[phy_sw_if_index] = INDEX_INVALID;
   lip_db_by_host[lip->lip_host_sw_if_index] = INDEX_INVALID;
   hash_unset (lip_db_by_vif, lip->lip_vif_index);
