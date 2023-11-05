@@ -74,6 +74,7 @@ typedef struct lcp_itf_pair_t_
   lip_flag_t lip_flags;		  /* Flags */
   u8 lip_rewrite_len;		  /* The length of an L2 MAC rewrite */
   f64 lip_create_ts;		  /* Timestamp of creation */
+  u32 lip_saved_host_eth_if_flags; /* copy of the eth if flags */
 } lcp_itf_pair_t;
 extern lcp_itf_pair_t *lcp_itf_pair_pool;
 

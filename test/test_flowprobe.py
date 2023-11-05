@@ -552,7 +552,7 @@ class Flowprobe(MethodHolder):
         # make a tcp packet
         self.pkts = [
             (
-                Ether(src=self.pg3.remote_mac, dst=self.pg4.local_mac)
+                Ether(src=self.pg3.remote_mac, dst=self.pg3.local_mac)
                 / IP(src=self.pg3.remote_ip4, dst=self.pg4.remote_ip4)
                 / TCP(sport=1234, dport=4321)
                 / Raw(b"\xa5" * 50)
