@@ -301,10 +301,44 @@ format_vfio_region_info (u8 * s, va_list * args)
   return s;
 }
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+u8 *
+format_vfio_irq_set (u8 *s, va_list *args)
+{
+  struct vfio_irq_set *is = va_arg (*args, struct vfio_irq_set *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "index:%u start:%u count:%u flags: 0x%x", is->index,
+	      is->start, is->count, is->flags);
+
+  s = format (s, " (data:");
+  if (is->flags & VFIO_IRQ_SET_DATA_NONE)
+    s = format (s, " none");
+  if (is->flags & VFIO_IRQ_SET_DATA_BOOL)
+    s = format (s, " bool");
+  if (is->flags & VFIO_IRQ_SET_DATA_EVENTFD)
+    s = format (s, " eventfd");
+
+  s = format (s, ", action:");
+  if (is->flags & VFIO_IRQ_SET_ACTION_MASK)
+    s = format (s, " mask");
+  if (is->flags & VFIO_IRQ_SET_ACTION_UNMASK)
+    s = format (s, " unmask");
+  if (is->flags & VFIO_IRQ_SET_ACTION_TRIGGER)
+    s = format (s, " trigger");
+  vec_add1 (s, ')');
+
+  if (is->flags & VFIO_IRQ_SET_DATA_EVENTFD)
+    {
+      s = format (s, "\n%U  eventfd data:", format_white_space, indent);
+      for (u32 i = 0; i < is->count; i++)
+	s = format (s, " %d", ((int *) (is->data))[i]);
+    }
+  if (is->flags & VFIO_IRQ_SET_DATA_BOOL)
+    {
+      s = format (s, "\n%U  bool data:", format_white_space, indent);
+      for (u32 i = 0; i < is->count; i++)
+	s = format (s, " %u", is->data);
+    }
+
+  return s;
+}

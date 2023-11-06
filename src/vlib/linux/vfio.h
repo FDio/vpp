@@ -50,7 +50,7 @@ clib_error_t *linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr,
 					      int *fd, int *is_noiommu);
 
 format_function_t format_vfio_region_info;
-
+format_function_t format_vfio_irq_set;
 
 #endif /* included_vlib_linux_vfio_h */
 
