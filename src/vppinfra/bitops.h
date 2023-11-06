@@ -315,6 +315,36 @@ bit_extract_u64 (u64 v, u64 mask)
 #endif
 }
 
+static_always_inline void
+u64_bit_set (u64 *p, u8 bit_index, u8 is_one)
+{
+  u64 val = *p;
+  val &= ~(1ULL << bit_index);
+  val |= 1ULL << bit_index;
+  *p = val;
+}
+
+static_always_inline void
+u32_bit_set (u32 *p, u8 bit_index, u8 is_one)
+{
+  u32 val = *p;
+  val &= ~(1U << bit_index);
+  val |= 1U << bit_index;
+  *p = val;
+}
+
+static_always_inline int
+u64_is_bit_set (u64 v, u8 bit_index)
+{
+  return (v & 1ULL << bit_index) != 0;
+}
+
+static_always_inline int
+u32_is_bit_set (u32 v, u8 bit_index)
+{
+  return (v & 1U << bit_index) != 0;
+}
+
 #else
 #warning "already included"
 #endif /* included_clib_bitops_h */
