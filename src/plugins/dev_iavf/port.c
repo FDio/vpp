@@ -24,16 +24,15 @@ static const u8 default_rss_key[] = {
   0x55, 0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e, 0x81, 0x15, 0x03, 0x66,
 };
 
-const static iavf_dyn_ctln dyn_ctln_disabled = {};
-const static iavf_dyn_ctln dyn_ctln_enabled = {
+const static iavf_dyn_ctl dyn_ctln_disabled = {};
+const static iavf_dyn_ctl dyn_ctln_enabled = {
+  .intena = 1,
   .clearpba = 1,
   .interval = IAVF_ITR_INT / 2,
-  .intena = 1,
 };
-const static iavf_dyn_ctln dyn_ctln_wb_on_itr = {
-  .clearpba = 1,
+const static iavf_dyn_ctl dyn_ctln_wb_on_itr = {
   .itr_indx = 1,
-  .interval = 32 / 2,
+  .interval = 2,
   .wb_on_itr = 1,
 };
 
@@ -172,22 +171,30 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
-iavf_port_rx_irq_enable_disable (vlib_main_t *vm, vnet_dev_port_t *port,
-				 int enable)
+iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 {
   vnet_dev_t *dev = port->dev;
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_port_t *ap = vnet_dev_get_port_data (port);
-  u16 n_threads = vlib_get_n_threads ();
-  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_irq_map_info_t, vecmap, n_threads)];
+  u16 n_rx_vectors = ap->n_rx_vectors;
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_irq_map_info_t, vecmap, n_rx_vectors)];
+  u8 n_intr_mode_queues_per_vector[n_rx_vectors];
+  u8 n_queues_per_vector[n_rx_vectors];
   virtchnl_irq_map_info_t *im = (virtchnl_irq_map_info_t *) buffer;
   vnet_dev_rv_t rv;
 
+  log_debug (dev, "intr mode per queue bitmap 0x%x",
+	     ap->intr_mode_per_rxq_bitmap);
+
+  for (u32 i = 0; i < n_rx_vectors; i++)
+    n_intr_mode_queues_per_vector[i] = n_queues_per_vector[i] = 0;
+
+  *im = (virtchnl_irq_map_info_t){
+    .num_vectors = n_rx_vectors,
+  };
+
   if (port->attr.caps.interrupt_mode)
     {
-      *im = (virtchnl_irq_map_info_t){
-	.num_vectors = n_threads,
-      };
       for (u16 i = 0; i < im->num_vectors; i++)
 	im->vecmap[i] = (virtchnl_vector_map_t){
 	  .vsi_id = ap->vsi_id,
@@ -196,16 +203,19 @@ iavf_port_rx_irq_enable_disable (vlib_main_t *vm, vnet_dev_port_t *port,
       if (enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
 	  if (rxq->enabled)
-	    im->vecmap[rxq->rx_thread_index].rxq_map |= 1 << rxq->queue_id;
+	    {
+	      u32 i = rxq->rx_thread_index;
+	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
+	      n_queues_per_vector[i]++;
+	      n_intr_mode_queues_per_vector[i] +=
+		u64_is_bit_set (ap->intr_mode_per_rxq_bitmap, rxq->queue_id);
+	    }
     }
   else
     {
-      *im = (virtchnl_irq_map_info_t){
-	.num_vectors = 1,
-	.vecmap[0] = {
-	    .vsi_id = ap->vsi_id,
-	    .vector_id = 1,
-	},
+      im->vecmap[0] = (virtchnl_vector_map_t){
+	.vsi_id = ap->vsi_id,
+	.vector_id = 1,
       };
       if (enable)
 	foreach_vnet_dev_port_rx_queue (rxq, port)
@@ -216,35 +226,63 @@ iavf_port_rx_irq_enable_disable (vlib_main_t *vm, vnet_dev_port_t *port,
   if ((rv = iavf_vc_op_config_irq_map (vm, dev, im)))
     return rv;
 
-  for (int i = 0; i < im->num_vectors; i++)
+  for (int i = 0; i < n_rx_vectors; i++)
     {
       u32 val;
 
-      if (enable == 0)
+      if (enable == 0 || n_queues_per_vector[i] == 0)
 	val = dyn_ctln_disabled.as_u32;
-      else if (ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
+      else if (ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR &&
+	       n_intr_mode_queues_per_vector[i] == 0)
 	val = dyn_ctln_wb_on_itr.as_u32;
       else
 	val = dyn_ctln_enabled.as_u32;
 
-      iavf_reg_write (ad, AVFINT_DYN_CTLN (im->vecmap[i].vector_id), val);
+      iavf_reg_write (ad, IAVF_VFINT_DYN_CTLN (i), val);
+      log_debug (dev, "VFINT_DYN_CTLN(%u) set to 0x%x", i, val);
     }
 
   return rv;
 }
 
+static void
+avf_msix_n_handler (vlib_main_t *vm, vnet_dev_t *dev, u16 line)
+{
+  iavf_device_t *ad = vnet_dev_get_data (dev);
+  vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
+
+  line--;
+
+  iavf_reg_write (ad, IAVF_VFINT_DYN_CTLN (line), dyn_ctln_enabled.as_u32);
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (line),
+				   port->intf.rx_node_index);
+}
+
 vnet_dev_rv_t
 iavf_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
+  vnet_dev_t *dev = port->dev;
+  iavf_port_t *ap = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv;
 
   log_debug (port->dev, "port %u", port->port_id);
+
+  ap->intr_mode_per_rxq_bitmap = 0;
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->interrupt_mode)
+      u64_bit_set (&ap->intr_mode_per_rxq_bitmap, q->queue_id, 1);
 
   if ((rv = iavf_port_vlan_strip_disable (vm, port)))
     return rv;
 
   if ((rv = iavf_port_init_rss (vm, port)))
     return rv;
+
+  vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1,
+				 ap->n_rx_vectors);
+  vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
+  for (u32 i = 1; i < ap->n_rx_vectors; i++)
+    vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
 
   if (port->dev->poll_stats)
     iavf_port_add_counters (vm, port);
@@ -296,7 +334,7 @@ iavf_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   if ((rv = iavf_port_init_vsi_queues (vm, port)))
     goto done;
 
-  if ((rv = iavf_port_rx_irq_enable_disable (vm, port, /* enable */ 1)))
+  if ((rv = iavf_port_rx_irq_config (vm, port, /* enable */ 1)))
     goto done;
 
   if ((rv = iavf_enable_disable_queues (vm, port, 1)))
@@ -322,7 +360,7 @@ iavf_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (port->dev, "port %u", port->port_id);
 
   iavf_enable_disable_queues (vm, port, /* enable */ 0);
-  iavf_port_rx_irq_enable_disable (vm, port, /* disable */ 0);
+  iavf_port_rx_irq_config (vm, port, /* disable */ 0);
 
   if (port->dev->poll_stats)
     vnet_dev_poll_port_remove (vm, port, iavf_port_poll_stats);
@@ -387,6 +425,57 @@ iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 			iavf_vc_op_del_eth_addr (vm, port->dev, &al);
 }
 
+static vnet_dev_rv_t
+iavf_port_cfg_rxq_int_mode_change (vlib_main_t *vm, vnet_dev_port_t *port,
+				   u16 qid, u8 state, u8 all)
+{
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+  iavf_port_t *ap = vnet_dev_get_port_data (port);
+  vnet_dev_t *dev = port->dev;
+  char *ed = state ? "ena" : "disa";
+  char qstr[16];
+  u64 old, new = 0;
+
+  state = state != 0;
+  old = ap->intr_mode_per_rxq_bitmap;
+
+  if (all)
+    {
+      snprintf (qstr, sizeof (qstr), "all queues");
+      if (state)
+	foreach_vnet_dev_port_rx_queue (q, port)
+	  u64_bit_set (&new, q->queue_id, 1);
+    }
+  else
+    {
+      snprintf (qstr, sizeof (qstr), "queue %u", qid);
+      new = old;
+      u64_bit_set (&new, qid, state);
+    }
+
+  if (new == old)
+    {
+      log_warn (dev, "interrupt mode already %sbled on %s", ed, qstr);
+      return rv;
+    }
+
+  ap->intr_mode_per_rxq_bitmap = new;
+
+  if (port->started)
+    {
+      if ((rv = iavf_port_rx_irq_config (vm, port, 1)))
+	{
+	  ap->intr_mode_per_rxq_bitmap = old;
+	  log_err (dev, "failed to %sble interrupt mode on %s", ed, qstr);
+	  return rv;
+	}
+    }
+
+  log_debug (dev, "interrupt mode %sbled on %s, new bitmap is 0x%x", ed, qstr,
+	     new);
+  return rv;
+}
+
 vnet_dev_rv_t
 iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 		      vnet_dev_port_cfg_change_req_t *req)
@@ -432,6 +521,16 @@ iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_FRAME_SIZE:
+      break;
+
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 1,
+					      req->all_queues);
+      break;
+
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      rv = iavf_port_cfg_rxq_int_mode_change (vm, port, req->queue_id, 0,
+					      req->all_queues);
       break;
 
     default:
