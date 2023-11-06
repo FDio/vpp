@@ -8,6 +8,7 @@
 #include <vnet/dev/pci.h>
 #include <vnet/dev/counters.h>
 #include <dev_iavf/iavf.h>
+#include <dev_iavf/iavf_regs.h>
 #include <dev_iavf/virtchnl.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -33,6 +34,36 @@ struct iavf_adminq_dma_mem
     u8 data[IIAVF_AQ_BUF_SIZE];
   } arq_bufs[IIAVF_AQ_ARQ_LEN];
 };
+
+static const iavf_dyn_ctl dyn_ctl0_disable = {
+  .itr_indx = 3,
+};
+
+static const iavf_dyn_ctl dyn_ctl0_enable = {
+  .intena = 1,
+  .clearpba = 1,
+  .itr_indx = 3,
+};
+
+static const iavf_vfint_icr0_ena1 icr0_ena1_aq_enable = {
+  .adminq = 1,
+};
+
+static inline void
+iavf_irq_0_disable (iavf_device_t *ad)
+{
+  iavf_reg_write (ad, IAVF_VFINT_ICR0_ENA1, 0);
+  iavf_reg_write (ad, IAVF_VFINT_DYN_CTL0, dyn_ctl0_disable.as_u32);
+  iavf_reg_flush (ad);
+}
+
+static inline void
+iavf_irq_0_enable (iavf_device_t *ad)
+{
+  iavf_reg_write (ad, IAVF_VFINT_ICR0_ENA1, icr0_ena1_aq_enable.as_u32);
+  iavf_reg_write (ad, IAVF_VFINT_DYN_CTL0, dyn_ctl0_enable.as_u32);
+  iavf_reg_flush (ad);
+}
 
 static_always_inline int
 iavf_aq_desc_is_done (iavf_aq_desc_t *d)
@@ -242,39 +273,12 @@ iavf_aq_poll (vlib_main_t *vm, vnet_dev_t *dev)
     }
 }
 
-static inline void
-iavf_irq_0_set_state (iavf_device_t *ad, int enable)
-{
-  u32 dyn_ctl0 = 0, icr0_ena = 0;
-
-  dyn_ctl0 |= (3 << 3); /* 11b = No ITR update */
-
-  iavf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
-  iavf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
-  iavf_reg_flush (ad);
-
-  if (!enable)
-    return;
-
-  dyn_ctl0 = 0;
-  icr0_ena = 0;
-
-  icr0_ena |= (1 << 30); /* [30] Admin Queue Enable */
-
-  dyn_ctl0 |= (1 << 0); /* [0] Interrupt Enable */
-  dyn_ctl0 |= (1 << 1); /* [1] Clear PBA */
-  dyn_ctl0 |= (2 << 3); /* [4:3] ITR Index, 11b = No ITR update */
-  dyn_ctl0 |= ((IAVF_ITR_INT / 2) << 5); /* [16:5] ITR Interval in 2us steps */
-
-  iavf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
-  iavf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
-  iavf_reg_flush (ad);
-}
-
 static void
 iavf_adminq_msix_handler (vlib_main_t *vm, vnet_dev_t *dev, u16 line)
 {
-  log_debug (dev, "MSI-X interrupt 0 received");
+  iavf_device_t *ad = vnet_dev_get_data (dev);
+  iavf_reg_write (ad, IAVF_VFINT_DYN_CTL0, dyn_ctl0_enable.as_u32);
+  log_debug (dev, "MSI-X interrupt %u received", line);
   vnet_dev_process_call_op_no_wait (vm, dev, iavf_aq_poll);
 }
 
@@ -335,7 +339,7 @@ iavf_aq_poll_on (vlib_main_t *vm, vnet_dev_t *dev)
   else
     vnet_dev_pci_intx_add_handler (vm, dev, iavf_adminq_intx_handler);
 
-  iavf_irq_0_set_state (ad, 1);
+  iavf_irq_0_enable (ad);
 }
 
 void
@@ -343,7 +347,7 @@ iavf_aq_poll_off (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
 
-  iavf_irq_0_set_state (ad, 0);
+  iavf_irq_0_disable (ad);
 
   vnet_dev_poll_dev_remove (vm, dev, iavf_aq_poll);
 
