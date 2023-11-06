@@ -19,23 +19,23 @@ enum
 #undef _
 };
 
-#define AVFINT_DYN_CTLN(x) (0x00003800 + (0x4 * x))
-#define AVFINT_ICR0	   0x00004800
-#define AVFINT_ICR0_ENA1   0x00005000
-#define AVFINT_DYN_CTL0	   0x00005C00
-#define IAVF_ARQBAH	   0x00006000
-#define IAVF_ATQH	   0x00006400
-#define IAVF_ATQLEN	   0x00006800
-#define IAVF_ARQBAL	   0x00006C00
-#define IAVF_ARQT	   0x00007000
-#define IAVF_ARQH	   0x00007400
-#define IAVF_ATQBAH	   0x00007800
-#define IAVF_ATQBAL	   0x00007C00
-#define IAVF_ARQLEN	   0x00008000
-#define IAVF_ATQT	   0x00008400
-#define VFGEN_RSTAT	   0x00008800
-#define IAVF_QTX_TAIL(q)   (0x00000000 + (0x4 * q))
-#define IAVF_QRX_TAIL(q)   (0x00002000 + (0x4 * q))
+#define IAVF_VFINT_DYN_CTLN(x) (0x00003800 + (0x4 * x))
+#define IAVF_VFINT_ICR0	       0x00004800
+#define IAVF_VFINT_ICR0_ENA1   0x00005000
+#define IAVF_VFINT_DYN_CTL0    0x00005C00
+#define IAVF_ARQBAH	       0x00006000
+#define IAVF_ATQH	       0x00006400
+#define IAVF_ATQLEN	       0x00006800
+#define IAVF_ARQBAL	       0x00006C00
+#define IAVF_ARQT	       0x00007000
+#define IAVF_ARQH	       0x00007400
+#define IAVF_ATQBAH	       0x00007800
+#define IAVF_ATQBAL	       0x00007C00
+#define IAVF_ARQLEN	       0x00008000
+#define IAVF_ATQT	       0x00008400
+#define IAVF_VFGEN_RSTAT       0x00008800
+#define IAVF_QTX_TAIL(q)       (0x00000000 + (0x4 * q))
+#define IAVF_QRX_TAIL(q)       (0x00002000 + (0x4 * q))
 
 #define foreach_virtchnl_op                                                   \
   _ (0, UNKNOWN)                                                              \
