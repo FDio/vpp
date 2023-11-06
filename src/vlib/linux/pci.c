@@ -648,33 +648,14 @@ vfio_set_irqs (vlib_main_t * vm, linux_pci_device_t * p, u32 index, u32 start,
 {
   int data_len = efds ? count * sizeof (int) : 0;
   u8 buf[sizeof (struct vfio_irq_set) + data_len];
-  struct vfio_irq_info ii = { 0 };
   struct vfio_irq_set *irq_set = (struct vfio_irq_set *) buf;
-
-
-  ii.argsz = sizeof (struct vfio_irq_info);
-  ii.index = index;
-
-  if (ioctl (p->fd, VFIO_DEVICE_GET_IRQ_INFO, &ii) < 0)
-    return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_IRQ_INFO) "
-				   "'%U'", format_vlib_pci_addr, &p->addr);
-
-  log_debug (p, "%s index:%u count:%u flags: %s%s%s%s(0x%x)", __func__,
-	     ii.index, ii.count,
-	     ii.flags & VFIO_IRQ_INFO_EVENTFD ? "eventfd " : "",
-	     ii.flags & VFIO_IRQ_INFO_MASKABLE ? "maskable " : "",
-	     ii.flags & VFIO_IRQ_INFO_AUTOMASKED ? "automasked " : "",
-	     ii.flags & VFIO_IRQ_INFO_NORESIZE ? "noresize " : "", ii.flags);
-
-  if (ii.count < start + count)
-    return clib_error_return_unix (0, "vfio_set_irq: unexistng interrupt on "
-				   "'%U'", format_vlib_pci_addr, &p->addr);
-
 
   if (efds)
     {
+      int *data = (int *) irq_set->data;
       flags |= VFIO_IRQ_SET_DATA_EVENTFD;
-      clib_memcpy_fast (&irq_set->data, efds, data_len);
+      for (u32 i = 0; i < count; i++)
+	data[i] = efds[i];
     }
   else
     flags |= VFIO_IRQ_SET_DATA_NONE;
@@ -689,11 +670,11 @@ vfio_set_irqs (vlib_main_t * vm, linux_pci_device_t * p, u32 index, u32 start,
   irq_set->flags = flags;
 
   if (ioctl (p->fd, VFIO_DEVICE_SET_IRQS, irq_set) < 0)
-    return clib_error_return_unix (0, "%U:ioctl(VFIO_DEVICE_SET_IRQS) "
-				   "[index = %u, start = %u, count = %u, "
-				   "flags = 0x%x]",
+    return clib_error_return_unix (0, "%U:ioctl(VFIO_DEVICE_SET_IRQS)\n%U",
 				   format_vlib_pci_addr, &p->addr,
-				   index, start, count, flags);
+				   format_vfio_irq_set, irq_set);
+
+  log_debug (p, "%s:\n%U", __func__, format_vfio_irq_set, irq_set);
   return 0;
 }
 
