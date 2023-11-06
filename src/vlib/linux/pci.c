@@ -1002,9 +1002,9 @@ vlib_pci_enable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
     return clib_error_return (0, "vfio driver is needed for MSI-X interrupt "
 			      "support");
 
-  for (i = start; i < start + count; i++)
+  for (i = 0; i < count; i++)
     {
-      linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, i);
+      linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, start + i);
       fds[i] = irq->fd;
     }
 
