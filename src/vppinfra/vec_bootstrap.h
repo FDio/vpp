@@ -240,8 +240,8 @@ _vec_set_len (void *v, uword len, uword elt_sz)
 
 #define vec_foreach_pointer(e, v)                                             \
   if (v)                                                                      \
-    for (typeof (**v) **__ep = (v), *(e) = *__ep; __ep - (v) < vec_len (v);   \
-	 __ep++, (e) = *__ep)
+    for (typeof (**v) **__ep = (v), **__end = vec_end (v), *(e) = *__ep;      \
+	 __ep < __end; __ep++, (e) = __ep < __end ? *__ep : (e))
 
 #endif /* included_clib_vec_bootstrap_h */
 
