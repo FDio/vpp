@@ -344,8 +344,21 @@ typedef union
     u32 intena_msk : 1;
   };
   u32 as_u32;
-} iavf_dyn_ctln;
+} iavf_dyn_ctl;
 
-STATIC_ASSERT_SIZEOF (iavf_dyn_ctln, 4);
+STATIC_ASSERT_SIZEOF (iavf_dyn_ctl, 4);
+
+typedef union
+{
+  struct
+  {
+    u32 _reserved0 : 30;
+    u32 adminq : 1;
+    u32 _reserved31 : 1;
+  };
+  u32 as_u32;
+} iavf_vfint_icr0_ena1;
+
+STATIC_ASSERT_SIZEOF (iavf_vfint_icr0_ena1, 4);
 
 #endif /* _IIAVF_REGS_H_ */

@@ -98,7 +98,7 @@ iavf_reset (vlib_main_t *vm, vnet_dev_t *dev)
 	return VNET_DEV_ERR_TIMEOUT;
       vlib_process_suspend (vm, 0.02);
     }
-  while ((iavf_reg_read (ad, VFGEN_RSTAT) & 3) != 2);
+  while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
 
   iavf_aq_init (vm, dev);
   iavf_aq_poll_on (vm, dev);
@@ -118,6 +118,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   iavf_device_t *ad = vnet_dev_get_data (dev);
   virtchnl_version_info_t ver;
   virtchnl_vf_resource_t res;
+  u32 n_threads = vlib_get_n_threads ();
   vnet_dev_rv_t rv;
 
   log_debug (dev, "init");
@@ -209,13 +210,20 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   log_info (dev, "MAC address is %U", format_ethernet_address,
 	    res.vsi_res[0].default_mac_addr);
 
-  if (vlib_get_n_threads () <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1)
-    port_add_args.port.attr.caps.interrupt_mode = 1;
+  if (n_threads <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1)
+    {
+      port_add_args.port.attr.caps.interrupt_mode = 1;
+      iavf_port.n_rx_vectors = n_threads;
+    }
   else
-    log_notice (dev,
-		"number of threads (%u) bigger than number of interrupt lines "
-		"(%u), interrupt mode disabled",
-		vlib_get_n_threads (), res.max_vectors);
+    {
+      log_notice (
+	dev,
+	"number of threads (%u) bigger than number of interrupt lines "
+	"(%u), interrupt mode disabled",
+	vlib_get_n_threads (), res.max_vectors);
+      iavf_port.n_rx_vectors = 1;
+    }
 
   if (res.vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF)
     {

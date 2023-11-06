@@ -32,7 +32,6 @@ typedef struct
   u16 atq_next_slot;
   u16 arq_next_slot;
   virtchnl_pf_event_t *events;
-
 } iavf_device_t;
 
 typedef struct
@@ -47,12 +46,14 @@ typedef struct
   u8 admin_up : 1;
   u8 flow_offload : 1;
   iavf_flow_lookup_entry_t *flow_lookup_entries;
+  u64 intr_mode_per_rxq_bitmap;
   u32 vf_cap_flags;
   u16 vsi_id;
   u16 rss_key_size;
   u16 rss_lut_size;
   u16 num_qp;
   u16 max_vectors;
+  u16 n_rx_vectors;
 } iavf_port_t;
 
 typedef struct
@@ -151,7 +152,7 @@ iavf_reg_read (iavf_device_t *ad, u32 addr)
 static inline void
 iavf_reg_flush (iavf_device_t *ad)
 {
-  iavf_reg_read (ad, VFGEN_RSTAT);
+  iavf_reg_read (ad, IAVF_VFGEN_RSTAT);
   asm volatile("" ::: "memory");
 }
 
