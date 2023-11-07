@@ -642,19 +642,6 @@ can impact performance. Default is 1024.
       num-rx-desc <n>
    }
 
-vlan-strip-offload on | off
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-VLAN strip offload mode for interface. VLAN stripping is off by default
-for all NICs except VICs, using ENIC driver, which has VLAN stripping on
-by default.
-
-.. code-block:: console
-
-   dev 000:02:00.1 {
-      vlan-strip-offload on|off
-   }
-
 uio-driver driver-name
 ^^^^^^^^^^^^^^^^^^^^^^
 
