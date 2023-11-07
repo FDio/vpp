@@ -122,6 +122,24 @@
       "parentUuid": "a4423a6e_fc050832",
       "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b35d59b_a9f6f7ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-11-07T11:04:07Z",
+      "side": 1,
+      "message": "it is not about specific editor, it is about being modern and supporting modern tools 😊",
+      "parentUuid": "ef02750b_63ea989c",
+      "revId": "61ea183c47093113286267fe47236e61d51f7d9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
