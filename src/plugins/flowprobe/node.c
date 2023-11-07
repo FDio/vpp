@@ -384,9 +384,11 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
   flowprobe_record_t flags = fm->context[which].flags;
   bool collect_ip4 = false, collect_ip6 = false;
   ASSERT (b);
-  ethernet_header_t *eth = ethernet_buffer_get_header (b);
+  ethernet_header_t *eth = (direction == FLOW_DIRECTION_TX) ?
+				   vlib_buffer_get_current (b) :
+				   ethernet_buffer_get_header (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
-  u16 l2_hdr_sz = sizeof (ethernet_header_t);
+  u16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
   /* *INDENT-OFF* */
   flowprobe_key_t k = {};
   /* *INDENT-ON* */
@@ -423,13 +425,13 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (clib_net_to_host_u16 (ethv->type) == ETHERNET_TYPE_VLAN)
 	{
 	  ethv++;
-	  l2_hdr_sz += sizeof (ethernet_vlan_header_tv_t);
+	  l3_hdr_offset += sizeof (ethernet_vlan_header_tv_t);
 	}
       k.ethertype = ethertype = clib_net_to_host_u16 ((ethv)->type);
     }
   if (collect_ip6 && ethertype == ETHERNET_TYPE_IP6)
     {
-      ip6 = (ip6_header_t *) (b->data + l2_hdr_sz);
+      ip6 = (ip6_header_t *) (b->data + l3_hdr_offset);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.as_u64[0] = ip6->src_address.as_u64[0];
@@ -448,7 +450,7 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   if (collect_ip4 && ethertype == ETHERNET_TYPE_IP4)
     {
-      ip4 = (ip4_header_t *) (b->data + l2_hdr_sz);
+      ip4 = (ip4_header_t *) (b->data + l3_hdr_offset);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.ip4.as_u32 = ip4->src_address.as_u32;
