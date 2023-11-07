@@ -26,6 +26,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi.macaddress import mac_ntop
 from socket import inet_ntop
 from vpp_papi import VppEnum
+from vpp_sub_interface import VppDot1ADSubint
 
 
 TMPL_COMMON_FIELD_COUNT = 6
@@ -36,6 +37,9 @@ TMPL_L4_FIELD_COUNT = 3
 IPFIX_TCP_FLAGS_ID = 6
 IPFIX_SRC_TRANS_PORT_ID = 7
 IPFIX_DST_TRANS_PORT_ID = 11
+IPFIX_SRC_IP4_ADDR_ID = 8
+IPFIX_DST_IP4_ADDR_ID = 12
+IPFIX_FLOW_DIRECTION_ID = 61
 
 TCP_F_FIN = 0x01
 TCP_F_SYN = 0x02
@@ -1225,6 +1229,77 @@ class DatapathTx(MethodHolder, DatapathTestsHolder):
     intf2 = "pg4"
     intf3 = "pg6"
     direction = "tx"
+
+    def test_rewritten_traffic(self):
+        """Rewritten traffic (from subif to ipfix if)"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # prepare a sub-interface
+        subif = VppDot1ADSubint(self, self.pg7, 0, 300, 400)
+        subif.admin_up()
+        subif.config_ip4()
+
+        # enable ip4 datapath for an interface
+        ipfix = VppCFLOW(
+            test=self,
+            intf="pg8",
+            datapath="ip4",
+            layer="l2 l3 l4",
+            direction=self.direction,
+        )
+        ipfix.add_vpp_config()
+
+        # template packet should arrive immediately
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=1)
+
+        # forward some traffic through the ipfix interface
+        route = VppIpRoute(
+            self,
+            "9.0.0.0",
+            24,
+            [VppRoutePath(self.pg8.remote_ip4, self.pg8.sw_if_index)],
+        )
+        route.add_vpp_config()
+
+        # prepare an IPv4 packet (subif => ipfix interface)
+        pkt = (
+            Ether(src=subif.remote_mac, dst=self.pg7.local_mac)
+            / IP(src=subif.remote_ip4, dst="9.0.0.1")
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 123)
+        )
+        self.pkts = [
+            subif.add_dot1ad_layer(pkt, 300, 400),
+        ]
+
+        # send the packet
+        capture = self.send_packets(self.pg7, self.pg8)
+
+        # wait for a flow and verify it
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[0])
+        self.verify_cflow_data(ipfix_decoder, capture, cflow)
+        self.verify_cflow_data_detail(
+            ipfix_decoder,
+            capture,
+            cflow,
+            {
+                IPFIX_SRC_IP4_ADDR_ID: "src_ip",
+                IPFIX_DST_IP4_ADDR_ID: "dst_ip",
+                IPFIX_SRC_TRANS_PORT_ID: "sport",
+                IPFIX_DST_TRANS_PORT_ID: "dport",
+                IPFIX_FLOW_DIRECTION_ID: (self.direction == "tx"),
+            },
+        )
+
+        self.collector.get_capture(2)
+
+        # cleanup
+        route.remove_vpp_config()
+        subif.remove_vpp_config()
+        ipfix.remove_vpp_config()
 
 
 @tag_fixme_vpp_workers
