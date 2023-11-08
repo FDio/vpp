@@ -507,21 +507,25 @@ tls_session_accept_callback (session_t * tls_session)
 }
 
 int
-tls_app_rx_callback (session_t * tls_session)
+tls_app_rx_callback (session_t *ts)
 {
   tls_ctx_t *ctx;
 
   /* DTLS session migrating, wait for next notification */
-  if (PREDICT_FALSE (tls_session->flags & SESSION_F_IS_MIGRATING))
+  if (PREDICT_FALSE (ts->flags & SESSION_F_IS_MIGRATING))
     return 0;
 
-  ctx = tls_ctx_get (tls_session->opaque);
+  /* Read rescheduled but underlying transport deleted now */
+  if (PREDICT_FALSE ((ts->session_state == SESSION_STATE_TRANSPORT_DELETED)))
+    return 0;
+
+  ctx = tls_ctx_get (ts->opaque);
   if (PREDICT_FALSE (ctx->no_app_session || ctx->app_closed))
     {
       TLS_DBG (1, "Local App closed");
       return 0;
     }
-  tls_ctx_read (ctx, tls_session);
+  tls_ctx_read (ctx, ts);
   return 0;
 }
 
@@ -699,11 +703,21 @@ dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
   tls_ctx_free (ctx);
 }
 
+static void
+tls_session_transport_closed_callback (session_t *ts)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get_w_thread (ts->opaque, ts->thread_index);
+  session_transport_closed_notify (&ctx->connection);
+}
+
 static session_cb_vft_t tls_app_cb_vft = {
   .session_accept_callback = tls_session_accept_callback,
   .session_disconnect_callback = tls_session_disconnect_callback,
   .session_connected_callback = tls_session_connected_callback,
   .session_reset_callback = tls_session_reset_callback,
+  .session_transport_closed_callback = tls_session_transport_closed_callback,
   .half_open_cleanup_callback = tls_session_cleanup_ho,
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
