@@ -483,6 +483,17 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
   pool_put (cm->keys, key);
 }
 
+void
+vnet_crypto_key_modify (vlib_main_t *vm, vnet_crypto_key_index_t index)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_t *engine;
+
+  vec_foreach (engine, cm->engines)
+    if (engine->key_op_handler)
+      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY, index);
+}
+
 vnet_crypto_async_alg_t
 vnet_crypto_link_algs (vnet_crypto_alg_t crypto_alg,
 		       vnet_crypto_alg_t integ_alg)

@@ -496,6 +496,7 @@ int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
 			 u8 * data, u16 length);
 void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
+void vnet_crypto_key_modify (vlib_main_t *vm, vnet_crypto_key_index_t index);
 
 /**
  * Use 2 created keys to generate new key for linked algs (cipher + integ)
