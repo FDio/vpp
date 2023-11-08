@@ -148,7 +148,7 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
       else
 	{
 	  err = clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input);
+				   format_unformat_error, &input);
 	  break;
 	}
     }

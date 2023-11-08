@@ -195,6 +195,14 @@ vnet_dev_get_rx_queue_buffer_pool_index (vnet_dev_rx_queue_t *rxq)
   return rxq->buffer_template.buffer_pool_index;
 }
 
+static_always_inline u32
+vnet_dev_get_rx_queue_buffer_data_size (vlib_main_t *vm,
+					vnet_dev_rx_queue_t *rxq)
+{
+  u8 bpi = vnet_dev_get_rx_queue_buffer_pool_index (rxq);
+  return vlib_get_buffer_pool (vm, bpi)->data_size;
+}
+
 static_always_inline void
 vnet_dev_rx_queue_rt_request (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq,
 			      vnet_dev_rx_queue_rt_req_t req)

@@ -23,8 +23,8 @@ vnet_dev_port_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hw,
   vnet_dev_rv_t rv;
 
   vnet_dev_port_cfg_change_req_t req = {
-    .type = VNET_DEV_PORT_CFG_MAX_FRAME_SIZE,
-    .max_frame_size = frame_size,
+    .type = VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE,
+    .max_rx_frame_size = frame_size,
   };
 
   log_debug (p->dev, "size %u", frame_size);

@@ -246,7 +246,7 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   vnet_dev_rv_t rv = VNET_DEV_OK;
 
   ASSERT (args->port.attr.type != VNET_DEV_PORT_TYPE_UNKNOWN);
-  ASSERT (args->port.attr.max_supported_frame_size);
+  ASSERT (args->port.attr.max_supported_rx_frame_size);
 
   port =
     vnet_dev_alloc_with_data (sizeof (vnet_dev_port_t), args->port.data_size);
@@ -267,8 +267,15 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->tx_node = *args->tx_node;
 
   /* defaults out of port attributes */
-  port->max_frame_size = args->port.attr.max_supported_frame_size;
+  port->max_rx_frame_size = args->port.attr.max_supported_rx_frame_size;
   port->primary_hw_addr = args->port.attr.hw_addr;
+
+  if (port->attr.type == VNET_DEV_PORT_TYPE_ETHERNET)
+    {
+      if (port->max_rx_frame_size > 1514 &&
+	  port->attr.caps.change_max_rx_frame_size)
+	port->max_rx_frame_size = 1514;
+    }
 
   if (port->port_ops.alloc)
     rv = port->port_ops.alloc (vm, port);
@@ -292,10 +299,10 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 
   switch (req->type)
     {
-    case VNET_DEV_PORT_CFG_MAX_FRAME_SIZE:
-      if (req->max_frame_size > port->attr.max_supported_frame_size)
+    case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      if (req->max_rx_frame_size > port->attr.max_supported_rx_frame_size)
 	return VNET_DEV_ERR_INVALID_VALUE;
-      if (req->max_frame_size == port->max_frame_size)
+      if (req->max_rx_frame_size == port->max_rx_frame_size)
 	return VNET_DEV_ERR_NO_CHANGE;
       break;
 
@@ -335,6 +342,8 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
       if (rv != VNET_DEV_OK)
 	return rv;
     }
+  else
+    return VNET_DEV_ERR_NOT_SUPPORTED;
 
   req->validated = 1;
   return VNET_DEV_OK;
@@ -367,14 +376,16 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
   if (port->port_ops.config_change)
     rv = port->port_ops.config_change (vm, port, req);
+  else
+    return VNET_DEV_ERR_NOT_SUPPORTED;
 
   if (rv != VNET_DEV_OK)
     return rv;
 
   switch (req->type)
     {
-    case VNET_DEV_PORT_CFG_MAX_FRAME_SIZE:
-      port->max_frame_size = req->max_frame_size;
+    case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      port->max_rx_frame_size = req->max_rx_frame_size;
       break;
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
@@ -572,7 +583,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
       port->intf.hw_if_index = vnet_eth_register_interface (
 	vnm, &(vnet_eth_interface_registration_t){
 	       .address = port->primary_hw_addr.eth_mac,
-	       .max_frame_size = port->max_frame_size,
+	       .max_frame_size = port->max_rx_frame_size,
 	       .dev_class_index = driver->dev_class_index,
 	       .dev_instance = port->intf.dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,

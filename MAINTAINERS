@@ -415,6 +415,11 @@ I:	iavf
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/dev_iavf/
 
+Plugin - Amazon Elastic Network Adapter (ENA) device driver
+I:	ena
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/dev_ena/
+
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
