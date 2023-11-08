@@ -400,7 +400,7 @@ fib_api_path_encode (const fib_route_path_t * rpath,
     else if (rpath->frp_flags & FIB_ROUTE_PATH_UDP_ENCAP)
     {
         out->type = FIB_API_PATH_TYPE_UDP_ENCAP;
-        out->nh.obj_id = rpath->frp_udp_encap_id;
+        out->nh.obj_id = htonl (rpath->frp_udp_encap_id);
     }
     else if (rpath->frp_flags & FIB_ROUTE_PATH_BIER_IMP)
     {

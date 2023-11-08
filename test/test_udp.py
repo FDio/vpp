@@ -30,7 +30,6 @@ ENTROPY_PORT_MIN = 0x3 << 14
 ENTROPY_PORT_MAX = 0xFFFF
 
 
-@tag_fixme_vpp_workers
 class TestUdpEncap(VppTestCase):
     """UDP Encap Test Case"""
 
@@ -45,8 +44,8 @@ class TestUdpEncap(VppTestCase):
     def setUp(self):
         super(TestUdpEncap, self).setUp()
 
-        # create 2 pg interfaces
-        self.create_pg_interfaces(range(4))
+        # create 5 pg interfaces
+        self.create_pg_interfaces(range(5))
 
         # setup interfaces
         # assign them different tables.
@@ -567,6 +566,58 @@ class TestUdpEncap(VppTestCase):
         self.assertGreater(
             len(sports), 1, "source port {} is not an entropy value".format(sports)
         )
+
+    def test_udp_encap_route_dump(self):
+        """UDP Encap route dump test"""
+
+        table_id = 4
+        udp_encap1 = VppUdpEncap(self, self.pg4.local_ip4, self.pg4.remote_ip4, 55, 44)
+        udp_encap2 = VppUdpEncap(self, self.pg4.local_ip4, self.pg4.remote_ip4, 56, 45)
+        udp_encap1.add_vpp_config()
+        udp_encap2.add_vpp_config()
+
+        route1 = VppIpRoute(
+            self,
+            "1.1.1.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap1.id,
+                )
+            ],
+            table_id=table_id,
+        )
+        route2 = VppIpRoute(
+            self,
+            "1.1.2.0",
+            24,
+            [
+                VppRoutePath(
+                    "0.0.0.0",
+                    0xFFFFFFFF,
+                    type=FibPathType.FIB_PATH_TYPE_UDP_ENCAP,
+                    next_hop_id=udp_encap2.id,
+                )
+            ],
+            table_id=table_id,
+        )
+        route1.add_vpp_config()
+        route2.add_vpp_config()
+
+        fib4_dump = self.vapi.ip_route_dump(table_id, False)
+        found = 0
+        for e in fib4_dump:
+            if e.route.table_id == table_id:
+                if e.route.prefix == route1.prefix:
+                    found += 1
+                    self.assertEqual(e.route.paths[0].nh.obj_id, udp_encap1.id)
+                if e.route.prefix == route2.prefix:
+                    found += 1
+                    self.assertEqual(e.route.paths[0].nh.obj_id, udp_encap2.id)
+        self.assertEqual(found, 2)
 
     def test_udp_decap(self):
         """UDP Decap test"""

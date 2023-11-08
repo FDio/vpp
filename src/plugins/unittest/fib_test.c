@@ -34,6 +34,8 @@
 
 #include <vnet/mpls/mpls.h>
 
+#include <vnet/udp/udp_encap.h>
+
 #include <vnet/fib/fib_test.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_entry_src.h>
@@ -10860,6 +10862,74 @@ fib_test_sticky (void)
     return 0;
 }
 
+static int
+fib_test_udp_encap (void)
+{
+    fib_route_path_t *nr_paths = NULL;
+    index_t uei;
+    fib_node_index_t fei;
+    int res = 0;
+
+    const fib_prefix_t pfx_ipv6_s_128 = {
+        .fp_len = 128,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6 = {
+                .as_u64[0] = clib_host_to_net_u64(0x123456789abcdef),
+                .as_u64[1] = clib_host_to_net_u64(0xfedcba987654321),
+            },
+        },
+    };
+    const ip46_address_t udp_encap_src = {
+      .ip4 = {
+        .as_u32 = clib_host_to_net_u32(0x01020304)
+      }
+
+    };
+    const ip46_address_t udp_encap_dst = {
+      .ip4 = {
+        .as_u32 = clib_host_to_net_u32(0x05060708)
+      }
+
+    };
+
+    uei = udp_encap_add_and_lock (FIB_PROTOCOL_IP4,
+				  0,
+				  &udp_encap_src,
+				  &udp_encap_dst,
+				  1234,
+				  1234,
+				  UDP_ENCAP_FIXUP_NONE);
+    FIB_TEST((0 == uei), "first udp encap should be created to test UB");
+
+    fib_route_path_t nh_path = {
+        .frp_proto = DPO_PROTO_IP6,
+        .frp_flags = FIB_ROUTE_PATH_UDP_ENCAP,
+        .frp_udp_encap_id = uei,
+    };
+    vec_add1(nr_paths, nh_path);
+
+    fei = fib_table_entry_path_add2(0,
+                                    &pfx_ipv6_s_128,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    nr_paths);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "udp encap route present");
+
+    /*
+     * For now we can delete udp encap before route and it will work.
+     */
+    udp_encap_unlock(uei);
+    fib_table_entry_path_remove2(0,
+                                 &pfx_ipv6_s_128,
+                                 FIB_SOURCE_API,
+                                 nr_paths);
+
+    vec_free(nr_paths);
+
+    return res;
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm,
           unformat_input_t * input,
@@ -10921,6 +10991,10 @@ fib_test (vlib_main_t * vm,
     {
         res += fib_test_sticky();
     }
+    else if (unformat (input, "udp-encap"))
+    {
+        res += fib_test_udp_encap();
+    }
     else
     {
         res += fib_test_v4();
@@ -10930,6 +11004,7 @@ fib_test (vlib_main_t * vm,
         res += fib_test_pref();
         res += fib_test_label();
         res += fib_test_inherit();
+        res += fib_test_udp_encap();
         res += lfib_test();
 
         /*
