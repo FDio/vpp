@@ -144,6 +144,7 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   /* es */
   if (!noise_mix_dh (hs->hs_ck, key, hs->hs_e, r->r_public))
     goto error;
+  vnet_crypto_key_update (vm, key_idx);
 
   /* s */
   noise_msg_encrypt (vm, es, l->l_public, NOISE_PUBLIC_KEY_LEN, key_idx,
@@ -152,6 +153,7 @@ noise_create_initiation (vlib_main_t * vm, noise_remote_t * r,
   /* ss */
   if (!noise_mix_ss (hs->hs_ck, key, r->r_ss))
     goto error;
+  vnet_crypto_key_update (vm, key_idx);
 
   /* {t} */
   noise_tai64n_now (ets);
@@ -198,6 +200,7 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
   /* es */
   if (!noise_mix_dh (hs.hs_ck, key, l->l_private, ue))
     goto error;
+  vnet_crypto_key_update (vm, key_idx);
 
   /* s */
 
@@ -213,6 +216,7 @@ noise_consume_initiation (vlib_main_t * vm, noise_local_t * l,
   /* ss */
   if (!noise_mix_ss (hs.hs_ck, key, r->r_ss))
     goto error;
+  vnet_crypto_key_update (vm, key_idx);
 
   /* {t} */
   if (!noise_msg_decrypt (vm, timestamp, ets,
@@ -287,6 +291,7 @@ noise_create_response (vlib_main_t * vm, noise_remote_t * r, uint32_t * s_idx,
 
   /* psk */
   noise_mix_psk (hs->hs_ck, hs->hs_hash, key, r->r_psk);
+  vnet_crypto_key_update (vm, key_idx);
 
   /* {} */
   noise_msg_encrypt (vm, en, NULL, 0, key_idx, hs->hs_hash);
@@ -341,6 +346,7 @@ noise_consume_response (vlib_main_t * vm, noise_remote_t * r, uint32_t s_idx,
 
   /* psk */
   noise_mix_psk (hs.hs_ck, hs.hs_hash, key, preshared_key);
+  vnet_crypto_key_update (vm, key_idx);
 
   /* {} */
 
