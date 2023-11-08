@@ -28,7 +28,13 @@ class TestHttpStaticVapi(VppAsfTestCase):
         cls.temp2 = tempfile.NamedTemporaryFile()
         cls.temp2.write(b"Hello world2")
 
-        create_namespace("HttpStatic")
+        try:
+            create_namespace("HttpStatic")
+        except Exception:
+            cls.logger.warning("Unable to create a namespace, retrying.")
+            delete_namespace("HttpStatic")
+            create_namespace("HttpStatic")
+
         create_host_interface("vppHost", "vppOut", "HttpStatic", "10.10.1.1/24")
 
         cls.vapi.cli("create host-interface name vppOut")
@@ -37,7 +43,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace(["HttpStatic"])
+        delete_namespace("HttpStatic")
         delete_host_interfaces("vppHost")
         cls.temp.close()
         cls.temp2.close()
@@ -95,7 +101,13 @@ class TestHttpStaticCli(VppAsfTestCase):
         cls.temp2 = tempfile.NamedTemporaryFile()
         cls.temp2.write(b"Hello world2")
 
-        create_namespace("HttpStatic2")
+        try:
+            create_namespace("HttpStatic2")
+        except Exception:
+            cls.logger.warning("Unable to create namespace, retrying.")
+            delete_namespace("HttpStatic2")
+            create_namespace("HttpStatic2")
+
         create_host_interface("vppHost2", "vppOut2", "HttpStatic2", "10.10.1.1/24")
 
         cls.vapi.cli("create host-interface name vppOut2")
@@ -104,7 +116,7 @@ class TestHttpStaticCli(VppAsfTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        delete_namespace(["HttpStatic2"])
+        delete_namespace("HttpStatic2")
         delete_host_interfaces("vppHost2")
         cls.temp.close()
         cls.temp2.close()

@@ -216,12 +216,16 @@ def disable_interface_gso(namespace, interface):
         raise Exception("Error disabling gso:", e.output)
 
 
-def delete_namespace(namespaces):
+def delete_namespace(ns):
     """delete one or more namespaces.
 
     arguments:
     namespaces -- a list of namespace names
     """
+    if isinstance(ns, str):
+        namespaces = [ns]
+    else:
+        namespaces = ns
     try:
         for namespace in namespaces:
             result = subprocess.run(
