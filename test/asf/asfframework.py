@@ -853,8 +853,17 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         if hasattr(self, "pg_interfaces") and len(self.pg_interfaces) > 0:
             testcase_dir = os.path.dirname(self.pg_interfaces[0].out_path)
             for p in Path(testcase_dir).glob("pg*.pcap"):
-                self.logger.debug(f"Removing {p}")
-                p.unlink()
+                retries = 8
+                while retries > 0:
+                    retries = retries - 1
+                    self.logger.debug(f"Unlinking {p}")
+                    try:
+                        p.unlink()
+                        break
+                    except OSError:
+                        self.logger.debug(f"OSError: unlinking {p}")
+                        self.sleep(0.25, f"{retries} retries left")
+
         self.logger.debug(
             f"--- END tearDown() {self.__class__.__name__}.{self._testMethodName}('{self._testMethodDoc}') ---"
         )
