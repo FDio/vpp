@@ -699,11 +699,21 @@ dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
   tls_ctx_free (ctx);
 }
 
+static void
+tls_session_transport_closed_callback (session_t *ts)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_get_w_thread (ts->opaque, ts->thread_index);
+  session_transport_closed_notify (&ctx->connection);
+}
+
 static session_cb_vft_t tls_app_cb_vft = {
   .session_accept_callback = tls_session_accept_callback,
   .session_disconnect_callback = tls_session_disconnect_callback,
   .session_connected_callback = tls_session_connected_callback,
   .session_reset_callback = tls_session_reset_callback,
+  .session_transport_closed_callback = tls_session_transport_closed_callback,
   .half_open_cleanup_callback = tls_session_cleanup_ho,
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
