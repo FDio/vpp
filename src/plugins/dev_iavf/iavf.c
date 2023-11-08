@@ -160,7 +160,8 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         .type = VNET_DEV_PORT_TYPE_ETHERNET,
         .max_rx_queues = res.num_queue_pairs,
         .max_tx_queues = res.num_queue_pairs,
-        .max_supported_frame_size = res.max_mtu,
+        .max_supported_rx_frame_size = res.max_mtu,
+        .caps.change_max_rx_frame_size = 1,
       },
       .ops = {
         .init = iavf_port_init,

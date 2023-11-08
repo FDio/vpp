@@ -92,14 +92,18 @@ vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rv = bus->ops.device_open (vm, dev)) != VNET_DEV_OK)
     return rv;
 
-  if ((rv = dev->ops.alloc (vm, dev)) != VNET_DEV_OK)
+  if (dev->ops.alloc)
     {
-      log_err (dev, "device init failed [rv %d]", rv);
-      if (dev->ops.deinit)
-	dev->ops.deinit (vm, dev);
-      if (dev->ops.free)
-	dev->ops.free (vm, dev);
-      return rv;
+      rv = dev->ops.alloc (vm, dev);
+      if (rv != VNET_DEV_OK)
+	{
+	  log_err (dev, "device init failed [rv %d]", rv);
+	  if (dev->ops.deinit)
+	    dev->ops.deinit (vm, dev);
+	  if (dev->ops.free)
+	    dev->ops.free (vm, dev);
+	  return rv;
+	}
     }
 
   if ((rv = dev->ops.init (vm, dev)) != VNET_DEV_OK)

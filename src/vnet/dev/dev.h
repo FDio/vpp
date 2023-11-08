@@ -28,7 +28,8 @@ typedef enum
 
 #define foreach_vnet_dev_port_caps                                            \
   _ (interrupt_mode)                                                          \
-  _ (rss)
+  _ (rss)                                                                     \
+  _ (change_max_rx_frame_size)
 
 typedef union
 {
@@ -107,7 +108,7 @@ typedef struct
 
 #define foreach_vnet_dev_port_cfg_type                                        \
   _ (PROMISC_MODE)                                                            \
-  _ (MAX_FRAME_SIZE)                                                          \
+  _ (MAX_RX_FRAME_SIZE)                                                       \
   _ (CHANGE_PRIMARY_HW_ADDR)                                                  \
   _ (ADD_SECONDARY_HW_ADDR)                                                   \
   _ (REMOVE_SECONDARY_HW_ADDR)                                                \
@@ -132,7 +133,7 @@ typedef struct vnet_dev_port_cfg_change_req
   {
     u8 promisc : 1;
     vnet_dev_hw_addr_t addr;
-    u16 max_frame_size;
+    u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
   };
 
@@ -143,7 +144,7 @@ typedef struct
   vnet_dev_hw_addr_t hw_addr;
   u16 max_rx_queues;
   u16 max_tx_queues;
-  u16 max_supported_frame_size;
+  u16 max_supported_rx_frame_size;
   vnet_dev_port_type_t type;
   vnet_dev_port_caps_t caps;
 } vnet_dev_port_attr_t;
@@ -278,7 +279,7 @@ typedef struct vnet_dev_port
   vnet_dev_queue_config_t rx_queue_config;
   vnet_dev_queue_config_t tx_queue_config;
   vnet_dev_port_attr_t attr;
-  u32 max_frame_size;
+  u32 max_rx_frame_size;
   vnet_dev_hw_addr_t primary_hw_addr;
   vnet_dev_hw_addr_t *secondary_hw_addr;
   u32 index;

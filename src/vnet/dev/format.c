@@ -117,9 +117,9 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 	  s = format (s, " %U", format_vnet_dev_hw_addr, a);
 	}
     }
-  s = format (s, "\n%UMax frame size is %u (max supported %u)",
-	      format_white_space, indent, port->max_frame_size,
-	      port->attr.max_supported_frame_size);
+  s = format (s, "\n%UMax RX frame size is %u (max supported %u)",
+	      format_white_space, indent, port->max_rx_frame_size,
+	      port->attr.max_supported_rx_frame_size);
   if (port->port_ops.format_status)
     s = format (s, "\n%U%U", format_white_space, indent,
 		port->port_ops.format_status, a, port);
