@@ -7,6 +7,10 @@ from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 
 
+def mk_counter():
+    return {"packets": 0, "bytes": 0}
+
+
 def find_udp_encap(test, ue):
     encaps = test.vapi.udp_encap_dump()
     for e in encaps:
@@ -51,4 +55,8 @@ class VppUdpEncap(VppObject):
 
     def get_stats(self):
         c = self._test.statistics.get_counter("/net/udp-encap")
-        return c[0][self.id]
+        total = mk_counter()
+        for t in c:
+            total["packets"] += t[self.id]["packets"]
+            total["bytes"] += t[self.id]["bytes"]
+        return total
