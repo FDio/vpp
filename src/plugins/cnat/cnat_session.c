@@ -353,20 +353,14 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 static clib_error_t *
 cnat_session_init (vlib_main_t * vm)
 {
-  cnat_main_t *cm = &cnat_main;
-  BV (clib_bihash_init) (&cnat_session_db,
-			 "CNat Session DB", cm->session_hash_buckets,
-			 cm->session_hash_memory);
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+
+  /* 2 sessions per ts, 60% load */
+  u32 session_max = 2.4 * (ctm->pool_max << ctm->log2_pool_sz);
+  BV (clib_bihash_init)
+  (&cnat_session_db, "CNat Session DB", session_max / BIHASH_KVP_PER_PAGE /* buckets */,
+   session_max * sizeof (cnat_bihash_kv_t) * 1.2 /* memory */);
   BV (clib_bihash_set_kvp_format_fn) (&cnat_session_db, format_cnat_session);
-
-  cnat_timestamps.next_empty_pool_idx = 0;
-  clib_bitmap_alloc (cnat_timestamps.ts_free, 1 << CNAT_TS_MPOOL_BITS);
-  clib_bitmap_set_region (cnat_timestamps.ts_free, 0, 1,
-			  1 << CNAT_TS_MPOOL_BITS);
-  clib_spinlock_init (&cnat_timestamps.ts_lock);
-  /* timestamp 0 is default */
-  cnat_timestamp_alloc ();
-
   return (NULL);
 }
 
@@ -376,9 +370,12 @@ static clib_error_t *
 cnat_timestamp_show (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   cnat_timestamp_t *ts;
   int ts_cnt = 0, cnt;
   u8 verbose = 0;
+  int i;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "verbose"))
@@ -388,17 +385,16 @@ cnat_timestamp_show (vlib_main_t * vm,
 				   format_unformat_error, input));
     }
 
-  for (int i = 0; i < cnat_timestamps.next_empty_pool_idx; i++)
+  vec_foreach_index (i, ctm->ts_pools)
     {
-      cnt = pool_elts (cnat_timestamps.ts_pools[i]);
+      cnat_timestamp_t *ts_pool = vec_elt (ctm->ts_pools, i);
+      cnt = pool_elts (ts_pool);
       ts_cnt += cnt;
-      vlib_cli_output (vm, "-- Pool %d [%d/%d]", i, cnt,
-		       pool_header (cnat_timestamps.ts_pools[i])->max_elts);
+      vlib_cli_output (vm, "-- Pool %d [%d/%d]", i, cnt, pool_max_len (ts_pool));
       if (!verbose)
 	continue;
-      pool_foreach (ts, cnat_timestamps.ts_pools[i])
-	vlib_cli_output (vm, "[%d] %U", ts - cnat_timestamps.ts_pools[i], format_cnat_timestamp, ts,
-			 0);
+      pool_foreach (ts, ts_pool)
+	vlib_cli_output (vm, "[%d] %U", ts - ts_pool, format_cnat_timestamp, ts, 0);
     }
   vlib_cli_output (vm, "Total timestamps %d", ts_cnt);
   return (NULL);
