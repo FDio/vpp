@@ -229,6 +229,8 @@ cnat_lazy_init ()
 static clib_error_t *
 cnat_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  u32 log2_pool_sz = CNAT_DEFAULT_TS_LOG2_POOL_SZ;
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   cnat_main_t *cm = &cnat_main;
 
   cm->session_hash_memory = CNAT_DEFAULT_SESSION_MEMORY;
@@ -287,11 +289,14 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "maglev-len %u", &cm->maglev_len))
 	;
+      else if (unformat (input, "session-log2-pool-size %u", &log2_pool_sz))
+	;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
 
+  ctm->log2_pool_sz = log2_pool_sz;
   return 0;
 }
 

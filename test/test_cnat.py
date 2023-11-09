@@ -46,6 +46,8 @@ class CnatCommonTestCase(VppTestCase):
         "1",
         "scanner",
         "off",
+        "session-log2-pool-size",
+        "1",
         "}",
     ]
 
