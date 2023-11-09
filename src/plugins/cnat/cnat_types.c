@@ -229,10 +229,11 @@ cnat_lazy_init ()
 static clib_error_t *
 cnat_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  u32 log2_pool_sz = CNAT_DEFAULT_TS_LOG2_POOL_SZ;
+  cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
+  u32 session_max = CNAT_MAX_SESSIONS;
   cnat_main_t *cm = &cnat_main;
 
-  cm->session_hash_memory = CNAT_DEFAULT_SESSION_MEMORY;
-  cm->session_hash_buckets = CNAT_DEFAULT_SESSION_BUCKETS;
   cm->translation_hash_memory = CNAT_DEFAULT_TRANSLATION_MEMORY;
   cm->translation_hash_buckets = CNAT_DEFAULT_TRANSLATION_BUCKETS;
   cm->client_hash_memory = CNAT_DEFAULT_CLIENT_MEMORY;
@@ -249,14 +250,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "session-db-buckets %u", &cm->session_hash_buckets))
-	;
-      else if (unformat (input, "session-db-memory %U",
-			 unformat_memory_size, &cm->session_hash_memory))
-	;
-      else if (unformat (input, "translation-db-buckets %u",
-			 &cm->translation_hash_buckets))
+      if (unformat (input, "translation-db-buckets %u",
+		    &cm->translation_hash_buckets))
 	;
       else if (unformat (input, "translation-db-memory %U",
 			 unformat_memory_size, &cm->translation_hash_memory))
@@ -287,11 +282,21 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "maglev-len %u", &cm->maglev_len))
 	;
+      else if (unformat (input, "session-log2-pool-size %u", &log2_pool_sz))
+	;
+      else if (unformat (input, "session-max %u", &session_max))
+	{
+	  if (session_max > CNAT_MAX_SESSIONS)
+	    return clib_error_return (0, "cnat session-max %u > %u",
+				      session_max, CNAT_MAX_SESSIONS);
+	}
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
 
+  ctm->pool_max = (session_max + (1 << log2_pool_sz) - 1) >> log2_pool_sz;
+  ctm->log2_pool_sz = log2_pool_sz;
   return 0;
 }
 
