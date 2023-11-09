@@ -16,6 +16,9 @@
 /* only in the default table for v4 and v6 */
 #define CNAT_FIB_TABLE 0
 
+/* we support max 2^24 timetamps */
+#define CNAT_MAX_SESSIONS (1 << 24)
+
 /* default lifetime of NAT sessions (seconds) */
 #define CNAT_DEFAULT_SESSION_MAX_AGE 30
 /* lifetime of TCP conn NAT sessions after SYNACK (seconds) */
@@ -24,19 +27,20 @@
 #define CNAT_DEFAULT_TCP_RST_TIMEOUT 5
 #define CNAT_DEFAULT_SCANNER_TIMEOUT (1.0)
 
-#define CNAT_DEFAULT_SESSION_BUCKETS     1024
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
 #define CNAT_DEFAULT_CLIENT_BUCKETS	 1024
 #define CNAT_DEFAULT_SNAT_BUCKETS        1024
 #define CNAT_DEFAULT_SNAT_IF_MAP_LEN	 4096
 
-#define CNAT_DEFAULT_SESSION_MEMORY      (1 << 20)
 #define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
 #define CNAT_DEFAULT_CLIENT_MEMORY	 (256 << 10)
 #define CNAT_DEFAULT_SNAT_MEMORY	 (64 << 10)
 
 /* Should be prime >~ 100 * numBackends */
 #define CNAT_DEFAULT_MAGLEV_LEN 1009
+
+/* 65536 NAT session is ~20MB */
+#define CNAT_DEFAULT_TS_LOG2_POOL_SZ 16
 
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
@@ -263,14 +267,16 @@ typedef struct cnat_timestamp_t_
 
 typedef struct cnat_timestamp_mpool_t_
 {
-  /* Increasing fixed size pools of timestamps */
-  cnat_timestamp_t *ts_pools[1 << CNAT_TS_MPOOL_BITS];
-  /* Bitmap of pools with free space */
-  uword *ts_free;
-  /* Index of next pool to init */
-  u8 next_empty_pool_idx;
   /* ts creation lock */
-  clib_spinlock_t ts_lock;
+  clib_rwlock_t ts_lock;
+  /* vector of timestamps fixed size pools */
+  cnat_timestamp_t **ts_pools;
+  /* Bitmap of pools with free space */
+  clib_bitmap_t *ts_free;
+  /* max number of pools */
+  u32 pool_max;
+  /* fixed pool size */
+  u8 log2_pool_sz;
 } cnat_timestamp_mpool_t;
 
 cnat_main_t *cnat_get_main ();
