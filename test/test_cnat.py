@@ -37,8 +37,6 @@ class CnatCommonTestCase(VppTestCase):
     extra_vpp_config = [
         "cnat",
         "{",
-        "session-db-buckets",
-        "64",
         "session-cleanup-timeout",
         "0.1",
         "session-max-age",
@@ -47,6 +45,10 @@ class CnatCommonTestCase(VppTestCase):
         "1",
         "scanner",
         "off",
+        "session-max",
+        "256",
+        "session-log2-pool-size",
+        "1",
         "}",
     ]
 
