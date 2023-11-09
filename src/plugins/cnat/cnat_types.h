@@ -48,6 +48,9 @@
 /* Should be prime >~ 100 * numBackends */
 #define CNAT_DEFAULT_MAGLEV_LEN 1009
 
+/* 65536 NAT session is ~20MB */
+#define CNAT_DEFAULT_TS_LOG2_POOL_SZ 16
+
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
 #define CNAT_FIB_SOURCE_PRIORITY  0x02
@@ -273,14 +276,14 @@ typedef struct cnat_timestamp_t_
 
 typedef struct cnat_timestamp_mpool_t_
 {
-  /* Increasing fixed size pools of timestamps */
-  cnat_timestamp_t *ts_pools[1 << CNAT_TS_MPOOL_BITS];
-  /* Bitmap of pools with free space */
-  uword *ts_free;
-  /* Index of next pool to init */
-  u8 next_empty_pool_idx;
   /* ts creation lock */
-  clib_spinlock_t ts_lock;
+  clib_rwlock_t ts_lock;
+  /* vector of timestamps fixed size pools */
+  cnat_timestamp_t **ts_pools;
+  /* Bitmap of pools with free space */
+  clib_bitmap_t *ts_free;
+  /* fixed pool size */
+  u8 log2_pool_sz;
 } cnat_timestamp_mpool_t;
 
 cnat_main_t *cnat_get_main ();
