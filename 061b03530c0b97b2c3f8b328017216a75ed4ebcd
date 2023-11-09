@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62f5d74e_125c2d03",
+        "filename": "test/test_l2tp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2023-11-09T12:36:56Z",
+      "side": 1,
+      "message": "After setting \"enable_disable\" to True/False, nothing changes in self.vapi.sw_if_l2tpv3_tunnel_dump(). Only the \"/err/l2tp-decap-local/l2tpv3 session not found\" counter gets incremented after sending packets. Am I missing something?",
+      "range": {
+        "startLine": 63,
+        "startChar": 8,
+        "endLine": 72,
+        "endChar": 32
+      },
+      "revId": "061b03530c0b97b2c3f8b328017216a75ed4ebcd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5c142793_6510c290",
+        "filename": "test/test_l2tp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2023-11-09T12:36:56Z",
+      "side": 1,
+      "message": "Same thing as the comment on line 64",
+      "range": {
+        "startLine": 109,
+        "startChar": 8,
+        "endLine": 110,
+        "endChar": 64
+      },
+      "revId": "061b03530c0b97b2c3f8b328017216a75ed4ebcd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
