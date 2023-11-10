@@ -427,7 +427,8 @@ tls_session_cleanup_ho (session_t *s)
   /* session opaque stores the opaque passed on connect */
   ho_index = s->opaque;
   ctx = tls_ctx_half_open_get (ho_index);
-  session_half_open_delete_notify (&ctx->connection);
+  if (!ctx->no_app_session)
+    session_half_open_delete_notify (&ctx->connection);
   tls_ctx_half_open_free (ho_index);
 }
 
@@ -948,10 +949,19 @@ static void
 tls_cleanup_ho (u32 ho_index)
 {
   tls_ctx_t *ctx;
+  session_t *s;
 
   ctx = tls_ctx_half_open_get (ho_index);
-  session_cleanup_half_open (ctx->tls_session_handle);
-  tls_ctx_half_open_free (ho_index);
+  s = session_get_from_handle (ctx->tls_session_handle);
+  /* If no pending cleanup notification, force cleanup now. Otherwise,
+   * wait for cleanup notification and set no app session on ctx */
+  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+    {
+      session_cleanup_half_open (ctx->tls_session_handle);
+      tls_ctx_half_open_free (ho_index);
+    }
+  else
+    ctx->no_app_session = 1;
 }
 
 int
