@@ -3,6 +3,7 @@ from asfframework import VppAsfTestCase, VppTestRunner
 import unittest
 import subprocess
 import tempfile
+import os
 from vpp_qemu_utils import (
     create_host_interface,
     delete_host_interfaces,
@@ -11,6 +12,7 @@ from vpp_qemu_utils import (
 )
 
 
+@unittest.skipIf(os.getuid() != 0, "Test is not running with root privileges")
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
@@ -84,6 +86,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
         self.assertIn(b"Hello world2", process.stdout)
 
 
+@unittest.skipIf(os.getuid() != 0, "Test is not running with root privileges")
 @unittest.skipIf(
     "http_static" in config.excluded_plugins, "Exclude HTTP Static Server plugin tests"
 )
