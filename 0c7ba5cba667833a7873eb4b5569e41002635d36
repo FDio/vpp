@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8337824c_f6281549",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3034
+      },
+      "writtenOn": "2023-11-10T17:38:50Z",
+      "side": 1,
+      "message": "Setting g+w permission for unix sockets didn\u0027t work. There were two problems:\n1. new flag local_only wasn\u0027t set for all AF_UNIX sockets;\n2. fchmod is not a good choice for sockets. \nfchmod was replaced with couple of umasks, and local_only with socket type check.",
+      "revId": "0c7ba5cba667833a7873eb4b5569e41002635d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
