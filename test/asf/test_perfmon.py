@@ -1,7 +1,13 @@
 from asfframework import VppAsfTestCase, VppTestRunner
+from vpp_qemu_utils import can_create_namespaces
+from config import config
 import unittest
 
 
+@unittest.skipIf(
+    not can_create_namespaces("perfmon_chk"), "Test is not running with root privileges"
+)
+@unittest.skipIf("perfmon" in config.excluded_plugins, "Exclude Perfmon plugin tests")
 class TestPerfmon(VppAsfTestCase):
     """Simple perfmon test"""
 
