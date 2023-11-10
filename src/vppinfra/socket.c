@@ -671,11 +671,24 @@ clib_socket_init (clib_socket_t *s)
 	}
 #endif
 
-      if (need_bind && bind (s->fd, sa, addr_len) < 0)
+      if (need_bind)
 	{
-	  err =
-	    clib_error_return_unix (0, "bind (fd %d, '%s')", s->fd, s->config);
-	  goto done;
+	  int bind_ret;
+	  if (sa->sa_family == AF_UNIX && s->allow_group_write)
+	    {
+	      mode_t def_restrictions = umask (S_IWOTH);
+	      bind_ret = bind (s->fd, sa, addr_len);
+	      umask (def_restrictions);
+	    }
+	  else
+	    bind_ret = bind (s->fd, sa, addr_len);
+
+	  if (bind_ret < 0)
+	    {
+	      err = clib_error_return_unix (0, "bind (fd %d, '%s')", s->fd,
+					    s->config);
+	      goto done;
+	    }
 	}
 
       if (listen (s->fd, 5) < 0)
@@ -683,16 +696,6 @@ clib_socket_init (clib_socket_t *s)
 	  err = clib_error_return_unix (0, "listen (fd %d, '%s')", s->fd,
 					s->config);
 	  goto done;
-	}
-
-      if (s->local_only && s->allow_group_write)
-	{
-	  if (fchmod (s->fd, S_IWGRP) < 0)
-	    {
-	      err = clib_error_return_unix (
-		0, "fchmod (fd %d, '%s', mode S_IWGRP)", s->fd, s->config);
-	      goto done;
-	    }
 	}
     }
   else
