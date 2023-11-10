@@ -1,7 +1,11 @@
 from asfframework import VppAsfTestCase, VppTestRunner
+import os
+from config import config
 import unittest
 
 
+@unittest.skipIf(os.getuid() != 0, "Test is not running with root privileges")
+@unittest.skipIf("perfmon" in config.excluded_plugins, "Exclude Perfmon plugin tests")
 class TestPerfmon(VppAsfTestCase):
     """Simple perfmon test"""
 
