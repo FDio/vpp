@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a40c235_0dc9082b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2023-11-10T09:16:30Z",
+      "side": 1,
+      "message": "does perfmon plugin work identically on ARM platform ? i.e. what if the test is running under root but on a platform which does not support perfmon plugin ?",
+      "revId": "adb93c9577287b8df15c2ba811744309ab41522a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
