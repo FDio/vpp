@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b47c89b_d243474e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2629
+      },
+      "writtenOn": "2023-11-11T22:59:30Z",
+      "side": 1,
+      "message": "Last rebase over master after 23.10 release.",
+      "revId": "3355076cef031510a928492390d20f61320518b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
