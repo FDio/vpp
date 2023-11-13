@@ -289,4 +289,34 @@ vnet_dev_set_hw_addr_eth_mac (vnet_dev_hw_addr_t *addr, const u8 *eth_mac_addr)
   *addr = ha;
 }
 
+static_always_inline vnet_dev_arg_t *
+vnet_dev_get_port_arg_by_id (vnet_dev_port_t *port, u32 id)
+{
+  foreach_vnet_dev_port_args (a, port)
+    if (a->id == id)
+      return a;
+  return 0;
+}
+
+static_always_inline int
+vnet_dev_arg_get_bool (vnet_dev_arg_t *arg)
+{
+  ASSERT (arg->type == VNET_DEV_ARG_TYPE_BOOL);
+  return arg->val_set ? arg->val.boolean : arg->default_val.boolean;
+}
+
+static_always_inline u32
+vnet_dev_arg_get_uint32 (vnet_dev_arg_t *arg)
+{
+  ASSERT (arg->type == VNET_DEV_ARG_TYPE_UINT32);
+  return arg->val_set ? arg->val.uint32 : arg->default_val.uint32;
+}
+
+static_always_inline u8 *
+vnet_dev_arg_get_string (vnet_dev_arg_t *arg)
+{
+  ASSERT (arg->type == VNET_DEV_ARG_TYPE_STRING);
+  return arg->val_set ? arg->val.string : arg->default_val.string;
+}
+
 #endif /* _VNET_DEV_FUNCS_H_ */

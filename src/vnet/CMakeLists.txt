@@ -27,6 +27,7 @@ list(APPEND VNET_SOURCES
   devices/devices.c
   devices/netlink.c
   dev/api.c
+  dev/args.c
   dev/cli.c
   dev/config.c
   dev/counters.c

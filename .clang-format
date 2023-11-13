@@ -32,6 +32,8 @@ ForEachMacros:
   - 'foreach_vnet_dev_port_rx_queue'
   - 'foreach_vnet_dev_port_tx_queue'
   - 'foreach_vnet_dev_port'
+  - 'foreach_vnet_dev_args'
+  - 'foreach_vnet_dev_port_args'
 
 StatementMacros:
   - 'CLIB_MULTIARCH_FN'

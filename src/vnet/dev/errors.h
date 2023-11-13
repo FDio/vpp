@@ -14,6 +14,7 @@
   _ (DEVICE_NO_REPLY, "no reply from device")                                 \
   _ (DMA_MEM_ALLOC_FAIL, "DMA memory allocation error")                       \
   _ (DRIVER_NOT_AVAILABLE, "driver not available")                            \
+  _ (INVALID_ARG, "invalid argument")                                         \
   _ (INVALID_BUS, "invalid bus")                                              \
   _ (INVALID_DATA, "invalid data")                                            \
   _ (INVALID_DEVICE_ID, "invalid device id")                                  \

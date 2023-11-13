@@ -160,6 +160,7 @@ vnet_dev_free (vlib_main_t *vm, vnet_dev_t *dev)
   pool_free (dev->ports);
   pool_free (dev->periodic_ops);
   hash_unset (dm->device_index_by_id, dev->device_id);
+  vnet_dev_arg_free (&dev->args);
   pool_put_index (dm->devices, dev->index);
 }
 
