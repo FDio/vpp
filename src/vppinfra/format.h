@@ -312,6 +312,10 @@ unformat_function_t unformat_memory_size;
 /* Unformat C string array, takes array length as 2nd argument */
 unformat_function_t unformat_c_string_array;
 
+/* Unformat sigle and double quoted string */
+unformat_function_t unformat_single_quoted_string;
+unformat_function_t unformat_double_quoted_string;
+
 /* Format base 10 e.g. 100, 100K, 100M, 100G */
 u8 *format_base10 (u8 *s, va_list *va);
 
