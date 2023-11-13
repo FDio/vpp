@@ -125,6 +125,7 @@ format_table (u8 *s, va_list *args)
   table_t *t = va_arg (*args, table_t *);
   table_cell_t title_cell = { .text = t->title };
   int table_width = 0;
+  u32 indent = format_get_indent (s);
   for (int i = 0; i < vec_len (t->row_sizes); i++)
     table_width += t->row_sizes[i];
 
@@ -134,7 +135,7 @@ format_table (u8 *s, va_list *args)
       title_default =
 	t->default_title.as_u32 ? &t->default_title : &default_title;
       s = format_text_cell (t, s, &title_cell, title_default, table_width);
-      s = format (s, "\n");
+      s = format (s, "\n%U", format_white_space, indent);
     }
 
   for (int c = 0; c < vec_len (t->cells); c++)
@@ -161,7 +162,7 @@ format_table (u8 *s, va_list *args)
 				t->row_sizes[r]);
 	}
       if (c + 1 < vec_len (t->cells))
-	s = format (s, "\n");
+	s = format (s, "\n%U", format_white_space, indent);
     }
 
   return s;
