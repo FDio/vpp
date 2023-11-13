@@ -90,6 +90,17 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
     }
   dev->description = dev_desc;
 
+  for (vnet_dev_arg_t *a = driver->registration->args;
+       a->type != VNET_DEV_ARG_END; a++)
+    vec_add1 (dev->args, *a);
+
+  if (args->args)
+    {
+      if ((rv = vnet_dev_arg_parse (vm, dev, dev->args, args->args)) !=
+	  VNET_DEV_OK)
+	goto done;
+    }
+
   if ((args->flags.e & VNET_DEV_F_NO_STATS) == 0)
     dev->poll_stats = 1;
 
@@ -144,6 +155,7 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   vnet_dev_port_t *port = 0;
   u16 n_threads = vlib_get_n_threads ();
   int default_is_intr_mode;
+  vnet_dev_rv_t rv;
 
   log_debug (dev,
 	     "create_port_if: device '%s' port %u intf_name '%s' num_rx_q %u "
@@ -168,6 +180,13 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
 
   if (port->interface_created)
     return VNET_DEV_ERR_ALREADY_EXISTS;
+
+  if (args->args)
+    {
+      rv = vnet_dev_arg_parse (vm, dev, port->args, args->args);
+      if (rv != VNET_DEV_OK)
+	return rv;
+    }
 
   default_is_intr_mode = (args->flags.e & VNET_DEV_PORT_F_INTERRUPT_MODE) != 0;
   if (default_is_intr_mode && port->attr.caps.interrupt_mode == 0)

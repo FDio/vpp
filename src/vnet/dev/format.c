@@ -2,9 +2,6 @@
  * Copyright (c) 2023 Cisco Systems, Inc.
  */
 
-#include "vlib/pci/pci.h"
-#include "vnet/dev/counters.h"
-#include "vppinfra/error.h"
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
@@ -75,9 +72,14 @@ format_vnet_dev_info (u8 *s, va_list *args)
 
   s = format (s, "\n%UAssigned process node is '%U'", format_white_space,
 	      indent, format_vlib_node_name, vm, dev->process_node_index);
+  if (dev->args)
+    s = format (s, "\n%UDevice Specific Arguments:\n%U%U", format_white_space,
+		indent, format_white_space, indent + 2, format_vnet_dev_args,
+		dev->args);
   if (dev->ops.format_info)
-    s = format (s, "\n%U%U", format_white_space, indent, dev->ops.format_info,
-		a, dev);
+    s =
+      format (s, "\n%UDevice Specific Info:\n%U%U", format_white_space, indent,
+	      format_white_space, indent + 2, dev->ops.format_info, a, dev);
   return s;
 }
 
@@ -121,8 +123,13 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 	      format_white_space, indent, port->max_rx_frame_size,
 	      port->attr.max_supported_rx_frame_size);
   if (port->port_ops.format_status)
-    s = format (s, "\n%U%U", format_white_space, indent,
+    s = format (s, "\n%UDevice Specific Port Status:\n%U%U",
+		format_white_space, indent, format_white_space, indent + 2,
 		port->port_ops.format_status, a, port);
+  if (port->args)
+    s = format (s, "\n%UDevice Specific Port Arguments:\n%U%U",
+		format_white_space, indent, format_white_space, indent + 2,
+		format_vnet_dev_args, port->args);
 
   s = format (s, "\n%UInterface ", format_white_space, indent);
   if (port->interface_created)

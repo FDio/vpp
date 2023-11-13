@@ -93,6 +93,7 @@ vnet_dev_port_free (vlib_main_t *vm, vnet_dev_port_t *port)
   pool_free (port->secondary_hw_addr);
   pool_free (port->rx_queues);
   pool_free (port->tx_queues);
+  vnet_dev_arg_free (&port->args);
   pool_put_index (dev->ports, port->index);
   clib_mem_free (port);
 }
@@ -265,6 +266,9 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->port_ops = args->port.ops;
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
+
+  for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
+    vec_add1 (port->args, *a);
 
   /* defaults out of port attributes */
   port->max_rx_frame_size = args->port.attr.max_supported_rx_frame_size;
@@ -710,6 +714,9 @@ vnet_dev_port_if_remove (vlib_main_t *vm, vnet_dev_port_t *port)
     vnet_dev_rx_queue_free (vm, q);
 
   vnet_dev_port_free_counters (vm, port);
+
+  foreach_vnet_dev_port_args (v, port)
+    vnet_dev_arg_clear_value (v);
 
   return VNET_DEV_OK;
 }

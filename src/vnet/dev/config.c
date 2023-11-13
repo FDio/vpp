@@ -41,6 +41,9 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "flags %U", unformat_vnet_dev_port_flags,
 			 &args->flags))
 	;
+      else if (unformat (input, "args %U", unformat_single_quoted_string,
+			 &args->args))
+	;
       else
 	{
 	  err = clib_error_return (0, "unknown input '%U'",
@@ -50,7 +53,6 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
     }
   return err;
 }
-
 static clib_error_t *
 vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 			    char *device_id)
@@ -70,6 +72,9 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "flags %U", unformat_vnet_dev_flags,
 			 &args.flags))
+	;
+      else if (unformat (input, "args %U", unformat_single_quoted_string,
+			 &args.args))
 	;
       else if (unformat (input, "port %u %U", &n, unformat_vlib_cli_sub_input,
 			 &sub_input))
@@ -96,6 +101,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 
       clib_memcpy (args.device_id, device_id, sizeof (args.device_id));
       rv = vnet_dev_api_attach (vm, &args);
+      vec_free (args.args);
 
       if (rv == VNET_DEV_OK)
 	{
