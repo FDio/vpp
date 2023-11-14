@@ -14,6 +14,7 @@ from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from config import config, num_cpus, available_cpus, max_vpp_cpus
+from vpp_papi import VPPApiJSONFiles
 from asfframework import (
     VppTestRunner,
     get_testcase_doc_name,
@@ -905,6 +906,9 @@ def parse_results(results):
 
 if __name__ == "__main__":
     print(f"Config is: {config}")
+
+    if config.api_preload:
+        VPPApiJSONFiles.load_api(apidir=config.extern_apidir + [config.vpp_install_dir])
 
     if config.sanity:
         print("Running sanity test case.")
