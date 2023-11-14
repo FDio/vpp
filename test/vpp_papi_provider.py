@@ -236,11 +236,8 @@ class VppPapiProvider(object):
         self._expect_api_retval = self._zero
         self._expect_stack = []
 
-        # install_dir is a class attribute. We need to set it before
-        # calling the constructor.
-        VPPApiClient.apidir = config.extern_apidir + [config.vpp_install_dir]
-
         self.vpp = VPPApiClient(
+            apidir=config.extern_apidir + [config.vpp_install_dir],
             logger=test_class.logger,
             read_timeout=read_timeout,
             use_socket=True,
