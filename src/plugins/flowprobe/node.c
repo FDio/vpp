@@ -388,7 +388,7 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   vlib_buffer_get_current (b) :
 				   ethernet_buffer_get_header (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
-  u16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
+  i16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
   /* *INDENT-OFF* */
   flowprobe_key_t k = {};
   /* *INDENT-ON* */
