@@ -24,8 +24,7 @@ from vpp_papi import vpp_transport_shmem
 
 class TestVppPapiVPPApiClient(unittest.TestCase):
     def test_getcontext(self):
-        vpp_papi.VPPApiClient.apidir = "."
-        c = vpp_papi.VPPApiClient(testmode=True, use_socket=True)
+        c = vpp_papi.VPPApiClient(apidir=".", testmode=True, use_socket=True)
 
         # reset initialization at module load time.
         c.get_context.context = mp.Value(ctypes.c_uint, 0)
@@ -39,8 +38,7 @@ class TestVppPapiVPPApiClientMp(unittest.TestCase):
     # run_tests.py (eg. make test TEST_JOBS=10)
 
     def test_get_context_mp(self):
-        vpp_papi.VPPApiClient.apidir = "."
-        c = vpp_papi.VPPApiClient(testmode=True, use_socket=True)
+        c = vpp_papi.VPPApiClient(apidir=".", testmode=True, use_socket=True)
 
         # reset initialization at module load time.
         c.get_context.context = mp.Value(ctypes.c_uint, 0)
