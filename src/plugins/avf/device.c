@@ -1135,7 +1135,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   vec_foreach (e, ad->events)
     {
       avf_log_debug (ad, "event: %s (%u) sev %d",
-		     virtchnl_event_names[e->event], e->event, e->severity);
+		     virtchnl_event_names[0], e->event, e->severity);
       if (e->event == VIRTCHNL_EVENT_LINK_CHANGE)
 	{
 	  int link_up;
