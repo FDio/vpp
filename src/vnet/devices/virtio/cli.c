@@ -44,7 +44,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "feature-mask 0x%llx", &feature_mask))
 	args.features = feature_mask;
-      if (unformat (line_input, "tx-queue-size %u", &txq_size))
+      else if (unformat (line_input, "tx-queue-size %u", &txq_size))
 	args.tx_queue_size = txq_size;
       else if (unformat (line_input, "gso-enabled"))
 	args.gso_enabled = 1;
