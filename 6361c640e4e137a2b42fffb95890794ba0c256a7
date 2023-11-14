@@ -33,6 +33,23 @@
       "message": "Hello Damjan,\nDo you mind taking a look at this tiny patch?",
       "revId": "6361c640e4e137a2b42fffb95890794ba0c256a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1dae02dd_ecb76e9a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2023-11-14T14:57:14Z",
+      "side": 1,
+      "message": "Hello Dave,\nDo you mind reviewing this patch?",
+      "revId": "6361c640e4e137a2b42fffb95890794ba0c256a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
