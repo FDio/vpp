@@ -466,6 +466,20 @@ CPU cores while skipping "skip-cores" CPU core(s) and main thread's CPU core
 
    workers 2
 
+relative
+^^^^^^^^
+
+Apply thread pinning configuration with respect to the available logical cores
+in the current control group CPU set (e.g. in container environment).
+
+By default, VPP applies the thread pinning configuration with respect to the
+available logical cores on host (e.g. '/sys/devices/system/cpu/online').
+
+.. code-block:: console
+
+   relative
+
+
 scheduler-policy other | batch | idle | fifo | rr
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
