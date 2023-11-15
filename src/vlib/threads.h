@@ -282,6 +282,9 @@ typedef struct
   /* Bitmap of available CPU sockets (NUMA nodes) */
   uword *cpu_socket_bitmap;
 
+  /* Bitmap of cgroup available CPU cores*/
+  uword *cpu_core_cgroup_bitmap;
+
   /* Worker handoff queues */
   vlib_frame_queue_main_t *frame_queue_mains;
 
@@ -296,6 +299,8 @@ typedef struct
 
   /* NUMA-bound heap size */
   uword numa_heap_size;
+
+  u8 relative;
 
 } vlib_thread_main_t;
 
