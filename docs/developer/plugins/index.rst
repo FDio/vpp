@@ -42,3 +42,4 @@ For more on plugins please refer to :ref:`add_plugin`.
     bufmon_doc
     ip_session_redirect_doc
     bpf_trace_filter
+    onp_doc

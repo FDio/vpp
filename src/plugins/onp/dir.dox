@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2021 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+/* Doxygen directory documentation */
+
+/**
+ * @dir
+ * @brief OCTEON Native Plugin (ONP).
+ *
+ * This directory contains the source code of ONP.
+ */
+
+/*? %%clicmd:group_label ONP Plugin%% ?*/
+/*? %%syscfg:group_label ONP Plugin%% ?*/
+

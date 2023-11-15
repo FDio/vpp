@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2021 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+/* Doxygen directory documentation */
+
+/**
+ * @dir
+ * @brief ONP buffer pools functions.
+ *
+ * This directory contains the source code for the interface with
+ * OCTEON pools (aka NPA)
+ */
+/*? %%clicmd:group_label ONP Buffers%% ?*/
+/*? %%syscfg:group_label ONP Buffers%% ?*/
+

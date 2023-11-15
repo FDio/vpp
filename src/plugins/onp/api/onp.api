@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) 2021 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+/**
+ * @file
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane binary API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/* Version and types */
+
+option version = "0.1.0";
+import "plugins/onp/api/types.api";
+
+/**
+ * @brief Reply to get the show onp counters
+ *
+ * @param context[in] - Returned sender context, to match reply w/ request
+ *
+ * Reply for the corresponding request is stored in this structure.
+ */
+define onp_show_counters_reply
+{
+  u32 context;
+  u64 global_counter_value [64];
+  u64 global_pool_stat;
+  u64 global_second_pool_stat;
+  u32 n_threads_with_stats;
+  u32 onp_max_counters;
+  u32 n_global_stats;
+  i32 retval;
+  vl_api_onp_counter_details_t cd [64];
+  vl_api_onp_thread_data_t td[32];
+};
+
+/**
+ * @brief Get the show onp counters
+ *
+ * @param[in] client_index      - opaque cookie to identify the sender
+ * @param[in] context           - sender context, to match reply w/ request
+ */
+define onp_show_counters
+{
+  u32 client_index;
+  u32 context;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

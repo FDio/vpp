@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2021 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+/* Doxygen directory documentation */
+
+/**
+ * @dir
+ * @brief ONP pktio/device nodes.
+ *
+ * This directory contains the source code for ONP pktio/device nodes.
+ */
+/*? %%clicmd:group_label ONP Pktio%% ?*/
+/*? %%syscfg:group_label ONP Pktio%% ?*/
+

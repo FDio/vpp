@@ -425,6 +425,12 @@ I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/dispatch-trace
 
+Plugin - Marvell OCTEON™ Native plugin
+I:  onp
+M:  Monendra Singh Kushwaha <kmonendra@marvell.com>
+M:  Kommula Shiva Shankar <kshankar@marvell.com>
+F:  src/plugins/onp/
+
 Plugin - DPDK
 I:	dpdk
 M:	Damjan Marion <damarion@cisco.com>

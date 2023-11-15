@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2021 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+/* Doxygen directory documentation */
+
+/**
+ * @dir
+ * @brief CNXK driver for ONP.
+ *
+ * This directory contains the source code for various drivers which interface
+ * with OCTEON hardware and provide interfaces in a generic manner
+ */
+/*? %%clicmd:group_label ONP CNXK Driver%% ?*/
+/*? %%syscfg:group_label ONP CNXK Driver%% ?*/
+

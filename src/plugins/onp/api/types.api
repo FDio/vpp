@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2023 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+typedef onp_counter_details
+{
+ u8 counter_name[64];
+};
+
+/* counter_value array size should be higher than ONP_MAX_COUNTERS */
+
+typedef onp_thread_data
+{
+  u64 pool_stat;
+  u64 second_pool_stat;
+  u64 counter_value [64];
+  u8 thread_name[64];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

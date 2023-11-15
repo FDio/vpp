@@ -1610,3 +1610,123 @@ os_exit is called.
 .. code-block:: console
 
    elog-post-mortem-dump
+
+
+onp section
+-----------
+
+.. code-block:: console
+
+   onp {
+      dev default {
+         num-rx-desc 4096
+         num-tx-desc 4096
+      }
+
+      dev 0000:02:00.1 {
+         num-rx-queues 2
+         name eth0
+      }
+
+      num-pkt-bufs 16384
+   }
+
+dev <pci-dev> | default { .. }
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+White-list [as in, attempt to drive] a specific PCI device. PCI-dev is a
+string of the form "DDDD:BB:SS.F" where:
+
+* DDDD = Domain
+* BB = Bus Number
+* SS = Slot number
+* F = Function
+
+If the keyword **default** is used, the values will apply to all the devices.
+
+This is the same format used in the linux sysfs tree (i.e./sys/bus/pci/devices)
+for PCI device directory names.
+
+.. code-block:: console
+
+      dev default {
+         num-rx-desc 4096
+         num-tx-desc 4096
+      }
+
+dev <pci-dev> { .. }
+^^^^^^^^^^^^^^^^^^^^
+
+Whitelist specific interface by specifying PCI address. When whitelisting specific
+interfaces by specifying PCI address, additional custom parameters can also be
+specified. Valid options include:
+
+.. code-block:: console
+
+   dev 0000:02:00.0
+   dev 0000:03:00.0
+
+name interface-name
+^^^^^^^^^^^^^^^^^^^
+
+Set interface name
+
+.. code-block:: console
+
+   dev 0000:02:00.1 {
+      name eth0
+   }
+
+num-rx-queues <n>
+^^^^^^^^^^^^^^^^^
+
+Number of receive queues. Default is equal to number of worker threads.
+
+.. code-block:: console
+
+   dev 0000:02:00.1 {
+      num-rx-queues <n>
+   }
+
+num-tx-queues <n>
+^^^^^^^^^^^^^^^^^
+
+Number of transmit queues. Default is equal to number of worker threads.
+
+.. code-block:: console
+
+   dev 000:02:00.1 {
+      num-tx-queues <n>
+   }
+
+num-rx-desc <n>
+^^^^^^^^^^^^^^^
+
+Number of descriptors in each receive queue. Default is 4096.
+
+.. code-block:: console
+
+   dev 000:02:00.1 {
+      num-rx-desc <n>
+   }
+
+num-tx-desc <n>
+^^^^^^^^^^^^^^^
+
+Number of descriptors in each transmit queue. Default is 4096.
+
+.. code-block:: console
+
+   dev 000:02:00.1 {
+      num-tx-desc <n>
+   }
+
+num-pkt-bufs <n>
+^^^^^^^^^^^^^^^^
+
+Number of packet buffers assign to corresponding ONP pool.
+Default is 8192.
+
+.. code-block:: console
+
+   num-pkt-bufs 16384
