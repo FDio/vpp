@@ -222,58 +222,58 @@ main (int argc, char *argv[])
    * Format: heapsize <nn>[mM][gG]
    */
 
-  for (i = 1; i < (argc - 1); i++)
-    {
-      if (!strncmp (argv[i], "plugin_path", 11))
-	{
-	  if (i < (argc - 1))
-	    vlib_plugin_path = argv[++i];
-	}
-      if (!strncmp (argv[i], "test_plugin_path", 16))
-	{
-	  if (i < (argc - 1))
-	    vat_plugin_path = argv[++i];
-	}
-      else if (!strncmp (argv[i], "heapsize", 8))
-	{
-	  sizep = (u8 *) argv[i + 1];
-	  size = 0;
-	  while (*sizep >= '0' && *sizep <= '9')
-	    {
-	      size *= 10;
-	      size += *sizep++ - '0';
-	    }
-	  if (size == 0)
-	    {
-	      fprintf
-		(stderr,
-		 "warning: heapsize parse error '%s', use default %lld\n",
-		 argv[i], (long long int) main_heap_size);
-	      goto defaulted;
-	    }
+    for (i = 1; i < (argc); i++)
+      {
+	if (!strncmp (argv[i], "plugin_path", 11))
+	  {
+	    if (i < (argc - 1))
+	      vlib_plugin_path = argv[++i];
+	  }
+	if (!strncmp (argv[i], "test_plugin_path", 16))
+	  {
+	    if (i < (argc - 1))
+	      vat_plugin_path = argv[++i];
+	  }
+	else if (!strncmp (argv[i], "heapsize", 8))
+	  {
+	    sizep = (u8 *) argv[i + 1];
+	    size = 0;
+	    while (*sizep >= '0' && *sizep <= '9')
+	      {
+		size *= 10;
+		size += *sizep++ - '0';
+	      }
+	    if (size == 0)
+	      {
+		fprintf (
+		  stderr,
+		  "warning: heapsize parse error '%s', use default %lld\n",
+		  argv[i], (long long int) main_heap_size);
+		goto defaulted;
+	      }
 
-	  main_heap_size = size;
+	    main_heap_size = size;
 
-	  if (*sizep == 'g' || *sizep == 'G')
-	    main_heap_size <<= 30;
-	  else if (*sizep == 'm' || *sizep == 'M')
-	    main_heap_size <<= 20;
-	}
-      else if (!strncmp (argv[i], "main-core", 9))
-	{
-	  if (i < (argc - 1))
-	    {
-	      errno = 0;
-	      unsigned long x = strtol (argv[++i], 0, 0);
-	      if (errno == 0)
-		main_core = x;
-	    }
-	}
-      else if (!strncmp (argv[i], "interactive", 11))
-	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
-      else if (!strncmp (argv[i], "nosyslog", 8))
-	unix_main.flags |= UNIX_FLAG_NOSYSLOG;
-    }
+	    if (*sizep == 'g' || *sizep == 'G')
+	      main_heap_size <<= 30;
+	    else if (*sizep == 'm' || *sizep == 'M')
+	      main_heap_size <<= 20;
+	  }
+	else if (!strncmp (argv[i], "main-core", 9))
+	  {
+	    if (i < (argc - 1))
+	      {
+		errno = 0;
+		unsigned long x = strtol (argv[++i], 0, 0);
+		if (errno == 0)
+		  main_core = x;
+	      }
+	  }
+	else if (!strncmp (argv[i], "interactive", 11))
+	  unix_main.flags |= UNIX_FLAG_INTERACTIVE;
+	else if (!strncmp (argv[i], "nosyslog", 8))
+	  unix_main.flags |= UNIX_FLAG_NOSYSLOG;
+      }
 defaulted:
 
   /* temporary heap */
@@ -325,7 +325,11 @@ defaulted:
     {
       CPU_ZERO (&cpuset);
       CPU_SET (main_core, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+      if (pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t),
+				  &cpuset))
+	{
+	  clib_unix_error ("thread init error vnet on CPU %u", main_core);
+	}
     }
 
   /* Set up the plugin message ID allocator right now... */
