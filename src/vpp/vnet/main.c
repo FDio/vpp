@@ -114,6 +114,7 @@ main (int argc, char *argv[])
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
   int main_core = ~0;
+  u8 relative = 0;
   cpu_set_t cpuset;
   void *main_heap;
 
@@ -269,6 +270,8 @@ main (int argc, char *argv[])
 		main_core = x;
 	    }
 	}
+      else if (!strncmp (argv[i], "relative", 8))
+	relative = 1;
       else if (!strncmp (argv[i], "interactive", 11))
 	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
       else if (!strncmp (argv[i], "nosyslog", 8))
@@ -323,9 +326,23 @@ defaulted:
   /* set process affinity for main thread */
   if (main_core != ~0)
     {
+      if (relative)
+	{
+	  u32 *relative_mapping_vec = get_cgroup_relative_mapping_vec ();
+	  if (main_core >= vec_len (relative_mapping_vec))
+	    clib_unix_error ("cpu %u is not available to be used"
+			     " for the main thread in relative mode",
+			     main_core);
+
+	  main_core = vec_elt (relative_mapping_vec, main_core);
+	}
       CPU_ZERO (&cpuset);
       CPU_SET (main_core, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+      if (pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t),
+				  &cpuset))
+	{
+	  clib_unix_error ("thread init error vnet on CPU %u", main_core);
+	}
     }
 
   /* Set up the plugin message ID allocator right now... */
