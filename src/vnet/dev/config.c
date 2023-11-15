@@ -113,11 +113,11 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 	      if (rv != VNET_DEV_OK)
 		break;
 	    }
-
-	  if (rv != VNET_DEV_OK)
-	    err = clib_error_return (0, "error: %U for device '%s'",
-				     format_vnet_dev_rv, rv, device_id);
 	}
+
+      if (rv != VNET_DEV_OK)
+	err = clib_error_return (0, "error: %U for device '%s'",
+				 format_vnet_dev_rv, rv, device_id);
     }
 
   vec_free (if_args_vec);
@@ -138,7 +138,7 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
   unformat_init_vector (&input, dm->startup_config);
   dm->startup_config = 0;
 
-  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+  while (!err && unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
       unformat_input_t sub_input;
       vnet_dev_device_id_t device_id;
@@ -148,18 +148,27 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	{
 	  err = vnet_dev_config_one_device (vm, &sub_input, device_id);
 	  unformat_free (&sub_input);
-	  if (err)
-	    break;
+	}
+      else if (unformat (&input, "dev %U", unformat_c_string_array, device_id,
+			 sizeof (device_id)))
+	{
+	  unformat_input_t no_input = {};
+	  unformat_init_vector (&no_input, 0);
+	  err = vnet_dev_config_one_device (vm, &no_input, device_id);
+	  unformat_free (&no_input);
 	}
       else
-	{
-	  err = clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, &input);
-	  break;
-	}
+	err = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, &input);
     }
 
   unformat_free (&input);
+
+  if (err)
+    {
+      log_err (0, "%U", format_clib_error, err);
+      clib_error_free (err);
+    }
 
   vlib_node_set_state (vm, rt->node_index, VLIB_NODE_STATE_DISABLED);
   vlib_node_rename (vm, rt->node_index, "deleted-%u", rt->node_index);
