@@ -180,6 +180,7 @@ vlib_thread_init (vlib_main_t * vm)
   u32 i;
   uword *avail_cpu;
   u32 stats_num_worker_threads_dir_index;
+  u32 *relative_cpu_map = 0;
 
   stats_num_worker_threads_dir_index =
     vlib_stats_add_gauge ("/sys/num_worker_threads");
@@ -192,6 +193,38 @@ vlib_thread_init (vlib_main_t * vm)
     clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
+
+  /* get bitmap of active cgroup cpu cores and apply relative core mapping */
+  if (tm->relative)
+    {
+      tm->cpu_core_cgroup_bitmap =
+	clib_sysfs_list_to_bitmap ("/sys/fs/cgroup/cpuset/cpuset.cpus");
+
+      u32 count = clib_bitmap_count_set_bits (tm->cpu_core_cgroup_bitmap);
+      vec_validate (relative_cpu_map, count - 1);
+
+      uword c = clib_bitmap_first_set (tm->cpu_core_cgroup_bitmap);
+      for (i = 0; i < count; i++)
+	{
+	  vec_elt (relative_cpu_map, i) = c;
+	  c = clib_bitmap_next_set (tm->cpu_core_cgroup_bitmap, c + 1);
+	}
+
+      avail_cpu = clib_bitmap_dup (tm->cpu_core_cgroup_bitmap);
+
+      u32 relative_cpu_len = vec_len (relative_cpu_map);
+
+      if (tm->main_lcore != ~0)
+	{
+	  if (tm->main_lcore >= relative_cpu_len)
+	    return clib_error_return (0,
+				      "cpu %u is not available to be used"
+				      " for the main thread in relative mode",
+				      tm->main_lcore);
+
+	  tm->main_lcore = vec_elt (relative_cpu_map, tm->main_lcore);
+	}
+    }
 
   /* skip cores */
   for (i = 0; i < tm->skip_cores; i++)
@@ -275,22 +308,54 @@ vlib_thread_init (vlib_main_t * vm)
       if (tr->coremask)
 	{
 	  uword c;
-          /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask)  {
-            if (clib_bitmap_get(avail_cpu, c) == 0)
-              return clib_error_return (0, "cpu %u is not available to be used"
-                                        " for the '%s' thread",c, tr->name);
+	  /* in relative mode, override coremask mapping */
+	  if (tm->relative)
+	    {
+	      uword *relative_coremask = clib_bitmap_dup (tr->coremask);
+	      clib_bitmap_zero (relative_coremask);
+	      u32 relative_map_len = vec_len (relative_cpu_map);
+	      clib_bitmap_foreach (c, tr->coremask)
+		{
+		  if (relative_map_len < c)
+		    return clib_error_return (
+		      0,
+		      "cpu %u is not available to be used"
+		      " for the '%s' thread in relative mode",
+		      c, tr->name);
 
-            avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
-          }
-          /* *INDENT-ON* */
+		  j = vec_elt (relative_cpu_map, c - 1);
+		  relative_coremask =
+		    clib_bitmap_set (relative_coremask, j, 1);
+		}
+
+	      tr->coremask = clib_bitmap_dup (relative_coremask);
+	    }
+
+	  clib_bitmap_foreach (c, tr->coremask)
+	    {
+	      if (clib_bitmap_get (avail_cpu, c) == 0)
+		return clib_error_return (0,
+					  "cpu %u is not available to be used"
+					  " for the '%s' thread",
+					  c, tr->name);
+
+	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	    }
 	}
       else
 	{
 	  for (j = 0; j < tr->count; j++)
 	    {
+	      int cpu0_bitpos = 0;
+
+	      /* in relative mode, override default CPU0 index */
+	      if (tm->relative)
+		{
+		  cpu0_bitpos = vec_elt (relative_cpu_map, 0);
+		}
+
 	      /* Do not use CPU 0 by default - leave it to the host and IRQs */
-	      uword avail_c0 = clib_bitmap_get (avail_cpu, 0);
+	      uword avail_c0 = clib_bitmap_get (avail_cpu, cpu0_bitpos);
 	      avail_cpu = clib_bitmap_set (avail_cpu, 0, 0);
 
 	      uword c = clib_bitmap_first_set (avail_cpu);
@@ -304,9 +369,10 @@ vlib_thread_init (vlib_main_t * vm)
 	      if (c == ~0)
 		return clib_error_return (0,
 					  "no available cpus to be used for"
-					  " the '%s' thread", tr->name);
+					  " the '%s' thread #%u",
+					  tr->name, tr->count);
 
-	      avail_cpu = clib_bitmap_set (avail_cpu, 0, avail_c0);
+	      avail_cpu = clib_bitmap_set (avail_cpu, cpu0_bitpos, avail_c0);
 	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
 	      tr->coremask = clib_bitmap_set (tr->coremask, c, 1);
 	    }
@@ -314,6 +380,8 @@ vlib_thread_init (vlib_main_t * vm)
     }
 
   clib_bitmap_free (avail_cpu);
+
+  vec_free (relative_cpu_map);
 
   tm->n_vlib_mains = n_vlib_mains;
   vlib_stats_set_gauge (stats_num_worker_threads_dir_index, n_vlib_mains - 1);
@@ -1194,6 +1262,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->count = count;
 	}
+      else if (unformat (input, "relative"))
+	tm->relative = 1;
       else
 	break;
     }
