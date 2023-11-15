@@ -79,6 +79,25 @@ show_threads_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "%v", line);
       vec_free (line);
     }
+
+  if (tm->relative)
+    {
+      vlib_cli_output (vm, "%-1s", "");
+      vlib_cli_output (vm, "%-40s", "Relative mode enabled, with mapping : ");
+      vlib_cli_output (vm, "%-7s%-7s", "index", "lcore");
+      u32 *relative_mapping_vec = cgroup_get_relative_mapping_vec ();
+
+      int k;
+      for (i = 0; i < vec_len (relative_mapping_vec); i++)
+	{
+	  u8 *line = NULL;
+	  k = vec_elt (relative_mapping_vec, i);
+	  line = format (line, "%-7u%-7u", i, k);
+	  vlib_cli_output (vm, "%v", line);
+	  vec_free (line);
+	}
+    }
+
 #endif
 
   return 0;
