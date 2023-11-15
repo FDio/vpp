@@ -145,6 +145,16 @@ dev_config_process_node_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	  if (err)
 	    break;
 	}
+      else if (unformat (&input, "dev %U", unformat_c_string_array, device_id,
+			 sizeof (device_id)))
+	{
+	  unformat_input_t no_input = {};
+	  unformat_init_vector (&no_input, 0);
+	  err = vnet_dev_config_one_device (vm, &no_input, device_id);
+	  unformat_free (&no_input);
+	  if (err)
+	    break;
+	}
       else
 	{
 	  err = clib_error_return (0, "unknown input '%U'",
