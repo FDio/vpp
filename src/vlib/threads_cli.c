@@ -46,16 +46,24 @@ show_threads_fn (vlib_main_t * vm,
   const vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_worker_thread_t *w;
   int i;
+  u32 *relative_mapping_vec = cgroup_get_relative_mapping_vec ();
+  u8 *line = NULL;
+  line = format (line, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s%", "ID",
+		 "Name", "Type", "LWP", "Sched Policy (Priority)", "lcore",
+		 "Core", "Socket", "State");
+  if (tm->relative)
+    {
+      line = format (line, "%-9s%-4s", "Relative", "Core");
+    }
 
-  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s",
-		   "ID", "Name", "Type", "LWP", "Sched Policy (Priority)",
-		   "lcore", "Core", "Socket", "State");
+  vlib_cli_output (vm, "%v", line);
+  vec_free (line);
 
 #if !defined(__powerpc64__)
   for (i = 0; i < vec_len (vlib_worker_threads); i++)
     {
       w = vlib_worker_threads + i;
-      u8 *line = NULL;
+      line = NULL;
 
       line = format (line, "%-7d%-20s%-12s%-8d",
 		     i,
@@ -69,7 +77,20 @@ show_threads_fn (vlib_main_t * vm,
 	{
 	  int core_id = w->core_id;
 	  int numa_id = w->numa_id;
-	  line = format (line, "%-7u%-7u%-7u%", cpu_id, core_id, numa_id);
+	  line = format (line, "%-7u%-7u%-17u%", cpu_id, core_id, numa_id);
+	  int k = 0;
+	  if (tm->relative)
+	    {
+	      vec_foreach_index (k, relative_mapping_vec)
+		{
+		  int relative_index = vec_elt (relative_mapping_vec, k);
+		  if (cpu_id == relative_index)
+		    {
+		      line = format (line, "%-7u%", k);
+		      break;
+		    }
+		}
+	    }
 	}
       else
 	{
@@ -79,6 +100,7 @@ show_threads_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "%v", line);
       vec_free (line);
     }
+
 #endif
 
   return 0;
