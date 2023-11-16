@@ -267,8 +267,9 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
 
-  for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
-    vec_add1 (port->args, *a);
+  if (args->port.args)
+    for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
+      vec_add1 (port->args, *a);
 
   /* defaults out of port attributes */
   port->max_rx_frame_size = args->port.attr.max_supported_rx_frame_size;
