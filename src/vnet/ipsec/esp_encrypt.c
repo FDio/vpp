@@ -690,6 +690,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  current_sa_packets = current_sa_bytes = 0;
 
 	  sa0 = ipsec_sa_get (sa_index0);
+	  current_sa_index = sa_index0;
 
 	  if (PREDICT_FALSE ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
 			      sa0->integ_alg == IPSEC_INTEG_ALG_NONE) &&
@@ -701,7 +702,6 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					  sa_index0);
 	      goto trace;
 	    }
-	  current_sa_index = sa_index0;
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
 					  current_sa_index);
 
