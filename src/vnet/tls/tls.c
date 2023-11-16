@@ -639,15 +639,17 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
 {
   tls_ctx_t *ctx;
 
+  ctx = tls_ctx_get (s->opaque);
+
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     {
       /* Allow cleanup of tcp session */
       if (s->session_state == SESSION_STATE_TRANSPORT_DELETED)
 	session_close (s);
+      ctx->tls_session_handle = SESSION_INVALID_HANDLE;
       return;
     }
 
-  ctx = tls_ctx_get (s->opaque);
   if (!ctx->no_app_session)
     session_transport_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
