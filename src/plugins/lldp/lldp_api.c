@@ -23,6 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <lldp/lldp.h>
+#include <lldp/lldp_node.h>
 
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
@@ -42,7 +43,7 @@ static u32 lldp_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
+vl_api_lldp_config_t_handler (vl_api_lldp_config_t *mp)
 {
   vl_api_lldp_config_reply_t *rmp;
   int rv = 0;
@@ -50,8 +51,8 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
 
   sys_name = vl_api_from_api_to_new_vec (mp, &mp->system_name);
 
-  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval))
-      != lldp_ok)
+  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval)) !=
+      lldp_ok)
     {
       vec_free (sys_name);
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -61,7 +62,7 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
 }
 
 static void
-vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
+vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t *mp)
 {
   vl_api_sw_interface_set_lldp_reply_t *rmp;
   int rv = 0;
@@ -100,7 +101,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), (u8 **) & port_desc,
+  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), (u8 **) &port_desc,
 			 &mgmt_ip4, &mgmt_ip6, &mgmt_oid,
 			 mp->enable) != lldp_ok)
     {
@@ -116,6 +117,40 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_LLDP_REPLY);
 }
 
+static void
+send_lldp (u32 index, vl_api_registration_t *rp, u32 context)
+{
+  vl_api_lldp_details_t *rmp = 0;
+  vnet_main_t *vnm = &vnet_main;
+  lldp_main_t *lm = &lldp_main;
+  const lldp_intf_t *n = vec_elt_at_index (lm->intfs, index);
+  const vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, n->hw_if_index);
+
+  REPLY_MACRO_DETAILS4_END (
+    VL_API_LLDP_DETAILS, rp, context, ({
+      rmp->sw_if_index = hw->sw_if_index;
+      rmp->last_heard = n->last_heard;
+      rmp->last_sent = n->last_sent;
+      rmp->ttl = n->ttl;
+      rmp->port_id_subtype = n->port_id_subtype;
+      rmp->chassis_id_subtype = n->chassis_id_subtype;
+      rmp->chassis_id_len = vec_len (n->chassis_id);
+      clib_memcpy (&rmp->chassis_id, n->chassis_id, rmp->chassis_id_len);
+      rmp->port_id_len = vec_len (n->port_id);
+      clib_memcpy (&rmp->port_id, n->port_id, rmp->port_id_len);
+    }));
+}
+
+static void
+vl_api_lldp_dump_t_handler (vl_api_lldp_dump_t *mp)
+{
+  int rv = 0;
+  lldp_main_t *lm = &lldp_main;
+  vl_api_lldp_dump_reply_t *rmp;
+
+  REPLY_AND_DETAILS_MACRO_END (VL_API_LLDP_DUMP_REPLY, lm->intfs,
+			       ({ send_lldp (cursor, rp, mp->context); }));
+}
 
 /*
  *  * lldp_api_hookup
@@ -127,7 +162,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 #include <lldp/lldp.api.c>
 
 static clib_error_t *
-lldp_api_hookup (vlib_main_t * vm)
+lldp_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table
@@ -144,11 +179,10 @@ VLIB_API_INIT_FUNCTION (lldp_api_hookup);
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Link Layer Discovery Protocol (LLDP)",
+  .version = VPP_BUILD_VER,
+  .description = "Link Layer Discovery Protocol (LLDP)",
 };
 /* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON
