@@ -258,7 +258,11 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   vec_validate_init_empty (lip_db_by_host, host_sw_if_index, INDEX_INVALID);
   lip_db_by_phy[phy_sw_if_index] = lipi;
   lip_db_by_host[host_sw_if_index] = lipi;
-  hash_set (lip_db_by_vif, host_index, lipi);
+
+  if (clib_strcmp ((char *) ns, (char *) lcp_get_default_ns ()) == 0)
+    {
+      hash_set (lip_db_by_vif, host_index, lipi);
+    }
 
   lip->lip_host_sw_if_index = host_sw_if_index;
   lip->lip_phy_sw_if_index = phy_sw_if_index;
@@ -1094,7 +1098,7 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
    * This controls whether the host can RX/TX.
    */
   sw = vnet_get_sw_interface (vnm, phy_sw_if_index);
-  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_vif (vif_index));
+  lip = lcp_itf_pair_get (lcp_itf_pair_find_by_phy (phy_sw_if_index));
   LCP_ITF_PAIR_INFO ("pair create: %U sw-flags %u hw-flags %u",
 		     format_lcp_itf_pair, lip, sw->flags, hw->flags);
   vnet_sw_interface_admin_up (vnm, host_sw_if_index);
