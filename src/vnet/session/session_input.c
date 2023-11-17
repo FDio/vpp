@@ -113,20 +113,22 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	{
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
+	  s->flags &= ~SESSION_F_RX_EVT;
 	  /* Application didn't confirm accept yet */
 	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
 			     s->session_state == SESSION_STATE_CONNECTING))
 	    break;
-	  s->flags &= ~SESSION_F_RX_EVT;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
 	/* Handle sessions that might not be on current thread */
 	case SESSION_IO_EVT_BUILTIN_RX:
 	  s = session_get_from_handle_if_valid (evt->session_handle);
-	  if (!s || s->session_state == SESSION_STATE_ACCEPTING ||
-	      s->session_state == SESSION_STATE_CONNECTING)
+	  if (!s)
 	    break;
 	  s->flags &= ~SESSION_F_RX_EVT;
+	  if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING ||
+			     s->session_state == SESSION_STATE_CONNECTING))
+	    break;
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
 	case SESSION_IO_EVT_TX:
