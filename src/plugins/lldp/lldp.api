@@ -56,3 +56,79 @@ autoreply define sw_interface_set_lldp
   bool enable [default=true];
   string port_desc[];
 };
+
+/** \brief Dump lldp neighbors
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoendian define lldp_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 cursor;
+};
+
+autoendian define lldp_dump_reply
+{
+  u32 context;
+  i32 retval;
+  u32 cursor;
+};
+
+enum port_id_subtype
+{
+  PORT_ID_SUBTYPE_RESERVED = 0x00,
+  PORT_ID_SUBTYPE_INTF_ALIAS = 0x01,
+  PORT_ID_SUBTYPE_PORT_COMP = 0x02,
+  PORT_ID_SUBTYPE_MAC_ADDR = 0x03,
+  PORT_ID_SUBTYPE_NET_ADDR = 0x04,
+  PORT_ID_SUBTYPE_INTF_NAME = 0x05,
+  PORT_ID_SUBTYPE_AGENT_CIRCUIT_ID = 0x06,
+  PORT_ID_SUBTYPE_LOCAL = 0x07,
+};
+
+enum chassis_id_subtype
+{
+  CHASSIS_ID_SUBTYPE_RESERVED = 0x00,
+  CHASSIS_ID_SUBTYPE_CHASSIS_COMP = 0x01,
+  CHASSIS_ID_SUBTYPE_INTF_ALIAS = 0x02,
+  CHASSIS_ID_SUBTYPE_PORT_COMP = 0x03,
+  CHASSIS_ID_SUBTYPE_MAC_ADDR = 0x04,
+  CHASSIS_ID_SUBTYPE_NET_ADDR = 0x05,
+  CHASSIS_ID_SUBTYPE_INTF_NAME = 0x06,
+  CHASSIS_ID_SUBTYPE_LOCAL = 0x07,
+};
+
+/** \brief Details about neighbor
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface where neighbor was discovered
+    @param last_heard - last heard time
+    @param last_sent - last sent time
+    @param chassis_id - chassis id value
+    @param chassis_id_len - length for chassis id
+    @param port_id - port id value
+    @param port_id_len - length for port id
+    @param ttl - time to length for the neighbour
+    @param port_id_subtype - subtype for port_id
+    @param chassis_id_sybtype - sybtype for chassis_id
+*/
+autoendian define lldp_details
+{
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  f64 last_heard;
+  f64 last_sent;
+  u8 chassis_id[64];
+  u8 chassis_id_len;
+  u8 port_id[64];
+  u8 port_id_len;
+  u16 ttl;
+  vl_api_port_id_subtype_t port_id_subtype;
+  vl_api_chassis_id_subtype_t chassis_id_subtype;
+  option status="in_progress";
+};
+
+service {
+  rpc lldp_dump returns lldp_dump_reply
+    stream lldp_details;
+};
