@@ -142,4 +142,16 @@ api_sw_interface_set_lldp (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_lldp_dump (vat_main_t *vam)
+{
+  return 0;
+}
+
+static void
+vl_api_lldp_dump_reply_t_handler (vl_api_lldp_dump_reply_t *mp)
+{
+  // not yet implemented
+}
+
 #include <lldp/lldp.api_test.c>
