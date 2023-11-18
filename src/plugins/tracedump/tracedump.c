@@ -451,6 +451,149 @@ vl_api_trace_v2_dump_t_handler (vl_api_trace_v2_dump_t *mp)
   vec_free (s);
 }
 
+/* API message handler */
+static void
+vl_api_trace_v3_dump_t_handler (vl_api_trace_v3_dump_t *mp)
+{
+  vl_api_registration_t *rp;
+  vl_api_trace_v3_details_t *dmp;
+  tracedump_main_t *tdmp = &tracedump_main;
+  vlib_trace_header_t ***client_trace_cache, **th;
+  int i, j, p;
+  u32 client_index;
+  u32 first_position, max, first_thread_id, last_thread_id;
+  u32 cache_size, cache_mult;
+  u32 n_threads = vlib_get_n_threads ();
+  u8 *s = 0;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  client_index = rp->vl_api_registration_pool_index;
+
+  vec_validate_init_empty (tdmp->traces, client_index, 0);
+
+  client_trace_cache = tdmp->traces[client_index];
+
+  if (mp->clear_cache)
+    {
+      toss_client_cache (tdmp, client_index, client_trace_cache);
+      client_trace_cache = 0;
+    }
+
+  /* Now, where were we? */
+  first_thread_id = last_thread_id = clib_net_to_host_u32 (mp->thread_id);
+  first_position = clib_net_to_host_u32 (mp->position);
+  max = clib_net_to_host_u32 (mp->max);
+  cache_mult = clib_net_to_host_u32 (mp->cache_mult);
+
+  /* No packet asked to dump */
+  if (max == 0)
+    return;
+
+  if (cache_mult == 0)
+    cache_size = ~0;
+  else
+    cache_size = max * cache_mult;
+
+  if (first_thread_id == ~0)
+    {
+      first_thread_id = 0;
+      last_thread_id = n_threads - 1;
+    }
+
+  /* Don't overflow the existing queue space for shared memory API clients. */
+  if (rp->vl_input_queue)
+    {
+      svm_queue_t *q = rp->vl_input_queue;
+      u32 queue_slots_available = q->maxsize - q->cursize;
+      int chunk = (queue_slots_available > 0) ? queue_slots_available - 1 : 0;
+      /* split available slots among requested threads */
+      if (chunk < max * (last_thread_id - first_thread_id + 1))
+	max = chunk / (last_thread_id - first_thread_id + 1);
+    }
+
+  /* Need a fresh cache for this client? */
+  if (vec_len (client_trace_cache) == 0)
+    {
+      vlib_worker_thread_barrier_sync (vlib_get_first_main ());
+
+      /* Make a slot for each worker thread */
+      vec_validate (client_trace_cache, n_threads - 1);
+      i = 0;
+
+      foreach_vlib_main ()
+	{
+	  vlib_trace_main_t *tm = &this_vlib_main->trace_main;
+
+	  /* Filter as directed */
+	  trace_apply_filter (this_vlib_main);
+
+	  p = 0;
+
+	  pool_foreach (th, tm->trace_buffer_pool)
+	    {
+	      vec_add1 (client_trace_cache[i], th[0]);
+	      // cache at most `cache_size` packets per thread
+	      // to avoid blocking threads for too long
+	      // if there is a lot of traces.
+	      if (PREDICT_FALSE (cache_size != ~0 && ++p == cache_size))
+		break;
+	    }
+
+	  i++;
+	}
+
+      // release the barrier as we work on the cache from now
+      vlib_worker_thread_barrier_release (vlib_get_first_main ());
+
+      i = 0;
+
+      foreach_vlib_main ()
+	{
+	  /* Sort them by increasing time. */
+	  if (vec_len (client_trace_cache[i]))
+	    vec_sort_with_function (client_trace_cache[i], trace_cmp);
+
+	  i++;
+	}
+    }
+
+  /* Save the cache, one way or the other */
+  tdmp->traces[client_index] = client_trace_cache;
+
+  for (i = first_thread_id;
+       i <= last_thread_id && i < vec_len (client_trace_cache); i++)
+    {
+      // dump a number of 'max' packets per thead
+      for (j = first_position;
+	   j < vec_len (client_trace_cache[i]) && j < first_position + max;
+	   j++)
+	{
+	  th = &client_trace_cache[i][j];
+
+	  vec_reset_length (s);
+
+	  s =
+	    format (s, "%U", format_vlib_trace, vlib_get_first_main (), th[0]);
+
+	  dmp = vl_msg_api_alloc (sizeof (*dmp) + vec_len (s));
+	  dmp->_vl_msg_id =
+	    htons (VL_API_TRACE_V3_DETAILS + (tdmp->msg_id_base));
+	  dmp->context = mp->context;
+	  dmp->thread_id = ntohl (i);
+	  dmp->position = ntohl (j);
+	  dmp->more = j < vec_len (client_trace_cache[i]) - 1;
+	  vl_api_vec_to_api_string (s, &dmp->trace_data);
+
+	  vl_api_send_msg (rp, (u8 *) dmp);
+	}
+    }
+
+  vec_free (s);
+}
+
 static void
 vl_api_trace_clear_cache_t_handler (vl_api_trace_clear_cache_t *mp)
 {

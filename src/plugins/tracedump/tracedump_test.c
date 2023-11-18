@@ -169,6 +169,19 @@ vl_api_trace_v2_details_t_handler (vl_api_trace_v2_details_t *dmp)
 }
 
 static void
+vl_api_trace_v3_details_t_handler (vl_api_trace_v3_details_t *dmp)
+{
+  u32 thread_id, position;
+
+  thread_id = clib_net_to_host_u32 (dmp->thread_id);
+  position = clib_net_to_host_u32 (dmp->position);
+  fformat (stdout, "thread %d position %d more %d", thread_id, position,
+	   dmp->more);
+  fformat (stdout, "Packet %d\n%U\n\n", position, vl_api_format_string,
+	   (&dmp->trace_data));
+}
+
+static void
 vl_api_trace_dump_reply_t_handler (vl_api_trace_dump_reply_t * rmp)
 {
   tracedump_test_main_t *ttm = &tracedump_test_main;
@@ -243,6 +256,25 @@ api_trace_v2_dump (vat_main_t *vam)
   mp->thread_id = ~0;
   mp->position = 0;
   mp->max = clib_host_to_net_u32 (10);
+
+  S (mp);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_trace_v3_dump (vat_main_t *vam)
+{
+  vl_api_trace_v3_dump_t *mp;
+  int ret;
+
+  M (TRACE_V3_DUMP, mp);
+  mp->clear_cache = 1;
+  mp->thread_id = ~0;
+  mp->position = 0;
+  mp->max = clib_host_to_net_u32 (10);
+  mp->cache_mult = clib_host_to_net_u32 (10);
 
   S (mp);
 
