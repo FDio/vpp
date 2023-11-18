@@ -194,6 +194,46 @@ define trace_v2_details {
     string trace_data[];
 };
 
+/** \brief trace_v3_dump
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param thread_id - specific thread to dump from, ~0 to dump from all
+    @param position - position of the first packet to dump in the per thread cache
+    @param max - maximum of packets to dump from each thread
+    @param cache_size - number of packets to cache at most per threads, if inferior 
+                        to `max` it is set to the same value.
+    @param clear_cache - dispose of any cached data before we begin
+*/
+define trace_v3_dump {
+    u32 client_index;
+    u32 context;
+
+    u32 thread_id [default=0xffffffff];
+    u32 position;
+    u32 max [default=50];
+    u32 cache_size;
+    bool clear_cache;
+
+    option vat_help = "trace_v3_dump [thread_id <tid>] [position <pos>] [max <max>]";
+};
+
+/** \brief trace_v3_details
+    @param context - sender context, to match reply w/ request
+    @param thread_id - thread index from which the packet come from
+    @param position - position of the packet in its thread cache
+    @param more - true if there is still more packets to dump for this thread
+    @param trace_data - string packet data
+*/
+define trace_v2_details {
+    u32 context;
+
+    u32 thread_id;
+    u32 position;
+    bool more;
+
+    string trace_data[];
+};
+
 autoreply define trace_set_filter_function
 {
     u32 client_index;
