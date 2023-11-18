@@ -185,6 +185,66 @@ ip4_session_table_walk (clib_bihash_16_8_t * hash,
 					   &ctx);
 }
 
+u32
+session_table_memory_size (session_table_t *st)
+{
+  u64 total_size = 0;
+
+  if (clib_bihash_is_initialised_16_8 (&st->v4_session_hash))
+    {
+      clib_bihash_alloc_chunk_16_8_t *c = st->v4_session_hash.chunks;
+      while (c)
+	{
+	  total_size += c->size;
+	  c = c->next;
+	}
+      c = st->v4_half_open_hash.chunks;
+      while (c)
+	{
+	  total_size += c->size;
+	  c = c->next;
+	}
+    }
+
+  if (clib_bihash_is_initialised_48_8 (&st->v6_session_hash))
+    {
+      clib_bihash_alloc_chunk_48_8_t *c = st->v6_session_hash.chunks;
+      while (c)
+	{
+	  total_size += c->size;
+	  c = c->next;
+	}
+      c = st->v6_half_open_hash.chunks;
+      while (c)
+	{
+	  total_size += c->size;
+	  c = c->next;
+	}
+    }
+
+  return total_size;
+}
+
+u8 *
+format_session_table (u8 *s, va_list *args)
+{
+  session_table_t *st = va_arg (*args, session_table_t *);
+
+  if (clib_bihash_is_initialised_16_8 (&st->v4_session_hash))
+    {
+      s = format (s, "%U", format_bihash_16_8, &st->v4_session_hash, 0);
+      s = format (s, "%U", format_bihash_16_8, &st->v4_half_open_hash, 0);
+    }
+
+  if (clib_bihash_is_initialised_48_8 (&st->v6_session_hash))
+    {
+      s = format (s, "%U", format_bihash_48_8, &st->v6_session_hash, 0);
+      s = format (s, "%U", format_bihash_48_8, &st->v6_half_open_hash, 0);
+    }
+
+  return s;
+}
+
 /* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
