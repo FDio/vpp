@@ -109,6 +109,7 @@ l2_rw_rewrite (l2_rw_entry_t * rwe, u8 * h)
       /* FALLTHROUGH */
     case 1:
       d[0] = (d[0] & ~rwe->mask[0]) | rwe->value[0];
+      rwe->hit_count++;
       break;
     default:
       abort ();
@@ -332,6 +333,7 @@ l2_rw_mod_entry (u32 * index,
       return 0;
     }
 
+  e->hit_count = 0;
   e->skip_n_vectors = skip / sizeof (u32x4);
   skip -= e->skip_n_vectors * sizeof (u32x4);
   e->rewrite_n_vectors = (skip + len - 1) / sizeof (u32x4) + 1;
