@@ -206,11 +206,13 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 	    {
 	      rwe0 = pool_elt_at_index (rw->entries, rwe_index0);
 	      l2_rw_rewrite (rwe0, (u8 *) h0);
+	      rwe0->hit_count++;
 	    }
 	  if (rwe_index1 != ~0)
 	    {
 	      rwe1 = pool_elt_at_index (rw->entries, rwe_index1);
 	      l2_rw_rewrite (rwe1, (u8 *) h1);
+	      rwe1->hit_count++;
 	    }
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -281,6 +283,7 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 	    {
 	      rwe0 = pool_elt_at_index (rw->entries, rwe_index0);
 	      l2_rw_rewrite (rwe0, (u8 *) h0);
+	      rwe0->hit_count++;
 	    }
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -332,6 +335,7 @@ l2_rw_mod_entry (u32 * index,
       return 0;
     }
 
+  e->hit_count = 0;
   e->skip_n_vectors = skip / sizeof (u32x4);
   skip -= e->skip_n_vectors * sizeof (u32x4);
   e->rewrite_n_vectors = (skip + len - 1) / sizeof (u32x4) + 1;
