@@ -190,7 +190,9 @@ static inline void
 segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
 				      u32 * segment_index)
 {
-  *sm_index = segment_handle >> 32;
+  /* Upper 8 bits zeroed out as they may be used for cut-through segments.
+   * See @ref ct_alloc_segment */
+  *sm_index = (segment_handle >> 32) & 0xFFFFFF;
   *segment_index = segment_handle & 0xFFFFFFFF;
 }
 
