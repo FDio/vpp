@@ -23,6 +23,8 @@ ipsec-mb_tarball_md5sum_1.5  := f18680f8dd43208a15a19a494423bdb9
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
+ipsec-mb_local_header = /usr/include/intel-ipsec-mb.h
+ipsec-mb_local_ver_str := $(shell awk '/^#define\s+IMB_VERSION_STR/ { print $$3 }' $(ipsec-mb_local_header))
 
 define  ipsec-mb_config_cmds
 	@true
@@ -39,6 +41,15 @@ define  ipsec-mb_build_cmds
 endef
 
 define  ipsec-mb_install_cmds
+	if [[ -f "$(ipsec-mb_local_header)" ]]; then \
+		if [[ "$(ipsec-mb_local_ver_str)" != "$(ipsec-mb_version).0" ]]; then \
+		echo "Versions mismatch: ipsec-mb local verion is $(ipsec-mb_local_ver_str), expected $(ipsec-mb_version).0"; \
+		exit 1; \
+		fi \
+	else \
+	echo "$(ipsec-mb_local_header) not found."; \
+	exit 1; \
+	fi
 	@mkdir -p $(ipsec-mb_install_dir)/include
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
