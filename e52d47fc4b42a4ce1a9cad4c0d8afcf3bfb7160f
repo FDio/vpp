@@ -56,6 +56,23 @@
       "message": "Took a while to verify, as the API key value from the commit message is quite unlucky. The code itself works well though.",
       "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a026c06_5ebde543",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-11-20T16:05:26Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
