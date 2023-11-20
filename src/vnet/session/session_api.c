@@ -212,7 +212,6 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 			      session_t * s, session_error_t err)
 {
   session_connected_msg_t m = { 0 };
-  transport_connection_t *tc;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   application_t *app;
@@ -230,14 +229,6 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
   if (session_has_transport (s))
     {
-      tc = session_get_transport (s);
-      if (!tc)
-	{
-	  clib_warning ("failed to retrieve transport!");
-	  m.retval = SESSION_E_REFUSED;
-	  goto snd_msg;
-	}
-
       m.handle = session_handle (s);
       m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
@@ -252,7 +243,6 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   else
     {
       ct_connection_t *cct;
-      session_t *ss;
 
       cct = (ct_connection_t *) session_get_transport (s);
       m.handle = session_handle (s);
@@ -263,11 +253,10 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
       m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
       m.segment_handle = session_segment_handle (s);
-      ss = ct_session_get_peer (s);
-      m.ct_rx_fifo = fifo_segment_fifo_offset (ss->tx_fifo);
-      m.ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
-      m.ct_segment_handle = session_segment_handle (ss);
       m.mq_index = s->thread_index;
+      m.ct_rx_fifo = fifo_segment_fifo_offset (cct->client_rx_fifo);
+      m.ct_tx_fifo = fifo_segment_fifo_offset (cct->client_tx_fifo);
+      m.ct_segment_handle = cct->segment_handle;
     }
 
   /* Setup client session index in advance, in case data arrives
