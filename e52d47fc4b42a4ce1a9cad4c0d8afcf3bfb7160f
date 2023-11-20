@@ -1,6 +1,29 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f6c802b_4e3b94b4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-11-20T16:04:23Z",
+      "side": 1,
+      "message": "I recommend to use a less unlucky [1] value, even in this example. Ideally the one already used elsewhere [2].\n\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-icx/98/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t3-k2-k10-k9-k14-k1-k1-k1-k1\n[2] https://gerrit.fd.io/r/c/vpp/+/33705/2/src/plugins/avf/device.c",
+      "range": {
+        "startLine": 28,
+        "startChar": 1,
+        "endLine": 28,
+        "endChar": 105
+      },
+      "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "c0b008b8_b7cb428c",
@@ -14,6 +37,23 @@
       "writtenOn": "2023-11-20T13:05:54Z",
       "side": 1,
       "message": "perftest-3n-icx mrrANDnic_intel-e810cqANDdrv_vfio_pciAND64bANDethip4udpwireguard8tnlsw-ip4base",
+      "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0a4c3f2_d25aeb54",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-11-20T16:04:23Z",
+      "side": 1,
+      "message": "Took a while to verify, as the API key value from the commit message is quite unlucky. The code itself works well though.",
       "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
