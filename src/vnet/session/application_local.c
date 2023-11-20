@@ -450,6 +450,12 @@ ct_lookup_free_segment (ct_main_t *cm, segment_manager_t *sm,
   return res;
 }
 
+static inline u64
+ct_client_seg_handle (u64 server_sh, u32 client_wrk_index)
+{
+  return (((u64) client_wrk_index << 56) | server_sh);
+}
+
 static ct_segment_t *
 ct_alloc_segment (ct_main_t *cm, app_worker_t *server_wrk, u64 table_handle,
 		  segment_manager_t *sm, u32 client_wrk_index)
@@ -521,6 +527,10 @@ ct_alloc_segment (ct_main_t *cm, app_worker_t *server_wrk, u64 table_handle,
     goto error;
 
   client_wrk = app_worker_get (client_wrk_index);
+  /* Make sure client workers do not have overlapping segment handles.
+   * Ideally, we should attach fs to client worker segment manager and
+   * create a new handle but that's not currently possible. */
+  seg_handle = ct_client_seg_handle (seg_handle, client_wrk_index);
   if (app_worker_add_segment_notify (client_wrk, seg_handle))
     {
       app_worker_del_segment_notify (server_wrk, seg_handle);
@@ -738,7 +748,8 @@ ct_accept_one (u32 thread_index, u32 ho_index)
   cct->client_tx_fifo = ss->rx_fifo;
   cct->client_rx_fifo->refcnt++;
   cct->client_tx_fifo->refcnt++;
-  cct->segment_handle = sct->segment_handle;
+  cct->segment_handle =
+    ct_client_seg_handle (sct->segment_handle, cct->client_wrk);
 
   session_set_state (ss, SESSION_STATE_ACCEPTING);
   if (app_worker_accept_notify (server_wrk, ss))
