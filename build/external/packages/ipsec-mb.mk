@@ -23,6 +23,8 @@ ipsec-mb_tarball_md5sum_1.5  := f18680f8dd43208a15a19a494423bdb9
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
+HEADER_FILE = /usr/include/intel-ipsec-mb.h
+IMB_VERSION_STR := $(shell awk '/^#define\s+IMB_VERSION_STR/ { print $$3 }' $(HEADER_FILE))
 
 define  ipsec-mb_config_cmds
 	@true
@@ -43,6 +45,11 @@ define  ipsec-mb_install_cmds
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
 	@cp $(ipsec-mb_src_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
+	@if [ "$(IMB_VERSION_STR)" = "$(ipsec-mb_version).0" ]; then \
+	echo "Versions match: IMB_VERSION_STR is $(IMB_VERSION_STR)"; \
+	else \
+	echo "Versions do not match: IMB_VERSION_STR is $(IMB_VERSION_STR), expected $(ipsec-mb_version).0"; \
+	fi
 endef
 
 $(eval $(call package,ipsec-mb))
