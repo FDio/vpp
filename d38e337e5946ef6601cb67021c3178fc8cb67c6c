@@ -33,6 +33,24 @@
       "message": "I think this should say ConnectX 4/5/6 or similar, because it does not support CX-3 ?",
       "revId": "d38e337e5946ef6601cb67021c3178fc8cb67c6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c60cca8_764ccb13",
+        "filename": "src/plugins/dpdk/device/driver.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 2829
+      },
+      "writtenOn": "2023-11-20T02:53:45Z",
+      "side": 1,
+      "message": "Thanks for your review!\nI have submitted a new patch.",
+      "parentUuid": "fef4781c_163ae1bf",
+      "revId": "d38e337e5946ef6601cb67021c3178fc8cb67c6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
