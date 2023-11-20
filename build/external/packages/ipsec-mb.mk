@@ -42,6 +42,10 @@ define  ipsec-mb_install_cmds
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
 	@cp $(ipsec-mb_src_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
+	find /usr/include -name intel-ipsec-mb.h -exec rm {} \;
+	find /usr/lib -name libIPSec_MB.a -exec rm {} \;
+	@ln -s $(ipsec-mb_install_dir)/include/intel-ipsec-mb.h /usr/include
+	@ln -s $(ipsec-mb_install_dir)/lib/libIPSec_MB.a /usr/lib
 endef
 
 $(eval $(call package,ipsec-mb))
