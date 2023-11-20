@@ -171,6 +171,9 @@ set(VPP_SANITIZE_ADDR_OPTIONS
 if (VPP_ENABLE_SANITIZE_ADDR)
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)
+  pr("Asan options DO apply.")
+else ()
+  pr("Asan options NOT applied.")
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
