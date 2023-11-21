@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13a98209_2ac96092",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-11-21T17:09:19Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/62/ : SUCCESS (skipped)\n\nLog saving currently does not work, so I cannot verify there are no more buffer alloc errors, but the performance looks good now.",
+      "revId": "25dd5a3b6b80cb9ba9432100d2c919bb05fb56ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
