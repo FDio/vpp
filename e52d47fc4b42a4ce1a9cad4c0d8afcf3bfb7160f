@@ -72,6 +72,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "f7bead15_d1fa0348",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-11-21T09:35:30Z",
+      "side": 1,
+      "message": "I pushed a new commit with updated commit message, now it is: 6b79394423504cb55bea75b6309f4f123dc0a2b8024ddcdf339b8ca04c4af64a34fac60555d858393a58997d2ec938e166031581 as example in RSS hash key",
+      "parentUuid": "22627f67_4fbc6bd9",
+      "range": {
+        "startLine": 28,
+        "startChar": 1,
+        "endLine": 28,
+        "endChar": 105
+      },
+      "revId": "e52d47fc4b42a4ce1a9cad4c0d8afcf3bfb7160f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "c0b008b8_b7cb428c",
