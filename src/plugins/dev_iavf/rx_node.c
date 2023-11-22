@@ -111,6 +111,9 @@ iavf_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_alloc -= 8;
     }
 
+  /* RXQ can be smaller than 256 packets, especially if jumbo. */
+  arq->descs[slot].qword[1] = 0;
+
   __atomic_store_n (arq->qrx_tail, slot, __ATOMIC_RELEASE);
 }
 
@@ -398,9 +401,6 @@ no_more_desc:
 
   arq->next = next;
   arq->n_enqueued -= n_rx_packets + n_tail_desc;
-
-  /* avoid eating our own tail */
-  arq->descs[(next + arq->n_enqueued) & mask].qword[1] = 0;
 
 #if defined(CLIB_HAVE_VEC256) || defined(CLIB_HAVE_VEC128)
   or_qw1 |= or_q1x4[0] | or_q1x4[1] | or_q1x4[2] | or_q1x4[3];
