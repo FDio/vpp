@@ -18,8 +18,6 @@
   _ (0, UNKNOWN)                                                              \
   _ (1, ETHERNET)
 
-typedef char vnet_dev_device_id_t[32];
-
 typedef enum
 {
 #define _(b, n) VNET_DEV_PORT_TYPE_##n = (1U << (b)),

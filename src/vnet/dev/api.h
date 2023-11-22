@@ -15,6 +15,9 @@ typedef struct
   vnet_dev_driver_name_t driver_name;
   vnet_dev_flags_t flags;
   u8 *args;
+
+  /* return */
+  u32 dev_index;
 } vnet_dev_api_attach_args_t;
 
 vnet_dev_rv_t vnet_dev_api_attach (vlib_main_t *,
@@ -22,7 +25,7 @@ vnet_dev_rv_t vnet_dev_api_attach (vlib_main_t *,
 
 typedef struct
 {
-  vnet_dev_device_id_t device_id;
+  u32 dev_index;
 } vnet_dev_api_detach_args_t;
 vnet_dev_rv_t vnet_dev_api_detach (vlib_main_t *,
 				   vnet_dev_api_detach_args_t *);
@@ -35,7 +38,7 @@ vnet_dev_rv_t vnet_dev_api_reset (vlib_main_t *, vnet_dev_api_reset_args_t *);
 
 typedef struct
 {
-  vnet_dev_device_id_t device_id;
+  u32 dev_index;
   vnet_dev_if_name_t intf_name;
   u16 num_rx_queues;
   u16 num_tx_queues;
@@ -44,6 +47,9 @@ typedef struct
   vnet_dev_port_id_t port_id;
   vnet_dev_port_flags_t flags;
   u8 *args;
+
+  /* return */
+  u32 sw_if_index;
 } vnet_dev_api_create_port_if_args_t;
 
 vnet_dev_rv_t

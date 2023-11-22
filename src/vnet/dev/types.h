@@ -8,7 +8,7 @@
 #include <vppinfra/types.h>
 #include <vnet/dev/errors.h>
 
-typedef char vnet_dev_device_id_t[32];
+typedef char vnet_dev_device_id_t[48];
 typedef char vnet_dev_if_name_t[32];
 typedef char vnet_dev_driver_name_t[16];
 typedef char vnet_dev_bus_name_t[8];
@@ -35,7 +35,7 @@ typedef enum
 } vnet_dev_rv_t;
 
 /* do not change bit assignments - API dependency */
-#define foreach_vnet_dev_flag _ (3, NO_STATS, "don't poll device stats")
+#define foreach_vnet_dev_flag _ (0, NO_STATS, "don't poll device stats")
 
 typedef union
 {
@@ -45,12 +45,12 @@ typedef union
     foreach_vnet_dev_flag
 #undef _
   } e;
-  u64 n;
+  u32 n;
 } vnet_dev_flags_t;
 
 /* do not change bit assignments - API dependency */
 #define foreach_vnet_dev_port_flag                                            \
-  _ (3, INTERRUPT_MODE, "enable interrupt mode")
+  _ (0, INTERRUPT_MODE, "enable interrupt mode")
 
 typedef union
 {
@@ -60,7 +60,7 @@ typedef union
     foreach_vnet_dev_port_flag
 #undef _
   } e;
-  u64 n;
+  u32 n;
 } vnet_dev_port_flags_t;
 
 #endif /* _VNET_DEV_TYPES_H_ */
