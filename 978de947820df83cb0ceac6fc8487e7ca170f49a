@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0526c066_629fe5f1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2023-11-22T22:02:25Z",
+      "side": 1,
+      "message": "Please consolidate the increment in the function l2_rw_rewrite() instead.",
+      "revId": "978de947820df83cb0ceac6fc8487e7ca170f49a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
