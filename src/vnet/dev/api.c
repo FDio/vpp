@@ -114,6 +114,8 @@ done:
 
   if (rv != VNET_DEV_OK && dev)
     vnet_dev_process_call_op_no_rv (vm, dev, vnet_dev_free);
+  else if (dev)
+    args->dev_index = dev->index;
 
   return rv;
 }
@@ -121,7 +123,7 @@ done:
 vnet_dev_rv_t
 vnet_dev_api_detach (vlib_main_t *vm, vnet_dev_api_detach_args_t *args)
 {
-  vnet_dev_t *dev = vnet_dev_by_id (args->device_id);
+  vnet_dev_t *dev = vnet_dev_by_index (args->dev_index);
 
   log_debug (dev, "detach");
 
@@ -151,16 +153,16 @@ vnet_dev_rv_t
 vnet_dev_api_create_port_if (vlib_main_t *vm,
 			     vnet_dev_api_create_port_if_args_t *args)
 {
-  vnet_dev_t *dev = vnet_dev_by_id (args->device_id);
+  vnet_dev_t *dev = vnet_dev_by_index (args->dev_index);
   vnet_dev_port_t *port = 0;
   u16 n_threads = vlib_get_n_threads ();
   int default_is_intr_mode;
   vnet_dev_rv_t rv;
 
   log_debug (dev,
-	     "create_port_if: device '%s' port %u intf_name '%s' num_rx_q %u "
+	     "create_port_if: dev_index %u port %u intf_name '%s' num_rx_q %u "
 	     "num_tx_q %u rx_q_sz %u tx_q_sz %u, flags '%U' args '%v'",
-	     args->device_id, args->port_id, args->intf_name,
+	     args->dev_index, args->port_id, args->intf_name,
 	     args->num_rx_queues, args->num_tx_queues, args->rx_queue_size,
 	     args->tx_queue_size, format_vnet_dev_port_flags, &args->flags,
 	     args->args);
@@ -236,7 +238,10 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
   clib_memcpy (port->intf.name, args->intf_name, sizeof (port->intf.name));
   port->intf.default_is_intr_mode = default_is_intr_mode;
 
-  return vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_create);
+  rv = vnet_dev_process_call_port_op (vm, port, vnet_dev_port_if_create);
+  args->sw_if_index = (rv == VNET_DEV_OK) ? port->intf.sw_if_index : ~0;
+
+  return rv;
 }
 
 vnet_dev_rv_t

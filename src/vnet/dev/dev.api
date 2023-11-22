@@ -1,0 +1,86 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2022 Cisco Systems, Inc.
+ */
+
+option version = "0.0.1";
+
+enumflag dev_flags : u32
+{
+  VL_API_DEV_FLAG_NO_STATS = 0x1,
+};
+
+enumflag dev_port_flags : u32
+{
+  VL_API_DEV_PORT_FLAG_INTERRUPT_MODE = 0x1,
+};
+
+autoendian define dev_attach
+{
+  u32 client_index;
+  u32 context;
+  string device_id[48];
+  string driver_name[16];
+  vl_api_dev_flags_t flags;
+  string args[];
+};
+
+autoendian define dev_attach_reply
+{
+  u32 context;
+  u32 dev_index;
+  i32 retval;
+  string error_string[];
+};
+
+autoendian define dev_detach
+{
+  u32 client_index;
+  u32 context;
+  u32 dev_index;
+};
+
+autoendian define dev_detach_reply
+{
+  u32 context;
+  i32 retval;
+  string error_string[];
+};
+
+autoendian define dev_create_port_if
+{
+  u32 client_index;
+  u32 context;
+  u32 dev_index;
+  string intf_name[32];
+  u16 num_rx_queues;
+  u16 num_tx_queues;
+  u16 rx_queue_size;
+  u16 tx_queue_size;
+  u16 port_id;
+  vl_api_dev_port_flags_t flags;
+  string args[];
+};
+
+autoendian define dev_create_port_if_reply
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  i32 retval;
+  string error_string[];
+};
+
+autoendian define dev_remove_port_if
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+autoendian define dev_remove_port_if_reply
+{
+  u32 context;
+  i32 retval;
+  string error_string[];
+};
+

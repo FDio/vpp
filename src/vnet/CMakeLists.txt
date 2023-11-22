@@ -32,6 +32,7 @@ list(APPEND VNET_SOURCES
   dev/config.c
   dev/counters.c
   dev/dev.c
+  dev/dev_api.c
   dev/error.c
   dev/format.c
   dev/handlers.c
@@ -98,6 +99,7 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES
+  dev/dev.api
   interface.api
   interface_types.api
   ip/ip_types.api
