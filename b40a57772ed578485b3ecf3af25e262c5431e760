@@ -22,6 +22,30 @@
       },
       "revId": "b40a57772ed578485b3ecf3af25e262c5431e760",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5718b6e3_b32ae7ca",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1266,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-11-22T09:34:22Z",
+      "side": 1,
+      "message": "My intention was to introduce a new rule, so I made it more explicit in the code that ip_neighbor_event_v2 is the only exception and updated the commit message.",
+      "parentUuid": "1599040f_b947686e",
+      "range": {
+        "startLine": 1266,
+        "startChar": 38,
+        "endLine": 1266,
+        "endChar": 44
+      },
+      "revId": "b40a57772ed578485b3ecf3af25e262c5431e760",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
