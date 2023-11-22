@@ -75,6 +75,16 @@ vnet_dev_get_port_from_hw_if_index (u32 hw_if_index)
 }
 
 static_always_inline vnet_dev_t *
+vnet_dev_by_index (u32 index)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  if (pool_is_free_index (dm->devices, index))
+    return 0;
+
+  return *pool_elt_at_index (dm->devices, index);
+}
+
+static_always_inline vnet_dev_t *
 vnet_dev_by_id (char *id)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;

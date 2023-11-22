@@ -35,6 +35,7 @@
   _ (PROCESS_REPLY, "dev process reply error")                                \
   _ (RESOURCE_NOT_AVAILABLE, "resource not available")                        \
   _ (TIMEOUT, "timeout")                                                      \
+  _ (UNKNOWN_DEVICE, "unknown device")                                        \
   _ (UNKNOWN_INTERFACE, "unknown interface")                                  \
   _ (UNSUPPORTED_CONFIG, "unsupported config")                                \
   _ (UNSUPPORTED_DEVICE, "unsupported device")                                \

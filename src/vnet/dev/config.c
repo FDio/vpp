@@ -107,8 +107,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 	{
 	  vec_foreach (if_args, if_args_vec)
 	    {
-	      clib_memcpy (if_args->device_id, device_id,
-			   sizeof (if_args->device_id));
+	      if_args->dev_index = args.dev_index;
 	      rv = vnet_dev_api_create_port_if (vm, if_args);
 	      if (rv != VNET_DEV_OK)
 		break;

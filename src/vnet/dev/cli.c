@@ -56,17 +56,26 @@ static clib_error_t *
 device_detach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
 {
-  vnet_dev_api_detach_args_t a = {};
   vnet_dev_rv_t rv;
+  vnet_dev_device_id_t device_id = {};
+  vnet_dev_t *dev;
 
-  if (!unformat_user (input, unformat_c_string_array, a.device_id,
-		      sizeof (a.device_id)))
+  if (!unformat_user (input, unformat_c_string_array, device_id,
+		      sizeof (device_id)))
     return clib_error_return (0, "please specify valid device id");
 
-  rv = vnet_dev_api_detach (vm, &a);
+  dev = vnet_dev_by_id (device_id);
+
+  if (dev)
+    {
+      vnet_dev_api_detach_args_t a = { .dev_index = dev->index };
+      rv = vnet_dev_api_detach (vm, &a);
+    }
+  else
+    rv = VNET_DEV_ERR_UNKNOWN_DEVICE;
 
   if (rv != VNET_DEV_OK)
-    return clib_error_return (0, "unable to detach '%s': %U", a.device_id,
+    return clib_error_return (0, "unable to detach '%s': %U", device_id,
 			      format_vnet_dev_rv, rv);
 
   return 0;
@@ -112,11 +121,18 @@ device_create_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 {
   vnet_dev_api_create_port_if_args_t a = {};
   vnet_dev_rv_t rv;
+  vnet_dev_device_id_t device_id = {};
+  vnet_dev_t *dev = 0;
   u32 n;
 
-  if (!unformat_user (input, unformat_c_string_array, a.device_id,
-		      sizeof (a.device_id)))
+  if (unformat_user (input, unformat_c_string_array, device_id,
+		     sizeof (device_id)))
+    dev = vnet_dev_by_id (device_id);
+
+  if (!dev)
     return clib_error_return (0, "please specify valid device id");
+
+  a.dev_index = dev->index;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -153,7 +169,7 @@ device_create_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
   vec_free (a.args);
 
   if (rv != VNET_DEV_OK)
-    return clib_error_return (0, "unable to create_if '%s': %U", a.device_id,
+    return clib_error_return (0, "unable to create_if '%s': %U", device_id,
 			      format_vnet_dev_rv, rv);
 
   return 0;
