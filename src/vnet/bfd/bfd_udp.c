@@ -483,7 +483,7 @@ bfd_transport_udp6 (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
 				     is_echo ? &bm->tx_echo_counter :
 						     &bm->tx_counter);
     }
-  return 1;
+  return rv;
 }
 
 static bfd_session_t *
