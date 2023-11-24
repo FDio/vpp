@@ -1365,7 +1365,8 @@ fib_path_create (fib_node_index_t pl_index,
 	dpo_copy(&path->exclusive.fp_ex_dpo, &rpath->dpo);
     }
     else if ((path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_PROHIBIT) ||
-        (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_UNREACH))
+	(path->fp_cfg_flags & FIB_PATH_CFG_FLAG_ICMP_UNREACH) ||
+	(path->fp_cfg_flags & FIB_PATH_CFG_FLAG_DROP))
     {
         path->fp_type = FIB_PATH_TYPE_SPECIAL;
     }
