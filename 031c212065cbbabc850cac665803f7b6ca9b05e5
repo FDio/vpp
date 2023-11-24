@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fbf0fbbe_a377c43e",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-11-24T08:35:23Z",
+      "side": 1,
+      "message": "Config parameters must be passed to vpp in a specific format for parsing to occur here:\n\n(1) [\"cpu {main-core 0}\"] is not parsed (argc \u003d 2)\n(2) [\"cpu {main-core 0\", \"}\"] is not parsed (argc \u003e 2, but argv[1] does not start with \u0027main-core\u0027)\n(3) [\"cpu\", \"{\", \"main-core 0\", \"}\"] is parsed.\n\nShould we address this, or is it standard ?",
+      "range": {
+        "startLine": 225,
+        "startChar": 0,
+        "endLine": 225,
+        "endChar": 34
+      },
+      "revId": "031c212065cbbabc850cac665803f7b6ca9b05e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
