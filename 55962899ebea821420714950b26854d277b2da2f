@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8a5f7e07_468e4ea3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2023-11-24T12:36:46Z",
+      "side": 1,
+      "message": "Hello,\nthis bug affects how a FIB_PATH_CFG_FLAG_DROP path is added to an existing fib_entry via linux_cp plugin.\nCurrently such addition results in the following fib_entry with a doubled drop-path path-list.\nOnly one of those drop-paths could be removed by linux_cp, when the blackhole(drop) is deleted via linux_cp. \nSo the drop action becomes irreversible for the prefix.\n```\nError fib entry:\nipv4-VRF:0, fib_index:0, flow ...\n10.100.200.1/32 fib:0 index:11 locks:3\n  lcp-rt refs:1 entry-flags:drop, src-flags:added,contributing,active,\n    path-list:[28] locks:2 flags:drop, uPRF-list:23 len:0 itfs:[]\n      path:[36] pl-index:28 ip4 weight\u003d1 pref\u003d0 special:  cfg-flags:drop,\n        [@0]: dpo-drop ip4\n      path:[37] pl-index:28 ip4 weight\u003d1 pref\u003d0 deag:  cfg-flags:drop,\n         fib-index:0\n\n  lcp-rt-dynamic refs:1 src-flags:added,\n    path-list:[22] locks:1 flags:shared, uPRF-list:19 len:1 itfs:[1, ]\n      path:[25] pl-index:22 ip4 weight\u003d1 pref\u003d20 attached-nexthop:  oper-flags:resolved,\n        10.255.0.4 GigabitEthernet7/0/0\n      [@0]: ipv4 via 10.255.0.4 GigabitEthernet7/0/0: mtu:1500 next:5 flags:[]\n```\nWith this fix the resulting fib_entry would be rather\n```\nCorrect fib_entry:\nipv4-VRF:0, fib_index:0, flow ...\n10.100.200.1/32 fib:0 index:11 locks:3\n  lcp-rt refs:1 entry-flags:drop, src-flags:added,contributing,active,\n    path-list:[27] locks:2 flags:drop, uPRF-list:22 len:0 itfs:[]\n      path:[35] pl-index:27 ip4 weight\u003d1 pref\u003d0 special:  cfg-flags:drop,\n        [@0]: dpo-drop ip4\n\n  lcp-rt-dynamic refs:1 src-flags:added,\n    path-list:[22] locks:1 flags:shared, uPRF-list:17 len:1 itfs:[1, ]\n      path:[25] pl-index:22 ip4 weight\u003d1 pref\u003d20 attached-nexthop:  oper-flags:resolved,\n        10.255.0.4 GigabitEthernet7/0/0\n      [@0]: ipv4: via 10.255.0.4 GigabitEthernet7/0/0: mtu:1500 next:5 flags:[]\n```\nand the drop-path could be properly removed via linux_cp.\n\nWith the lack of vapi functions to model the case I didn\u0027t add a test for this one.         \nStill, please review. Thank you!",
+      "revId": "55962899ebea821420714950b26854d277b2da2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
