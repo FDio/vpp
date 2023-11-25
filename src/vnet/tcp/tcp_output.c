@@ -1279,6 +1279,7 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tc->cwnd_acc_bytes = 0;
   tc->tr_occurences += 1;
   tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
+  tc->sack_sb.rescue_rxt = tc->snd_una - 1;
   tcp_recovery_on (tc);
 }
 
@@ -1783,8 +1784,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	      goto done;
 	    }
 
-	  if (tcp_in_recovery (tc) || !can_rescue
-	      || scoreboard_rescue_rxt_valid (sb, tc))
+	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
 	    break;
 
 	  /* If rescue rxt undefined or less than snd_una then one segment of
