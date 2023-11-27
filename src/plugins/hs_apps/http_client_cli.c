@@ -370,7 +370,7 @@ hcc_connect ()
 }
 
 static clib_error_t *
-hcc_run (vlib_main_t *vm)
+hcc_run (vlib_main_t *vm, int print_output)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   hcc_main_t *hcm = &hcc_main;
@@ -407,7 +407,8 @@ hcc_run (vlib_main_t *vm)
       goto cleanup;
 
     case HCC_REPLY_RECEIVED:
-      vlib_cli_output (vm, "%v", hcm->http_response);
+      if (print_output)
+	vlib_cli_output (vm, "%v", hcm->http_response);
       vec_free (hcm->http_response);
       break;
     default:
@@ -448,7 +449,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u64 seg_size;
   u8 *appns_id = 0;
   clib_error_t *err = 0;
-  int rv;
+  int rv, print_output = 1;
 
   hcm->prealloc_fifos = 0;
   hcm->private_segment_size = 0;
@@ -472,6 +473,8 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->fifo_size <<= 10;
       else if (unformat (line_input, "uri %s", &hcm->uri))
 	;
+      else if (unformat (line_input, "no-output"))
+	print_output = 0;
       else if (unformat (line_input, "appns %_%v%_", &appns_id))
 	;
       else if (unformat (line_input, "secret %lu", &hcm->appns_secret))
@@ -506,7 +509,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
   vlib_worker_thread_barrier_release (vm);
 
-  err = hcc_run (vm);
+  err = hcc_run (vm, print_output);
 
   if (hcc_detach ())
     {
@@ -526,7 +529,7 @@ done:
 VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
   .short_help = "[appns <app-ns> secret <appns-secret>] uri http://<ip-addr> "
-		"query <query-string>",
+		"query <query-string> [no-output]",
   .function = hcc_command_fn,
   .is_mp_safe = 1,
 };
