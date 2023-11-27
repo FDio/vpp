@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ae31453_bd8608dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-11-27T23:03:23Z",
+      "side": 1,
+      "message": "Thanks, Dmitry! Was not aware of this. What exactly is failing because it seems only LDP tests are affected?",
+      "revId": "460450123a694cecf1f70b4898a1d0e60f213375",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
