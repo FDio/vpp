@@ -74,14 +74,14 @@ format_http_state (u8 *s, va_list *va)
   return format (s, "unknown");
 }
 
-static inline void
-http_state_change (http_conn_t *hc, http_state_t state)
-{
-  HTTP_DBG (1, "changing http state %U -> %U", format_http_state,
-	    hc->http_state, format_http_state, state);
-  ASSERT (hc->http_state != state);
-  hc->http_state = state;
-}
+#define http_state_change(_hc, _state)                                        \
+  do                                                                          \
+    {                                                                         \
+      HTTP_DBG (1, "changing http state %U -> %U", format_http_state,         \
+		(_hc)->http_state, format_http_state, _state);                \
+      (_hc)->http_state = _state;                                             \
+    }                                                                         \
+  while (0)
 
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
@@ -846,72 +846,73 @@ error:
   return HTTP_SM_STOP;
 }
 
-static void
-http_app_enqueue (http_conn_t *hc, session_t *as)
-{
-  app_worker_t *app_wrk;
-  u32 dlen, max_enq, n_enq;
-  int rv;
-
-  dlen = vec_len (hc->rx_buf) - hc->rx_buf_offset;
-  if (!dlen)
-    return;
-
-  max_enq = svm_fifo_max_enqueue (as->rx_fifo);
-  n_enq = clib_min (max_enq, dlen);
-  rv = svm_fifo_enqueue (as->rx_fifo, n_enq, &hc->rx_buf[hc->rx_buf_offset]);
-  if (rv < 0)
-    return;
-
-  hc->rx_buf_offset += rv;
-  if (hc->rx_buf_offset >= vec_len (hc->rx_buf))
-    {
-      vec_reset_length (hc->rx_buf);
-      hc->rx_buf_offset = 0;
-    }
-
-  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-  ASSERT (app_wrk);
-  app_worker_rx_notify (app_wrk, as);
-}
-
 static http_sm_result_t
 http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
 {
   session_t *as, *ts;
-  u32 max_deq;
-  int n_read;
+  app_worker_t *app_wrk;
+  svm_fifo_seg_t _seg, *seg = &_seg;
+  u32 max_len, max_deq, max_enq, n_segs = 1;
+  int rv, len;
 
   as = session_get_from_handle (hc->h_pa_session_handle);
   ts = session_get_from_handle (hc->h_tc_session_handle);
 
-  http_app_enqueue (hc, as);
-
-  if (hc->to_recv == 0)
+  max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+  if (max_deq == 0)
     {
-      http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+      HTTP_DBG (1, "no data to deq");
+    }
+
+  max_enq = svm_fifo_max_enqueue (as->rx_fifo);
+  if (max_enq == 0)
+    {
+      HTTP_DBG (1, "app's rx fifo full");
+      goto reschedule;
+    }
+
+  max_len = clib_min (max_enq, max_deq);
+  len = svm_fifo_segments (ts->rx_fifo, 0, seg, &n_segs, max_len);
+  if (len < 0)
+    {
+      HTTP_DBG (1, "svm_fifo_segments() len %d", len);
       return HTTP_SM_STOP;
     }
 
-  max_deq = svm_fifo_max_dequeue (ts->rx_fifo);
-  if (max_deq > 0)
+  rv = svm_fifo_enqueue_segments (as->rx_fifo, seg, 1, 0 /* allow partial */);
+  if (rv < 0)
     {
-      vec_validate (hc->rx_buf, max_deq - 1);
-      n_read = svm_fifo_dequeue (ts->rx_fifo, max_deq, hc->rx_buf);
-      ASSERT (n_read == max_deq);
-
-      if (svm_fifo_is_empty (ts->rx_fifo))
-	svm_fifo_unset_event (ts->rx_fifo);
-
-      hc->to_recv -= n_read;
-      vec_set_len (hc->rx_buf, n_read);
+      HTTP_DBG (1, "svm_fifo_enqueue_segments rv %d", rv);
+      return HTTP_SM_STOP;
     }
 
-  if (hc->rx_buf_offset < vec_len (hc->rx_buf) ||
-      svm_fifo_max_dequeue_cons (ts->rx_fifo))
+  svm_fifo_dequeue_drop (ts->rx_fifo, rv);
+  hc->to_recv -= rv;
+  HTTP_DBG (1, "drained %d from ts; remains %d", rv, hc->to_recv);
+
+  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+  ASSERT (app_wrk);
+  app_worker_rx_notify (app_wrk, as);
+  session_enqueue_notify (ts);
+
+  return HTTP_SM_CONTINUE;
+
+reschedule:
+  if (hc->to_recv == 0)
     {
-	session_enqueue_notify (ts);
+      /* make sure that app consumed all data first */
+      if (!svm_fifo_max_dequeue (as->rx_fifo) &&
+	  !svm_fifo_max_dequeue (ts->rx_fifo))
+	{
+	  hc->rx_buf_offset = 0;
+	  vec_reset_length (hc->rx_buf);
+	  http_state_change (hc, HTTP_STATE_WAIT_CLIENT_METHOD);
+	}
     }
+  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+  ASSERT (app_wrk);
+  app_worker_rx_notify (app_wrk, as);
+  session_enqueue_notify (ts);
   return HTTP_SM_CONTINUE;
 }
 
@@ -982,16 +983,13 @@ static void
 http_req_run_state_machine (http_conn_t *hc, transport_send_params_t *sp)
 {
   http_sm_result_t res;
-  do
+
+  res = state_funcs[hc->http_state](hc, sp);
+  if (res == HTTP_SM_ERROR)
     {
-      res = state_funcs[hc->http_state](hc, sp);
-      if (res == HTTP_SM_ERROR)
-	{
-	  HTTP_DBG (1, "error in state machine %d", res);
-	  return;
-	}
+      HTTP_DBG (1, "error in state machine %d", res);
+      return;
     }
-  while (res == HTTP_SM_CONTINUE);
 
   /* Reset the session expiration timer */
   http_conn_timer_update (hc);
@@ -1007,6 +1005,12 @@ http_ts_rx_callback (session_t *ts)
     {
       clib_warning ("http connection not found (ts %d)", ts->opaque);
       return -1;
+    }
+
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
+    {
+      svm_fifo_dequeue_drop_all (ts->tx_fifo);
+      return 0;
     }
 
   http_req_run_state_machine (hc, 0);
