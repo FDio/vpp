@@ -358,6 +358,9 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		"*_test.*" "*vat*" "*rdma*" "*/vpp-api/client/*" "*/plugins/af_packet/*" \
 		"*/plugins/af_xdp/*" "*/plugins/avf/*" "*/plugins/dma_intel/*" \
 		"*/plugins/hs_apps/*" "*/plugins/vmxnet3/*" "*/vnet/devices/virtio/*" \
+		"*/plugins/perfmon/arm*" "*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
+		"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/builtinurl/*" "*/vnet/flow/*" \
+		"*/plugins/http_static/builtinurl/*" "*/plugins/dev_iavf/*" \
 		-o $(BUILD_COV_DIR)/coverage-filtered.info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered.info \
 		--output-directory $(BUILD_COV_DIR)/html
