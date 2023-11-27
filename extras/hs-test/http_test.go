@@ -49,7 +49,7 @@ func HttpCliTest(s *VethsSuite) {
 	uri := "http://" + serverVeth.ip4AddressString() + "/80"
 
 	o := clientContainer.vppInstance.vppctl("http cli client" +
-		" uri " + uri + " query /show/version")
+		" uri " + uri + " query /show/vlib/graph")
 
 	s.log(o)
 	s.assertContains(o, "<html>", "<html> not found in the result!")
