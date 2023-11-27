@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca3d4164_da95ef9a",
+        "filename": "test/test_tracedump.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-11-27T20:37:43Z",
+      "side": 1,
+      "message": "Please remove this unused import",
+      "range": {
+        "startLine": 2,
+        "startChar": 40,
+        "endLine": 2,
+        "endChar": 58
+      },
+      "revId": "400003b9b3c5cbbd0daf7f69fcfe790a228829a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
