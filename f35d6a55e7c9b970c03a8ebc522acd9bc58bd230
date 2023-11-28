@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d2d9f19_a0949063",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-11-28T02:34:58Z",
+      "side": 1,
+      "message": "This should fix the intermittent failures for flowprobe plugin tests [0] on the coverage report jobs.\n\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-cov-verify-master-ubuntu2004-x86_64/617/",
+      "revId": "f35d6a55e7c9b970c03a8ebc522acd9bc58bd230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
