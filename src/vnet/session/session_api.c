@@ -1463,6 +1463,10 @@ sapi_add_del_worker_handler (app_namespace_t * app_ns,
 
 done:
 
+  /* With app sock api socket expected to be closed, no reply */
+  if (!mp->is_add && appns_sapi_enabled ())
+    return;
+
   msg.type = APP_SAPI_MSG_TYPE_ADD_DEL_WORKER_REPLY;
   rmp = &msg.worker_add_del_reply;
   rmp->retval = rv;
