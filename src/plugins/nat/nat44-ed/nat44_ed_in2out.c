@@ -153,18 +153,19 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
 			    snat_session_t *s, ip4_address_t *outside_addr,
 			    u16 *outside_port)
 {
-  if (vec_len (sm->addresses) > 0)
+  const u32 out_len = vec_len (sm->addresses);
+  if (out_len > 0)
     {
-      u32 s_addr_offset = (s_addr.as_u32 + (s_addr.as_u32 >> 8) +
-			   (s_addr.as_u32 >> 16) + (s_addr.as_u32 >> 24)) %
-			  vec_len (sm->addresses);
+      // 2654435761 is the prime closest to 32bit Fibonacci multiplier
+      // https://en.wikipedia.org/wiki/Hash_function#Fibonacci_hashing
+      u32 s_addr_offset = (2654435761U * s_addr.as_u32) % out_len;
       snat_address_t *a, *ja = 0, *ra = 0, *ba = 0;
       int i;
 
       // output feature
       if (tx_sw_if_index != ~0)
 	{
-	  for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
+	  for (i = s_addr_offset; i < out_len; ++i)
 	    {
 	      a = sm->addresses + i;
 	      if (a->fib_index == rx_fib_index)
@@ -226,7 +227,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index,
       else
 	{
 	  // first try nat pool addresses to sw interface addreses mappings
-	  for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
+	  for (i = s_addr_offset; i < out_len; ++i)
 	    {
 	      a = sm->addresses + i;
 	      if (a->fib_index == rx_fib_index)
