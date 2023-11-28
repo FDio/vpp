@@ -16,6 +16,23 @@
       "message": "Broken again after framework/asfframework refactor in I0764f79ea5bb639d278bf635ed2408d4d5220e1e",
       "revId": "5729cbb88e678d84e7c62fbf663159ef93d4c577",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "573081d0_131864f2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-11-28T20:48:26Z",
+      "side": 1,
+      "message": "Thanks Dmitry -- good catch!",
+      "revId": "5729cbb88e678d84e7c62fbf663159ef93d4c577",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
