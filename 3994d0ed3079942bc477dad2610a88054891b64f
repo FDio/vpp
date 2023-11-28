@@ -33,6 +33,24 @@
       "message": "This doesn\u0027t look very dpdk related.\n\nThe title may be changed to \"interface: move set rss queues function\". The description may be added to explain why moving the function to ethernet is more reasonable than as a generic interface feature.",
       "revId": "3994d0ed3079942bc477dad2610a88054891b64f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "af3392dd_bf1b315d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2479
+      },
+      "writtenOn": "2023-11-28T09:39:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7d29ee21_2f4adf2b",
+      "revId": "3994d0ed3079942bc477dad2610a88054891b64f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
