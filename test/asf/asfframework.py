@@ -815,6 +815,26 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         """Allow subclass specific teardown logging additions."""
         self.logger.info("--- No test specific show commands provided. ---")
 
+    def unlink_testcase_file(self, path):
+        MAX_ATTEMPTS = 9
+        retries = MAX_ATTEMPTS
+        while retries > 0:
+            retries = retries - 1
+            self.logger.debug(f"Unlinking {path}")
+            try:
+                path.unlink()
+            # Loop until unlink() fails with FileNotFoundError to ensure file is removed
+            except FileNotFoundError:
+                break
+            except OSError:
+                self.logger.debug(f"OSError: unlinking {path}")
+                self.sleep(0.25, f"{retries} retries left")
+        if retries == 0 and os.path.isfile(path):
+            self.logger.error(
+                f"Unable to delete testcase file in {MAX_ATTEMPTS} attempts: {path}"
+            )
+            raise OSError
+
     def tearDown(self):
         """Show various debug prints after each test"""
         self.logger.debug(
@@ -853,17 +873,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         if hasattr(self, "pg_interfaces") and len(self.pg_interfaces) > 0:
             testcase_dir = os.path.dirname(self.pg_interfaces[0].out_path)
             for p in Path(testcase_dir).glob("pg*.pcap"):
-                retries = 8
-                while retries > 0:
-                    retries = retries - 1
-                    self.logger.debug(f"Unlinking {p}")
-                    try:
-                        p.unlink()
-                        break
-                    except OSError:
-                        self.logger.debug(f"OSError: unlinking {p}")
-                        self.sleep(0.25, f"{retries} retries left")
-
+                self.unlink_testcase_file(p)
         self.logger.debug(
             f"--- END tearDown() {self.__class__.__name__}.{self._testMethodName}('{self._testMethodDoc}') ---"
         )

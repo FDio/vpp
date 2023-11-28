@@ -172,11 +172,8 @@ class VppPGInterface(VppInterface):
             )
 
     def remove_old_pcap_file(self, path):
-        try:
-            self.test.logger.debug(f"Removing {path}")
-            os.remove(path)
-        except OSError:
-            self.test.logger.debug(f"OSError: Could not remove {path}")
+        self.wait_for_pg_stop()
+        self.test.unlink_testcase_file(self.test, Path(path))
         return
 
     def decode_pcap_files(self, pcap_dir, filename_prefix):
