@@ -1117,7 +1117,8 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       data = tcp_init_buffer (vm, *b);
       n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
 					    max_deq_bytes);
-      ASSERT (n_bytes == max_deq_bytes);
+      ASSERT (n_bytes == clib_min (max_deq_bytes, transport_max_tx_dequeue (
+						    &tc->connection)));
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->snd_una + offset, /* compute opts */ 0,
 		      /* burst */ 0, /* update_snd_nxt */ 0);
@@ -1762,7 +1763,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       if (!hole)
 	{
 	  /* We are out of lost holes to retransmit so send some new data. */
-	  if (max_deq > tc->snd_mss)
+	  if (max_deq)
 	    {
 	      u32 n_segs_new;
 	      int av_wnd;
@@ -1772,7 +1773,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	      av_wnd = (int) tc->snd_wnd - (tc->snd_nxt - tc->snd_una);
 	      av_wnd = clib_max (av_wnd - tc->snd_mss, 0);
 	      snd_space = clib_min (snd_space, av_wnd);
-	      snd_space = clib_min (max_deq, snd_space);
+	      /* Low bound max_deq to mss to be able to send a segment even
+	       * when it is less than mss */
+	      snd_space =
+		clib_min (clib_max (max_deq, tc->snd_mss), snd_space);
 	      burst_size = clib_min (burst_size - n_segs,
 				     snd_space / tc->snd_mss);
 	      burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
