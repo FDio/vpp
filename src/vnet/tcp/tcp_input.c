@@ -2152,7 +2152,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      tcp_connection_cleanup (tc);
 	      goto drop;
 	    }
-	  error = TCP_ERROR_ACK_OK;
+	  error = TCP_ERROR_CONN_ACCEPTED;
 	  break;
 	case TCP_STATE_ESTABLISHED:
 	  /* We can get packets in established state here because they
