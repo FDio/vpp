@@ -284,7 +284,7 @@ vnet_dev_pci_msix_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 line)
   vnet_dev_t *dev = (vnet_dev_t *) vlib_pci_get_private_data (vm, h);
   vnet_dev_bus_pci_device_data_t *pdd = vnet_dev_get_bus_pci_device_data (dev);
 
-  if (line < vec_len (pdd->msix_handlers) && pdd->msix_handlers[line])
+  if (line < pdd->n_msix_int && pdd->msix_handlers[line])
     pdd->msix_handlers[line](vm, dev, line);
 }
 
