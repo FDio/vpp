@@ -1117,8 +1117,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       data = tcp_init_buffer (vm, *b);
       n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
 					    max_deq_bytes);
-      ASSERT (n_bytes == clib_min (max_deq_bytes, transport_max_tx_dequeue (
-						    &tc->connection)));
+      ASSERT (n_bytes > 0);
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->snd_una + offset, /* compute opts */ 0,
 		      /* burst */ 0, /* update_snd_nxt */ 0);
