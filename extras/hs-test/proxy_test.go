@@ -7,7 +7,7 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func testProxyHttpTcp(s *NsSuite) error {
+func testProxyHttpTcp(s *NsSuite, proto string) error {
 	const outputFile = "test.data"
 	const srcFile = "10M"
 	stopServer := make(chan struct{}, 1)
@@ -32,12 +32,11 @@ func testProxyHttpTcp(s *NsSuite) error {
 
 	clientVeth := s.netInterfaces[clientInterface]
 	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused"+
-		" --retry-on-http-error=503 --tries=10"+
-		" -O %s %s:555/%s",
-		outputFile,
-		clientVeth.ip4AddressString(),
-		srcFile,
-	)
+		" --retry-on-http-error=503 --tries=10 -O %s ", outputFile)
+	if proto == "tls" {
+		c += " --secure-protocol=TLSv1_1 --no-check-certificate https://"
+	}
+	c += fmt.Sprintf("%s:555/%s", clientVeth.ip4AddressString(), srcFile)
 	s.log(c)
 	_, err = exechelper.CombinedOutput(c)
 	s.assertNil(err, "failed to run wget")
@@ -49,13 +48,14 @@ func testProxyHttpTcp(s *NsSuite) error {
 	return nil
 }
 
-func configureVppProxy(s *NsSuite) {
+func configureVppProxy(s *NsSuite, proto string) {
 	serverVeth := s.netInterfaces[serverInterface]
 	clientVeth := s.netInterfaces[clientInterface]
 
 	testVppProxy := s.getContainerByName("vpp").vppInstance
 	output := testVppProxy.vppctl(
-		"test proxy server server-uri tcp://%s/555 client-uri tcp://%s/666",
+		"test proxy server server-uri %s://%s/555 client-uri tcp://%s/666",
+		proto,
 		clientVeth.ip4AddressString(),
 		serverVeth.peer.ip4AddressString(),
 	)
@@ -63,8 +63,16 @@ func configureVppProxy(s *NsSuite) {
 }
 
 func (s *NsSuite) TestVppProxyHttpTcp() {
-	configureVppProxy(s)
-	err := testProxyHttpTcp(s)
+	proto := "tcp"
+	configureVppProxy(s, proto)
+	err := testProxyHttpTcp(s, proto)
+	s.assertNil(err)
+}
+
+func (s *NsSuite) TestVppProxyHttpTls() {
+	proto := "tls"
+	configureVppProxy(s, proto)
+	err := testProxyHttpTcp(s, proto)
 	s.assertNil(err)
 }
 
@@ -88,6 +96,6 @@ func configureEnvoyProxy(s *NsSuite) {
 
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
 	configureEnvoyProxy(s)
-	err := testProxyHttpTcp(s)
+	err := testProxyHttpTcp(s, "tcp")
 	s.assertNil(err)
 }

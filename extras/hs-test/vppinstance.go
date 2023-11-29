@@ -58,6 +58,8 @@ plugins {
   plugin http_plugin.so { enable }
   plugin http_static_plugin.so { enable }
   plugin prom_plugin.so { enable }
+  plugin tlsopenssl_plugin.so { enable }
+  plugin crypto_openssl_plugin.so { enable }
 }
 
 logging {
