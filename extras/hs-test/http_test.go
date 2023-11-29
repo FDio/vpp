@@ -60,6 +60,18 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 	s.assertContains(o, "<http>", "<http> not found in the result!")
 }
 
+func (s *NoTopoSuite) TestHttpStaticProm() {
+	finished := make(chan error, 1)
+	query := "stats.prom"
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
+	s.log(vpp.vppctl("prom enable"))
+	go s.startWget(finished, serverAddress, "80", query, "")
+	err := <-finished
+	s.assertNil(err)
+}
+
 func (s *NoTopoSuite) TestNginxAsServer() {
 	query := "return_ok"
 	finished := make(chan error, 1)
