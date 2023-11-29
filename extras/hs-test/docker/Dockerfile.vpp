@@ -15,6 +15,8 @@ COPY \
    $DIR/http_plugin.so \
    $DIR/unittest_plugin.so \
    $DIR/quic_plugin.so \
+   $DIR/http_static_plugin.so \
+   $DIR/prom_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
 COPY vpp-data/bin/* /usr/bin/
