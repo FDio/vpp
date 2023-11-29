@@ -182,8 +182,9 @@ vnet_dev_api_hookup (vlib_main_t *vm)
   /* ask for a correctly-sized block of API message decode slots */
   vnet_dev_api_msg_id_base = setup_message_id_table ();
 
-  vl_api_set_msg_thread_safe (am, vnet_dev_api_msg_id_base + VL_API_DEV_ATTACH,
-			      1);
+  foreach_int (i, VL_API_DEV_ATTACH, VL_API_DEV_DETACH,
+	       VL_API_DEV_CREATE_PORT_IF, VL_API_DEV_REMOVE_PORT_IF)
+    vl_api_set_msg_thread_safe (am, vnet_dev_api_msg_id_base + i, 1);
 
   return 0;
 }
