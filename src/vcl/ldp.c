@@ -195,7 +195,7 @@ ldp_alloc_workers (void)
 {
   if (ldp->workers)
     return;
-  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+  ldp->workers = vec_new (ldp_worker_ctx_t, LDP_MAX_NWORKERS);
 }
 
 static void
@@ -312,11 +312,9 @@ ldp_init (void)
     }
   ldp->vcl_needs_real_epoll = 0;
   ldp_alloc_workers ();
-  ldpw = ldp_worker_get_current ();
 
-  pool_foreach (ldpw, ldp->workers)  {
+  vec_foreach (ldpw, ldp->workers)
     clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
-  }
 
   LDBG (0, "LDP initialization: done!");
 
