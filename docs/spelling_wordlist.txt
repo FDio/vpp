@@ -282,6 +282,7 @@ dpdk
 dpkg
 dpo
 dport
+drr
 dryrun
 DS
 dsa
@@ -380,6 +381,7 @@ fooC
 foreach
 formatter
 Fortville
+fq
 frontend
 fs
 fusermount
@@ -905,6 +907,7 @@ py
 pypi
 qemu
 Qemu
+qfq
 qos
 QoS
 qs
