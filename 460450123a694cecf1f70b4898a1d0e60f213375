@@ -52,6 +52,24 @@
       "parentUuid": "1c01ec53_c6786bec",
       "revId": "460450123a694cecf1f70b4898a1d0e60f213375",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1faabea9_ac5d372d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-11-29T15:12:35Z",
+      "side": 1,
+      "message": "Thanks for your quick response, both patches look and work fine.\nWith them LDP tests pass nicely with gcc-9 and gcc-11 on my machine.\n\nI\u0027ve also tried Clang 12 out of curiosity, but in that case LD_PRELOAD won\u0027t work due to missing symbols, but it supposedly is an another story.\n\nIt would be also rather nice to add ASAN tests to CI to avoid merging new code with similar issues in the future.",
+      "parentUuid": "66ab7416_1d43f759",
+      "revId": "460450123a694cecf1f70b4898a1d0e60f213375",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
