@@ -54,7 +54,7 @@ vl_api_dev_attach_t_handler (vl_api_dev_attach_t *mp)
 
   vec_free (a.args);
 
-  REPLY_MACRO3 (VL_API_DEV_ATTACH_REPLY, vec_len (error_string), ({
+  REPLY_MACRO3_END (VL_API_DEV_ATTACH_REPLY, vec_len (error_string), ({
 		  rmp->retval = rv;
 		  if (error_string)
 		    {
@@ -86,7 +86,7 @@ vl_api_dev_detach_t_handler (vl_api_dev_detach_t *mp)
   if (rv != VNET_DEV_OK)
     error_string = format (0, "%U", format_vnet_dev_rv, rv);
 
-  REPLY_MACRO3 (VL_API_DEV_DETACH_REPLY, vec_len (error_string), ({
+  REPLY_MACRO3_END (VL_API_DEV_DETACH_REPLY, vec_len (error_string), ({
 		  rmp->retval = rv;
 		  if (error_string)
 		    vl_api_vec_to_api_string (error_string,
@@ -128,7 +128,7 @@ vl_api_dev_create_port_if_t_handler (vl_api_dev_create_port_if_t *mp)
 
   vec_free (a.args);
 
-  REPLY_MACRO3 (VL_API_DEV_CREATE_PORT_IF_REPLY, vec_len (error_string), ({
+  REPLY_MACRO3_END (VL_API_DEV_CREATE_PORT_IF_REPLY, vec_len (error_string), ({
 		  rmp->retval = rv;
 		  if (error_string)
 		    {
@@ -160,7 +160,7 @@ vl_api_dev_remove_port_if_t_handler (vl_api_dev_remove_port_if_t *mp)
   if (rv != VNET_DEV_OK)
     error_string = format (0, "%U", format_vnet_dev_rv, rv);
 
-  REPLY_MACRO3 (VL_API_DEV_REMOVE_PORT_IF_REPLY, vec_len (error_string), ({
+  REPLY_MACRO3_END (VL_API_DEV_REMOVE_PORT_IF_REPLY, vec_len (error_string), ({
 		  rmp->retval = rv;
 		  if (error_string)
 		    vl_api_vec_to_api_string (error_string,
