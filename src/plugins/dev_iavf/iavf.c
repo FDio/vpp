@@ -19,6 +19,8 @@ VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .subclass_name = "init",
 };
 
+#define IAVF_MAX_QPAIRS 32
+
 static const u32 driver_cap_flags =
   /**/ VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
   /**/ VIRTCHNL_VF_LARGE_NUM_QPAIRS |
@@ -151,15 +153,15 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
     .rss_lut_size = res.rss_lut_size,
     .max_vectors = res.max_vectors,
     .vsi_id = res.vsi_res[0].vsi_id,
-    .num_qp = res.vsi_res[0].num_queue_pairs,
+    .num_qp = clib_min (IAVF_MAX_QPAIRS, res.vsi_res[0].num_queue_pairs),
   };
 
   vnet_dev_port_add_args_t port_add_args = {
     .port = {
       .attr = {
         .type = VNET_DEV_PORT_TYPE_ETHERNET,
-        .max_rx_queues = res.num_queue_pairs,
-        .max_tx_queues = res.num_queue_pairs,
+        .max_rx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
+        .max_tx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
         .max_supported_rx_frame_size = res.max_mtu,
         .caps.change_max_rx_frame_size = 1,
       },
