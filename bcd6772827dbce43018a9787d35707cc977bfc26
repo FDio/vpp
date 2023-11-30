@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad4d2623_2333421c",
+        "filename": "extras/hs-test/docker/Dockerfile.vpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-11-30T03:31:28Z",
+      "side": 1,
+      "message": "This is not needed for tlsopenssl",
+      "range": {
+        "startLine": 21,
+        "startChar": 3,
+        "endLine": 21,
+        "endChar": 34
+      },
+      "revId": "bcd6772827dbce43018a9787d35707cc977bfc26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "902d2cc6_e8117a85",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-11-30T03:31:28Z",
+      "side": 1,
+      "message": "hum, 1.2 or 1.3 but we could just let it default to what it wants. Any reason why you wanted explicit control?",
+      "range": {
+        "startLine": 37,
+        "startChar": 11,
+        "endLine": 37,
+        "endChar": 35
+      },
+      "revId": "bcd6772827dbce43018a9787d35707cc977bfc26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f162d9b3_e56e2e35",
+        "filename": "extras/hs-test/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-11-30T03:31:28Z",
+      "side": 1,
+      "message": "Should not be needed",
+      "range": {
+        "startLine": 62,
+        "startChar": 2,
+        "endLine": 62,
+        "endChar": 44
+      },
+      "revId": "bcd6772827dbce43018a9787d35707cc977bfc26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
