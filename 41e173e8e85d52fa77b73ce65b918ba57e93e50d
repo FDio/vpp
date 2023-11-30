@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "59a1dabc_0196e369",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-11-30T16:10:40Z",
+      "side": 1,
+      "message": "this will break scalar metadata embedded into frame, as node may reuse frame which have packets with different sw_if_index...",
+      "revId": "41e173e8e85d52fa77b73ce65b918ba57e93e50d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
