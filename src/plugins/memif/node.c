@@ -643,7 +643,7 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	vnet_feature_start_device_input (mif->sw_if_index, &next_index,
 					 &ptd->buffer_template);
 
-      vlib_get_new_next_frame (vm, node, next_index, to_next_bufs,
+      vlib_get_next_frame (vm, node, next_index, to_next_bufs,
 			       n_left_to_next);
       if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
 	{
