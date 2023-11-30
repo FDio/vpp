@@ -70,6 +70,24 @@
       "parentUuid": "66ab7416_1d43f759",
       "revId": "460450123a694cecf1f70b4898a1d0e60f213375",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fdbe14bf_067b9fdc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-11-30T00:24:34Z",
+      "side": 1,
+      "message": "As far as I can remember, ASAN won\u0027t work with clang. And completely agreed, hopefully we\u0027ll get ASAN tests added to CI soon.\n\nThanks again for the report and for confirming the fixes!",
+      "parentUuid": "1faabea9_ac5d372d",
+      "revId": "460450123a694cecf1f70b4898a1d0e60f213375",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
