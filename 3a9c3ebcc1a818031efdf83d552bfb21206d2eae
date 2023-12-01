@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f26ff48_62137a12",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-12-01T09:09:38Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-verify-master-debian11-x86_64/4500/ : FAILURE\n\nERROR: Error cloning remote repo \u0027origin\u0027\n\nrecheck",
+      "revId": "3a9c3ebcc1a818031efdf83d552bfb21206d2eae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
