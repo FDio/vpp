@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02e2cdd2_4e4f842d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2023-12-01T12:02:46Z",
+      "side": 1,
+      "message": "Cherry Picked from branch master.",
+      "revId": "ba74f93134e0a3eeb3fcf1e347427e5dc32cddde",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
