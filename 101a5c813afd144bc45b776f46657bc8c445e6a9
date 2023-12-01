@@ -16,6 +16,23 @@
       "message": "Cherry Picked from branch master.",
       "revId": "101a5c813afd144bc45b776f46657bc8c445e6a9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c935d81c_b7f8366b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-12-01T19:17:38Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "101a5c813afd144bc45b776f46657bc8c445e6a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
