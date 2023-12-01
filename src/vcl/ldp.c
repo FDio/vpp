@@ -1867,7 +1867,6 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
       if (size < 0)
 	{
 	  int errno_val = errno;
-	  perror (func_str);
 	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
 			"rv %d, errno = %d", getpid (), fd, fd,
 			func_str, size, errno_val);
