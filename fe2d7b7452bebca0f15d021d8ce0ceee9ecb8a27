@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "47e67cca_25bbae4c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Thank you for the comments. Looking into them today.",
+      "parentUuid": "7b353c8b_3caa0478",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0f4d2969_f0060a71",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-12-01T12:49:34Z",
       "side": 1,
       "message": "I don\u0027t think this is useful anymore?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a73949fd_ee616283",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Agreed. Modified to remove initialization using \u0027clib_bitmap_first_set()\u0027",
+      "parentUuid": "0f4d2969_f0060a71",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -54,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d6edf799_c902be2e",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "I think it is useful.\n\n\u0027avail_cpu\u0027 contains a bitmap of all available CPUs on the host machine by default. Here we override \u0027avail_cpu\u0027 to contain a bitmap of CPUs only available within the current cgroup.",
+      "parentUuid": "098d4b7e_f7710d0c",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ff025c1c_9a72f2b0",
         "filename": "src/vlib/threads.c",
         "patchSetId": 18
@@ -65,6 +119,24 @@
       "writtenOn": "2023-12-01T12:49:34Z",
       "side": 1,
       "message": "relative_cpu_map should be freed before return to avoid memleaks",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9c212dc_20a9dab0",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Added, thanks.",
+      "parentUuid": "ff025c1c_9a72f2b0",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -82,6 +154,24 @@
       "writtenOn": "2023-12-01T12:49:34Z",
       "side": 1,
       "message": "relative_cpu_map and relative_coremask should be freed before return to avoid memleaks",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d4551a3_c51fbfdb",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Added, thanks.",
+      "parentUuid": "ee7079e1_9689fff9",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -105,6 +195,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ff699943_132855df",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Agreed, usage of duplicate is not necessary.\nFeedback on the updated approach ?",
+      "parentUuid": "af587ad0_d05a16d3",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fc1f9af8_dc81b027",
         "filename": "src/vlib/threads.c",
         "patchSetId": 18
@@ -116,6 +224,24 @@
       "writtenOn": "2023-12-01T12:49:34Z",
       "side": 1,
       "message": "I don\u0027t remember why is it needed?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f8eb782_b63529f7",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "\u0027clib_error_report\u0027 prints detailed error message, but does not stop execution.\n\u0027clib_unix_error\u0027 executes exit() to stop execution.\n\nShould we only keep \u0027clib_unix_error\u0027 with a more advanced error message ? Should we attempt to use \u0027clib_error_return\u0027 or similar to end execution with a non-zero return value ?",
+      "parentUuid": "fc1f9af8_dc81b027",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -139,6 +265,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9f3728e1_76aea083",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 914,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Same issue as above comment.",
+      "parentUuid": "f39c40b5_ce10c9c5",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "dd09c4d0_dad5116c",
         "filename": "src/vlib/threads_cli.c",
         "patchSetId": 18
@@ -156,6 +300,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "dc2ff801_13ef559e",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Modified to display an additional column in case of relative mapping.\nFeedback on the updated approach ?",
+      "parentUuid": "dd09c4d0_dad5116c",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3629b9d7_1344abab",
         "filename": "src/vpp/vnet/main.c",
         "patchSetId": 18
@@ -167,6 +329,24 @@
       "writtenOn": "2023-12-01T12:49:34Z",
       "side": 1,
       "message": "Something like \"pthread_setaffinity_np() on cpu %d failed for main thread\" would be more clear for the user I think.",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18fec070_91b7e57b",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Agreed. Modified error messages displayed by clib_unix_error().",
+      "parentUuid": "3629b9d7_1344abab",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

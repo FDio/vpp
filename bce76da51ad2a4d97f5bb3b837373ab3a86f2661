@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a186ec3a_10a03379",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Changed length associated to \u0027numa_id\u0027 since column title took more than 7 chars of space (\"Socket\"\"State\"), and also since numa_id value might be above 11 digits which caused overlap with \u0027relative_core\u0027 value.\n\nThis change is fine ?",
+      "range": {
+        "startLine": 80,
+        "startChar": 2,
+        "endLine": 80,
+        "endChar": 68
+      },
+      "revId": "bce76da51ad2a4d97f5bb3b837373ab3a86f2661",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

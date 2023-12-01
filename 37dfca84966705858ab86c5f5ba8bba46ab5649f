@@ -16,6 +16,24 @@
       "message": "function name should be prefixed, eg. vlib_thread_get_relative_cgroup_mapping_vec()",
       "revId": "37dfca84966705858ab86c5f5ba8bba46ab5649f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8fb6cb95_ccd7e7f6",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-01T15:29:45Z",
+      "side": 1,
+      "message": "Thanks. Modified function name.",
+      "parentUuid": "7d48968b_f9344083",
+      "revId": "37dfca84966705858ab86c5f5ba8bba46ab5649f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
