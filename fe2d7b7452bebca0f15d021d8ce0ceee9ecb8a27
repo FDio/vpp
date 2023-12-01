@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b353c8b_3caa0478",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "Looks good, thanks a lot. I have a few comments.",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f4d2969_f0060a71",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "I don\u0027t think this is useful anymore?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "098d4b7e_f7710d0c",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "I don\u0027t think it is useful anymore?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff025c1c_9a72f2b0",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "relative_cpu_map should be freed before return to avoid memleaks",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee7079e1_9689fff9",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "relative_cpu_map and relative_coremask should be freed before return to avoid memleaks",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af587ad0_d05a16d3",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "relative_coremask is already allocated, why duplicate is needed here?\nmoreover you are not freeing the original tr-\u003ecoremask this will create a memleak",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc1f9af8_dc81b027",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "I don\u0027t remember why is it needed?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f39c40b5_ce10c9c5",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 914,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "I don\u0027t remember why is it needed?",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd09c4d0_dad5116c",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "As discussed it should be better to add an additional column in case of relative mapping instead",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3629b9d7_1344abab",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-01T12:49:34Z",
+      "side": 1,
+      "message": "Something like \"pthread_setaffinity_np() on cpu %d failed for main thread\" would be more clear for the user I think.",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
