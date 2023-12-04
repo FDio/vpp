@@ -50,10 +50,12 @@ class TestTracedump(VppTestCase):
 
         self.vapi.trace_clear_cache()
         self.vapi.trace_clear_capture()
-        # pg-input node = 425
-        self.vapi.trace_set_filters(flag=1, node_index=425, count=5)
+        reply = self.vapi.graph_node_get(cursor=ctypes.c_uint32(~0).value, index=ctypes.c_uint32(~0).value, name='pg-input')
+        self.assertTrue(reply[1][0].name == "pg-input")
+        pg_input_index = reply[1][0].index
+        self.vapi.trace_set_filters(flag=1, node_index=pg_input_index, count=5)
         self.vapi.trace_capture_packets(
-            node_index=425,
+            node_index=pg_input_index,
             max_packets=5,
             use_filter=True,
             verbose=True,
@@ -66,8 +68,6 @@ class TestTracedump(VppTestCase):
         self.assertIn("af-packet-input", reply)
 
         self.pg_start()
-        reply = self.vapi.graph_node_get(cursor=ctypes.c_uint32(~0).value, index=425)
-        self.assertTrue(reply[1][0].name == "pg-input")
         reply = self.vapi.trace_v2_dump(
             thread_id=ctypes.c_uint32(~0).value, position=0, clear_cache=False
         )
@@ -84,9 +84,12 @@ class TestTracedump(VppTestCase):
         self.pg0.add_stream(packets)
 
         # exclude node
-        self.vapi.trace_set_filters(flag=2, node_index=425, count=5)
+        reply = self.vapi.graph_node_get(cursor=ctypes.c_uint32(~0).value, index=ctypes.c_uint32(~0).value, name='pg-input')
+        self.assertTrue(reply[1][0].name == "pg-input")
+        pg_input_index = reply[1][0].index
+        self.vapi.trace_set_filters(flag=2, node_index=pg_input_index, count=5)
         self.vapi.trace_capture_packets(
-            node_index=425,
+            node_index=pg_input_index,
             max_packets=5,
             use_filter=True,
             verbose=True,
