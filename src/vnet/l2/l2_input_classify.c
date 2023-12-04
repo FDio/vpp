@@ -462,7 +462,6 @@ VLIB_REGISTER_NODE (l2_input_classify_node) = {
     [L2_INPUT_CLASSIFY_NEXT_ETHERNET_INPUT] = "ethernet-input-not-l2",
     [L2_INPUT_CLASSIFY_NEXT_IP4_INPUT] = "ip4-input",
     [L2_INPUT_CLASSIFY_NEXT_IP6_INPUT] = "ip6-input",
-    [L2_INPUT_CLASSIFY_NEXT_LI] = "li-hit",
   },
 };
 /* *INDENT-ON* */

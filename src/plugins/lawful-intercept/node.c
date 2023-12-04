@@ -17,7 +17,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include <lawful-intercept/lawful_intercept.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
