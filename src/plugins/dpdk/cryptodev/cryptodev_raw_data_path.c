@@ -463,8 +463,7 @@ cryptodev_post_dequeue (void *frame, u32 index, u8 is_op_success)
 }
 
 static_always_inline u8
-cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
-				u32 *enqueue_thread_idx)
+cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *enqueue_thread_idx)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
@@ -511,7 +510,6 @@ cryptodev_raw_dequeue_internal (vlib_main_t *vm, u32 *nb_elts_processed,
 	(CRYPTODEV_CACHE_QUEUE_SIZE - ring->tail + ring->deq_tail) &
 	CRYPTODEV_CACHE_QUEUE_MASK;
 
-      *nb_elts_processed = frame->n_elts;
       *enqueue_thread_idx = frame->enqueue_thread_index;
       dequeue_more = (fr_processed < CRYPTODEV_MAX_PROCESED_IN_CACHE_QUEUE);
     }
@@ -550,8 +548,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   u8 dequeue_more = 1;
 
   while (cet->inflight > 0 && dequeue_more)
-      dequeue_more = cryptodev_raw_dequeue_internal (vm, nb_elts_processed,
-						     enqueue_thread_idx);
+    dequeue_more = cryptodev_raw_dequeue_internal (vm, enqueue_thread_idx);
 
   if (PREDICT_TRUE (ring->frames[ring->enq_head].f != 0))
     cryptodev_enqueue_frame_to_qat (vm, &ring->frames[ring->enq_head]);
@@ -559,6 +556,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   if (PREDICT_TRUE (ring_elt->f != 0) &&
       (ring_elt->n_elts == ring_elt->deq_elts_tail))
     {
+      *nb_elts_processed = ring_elt->n_elts;
       vlib_node_set_interrupt_pending (
 	vlib_get_main_by_index (vm->thread_index), cm->crypto_node_index);
       ret_frame = cryptodev_cache_ring_pop (ring);
