@@ -1333,12 +1333,11 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
   return 0;
 }
 
-#define foreach_l2_input_next                   \
-_(drop, DROP)                                   \
-_(ethernet, ETHERNET_INPUT)                     \
-_(ip4, IP4_INPUT)                               \
-_(ip6, IP6_INPUT)				\
-_(li, LI)
+#define foreach_l2_input_next                                                 \
+  _ (drop, DROP)                                                              \
+  _ (ethernet, ETHERNET_INPUT)                                                \
+  _ (ip4, IP4_INPUT)                                                          \
+  _ (ip6, IP6_INPUT)
 
 uword
 unformat_l2_input_next_index (unformat_input_t * input, va_list * args)
