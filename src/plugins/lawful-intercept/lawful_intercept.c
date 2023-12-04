@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include <lawful-intercept/lawful_intercept.h>
 
 li_main_t li_main;
 
@@ -105,15 +105,29 @@ static clib_error_t *
 li_init (vlib_main_t * vm)
 {
   li_main_t *lm = &li_main;
+  vlib_node_t *node;
 
   lm->vlib_main = vm;
   lm->vnet_main = vnet_get_main ();
   lm->hit_node_index = li_hit_node.index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "l2-input-classify");
+  vlib_node_add_next (vm, node->index, lm->hit_node_index);
+
   return 0;
 }
 
-VLIB_INIT_FUNCTION (li_init);
+VLIB_INIT_FUNCTION (li_init) = {
+  .runs_after = VLIB_INITS ("l2_input_classify_init")
+};
 
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
+
+VLIB_PLUGIN_REGISTER () = {
+  .version = VPP_BUILD_VER,
+  .description = "Lawful Intercept",
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
