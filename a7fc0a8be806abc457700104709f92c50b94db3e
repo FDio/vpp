@@ -1,6 +1,40 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "b07cc929_79bc062b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-12-04T16:31:55Z",
+      "side": 1,
+      "message": "subject should be lovercase except for abbreviations",
+      "revId": "a7fc0a8be806abc457700104709f92c50b94db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5c1c9c24_09e91d83",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-12-04T16:31:55Z",
+      "side": 1,
+      "message": "Fixes: missing",
+      "revId": "a7fc0a8be806abc457700104709f92c50b94db3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "65f775a6_0e30a656",
