@@ -121,6 +121,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   virtchnl_version_info_t ver;
   virtchnl_vf_resource_t res;
   u32 n_threads = vlib_get_n_threads ();
+  u16 max_frame_sz;
   vnet_dev_rv_t rv;
 
   log_debug (dev, "init");
@@ -147,6 +148,17 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (res.num_vsis != 1 || res.vsi_res[0].vsi_type != VIRTCHNL_VSI_SRIOV)
     return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
 
+  if (res.max_mtu == 0)
+    {
+      log_warn (dev, "PF driver is reporting invalid value of 0 for max_mtu, "
+		     "consider upgrade");
+      max_frame_sz = ETHERNET_MAX_PACKET_BYTES;
+    }
+  else
+    /* reverse of PF driver MTU calculation */
+    max_frame_sz = res.max_mtu + 14 /* ethernet header */ + 4 /* FCS */ +
+		   2 * 4 /* two VLAN tags */;
+
   iavf_port_t iavf_port = {
     .vf_cap_flags = res.vf_cap_flags,
     .rss_key_size = res.rss_key_size,
@@ -162,7 +174,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         .type = VNET_DEV_PORT_TYPE_ETHERNET,
         .max_rx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
         .max_tx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
-        .max_supported_rx_frame_size = res.max_mtu,
+        .max_supported_rx_frame_size = max_frame_sz,
         .caps.change_max_rx_frame_size = 1,
       },
       .ops = {
