@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b08b0be7_f7448b7f",
+        "filename": "src/plugins/crypto_openssl/crypto_openssl.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2023-12-04T23:56:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ca0b9f4f_4194b1ef",
+      "revId": "f2d75bc51c6650c0b08641de2fc679604ab98b06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7efc32a0_b1613800",
@@ -31,6 +49,24 @@
       "writtenOn": "2023-12-04T16:29:43Z",
       "side": 1,
       "message": "not needed anymore since we moved to clang-format",
+      "revId": "f2d75bc51c6650c0b08641de2fc679604ab98b06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddda8868_4a099fa4",
+        "filename": "src/plugins/crypto_openssl/crypto_openssl.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2023-12-04T23:56:18Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7efc32a0_b1613800",
       "revId": "f2d75bc51c6650c0b08641de2fc679604ab98b06",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
