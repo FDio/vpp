@@ -779,7 +779,9 @@ state_cln_wait_method (http_conn_t *hc, transport_send_params_t *sp)
     }
 
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
-  app_worker_rx_notify (app_wrk, as);
+  if (app_wrk)
+    app_worker_rx_notify (app_wrk, as);
+
   return HTTP_SM_STOP;
 }
 
