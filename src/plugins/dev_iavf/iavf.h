@@ -113,6 +113,8 @@ vnet_dev_rv_t iavf_port_start (vlib_main_t *, vnet_dev_port_t *);
 void iavf_port_stop (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t iavf_port_cfg_change (vlib_main_t *, vnet_dev_port_t *,
 				    vnet_dev_port_cfg_change_req_t *);
+vnet_dev_rv_t iavf_port_cfg_change_validate (vlib_main_t *, vnet_dev_port_t *,
+					     vnet_dev_port_cfg_change_req_t *);
 
 /* queue.c */
 vnet_dev_rv_t iavf_rx_queue_alloc (vlib_main_t *, vnet_dev_rx_queue_t *);
