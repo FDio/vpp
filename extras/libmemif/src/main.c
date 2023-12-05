@@ -1549,9 +1549,8 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   uint16_t ns;
   int err = MEMIF_ERR_SUCCESS;	/* 0 */
   uint16_t dst_left, src_left;
-  uint16_t saved_count;
+  uint16_t saved_count_out, delta_count;
   uint16_t saved_next_buf;
-  uint16_t slot;
   memif_buffer_t *saved_b;
   *count_out = 0;
 
@@ -1567,7 +1566,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
       b0 = (bufs + *count_out);
 
       saved_b = b0;
-      saved_count = count;
+      saved_count_out = *count_out;
       saved_next_buf = mq->next_buf;
 
       b0->desc_index = mq->next_buf;
@@ -1583,12 +1582,8 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 	{
 	  if (EXPECT_FALSE (dst_left == 0))
 	    {
-	      if (count && ns)
+	      if (ns)
 		{
-		  *count_out += 1;
-		  mq->next_buf++;
-		  ns--;
-
 		  ring->desc[b0->desc_index & mask].flags |=
 		    MEMIF_DESC_FLAG_NEXT;
 		  b0->flags |= MEMIF_BUFFER_FLAG_NEXT;
@@ -1603,9 +1598,9 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 	      else
 		{
 		  /* rollback allocated chain buffers */
-		  memset (saved_b, 0, sizeof (memif_buffer_t)
-			  * (saved_count - count + 1));
-		  *count_out -= saved_count - count;
+		  delta_count = *count_out - saved_count_out;
+		  memset (saved_b, 0, sizeof (memif_buffer_t) * delta_count);
+		  *count_out -= delta_count;
 		  mq->next_buf = saved_next_buf;
 		  goto no_ns;
 		}
@@ -1615,7 +1610,7 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 	  /* slave resets buffer offset */
 	  if (c->args.is_master == 0)
 	    {
-	      memif_desc_t *d = &ring->desc[slot & mask];
+	      memif_desc_t *d = &ring->desc[mq->next_buf & mask];
 	      if (ms->get_external_buffer_offset)
 		d->offset = ms->get_external_buffer_offset (c->private_ctx);
 	      else
@@ -1625,18 +1620,17 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 
 	  src_left -= b0->len;
 	  dst_left -= b0->len;
+	  *count_out += 1;
+	  mq->next_buf++;
+	  ns--;
 	}
-
-      *count_out += 1;
-      mq->next_buf++;
-      ns--;
       count--;
     }
 
 no_ns:
 
-  DBG ("allocated: %u/%u bufs. Next buffer pointer %d", *count_out, count,
-       mq->next_buf);
+  DBG ("allocated: %u/%u bufs, size: %u. Next buffer pointer %d", *count_out,
+       count, size, mq->next_buf);
 
   if (count)
     {
