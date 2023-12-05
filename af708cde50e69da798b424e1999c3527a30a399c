@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86c07054_e13fd957",
+        "filename": "src/vnet/tls/tls.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2023-12-05T15:23:09Z",
+      "side": 1,
+      "message": "would it be more consistent with your macros to call this conn_flags instead of flags?",
+      "revId": "af708cde50e69da798b424e1999c3527a30a399c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
