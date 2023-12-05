@@ -117,6 +117,9 @@ tls_ctx_half_open_alloc (void)
   tls_main_t *tm = &tls_main;
   tls_ctx_t *ctx;
 
+  if (vec_len (tm->postponed_ho_free))
+    tls_flush_postponed_ho_cleanups ();
+
   pool_get_aligned_safe (tm->half_open_ctx_pool, ctx, CLIB_CACHE_LINE_BYTES);
 
   clib_memset (ctx, 0, sizeof (*ctx));
@@ -137,6 +140,49 @@ tls_ctx_half_open_get (u32 ctx_index)
 {
   tls_main_t *tm = &tls_main;
   return pool_elt_at_index (tm->half_open_ctx_pool, ctx_index);
+}
+
+void
+tls_add_postponed_ho_cleanups (u32 ho_index)
+{
+  tls_main_t *tm = &tls_main;
+  vec_add1 (tm->postponed_ho_free, ho_index);
+}
+
+static void
+tls_ctx_ho_try_free (u32 ho_index)
+{
+  tls_ctx_t *ctx;
+
+  ctx = tls_ctx_half_open_get (ho_index);
+  /* Probably tcp connected just before tcp establish timeout and
+   * worker that owns established session has not yet received
+   * @ref tls_session_connected_cb */
+  if (!(ctx->flags & TLS_CONN_F_HO_DONE))
+    {
+      ctx->tls_session_handle = SESSION_INVALID_HANDLE;
+      tls_add_postponed_ho_cleanups (ho_index);
+      return;
+    }
+  if (!ctx->no_app_session)
+    session_half_open_delete_notify (&ctx->connection);
+  tls_ctx_half_open_free (ho_index);
+}
+
+void
+tls_flush_postponed_ho_cleanups ()
+{
+  tls_main_t *tm = &tls_main;
+  u32 *ho_indexp, *tmp;
+
+  tmp = tm->postponed_ho_free;
+  tm->postponed_ho_free = tm->ho_free_list;
+  tm->ho_free_list = tmp;
+
+  vec_foreach (ho_indexp, tm->ho_free_list)
+    tls_ctx_ho_try_free (*ho_indexp);
+
+  vec_reset_length (tm->ho_free_list);
 }
 
 void
@@ -421,15 +467,8 @@ tls_session_reset_callback (session_t * s)
 static void
 tls_session_cleanup_ho (session_t *s)
 {
-  tls_ctx_t *ctx;
-  u32 ho_index;
-
   /* session opaque stores the opaque passed on connect */
-  ho_index = s->opaque;
-  ctx = tls_ctx_half_open_get (ho_index);
-  if (!ctx->no_app_session)
-    session_half_open_delete_notify (&ctx->connection);
-  tls_ctx_half_open_free (ho_index);
+  tls_ctx_ho_try_free (s->opaque);
 }
 
 int
@@ -551,6 +590,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   u32 ctx_handle;
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
+  ho_ctx->flags |= TLS_CONN_F_HO_DONE;
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
@@ -616,6 +656,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
       u32 api_context;
 
       ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
+      ho_ctx->flags |= TLS_CONN_F_HO_DONE;
       app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
       if (app_wrk)
 	{
@@ -950,6 +991,14 @@ tls_cleanup_ho (u32 ho_index)
   session_t *s;
 
   ctx = tls_ctx_half_open_get (ho_index);
+  /* Already pending cleanup */
+  if (ctx->tls_session_handle == SESSION_INVALID_HANDLE)
+    {
+      ASSERT (ctx->flags & TLS_CONN_F_HO_DONE);
+      ctx->no_app_session = 1;
+      return;
+    }
+
   s = session_get_from_handle (ctx->tls_session_handle);
   /* If no pending cleanup notification, force cleanup now. Otherwise,
    * wait for cleanup notification and set no app session on ctx */
