@@ -145,7 +145,9 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
 
   for (u16 i = 0; i < ap->num_qp; i++)
     ci->qpair[i] = (virtchnl_queue_pair_info_t){
-      .rxq = { .vsi_id = vsi_id, .queue_id = i },
+      .rxq = { .vsi_id = vsi_id,
+	       .queue_id = i,
+	       .max_pkt_size = ETHERNET_MIN_PACKET_BYTES },
       .txq = { .vsi_id = vsi_id, .queue_id = i },
     };
 
