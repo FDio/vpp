@@ -544,6 +544,10 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword n_rx_packets = 0;
   vnet_hw_if_rxq_poll_vector_t *pv;
   u32 thread_index = vm->thread_index;
+  int i, j;
+
+  dpdk_per_thread_data_t *ptd =
+    vec_elt_at_index (dm->per_thread_data, thread_index);
 
   /*
    * Poll all devices on this cpu for input/interrupts.
@@ -551,11 +555,18 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
 
-  for (int i = 0; i < vec_len (pv); i++)
+  for (j = 0; j < vec_len (pv); j++)
     {
+      i = (j + ptd->rxq_offset) % vec_len (pv);
       xd = vec_elt_at_index (dm->devices, pv[i].dev_instance);
       n_rx_packets +=
 	dpdk_device_input (vm, dm, xd, node, thread_index, pv[i].queue_id);
+      if (0 != n_rx_packets)
+	{
+	  ptd->rxq_offset = i + 1;
+	  // Return immediatelly to avoid VPP-2090.
+	  break;
+	}
     }
   return n_rx_packets;
 }
