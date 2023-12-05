@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f9f9ebf_39bc2c80",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-12-05T15:02:52Z",
+      "side": 1,
+      "message": "perftest-3n-icx nic_*ANDdrv_mlx5_coreAND1cAND64bANDethip4-ip4base !soak",
+      "revId": "ec952ccdc1664e35eda361b7792988673d778018",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
