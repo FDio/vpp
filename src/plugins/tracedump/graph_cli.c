@@ -75,9 +75,9 @@ graph_node_show_cmd (vlib_main_t * vm,
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "node %d", &index))
-	  n = vlib_get_node (vm, index);
-      else if (unformat (input, "node %v", &name))
-	  n = vlib_get_node_by_name (vm, name);
+	n = vlib_get_node (vm, index);
+      else if (unformat (input, "node %s", &name))
+	n = vlib_get_node_by_name (vm, name);
 
       else if (unformat (input, "want_arcs"))
 	want_arcs = true;
