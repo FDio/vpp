@@ -360,12 +360,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 			       pci_dev->addr.devid, pci_dev->addr.function);
 	  else
 	    xd->name = format (xd->name, "%u", port_id);
-	}
 
-      /* Handle representor devices that share the same PCI ID */
-      if ((di.switch_info.domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) &&
-	  (di.switch_info.port_id != (uint16_t) -1))
-	xd->name = format (xd->name, "/%d", di.switch_info.port_id);
+	  /* Handle representor devices that share the same PCI ID */
+	  if ((di.switch_info.domain_id !=
+	       RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) &&
+	      (di.switch_info.port_id != (uint16_t) -1))
+	    xd->name = format (xd->name, "/%d", di.switch_info.port_id);
+	}
 
       /* number of RX and TX queues */
       if (devconf->num_tx_queues > 0)
