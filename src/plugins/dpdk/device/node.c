@@ -551,7 +551,7 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   pv = vnet_hw_if_get_rxq_poll_vector (vm, node);
 
-  for (int i = 0; i < vec_len (pv); i++)
+  for (int i = vec_len (pv) - 1; i >= 0; i--)
     {
       xd = vec_elt_at_index (dm->devices, pv[i].dev_instance);
       n_rx_packets +=
