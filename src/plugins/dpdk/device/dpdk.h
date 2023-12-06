@@ -304,7 +304,7 @@ typedef struct
 
 extern dpdk_config_main_t dpdk_config_main;
 
-#define DPDK_RX_BURST_SZ VLIB_FRAME_SIZE
+#define DPDK_RX_BURST_SZ 64
 #define DPDK_RX_SUB_BURST_SZ 64
 
 typedef struct
