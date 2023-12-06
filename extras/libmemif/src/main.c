@@ -1267,7 +1267,7 @@ memif_init_queues (memif_connection_t *conn)
       ring->flags = 0;
       for (j = 0; j < (1 << conn->run_args.log2_ring_size); j++)
 	{
-	  uint16_t slot = i * (1 << conn->run_args.log2_ring_size) + j;
+	  uint32_t slot = i * (1 << conn->run_args.log2_ring_size) + j;
 	  ring->desc[j].region = 1;
 	  ring->desc[j].offset =
 	    conn->regions[1].buffer_offset +
@@ -1284,8 +1284,8 @@ memif_init_queues (memif_connection_t *conn)
       ring->flags = 0;
       for (j = 0; j < (1 << conn->run_args.log2_ring_size); j++)
 	{
-	  uint16_t slot = (i + conn->run_args.num_s2m_rings) *
-	    (1 << conn->run_args.log2_ring_size) + j;
+	  uint32_t base = (i + conn->run_args.num_s2m_rings);
+	  uint32_t slot = base * (1 << conn->run_args.log2_ring_size) + j;
 	  ring->desc[j].region = 1;
 	  ring->desc[j].offset =
 	    conn->regions[1].buffer_offset +
