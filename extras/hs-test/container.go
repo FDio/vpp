@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/edwarnicke/exechelper"
 )
@@ -137,6 +138,18 @@ func (c *Container) getContainerArguments() string {
 	return args
 }
 
+func (c *Container) runWithRetry(cmd string) error {
+	nTries := 5
+	for i := 0; i < nTries; i++ {
+		err := exechelper.Run(cmd)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("failed to run container command")
+}
+
 func (c *Container) create() error {
 	cmd := "docker create " + c.getContainerArguments()
 	c.suite.log(cmd)
@@ -146,7 +159,7 @@ func (c *Container) create() error {
 func (c *Container) start() error {
 	cmd := "docker start " + c.name
 	c.suite.log(cmd)
-	return exechelper.Run(cmd)
+	return c.runWithRetry(cmd)
 }
 
 func (c *Container) prepareCommand() (string, error) {
@@ -179,8 +192,7 @@ func (c *Container) run() error {
 	if err != nil {
 		return err
 	}
-
-	return exechelper.Run(cmd)
+	return c.runWithRetry(cmd)
 }
 
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
