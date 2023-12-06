@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "125a85cb_d1709f40",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2023-12-06T15:41:03Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ba7f91249d757a0b64b18b9745fc1bf85f01741b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9e6c2349_85129f7c",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1542,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2023-12-06T15:41:03Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ba7f91249d757a0b64b18b9745fc1bf85f01741b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
