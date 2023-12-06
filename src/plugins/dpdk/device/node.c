@@ -354,6 +354,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   u32 or_flags;
   u32 n;
   int single_next = 0;
+  u8 cold_streak = 0;
 
   dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
 						  thread_index);
@@ -372,7 +373,13 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       n_rx_packets += n;
 
       if (n < n_to_rx)
-	break;
+	{
+	  cold_streak += 1;
+	  if (cold_streak >= 100)
+	    break;
+	}
+      else
+	cold_streak = 0;
     }
 
   if (n_rx_packets == 0)
