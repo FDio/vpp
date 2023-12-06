@@ -16,6 +16,24 @@
       "message": "Good catch!\nPlease run \u0027make fixstyle\u0027 and upload the corrected patch to complete verification.",
       "revId": "0b678c3e8fc9a3f78014f41387640b5af7ce5328",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d03ac5c2_a28658d8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-12-06T10:48:20Z",
+      "side": 1,
+      "message": "Thanks, Dave.\nLooks like a newer `clang-format-diff` from my toolchain behaves differently even with clang-format-11. It\u0027s fixed now.",
+      "parentUuid": "e0518af4_39d67ae5",
+      "revId": "0b678c3e8fc9a3f78014f41387640b5af7ce5328",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
