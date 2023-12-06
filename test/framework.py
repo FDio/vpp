@@ -132,14 +132,14 @@ class VppTestCase(VppAsfTestCase):
         cls._pcaps.append((intf, worker))
 
     @classmethod
-    def pg_start(cls, trace=True):
+    def pg_start(cls, trace=True, traceFilter=False):
         """Enable the PG, wait till it is done, then clean up"""
         for intf, worker in cls._old_pcaps:
             intf.remove_old_pcap_file(intf.get_in_path(worker))
         cls._old_pcaps = []
         if trace:
             cls.vapi.cli("clear trace")
-            cls.vapi.cli("trace add pg-input 1000")
+            cls.vapi.cli("trace add pg-input 1000" + (" filter" if traceFilter else ""))
         cls.vapi.cli("packet-generator enable")
         # PG, when starts, runs to completion -
         # so let's avoid a race condition,
