@@ -1257,6 +1257,7 @@ memif_init_queues (memif_connection_t *conn)
   int i, j;
   memif_ring_t *ring;
   memif_socket_t *ms = (memif_socket_t *) conn->args.socket;
+  uint32_t ring_size = 1 << conn->run_args.log2_ring_size;
 
   for (i = 0; i < conn->run_args.num_s2m_rings; i++)
     {
@@ -1265,9 +1266,11 @@ memif_init_queues (memif_connection_t *conn)
       ring->head = ring->tail = 0;
       ring->cookie = MEMIF_COOKIE;
       ring->flags = 0;
-      for (j = 0; j < (1 << conn->run_args.log2_ring_size); j++)
+      uint32_t base = i;
+      uint32_t ring_offset = base * ring_size;
+      for (j = 0; j < ring_size; j++)
 	{
-	  uint16_t slot = i * (1 << conn->run_args.log2_ring_size) + j;
+	  uint32_t slot = ring_offset + j;
 	  ring->desc[j].region = 1;
 	  ring->desc[j].offset =
 	    conn->regions[1].buffer_offset +
@@ -1282,10 +1285,11 @@ memif_init_queues (memif_connection_t *conn)
       ring->head = ring->tail = 0;
       ring->cookie = MEMIF_COOKIE;
       ring->flags = 0;
-      for (j = 0; j < (1 << conn->run_args.log2_ring_size); j++)
+      uint32_t base = conn->run_args.num_s2m_rings + i;
+      uint32_t ring_offset = base * ring_size;
+      for (j = 0; j < ring_size; j++)
 	{
-	  uint16_t slot = (i + conn->run_args.num_s2m_rings) *
-	    (1 << conn->run_args.log2_ring_size) + j;
+	  uint32_t slot = ring_offset + j;
 	  ring->desc[j].region = 1;
 	  ring->desc[j].offset =
 	    conn->regions[1].buffer_offset +
