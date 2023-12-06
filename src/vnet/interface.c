@@ -1359,7 +1359,10 @@ vnet_hw_interface_compare (vnet_main_t * vnm,
 int
 vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
 {
-  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  vnet_sw_interface_t *si = vnet_get_sw_interface_or_null (vnm, sw_if_index);
+  if (si == NULL)
+    return -1;
+
   if ((si->type == VNET_SW_INTERFACE_TYPE_P2P) ||
       (si->type == VNET_SW_INTERFACE_TYPE_PIPE))
     return 1;
