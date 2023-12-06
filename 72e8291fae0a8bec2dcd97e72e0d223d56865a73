@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3160df3f_b5b27777",
+        "filename": "test/test_bpf_trace_filter.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2023-12-06T18:30:41Z",
+      "side": 1,
+      "message": "Packets are UDP, filter is set to TCP yet somehow \u0027show trace\u0027 is not empty. Same behavior in VAPI test.",
+      "range": {
+        "startLine": 73,
+        "startChar": 8,
+        "endLine": 73,
+        "endChar": 43
+      },
+      "revId": "72e8291fae0a8bec2dcd97e72e0d223d56865a73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0eb3c617_c10fd3d0",
+        "filename": "test/test_bpf_trace_filter.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2023-12-06T18:30:41Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this set the trace function to bpf as well?\n\"bool is_add [default \u003d true];\" doesn\u0027t do anything",
+      "range": {
+        "startLine": 81,
+        "startChar": 8,
+        "endLine": 81,
+        "endChar": 52
+      },
+      "revId": "72e8291fae0a8bec2dcd97e72e0d223d56865a73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
