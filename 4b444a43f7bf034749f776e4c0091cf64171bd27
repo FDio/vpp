@@ -33,6 +33,24 @@
       "message": "I know it was already written that way, but a more readable way of having ~0 here is generally to explicitly to write 0xffffffff.",
       "revId": "4b444a43f7bf034749f776e4c0091cf64171bd27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c9aecc5_bd8eda99",
+        "filename": "test/test_tracedump.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-06T13:53:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c4e29f7b_e8c89d86",
+      "revId": "4b444a43f7bf034749f776e4c0091cf64171bd27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
