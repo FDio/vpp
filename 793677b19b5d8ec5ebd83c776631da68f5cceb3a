@@ -16,6 +16,57 @@
       "message": "recheck",
       "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e31a6248_b50b1c31",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "should be vlib_thread_get_relative_cgroup_mapping_vec (void)",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59726efe_f2ca0a3d",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "relative_mapping_vec must be freed before exiting",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2c2b6d4_0029630b",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "relative_mapping_vec should be freed afterward",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

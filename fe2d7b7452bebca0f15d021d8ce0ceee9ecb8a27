@@ -106,6 +106,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0fe118ed_50b490e6",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "Ok, then it would be better to do the avail_cpu \u003d clib_bitmap_dup (tm-\u003ecpu_core_bitmap); on line 213 in the other branch of the test to avoid allocating and immediately freeing it.\nFor clarity, maybe something like\n  if (!relative)\n    {\n      avail_cpu \u003d clib_bitmap_dup (tm-\u003ecpu_core_bitmap);\n    }\n  else\n    {\n      ...\n    }",
+      "parentUuid": "d6edf799_c902be2e",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ff025c1c_9a72f2b0",
@@ -143,6 +161,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3598ebc8_066ce3cb",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "I think there is also avail_cpu then",
+      "parentUuid": "f9c212dc_20a9dab0",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ee7079e1_9689fff9",
         "filename": "src/vlib/threads.c",
         "patchSetId": 18
@@ -172,6 +208,24 @@
       "side": 1,
       "message": "Added, thanks.",
       "parentUuid": "ee7079e1_9689fff9",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54fd7899_700092f4",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "avail_cpu too I believe",
+      "parentUuid": "9d4551a3_c51fbfdb",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -248,6 +302,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "eef9ef7f_946213e4",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "I\u0027m not sure what we should do here. Ideally we should just return the error instead of reporting it, but would that prevent VPP to start?",
+      "parentUuid": "0f8eb782_b63529f7",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "f39c40b5_ce10c9c5",
         "filename": "src/vlib/threads.c",
         "patchSetId": 18
@@ -316,6 +388,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d23980f2_59c54383",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "Looking good",
+      "parentUuid": "dc2ff801_13ef559e",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3629b9d7_1344abab",
@@ -347,6 +437,24 @@
       "side": 1,
       "message": "Agreed. Modified error messages displayed by clib_unix_error().",
       "parentUuid": "3629b9d7_1344abab",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "adb50896_921369aa",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-06T16:17:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "18fec070_91b7e57b",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
