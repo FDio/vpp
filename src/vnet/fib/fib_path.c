@@ -501,11 +501,9 @@ format_fib_path (u8 * s, va_list * args)
 	else
 	{
 	    s = format (s, " %U",
-			format_vnet_sw_interface_name,
+			format_vnet_sw_if_index_name,
 			vnm,
-			vnet_get_sw_interface(
-			    vnm,
-			    path->attached_next_hop.fp_interface));
+			path->attached_next_hop.fp_interface);
 	    if (vnet_sw_interface_is_p2p(vnet_get_main(),
 					 path->attached_next_hop.fp_interface))
 	    {
