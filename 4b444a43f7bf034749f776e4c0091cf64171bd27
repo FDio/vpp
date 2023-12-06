@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4e29f7b_e8c89d86",
+        "filename": "test/test_tracedump.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2023-12-06T12:28:21Z",
+      "side": 1,
+      "message": "I know it was already written that way, but a more readable way of having ~0 here is generally to explicitly to write 0xffffffff.",
+      "revId": "4b444a43f7bf034749f776e4c0091cf64171bd27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
