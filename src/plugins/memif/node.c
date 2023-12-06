@@ -812,6 +812,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_slots--;
       if (PREDICT_FALSE ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots))
 	{
+	  u16 slots_in_packet = 1;
 	  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  hb->total_length_not_including_first_buffer = 0;
 	next_slot:
@@ -832,8 +833,19 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  cur_slot++;
 	  n_slots--;
-	  if ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots)
-	    goto next_slot;
+	  if (d0->flags & MEMIF_DESC_FLAG_NEXT)
+	    {
+	      if (n_slots)
+		{
+		  slots_in_packet += 1;
+		  goto next_slot;
+		}
+	      else
+		{
+		  /* revert to last fully processed packet */
+		  cur_slot -= slots_in_packet;
+		}
+	    }
 	}
     }
 
