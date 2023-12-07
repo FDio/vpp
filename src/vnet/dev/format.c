@@ -122,6 +122,12 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   s = format (s, "\n%UMax RX frame size is %u (max supported %u)",
 	      format_white_space, indent, port->max_rx_frame_size,
 	      port->attr.max_supported_rx_frame_size);
+  s = format (s, "\n%UCaps: %U", format_white_space, indent,
+	      format_vnet_dev_port_caps, &port->attr.caps);
+  s = format (s, "\n%URX Offloads: %U", format_white_space, indent,
+	      format_vnet_dev_port_rx_offloads, &port->attr.rx_offloads);
+  s = format (s, "\n%UTX Offloads: %U", format_white_space, indent,
+	      format_vnet_dev_port_tx_offloads, &port->attr.tx_offloads);
   if (port->port_ops.format_status)
     s = format (s, "\n%UDevice Specific Port Status:\n%U%U",
 		format_white_space, indent, format_white_space, indent + 2,
@@ -405,5 +411,76 @@ format_vnet_dev_log (u8 *s, va_list *args)
     s = format (s, "%s", func);
   vec_add1 (s, ':');
   vec_add1 (s, ' ');
+  return s;
+}
+
+u8 *
+format_vnet_dev_port_caps (u8 *s, va_list *args)
+{
+  vnet_dev_port_caps_t *c = va_arg (*args, vnet_dev_port_caps_t *);
+  u32 line = 0;
+
+  if (c->as_number == 0)
+    return s;
+
+#define _(n)                                                                  \
+  if (c->n)                                                                   \
+    {                                                                         \
+      if (line++)                                                             \
+	vec_add1 (s, ' ');                                                    \
+      for (char *str = #n; *str; str++)                                       \
+	vec_add1 (s, *str == '_' ? '-' : *str);                               \
+    }
+  foreach_vnet_dev_port_caps;
+#undef _
+
+  return s;
+}
+
+u8 *
+format_vnet_dev_port_rx_offloads (u8 *s, va_list *args)
+{
+  vnet_dev_port_rx_offloads_t *c =
+    va_arg (*args, vnet_dev_port_rx_offloads_t *);
+  u32 line = 0;
+
+  if (c->as_number == 0)
+    return s;
+
+#define _(n)                                                                  \
+  if (c->n)                                                                   \
+    {                                                                         \
+      if (line++)                                                             \
+	vec_add1 (s, ' ');                                                    \
+      for (char *str = #n; *str; str++)                                       \
+	vec_add1 (s, *str == '_' ? '-' : *str);                               \
+    }
+  foreach_vnet_dev_port_rx_offloads;
+#undef _
+
+  return s;
+}
+
+u8 *
+format_vnet_dev_port_tx_offloads (u8 *s, va_list *args)
+{
+  vnet_dev_port_tx_offloads_t *c =
+    va_arg (*args, vnet_dev_port_tx_offloads_t *);
+  u32 line = 0;
+
+  if (c->as_number == 0)
+    return s;
+
+#define _(n)                                                                  \
+  if (c->n)                                                                   \
+    {                                                                         \
+      if (line++)                                                             \
+	vec_add1 (s, ' ');                                                    \
+      for (char *str = #n; *str; str++)                                       \
+	vec_add1 (s, *str == '_' ? '-' : *str);                               \
+    }
+  foreach_vnet_dev_port_tx_offloads;
+#undef _
+
   return s;
 }
