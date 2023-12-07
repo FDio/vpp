@@ -307,7 +307,7 @@ typedef struct
 
   /* Source and destination address. */
   ip6_address_t src_address, dst_address;
-} ip6_header_t;
+} __clib_packed ip6_header_t;
 
 #define IP6_PACKET_TC_MASK 0x0FF00000
 #define IP6_PACKET_DSCP_MASK 0x0FC00000
