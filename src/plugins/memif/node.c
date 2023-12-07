@@ -314,6 +314,7 @@ memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
   ptd->n_packets -= bad_packets;
   return n_buffers;
 }
+
 static_always_inline void
 memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
 				memif_per_thread_data_t *ptd,
@@ -605,17 +606,17 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   else
     {
       vlib_buffer_t *b;
-      u32 n_pkts = vec_len (ptd->copy_ops);
+      u32 n_ops = vec_len (ptd->copy_ops);
       co = ptd->copy_ops;
 
-      for (i = 0; i + 8 < n_pkts; i++)
+      for (i = 0; i + 8 < n_ops; i++)
 	{
 	  clib_prefetch_load (co[i + 8].data);
 	  b = vlib_get_buffer (vm, ptd->buffers[co[i].buffer_vec_index]);
 	  clib_memcpy_fast (b->data + co[i].buffer_offset, co[i].data,
 			    co[i].data_len);
 	}
-      for (; i < n_pkts; i++)
+      for (; i < n_ops; i++)
 	{
 	  b = vlib_get_buffer (vm, ptd->buffers[co[i].buffer_vec_index]);
 	  clib_memcpy_fast (b->data + co[i].buffer_offset, co[i].data,
@@ -789,6 +790,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (cur_slot == last_slot)
     goto refill;
   n_slots = last_slot - cur_slot;
+  ASSERT (n_slots < 40000);
 
   /* process ring slots */
   vec_validate_aligned (ptd->buffers, MEMIF_RX_VECTOR_SZ,
@@ -812,6 +814,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_slots--;
       if (PREDICT_FALSE ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots))
 	{
+	  u16 slots_in_packet = 1;
 	  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  hb->total_length_not_including_first_buffer = 0;
 	next_slot:
@@ -832,8 +835,24 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  cur_slot++;
 	  n_slots--;
-	  if ((d0->flags & MEMIF_DESC_FLAG_NEXT) && n_slots)
-	    goto next_slot;
+	  if (d0->flags & MEMIF_DESC_FLAG_NEXT)
+	    {
+	      if (n_slots)
+		{
+		  slots_in_packet += 1;
+		  goto next_slot;
+		}
+	      else
+		{
+		  /* Revert to last fully processed packet, */
+		  cur_slot -= slots_in_packet;
+		  n_rx_packets--;
+		  n_rx_bytes -= hb->total_length_not_including_first_buffer;
+		  n_rx_bytes -= hb->current_length;
+		  /* Keep n_slots at zero to exit the loop. */
+		  /* Updates on hb (and subsequent b0s) are repeatable. */
+		}
+	    }
 	}
     }
 
@@ -988,6 +1007,7 @@ refill:
 
   head = ring->head;
   n_slots = ring_size - head + mq->last_tail;
+  ASSERT (n_slots < 40000);
   slot = head & mask;
 
   n_slots &= ~7;

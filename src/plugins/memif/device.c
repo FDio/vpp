@@ -297,15 +297,16 @@ retry:
   slot = head = ring->head;
 
   n_free = tail - mq->last_tail;
+  ASSERT (n_free < 40000);
   if (n_free >= 16)
     {
-      vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
-					  mq->last_tail & mask,
-					  ring_size, n_free);
+      vlib_buffer_free_from_ring_no_next (
+	vm, mq->buffers, mq->last_tail & mask, ring_size, n_free);
       mq->last_tail += n_free;
     }
 
   free_slots = ring_size - head + mq->last_tail;
+  ASSERT (free_slots < 40000);
 
   while (n_left && free_slots)
     {
