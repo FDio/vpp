@@ -89,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e772ecfb_cad1ee56",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T08:15:45Z",
+      "side": 1,
+      "message": "Category set to \u0027tests\u0027. Let me know if it requires a change.",
+      "parentUuid": "e878e1d8_75191c46",
+      "revId": "46e879e6c68d30114cd3a99956ea0113b1328f54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "de5b11b5_e565151a",
@@ -102,6 +120,24 @@
       "writtenOn": "2023-12-06T14:04:18Z",
       "side": 1,
       "message": "Sorry I wasn\u0027t precise enough, instead of the whole `ctypes.c_uint32(~0).value` you can write `0xffffffff`",
+      "revId": "46e879e6c68d30114cd3a99956ea0113b1328f54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "641eb8f4_61406eaa",
+        "filename": "test/test_tracedump.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T08:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "de5b11b5_e565151a",
       "revId": "46e879e6c68d30114cd3a99956ea0113b1328f54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
