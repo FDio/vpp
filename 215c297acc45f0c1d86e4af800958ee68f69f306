@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5755c669_141b0ccf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-12-07T15:43:05Z",
+      "side": 1,
+      "message": "This to me is a useful feature for both wireguard and ipsec for key update, instead of deleting and then adding the updated key.\n\nJust a nit - maybe rename the function vnet_crypto_key_update () and add some description to the function in header is clearer?\n\nAlso looks like apart from openssl, the rest crypto engines were not updated for this feature. This will cause inconsistent behavior between crypto engines. Adding Kai Ji for awareness.",
+      "revId": "215c297acc45f0c1d86e4af800958ee68f69f306",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
