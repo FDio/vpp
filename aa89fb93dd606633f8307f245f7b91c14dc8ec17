@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7c6c708f_8cce507d",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2023-12-07T15:49:10Z",
+      "side": 1,
+      "message": "Please fix the indention between line 364 and 367",
+      "revId": "aa89fb93dd606633f8307f245f7b91c14dc8ec17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
