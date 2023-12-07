@@ -28,7 +28,16 @@ typedef enum
 #define foreach_vnet_dev_port_caps                                            \
   _ (interrupt_mode)                                                          \
   _ (rss)                                                                     \
-  _ (change_max_rx_frame_size)
+  _ (change_max_rx_frame_size)                                                \
+  _ (mac_filter)
+
+#define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum_check)
+
+#define foreach_vnet_dev_port_tx_offloads                                     \
+  _ (ip4_cksum_calc)                                                          \
+  _ (ip6_cksum_calc)                                                          \
+  _ (tcp_gso)                                                                 \
+  _ (udp_gso)
 
 typedef union
 {
@@ -40,6 +49,28 @@ typedef union
   };
   u8 as_number;
 } vnet_dev_port_caps_t;
+
+typedef union
+{
+  struct
+  {
+#define _(n) u8 n : 1;
+    foreach_vnet_dev_port_rx_offloads
+#undef _
+  };
+  u8 as_number;
+} vnet_dev_port_rx_offloads_t;
+
+typedef union
+{
+  struct
+  {
+#define _(n) u8 n : 1;
+    foreach_vnet_dev_port_tx_offloads
+#undef _
+  };
+  u8 as_number;
+} vnet_dev_port_tx_offloads_t;
 
 typedef union
 {
@@ -146,6 +177,8 @@ typedef struct
   u16 max_supported_rx_frame_size;
   vnet_dev_port_type_t type;
   vnet_dev_port_caps_t caps;
+  vnet_dev_port_rx_offloads_t rx_offloads;
+  vnet_dev_port_tx_offloads_t tx_offloads;
 } vnet_dev_port_attr_t;
 
 typedef enum
@@ -606,17 +639,20 @@ typedef struct
 } vnet_dev_format_args_t;
 
 format_function_t format_vnet_dev_addr;
+format_function_t format_vnet_dev_flags;
 format_function_t format_vnet_dev_hw_addr;
 format_function_t format_vnet_dev_info;
 format_function_t format_vnet_dev_interface_info;
 format_function_t format_vnet_dev_interface_name;
+format_function_t format_vnet_dev_log;
+format_function_t format_vnet_dev_port_caps;
+format_function_t format_vnet_dev_port_flags;
 format_function_t format_vnet_dev_port_info;
+format_function_t format_vnet_dev_port_rx_offloads;
+format_function_t format_vnet_dev_port_tx_offloads;
 format_function_t format_vnet_dev_rv;
 format_function_t format_vnet_dev_rx_queue_info;
 format_function_t format_vnet_dev_tx_queue_info;
-format_function_t format_vnet_dev_flags;
-format_function_t format_vnet_dev_port_flags;
-format_function_t format_vnet_dev_log;
 unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
 

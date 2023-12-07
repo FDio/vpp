@@ -175,7 +175,20 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_rx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
         .max_tx_queues = clib_min (IAVF_MAX_QPAIRS, res.num_queue_pairs),
         .max_supported_rx_frame_size = max_frame_sz,
-        .caps.change_max_rx_frame_size = 1,
+        .caps = {
+          .change_max_rx_frame_size = 1,
+          .interrupt_mode = 1,
+          .rss = 1,
+          .mac_filter = 1,
+        },
+        .rx_offloads = {
+          .ip4_cksum_check = 1,
+        },
+        .tx_offloads = {
+          .ip4_cksum_calc = 1,
+          .ip6_cksum_calc = 1,
+          .tcp_gso = 1,
+        },
       },
       .ops = {
         .init = iavf_port_init,
