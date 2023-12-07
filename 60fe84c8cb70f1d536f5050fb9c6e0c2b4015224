@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "60fe84c8cb70f1d536f5050fb9c6e0c2b4015224",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73b0057a_04cd4fcf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T07:56:03Z",
+      "side": 1,
+      "message": "Test is failing in CI, due to an issue with the test itself.\nA commit is currently underway to address this issue: https://gerrit.fd.io/r/c/vpp/+/40069",
+      "revId": "60fe84c8cb70f1d536f5050fb9c6e0c2b4015224",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
