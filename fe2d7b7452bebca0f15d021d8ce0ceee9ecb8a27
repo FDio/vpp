@@ -179,6 +179,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5d473b15_4fb18758",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T15:03:18Z",
+      "side": 1,
+      "message": "Replaced with a \u0027goto err0\u0027 statement, which in case of error jumps to a section where both relative_cpu_map and avail_cpu are freed.",
+      "parentUuid": "3598ebc8_066ce3cb",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ee7079e1_9689fff9",
         "filename": "src/vlib/threads.c",
         "patchSetId": 18
@@ -314,6 +332,24 @@
       "side": 1,
       "message": "I\u0027m not sure what we should do here. Ideally we should just return the error instead of reporting it, but would that prevent VPP to start?",
       "parentUuid": "0f8eb782_b63529f7",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d081091_447d1225",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T15:03:18Z",
+      "side": 1,
+      "message": "Returning an error using \u0027clib_error_return()\u0027 here causes VPP to hang indefinitely.\n\nI think it is best we keep both \u0027clib_error_report(err)\u0027 and \u0027clib_unix_error\u0027 calls. The \u0027clib_error_report(err)\u0027 call can give information about which pthread operation has failed based on the returned \u0027err\u0027 object, and the \u0027clib_unix_error\u0027 call can give information on the specific CPU and thread type which failed to initialize.",
+      "parentUuid": "eef9ef7f_946213e4",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },

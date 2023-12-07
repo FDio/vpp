@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2616f8a6_570bb849",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T15:03:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e31a6248_b50b1c31",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "59726efe_f2ca0a3d",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "09c1a696_6778c356",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T15:03:18Z",
+      "side": 1,
+      "message": "Good catch, thanks.",
+      "parentUuid": "59726efe_f2ca0a3d",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e2c2b6d4_0029630b",
@@ -65,6 +101,24 @@
       "writtenOn": "2023-12-06T16:17:53Z",
       "side": 1,
       "message": "relative_mapping_vec should be freed afterward",
+      "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c204dc5_144b20ce",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 24
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T15:03:18Z",
+      "side": 1,
+      "message": "Good catch, thanks.",
+      "parentUuid": "e2c2b6d4_0029630b",
       "revId": "793677b19b5d8ec5ebd83c776631da68f5cceb3a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
