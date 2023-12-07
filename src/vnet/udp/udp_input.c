@@ -133,9 +133,11 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 			session_dgram_hdr_t * hdr0, u32 thread_index,
 			vlib_buffer_t * b, u8 queue_event, u32 * error0)
 {
+  u8 is_connected;
   int wrote0;
 
-  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+  is_connected = uc0->flags & UDP_CONN_F_CONNECTED;
+  if (!is_connected)
     clib_spinlock_lock (&uc0->rx_lock);
 
   if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
@@ -147,7 +149,7 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 
   /* If session is owned by another thread and rx event needed,
    * enqueue event now while we still have the peeker lock */
-  if (s0->thread_index != thread_index)
+  if (!is_connected || s0->thread_index != thread_index)
     {
       wrote0 = session_enqueue_dgram_connection_cl (
 	s0, hdr0, b, TRANSPORT_PROTO_UDP,
@@ -167,7 +169,7 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
 
 unlock_rx_lock:
 
-  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
+  if (!is_connected)
     clib_spinlock_unlock (&uc0->rx_lock);
 }
 
