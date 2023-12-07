@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3ef95c6114ae2af30b9c00c95df69365637fa947",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d494dbe9_fb031840",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2023-12-07T15:49:38Z",
+      "side": 1,
+      "message": "Damjan - This issue was identified in 21.01, so this should be considered for backporting to current LTS releases.",
+      "revId": "3ef95c6114ae2af30b9c00c95df69365637fa947",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
