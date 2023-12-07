@@ -653,6 +653,8 @@ class TestDET44(VppTestCase):
         self.pg_start()
         self.pg1.get_capture(len(pkts))
         self.virtual_sleep(15)
+        # wait for det44_expire_walk_fn to collect the sessions
+        time.sleep(2)
 
         dms = self.vapi.det44_map_dump()
         self.assertEqual(0, dms[0].ses_num)
