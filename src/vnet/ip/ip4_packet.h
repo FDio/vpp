@@ -54,7 +54,7 @@ typedef union
   u8 as_u8[4];
   u16 as_u16[2];
   u32 as_u32;
-} ip4_address_t;
+} __clib_packed ip4_address_t;
 
 typedef struct
 {
@@ -142,7 +142,7 @@ typedef union
     u32 checksum_data_32[5];
   });
   /* *INDENT-ON* */
-} ip4_header_t;
+} __clib_packed ip4_header_t;
 
 /* Value of ip_version_and_header_length for packets w/o options. */
 #define IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS \
