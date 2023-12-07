@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "435886d0_37d94337",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-07T08:18:12Z",
+      "side": 1,
+      "message": "Rebased on https://gerrit.fd.io/r/c/vpp/+/40069",
+      "revId": "3392e611729c927ff6653da3ceeecf99830deec1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
