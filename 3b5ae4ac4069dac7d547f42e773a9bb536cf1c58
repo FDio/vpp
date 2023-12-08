@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fff8748b_e2401818",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-12-08T13:01:29Z",
+      "side": 1,
+      "message": "perftest-2n-clx mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cANDeth-l2xcbase-eth-2memif-1dcr !1518b !imix",
+      "revId": "3b5ae4ac4069dac7d547f42e773a9bb536cf1c58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
