@@ -64,9 +64,9 @@ bpf_is_packed_traced (vlib_buffer_t *b, u32 classify_table_index, int func)
   struct pcap_pkthdr phdr = { 0 };
   int res;
   int res1;
-  res1 = vnet_is_packet_traced (b, classify_table_index, 0);
 
-  if (res1 != 1)
+  if (classify_table_index != ~0 &&
+      (res1 = vnet_is_packet_traced (b, classify_table_index, 0)) != 1)
     return res1;
 
   if (!bfm->prog_set)
