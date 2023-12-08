@@ -16,6 +16,24 @@
       "message": "Damjan - This issue was identified in 21.01, so this should be considered for backporting to current LTS releases.",
       "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "37ca90aa_48b860f6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-12-08T19:38:52Z",
+      "side": 1,
+      "message": "FD.io VPP does not maintain any LTS releases.  The VPP support model is the 2 most recent releases.\n\nPrompt upgrade to the latest VPP release is highly recommended.",
+      "parentUuid": "576ada1c_53a00aad",
+      "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
