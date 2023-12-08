@@ -45,6 +45,9 @@ vnet_is_packet_traced_inline (vlib_buffer_t * b,
   if (func != 0)
     return -1;
 
+  if (classify_table_index == ~0)
+    return -1;
+
   /* This will happen... */
   if (pool_is_free_index (vcm->tables, classify_table_index))
     return -1;

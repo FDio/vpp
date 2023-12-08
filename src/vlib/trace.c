@@ -463,13 +463,6 @@ cli_add_trace_buffer (vlib_main_t * vm,
       goto done;
     }
 
-  u32 filter_table = classify_get_trace_chain ();
-  if (filter && filter_table == ~0)
-    {
-      error = clib_error_create ("No packet trace filter configured...");
-      goto done;
-    }
-
   trace_update_capture_options (add, node_index, filter, verbose);
 
 done:
