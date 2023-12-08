@@ -195,6 +195,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f1974a5_6fd348f0",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-08T10:16:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d473b15_4fb18758",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ee7079e1_9689fff9",
@@ -279,6 +297,24 @@
       "side": 1,
       "message": "Agreed, usage of duplicate is not necessary.\nFeedback on the updated approach ?",
       "parentUuid": "af587ad0_d05a16d3",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0299ed3b_cde37dfb",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-08T10:16:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ff699943_132855df",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -372,6 +408,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e5e27fa_bd336905",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-08T10:16:40Z",
+      "side": 1,
+      "message": "Replaced with single \u0027clib_unix_error\u0027 call to print all info and prevents vpp start.",
+      "parentUuid": "28e8d3d6_23716434",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f39c40b5_ce10c9c5",
@@ -403,6 +457,24 @@
       "side": 1,
       "message": "Same issue as above comment.",
       "parentUuid": "f39c40b5_ce10c9c5",
+      "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a995479_bd4fb37e",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 914,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-08T10:16:40Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9f3728e1_76aea083",
       "revId": "fe2d7b7452bebca0f15d021d8ce0ceee9ecb8a27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
