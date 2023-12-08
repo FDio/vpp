@@ -623,9 +623,6 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
 
-  /* release slots from the ring */
-  memif_advance_ring (type, mq, ring, cur_slot);
-
   /* prepare buffer template and next indices */
   vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_RX] = mif->sw_if_index;
   vnet_buffer (&ptd->buffer_template)->feature_arc_index = 0;
@@ -676,6 +673,9 @@ memif_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       else
 	memif_fill_buffer_mdata (vm, node, ptd, mif, to_next_bufs, nexts, 0);
     }
+
+  /* release slots from the ring */
+  memif_advance_ring (type, mq, ring, cur_slot);
 
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
