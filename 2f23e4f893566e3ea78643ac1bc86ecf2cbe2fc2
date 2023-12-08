@@ -50,6 +50,23 @@
       "message": "Eh, wrong verify run, this still does not work.",
       "revId": "2f23e4f893566e3ea78643ac1bc86ecf2cbe2fc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ebf09dc_41af0de3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-12-08T09:11:36Z",
+      "side": 1,
+      "message": "Maybe that was just an infra issue?\nperftest-2n-clx mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cANDeth-l2xcbase-eth-2memif-1dcr !1518b !imix",
+      "revId": "2f23e4f893566e3ea78643ac1bc86ecf2cbe2fc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
