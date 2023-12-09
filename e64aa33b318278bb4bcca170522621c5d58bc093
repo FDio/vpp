@@ -16,6 +16,23 @@
       "message": "Matt when you have a moment, could you take a look and merge? \nThere\u0027s 2 more changes planned behind this one. \nIt would be nice to get a headstart on VPP 24.02",
       "revId": "e64aa33b318278bb4bcca170522621c5d58bc093",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e99333a8_abc6d1f4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-12-09T23:28:11Z",
+      "side": 1,
+      "message": "recheck (failure unrelated to this change)",
+      "revId": "e64aa33b318278bb4bcca170522621c5d58bc093",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
