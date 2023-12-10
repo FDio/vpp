@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5d0e36d_1e311cd6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-12-10T21:57:01Z",
+      "side": 1,
+      "message": "please add a test for the dump function in `test/test_urpf.py`.",
+      "revId": "e12e6ebb2bfeca37e271627391168a598ce872c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3cd4c2f_c0dbca53",
+        "filename": "src/plugins/urpf/urpf_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-12-10T21:57:01Z",
+      "side": 1,
+      "message": "this validates that sw_if_index isn\u0027t out of range, but not that it is a valid in-use interface. the usual recipe is to use `VALIDATE_SW_IF_INDEX` in the `foo_dump_t_handler`.",
+      "revId": "e12e6ebb2bfeca37e271627391168a598ce872c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
