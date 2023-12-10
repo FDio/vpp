@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "103e398d_a97411a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2023-12-10T23:41:08Z",
+      "side": 1,
+      "message": "Added test and used the SW_IF_INDEX macro. PTAL",
+      "revId": "29b4c29b7ac1b0db627ef070d67257e7b2712033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
