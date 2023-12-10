@@ -111,6 +111,76 @@ done:
   REPLY_MACRO (VL_API_URPF_UPDATE_V2_REPLY);
 }
 
+static void
+send_urpf_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+			     u32 context, const u32 sw_if_index,
+			     const urpf_data_t *ud,
+			     const ip_address_family_t af,
+			     const vlib_dir_t dir)
+{
+  vl_api_urpf_interface_details_t *mp;
+
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_URPF_INTERFACE_DETAILS);
+  mp->context = context;
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->table_id = htonl (fib_table_get_table_id (
+    ud->fib_index, (af == AF_IP4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6)));
+  mp->af = (vl_api_address_family_t) af;
+  mp->mode = (vl_api_urpf_mode_t) ud->mode;
+  mp->is_input = (dir == VLIB_RX);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+send_urpf_interface (vpe_api_main_t *am, vl_api_registration_t *reg,
+		     u32 context, const u32 sw_if_index)
+{
+  urpf_data_t *ud;
+  vlib_dir_t dir;
+  ip_address_family_t af;
+
+  FOR_EACH_IP_ADDRESS_FAMILY (af)
+  FOREACH_VLIB_DIR (dir)
+  if (sw_if_index < vec_len (urpf_cfgs[af][dir]))
+    {
+      ud = &urpf_cfgs[af][dir][sw_if_index];
+      if (ud->mode || ud->fib_index_is_custom)
+	send_urpf_interface_details (am, reg, context, sw_if_index, ud, af,
+				     dir);
+    }
+}
+
+static void
+vl_api_urpf_interface_dump_t_handler (vl_api_urpf_interface_dump_t *mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vl_api_registration_t *reg;
+  vnet_interface_main_t *im = &vnet_main.interface_main;
+  vnet_sw_interface_t *si;
+  u32 sw_if_index = ~0;
+  int __attribute__ ((unused)) rv = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (sw_if_index == ~0)
+    {
+      pool_foreach (si, im->sw_interfaces)
+	{
+	  send_urpf_interface (am, reg, mp->context, si->sw_if_index);
+	}
+      return;
+    }
+  VALIDATE_SW_IF_INDEX (mp);
+  send_urpf_interface (am, reg, mp->context, sw_if_index);
+  BAD_SW_IF_INDEX_LABEL;
+}
+
 #include <urpf/urpf.api.c>
 
 static clib_error_t *
