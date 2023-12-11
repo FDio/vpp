@@ -268,7 +268,8 @@ _pool_put_will_expand (void *p, uword index, uword elt_sz)
   return 0;
 }
 
-#define pool_put_will_expand(P, E) _pool_put_will_expand (P, (E) - (P), sizeof ((P)[0])
+#define pool_put_will_expand(P, E)                                            \
+  _pool_put_will_expand (P, (E) - (P), sizeof ((P)[0]))
 
 /** Use free bitmap to query whether given element is free. */
 static_always_inline int
