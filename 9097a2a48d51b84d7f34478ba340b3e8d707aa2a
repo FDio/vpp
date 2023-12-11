@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2c485e7_a448fa68",
+        "filename": "test/scripts/core_pinning_test.sh",
+        "patchSetId": 26
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2023-12-11T09:16:54Z",
+      "side": 1,
+      "message": "Should this test be added to the CI ?",
+      "revId": "9097a2a48d51b84d7f34478ba340b3e8d707aa2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
