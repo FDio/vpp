@@ -83,6 +83,7 @@ cnat_tracker_release (cnat_ep_trk_t * trk)
   /* We only track fully resolved endpoints */
   if (!(trk->ct_flags & CNAT_TRK_ACTIVE))
     return;
+  dpo_unlock (&trk->ct_dpo); // undo fib_entry_contribute_forwarding
   fib_entry_untrack (trk->ct_fei, trk->ct_sibling);
 }
 
