@@ -21,7 +21,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vnet/snap/snap.h>
+#include <vnet/snap/snap_header.h>
 #include <vppinfra/format.h>
 #include <vppinfra/hash.h>
 

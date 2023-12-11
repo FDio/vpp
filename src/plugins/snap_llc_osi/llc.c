@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/llc/llc.h>
+#include <snap_llc_osi/llc.h>
 
 /* Global main structure. */
 llc_main_t llc_main;

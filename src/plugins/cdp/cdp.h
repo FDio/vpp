@@ -21,7 +21,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 
-#include <vnet/snap/snap.h>
+#include <vnet/snap/snap_header.h>
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/hdlc/packet.h>
 
@@ -103,6 +103,10 @@ typedef struct
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  /* function pointer to snap init */
+  void (*snap_reg_input_protocol) (vlib_main_t *, char *, u32, u16, u32);
+
 } cdp_main_t;
 
 extern cdp_main_t cdp_main;

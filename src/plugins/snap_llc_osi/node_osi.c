@@ -39,10 +39,10 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/osi/osi.h>
+#include <snap_llc_osi/osi.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
-#include <vnet/llc/llc.h>
+#include <snap_llc_osi/llc.h>
 
 #define foreach_osi_input_next			\
   _ (PUNT, "error-punt")			\

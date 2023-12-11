@@ -610,6 +610,7 @@ linux
 linuxapp
 Linuxcon
 liveness
+llc
 lldp
 Lldp
 LLDP
@@ -805,6 +806,7 @@ operationalize
 Optimisations
 optimised
 os
+osi
 outacl
 packagecloud
 papi
@@ -1086,6 +1088,7 @@ subinterface
 subinterfaces
 subnet
 Subnet
+Subnetwork
 subnets
 Subnets
 substring

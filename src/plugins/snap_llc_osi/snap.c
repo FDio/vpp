@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/snap/snap.h>
+#include <snap_llc_osi/snap.h>
 #include <vnet/ethernet/ethernet.h>
 
 /* Global main structure. */

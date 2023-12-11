@@ -38,7 +38,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/osi/osi.h>
+#include <snap_llc_osi/osi.h>
 
 /* Global main structure. */
 osi_main_t osi_main;

@@ -290,27 +290,15 @@ list(APPEND VNET_HEADERS
 ##############################################################################
 # Layer 2 protocol: LLC
 ##############################################################################
-list(APPEND VNET_SOURCES
-  llc/llc.c
-  llc/node.c
-  llc/pg.c
-)
-
 list(APPEND VNET_HEADERS
-  llc/llc.h
+  llc/llc_header.h
 )
 
 ##############################################################################
 # Layer 2 protocol: SNAP
 ##############################################################################
-list(APPEND VNET_SOURCES
-  snap/snap.c
-  snap/node.c
-  snap/pg.c
-)
-
 list(APPEND VNET_HEADERS
-  snap/snap.h
+  snap/snap_header.h
 )
 
 ##############################################################################
@@ -593,19 +581,6 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_punt.h
   ipsec/esp.h
   ipsec/ah.h
-)
-
-##############################################################################
-# Layer 3 protocol: osi
-##############################################################################
-list(APPEND VNET_SOURCES
-  osi/node.c
-  osi/osi.c
-  osi/pg.c
-)
-
-list(APPEND VNET_HEADERS
-  osi/osi.h
 )
 
 ##############################################################################
