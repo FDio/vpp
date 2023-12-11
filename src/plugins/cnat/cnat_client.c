@@ -261,9 +261,9 @@ format_cnat_client (u8 * s, va_list * args)
 
   cnat_client_t *cc = pool_elt_at_index (cnat_client_pool, cci);
 
-  s = format (s, "[%d] cnat-client:[%U] tr:%d sess:%d", cci,
-	      format_ip_address, &cc->cc_ip,
-	      cc->tr_refcnt, cc->session_refcnt);
+  s = format (s, "[%d] cnat-client:[%U] tr:%d sess:%d locks:%u", cci,
+	      format_ip_address, &cc->cc_ip, cc->tr_refcnt, cc->session_refcnt,
+	      cc->cc_locks);
 
   if (cc->flags & CNAT_FLAG_EXCLUSIVE)
     s = format (s, " exclusive");
