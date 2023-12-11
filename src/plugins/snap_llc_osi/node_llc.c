@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/llc/llc.h>
+#include <snap_llc_osi/llc.h>
 
 #define foreach_llc_input_next			\
   _ (PUNT, "error-punt")			\
@@ -313,10 +313,6 @@ llc_register_input_protocol (vlib_main_t * vm,
 
   {
     clib_error_t *error = vlib_call_init_function (vm, llc_input_init);
-    if (error)
-      clib_error_report (error);
-    /* Otherwise, osi_input_init will wipe out e.g. the snap init */
-    error = vlib_call_init_function (vm, osi_input_init);
     if (error)
       clib_error_report (error);
   }
