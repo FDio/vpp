@@ -18,6 +18,7 @@
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/dpo/dpo.h>
 
 #include <cnat/cnat_translation.h>
 #include <cnat/cnat_maglev.h>
@@ -83,6 +84,7 @@ cnat_tracker_release (cnat_ep_trk_t * trk)
   /* We only track fully resolved endpoints */
   if (!(trk->ct_flags & CNAT_TRK_ACTIVE))
     return;
+  dpo_reset (&trk->ct_dpo); // undo fib_entry_contribute_forwarding
   fib_entry_untrack (trk->ct_fei, trk->ct_sibling);
 }
 
@@ -268,6 +270,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
 			 cnat_endpoint_tuple_t *paths, u8 flags,
 			 cnat_lb_type_t lb_type, flow_hash_config_t fhc)
 {
+  const dpo_id_t tmp = DPO_INVALID;
   cnat_endpoint_tuple_t *path;
   const cnat_client_t *cc;
   cnat_translation_t *ct;
@@ -340,6 +343,7 @@ cnat_translation_update (cnat_endpoint_t *vip, ip_protocol_t proto,
     clib_memcpy (&trk->ct_ep[VLIB_RX], &path->src_ep,
 		 sizeof (trk->ct_ep[VLIB_RX]));
     trk->ct_flags = path->ep_flags;
+    trk->ct_dpo = tmp;
 
     cnat_tracker_track (ct->index, trk);
   }
