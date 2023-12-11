@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "vlib/unix/plugin.h"
 #include <cdp/cdp.h>
 #include <vnet/ethernet/packet.h>
 
@@ -47,6 +48,7 @@ typedef enum
   CDP_INPUT_NEXT_NORMAL,
   CDP_INPUT_N_NEXT,
 } cdp_next_t;
+
 
 /*
  * Process a frame of cdp packets
@@ -151,12 +153,12 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	       * Dynamically register the cdp input node
 	       * with the snap classifier
 	       */
-	      snap_register_input_protocol (vm, "cdp-input",
+	      cm->snap_reg_input_protocol (vm, "cdp-input",
 					    0xC /* ieee_oui, Cisco */ ,
 					    0x2000 /* protocol CDP */ ,
 					    cdp_input_node.index);
 
-	      snap_register_input_protocol (vm, "cdp-input",
+	      cm->snap_reg_input_protocol (vm, "cdp-input",
 					    0xC /* ieee_oui, Cisco */ ,
 					    0x2004 /* protocol CDP */ ,
 					    cdp_input_node.index);
