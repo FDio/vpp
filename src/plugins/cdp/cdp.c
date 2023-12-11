@@ -108,11 +108,23 @@ static void vl_api_cdp_enable_disable_t_handler
   REPLY_MACRO (VL_API_CDP_ENABLE_DISABLE_REPLY);
 }
 
+void (*snap_register_input_protocol) (vlib_main_t *, char *, u32, u16,
+				      u32) = 0;
+
 #include <cdp/cdp.api.c>
 static clib_error_t *
 cdp_init (vlib_main_t * vm)
 {
   cdp_main_t *cm = &cdp_main;
+  clib_error_t *error = 0;
+
+  snap_register_input_protocol = vlib_get_plugin_symbol (
+    "snap_llc_osi_plugin.so", "snap_register_input_protocol");
+  if (snap_register_input_protocol == 0)
+    {
+      error = clib_error_return (0, "snap_llc_osi_plugin.so is not loaded");
+      return error;
+    }
 
   cm->vlib_main = vm;
 

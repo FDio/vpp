@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 /*
- * osi_node.c: osi packet processing
+ * snap_node.c: snap packet processing
  *
  * Copyright (c) 2010 Eliot Dresselhaus
  *
@@ -39,45 +39,39 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/osi/osi.h>
-#include <vnet/ppp/ppp.h>
-#include <vnet/hdlc/hdlc.h>
-#include <vnet/llc/llc.h>
-
-#define foreach_osi_input_next			\
-  _ (PUNT, "error-punt")			\
-  _ (DROP, "error-drop")
+#include <snap_llc_osi/llc.h>
+#include <snap_llc_osi/snap.h>
 
 typedef enum
 {
-#define _(s,n) OSI_INPUT_NEXT_##s,
-  foreach_osi_input_next
-#undef _
-    OSI_INPUT_N_NEXT,
-} osi_input_next_t;
+  SNAP_INPUT_NEXT_DROP,
+  SNAP_INPUT_NEXT_PUNT,
+  SNAP_INPUT_NEXT_ETHERNET_TYPE,
+  SNAP_INPUT_N_NEXT,
+} snap_input_next_t;
 
 typedef struct
 {
   u8 packet_data[32];
-} osi_input_trace_t;
+} snap_input_trace_t;
 
 static u8 *
-format_osi_input_trace (u8 * s, va_list * va)
+format_snap_input_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  osi_input_trace_t *t = va_arg (*va, osi_input_trace_t *);
+  snap_input_trace_t *t = va_arg (*va, snap_input_trace_t *);
 
-  s = format (s, "%U", format_osi_header, t->packet_data);
+  s = format (s, "%U", format_snap_header, t->packet_data);
 
   return s;
 }
 
 static uword
-osi_input (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+snap_input (vlib_main_t * vm,
+	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  osi_main_t *lm = &osi_main;
+  snap_main_t *sm = &snap_main;
   u32 n_left_from, next_index, *from, *to_next;
 
   from = vlib_frame_vector_args (from_frame);
@@ -88,7 +82,7 @@ osi_input (vlib_main_t * vm,
 				   from,
 				   n_left_from,
 				   sizeof (from[0]),
-				   sizeof (osi_input_trace_t));
+				   sizeof (snap_input_trace_t));
 
   next_index = node->cached_next_index;
 
@@ -102,8 +96,11 @@ osi_input (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
-	  osi_header_t *h0, *h1;
-	  u8 next0, next1, enqueue_code;
+	  snap_header_t *h0, *h1;
+	  snap_protocol_info_t *pi0, *pi1;
+	  u8 next0, next1, is_ethernet0, is_ethernet1, len0, len1,
+	    enqueue_code;
+	  u32 oui0, oui1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -134,17 +131,30 @@ osi_input (vlib_main_t * vm,
 	  h0 = vlib_buffer_get_current (b0);
 	  h1 = vlib_buffer_get_current (b1);
 
-	  next0 = lm->input_next_by_protocol[h0->protocol];
-	  next1 = lm->input_next_by_protocol[h1->protocol];
+	  oui0 = snap_header_get_oui (h0);
+	  oui1 = snap_header_get_oui (h1);
 
-	  b0->error =
-	    node->errors[next0 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
-	  b1->error =
-	    node->errors[next1 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
+	  is_ethernet0 = oui0 == IEEE_OUI_ethernet;
+	  is_ethernet1 = oui1 == IEEE_OUI_ethernet;
+
+	  len0 = sizeof (h0[0]) - (is_ethernet0 ? sizeof (h0->protocol) : 0);
+	  len1 = sizeof (h1[0]) - (is_ethernet1 ? sizeof (h1->protocol) : 0);
+
+	  vlib_buffer_advance (b0, len0);
+	  vlib_buffer_advance (b1, len1);
+
+	  pi0 = snap_get_protocol_info (sm, h0);
+	  pi1 = snap_get_protocol_info (sm, h1);
+
+	  next0 = pi0 ? pi0->next_index : SNAP_INPUT_NEXT_DROP;
+	  next1 = pi1 ? pi1->next_index : SNAP_INPUT_NEXT_DROP;
+
+	  next0 = is_ethernet0 ? SNAP_INPUT_NEXT_ETHERNET_TYPE : next0;
+	  next1 = is_ethernet1 ? SNAP_INPUT_NEXT_ETHERNET_TYPE : next1;
+
+	  /* In case of error. */
+	  b0->error = node->errors[SNAP_ERROR_UNKNOWN_PROTOCOL];
+	  b1->error = node->errors[SNAP_ERROR_UNKNOWN_PROTOCOL];
 
 	  enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);
 
@@ -189,8 +199,10 @@ osi_input (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  osi_header_t *h0;
-	  u8 next0;
+	  snap_header_t *h0;
+	  snap_protocol_info_t *pi0;
+	  u8 next0, is_ethernet0, len0;
+	  u32 oui0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -203,12 +215,22 @@ osi_input (vlib_main_t * vm,
 
 	  h0 = vlib_buffer_get_current (b0);
 
-	  next0 = lm->input_next_by_protocol[h0->protocol];
+	  oui0 = snap_header_get_oui (h0);
 
-	  b0->error =
-	    node->errors[next0 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
+	  is_ethernet0 = oui0 == IEEE_OUI_ethernet;
+
+	  len0 = sizeof (h0[0]) - (is_ethernet0 ? sizeof (h0->protocol) : 0);
+
+	  vlib_buffer_advance (b0, len0);
+
+	  pi0 = snap_get_protocol_info (sm, h0);
+
+	  next0 = pi0 ? pi0->next_index : SNAP_INPUT_NEXT_DROP;
+
+	  next0 = is_ethernet0 ? SNAP_INPUT_NEXT_ETHERNET_TYPE : next0;
+
+	  /* In case of error. */
+	  b0->error = node->errors[SNAP_ERROR_UNKNOWN_PROTOCOL];
 
 	  /* Sent packet to wrong next? */
 	  if (PREDICT_FALSE (next0 != next_index))
@@ -218,8 +240,8 @@ osi_input (vlib_main_t * vm,
 
 	      /* Send to correct next. */
 	      next_index = next0;
-	      vlib_get_next_frame (vm, node, next_index, to_next,
-				   n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index,
+				   to_next, n_left_to_next);
 
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -233,99 +255,99 @@ osi_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static char *osi_error_strings[] = {
+static char *snap_error_strings[] = {
 #define _(f,s) s,
-  foreach_osi_error
+  foreach_snap_error
 #undef _
 };
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (osi_input_node) = {
-  .function = osi_input,
-  .name = "osi-input",
+VLIB_REGISTER_NODE (snap_input_node) = {
+  .function = snap_input,
+  .name = "snap-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
-  .n_errors = OSI_N_ERROR,
-  .error_strings = osi_error_strings,
+  .n_errors = SNAP_N_ERROR,
+  .error_strings = snap_error_strings,
 
-  .n_next_nodes = OSI_INPUT_N_NEXT,
+  .n_next_nodes = SNAP_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [OSI_INPUT_NEXT_##s] = n,
-    foreach_osi_input_next
-#undef _
+    [SNAP_INPUT_NEXT_DROP] = "error-drop",
+    [SNAP_INPUT_NEXT_PUNT] = "error-punt",
+    [SNAP_INPUT_NEXT_ETHERNET_TYPE] = "ethernet-input-type",
   },
 
-  .format_buffer = format_osi_header_with_length,
-  .format_trace = format_osi_input_trace,
-  .unformat_buffer = unformat_osi_header,
+  .format_buffer = format_snap_header_with_length,
+  .format_trace = format_snap_input_trace,
+  .unformat_buffer = unformat_snap_header,
 };
 /* *INDENT-ON* */
 
 static void
-osi_setup_node (vlib_main_t *vm, u32 node_index)
+snap_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);
 
-  n->format_buffer = format_osi_header_with_length;
-  n->unformat_buffer = unformat_osi_header;
-  pn->unformat_edit = unformat_pg_osi_header;
+  n->format_buffer = format_snap_header_with_length;
+  n->unformat_buffer = unformat_snap_header;
+  pn->unformat_edit = unformat_pg_snap_header;
 }
 
 static clib_error_t *
-osi_input_init (vlib_main_t * vm)
+snap_input_init (vlib_main_t * vm)
 {
-  clib_error_t *error = 0;
-  osi_main_t *lm = &osi_main;
-
-  if ((error = vlib_call_init_function (vm, osi_init)))
-    return error;
-
-  osi_setup_node (vm, osi_input_node.index);
-
   {
-    int i;
-    for (i = 0; i < ARRAY_LEN (lm->input_next_by_protocol); i++)
-      lm->input_next_by_protocol[i] = OSI_INPUT_NEXT_DROP;
-  }
-
-  ppp_register_input_protocol (vm, PPP_PROTOCOL_osi, osi_input_node.index);
-  hdlc_register_input_protocol (vm, HDLC_PROTOCOL_osi, osi_input_node.index);
-  llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer1,
-			       osi_input_node.index);
-  llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer2,
-			       osi_input_node.index);
-  llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer3,
-			       osi_input_node.index);
-  llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer4,
-			       osi_input_node.index);
-  llc_register_input_protocol (vm, LLC_PROTOCOL_osi_layer5,
-			       osi_input_node.index);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (osi_input_init);
-
-void
-osi_register_input_protocol (osi_protocol_t protocol, u32 node_index)
-{
-  osi_main_t *lm = &osi_main;
-  vlib_main_t *vm = lm->vlib_main;
-  osi_protocol_info_t *pi;
-
-  {
-    clib_error_t *error = vlib_call_init_function (vm, osi_input_init);
+    clib_error_t *error = vlib_call_init_function (vm, snap_init);
     if (error)
       clib_error_report (error);
   }
 
-  pi = osi_get_protocol_info (lm, protocol);
-  pi->node_index = node_index;
-  pi->next_index = vlib_node_add_next (vm, osi_input_node.index, node_index);
+  snap_setup_node (vm, snap_input_node.index);
 
-  lm->input_next_by_protocol[protocol] = pi->next_index;
+  llc_register_input_protocol (vm, LLC_PROTOCOL_snap, snap_input_node.index);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (snap_input_init);
+
+void
+snap_register_input_protocol (vlib_main_t * vm,
+			      char *name,
+			      u32 ieee_oui, u16 protocol, u32 node_index)
+{
+  snap_main_t *sm = &snap_main;
+  snap_protocol_info_t *pi;
+  snap_header_t h;
+  snap_oui_and_protocol_t key;
+
+  {
+    clib_error_t *error = vlib_call_init_function (vm, snap_input_init);
+    if (error)
+      clib_error_report (error);
+  }
+
+  h.protocol = clib_host_to_net_u16 (protocol);
+  h.oui[0] = (ieee_oui >> 16) & 0xff;
+  h.oui[1] = (ieee_oui >> 8) & 0xff;
+  h.oui[2] = (ieee_oui >> 0) & 0xff;
+  pi = snap_get_protocol_info (sm, &h);
+  if (pi)
+    return;
+
+  vec_add2 (sm->protocols, pi, 1);
+
+  pi->name = format (0, "%s", name);
+  pi->node_index = node_index;
+  pi->next_index = vlib_node_add_next (vm, snap_input_node.index, node_index);
+
+  key.oui = ieee_oui;
+  key.protocol = clib_host_to_net_u16 (protocol);
+
+  mhash_set (&sm->protocol_hash, &key, pi - sm->protocols, /* old_value */ 0);
+  hash_set_mem (sm->protocol_info_by_name, name, pi - sm->protocols);
 }
 
 /*

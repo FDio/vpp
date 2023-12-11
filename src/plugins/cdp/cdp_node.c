@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "vlib/unix/plugin.h"
 #include <cdp/cdp.h>
 #include <vnet/ethernet/packet.h>
 
@@ -47,6 +48,9 @@ typedef enum
   CDP_INPUT_NEXT_NORMAL,
   CDP_INPUT_N_NEXT,
 } cdp_next_t;
+
+extern void (*snap_register_input_protocol) (vlib_main_t *, char *, u32, u16,
+					     u32);
 
 /*
  * Process a frame of cdp packets
