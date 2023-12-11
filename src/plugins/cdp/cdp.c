@@ -113,6 +113,15 @@ static clib_error_t *
 cdp_init (vlib_main_t * vm)
 {
   cdp_main_t *cm = &cdp_main;
+  clib_error_t *error = 0;
+
+  cm->snap_reg_input_protocol = vlib_get_plugin_symbol (
+    "snap_llc_osi_plugin.so", "snap_register_input_protocol");
+  if (cm->snap_reg_input_protocol == 0)
+    {
+      error = clib_error_return (0, "snap_llc_osi_plugin.so is not loaded");
+      return error;
+    }
 
   cm->vlib_main = vm;
 
@@ -122,7 +131,9 @@ cdp_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (cdp_init);
+VLIB_INIT_FUNCTION (cdp_init) = {
+  .runs_after = VLIB_INITS ("snap_init"),
+};
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
