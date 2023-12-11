@@ -471,7 +471,7 @@ aes2_cbc_dec (const u8x16 *k, u8x32u *src, u8x32u *dst, u8x16u *iv, int count,
       for (i = 1; i < rounds; i++)
 	rl = aes_dec_round (rl, k[i]);
       rl = aes_dec_last_round (rl, k[i]);
-      *(u8x16 *) dst = rl ^ u8x32_extract_hi (f);
+      *(u8x16u *) dst = rl ^ u8x32_extract_hi (f);
     }
 }
 #endif
