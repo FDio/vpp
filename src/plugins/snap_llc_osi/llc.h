@@ -41,6 +41,7 @@
 #define included_llc_h
 
 #include <vnet/vnet.h>
+#include <vnet/llc/llc_header.h>
 
 /* Protocol (SSAP/DSAP) types. */
 #define foreach_llc_protocol			\
@@ -73,21 +74,6 @@ typedef enum
   foreach_llc_protocol
 #undef _
 } llc_protocol_t;
-
-typedef struct
-{
-#define LLC_DST_SAP_IS_GROUP (1 << 0)
-#define LLC_SRC_SAP_IS_RESPONSE (1 << 0)
-  u8 dst_sap, src_sap;
-
-  /* Control byte.
-     [0] 1 => supervisory 0 => information
-     [1] unnumbered frame. */
-  u8 control;
-
-  /* Only present if (control & 3) != 3. */
-  u8 extended_control[0];
-} llc_header_t;
 
 always_inline u16
 llc_header_get_control (llc_header_t * h)

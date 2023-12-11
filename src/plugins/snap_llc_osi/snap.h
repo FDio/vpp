@@ -41,6 +41,7 @@
 #define included_snap_h
 
 #include <vnet/vnet.h>
+#include <vnet/snap/snap_header.h>
 
 #define foreach_ieee_oui			\
   _ (0x000000, ethernet)			\
@@ -72,19 +73,6 @@ typedef enum
   foreach_snap_cisco_protocol
 #undef _
 } snap_cisco_protocol_t;
-
-typedef union
-{
-  CLIB_PACKED (struct {
-    /* OUI: organization unique identifier. */
-    u8 oui[3];
-
-    /* Per-OUI protocol. */
-    u16 protocol;
-  });
-
-  u8 as_u8[5];
-} snap_header_t;
 
 typedef struct
 {
