@@ -17,8 +17,8 @@
 
 #define _GNU_SOURCE
 #include <stdint.h>
-#include <vnet/llc/llc.h>
-#include <vnet/snap/snap.h>
+#include <vnet/llc/llc_header.h>
+#include <vnet/snap/snap_header.h>
 #include <vnet/bonding/node.h>
 
 #ifndef CLIB_MARCH_VARIANT
