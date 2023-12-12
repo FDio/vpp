@@ -867,7 +867,10 @@ session_enqueue_dgram_connection_cl (session_t *s, session_dgram_hdr_t *hdr,
 				     vlib_buffer_t *b, u8 proto,
 				     u8 queue_event)
 {
-  return session_enqueue_dgram_connection_inline (s, hdr, b, proto,
+  session_t *awls;
+
+  awls = app_listener_select_wrk_cl_session (s, hdr);
+  return session_enqueue_dgram_connection_inline (awls, hdr, b, proto,
 						  queue_event, 1 /* is_cl */);
 }
 
