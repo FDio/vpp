@@ -495,6 +495,9 @@ int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
 				      vlib_buffer_t * b, u8 proto,
 				      u8 queue_event);
+int session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t *hdr,
+				       vlib_buffer_t *b, u8 proto,
+				       u8 queue_event);
 int session_enqueue_dgram_connection_cl (session_t *s,
 					 session_dgram_hdr_t *hdr,
 					 vlib_buffer_t *b, u8 proto,
