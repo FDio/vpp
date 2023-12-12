@@ -1180,6 +1180,9 @@ session_transport_closed_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+    return;
+
   /* Transport thinks that app requested close but it actually didn't.
    * Can happen for tcp:
    * 1)if fin and rst are received in close succession.
