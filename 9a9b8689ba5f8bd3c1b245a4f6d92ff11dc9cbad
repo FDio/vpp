@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10dea369_0856dee8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2023-12-12T23:30:51Z",
+      "side": 1,
+      "message": "when we say \"fixes unaligned access\" what do we really mean?\nthe ipX_address_t and ipX_header_t structures are already \u0027packed\u0027 in the sense that there is no padding within them. Declaring them to be packed doesn\u0027t change the location of an address nor a header within a buffer; they go where the driver puts them, so the access is still unaligned.\nIs what we are addressing here a UBSAN behaviour where it flags unaligned access as undefined if they are on a structure that is not marked as packed and therefore not \u0027expected\u0027?",
+      "revId": "9a9b8689ba5f8bd3c1b245a4f6d92ff11dc9cbad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
