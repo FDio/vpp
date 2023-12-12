@@ -136,39 +136,46 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
   int wrote0;
 
   if (!(uc0->flags & UDP_CONN_F_CONNECTED))
-    clib_spinlock_lock (&uc0->rx_lock);
+    {
+      clib_spinlock_lock (&uc0->rx_lock);
+
+      wrote0 = session_enqueue_dgram_connection_cl (
+	s0, hdr0, b, TRANSPORT_PROTO_UDP, queue_event);
+
+      clib_spinlock_unlock (&uc0->rx_lock);
+
+      /* Expect cl udp enqueue to fail because fifo enqueue */
+      if (PREDICT_FALSE (wrote0 == 0))
+	*error0 = UDP_ERROR_FIFO_FULL;
+
+      return;
+    }
 
   if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
       < hdr0->data_length + sizeof (session_dgram_hdr_t))
     {
       *error0 = UDP_ERROR_FIFO_FULL;
-      goto unlock_rx_lock;
+      return;
     }
 
   /* If session is owned by another thread and rx event needed,
    * enqueue event now while we still have the peeker lock */
   if (s0->thread_index != thread_index)
     {
-      wrote0 = session_enqueue_dgram_connection_cl (
+      wrote0 = session_enqueue_dgram_connection2 (
 	s0, hdr0, b, TRANSPORT_PROTO_UDP,
-	/* queue event */ queue_event && !svm_fifo_has_event (s0->rx_fifo));
+	queue_event && !svm_fifo_has_event (s0->rx_fifo));
     }
   else
     {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 queue_event);
+      wrote0 = session_enqueue_dgram_connection (
+	s0, hdr0, b, TRANSPORT_PROTO_UDP, queue_event);
     }
 
   /* In some rare cases, session_enqueue_dgram_connection can fail because a
    * chunk cannot be allocated in the RX FIFO */
   if (PREDICT_FALSE (wrote0 == 0))
     *error0 = UDP_ERROR_FIFO_NOMEM;
-
-unlock_rx_lock:
-
-  if (!(uc0->flags & UDP_CONN_F_CONNECTED))
-    clib_spinlock_unlock (&uc0->rx_lock);
 }
 
 always_inline session_t *

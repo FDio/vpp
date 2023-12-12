@@ -847,13 +847,14 @@ vls_share_session (vls_worker_t * vls_wrk, vcl_locked_session_t * vls)
 
   vls_shared_data_pool_runlock ();
 
-  if (s->rx_fifo)
-    {
-      vcl_session_share_fifos (s, s->rx_fifo, s->tx_fifo);
-    }
-  else if (s->session_state == VCL_STATE_LISTEN)
+  if (s->session_state == VCL_STATE_LISTEN)
     {
       s->session_state = VCL_STATE_LISTEN_NO_MQ;
+      s->rx_fifo = s->tx_fifo = 0;
+    }
+  else if (s->rx_fifo)
+    {
+      vcl_session_share_fifos (s, s->rx_fifo, s->tx_fifo);
     }
 }
 
