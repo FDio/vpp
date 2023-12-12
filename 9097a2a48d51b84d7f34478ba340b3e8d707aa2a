@@ -3,6 +3,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "cc06c26b_a63f9d9f",
+        "filename": "src/vlib/threads_cli.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-12T09:32:46Z",
+      "side": 1,
+      "message": "I think you can declare it as 0 there and call the function (and allocate it) only if relative is enabled in the if block on lines 54-57 below, so that we don\u0027t do a useless alloc/free in case of not relative",
+      "revId": "9097a2a48d51b84d7f34478ba340b3e8d707aa2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0baf42c4_724d305b",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-12T09:32:46Z",
+      "side": 1,
+      "message": "I think this should be clib_error() instead, clib_unix_error will add the error corresponding to errno, but it is not a failure of a libc function that would set errno, just an incorrect user parameter (unavailable core)",
+      "revId": "9097a2a48d51b84d7f34478ba340b3e8d707aa2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d2c485e7_a448fa68",
         "filename": "test/scripts/core_pinning_test.sh",
         "patchSetId": 26
@@ -14,6 +48,24 @@
       "writtenOn": "2023-12-11T09:16:54Z",
       "side": 1,
       "message": "Should this test be added to the CI ?",
+      "revId": "9097a2a48d51b84d7f34478ba340b3e8d707aa2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5099d774_a167a419",
+        "filename": "test/scripts/core_pinning_test.sh",
+        "patchSetId": 26
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2023-12-12T09:32:46Z",
+      "side": 1,
+      "message": "I don\u0027t think so, the current make test framework don\u0027t really support it",
+      "parentUuid": "d2c485e7_a448fa68",
       "revId": "9097a2a48d51b84d7f34478ba340b3e8d707aa2a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
