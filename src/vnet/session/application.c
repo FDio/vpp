@@ -52,6 +52,7 @@ static void
 app_listener_free (application_t * app, app_listener_t * app_listener)
 {
   clib_bitmap_free (app_listener->workers);
+  vec_free (app_listener->cl_listeners);
   if (CLIB_DEBUG)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
   pool_put (app->listeners, app_listener);
@@ -319,6 +320,13 @@ app_listener_get_local_session (app_listener_t * al)
   if (al->local_index == SESSION_INVALID_INDEX)
     return 0;
   return listen_session_get (al->local_index);
+}
+
+session_t *
+app_listener_get_wrk_cl_session (app_listener_t *al, u32 wrk_map_index)
+{
+  u32 si = vec_elt (al->cl_listeners, wrk_map_index);
+  return session_get (si, 0 /* listener thread */);
 }
 
 static app_worker_map_t *
@@ -1015,6 +1023,39 @@ application_listener_select_worker (session_t * ls)
   app = application_get (ls->app_index);
   al = app_listener_get (app, ls->al_index);
   return app_listener_select_worker (app, al);
+}
+
+always_inline u32
+app_listener_cl_flow_hash (void *chdr)
+{
+  u32 hash = 0;
+
+  hash = clib_crc32c_u64 (hash, *(u64 *) chdr);
+  hash = clib_crc32c_u64 (hash, *(u64 *) (chdr + 8));
+  hash = clib_crc32c_u64 (hash, *(u64 *) (chdr + 16));
+  hash = clib_crc32c_u64 (hash, *(u64 *) (chdr + 24));
+  hash = clib_crc32c_u32 (hash, *(u32 *) (chdr + 32));
+
+  return hash;
+}
+
+session_t *
+app_listener_select_wrk_cl_session (session_t *ls, session_dgram_hdr_t *hdr)
+{
+  u32 wrk_map_index = 0;
+  application_t *app;
+  app_listener_t *al;
+
+  app = application_get (ls->app_index);
+  al = app_listener_get (app, ls->al_index);
+  if (vec_len (al->workers) > 1)
+    {
+      u32 hash = app_listener_cl_flow_hash (&hdr->rmt_ip);
+      hash %= vec_len (al->workers);
+      wrk_map_index = clib_bitmap_next_set (al->workers, hash);
+    }
+
+  return app_listener_get_wrk_cl_session (al, wrk_map_index);
 }
 
 int
