@@ -276,7 +276,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			  session_handle_t handle, int rv)
 {
   session_bound_msg_t m = { 0 };
-  transport_endpoint_t tep;
+//   transport_endpoint_t tep;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   application_t *app;
@@ -298,23 +298,34 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   else
     ls = app_listener_get_local_session (al);
 
-  session_get_endpoint (ls, &tep, 1 /* is_lcl */);
-  m.lcl_port = tep.port;
-  m.lcl_is_ip4 = tep.is_ip4;
-  clib_memcpy_fast (m.lcl_ip, &tep.ip, sizeof (tep.ip));
+  transport_connection_t *ltc;
+  ltc = session_get_transport (ls);
+  m.lcl_port = ltc->lcl_port;
+  m.lcl_is_ip4 = ltc->is_ip4;
+  clib_memcpy_fast (m.lcl_ip, &ltc->lcl_ip, sizeof (m.lcl_ip));
+//   session_get_endpoint (ls, &tep, 1 /* is_lcl */);
+//   m.lcl_port = tep.port;
+//   m.lcl_is_ip4 = tep.is_ip4;
+//   clib_memcpy_fast (m.lcl_ip, &tep.ip, sizeof (tep.ip));
   app = application_get (app_wrk->app_index);
   eq_seg = application_get_rx_mqs_segment (app);
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
   m.mq_index = ls->thread_index;
 
-  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL &&
-      ls->rx_fifo)
+//   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL &&
+//       ls->rx_fifo)
+  if (transport_connection_is_cless (ltc))
     {
+      session_t *wrk_ls;
       m.mq_index = transport_cl_thread ();
       m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, m.mq_index);
-      m.rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
-      m.tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
-      m.segment_handle = session_segment_handle (ls);
+      wrk_ls = app_listener_get_wrk_cl_session (al, app_wrk->wrk_map_index);
+      m.rx_fifo = fifo_segment_fifo_offset (wrk_ls->rx_fifo);
+      m.tx_fifo = fifo_segment_fifo_offset (wrk_ls->tx_fifo);
+      m.segment_handle = session_segment_handle (wrk_ls);
+      //m.rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
+      //m.tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
+      //m.segment_handle = session_segment_handle (ls);
     }
 
 snd_msg:

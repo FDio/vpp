@@ -186,12 +186,56 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 }
 
 int
+app_worker_alloc_wrk_cl_session (app_worker_t * app_wrk, session_t * ls)
+{
+  svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
+  segment_manager_t *sm;
+  app_listener_t *al;
+  session_t *s;
+
+  al = app_listener_get_w_session (ls);
+  sm = app_worker_get_listen_segment_manager (app_wrk, ls);
+
+  s = session_alloc (0 /* listener on main worker */);
+  session_set_state (s, SESSION_STATE_LISTENING);
+  s->session_type = ls->session_type;
+  s->app_wrk_index = app_wrk->wrk_index;
+  s->connection_index = ls->connection_index;
+
+  segment_manager_alloc_session_fifos (sm, s->thread_index, &rx_fifo,
+                                       &tx_fifo);
+
+  rx_fifo->shr->master_session_index = s->session_index;
+  rx_fifo->master_thread_index = s->thread_index;
+
+  tx_fifo->shr->master_session_index = s->session_index;
+  tx_fifo->master_thread_index = s->thread_index;
+
+  s->rx_fifo = rx_fifo;
+  s->tx_fifo = tx_fifo;
+
+  hash_set (al->cl_listeners_table, app_wrk->wrk_map_index, s->session_index);
+
+  return 0;
+}
+
+session_t *
+app_worker_get_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
+{
+  app_listener_t *al;
+
+  al = app_listener_get_w_session (ls);
+  return app_listener_get_wrk_cl_session (al, app_wrk->wrk_map_index);
+}
+
+int
 app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 {
   segment_manager_t *sm;
 
   /* Allocate segment manager. All sessions derived out of a listen session
-   * have fifos allocated by the same segment manager. */
+   * have fifos allocated by the same segment manager. 
+   * TODO(fcoras): limit memory consumption by cless listeners */
   if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
     return SESSION_E_ALLOC;
 
@@ -203,11 +247,12 @@ app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 	    segment_manager_index (sm));
 
   if (transport_connection_is_cless (session_get_transport (ls)))
-    {
-      if (ls->rx_fifo)
-	return SESSION_E_NOSUPPORT;
-      return app_worker_alloc_session_fifos (sm, ls);
-    }
+    return app_worker_alloc_wrk_cl_session (app_wrk, ls);
+  //     {
+  //       if (ls->rx_fifo)
+  // 	return SESSION_E_NOSUPPORT;
+  //       return app_worker_alloc_session_fifos (sm, ls);
+  //     }
   return 0;
 }
 
@@ -277,6 +322,7 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
     return;
 
   /* Dealloc fifos, if any (dgram listeners) */
+  /* XXX cleanup sessions + table */
   if (ls->rx_fifo)
     {
       segment_manager_dealloc_fifos (ls->rx_fifo, ls->tx_fifo);

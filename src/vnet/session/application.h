@@ -106,6 +106,8 @@ typedef struct app_listener_
   session_handle_t ls_handle;	/**< session handle of the local or global
 				     listening session that also identifies
 				     the app listener */
+  uword *cl_listeners_table;    /**< hash table that maps app workers to their
+  				     cl sessions with fifos */
 } app_listener_t;
 
 typedef enum app_rx_mq_flags_
@@ -254,6 +256,8 @@ void app_listener_cleanup (app_listener_t * app_listener);
 session_handle_t app_listener_handle (app_listener_t * app_listener);
 app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
+session_t *app_listener_select_wrk_cl_session (session_t *ls,
+                                        session_dgram_hdr_t *hdr);
 
 /**
  * Get app listener handle for listening session
@@ -280,6 +284,7 @@ app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
 session_t *app_listener_get_session (app_listener_t * al);
 session_t *app_listener_get_local_session (app_listener_t * al);
+session_t *app_listener_get_wrk_cl_session (app_listener_t *al, u32 wrk_index);
 
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
