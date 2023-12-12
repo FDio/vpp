@@ -321,6 +321,11 @@ app_listener_get_local_session (app_listener_t * al)
   return listen_session_get (al->local_index);
 }
 
+session_t *
+app_listener_get_wrk_cl_session (app_listener_t *al, u32 app_wrk)
+{
+}
+
 static app_worker_map_t *
 app_worker_map_alloc (application_t * app)
 {

@@ -185,6 +185,12 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
   return 0;
 }
 
+session_t *
+app_worker_alloc_wrk_cl_session (segment_manager_t *sm)
+{
+
+}
+
 int
 app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 {
