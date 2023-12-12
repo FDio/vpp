@@ -23,11 +23,10 @@ RDMA_CORE_DEBUG?=n
 #       	2. Verify that the file build/external/dpdk_mlx_default.sh was generated
 #              and contains 'DPDK_MLX_DEFAULT=y'
 #
-rdma-core_version             := 46.1
+rdma-core_version             := 49.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
-rdma-core_tarball_md5sum_43.0 := 3785fd2b35cd41043ab53226fc112d41
-rdma-core_tarball_md5sum_45.0 := 2b170e6d2ad66fb688580520a16d1ad5
 rdma-core_tarball_md5sum_46.1 := 3ac7c00717ea2720df5d90f8a43ae33a
+rdma-core_tarball_md5sum_49.0 := 9fe3909f19c7e0276c9e546411bbb49c
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
