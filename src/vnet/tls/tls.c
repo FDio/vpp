@@ -749,7 +749,8 @@ tls_session_transport_closed_callback (session_t *ts)
   tls_ctx_t *ctx;
 
   ctx = tls_ctx_get_w_thread (ts->opaque, ts->thread_index);
-  session_transport_closed_notify (&ctx->connection);
+  if (!ctx->no_app_session)
+    session_transport_closed_notify (&ctx->connection);
 }
 
 static session_cb_vft_t tls_app_cb_vft = {
