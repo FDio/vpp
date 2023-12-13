@@ -16,6 +16,24 @@
       "message": "when we say \"fixes unaligned access\" what do we really mean?\nthe ipX_address_t and ipX_header_t structures are already \u0027packed\u0027 in the sense that there is no padding within them. Declaring them to be packed doesn\u0027t change the location of an address nor a header within a buffer; they go where the driver puts them, so the access is still unaligned.\nIs what we are addressing here a UBSAN behaviour where it flags unaligned access as undefined if they are on a structure that is not marked as packed and therefore not \u0027expected\u0027?",
       "revId": "9a9b8689ba5f8bd3c1b245a4f6d92ff11dc9cbad",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c1fa587_77812ba1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2023-12-13T08:08:49Z",
+      "side": 1,
+      "message": "\u003e when we say \"fixes unaligned access\" what do we really mean?\n\nUnaligned access (as per (5) and (7) in C17 6.3.2.3) is an undefined behavior. Even worse, it is known to be optimized by GCC for a long time. https://lore.kernel.org/lkml/c8fa8ea79ffaa5c87dac9ea16e12088c94a35faf.camel@gmail.com/\n\nBy default compilers mark there types with alignments of 4 or 8. However in the real packets that\u0027s not necessarily true. In the cases compiler is absolutely sure UB will happen, it may eliminate or otherwise \"unexpectedly\" optimize the code.\n\n\u003e Declaring them to be packed doesn\u0027t change the location of an address nor a header within a buffer; they go where the driver puts them, so the access is still unaligned.\n\nDeclaring them to be packed makes them align as 1, eliminating any possible unaligned access. It should not affect the way machine code behaves if compiled in an \"expected way\", at least on x86, but it would prevent unwanted optimizations from happening to the said code in compile time.",
+      "parentUuid": "10dea369_0856dee8",
+      "revId": "9a9b8689ba5f8bd3c1b245a4f6d92ff11dc9cbad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
