@@ -13,6 +13,7 @@ features:
   - Support virtio 1.1 packed ring in vhost
   - Support for tx queue size configuration (tested on host kernel 5.15
     and qemu version 6.2.0)
+  - Support RSS (tested on ubuntu 23.10)
 description: "Virtio implementation"
 missing:
   - API dump filtering by sw_if_index
