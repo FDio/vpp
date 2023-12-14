@@ -16,6 +16,23 @@
       "message": "This will probably still fail, CSIT does not set IVB mode yet.\n\ncsit-3n-alt-perftest mrrANDnic_*ANDdrv_rdma_coreAND1cAND64bANDeth-l2patch",
       "revId": "0a08249224a49052c104f043d61e33db67f20f20",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9c068c6_427db2f3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2023-12-14T15:23:53Z",
+      "side": 1,
+      "message": "perftest-3n-alt mrrANDnic_*ANDdrv_rdma_coreAND1cAND64bANDeth-l2patch",
+      "revId": "0a08249224a49052c104f043d61e33db67f20f20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
