@@ -98,6 +98,8 @@ enum rdma_rss6
 };
 
 /** \brief
+    The same as v4, just not an autoendian (left for bug compatibility).
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param host_if - Linux netdev interface name
@@ -130,6 +132,38 @@ define rdma_create_v3
   option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>] [no-multi-seg] [max-pktlen <size>] [rss <ipv4|ipv4-udp|ipv4-tcp>] [rss <ipv6|ipv6-udp|ipv6-tcp>]";
 };
 
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if - Linux netdev interface name
+    @param name - new rdma interface name
+    @param rxq_num - number of receive queues (optional)
+    @param rxq_size - receive queue size (optional)
+    @param txq_size - transmit queue size (optional)
+    @param mode - operation mode (optional)
+    @param no_multi_seg (optional) - disable chained buffer RX
+    @param max_pktlen (optional) - maximal RX packet size.
+    @param rss4 (optional) - IPv4 RSS
+    @param rss6 (optional) - IPv6 RSS
+*/
+
+autoendian define rdma_create_v4
+{
+  u32 client_index;
+  u32 context;
+
+  string host_if[64];
+  string name[64];
+  u16 rxq_num [default=1];
+  u16 rxq_size [default=1024];
+  u16 txq_size [default=1024];
+  vl_api_rdma_mode_t mode [default=0];
+  bool no_multi_seg [default=0];
+  u16 max_pktlen [default=0];
+  vl_api_rdma_rss4_t rss4 [default=0];
+  vl_api_rdma_rss6_t rss6 [default=0];
+  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>] [no-multi-seg] [max-pktlen <size>] [rss <ipv4|ipv4-udp|ipv4-tcp>] [rss <ipv6|ipv6-udp|ipv6-tcp>]";
+};
 
 /** \brief
     @param context - sender context, to match reply w/ request
@@ -168,6 +202,19 @@ define rdma_create_v2_reply
 */
 
 define rdma_create_v3_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+*/
+
+autoendian define rdma_create_v4_reply
 {
   u32 context;
   i32 retval;

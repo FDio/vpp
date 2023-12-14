@@ -42,6 +42,7 @@ rdma_api_mode (vl_api_rdma_mode_t mode)
     case RDMA_API_MODE_DV:
       return RDMA_MODE_DV;
     }
+  ASSERT (0); // Fail the debug build.
   return RDMA_MODE_AUTO;
 }
 
@@ -77,6 +78,35 @@ rdma_api_rss6 (const vl_api_rdma_rss6_t rss6)
       return RDMA_RSS6_IP_TCP;
     }
   return RDMA_RSS6_AUTO;
+}
+
+static void
+vl_api_rdma_create_v4_t_handler (vl_api_rdma_create_v4_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  rdma_main_t *rm = &rdma_main;
+  vl_api_rdma_create_v4_reply_t *rmp;
+  rdma_create_if_args_t args;
+  int rv;
+
+  clib_memset (&args, 0, sizeof (rdma_create_if_args_t));
+
+  args.ifname = mp->host_if;
+  args.name = mp->name;
+  args.rxq_num = mp->rxq_num;
+  args.rxq_size = mp->rxq_size;
+  args.txq_size = mp->txq_size;
+  args.mode = rdma_api_mode (mp->mode);
+  args.disable_striding_rq = 0;
+  args.no_multi_seg = mp->no_multi_seg;
+  args.max_pktlen = mp->max_pktlen;
+  args.rss4 = rdma_api_rss4 (mp->rss4);
+  args.rss6 = rdma_api_rss6 (mp->rss6);
+  rdma_create_if (vm, &args);
+  rv = args.rv;
+
+  REPLY_MACRO2_END (VL_API_RDMA_CREATE_V4_REPLY,
+		    ({ rmp->sw_if_index = args.sw_if_index; }));
 }
 
 static void
