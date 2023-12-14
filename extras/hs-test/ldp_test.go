@@ -25,7 +25,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	s.log("starting VPPs")
 
-	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/2",
+	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
 		clientContainer.getContainerWorkDir())
 	err := clnVclConf.
 		newStanza("vcl").
@@ -38,7 +38,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		saveToFile(clientVclFileName)
 	s.assertNil(err)
 
-	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/1",
+	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
 		serverContainer.getContainerWorkDir())
 	err = srvVclConf.
 		newStanza("vcl").

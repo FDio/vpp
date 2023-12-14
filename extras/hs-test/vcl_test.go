@@ -5,15 +5,23 @@ import (
 	"time"
 )
 
-const vclTemplate = `vcl {
-  app-socket-api %[1]s/var/run/app_ns_sockets/%[2]s
-  app-scope-global
-  app-scope-local
-  namespace-id %[2]s
-  namespace-secret %[2]s
-  use-mq-eventfd
+func getVclConfig(c *Container, ns_id_optional ...string) string {
+	var s Stanza
+	ns_id := "default"
+	if len(ns_id_optional) > 0 {
+		ns_id = ns_id_optional[0]
+	}
+	s.newStanza("vcl").
+		append(fmt.Sprintf("app-socket-api %[1]s/var/run/app_ns_sockets/%[2]s", c.getContainerWorkDir(), ns_id)).
+		append("app-scope-global").
+		append("app-scope-local").
+		append("use-mq-eventfd")
+	if len(ns_id_optional) > 0 {
+		s.append(fmt.Sprintf("namespace-id %[1]s", ns_id)).
+			append(fmt.Sprintf("namespace-secret %[1]s", ns_id))
+	}
+	return s.close().toString()
 }
-`
 
 func (s *VethsSuite) TestXEchoVclClientUdp() {
 	s.testXEchoVclClient("udp")
@@ -31,8 +39,7 @@ func (s *VethsSuite) testXEchoVclClient(proto string) {
 	serverVpp.vppctl("test echo server uri %s://%s/%s fifo-size 64k", proto, serverVeth.ip4AddressString(), port)
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
-	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
-	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
+	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client -N 100 -p " + proto + " " + serverVeth.ip4AddressString() + " " + port
 	s.log(testClientCommand)
@@ -55,8 +62,7 @@ func (s *VethsSuite) testXEchoVclServer(proto string) {
 	srvVppCont := s.getContainerByName("server-vpp")
 	srvAppCont := s.getContainerByName("server-app")
 
-	serverVclConfContent := fmt.Sprintf(vclTemplate, srvVppCont.getContainerWorkDir(), "1")
-	srvAppCont.createFile("/vcl.conf", serverVclConfContent)
+	srvAppCont.createFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s", proto, port)
 	srvAppCont.execServer(vclSrvCmd)
@@ -75,8 +81,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	srvVppCont := s.getContainerByName("server-vpp")
 	srvAppCont := s.getContainerByName("server-app")
 
-	serverVclConfContent := fmt.Sprintf(vclTemplate, srvVppCont.getContainerWorkDir(), "1")
-	srvAppCont.createFile("/vcl.conf", serverVclConfContent)
+	srvAppCont.createFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	srvAppCont.execServer("vcl_test_server " + port)
 
@@ -84,8 +89,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	serverVethAddress := serverVeth.ip4AddressString()
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
-	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
-	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
+	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client -p " + proto + " " + serverVethAddress + " " + port
 	echoClnContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
@@ -111,8 +115,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 
 	echoSrvContainer := s.getContainerByName("server-app")
 
-	serverVclConfContent := fmt.Sprintf(vclTemplate, echoSrvContainer.getContainerWorkDir(), "1")
-	echoSrvContainer.createFile("/vcl.conf", serverVclConfContent)
+	echoSrvContainer.createFile("/vcl.conf", getVclConfig(echoSrvContainer))
 
 	echoSrvContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	echoSrvContainer.execServer("vcl_test_server -p " + proto + " 12346")
@@ -124,8 +127,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	serverVethAddress := serverVeth.ip4AddressString()
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
-	clientVclConfContent := fmt.Sprintf(vclTemplate, echoClnContainer.getContainerWorkDir(), "2")
-	echoClnContainer.createFile("/vcl.conf", clientVclConfContent)
+	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client -U -p " + proto + " " + serverVethAddress + " 12346"
 	echoClnContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
