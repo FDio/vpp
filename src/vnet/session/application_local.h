@@ -22,7 +22,8 @@
 
 #define foreach_ct_flags                                                      \
   _ (CLIENT, "client")                                                        \
-  _ (HALF_OPEN, "half-open")
+  _ (HALF_OPEN, "half-open")                                                  \
+  _ (RESET, "reset")
 
 enum
 {

@@ -1034,6 +1034,8 @@ global_scope:
 static inline int
 ct_close_is_reset (ct_connection_t *ct, session_t *s)
 {
+  if (ct->flags & CT_CONN_F_RESET)
+    return 1;
   if (ct->flags & CT_CONN_F_CLIENT)
     return (svm_fifo_max_dequeue (ct->client_rx_fifo) > 0);
   else
@@ -1192,6 +1194,15 @@ ct_session_close (u32 ct_index, u32 thread_index)
   /* Do not send closed notify to make sure pending tx events are
    * still delivered and program cleanup */
   ct_program_cleanup (ct);
+}
+
+static void
+ct_session_reset (u32 ct_index, u32 thread_index)
+{
+  ct_connection_t *ct;
+  ct = ct_connection_get (ct_index, thread_index);
+  ct->flags |= CT_CONN_F_RESET;
+  ct_session_close (ct_index, thread_index);
 }
 
 static transport_connection_t *
@@ -1358,6 +1369,7 @@ static const transport_proto_vft_t cut_thru_proto = {
   .cleanup_ho = ct_cleanup_ho,
   .connect = ct_session_connect,
   .close = ct_session_close,
+  .reset = ct_session_reset,
   .custom_tx = ct_custom_tx,
   .app_rx_evt = ct_app_rx_evt,
   .format_listener = format_ct_listener,
