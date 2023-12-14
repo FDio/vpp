@@ -16,6 +16,23 @@
       "message": "I\u0027ve reposted the patch",
       "revId": "b5b7fb3665696305f62f2e37fcdce07a62468676",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19282952_9c3faa12",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1970
+      },
+      "writtenOn": "2023-12-14T19:10:40Z",
+      "side": 1,
+      "message": "LGTM",
+      "revId": "b5b7fb3665696305f62f2e37fcdce07a62468676",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
