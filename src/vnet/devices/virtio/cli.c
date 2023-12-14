@@ -62,6 +62,8 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.bind = VIRTIO_BIND_FORCE;
       else if (unformat (line_input, "bind"))
 	args.bind = VIRTIO_BIND_DEFAULT;
+      else if (unformat (line_input, "rss-enabled"))
+	args.rss_enabled = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -77,7 +79,7 @@ VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
 		"[feature-mask <hex-mask>] [tx-queue-size <size>] "
-		"[gso-enabled] [csum-enabled] "
+		"[gso-enabled] [csum-enabled] [rss-enabled] "
 		"[buffering [size <buffering-szie>]] [packed] [bind [force]]",
   .function = virtio_pci_create_command_fn,
 };
