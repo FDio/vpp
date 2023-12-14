@@ -33,6 +33,23 @@
       "message": "Damjan - This issue was identified in 21.01, so this should be considered for backporting to current LTS releases.",
       "revId": "3ef95c6114ae2af30b9c00c95df69365637fa947",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "461f9b2e_6d1eb422",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2023-12-14T15:20:41Z",
+      "side": 1,
+      "message": "Adding a couple folks from libmemif commit history to help finalize review",
+      "revId": "3ef95c6114ae2af30b9c00c95df69365637fa947",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
