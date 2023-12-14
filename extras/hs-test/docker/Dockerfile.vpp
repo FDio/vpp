@@ -19,8 +19,11 @@ COPY \
    $DIR/prom_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
-COPY vpp-data/bin/* /usr/bin/
-COPY vpp-data/lib/* /usr/lib/
+COPY vpp-data/bin/vpp /usr/bin/
+COPY vpp-data/bin/vppctl /usr/bin/
+COPY vpp-data/bin/vpp_echo /usr/bin/
+COPY vpp-data/bin/vcl_* /usr/bin/
+COPY vpp-data/lib/*.so /usr/lib/
 
 RUN addgroup vpp
 
