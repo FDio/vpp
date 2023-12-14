@@ -63,6 +63,7 @@ enumflag virtio_flags {
         VIRTIO_API_FLAG_PACKED = 8, /* enable packed ring support, provided it is available from backend */
         VIRTIO_API_FLAG_IN_ORDER = 16, /* enable in order support, provided it is available from backend */
         VIRTIO_API_FLAG_BUFFERING = 32 [backwards_compatible], /* enable buffering to handle backend jitter/delays */
+        VIRTIO_API_FLAG_RSS = 64 [backwards_compatible], /* enable rss support */
 };
 
 /** \brief Initialize a new virtio pci interface with the given parameters

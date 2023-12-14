@@ -15,49 +15,61 @@
 #ifndef __VIRTIO_STD_H__
 #define __VIRTIO_STD_H__
 
-#define foreach_virtio_net_features      \
-  _ (VIRTIO_NET_F_CSUM, 0)      /* Host handles pkts w/ partial csum */ \
-  _ (VIRTIO_NET_F_GUEST_CSUM, 1) /* Guest handles pkts w/ partial csum */ \
-  _ (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS, 2) /* Dynamic offload configuration. */ \
-  _ (VIRTIO_NET_F_MTU, 3)       /* Initial MTU advice. */ \
-  _ (VIRTIO_NET_F_MAC, 5)       /* Host has given MAC address. */ \
-  _ (VIRTIO_NET_F_GSO, 6)       /* Host handles pkts w/ any GSO. */ \
-  _ (VIRTIO_NET_F_GUEST_TSO4, 7)        /* Guest can handle TSOv4 in. */ \
-  _ (VIRTIO_NET_F_GUEST_TSO6, 8)        /* Guest can handle TSOv6 in. */ \
-  _ (VIRTIO_NET_F_GUEST_ECN, 9) /* Guest can handle TSO[6] w/ ECN in. */ \
-  _ (VIRTIO_NET_F_GUEST_UFO, 10)        /* Guest can handle UFO in. */ \
-  _ (VIRTIO_NET_F_HOST_TSO4, 11)        /* Host can handle TSOv4 in. */ \
-  _ (VIRTIO_NET_F_HOST_TSO6, 12)        /* Host can handle TSOv6 in. */ \
-  _ (VIRTIO_NET_F_HOST_ECN, 13) /* Host can handle TSO[6] w/ ECN in. */ \
-  _ (VIRTIO_NET_F_HOST_UFO, 14) /* Host can handle UFO in. */ \
-  _ (VIRTIO_NET_F_MRG_RXBUF, 15)        /* Host can merge receive buffers. */ \
-  _ (VIRTIO_NET_F_STATUS, 16)   /* virtio_net_config.status available */ \
-  _ (VIRTIO_NET_F_CTRL_VQ, 17)  /* Control channel available */ \
-  _ (VIRTIO_NET_F_CTRL_RX, 18)  /* Control channel RX mode support */ \
-  _ (VIRTIO_NET_F_CTRL_VLAN, 19)        /* Control channel VLAN filtering */ \
-  _ (VIRTIO_NET_F_CTRL_RX_EXTRA, 20)    /* Extra RX mode control support */ \
-  _ (VIRTIO_NET_F_GUEST_ANNOUNCE, 21)   /* Guest can announce device on the network */ \
-  _ (VIRTIO_NET_F_MQ, 22)               /* Device supports Receive Flow Steering */ \
-  _ (VIRTIO_NET_F_CTRL_MAC_ADDR, 23)    /* Set MAC address */ \
-  _ (VIRTIO_F_NOTIFY_ON_EMPTY, 24) \
-  _ (VHOST_F_LOG_ALL, 26)      /* Log all write descriptors */ \
-  _ (VIRTIO_F_ANY_LAYOUT, 27)  /* Can the device handle any descriptor layout */ \
-  _ (VIRTIO_RING_F_INDIRECT_DESC, 28)   /* Support indirect buffer descriptors */ \
-  _ (VIRTIO_RING_F_EVENT_IDX, 29)       /* The Guest publishes the used index for which it expects an interrupt \
- * at the end of the avail ring. Host should ignore the avail->flags field. */ \
-/* The Host publishes the avail index for which it expects a kick \
- * at the end of the used ring. Guest should ignore the used->flags field. */ \
-  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
-  _ (VIRTIO_F_VERSION_1, 32)  /* v1.0 compliant. */           \
-  _ (VIRTIO_F_IOMMU_PLATFORM, 33) \
-  _ (VIRTIO_F_RING_PACKED, 34) \
-  _ (VIRTIO_F_IN_ORDER, 35)  /* all buffers are used by the device in the */ \
-                         /* same order in which they have been made available */ \
+#define foreach_virtio_net_features                                           \
+  _ (VIRTIO_NET_F_CSUM, 0)	 /* Host handles pkts w/ partial csum */      \
+  _ (VIRTIO_NET_F_GUEST_CSUM, 1) /* Guest handles pkts w/ partial csum */     \
+  _ (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS,                                        \
+     2)				     /* Dynamic offload configuration. */     \
+  _ (VIRTIO_NET_F_MTU, 3)	     /* Initial MTU advice. */                \
+  _ (VIRTIO_NET_F_MAC, 5)	     /* Host has given MAC address. */        \
+  _ (VIRTIO_NET_F_GSO, 6)	     /* Host handles pkts w/ any GSO. */      \
+  _ (VIRTIO_NET_F_GUEST_TSO4, 7)     /* Guest can handle TSOv4 in. */         \
+  _ (VIRTIO_NET_F_GUEST_TSO6, 8)     /* Guest can handle TSOv6 in. */         \
+  _ (VIRTIO_NET_F_GUEST_ECN, 9)	     /* Guest can handle TSO[6] w/ ECN in. */ \
+  _ (VIRTIO_NET_F_GUEST_UFO, 10)     /* Guest can handle UFO in. */           \
+  _ (VIRTIO_NET_F_HOST_TSO4, 11)     /* Host can handle TSOv4 in. */          \
+  _ (VIRTIO_NET_F_HOST_TSO6, 12)     /* Host can handle TSOv6 in. */          \
+  _ (VIRTIO_NET_F_HOST_ECN, 13)	     /* Host can handle TSO[6] w/ ECN in. */  \
+  _ (VIRTIO_NET_F_HOST_UFO, 14)	     /* Host can handle UFO in. */            \
+  _ (VIRTIO_NET_F_MRG_RXBUF, 15)     /* Host can merge receive buffers. */    \
+  _ (VIRTIO_NET_F_STATUS, 16)	     /* virtio_net_config.status available */ \
+  _ (VIRTIO_NET_F_CTRL_VQ, 17)	     /* Control channel available */          \
+  _ (VIRTIO_NET_F_CTRL_RX, 18)	     /* Control channel RX mode support */    \
+  _ (VIRTIO_NET_F_CTRL_VLAN, 19)     /* Control channel VLAN filtering */     \
+  _ (VIRTIO_NET_F_CTRL_RX_EXTRA, 20) /* Extra RX mode control support */      \
+  _ (VIRTIO_NET_F_GUEST_ANNOUNCE,                                             \
+     21)		  /* Guest can announce device on the network */      \
+  _ (VIRTIO_NET_F_MQ, 22) /* Device supports Receive Flow Steering */         \
+  _ (VIRTIO_NET_F_CTRL_MAC_ADDR, 23) /* Set MAC address */                    \
+  _ (VIRTIO_F_NOTIFY_ON_EMPTY, 24)                                            \
+  _ (VHOST_F_LOG_ALL, 26) /* Log all write descriptors */                     \
+  _ (VIRTIO_F_ANY_LAYOUT,                                                     \
+     27) /* Can the device handle any descriptor layout */                    \
+  _ (VIRTIO_RING_F_INDIRECT_DESC,                                             \
+     28) /* Support indirect buffer descriptors */                            \
+  _ (VIRTIO_RING_F_EVENT_IDX,                                                 \
+     29) /* The Guest publishes the used index for which it expects an        \
+	  * interrupt at the end of the avail ring. Host should ignore the    \
+	  * avail->flags field. */                                            \
+  /* The Host publishes the avail index for which it expects a kick           \
+   * at the end of the used ring. Guest should ignore the used->flags field.  \
+   */                                                                         \
+  _ (VHOST_USER_F_PROTOCOL_FEATURES, 30)                                      \
+  _ (VIRTIO_F_VERSION_1, 32) /* v1.0 compliant. */                            \
+  _ (VIRTIO_F_IOMMU_PLATFORM, 33)                                             \
+  _ (VIRTIO_F_RING_PACKED, 34)                                                \
+  _ (VIRTIO_F_IN_ORDER, 35) /* all buffers are used by the device in the */   \
+  /* same order in which they have been made available */                     \
   _ (VIRTIO_F_ORDER_PLATFORM, 36) /* memory accesses by the driver and the */ \
-                      /* device are ordered in a way described by the platfor */ \
-  _ (VIRTIO_F_NOTIFICATION_DATA, 38) /* the driver passes extra data (besides */ \
-                      /* identifying the virtqueue) in its device notifications. */ \
-  _ (VIRTIO_NET_F_SPEED_DUPLEX, 63)	/* Device set linkspeed and duplex */
+  /* device are ordered in a way described by the platfor */                  \
+  _ (VIRTIO_F_NOTIFICATION_DATA,                                              \
+     38) /* the driver passes extra data (besides */                          \
+  /* identifying the virtqueue) in its device notifications. */               \
+  _ (VIRTIO_NET_F_RING_RESET, 40) /* Device supports individual ring reset */ \
+  _ (VIRTIO_NET_F_HASH_REPORT,                                                \
+     57)		   /* Device supports per packet hash value */        \
+  _ (VIRTIO_NET_F_RSS, 60) /* Device supports RSS */                          \
+  _ (VIRTIO_NET_F_SPEED_DUPLEX, 63) /* Device set linkspeed and duplex */
 
 typedef enum
 {

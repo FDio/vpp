@@ -140,6 +140,7 @@ typedef struct
   vnet_virtio_vring_t *txq_vrings;
   int gso_enabled;
   int csum_offload_enabled;
+  int rss_enabled;
   union
   {
     int *tap_fds;
