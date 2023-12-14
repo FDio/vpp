@@ -166,7 +166,12 @@ do {								\
   }));								\
 } while (0)
 
+u8 *format_mhash (u8 *s, va_list *va);
+
 format_function_t format_mhash_key;
+
+/* Main test routine. */
+int test_mhash_main (unformat_input_t *input);
 
 #endif /* included_clib_mhash_h */
 

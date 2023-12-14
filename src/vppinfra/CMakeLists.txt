@@ -260,6 +260,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     longjmp
     macros
     maplog
+    mhash
     pmalloc
     pool_alloc
     pool_iterate

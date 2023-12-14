@@ -680,6 +680,7 @@ debug_elt (u8 * s, void *v, word i, word n)
   i = -n / 2;
   for (e = e0; 1; e = heap_next (e))
     {
+      s = format (s, "  ");
       if (heap_is_free (e))
 	s = format (s, "index %4d, free\n", e - h->elts);
       else if (h->format_elt)

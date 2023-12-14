@@ -164,6 +164,8 @@ mhash_sanitize_hash_user (mhash_t * mh)
   h->user = pointer_to_uword (mh);
 }
 
+static u8 *mhash_format_pair_default (u8 *s, va_list *args);
+
 __clib_export void
 mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 {
@@ -208,12 +210,12 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
   vec_validate (h->key_tmps, os_get_nthreads () - 1);
 
   ASSERT (n_key_bytes < ARRAY_LEN (t));
-  h->hash = hash_create2 ( /* elts */ 0,
+  h->hash = hash_create2 (/* elts */ 0,
 			  /* user */ pointer_to_uword (h),
 			  /* value_bytes */ n_value_bytes,
 			  t[n_key_bytes].key_sum, t[n_key_bytes].key_equal,
 			  /* format pair/arg */
-			  0, 0);
+			  mhash_format_pair_default, 0);
 }
 
 static uword
@@ -331,8 +333,8 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 	{
 	  if (key_alloc_from_free_list)
 	    {
-	      h->key_vector_free_indices[l] = i;
-	      vec_set_len (h->key_vector_free_indices, l + 1);
+	      vec_set_len (h->key_vector_free_indices, l);
+	      h->key_vector_free_indices[l - 1] = i;
 	    }
 	  else
 	    vec_dec_len (h->key_vector_or_heap, h->n_key_bytes);
@@ -371,8 +373,8 @@ mhash_unset (mhash_t * h, void *key, uword * old_value)
   return 1;
 }
 
-u8 *
-format_mhash_key (u8 * s, va_list * va)
+__clib_export u8 *
+format_mhash_key (u8 *s, va_list *va)
 {
   mhash_t *h = va_arg (*va, mhash_t *);
   u32 ki = va_arg (*va, u32);
@@ -387,7 +389,43 @@ format_mhash_key (u8 * s, va_list * va)
   else if (h->format_key)
     s = format (s, "%U", h->format_key, k);
   else
-    s = format (s, "%U", format_hex_bytes, k, h->n_key_bytes);
+    s = format (s, "0x%U", format_hex_bytes, k, h->n_key_bytes);
+
+  return s;
+}
+
+static u8 *
+mhash_format_pair_default (u8 *s, va_list *args)
+{
+  void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
+  void *v = va_arg (*args, void *);
+  hash_pair_t *p = va_arg (*args, hash_pair_t *);
+  hash_t *h = hash_header (v);
+  mhash_t *mh = uword_to_pointer (h->user, mhash_t *);
+
+  s = format (s, "%U", format_mhash_key, mh, (u32) p->key);
+  if (hash_value_bytes (h) > 0)
+    s = format (s, " -> 0x%8U", format_hex_bytes, &p->value[0],
+		hash_value_bytes (h));
+  return s;
+}
+
+__clib_export u8 *
+format_mhash (u8 *s, va_list *va)
+{
+  mhash_t *h = va_arg (*va, mhash_t *);
+  int verbose = va_arg (*va, int);
+
+  s = format (s, "mhash %p, %wd elts, \n", h, mhash_elts (h));
+  if (mhash_key_vector_is_heap (h))
+    s = format (s, "  %U", format_heap, h->key_vector_or_heap, verbose);
+  else
+    s = format (s, "  keys %wd elts, %wd size, %wd free, %wd bytes used\n",
+		vec_len (h->key_vector_or_heap) / h->n_key_bytes,
+		h->n_key_bytes, vec_len (h->key_vector_free_indices),
+		vec_bytes (h->key_vector_or_heap) +
+		  vec_bytes (h->key_vector_free_indices));
+  s = format (s, "  %U", format_hash, h->hash, verbose);
 
   return s;
 }
