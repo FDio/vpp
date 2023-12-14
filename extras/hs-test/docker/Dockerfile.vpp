@@ -20,7 +20,7 @@ COPY \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
 COPY vpp-data/bin/* /usr/bin/
-COPY vpp-data/lib/* /usr/lib/
+COPY vpp-data/lib/*.so /usr/lib/
 
 RUN addgroup vpp
 
