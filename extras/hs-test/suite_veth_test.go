@@ -61,10 +61,6 @@ func (s *VethsSuite) setupServerVpp() {
 	idx, err := serverVpp.createAfPacket(serverVeth)
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
-
-	namespaceSecret := "1"
-	err = serverVpp.addAppNamespace(1, idx, namespaceSecret)
-	s.assertNil(err)
 }
 
 func (s *VethsSuite) setupClientVpp() {
@@ -77,8 +73,4 @@ func (s *VethsSuite) setupClientVpp() {
 	idx, err := clientVpp.createAfPacket(clientVeth)
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
-
-	clientNamespaceSecret := "2"
-	err = clientVpp.addAppNamespace(2, idx, clientNamespaceSecret)
-	s.assertNil(err)
 }

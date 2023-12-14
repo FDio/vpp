@@ -17,7 +17,6 @@ import (
 	"go.fd.io/govpp/binapi/af_packet"
 	interfaces "go.fd.io/govpp/binapi/interface"
 	"go.fd.io/govpp/binapi/interface_types"
-	"go.fd.io/govpp/binapi/session"
 	"go.fd.io/govpp/binapi/tapv2"
 	"go.fd.io/govpp/binapi/vpe"
 	"go.fd.io/govpp/core"
@@ -273,34 +272,6 @@ func (vpp *VppInstance) createAfPacket(
 	}
 
 	return veth.index, nil
-}
-
-func (vpp *VppInstance) addAppNamespace(
-	secret uint64,
-	ifx interface_types.InterfaceIndex,
-	namespaceId string,
-) error {
-	req := &session.AppNamespaceAddDelV2{
-		Secret:      secret,
-		SwIfIndex:   ifx,
-		NamespaceID: namespaceId,
-	}
-	reply := &session.AppNamespaceAddDelV2Reply{}
-
-	if err := vpp.apiChannel.SendRequest(req).ReceiveReply(reply); err != nil {
-		return err
-	}
-
-	sessionReq := &session.SessionEnableDisable{
-		IsEnable: true,
-	}
-	sessionReply := &session.SessionEnableDisableReply{}
-
-	if err := vpp.apiChannel.SendRequest(sessionReq).ReceiveReply(sessionReply); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (vpp *VppInstance) createTap(
