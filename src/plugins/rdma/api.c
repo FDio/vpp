@@ -42,6 +42,7 @@ rdma_api_mode (vl_api_rdma_mode_t mode)
     case RDMA_API_MODE_DV:
       return RDMA_MODE_DV;
     }
+  ASSERT (0); // Fail the debug build.
   return RDMA_MODE_AUTO;
 }
 

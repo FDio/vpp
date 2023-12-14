@@ -122,7 +122,7 @@ format_rdma_device (u8 * s, va_list * args)
 	      format_vlib_pci_addr, &rd->pci->addr);
   if ((d = vlib_pci_get_device_info (vm, &rd->pci->addr, 0)))
     {
-      s = format (s, "%Uproduct name: %s\n", format_white_space, indent,
+      s = format (s, "%Uproduct name: %v\n", format_white_space, indent,
 		  d->product_name ? (char *) d->product_name : "");
       s = format (s, "%Upart number: %U\n", format_white_space, indent,
 		  format_vlib_pci_vpd, d->vpd_r, "PN");
