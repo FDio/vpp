@@ -404,6 +404,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
       vlib_cli_output (vm, "  csum-enabled %d", vif->csum_offload_enabled);
       vlib_cli_output (vm, "  packet-coalesce %d", vif->packet_coalesce);
       vlib_cli_output (vm, "  packet-buffering %d", vif->packet_buffering);
+      vlib_cli_output (vm, "  rss-enabled %d", vif->rss_enabled);
       if (type & (VIRTIO_IF_TYPE_TAP | VIRTIO_IF_TYPE_PCI))
 	vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
 			 vif->mac_addr);

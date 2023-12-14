@@ -37,6 +37,13 @@
 
 #define PCI_MSIX_ENABLE 0x8000
 
+static const u8 virtio_rss_key[VIRTIO_NET_RSS_MAX_KEY_SIZE] = {
+  0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2, 0x41, 0x67,
+  0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0, 0xd0, 0xca, 0x2b, 0xcb,
+  0xae, 0x7b, 0x30, 0xb4, 0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30,
+  0xf2, 0x0c, 0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+};
+
 static pci_device_id_t virtio_pci_device_ids[] = {
   {
    .vendor_id = PCI_VENDOR_ID_VIRTIO,
@@ -584,6 +591,35 @@ virtio_pci_enable_multiqueue (vlib_main_t * vm, virtio_if_t * vif,
   return status;
 }
 
+static int
+virtio_pci_enable_multiqueue_rss (vlib_main_t *vm, virtio_if_t *vif,
+				  u16 num_queues)
+{
+  virtio_ctrl_msg_t mq_hdr;
+  virtio_net_rss_config *rss = (virtio_net_rss_config *) mq_hdr.data;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+
+  STATIC_ASSERT (sizeof (*rss) <= sizeof (mq_hdr.data),
+		 "virtio_net_rss_config size too big");
+  mq_hdr.ctrl.class = VIRTIO_NET_CTRL_MQ;
+  mq_hdr.ctrl.cmd = VIRTIO_NET_CTRL_MQ_RSS_CONFIG;
+  mq_hdr.status = VIRTIO_NET_ERR;
+
+  rss->hash_types = VIRTIO_NET_HASH_TYPE_SUPPORTED;
+  rss->indirection_table_mask = VIRTIO_NET_RSS_MAX_TABLE_LEN - 1;
+  rss->unclassified_queue = 0;
+  for (int i = 0; i < VIRTIO_NET_RSS_MAX_TABLE_LEN; i++)
+    rss->indirection_table[i] = i % num_queues;
+  rss->max_tx_vq = num_queues;
+  rss->hash_key_length = VIRTIO_NET_RSS_MAX_KEY_SIZE;
+  clib_memcpy (rss->hash_key_data, virtio_rss_key,
+	       VIRTIO_NET_RSS_MAX_KEY_SIZE);
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &mq_hdr, sizeof (*rss));
+  virtio_log_debug (vif, "multi-queue with rss enable %u queues", num_queues);
+  return status;
+}
+
 static u8
 virtio_pci_queue_size_valid (u16 qsz)
 {
@@ -932,6 +968,9 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     | VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY)
     | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)
     | VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
+
+  if (vif->rss_enabled)
+    supported_features |= VIRTIO_FEATURE (VIRTIO_NET_F_RSS);
 
   if (vif->is_modern)
     supported_features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
@@ -1375,6 +1414,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vif->dev_instance = vif - vim->interfaces;
   vif->per_interface_next_index = ~0;
   vif->pci_addr.as_u32 = args->addr;
+  vif->rss_enabled = args->rss_enabled;
   if (args->virtio_flags & VIRTIO_FLAG_PACKED)
     vif->is_packed = 1;
 
@@ -1536,8 +1576,16 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   if ((vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)) &&
       (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MQ)))
     {
-      if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
-	virtio_log_warning (vif, "multiqueue is not set");
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_RSS))
+	{
+	  if (virtio_pci_enable_multiqueue_rss (vm, vif, vif->max_queue_pairs))
+	    virtio_log_warning (vif, "multiqueue with rss is not set");
+	}
+      else
+	{
+	  if (virtio_pci_enable_multiqueue (vm, vif, vif->max_queue_pairs))
+	    virtio_log_warning (vif, "multiqueue is not set");
+	}
     }
   return;
 

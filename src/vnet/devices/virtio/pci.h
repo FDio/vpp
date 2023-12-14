@@ -60,6 +60,9 @@ typedef enum
 /* If multiqueue is provided by host, then we support it. */
 #define VIRTIO_NET_CTRL_MQ   4
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
+#define VIRTIO_NET_CTRL_MQ_RSS_CONFIG	       1
+#define VIRTIO_NET_CTRL_MQ_HASH_CONFIG	       2
+
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 
@@ -139,13 +142,76 @@ typedef struct
   u64 queue_device;		/* read-write */
 } virtio_pci_common_cfg_t;
 
+#define foreach_virtio_net_hash_report_type                                   \
+  _ (NONE, 0)                                                                 \
+  _ (IPV4, 1)                                                                 \
+  _ (TCPV4, 2)                                                                \
+  _ (UDPV4, 3)                                                                \
+  _ (IPV6, 4)                                                                 \
+  _ (TCPV6, 5)                                                                \
+  _ (UDPV6, 6)                                                                \
+  _ (IPV6_EX, 7)                                                              \
+  _ (TCPV6_EX, 8)                                                             \
+  _ (UDPV6_EX, 9)
+
+typedef enum
+{
+#define _(n, i) VIRTIO_NET_HASH_REPORT_##n = i,
+  foreach_virtio_net_hash_report_type
+#undef _
+} virtio_net_hash_report_type_t;
+
 typedef struct
 {
   u8 mac[6];
   u16 status;
   u16 max_virtqueue_pairs;
   u16 mtu;
+  u32 speed;
+  u8 duplex;
+  u8 rss_max_key_size;
+  u16 rss_max_indirection_table_length;
+  u32 supported_hash_types;
 } virtio_net_config_t;
+
+#define VIRTIO_NET_RSS_MAX_TABLE_LEN 128
+#define VIRTIO_NET_RSS_MAX_KEY_SIZE  40
+
+#define foreach_virtio_net_hash_type                                          \
+  _ (IPV4, 0)                                                                 \
+  _ (TCPV4, 1)                                                                \
+  _ (UDPV4, 2)                                                                \
+  _ (IPV6, 3)                                                                 \
+  _ (TCPV6, 4)                                                                \
+  _ (UDPV6, 5)                                                                \
+  _ (IPV6_EX, 6)                                                              \
+  _ (TCPV6_EX, 7)                                                             \
+  _ (UDPV6_EX, 8)
+
+typedef enum
+{
+#define _(n, i) VIRTIO_NET_HASH_TYPE_##n = (1 << i),
+  foreach_virtio_net_hash_type
+#undef _
+} virtio_net_hash_type_t;
+
+#define VIRTIO_NET_HASH_TYPE_SUPPORTED                                        \
+  (VIRTIO_NET_HASH_TYPE_IPV4 | VIRTIO_NET_HASH_TYPE_TCPV4 |                   \
+   VIRTIO_NET_HASH_TYPE_UDPV4 | VIRTIO_NET_HASH_TYPE_IPV6 |                   \
+   VIRTIO_NET_HASH_TYPE_TCPV6 | VIRTIO_NET_HASH_TYPE_UDPV6 |                  \
+   VIRTIO_NET_HASH_TYPE_IPV6_EX | VIRTIO_NET_HASH_TYPE_TCPV6_EX |             \
+   VIRTIO_NET_HASH_TYPE_UDPV6_EX)
+
+typedef struct
+{
+  u32 hash_types;
+  u16 indirection_table_mask;
+  u16 unclassified_queue;
+  u16 indirection_table[VIRTIO_NET_RSS_MAX_TABLE_LEN];
+  u16 max_tx_vq;
+  u8 hash_key_length;
+  u8 hash_key_data[VIRTIO_NET_RSS_MAX_KEY_SIZE];
+} virtio_net_rss_config;
 
 /*
  * Control virtqueue data structures
@@ -210,13 +276,14 @@ typedef struct _virtio_pci_func
   void (*device_debug_config_space) (vlib_main_t * vm, virtio_if_t * vif);
 } virtio_pci_func_t;
 
-#define foreach_virtio_flags  \
-  _ (GSO, 0)                  \
-  _ (CSUM_OFFLOAD, 1)         \
-  _ (GRO_COALESCE, 2)         \
-  _ (PACKED, 3)               \
-  _ (IN_ORDER, 4)	      \
-  _ (BUFFERING, 5)
+#define foreach_virtio_flags                                                  \
+  _ (GSO, 0)                                                                  \
+  _ (CSUM_OFFLOAD, 1)                                                         \
+  _ (GRO_COALESCE, 2)                                                         \
+  _ (PACKED, 3)                                                               \
+  _ (IN_ORDER, 4)                                                             \
+  _ (BUFFERING, 5)                                                            \
+  _ (RSS, 6)
 
 typedef enum
 {
@@ -243,6 +310,7 @@ typedef struct
   u64 features;
   u8 gso_enabled;
   u8 checksum_offload_enabled;
+  u8 rss_enabled;
   u32 tx_queue_size;
   virtio_bind_t bind;
   u32 buffering_size;
