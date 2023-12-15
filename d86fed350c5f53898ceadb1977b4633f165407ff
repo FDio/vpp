@@ -103,6 +103,24 @@
       "message": "Adding a couple folks from libmemif commit history to help finalize review",
       "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e52534a5_09afeefd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-12-15T21:15:01Z",
+      "side": 1,
+      "message": "Mike,\n\nUnfortunately the original authors of libmemif have left the project and there is currently no one actively maintaining the code.  \n\nAlso, there is currently missing CI support to verify patches to libmemif (although there are a couple gerrit changes proposing tests [0]).\n\nQuestions:\n1) How have your changes been verified?\n\n2) Are you willing to become a libmemif maintainer?  If so, please submit a separate gerrit change adding your email address to the MAINTAINERS file [1].\n\nIt would be best to have CI verification in place first, but if the need is urgent I will merge them if you will add Verify +1 them along with a note describing how they were tested and agree to fix any related breakage to libmemif should someone report an anomaly.\n\n[0] https://gerrit.fd.io/r/c/vpp/+/37953?usp\u003dsearch (note: author is no longer active)\n    https://gerrit.fd.io/r/c/vpp/+/39319\n\n[1] https://github.com/FDio/vpp/blob/master/MAINTAINERS#L683",
+      "parentUuid": "112d539c_581dc361",
+      "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
