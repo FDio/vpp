@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e25887b1_1da36e97",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-12-15T13:13:49Z",
+      "side": 1,
+      "message": "Have you thought about api design of host stack functions like the one in this patch? I always found it a bit ugly doing all the time struct_t s; memset(\u0026s, 0, sizeof()); then init the fields; and then pass it to the function.\nI can see some benefits of it, but also drawbacks.\nAs a bonus, the new design also supports default arguments! :-) (not that we really need that, but I find it cool that we can do it in C)",
+      "revId": "3c57b0c7887aa59bee5016c5b101775f6a1fcfdb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
