@@ -1199,6 +1199,9 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   return lhc_index;
 }
 
+#define vnet_unlisten2(...)                                                   \
+  vnet_unlisten (&(vnet_unlisten_args_t){ __VA_ARGS__ })
+
 static u32
 http_stop_listen (u32 listener_index)
 {
@@ -1207,13 +1210,9 @@ http_stop_listen (u32 listener_index)
 
   lhc = http_listener_get (listener_index);
 
-  vnet_unlisten_args_t a = {
-    .handle = lhc->h_tc_session_handle,
-    .app_index = http_main.app_index,
-    .wrk_map_index = 0 /* default wrk */
-  };
-
-  if ((rv = vnet_unlisten (&a)))
+  rv = vnet_unlisten2 (.handle = lhc->h_tc_session_handle,
+		       .app_index = http_main.app_index);
+  if (rv)
     clib_warning ("unlisten returned %d", rv);
 
   http_listener_free (lhc);
