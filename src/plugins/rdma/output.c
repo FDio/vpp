@@ -51,10 +51,78 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
     {
       op_own = *(volatile u8 *) &cur->op_own;
       if (((idx >> log2_cq_sz) & MLX5_CQE_OWNER_MASK) !=
-	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
+	  (op_own & MLX5_CQE_OWNER_MASK))
 	break;
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	{
+	  switch (op_own >> 4)
+	    {
+	    case 1:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION1, 1);
+	      break;
+	    case 2:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION2, 1);
+	      break;
+	    case 3:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION3, 1);
+	      break;
+	    case 4:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION4, 1);
+	      break;
+	    case 5:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION5, 1);
+	      break;
+	    case 6:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION6, 1);
+	      break;
+	    case 7:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION7, 1);
+	      break;
+	    case 8:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION8, 1);
+	      break;
+	    case 9:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION9, 1);
+	      break;
+	    case 10:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION10, 1);
+	      break;
+	    case 11:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION11, 1);
+	      break;
+	    case 12:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION12, 1);
+	      break;
+	    case 13:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION13, 1);
+	      break;
+	    case 14:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION14, 1);
+	      break;
+	    case 15:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION15, 1);
+	      break;
+	    default:
+	      vlib_error_count (vm, node->node_index,
+				RDMA_TX_ERROR_COMPLETION0, 1);
+	      break;
+	    }
+	}
       idx++;
       cur = cqes + (idx & cq_mask);
     }
