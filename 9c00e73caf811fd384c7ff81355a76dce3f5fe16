@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1b2a6048_4149d964",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-12-18T17:18:39Z",
+      "side": 1,
+      "message": "I would like to address some miscommunication from our last discussion in the VPP community meeting regarding the RSS patch set, and I appreciate this opportunity to clarify certain concerns.\n\nI understand that VPP might not be inclined to provide features configuring NIC-level functionalities, such as RSS keys, as this assignment is typically should concluded on the driver side.\n\n\nTo clarify, the RSS patch set doesn\u0027t introduce a new standalone functionality in VPP but serves as a wrapper for DPDK API integration within VPP. Similar APIs, like rte_eth_dev_rss_update, are already present in DPDK. Notably, ICE is just one of the NICs employing a random key for RSS hash generation in DPDK.\n\n\nThe reported queue distribution issue in CSIT is not a hardware problem but rather a characteristic of the Toeplitz algorithm. Due to the different RSS hash keys generated each time, the resulting queue distributions vary, posing a challenge when comparing performance results. The pre-defined key simply addresses this, fixing the distribution and making performance measurement and debugging significantly easier.\n\nI\u0027m proposing the following changes, instead passing the key string directly in CLI command, we will using \"STATIC\" and \"DEFAULT\" as keyword for RSS key assignment. e.g. \nset interface rss hash key INTERFACE_NAME STATIC\nset interface rss hash key INTERFACE_NAME DEFAULT\n\nSTATIC indicates a fix-defined key will be assigned to the NIC (https://github.com/DPDK/dpdk/blob/eeb0605f118dae66e80faa44f7b3e88748032353/usertools/dpdk-rss-flows.py#L194)\n,and DEFAULT will indicate using the default NIC RSS key assignment (random or static).",
+      "revId": "9c00e73caf811fd384c7ff81355a76dce3f5fe16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
