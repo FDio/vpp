@@ -991,10 +991,18 @@ class Printfun:
     def print_enum(o, stream):
         """Pretty print API enum"""
         write = stream.write
-        write("    switch(*a) {\n")
-        for b in o:
+        if o.enumtype in ENDIAN_STRINGS:
+            write(
+                "    {} v = {} (*a);\n".format(o.enumtype, ENDIAN_STRINGS[o.enumtype])
+            )
+        else:
+            write("    {} v = *a;\n".format(o.enumtype))
+        write("    switch(v) {\n")
+        for b in o.block:
             write("    case %s:\n" % b[1])
             write('        return format(s, "{}");\n'.format(b[0]))
+        write("    default:\n")
+        write('        return format(s, "unknown value (%lu)", (u64)v);\n')
         write("    }\n")
 
     _dispatch["Enum"] = print_enum
@@ -1094,7 +1102,7 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
     for t in objs:
         if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
             write(signature.format(name=t.name))
-            pp.print_enum(t.block, stream)
+            pp.print_enum(t, stream)
             write("    return s;\n")
             write("}\n\n")
             continue
