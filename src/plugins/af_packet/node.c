@@ -472,6 +472,9 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    }
 		  else
 		    {
+		      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+		      if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+			next0 = apif->per_interface_next_index;
 		      /* copy feature arc data from template */
 		      first_b0->current_config_index = bt.current_config_index;
 		      vnet_buffer (first_b0)->feature_arc_index =
@@ -733,6 +736,9 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	      else
 		{
+		  next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+		  if (PREDICT_FALSE (apif->per_interface_next_index != ~0))
+		    next0 = apif->per_interface_next_index;
 		  /* copy feature arc data from template */
 		  first_b0->current_config_index = bt.current_config_index;
 		  vnet_buffer (first_b0)->feature_arc_index =
