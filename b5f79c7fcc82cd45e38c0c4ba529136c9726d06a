@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f3e775e_9fcc11f1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-12-20T14:29:14Z",
+      "side": 1,
+      "message": "Thanks for the patch.\nJust some comments!!!",
+      "revId": "b5f79c7fcc82cd45e38c0c4ba529136c9726d06a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a7de359_f1ebfd35",
+        "filename": "src/plugins/ena/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-12-20T14:29:14Z",
+      "side": 1,
+      "message": "l3_hdr_offset is offset from -\u003edata pointer in vlib_buffer_t while packet may start from different offset. To calculate the actual l3_hdr_offset, you will need to minus the -\u003ecurrent_data as being done in virtio and af_packet drivers.",
+      "revId": "b5f79c7fcc82cd45e38c0c4ba529136c9726d06a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4edaedc1_e4983134",
+        "filename": "src/plugins/ena/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2023-12-20T14:29:14Z",
+      "side": 1,
+      "message": "gso_l4_hdr_sz is in bytes. Should it be divided by 4 instead of 32?",
+      "revId": "b5f79c7fcc82cd45e38c0c4ba529136c9726d06a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
