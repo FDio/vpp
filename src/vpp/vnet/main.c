@@ -325,7 +325,13 @@ defaulted:
     {
       CPU_ZERO (&cpuset);
       CPU_SET (main_core, &cpuset);
-      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+      if (pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t),
+				  &cpuset))
+	{
+	  clib_unix_error (
+	    "pthread_setaffinity_np() on cpu %d failed for main thread",
+	    main_core);
+	}
     }
 
   /* Set up the plugin message ID allocator right now... */
