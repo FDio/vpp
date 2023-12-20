@@ -929,6 +929,19 @@ class TestIPNull(VppTestCase):
         r2.remove_vpp_config()
         rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
+        t = VppIpTable(self, 2, False)
+        t.add_vpp_config()
+        r3 = VppIpRoute(
+            self,
+            "1.1.1.0",
+            31,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_DROP)],
+            table_id=2,
+        )
+        r3.add_vpp_config()
+        r3.remove_vpp_config()
+        t.remove_vpp_config()
+
 
 class TestIPDisabled(VppTestCase):
     """IPv4 disabled"""
