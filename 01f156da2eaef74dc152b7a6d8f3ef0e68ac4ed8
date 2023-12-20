@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f095cc7a_48c0a1e9",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-12-20T12:37:04Z",
+      "side": 1,
+      "message": "please rename HEADER_FILE  to ipsec-mb_local_header",
+      "revId": "01f156da2eaef74dc152b7a6d8f3ef0e68ac4ed8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eabe286c_b044b1a3",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-12-20T12:37:04Z",
+      "side": 1,
+      "message": "rename IMB_VERSION_STR to ipsec-mb_local_ver_str",
+      "revId": "01f156da2eaef74dc152b7a6d8f3ef0e68ac4ed8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "298cb5b6_f0526b87",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-12-20T12:37:04Z",
+      "side": 1,
+      "message": "we need to check the local installed version before copy vpp lib to the install_dir",
+      "revId": "01f156da2eaef74dc152b7a6d8f3ef0e68ac4ed8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d66fcfc6_ec3ba6c5",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2023-12-20T12:37:04Z",
+      "side": 1,
+      "message": "the installation need to bail out if the local version mismatch with vpp target version",
+      "revId": "01f156da2eaef74dc152b7a6d8f3ef0e68ac4ed8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
