@@ -705,7 +705,7 @@ session_main_flush_enqueue_events (transport_proto_t transport_proto,
   session_worker_t *wrk = session_main_get_worker (thread_index);
   session_handle_t *handles;
   session_t *s;
-  u32 i;
+  u32 i, is_cl;
 
   handles = wrk->session_to_enqueue[transport_proto];
 
@@ -714,8 +714,8 @@ session_main_flush_enqueue_events (transport_proto_t transport_proto,
       s = session_get_from_handle (handles[i]);
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
 			   0 /* TODO/not needed */);
-      session_enqueue_notify_inline (s,
-				     s->thread_index != thread_index ? 1 : 0);
+      is_cl = s->thread_index != thread_index || s->flags & SESSION_F_IS_CLESS;
+      session_enqueue_notify_inline (s, is_cl ? 1 : 0);
     }
 
   vec_reset_length (handles);
@@ -1345,6 +1345,8 @@ session_open_cl (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
   s->app_wrk_index = app_wrk->wrk_index;
   s->opaque = rmt->opaque;
   session_set_state (s, SESSION_STATE_OPENED);
+  if (transport_connection_is_cless (tc))
+    s->flags |= SESSION_F_IS_CLESS;
   if (app_worker_init_connected (app_wrk, s))
     {
       session_free (s);
@@ -1470,6 +1472,8 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
   ls = listen_session_get (s_index);
   ls->connection_index = tc_index;
   ls->opaque = sep->opaque;
+  if (tep->transport_flags & TRANSPORT_CFG_F_CONNECTED)
+    ls->flags |= SESSION_F_IS_CLESS;
 
   return 0;
 }
