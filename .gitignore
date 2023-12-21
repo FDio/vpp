@@ -130,6 +130,7 @@ compile_commands.json
 /lib
 /.ninja_deps
 /.ninja_log
+/.cmake
 /CMakeCache.txt
 /build.ninja
 /cmake_install.cmake
