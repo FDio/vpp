@@ -149,7 +149,13 @@ load_balance_format (index_t lbi,
     dpo_id_t *buckets;
     u32 i;
 
-    lb = load_balance_get(lbi);
+    lb = load_balance_get_or_null(lbi);
+    if (lb == NULL)
+      {
+	s = format(s, "DELETED lb:%u", lbi);
+	return (s);
+      }
+
     vlib_get_combined_counter(&(load_balance_main.lbm_to_counters), lbi, &to);
     vlib_get_combined_counter(&(load_balance_main.lbm_via_counters), lbi, &via);
     buckets = load_balance_get_buckets(lb);
