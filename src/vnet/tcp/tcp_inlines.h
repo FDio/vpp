@@ -343,6 +343,11 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 						     tcp.connection_index,
 						     thread_index);
 
+  if (!tc && tcp_rst (tcp))
+    {
+       *error = TCP_ERROR_RST_IGNORE;
+       return 0;
+    }
   vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
   vnet_buffer (b)->tcp.data_offset = n_advance_bytes;

@@ -2755,7 +2755,9 @@ VLIB_REGISTER_NODE (tcp6_drop_node) = {
 static void
 tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
 {
-  if (*error == TCP_ERROR_FILTERED || *error == TCP_ERROR_WRONG_THREAD)
+  if (*error == TCP_ERROR_FILTERED ||
+      *error == TCP_ERROR_WRONG_THREAD ||
+      *error == TCP_ERROR_RST_IGNORE)
     {
       *next = TCP_INPUT_NEXT_DROP;
     }
