@@ -22,6 +22,30 @@
       },
       "revId": "e12ada5d525dbb0c726a7a175edc2b1b1fdf2741",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ebdd3012_844871da",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 758,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2023-12-21T19:06:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8aa1ba2c_2230d351",
+      "range": {
+        "startLine": 758,
+        "startChar": 4,
+        "endLine": 758,
+        "endChar": 10
+      },
+      "revId": "e12ada5d525dbb0c726a7a175edc2b1b1fdf2741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
