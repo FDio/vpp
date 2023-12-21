@@ -1420,9 +1420,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->sp.max_burst_size = max_burst;
       n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, &ctx->sp);
       *n_tx_packets += n_custom_tx;
-      if (PREDICT_FALSE
-	  (ctx->s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
-	return SESSION_TX_OK;
+      if (PREDICT_FALSE (ctx->s->session_state >=
+			 SESSION_STATE_TRANSPORT_CLOSED))
+	{
+	  svm_fifo_unset_event (ctx->s->tx_fifo);
+	  return SESSION_TX_OK;
+	}
       max_burst -= n_custom_tx;
       if (!max_burst || (ctx->s->flags & SESSION_F_CUSTOM_TX))
 	{
