@@ -232,6 +232,14 @@ load_balance_get (index_t lbi)
     return (pool_elt_at_index(load_balance_pool, lbi));
 }
 
+static inline load_balance_t *
+load_balance_get_or_null (index_t lbi)
+{
+  if (pool_is_free_index (load_balance_pool, lbi))
+    return 0;
+  return (pool_elt_at_index (load_balance_pool, lbi));
+}
+
 #define LB_HAS_INLINE_BUCKETS(_lb)		\
     ((_lb)->lb_n_buckets <= LB_NUM_INLINE_BUCKETS)
 
