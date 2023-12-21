@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67575a6e_3e9670f2",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-12-21T19:29:33Z",
+      "side": 1,
+      "message": "This only ends up generating a reset in response. Any reason why you\u0027d want to avoid doing that? \n\nAlso, if there is such a need, we should drop it in the reset node not here.",
+      "revId": "35e1da433f3cb8a2cbb7d542f58ade8b224394e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
