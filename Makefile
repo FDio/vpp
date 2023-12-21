@@ -448,10 +448,16 @@ endef
 
 .PHONY: test
 test:
+ifeq ($(CC),cc)
+	$(eval CC=clang)
+endif
 	$(call test,vpp,test)
 
 .PHONY: test-debug
 test-debug:
+ifeq ($(CC),cc)
+	$(eval CC=clang)
+endif
 	$(call test,vpp_debug,test)
 
 .PHONY: test-cov
