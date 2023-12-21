@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8aa1ba2c_2230d351",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 758,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2023-12-21T19:03:07Z",
+      "side": 1,
+      "message": "spelling -\u003e through",
+      "range": {
+        "startLine": 758,
+        "startChar": 4,
+        "endLine": 758,
+        "endChar": 10
+      },
+      "revId": "e12ada5d525dbb0c726a7a175edc2b1b1fdf2741",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
