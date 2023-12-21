@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81e183cc_33c3340d",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1426,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-12-21T17:56:04Z",
+      "side": 1,
+      "message": "We do not want more events for this session. What issue did you hit?",
+      "revId": "649eeab1b1530ddb2193d13b26517fc796753802",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
