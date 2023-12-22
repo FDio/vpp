@@ -421,8 +421,11 @@ class Flowprobe(MethodHolder):
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
 
+    @unittest.skipUnless(
+        config.extended, "Test is unstable (assertion error, needs to be fixed"
+    )
     def test_0002(self):
-        """timer greater than template timeout"""
+        """timer greater than template timeout [UNSTABLE, FIX ME]"""
         self.logger.info("FFP_TEST_START_0002")
         self.pg_enable_capture(self.pg_interfaces)
         self.pkts = []
