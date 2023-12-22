@@ -48,6 +48,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e7b8fe8_6592f3d9",
+        "filename": "extras/hs-test/docker/Dockerfile.vpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-12-22T13:21:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8120b883_0791886a",
+      "range": {
+        "startLine": 21,
+        "startChar": 3,
+        "endLine": 21,
+        "endChar": 34
+      },
+      "revId": "bcd6772827dbce43018a9787d35707cc977bfc26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "902d2cc6_e8117a85",
@@ -108,6 +132,30 @@
       "writtenOn": "2023-11-30T03:31:28Z",
       "side": 1,
       "message": "Should not be needed",
+      "range": {
+        "startLine": 62,
+        "startChar": 2,
+        "endLine": 62,
+        "endChar": 44
+      },
+      "revId": "bcd6772827dbce43018a9787d35707cc977bfc26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "38def02b_02f8f12a",
+        "filename": "extras/hs-test/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2023-12-22T13:21:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f162d9b3_e56e2e35",
       "range": {
         "startLine": 62,
         "startChar": 2,
