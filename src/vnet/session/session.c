@@ -209,7 +209,8 @@ session_alloc (u32 thread_index)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
-  s->app_index = APP_INVALID_INDEX;
+//   s->app_index = APP_INVALID_INDEX;
+  s->al_index = APP_INVALID_INDEX;
 
   return s;
 }
