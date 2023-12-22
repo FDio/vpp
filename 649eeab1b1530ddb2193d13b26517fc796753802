@@ -34,6 +34,24 @@
       "parentUuid": "81e183cc_33c3340d",
       "revId": "649eeab1b1530ddb2193d13b26517fc796753802",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2aab33fa_fa298aed",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1426,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-12-22T02:56:35Z",
+      "side": 1,
+      "message": "Good catch! Could you update the patch description with the above explanation and \n \"make fixstyle\" the code locally and push an update to this patch? Something like:\n```\nmake fixstyle\ngit commit -a --amend\ngit review\n````",
+      "parentUuid": "e220eef6_17c05662",
+      "revId": "649eeab1b1530ddb2193d13b26517fc796753802",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
