@@ -16,6 +16,24 @@
       "message": "We do not want more events for this session. What issue did you hit?",
       "revId": "649eeab1b1530ddb2193d13b26517fc796753802",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e220eef6_17c05662",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1426,
+      "author": {
+        "id": 2708
+      },
+      "writtenOn": "2023-12-22T01:36:35Z",
+      "side": 1,
+      "message": "Incase the ack for the fin is lost twice or want to dup ack packets with incorrect ack/seq # at different times and session state is already closed, this fifo event is set for the first ack that went out and prevents queuing of further events.",
+      "parentUuid": "81e183cc_33c3340d",
+      "revId": "649eeab1b1530ddb2193d13b26517fc796753802",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
