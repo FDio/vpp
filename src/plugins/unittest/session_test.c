@@ -1625,6 +1625,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   u16 lcl_port = 1234, rmt_port = 4321;
   app_namespace_t *app_ns;
   int verbose = 0, error = 0;
+  app_listener_t *al;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1699,8 +1700,9 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
 		"successful");
   s = listen_session_get (tc->s_index);
-  SESSION_TEST ((s->app_index == server_index), "lookup should return"
-		" the server");
+  al = app_listener_get (s->al_index);
+  SESSION_TEST ((al->app_index == server_index), "lookup should return"
+						 " the server");
 
   tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
 				      TRANSPORT_PROTO_TCP, 0, &is_filtered);
