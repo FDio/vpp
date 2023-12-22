@@ -14,6 +14,9 @@
  */
 
 #include <sys/socket.h>
+#include <sys/syscall.h>
+
+#include <openssl/rand.h>
 
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
@@ -2507,6 +2510,11 @@ quic_init (vlib_main_t * vm)
   u64 options[APP_OPTIONS_N_OPTIONS];
   quic_main_t *qm = &quic_main;
   u32 num_threads, i;
+  u8 seed[32];
+
+  if (syscall (SYS_getrandom, &seed, sizeof (seed), 0) != sizeof (seed))
+    return clib_error_return_unix (0, "getrandom() failed");
+  RAND_seed (seed, sizeof (seed));
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
