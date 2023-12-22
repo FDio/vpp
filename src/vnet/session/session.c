@@ -209,7 +209,7 @@ session_alloc (u32 thread_index)
   clib_memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
   s->thread_index = thread_index;
-  s->app_index = APP_INVALID_INDEX;
+  s->al_index = APP_INVALID_INDEX;
 
   return s;
 }
@@ -318,7 +318,7 @@ session_cleanup_half_open (session_handle_t ho_handle)
 	}
       /* Migrated transports are no longer half-opens */
       transport_cleanup (session_get_transport_proto (ho),
-			 ho->connection_index, ho->app_index /* overloaded */);
+			 ho->connection_index, ho->al_index /* overloaded */);
     }
   else if (ho->session_state != SESSION_STATE_TRANSPORT_DELETED)
     {
@@ -410,8 +410,8 @@ session_half_open_migrated_notify (transport_connection_t *tc)
       return -1;
     }
   ho->connection_index = tc->c_index;
-  /* Overload app index for half-open with new thread */
-  ho->app_index = tc->thread_index;
+  /* Overload al_index for half-open with new thread */
+  ho->al_index = tc->thread_index;
   return 0;
 }
 
