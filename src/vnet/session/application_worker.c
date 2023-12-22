@@ -194,7 +194,7 @@ app_worker_alloc_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
   app_listener_t *al;
   session_t *s;
 
-  al = app_listener_get_w_session (ls);
+  al = app_listener_get (ls->al_index);
   sm = app_worker_get_listen_segment_manager (app_wrk, ls);
   lsh = session_handle (ls);
 
@@ -230,7 +230,7 @@ app_worker_free_wrk_cl_session (app_worker_t *app_wrk, session_t *ls)
   app_listener_t *al;
   session_t *s;
 
-  al = app_listener_get_w_session (ls);
+  al = app_listener_get (ls->al_index);
 
   s = app_listener_get_wrk_cl_session (al, app_wrk->wrk_map_index);
   segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
