@@ -56,7 +56,7 @@ docker_build () {
     tag=$1
     dockername=$2
     docker build --build-arg UBUNTU_VERSION --build-arg http_proxy=$HTTP_PROXY \
-            -t $tag  -f docker/Dockerfile.$dockername .
+		--build-arg https_proxy=$HTTP_PROXY -t $tag  -f docker/Dockerfile.$dockername .
 }
 
 docker_build hs-test/vpp vpp

@@ -1,7 +1,7 @@
 FROM hs-test/build
 
 COPY script/build_curl.sh /build_curl.sh
-RUN git clone https://github.com/curl/curl
+RUN apt-get update && apt-get install wget
 RUN /build_curl.sh
 
 CMD ["/bin/sh"]
