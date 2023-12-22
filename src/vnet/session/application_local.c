@@ -995,7 +995,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
     goto global_scope;
 
   ll = listen_session_get_from_handle (lh);
-  al = app_listener_get_w_session (ll);
+  al = app_listener_get (ll->al_index);
 
   /*
    * Break loop if rule in local table points to connecting app. This
@@ -1024,8 +1024,12 @@ global_scope:
   ll = session_lookup_listener_wildcard (table_index, sep);
 
   /* Avoid connecting app to own listener */
-  if (ll && ll->app_index != app->app_index)
-    return ct_connect (app_wrk, ll, sep_ext);
+  if (ll)
+    {
+      al = app_listener_get (ll->al_index);
+      if (al->app_index != app->app_index)
+	return ct_connect (app_wrk, ll, sep_ext);
+    }
 
   /* Failed to connect but no error */
   return SESSION_E_LOCAL_CONNECT;
