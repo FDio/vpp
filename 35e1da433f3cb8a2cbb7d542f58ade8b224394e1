@@ -34,6 +34,24 @@
       "parentUuid": "67575a6e_3e9670f2",
       "revId": "35e1da433f3cb8a2cbb7d542f58ade8b224394e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "408258f6_9227d52f",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2023-12-22T02:42:14Z",
+      "side": 1,
+      "message": "Yup. Those in theory should be harmless, hence my previous question, i.e., is there any reason why you\u0027d want to avoid them? \n\nAlso, if we want to avoid them, we should do it in the reset node.",
+      "parentUuid": "3836b4c4_db5c988e",
+      "revId": "35e1da433f3cb8a2cbb7d542f58ade8b224394e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
