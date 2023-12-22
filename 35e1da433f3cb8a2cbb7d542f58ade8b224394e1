@@ -16,6 +16,24 @@
       "message": "This only ends up generating a reset in response. Any reason why you\u0027d want to avoid doing that? \n\nAlso, if there is such a need, we should drop it in the reset node not here.",
       "revId": "35e1da433f3cb8a2cbb7d542f58ade8b224394e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3836b4c4_db5c988e",
+        "filename": "src/vnet/tcp/tcp_inlines.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 2708
+      },
+      "writtenOn": "2023-12-22T01:26:00Z",
+      "side": 1,
+      "message": "If tc is NULL then tcp_input_set_error_next will set next as TCP_INPUT_NEXT_RESET ,hence a reset response generated for incoming reset packets on closed state",
+      "parentUuid": "67575a6e_3e9670f2",
+      "revId": "35e1da433f3cb8a2cbb7d542f58ade8b224394e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
