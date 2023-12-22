@@ -151,9 +151,6 @@ typedef struct application_
 
   u16 proxied_transports;
 
-  /** Pool of listeners for the app */
-  app_listener_t *listeners;
-
   /** Preferred tls engine */
   u8 tls_engine;
 
@@ -199,6 +196,9 @@ typedef struct app_main_
    * Pool from which we allocate all applications
    */
   application_t *app_pool;
+
+  /** Pool of app listeners */
+  app_listener_t *listeners;
 
   /**
    * Hash table of apps by api client index
@@ -248,7 +248,7 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
-app_listener_t *app_listener_get (application_t * app, u32 al_index);
+app_listener_t *app_listener_get (u32 al_index);
 int app_listener_alloc_and_init (application_t * app,
 				 session_endpoint_cfg_t * sep,
 				 app_listener_t ** listener);
