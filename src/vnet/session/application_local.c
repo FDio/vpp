@@ -1024,8 +1024,12 @@ global_scope:
   ll = session_lookup_listener_wildcard (table_index, sep);
 
   /* Avoid connecting app to own listener */
-  if (ll && ll->app_index != app->app_index)
-    return ct_connect (app_wrk, ll, sep_ext);
+  if (ll)
+    {
+      app_worker_t *law = app_worker_get (ll->app_wrk_index);
+      if (law->app_index != app->app_index)
+	return ct_connect (app_wrk, ll, sep_ext);
+    }
 
   /* Failed to connect but no error */
   return SESSION_E_LOCAL_CONNECT;
