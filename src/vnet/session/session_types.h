@@ -222,13 +222,13 @@ typedef struct session_
   /** Index of application that owns the listener. Set only if a listener */
   u32 app_index;
 
+  /** App listener index in app's listener pool if a listener */
+  u32 al_index;
+
   union
   {
     /** Parent listener session index if the result of an accept */
     session_handle_t listener_handle;
-
-    /** App listener index in app's listener pool if a listener */
-    u32 al_index;
 
     /** Index in app worker's half-open table if a half-open */
     u32 ho_index;
