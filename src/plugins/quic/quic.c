@@ -2567,7 +2567,6 @@ quic_init (vlib_main_t * vm)
   transport_register_protocol (TRANSPORT_PROTO_QUIC, &quic_proto,
 			       FIB_PROTOCOL_IP6, ~0);
 
-  quic_load_openssl3_legacy_provider ();
   clib_bitmap_alloc (qm->available_crypto_engines,
 		     app_crypto_engine_n_types ());
   quic_register_cipher_suite (CRYPTO_ENGINE_PICOTLS,
