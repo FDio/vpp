@@ -182,7 +182,11 @@ load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
   BIO *key_bio;
 
   key_bio = BIO_new_mem_buf (pk_data, -1);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  pkey = PEM_read_bio_PrivateKey_ex (key_bio, NULL, NULL, NULL, NULL, NULL);
+#else
   pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
+#endif
   BIO_free (key_bio);
 
   if (pkey == NULL)
@@ -202,7 +206,12 @@ ptls_load_private_key (const char *pk_data)
   BIO *key_bio;
 
   key_bio = BIO_new_mem_buf (pk_data, -1);
+//   pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  pkey = PEM_read_bio_PrivateKey_ex (key_bio, NULL, NULL, NULL, NULL, NULL);
+#else
   pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
+#endif
   BIO_free (key_bio);
 
   return pkey;

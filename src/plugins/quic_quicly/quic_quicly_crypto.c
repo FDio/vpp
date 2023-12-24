@@ -316,7 +316,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 	}
 
       /* TODO: Remove this and clean up legacy provider code in quicly */
-      quic_quicly_load_openssl3_legacy_provider ();
+      //       quic_quicly_load_openssl3_legacy_provider ();
     }
 
   quicly_ctx = &crctx->quicly_ctx;
