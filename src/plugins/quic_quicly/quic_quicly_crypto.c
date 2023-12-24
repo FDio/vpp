@@ -314,9 +314,6 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 		}
 	    }
 	}
-
-      /* TODO: Remove this and clean up legacy provider code in quicly */
-      quic_quicly_load_openssl3_legacy_provider ();
     }
 
   quicly_ctx = &crctx->quicly_ctx;
@@ -406,8 +403,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   clib_memcpy (crctx->cid_key, app_cctx->quic_iv, QUIC_IV_LEN);
   key_vec = ptls_iovec_init (crctx->cid_key, QUIC_IV_LEN);
   quicly_ctx->cid_encryptor = quicly_new_default_cid_encryptor (
-    &ptls_openssl_bfecb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256,
-    key_vec);
+    &ptls_openssl_aes128ecb, &ptls_openssl_aes128ecb, &ptls_openssl_sha256, key_vec);
 
   ckpair = app_cert_key_pair_get_if_valid (crctx->ctx.ckpair_index);
   if (!ckpair || !ckpair->key || !ckpair->cert)

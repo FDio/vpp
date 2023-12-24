@@ -15,19 +15,6 @@
 
 #define QUIC_IV_LEN 17
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#include <openssl/provider.h>
-
-#define quic_quicly_load_openssl3_legacy_provider()                           \
-  do                                                                          \
-    {                                                                         \
-      (void) OSSL_PROVIDER_load (NULL, "legacy");                             \
-    }                                                                         \
-  while (0)
-#else
-#define quic_quicly_load_openssl3_legacy_provider()
-#endif
-
 typedef struct crypto_key_
 {
   vnet_crypto_alg_t algo;
