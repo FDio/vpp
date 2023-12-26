@@ -1007,6 +1007,7 @@ lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
   ip46_address_t *paddr = &p->fp_addr;
   u32 entry;
 
+  ip46_address_reset (paddr);
   p->fp_proto = lcp_router_proto_k2f (nl_addr_get_family (addr));
 
   switch (p->fp_proto)
@@ -1018,7 +1019,6 @@ lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
       p->fp_eos = MPLS_NON_EOS;
       return;
     case FIB_PROTOCOL_IP4:
-      ip46_address_reset (paddr);
       memcpy (&paddr->ip4, baddr, blen);
       break;
     case FIB_PROTOCOL_IP6:
