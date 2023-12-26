@@ -1336,7 +1336,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
   nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
   /* Skip any kernel routes and IPv6 LL or multicast routes */
   if (rproto == RTPROT_KERNEL ||
-      (FIB_PROTOCOL_IP6 == pfx.fp_proto &&
+      (FIB_PROTOCOL_IP6 == pfx.fp_proto && pfx.fp_len != 0 &&
        (ip6_address_is_multicast (&pfx.fp_addr.ip6) ||
 	ip6_address_is_link_local_unicast (&pfx.fp_addr.ip6))))
     {
