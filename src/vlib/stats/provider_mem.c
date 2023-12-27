@@ -15,7 +15,6 @@ enum
   STAT_MEM_FREE,
   STAT_MEM_USED_MMAP,
   STAT_MEM_TOTAL_ALLOC,
-  STAT_MEM_FREE_CHUNKS,
   STAT_MEM_RELEASABLE,
 } stat_mem_usage_e;
 
@@ -38,7 +37,6 @@ stat_provider_mem_usage_update_fn (vlib_stats_collector_data_t *d)
   cb[STAT_MEM_FREE] = usage.bytes_free;
   cb[STAT_MEM_USED_MMAP] = usage.bytes_used_mmap;
   cb[STAT_MEM_TOTAL_ALLOC] = usage.bytes_max;
-  cb[STAT_MEM_FREE_CHUNKS] = usage.bytes_free_reclaimed;
   cb[STAT_MEM_RELEASABLE] = usage.bytes_overhead;
 }
 

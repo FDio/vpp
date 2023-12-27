@@ -1421,8 +1421,11 @@ DLMALLOC_EXPORT size_t mspace_max_footprint(mspace msp);
 /*
   mspace_mallinfo behaves as mallinfo, but reports properties of
   the given space.
+  _slow version iterates over all allocations and provides additional information.
+  _fast version is instant, but doesn't provide hblkhd and ordblks information.
 */
-DLMALLOC_EXPORT struct dlmallinfo mspace_mallinfo(mspace msp);
+DLMALLOC_EXPORT struct dlmallinfo mspace_mallinfo_slow(mspace msp);
+DLMALLOC_EXPORT struct dlmallinfo mspace_mallinfo_fast(mspace msp);
 #endif /* NO_MALLINFO */
 
 /*
