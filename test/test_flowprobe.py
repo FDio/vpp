@@ -1228,7 +1228,6 @@ class DatapathTestsHolder(object):
         self.logger.info("FFP_TEST_FINISH_0002")
 
 
-@tag_fixme_vpp_workers
 class DatapathTx(MethodHolder, DatapathTestsHolder):
     """Collect info on Ethernet, IP4 and IP6 datapath (TX) (no timers)"""
 
@@ -1309,7 +1308,6 @@ class DatapathTx(MethodHolder, DatapathTestsHolder):
         ipfix.remove_vpp_config()
 
 
-@tag_fixme_vpp_workers
 class DatapathRx(MethodHolder, DatapathTestsHolder):
     """Collect info on Ethernet, IP4 and IP6 datapath (RX) (no timers)"""
 
