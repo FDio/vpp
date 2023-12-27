@@ -1179,6 +1179,9 @@ struct malloc_state {
   size_t     max_footprint;
   size_t     footprint_limit; /* zero means no limit */
   flag_t     mflags;
+
+  size_t     fast_stats_used_sz; /* tracking of used bytes without iteration over all chunks */
+
 #if USE_LOCKS
   MLOCK_T    mutex;     /* locate lock among fields that rarely change */
 #endif /* USE_LOCKS */
@@ -2084,7 +2087,30 @@ static void do_check_malloc_state(mstate m) {
 
 #if !NO_MALLINFO
 __clib_nosanitize_addr
-static struct dlmallinfo internal_mallinfo(mstate m) {
+static struct dlmallinfo internal_mallinfo_fast(mstate m) {
+  struct dlmallinfo nm = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  ensure_initialization();
+  if (!PREACTION(m)) {
+    check_malloc_state(m);
+    if (is_initialized(m)) {
+      size_t used = m->fast_stats_used_sz;
+
+      nm.arena    = m->footprint;
+      nm.ordblks  = 0;
+      nm.hblkhd   = 0;
+      nm.usmblks  = m->max_footprint;
+      nm.uordblks = used;
+      nm.fordblks = m->footprint - used;
+      nm.keepcost = m->topsize;
+    }
+
+    POSTACTION(m);
+  }
+  return nm;
+}
+
+__clib_nosanitize_addr
+static struct dlmallinfo internal_mallinfo_slow(mstate m) {
   struct dlmallinfo nm = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
   ensure_initialization();
   if (!PREACTION(m)) {
@@ -3564,6 +3590,8 @@ static void* internal_memalign(mstate m, size_t alignment, size_t bytes) {
         }
       }
 
+      m->fast_stats_used_sz += chunksize(p);
+
       mem = chunk2mem(p);
       assert (chunksize(p) >= nb);
       assert(((size_t)mem & (alignment - 1)) == 0);
@@ -4024,6 +4052,9 @@ static mstate init_user_mstate(char* tbase, size_t tsize) {
   m->mflags = mparams.default_mflags;
   m->extp = 0;
   m->exts = 0;
+
+  m->fast_stats_used_sz = sizeof(struct malloc_state);
+
   disable_contiguous(m);
   init_bins(m);
   mn = next_chunk(mem2chunk(m));
@@ -4235,6 +4266,8 @@ void* mspace_get_aligned (mspace msp,
 
   if (rv == 0)
       return rv;
+
+  ms->fast_stats_used_sz += chunksize(mem2chunk(rv));
 
   /* Honor the alignment request */
   searchp = (unsigned long)(rv + sizeof (unsigned));
@@ -4474,6 +4507,9 @@ void mspace_free(mspace msp, void* mem) {
       check_inuse_chunk(fm, p);
       if (RTCHECK(ok_address(fm, p) && ok_inuse(p))) {
         size_t psize = chunksize(p);
+
+        fm->fast_stats_used_sz -= psize;
+
         mchunkptr next = chunk_plus_offset(p, psize);
         if (!pinuse(p)) {
           size_t prevsize = p->prev_foot;
@@ -4604,11 +4640,14 @@ void* mspace_realloc(mspace msp, void* oldmem, size_t bytes) {
     }
 #endif /* FOOTERS */
     if (!PREACTION(m)) {
+      size_t oldsize = chunksize(oldp);
       mchunkptr newp = try_realloc_chunk(m, oldp, nb, 1);
       POSTACTION(m);
       if (newp != 0) {
         check_inuse_chunk(m, newp);
         mem = chunk2mem(newp);
+
+        m->fast_stats_used_sz += chunksize(newp) - oldsize;
       }
       else {
         mem = mspace_malloc(m, bytes);
@@ -4616,6 +4655,8 @@ void* mspace_realloc(mspace msp, void* oldmem, size_t bytes) {
           size_t oc = chunksize(oldp) - overhead_for(oldp);
           memcpy(mem, oldmem, (oc < bytes)? oc : bytes);
           mspace_free(m, oldmem);
+
+          m->fast_stats_used_sz += chunksize(mem2chunk(mem)) - oldsize;
         }
       }
     }
@@ -4633,6 +4674,7 @@ void* mspace_realloc_in_place(mspace msp, void* oldmem, size_t bytes) {
     else {
       size_t nb = request2size(bytes);
       mchunkptr oldp = mem2chunk(oldmem);
+      size_t oldsize = chunksize(oldp);
 #if ! FOOTERS
       mstate m = (mstate)msp;
 #else /* FOOTERS */
@@ -4649,6 +4691,8 @@ void* mspace_realloc_in_place(mspace msp, void* oldmem, size_t bytes) {
         if (newp == oldp) {
           check_inuse_chunk(m, newp);
           mem = oldmem;
+
+          m->fast_stats_used_sz += chunksize(newp) - oldsize;
         }
       }
     }
@@ -4663,8 +4707,11 @@ void* mspace_memalign(mspace msp, size_t alignment, size_t bytes) {
     USAGE_ERROR_ACTION(ms,ms);
     return 0;
   }
-  if (alignment <= MALLOC_ALIGNMENT)
-    return mspace_malloc(msp, bytes);
+  if (alignment <= MALLOC_ALIGNMENT) {
+    void *rv = mspace_malloc(msp, bytes);
+    ms->fast_stats_used_sz += chunksize(mem2chunk(rv));
+    return rv;
+  }
   return internal_memalign(ms, alignment, bytes);
 }
 
@@ -4797,12 +4844,21 @@ size_t mspace_set_footprint_limit(mspace msp, size_t bytes) {
 
 #if !NO_MALLINFO
 __clib_nosanitize_addr
-struct dlmallinfo mspace_mallinfo(mspace msp) {
+struct dlmallinfo mspace_mallinfo_slow(mspace msp) {
   mstate ms = (mstate)msp;
   if (!ok_magic(ms)) {
     USAGE_ERROR_ACTION(ms,ms);
   }
-  return internal_mallinfo(ms);
+  return internal_mallinfo_slow(ms);
+}
+
+__clib_nosanitize_addr
+struct dlmallinfo mspace_mallinfo_fast(mspace msp) {
+  mstate ms = (mstate)msp;
+  if (!ok_magic(ms)) {
+    USAGE_ERROR_ACTION(ms,ms);
+  }
+  return internal_mallinfo_fast(ms);
 }
 #endif /* NO_MALLINFO */
 
