@@ -105,6 +105,9 @@ vlib_node_registration_t flowprobe_input_l2_node;
 vlib_node_registration_t flowprobe_output_ip4_node;
 vlib_node_registration_t flowprobe_output_ip6_node;
 vlib_node_registration_t flowprobe_output_l2_node;
+vlib_node_registration_t flowprobe_flush_ip4_node;
+vlib_node_registration_t flowprobe_flush_ip6_node;
+vlib_node_registration_t flowprobe_flush_l2_node;
 
 /* No counters at the moment */
 #define foreach_flowprobe_error			\
@@ -945,18 +948,57 @@ flush_record (flowprobe_variant_t which)
 void
 flowprobe_flush_callback_ip4 (void)
 {
+  vlib_main_t *worker_vm;
+  u32 i;
+
+  /* Flush for each worker thread */
+  for (i = 1; i < vlib_get_n_threads (); i++)
+    {
+      worker_vm = vlib_get_main_by_index (i);
+      if (worker_vm)
+	vlib_node_set_interrupt_pending (worker_vm,
+					 flowprobe_flush_ip4_node.index);
+    }
+
+  /* Flush for the main thread */
   flush_record (FLOW_VARIANT_IP4);
 }
 
 void
 flowprobe_flush_callback_ip6 (void)
 {
+  vlib_main_t *worker_vm;
+  u32 i;
+
+  /* Flush for each worker thread */
+  for (i = 1; i < vlib_get_n_threads (); i++)
+    {
+      worker_vm = vlib_get_main_by_index (i);
+      if (worker_vm)
+	vlib_node_set_interrupt_pending (worker_vm,
+					 flowprobe_flush_ip6_node.index);
+    }
+
+  /* Flush for the main thread */
   flush_record (FLOW_VARIANT_IP6);
 }
 
 void
 flowprobe_flush_callback_l2 (void)
 {
+  vlib_main_t *worker_vm;
+  u32 i;
+
+  /* Flush for each worker thread */
+  for (i = 1; i < vlib_get_n_threads (); i++)
+    {
+      worker_vm = vlib_get_main_by_index (i);
+      if (worker_vm)
+	vlib_node_set_interrupt_pending (worker_vm,
+					 flowprobe_flush_l2_node.index);
+    }
+
+  /* Flush for the main thread */
   flush_record (FLOW_VARIANT_L2);
   flush_record (FLOW_VARIANT_L2_IP4);
   flush_record (FLOW_VARIANT_L2_IP6);
@@ -1062,6 +1104,32 @@ flowprobe_walker_process (vlib_main_t * vm,
   return 0;
 }
 
+static uword
+flowprobe_flush_ip4 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  flush_record (FLOW_VARIANT_IP4);
+
+  return 0;
+}
+
+static uword
+flowprobe_flush_ip6 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  flush_record (FLOW_VARIANT_IP6);
+
+  return 0;
+}
+
+static uword
+flowprobe_flush_l2 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
+{
+  flush_record (FLOW_VARIANT_L2);
+  flush_record (FLOW_VARIANT_L2_IP4);
+  flush_record (FLOW_VARIANT_L2_IP6);
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (flowprobe_input_ip4_node) = {
   .function = flowprobe_input_ip4_node_fn,
@@ -1132,6 +1200,24 @@ VLIB_REGISTER_NODE (flowprobe_output_l2_node) = {
 VLIB_REGISTER_NODE (flowprobe_walker_node) = {
   .function = flowprobe_walker_process,
   .name = "flowprobe-walker",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+};
+VLIB_REGISTER_NODE (flowprobe_flush_ip4_node) = {
+  .function = flowprobe_flush_ip4,
+  .name = "flowprobe-flush-ip4",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+};
+VLIB_REGISTER_NODE (flowprobe_flush_ip6_node) = {
+  .function = flowprobe_flush_ip6,
+  .name = "flowprobe-flush-ip6",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+};
+VLIB_REGISTER_NODE (flowprobe_flush_l2_node) = {
+  .function = flowprobe_flush_l2,
+  .name = "flowprobe-flush-l2",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };
