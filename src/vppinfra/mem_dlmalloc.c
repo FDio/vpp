@@ -217,7 +217,7 @@ format_clib_mem_heap (u8 * s, va_list * va)
   if (heap == 0)
     heap = clib_mem_get_heap ();
 
-  mi = mspace_mallinfo (heap->mspace);
+  mi = mspace_mallinfo_slow (heap->mspace);
 
   s = format (s, "base %p, size %U",
 	      heap->base, format_memory_size, heap->size);
@@ -264,19 +264,19 @@ format_clib_mem_heap (u8 * s, va_list * va)
 __clib_export __clib_flatten void
 clib_mem_get_heap_usage (clib_mem_heap_t *heap, clib_mem_usage_t *usage)
 {
-  struct dlmallinfo mi = mspace_mallinfo (heap->mspace);
+  struct dlmallinfo mi = mspace_mallinfo_fast (heap->mspace);
 
   usage->bytes_total = mi.arena; /* non-mmapped space allocated from system */
   usage->bytes_used = mi.uordblks;	    /* total allocated space */
   usage->bytes_free = mi.fordblks;	    /* total free space */
   usage->bytes_used_mmap = mi.hblkhd;	    /* space in mmapped regions */
   usage->bytes_max = mi.usmblks;	    /* maximum total allocated space */
-  usage->bytes_free_reclaimed = mi.ordblks; /* number of free chunks */
   usage->bytes_overhead = mi.keepcost; /* releasable (via malloc_trim) space */
 
   /* Not supported */
   usage->bytes_used_sbrk = 0;
   usage->object_count = 0;
+  usage->bytes_free_reclaimed = 0;
 }
 
 /* Call serial number for debugger breakpoints. */
@@ -342,7 +342,7 @@ clib_mem_destroy_heap (clib_mem_heap_t * h)
 __clib_export __clib_flatten uword
 clib_mem_get_heap_free_space (clib_mem_heap_t *h)
 {
-  struct dlmallinfo dlminfo = mspace_mallinfo (h->mspace);
+  struct dlmallinfo dlminfo = mspace_mallinfo_fast (h->mspace);
   return dlminfo.fordblks;
 }
 
