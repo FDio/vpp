@@ -13,10 +13,7 @@ enum
   STAT_MEM_TOTAL = 0,
   STAT_MEM_USED,
   STAT_MEM_FREE,
-  STAT_MEM_USED_MMAP,
   STAT_MEM_TOTAL_ALLOC,
-  STAT_MEM_FREE_CHUNKS,
-  STAT_MEM_RELEASABLE,
 } stat_mem_usage_e;
 
 /*
@@ -33,13 +30,10 @@ stat_provider_mem_usage_update_fn (vlib_stats_collector_data_t *d)
   heap = vec_elt (memory_heaps_vec, d->private_data);
   clib_mem_get_heap_usage (heap, &usage);
   cb = counters[0];
-  cb[STAT_MEM_TOTAL] = usage.bytes_total;
-  cb[STAT_MEM_USED] = usage.bytes_used;
-  cb[STAT_MEM_FREE] = usage.bytes_free;
-  cb[STAT_MEM_USED_MMAP] = usage.bytes_used_mmap;
-  cb[STAT_MEM_TOTAL_ALLOC] = usage.bytes_max;
-  cb[STAT_MEM_FREE_CHUNKS] = usage.bytes_free_reclaimed;
-  cb[STAT_MEM_RELEASABLE] = usage.bytes_overhead;
+  cb[STAT_MEM_TOTAL] = usage.bytes_total; // .arena
+  cb[STAT_MEM_USED] = usage.bytes_used; // .uordblks
+  cb[STAT_MEM_FREE] = usage.bytes_free; // .fordblks
+  cb[STAT_MEM_TOTAL_ALLOC] = usage.bytes_max; // .usmblks
 }
 
 /*
@@ -55,7 +49,7 @@ vlib_stats_register_mem_heap (clib_mem_heap_t *heap)
   vec_add1 (memory_heaps_vec, heap);
 
   r.entry_index = idx = vlib_stats_add_counter_vector ("/mem/%s", heap->name);
-  vlib_stats_validate (idx, 0, STAT_MEM_RELEASABLE);
+  vlib_stats_validate (idx, 0, STAT_MEM_TOTAL_ALLOC);
 
   /* Create symlink */
   vlib_stats_add_symlink (idx, STAT_MEM_USED, "/mem/%s/used", heap->name);
