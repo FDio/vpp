@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b476b55f_26fb07be",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2023-12-28T08:03:54Z",
+      "side": 1,
+      "message": "FYI, this patch is going to remove @tag_fixme_vpp_workers from the flowprobe tests that don\u0027t use timers.",
+      "revId": "1704eff617288bf01fdda7988d9c58cd4c883f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
