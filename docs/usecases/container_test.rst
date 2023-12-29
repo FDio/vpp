@@ -13,11 +13,8 @@ scenario.
 OS / Distro test results
 ------------------------
 
-This setup has been tested on an Ubuntu 18.04 LTS system. If you’re
-feeling adventurous, the same scenario also worked on a recent Ubuntu
-20.04 “preview” daily build.
-
-Other distros may work fine, or not at all.
+This setup has been tested on Ubuntu 18.04 - 22.04 LTS systems. Other
+distros may work fine, or not at all.
 
 Proxy Server
 ------------
@@ -113,6 +110,7 @@ containers, run vpp without installing it, etc.
            type: disk
        name: default
 
+
 Set up the network configurations
 ---------------------------------
 
@@ -127,20 +125,20 @@ and host configuration:
 
 ::
 
-       config:
-         ipv4.address: 10.26.68.1/24
-         ipv4.dhcp.ranges: 10.26.68.10-10.26.68.50
-         ipv4.nat: "true"
-         ipv6.address: none
-         ipv6.nat: "false"
-       description: ""
-       name: internet
-       type: bridge
-       used_by:
-       managed: true
-       status: Created
-       locations:
-       - none
+   config:
+     ipv4.address: 10.26.68.1/24
+     ipv4.dhcp.ranges: 10.26.68.10-10.26.68.50
+     ipv4.nat: "true"
+     ipv6.address: none
+     ipv6.nat: "false"
+   description: ""
+   name: internet
+   type: bridge
+   used_by:
+   managed: true
+   status: Created
+   locations:
+   - none
 
 Repeat the process with the “respond” and “initiate” networks, using
 these configurations:
@@ -183,7 +181,6 @@ initiate network configuration
        managed: true
        status: Created
        locations:
-       - none
 
 Create a “master” container image
 ---------------------------------
@@ -195,7 +192,7 @@ Make sure that e.g. public key auth ssh works.
 
 ::
 
-       # lxd launch ubuntu:18.04 respond
+       # lxd launch ubuntu:22.04 respond
        <spew>
        # lxc exec respond bash
        respond# cd /scratch/my-vpp-workspace
@@ -228,9 +225,9 @@ container image is fully set up before you help it have children:
 Install handy script
 --------------------
 
-See below for a handy script which executes lxc commands across the
-current set of running containers. I call it “lxc-foreach,” feel free to
-call the script Ishmael if you like.
+See below for a handy host script which executes lxc commands across
+the current set of running containers. I call it “lxc-foreach,” feel
+free to call the script Ishmael if you like.
 
 Examples:
 
@@ -251,36 +248,44 @@ Here’s the script:
 
 ::
 
-       #!/bin/bash
+    #!/bin/bash
 
-       set -u
-       export containers="respond respondhost initiate initiatehost dhcpserver"
+    set -u
+    export containers="respond initiate initiatehost respondhost"
 
-       if [ x$1 = "x" ] ; then
-           echo missing command
-           exit 1
-       fi
+    if [ x$1 = "x" ] ; then
+        echo missing command
+        exit 1
+    fi
 
-       if [ $1 = "ssh" ] ; then
-           for c in $containers
-           do
-               inet=`lxc info $c | grep eth0 | grep -v inet6 | head -1 | cut -f 3`
-               if [ x$inet = "x" ] ; then
-                   echo $c not started
-               else
-                   gnome-terminal --command "/usr/bin/ssh $inet"
-               fi
-           done
-       exit 0
-       fi
+    if [ $1 = "ssh" ] ; then
+        for c in $containers
+        do
 
-       for c in $containers
-       do
-           echo lxc $1 $c
-           lxc $1 $c
-       done
+            inet=`lxc info $c | grep 10.38.33 | sed "s/.*inet://" | sed "s/\/24.*//" | tr -d " "`
+            if [ x$inet != "x" ] ; then
+                gnome-terminal --title "$c(ssh)" --command "/usr/bin/ssh -Y root@$inet"
+            fi
+        done
+    exit 0
+    fi
 
-       exit 0
+    for c in $containers
+    do
+        inet=`lxc info $c | grep 10.38.33 | sed "s/.*inet://" | sed "s/\/24.*//" | tr -d " "`
+        if [ x$1 = "xstart" ] ; then
+            echo Starting $c
+            lxc start $c
+        elif [ x$1 = "xstop" ] ; then
+            echo Stopping $c
+            lxc stop $c
+        elif [ x$inet != "x" ] ; then
+            echo lxc $1 $c
+            lxc $1 $c
+        fi
+    done
+
+    exit 0
 
 Test topology
 -------------
@@ -289,24 +294,25 @@ Finally, we’re ready to describe a test topology. First, a picture:
 
 ::
 
-       ===+======== management lan/bridge lxdbr0 (dhcp) ===========+===
-          |                             |                          |
-          |                             |                          |
-          |                             |                          |
-          v                             |                          v
-         eth0                           |                         eth0
-       +------+ eth1                                       eth1 +------+
+       ===+======== management lan/bridge lxdbr0 (dhcp) ==============+===
+          |                             |                             |
+          |                             |                             |
+          |                             |                             |
+          v                             |                             v
+         eth0                           |                            eth0
+       +---------+ eth1                                       eth1 +----------+
        | respond | 10.26.88.100 <= internet bridge => 10.26.88.101 | initiate |
-       +------+                                                 +------+
+       +---------+                                                 +----------+
          eth2 / bvi0 10.166.14.2        |       10.219.188.2 eth3 / bvi0
-          |                             |                          |
-          | ("respond" bridge)             |          ("initiate" bridge) |
-          |                             |                          |
-          v                             |                          v
-         eth2 10.166.14.3               |           eth3 10.219.188.3
-       +----------+                     |                   +----------+
-       | respondhost |                     |                   | respondhost |
-       +----------+                     |                   +----------+
+          |                             |                             |
+          | ("respond" bridge)          |         ("initiate" bridge) |
+          |                             |                             |
+          v                             |                             v
+         eth2 10.166.14.3               |                eth3 10.219.188.3
+       +-------------+                  |                   +-------------+
+       | respondhost |                  |                   | respondhost |
+       +-------------+                  |                   +-------------+
+                                        v
          eth0 (management lan) <========+========> eth0 (management lan)
 
 Test topology discussion
