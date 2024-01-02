@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "658ea826_0babe989",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-02T12:06:58Z",
+      "side": 1,
+      "message": "Is it really needed to move away from a static inline function?",
+      "revId": "b3c8e6d07e2b6c2f3520e22b8fc38dffef65eaed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

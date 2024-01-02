@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3da5e00f_e347baf9",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-02T12:06:58Z",
+      "side": 0,
+      "message": "Can\u0027t remember now, do we really want to drop the while loop?",
+      "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
