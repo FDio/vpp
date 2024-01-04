@@ -123,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9a0727e_9a22d459",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-04T13:56:48Z",
+      "side": 1,
+      "message": "divided the lines, now character length are less. make checkstyle passed.",
+      "parentUuid": "c785efbd_ed90edc7",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5fbd9aca_3743592f",
