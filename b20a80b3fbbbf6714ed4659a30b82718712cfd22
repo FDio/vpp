@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c785efbd_ed90edc7",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-04T12:07:09Z",
+      "side": 1,
+      "message": "I used make checkstyle, There was no any checkstyle error found.",
+      "parentUuid": "10a80458_ab267e66",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5fbd9aca_3743592f",
