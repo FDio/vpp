@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff22c605_87d6b011",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-04T13:52:23Z",
+      "side": 1,
+      "message": "used wildcard",
+      "parentUuid": "2daf7607_204db50b",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "10a80458_ab267e66",
@@ -100,6 +118,24 @@
       "writtenOn": "2024-01-04T09:51:35Z",
       "side": 1,
       "message": "Can you make your syntax consistent (compare line 42 with 47) I think the test from line 42 is better and should be used in other places.",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5db85453_7682f829",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-04T13:52:23Z",
+      "side": 1,
+      "message": "ifneq inside define block is always showing incorrect syntax, so used \"if -n\" way to search if the variable has some value or empty string.",
+      "parentUuid": "5fbd9aca_3743592f",
       "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
