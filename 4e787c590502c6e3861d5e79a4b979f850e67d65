@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "78c26ab4_1c9bc798",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2024-01-04T14:22:48Z",
+      "side": 1,
+      "message": "the format of commit message is a bit wired, might need to be updated \n\ncrypto: Host IPsec-mb lib version check\n \nEnsure alignment between the Intel IPsec-mb library on the host and VPP targets. If the version of Intel IPsec-mb on the host is misaligned with the targets, terminate the compilation process to prevent potential library linkage issues.",
+      "revId": "4e787c590502c6e3861d5e79a4b979f850e67d65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d04de2cc_98ebf67c",
