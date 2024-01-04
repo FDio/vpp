@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2daf7607_204db50b",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-04T09:51:35Z",
+      "side": 1,
+      "message": "wouldn\u0027t it be better to use wildcard function here?",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5fbd9aca_3743592f",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-04T09:51:35Z",
+      "side": 1,
+      "message": "Can you make your syntax consistent (compare line 42 with 47) I think the test from line 42 is better and should be used in other places.",
+      "revId": "b20a80b3fbbbf6714ed4659a30b82718712cfd22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
