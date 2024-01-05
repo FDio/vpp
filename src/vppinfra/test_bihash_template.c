@@ -391,7 +391,7 @@ test_bihash (test_main_t * tm)
 	  for (i = 0; i < tm->nitems; i++)
 	    {
 	      /* Prefetch buckets 8 iterations ahead */
-	      if (1 && (i < (tm->nitems - 8)))
+	      if (1 && (i < ((i64) tm->nitems - 8)))
 		{
 		  BVT (clib_bihash_kv) pref_kv;
 		  u64 pref_hash;
@@ -475,7 +475,7 @@ test_bihash (test_main_t * tm)
 	      for (j = 0; j < tm->nitems; j++)
 		{
 		  /* Prefetch buckets 8 iterations ahead */
-		  if (1 && (j < (tm->nitems - 8)))
+		  if (1 && (j < ((i64) tm->nitems - 8)))
 		    {
 		      BVT (clib_bihash_kv) pref_kv;
 		      u64 pref_hash;
