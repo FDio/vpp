@@ -60,7 +60,6 @@ static int verbose;
 
 #define MAX_CHANGE 100
 
-
 typedef enum
 {
   /* Values have to be sequential and start with 0. */
@@ -81,6 +80,7 @@ typedef enum
   OP_IS_VEC_CLONE,
   OP_IS_VEC_APPEND,
   OP_IS_VEC_PREPEND,
+  OP_IS_VEC_PREPEND_SELF,
   /* Operations on vectors with custom headers. */
   OP_IS_VEC_INIT_H,
   OP_IS_VEC_RESIZE_H,
@@ -89,7 +89,7 @@ typedef enum
 } op_t;
 
 #define FIRST_VEC_OP		OP_IS_VEC_RESIZE
-#define LAST_VEC_OP		OP_IS_VEC_PREPEND
+#define LAST_VEC_OP		OP_IS_VEC_PREPEND_SELF
 #define FIRST_VEC_HDR_OP	OP_IS_VEC_INIT_H
 #define LAST_VEC_HDR_OP		OP_IS_VEC_FREE_H
 
@@ -111,6 +111,7 @@ uword g_prob_ratio[] = {
   [OP_IS_VEC_CLONE] = 5,
   [OP_IS_VEC_APPEND] = 5,
   [OP_IS_VEC_PREPEND] = 5,
+  [OP_IS_VEC_PREPEND_SELF] = 5,
   /* Operations on vectors with custom headers. */
   [OP_IS_VEC_INIT_H] = 5,
   [OP_IS_VEC_RESIZE_H] = 5,
@@ -153,6 +154,7 @@ format_vec_op_type (u8 * s, va_list * args)
 {
   op_t op = va_arg (*args, int);
 
+  /* clang-format off */
   switch (op)
     {
 #define _(n)					\
@@ -177,6 +179,7 @@ format_vec_op_type (u8 * s, va_list * args)
       _(VEC_CLONE);
       _(VEC_APPEND);
       _(VEC_PREPEND);
+      _(VEC_PREPEND_SELF);
       _(VEC_INIT_H);
       _(VEC_RESIZE_H);
       _(VEC_FREE_H);
@@ -187,6 +190,7 @@ format_vec_op_type (u8 * s, va_list * args)
     }
 
 #undef _
+  /* clang-format on */
 
   return s;
 }
@@ -769,6 +773,24 @@ validate_vec_prepend (elt_t * vec)
   return vec;
 }
 
+static elt_t *
+validate_vec_prepend_self (elt_t *vec)
+{
+  uword len;
+  u8 hash = 0;
+
+  len = vec_len (vec) * 2;
+  hash = compute_vec_hash (0, vec);
+  hash = compute_vec_hash (hash, vec);
+
+  vec_prepend (vec, vec);
+
+  ASSERT (vec_len (vec) == len);
+  ASSERT (compute_vec_hash (hash, vec) == 0);
+  validate_vec (vec, 0);
+  return vec;
+}
+
 static void
 run_validator_wh (uword iter)
 {
@@ -982,6 +1004,11 @@ run_validator (uword iter)
 	case OP_IS_VEC_PREPEND:
 	  VERBOSE2 ("vec_prepend()\n");
 	  vec = validate_vec_prepend (vec);
+	  break;
+
+	case OP_IS_VEC_PREPEND_SELF:
+	  VERBOSE2 ("vec_prepend(vec, vec)\n");
+	  vec = validate_vec_prepend_self (vec);
 	  break;
 
 	default:
