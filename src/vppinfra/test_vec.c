@@ -269,7 +269,6 @@ static void
 validate_vec_hdr (elt_t * vec, uword hdr_bytes)
 {
   u8 *hdr;
-  u8 *hdr_end;
   vec_header_t *vh;
 
   if (!vec)
@@ -277,9 +276,7 @@ validate_vec_hdr (elt_t * vec, uword hdr_bytes)
 
   vh = _vec_find (vec);
   hdr = vec_header (vec);
-  hdr_end = vec_header_end (hdr);
 
-  ASSERT (hdr_end == (u8 *) vec);
   ASSERT ((u8 *) vh - (u8 *) hdr >= hdr_bytes);
 }
 

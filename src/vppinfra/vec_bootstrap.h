@@ -105,18 +105,6 @@ vec_header (void *v)
   return v ? v - vec_get_header_size (v) : 0;
 }
 
-/** \brief Find the end of user vector header
-
-    Finds the end of the user header of a vector with unspecified
-    alignment given the user pointer to the vector.
-*/
-
-always_inline void *
-vec_header_end (void *v)
-{
-  return v + vec_get_header_size (v);
-}
-
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
 
     vec_len (v) checks for NULL, but cannot be used as an lvalue.
