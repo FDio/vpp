@@ -85,6 +85,24 @@
       "message": "Is there a guarantee that awk is installed in the system?",
       "revId": "aad1e8fd009a8ba30d5945f327acdc436ee40b5e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eb10a3e3_987f1fb2",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-05T06:22:28Z",
+      "side": 1,
+      "message": "it is used at many places in VPP, may be install-ext-deps will be handling awk installation on host.",
+      "parentUuid": "dc78e237_39758dce",
+      "revId": "aad1e8fd009a8ba30d5945f327acdc436ee40b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
