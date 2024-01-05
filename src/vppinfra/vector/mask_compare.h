@@ -7,10 +7,29 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/memcpy.h>
 
+#define _(n_bits)                                                             \
+  static_always_inline u64 clib_mask_compare_u##n_bits##_x1 (                 \
+    u##n_bits v, u##n_bits *a, u32 n_elts)                                    \
+  {                                                                           \
+    u64 mask = 0;                                                             \
+    for (int i = 0; i < n_elts; i++)                                          \
+      if (a[i] == v)                                                          \
+	mask |= 1ULL << i;                                                    \
+    return mask;                                                              \
+  }
+
+_ (64);
+_ (32);
+_ (16);
+_ (8);
+
+#undef _
+
 static_always_inline u64
 clib_mask_compare_u16_x64 (u16 v, u16 *a, u32 n_elts)
 {
   u64 mask = 0;
+
 #if defined(CLIB_HAVE_VEC512)
   u16x32 v32 = u16x32_splat (v);
   u16x32u *av = (u16x32u *) a;
@@ -47,9 +66,7 @@ clib_mask_compare_u16_x64 (u16 v, u16 *a, u32 n_elts)
 	  (u64) i8x16_msb_mask (i8x16_pack (v8 == av[4], v8 == av[5])) << 32 |
 	  (u64) i8x16_msb_mask (i8x16_pack (v8 == av[6], v8 == av[7])) << 48);
 #else
-  for (int i = 0; i < n_elts; i++)
-    if (a[i] == v)
-      mask |= 1ULL << i;
+  mask = clib_mask_compare_u16_x1 (v, a, 64);
 #endif
   return mask;
 }
@@ -76,7 +93,7 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  mask[0] = clib_mask_compare_u16_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  mask[0] = clib_mask_compare_u16_x1 (v, a, n_elts);
 }
 
 static_always_inline u64
@@ -131,9 +148,7 @@ clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
     }
 
 #else
-  for (int i = 0; i < n_elts; i++)
-    if (a[i] == v)
-      mask |= 1ULL << i;
+  mask = clib_mask_compare_u32_x1 (v, a, 64);
 #endif
   return mask;
 }
@@ -160,7 +175,7 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = clib_mask_compare_u32_x1 (v, a, n_elts);
 }
 
 static_always_inline u64
@@ -190,9 +205,7 @@ clib_mask_compare_u64_x64 (u64 v, u64 *a, u32 n_elts)
       mask |= _pext_u64 (l | h << 32, 0x0101010101010101) << (i * 4);
     }
 #else
-  for (int i = 0; i < n_elts; i++)
-    if (a[i] == v)
-      mask |= 1ULL << i;
+  mask = clib_mask_compare_u64_x1 (v, a, 64);
 #endif
   return mask;
 }
@@ -219,7 +232,7 @@ clib_mask_compare_u64 (u64 v, u64 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u64_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = clib_mask_compare_u64_x1 (v, a, n_elts);
 }
 
 #endif

@@ -7,6 +7,23 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/memcpy.h>
 
+#define _(n_bits)                                                             \
+  static_always_inline u##n_bits *clib_compress_u##n_bits##_x1 (              \
+    u##n_bits *dst, u##n_bits *src, u64 mask, u32 n_elts)                     \
+  {                                                                           \
+    u32 i;                                                                    \
+    foreach_set_bit_index (i, mask)                                           \
+      dst++[0] = src[i];                                                      \
+    return dst;                                                               \
+  }
+
+_ (64);
+_ (32);
+_ (16);
+_ (8);
+
+#undef _
+
 static_always_inline u64 *
 clib_compress_u64_x64 (u64 *dst, u64 *src, u64 mask)
 {
@@ -27,9 +44,7 @@ clib_compress_u64_x64 (u64 *dst, u64 *src, u64 mask)
       mask >>= 4;
     }
 #else
-  u32 i;
-  foreach_set_bit_index (i, mask)
-    dst++[0] = src[i];
+  dst = clib_compress_u64_x1 (dst, src, mask, 64);
 #endif
   return dst;
 }
@@ -66,7 +81,9 @@ clib_compress_u64 (u64 *dst, u64 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u64_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u64_x1 (dst, src, mask[0] & pow2_mask (n_elts),
+			       n_elts) -
+	 dst0;
 }
 
 static_always_inline u32 *
@@ -90,9 +107,7 @@ clib_compress_u32_x64 (u32 *dst, u32 *src, u64 mask)
       mask >>= 8;
     }
 #else
-  u32 i;
-  foreach_set_bit_index (i, mask)
-    dst++[0] = src[i];
+  dst = clib_compress_u32_x1 (dst, src, mask, 64);
 #endif
   return dst;
 }
@@ -129,7 +144,9 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u32_x1 (dst, src, mask[0] & pow2_mask (n_elts),
+			       n_elts) -
+	 dst0;
 }
 
 static_always_inline u16 *
@@ -144,9 +161,7 @@ clib_compress_u16_x64 (u16 *dst, u16 *src, u64 mask)
       mask >>= 32;
     }
 #else
-  u32 i;
-  foreach_set_bit_index (i, mask)
-    dst++[0] = src[i];
+  dst = clib_compress_u16_x1 (dst, src, mask, 64);
 #endif
   return dst;
 }
@@ -183,7 +198,9 @@ clib_compress_u16 (u16 *dst, u16 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u16_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u16_x1 (dst, src, mask[0] & pow2_mask (n_elts),
+			       n_elts) -
+	 dst0;
 }
 
 static_always_inline u8 *
@@ -194,9 +211,7 @@ clib_compress_u8_x64 (u8 *dst, u8 *src, u64 mask)
   u8x64_compress_store (sv[0], mask, dst);
   dst += _popcnt64 (mask);
 #else
-  u32 i;
-  foreach_set_bit_index (i, mask)
-    dst++[0] = src[i];
+  dst = clib_compress_u8_x1 (dst, src, mask, 64);
 #endif
   return dst;
 }
@@ -233,7 +248,8 @@ clib_compress_u8 (u8 *dst, u8 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u8_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u8_x1 (dst, src, mask[0] & pow2_mask (n_elts), n_elts) -
+	 dst0;
 }
 
 #endif
