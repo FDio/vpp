@@ -1067,20 +1067,22 @@ _vec_append (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
 #define vec_append(v1, v2) vec_append_aligned (v1, v2, 0)
 
 static_always_inline void
-_vec_prepend (void **v1p, void *v2, uword v1_elt_sz, uword v2_elt_sz,
-	      uword align)
+_vec_prepend (void *restrict *v1p, void *restrict v2, uword v1_elt_sz,
+	      uword v2_elt_sz, uword align)
 {
-  void *v1 = v1p[0];
+  void *restrict v1 = v1p[0];
   uword len1 = vec_len (v1);
   uword len2 = vec_len (v2);
 
   if (PREDICT_TRUE (len2 > 0))
     {
+      /* prepending vector to itself would result in use-after-free */
+      ASSERT (v1 != v2);
       const vec_attr_t va = { .elt_sz = v2_elt_sz, .align = align };
       v1 = _vec_resize_internal (v1, len1 + len2, &va);
-      clib_memmove (v1 + len2 * v2_elt_sz, v1p[0], len1 * v1_elt_sz);
+      clib_memmove (v1 + len2 * v2_elt_sz, v1, len1 * v1_elt_sz);
       clib_memcpy_fast (v1, v2, len2 * v2_elt_sz);
-      _vec_update_pointer (v1p, v1);
+      _vec_update_pointer ((void **) v1p, v1);
     }
 }
 
