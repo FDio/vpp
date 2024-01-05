@@ -16,6 +16,40 @@
       "message": "will it work in such case:\n#define \\\nMY_DEFINE\n?\nI think comibnation of gcc with -E option and grep may be more accurate in general.",
       "revId": "9bdd8f89c0df1250091c91facdf1f497572287f2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e433d155_3c37f368",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 10
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-01-05T11:06:31Z",
+      "side": 1,
+      "message": "Ipsec-mb normally won\u0027t have minor releases such as \"1.5.1\". I guess it is ok here to assume version strings are always in \"x.y.0\".",
+      "revId": "9bdd8f89c0df1250091c91facdf1f497572287f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "779801f5_9338d890",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 10
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-01-05T11:06:31Z",
+      "side": 1,
+      "message": "I hope the the error message could be clearer, such as \"Intel-ipsec-mb build Error: ....\\nPlease delete or rename system installed $(ipsec-mb_system_header) before building.\"",
+      "revId": "9bdd8f89c0df1250091c91facdf1f497572287f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
