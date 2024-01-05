@@ -98,7 +98,7 @@ static clib_error_t *
 test_clib_memcpy_x86_64 (clib_error_t *err)
 {
   u8 src[MAX_LEN + 192];
-  u8 dst[MAX_LEN + 128];
+  u8 dst[MAX_LEN + 192];
 
   for (int i = 0; i < ARRAY_LEN (src); i++)
     src[i] = i & 0x7f;
