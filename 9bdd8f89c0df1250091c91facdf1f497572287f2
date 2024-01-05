@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25cc2797_282d7381",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 10
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-05T09:50:32Z",
+      "side": 1,
+      "message": "will it work in such case:\n#define \\\nMY_DEFINE\n?\nI think comibnation of gcc with -E option and grep may be more accurate in general.",
+      "revId": "9bdd8f89c0df1250091c91facdf1f497572287f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
