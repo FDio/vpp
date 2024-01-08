@@ -1,0 +1,161 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright(c) 2024 Cisco Systems, Inc.
+ */
+
+#ifndef __crypto_aes_ctr_h__
+#define __crypto_aes_ctr_h__
+
+#include <vppinfra/clib.h>
+#include <vppinfra/vector.h>
+#include <vppinfra/cache.h>
+#include <vppinfra/string.h>
+#include <vppinfra/crypto/aes.h>
+
+typedef struct
+{
+  const aes_expaned_key_t exp_key[AES_KEY_ROUNDS (AES_KEY_256) + 1];
+} aes_ctr_key_data_t;
+
+typedef struct
+{
+  const aes_expaned_key_t *exp_key; /* expaded keys */
+  aes_counter_t ctr;		    /* counter (reflected) */
+} aes_ctr_ctx_t;
+
+static_always_inline aes_counter_t
+aes_ctr_one_block (aes_counter_t ctr, const aes_expaned_key_t *k,
+		   const u8 *src, u8 *dst, u32 n_parallel, u32 n_bytes,
+		   int rounds, int last)
+{
+  const aes_mem_t *sv = (aes_mem_t *) src;
+  aes_mem_t *dv = (aes_mem_t *) dst;
+  aes_data_t d[4], t[4];
+  u32 r;
+
+  n_bytes -= (n_parallel - 1) * N_AES_BYTES;
+
+  /* AES First Round */
+  for (int i = 0; i < n_parallel; i++)
+    {
+#if N_AES_LANES == 4
+      t[i] = k[0].x4 ^ (u8x64) aes_reflect ((u8x64) ctr);
+      ctr += (u32x16){ 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0 };
+#elif N_AES_LANES == 2
+      t[i] = k[0].x2 ^ (u8x32) aes_reflect ((u8x32) ctr);
+      ctr += (u32x8){ 2, 0, 0, 0, 2, 0, 0, 0 };
+#else
+      t[i] = k[0].x1 ^ (u8x16) aes_reflect ((u8x16) ctr);
+      ctr += (u32x4){ 1, 0, 0, 0 };
+#endif
+    }
+
+  /* Load Data */
+  for (int i = 0; i < n_parallel - last; i++)
+    d[i] = sv[i];
+
+  if (last)
+    d[n_parallel - 1] =
+      aes_load_partial ((u8 *) (sv + n_parallel - 1), n_bytes);
+
+  /* AES Intermediate Rounds */
+  for (r = 1; r < rounds; r++)
+    aes_enc_round (t, k + r, n_parallel);
+
+  /* AES Last Round */
+  aes_enc_last_round (t, d, k + r, n_parallel);
+
+  /* Store Data */
+  for (int i = 0; i < n_parallel - last; i++)
+    dv[i] = d[i];
+
+  if (last)
+    aes_store_partial (d[n_parallel - 1], dv + n_parallel - 1, n_bytes);
+
+  return ctr;
+}
+
+static_always_inline void
+clib_aes_ctr_init (aes_ctr_ctx_t *ctx, const aes_ctr_key_data_t *kd,
+		   const u8 *iv, aes_key_size_t ks)
+{
+#if N_AES_LANES == 4
+  ctx->ctr = aes_reflect (u32x16_splat_u32x4 (*(u32x4u *) iv)) +
+	     (u32x16){ 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0 };
+#elif N_AES_LANES == 2
+  ctx->ctr = aes_reflect (u32x8_splat_u32x4 (*(u32x4u *) iv)) +
+	     (u32x8){ 0, 0, 0, 0, 1, 0, 0, 0 };
+#else
+  ctx->ctr = aes_reflect (*(u32x4u *) iv);
+#endif
+  ctx->exp_key = kd->exp_key;
+}
+
+static_always_inline void
+clib_aes_ctr_transform (aes_ctr_ctx_t *ctx, const u8 *src, u8 *dst,
+			u32 n_bytes, aes_key_size_t ks)
+{
+  const aes_expaned_key_t *k = ctx->exp_key;
+  int r = AES_KEY_ROUNDS (ks);
+  uword n_left = n_bytes;
+  aes_counter_t ctr = ctx->ctr;
+
+  /* main loop */
+  for (int n = 4 * N_AES_BYTES; n_left >= n; n_left -= n, dst += n, src += n)
+    ctr = aes_ctr_one_block (ctr, k, src, dst, 4, n, r, 0);
+
+  if (n_left)
+    {
+      if (n_left > 3 * N_AES_BYTES)
+	ctr = aes_ctr_one_block (ctr, k, src, dst, 4, n_left, r, 1);
+      else if (n_left > 2 * N_AES_BYTES)
+	ctr = aes_ctr_one_block (ctr, k, src, dst, 3, n_left, r, 1);
+      else if (n_left > N_AES_BYTES)
+	ctr = aes_ctr_one_block (ctr, k, src, dst, 2, n_left, r, 1);
+      else
+	ctr = aes_ctr_one_block (ctr, k, src, dst, 1, n_left, r, 1);
+    }
+
+  ctx->ctr = ctr;
+}
+
+static_always_inline void
+clib_aes_ctr_key_expand (aes_ctr_key_data_t *kd, const u8 *key,
+			 aes_key_size_t ks)
+{
+  u8x16 ek[AES_KEY_ROUNDS (AES_KEY_256) + 1];
+  aes_expaned_key_t *k = (aes_expaned_key_t *) kd->exp_key;
+
+  /* expand AES key */
+  aes_key_expand (ek, key, ks);
+  for (int i = 0; i < AES_KEY_ROUNDS (ks) + 1; i++)
+    k[i].lanes[0] = k[i].lanes[1] = k[i].lanes[2] = k[i].lanes[3] = ek[i];
+}
+
+static_always_inline void
+clib_aes128_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
+		 const u8 *iv, u8 *dst)
+{
+  aes_ctr_ctx_t ctx;
+  clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_128);
+  clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_128);
+}
+
+static_always_inline void
+clib_aes192_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
+		 const u8 *iv, u8 *dst)
+{
+  aes_ctr_ctx_t ctx;
+  clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_192);
+  clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_192);
+}
+
+static_always_inline void
+clib_aes256_ctr (const aes_ctr_key_data_t *kd, const u8 *src, u32 n_bytes,
+		 const u8 *iv, u8 *dst)
+{
+  aes_ctr_ctx_t ctx;
+  clib_aes_ctr_init (&ctx, kd, iv, AES_KEY_256);
+  clib_aes_ctr_transform (&ctx, src, dst, n_bytes, AES_KEY_256);
+}
+
+#endif /* __crypto_aes_ctr_h__ */
