@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe394f7b_bfc6cddc",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 14
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2024-01-08T16:29:21Z",
+      "side": 1,
+      "message": "Sorry my mistake, this actually is the patch version according to https://semver.org/,  please rename to ipsec-mb_patch_version :\u003d 0",
+      "revId": "7cc76be4abead2a18e50c7bf24eda553d82ff938",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
