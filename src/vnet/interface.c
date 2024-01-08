@@ -777,8 +777,7 @@ vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm, u32 hw_if_index,
   vnet_hw_interface_class_t *hw_if_class =
     vnet_get_hw_interface_class (vnm, hi->hw_class_index);
   clib_error_t *err = 0;
-
-  log_debug ("set_max_frame_size: interface %s, max_frame_size %u -> %u",
+  log_debug ("set_max_frame_size: interface %v, max_frame_size %u -> %u",
 	     hi->name, hi->max_frame_size, fs);
 
   if (hw_if_class->set_max_frame_size == 0)
