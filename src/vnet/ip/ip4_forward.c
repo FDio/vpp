@@ -2660,9 +2660,9 @@ VLIB_NODE_FN (ip4_mcast_midchain_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .name = "ip4-rewrite",
   .vector_size = sizeof (u32),
-
   .format_trace = format_ip4_rewrite_trace,
-
+  .n_errors = IP4_N_ERROR,
+  .error_counters = ip4_error_counters,
   .n_next_nodes = IP4_REWRITE_N_NEXT,
   .next_nodes = {
     [IP4_REWRITE_NEXT_DROP] = "ip4-drop",
