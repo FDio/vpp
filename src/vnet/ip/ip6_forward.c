@@ -2256,8 +2256,6 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
-  .n_errors = IP6_N_ERROR,
-  .error_counters = ip6_error_counters,
   .n_next_nodes = IP6_REWRITE_N_NEXT,
   .next_nodes =
   {
