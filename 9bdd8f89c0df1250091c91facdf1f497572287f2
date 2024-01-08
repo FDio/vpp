@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7611c60f_51b2f8c4",
+        "filename": "build/external/packages/ipsec-mb.mk",
+        "patchSetId": 10
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 2933
+      },
+      "writtenOn": "2024-01-08T07:40:13Z",
+      "side": 1,
+      "message": "Added minor number support.",
+      "parentUuid": "8b0d9d40_053fe00f",
+      "revId": "9bdd8f89c0df1250091c91facdf1f497572287f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "779801f5_9338d890",
