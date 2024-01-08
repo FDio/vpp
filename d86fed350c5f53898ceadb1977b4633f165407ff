@@ -121,6 +121,24 @@
       "parentUuid": "112d539c_581dc361",
       "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25b47d1e_3c027d9e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2024-01-08T18:38:17Z",
+      "side": 1,
+      "message": "Dave,\nThis issue was found/fixed/verified using GDB. The original u16 declaration of slot in this function caused a rollover such that if there were enough queues of a large enough size, the slot calculation would result in a value greater than 0xFFFF, causing later queues to use the same space as earlier queues as allocated in this init function.\n\nThe original symptom was corrupted frames, or frames sent on the wrong queues, queues where chasing each other in the ring buffer space. It was quite difficult to find as you had to have a proper alignment of events across multiple threads.\n\n-Mike",
+      "parentUuid": "e52534a5_09afeefd",
+      "revId": "d86fed350c5f53898ceadb1977b4633f165407ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
