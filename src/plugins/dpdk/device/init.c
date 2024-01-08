@@ -458,7 +458,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	hi->numa_node = xd->cpu_socket = numa_node;
       sw = vnet_get_hw_sw_interface (vnm, xd->hw_if_index);
       xd->sw_if_index = sw->sw_if_index;
-      dpdk_log_debug ("[%u] interface %s created", port_id, hi->name);
+      dpdk_log_debug ("[%u] interface %v created", port_id, hi->name);
 
       if (devconf->tag)
 	vnet_set_sw_interface_tag (vnm, devconf->tag, sw->sw_if_index);
