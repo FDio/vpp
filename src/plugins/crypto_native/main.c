@@ -97,6 +97,31 @@ crypto_native_init (vlib_main_t * vm)
   if (error)
     return error;
 
+  if (0)
+    ;
+#if __x86_64__
+  else if (crypto_native_aes_ctr_init_icl && clib_cpu_supports_vaes () &&
+	   clib_cpu_supports_avx512f ())
+    error = crypto_native_aes_ctr_init_icl (vm);
+  else if (crypto_native_aes_ctr_init_adl && clib_cpu_supports_vaes ())
+    error = crypto_native_aes_ctr_init_adl (vm);
+  else if (crypto_native_aes_ctr_init_skx && clib_cpu_supports_avx512f ())
+    error = crypto_native_aes_ctr_init_skx (vm);
+  else if (crypto_native_aes_ctr_init_hsw && clib_cpu_supports_avx2 ())
+    error = crypto_native_aes_ctr_init_hsw (vm);
+  else if (crypto_native_aes_ctr_init_slm)
+    error = crypto_native_aes_ctr_init_slm (vm);
+#endif
+#if __aarch64__
+  else if (crypto_native_aes_ctr_init_neon)
+    error = crypto_native_aes_ctr_init_neon (vm);
+#endif
+  else
+    error = clib_error_return (0, "No AES CTR implemenation available");
+
+  if (error)
+    return error;
+
 #if __x86_64__
   if (clib_cpu_supports_pclmulqdq ())
     {
@@ -133,26 +158,14 @@ crypto_native_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (crypto_native_init) =
 {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
-/* *INDENT-ON* */
 
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "Intel IA32 Software Crypto Engine",
+  .description = "Native Crypto Engine",
 };
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
