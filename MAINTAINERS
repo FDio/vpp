@@ -680,7 +680,7 @@ F:	src/plugins/snort/
 
 libmemif
 I:	libmemif
-M:	Damjan Marion <damarion@cisco.com>
+M:	Mohsin Kazmi <sykazmi@cisco.com>
 F:	extras/libmemif
 
 gomemif
