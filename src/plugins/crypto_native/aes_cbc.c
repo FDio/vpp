@@ -26,21 +26,18 @@
 #endif
 
 #if defined(__VAES__) && defined(__AVX512F__)
-#define N		  16
 #define u8xN		  u8x64
 #define u32xN		  u32x16
 #define u32xN_min_scalar  u32x16_min_scalar
 #define u32xN_is_all_zero u32x16_is_all_zero
 #define u32xN_splat	  u32x16_splat
 #elif defined(__VAES__)
-#define N		  8
 #define u8xN		  u8x32
 #define u32xN		  u32x8
 #define u32xN_min_scalar  u32x8_min_scalar
 #define u32xN_is_all_zero u32x8_is_all_zero
 #define u32xN_splat	  u32x8_splat
 #else
-#define N		  4
 #define u8xN		  u8x16
 #define u32xN		  u32x4
 #define u32xN_min_scalar  u32x4_min_scalar
@@ -58,17 +55,17 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   u32 i, j, count, n_left = n_ops;
   u32xN placeholder_mask = { };
   u32xN len = { };
-  vnet_crypto_key_index_t key_index[N];
-  u8 *src[N] = { };
-  u8 *dst[N] = { };
+  vnet_crypto_key_index_t key_index[N_AES_BYTES];
+  u8 *src[N_AES_BYTES] = {};
+  u8 *dst[N_AES_BYTES] = {};
   u8xN r[4] = {};
   u8xN k[15][4] = {};
 
-  for (i = 0; i < N; i++)
+  for (i = 0; i < N_AES_BYTES; i++)
     key_index[i] = ~0;
 
 more:
-  for (i = 0; i < N; i++)
+  for (i = 0; i < N_AES_BYTES; i++)
     if (len[i] == 0)
       {
 	if (n_left == 0)
@@ -160,16 +157,16 @@ more:
 
       for (j = 1; j < rounds; j++)
 	{
-	  r[0] = aes_enc_round (r[0], k[j][0]);
-	  r[1] = aes_enc_round (r[1], k[j][1]);
-	  r[2] = aes_enc_round (r[2], k[j][2]);
-	  r[3] = aes_enc_round (r[3], k[j][3]);
+	  r[0] = aes_enc_round_x1 (r[0], k[j][0]);
+	  r[1] = aes_enc_round_x1 (r[1], k[j][1]);
+	  r[2] = aes_enc_round_x1 (r[2], k[j][2]);
+	  r[3] = aes_enc_round_x1 (r[3], k[j][3]);
 	}
 
-      r[0] = aes_enc_last_round (r[0], k[j][0]);
-      r[1] = aes_enc_last_round (r[1], k[j][1]);
-      r[2] = aes_enc_last_round (r[2], k[j][2]);
-      r[3] = aes_enc_last_round (r[3], k[j][3]);
+      r[0] = aes_enc_last_round_x1 (r[0], k[j][0]);
+      r[1] = aes_enc_last_round_x1 (r[1], k[j][1]);
+      r[2] = aes_enc_last_round_x1 (r[2], k[j][2]);
+      r[3] = aes_enc_last_round_x1 (r[3], k[j][3]);
 
       aes_block_store (dst[0] + i, r[0]);
       aes_block_store (dst[1] + i, r[1]);
@@ -201,7 +198,7 @@ more:
 
   len -= u32xN_splat (count);
 
-  for (i = 0; i < N; i++)
+  for (i = 0; i < N_AES_BYTES; i++)
     {
       src[i] += count;
       dst[i] += count;
