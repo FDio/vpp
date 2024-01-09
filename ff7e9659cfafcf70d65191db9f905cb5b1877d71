@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff1e1c8f_70abc224",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1510
+      },
+      "writtenOn": "2024-01-09T00:15:02Z",
+      "side": 1,
+      "message": "Bumping vote per email discussion with Dave",
+      "revId": "ff7e9659cfafcf70d65191db9f905cb5b1877d71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
