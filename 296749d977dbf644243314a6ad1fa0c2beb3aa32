@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d55660a_787a7810",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:43:35Z",
+      "side": 1,
+      "message": "Can you please explain buffer overflow in the given situation? Did you try the custom socket path which might be greater than 108 bytes?",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19d4029f_2e3706f5",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:43:35Z",
+      "side": 1,
+      "message": "Does it matter if it is rx or tx? In fact at this point tx_bufs[].data is pointing to garbage if you try to resolve the packet right after this? It contains data after the memcpy.",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f2672b2_376ae462",
+        "filename": "extras/libmemif/examples/test_app/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:43:35Z",
+      "side": 1,
+      "message": "What is the problem with \u0027:\u0027 between \u0027h\u0027 and \u0027v\u0027?",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
