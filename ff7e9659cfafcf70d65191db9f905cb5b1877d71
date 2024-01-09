@@ -16,6 +16,23 @@
       "message": "Bumping vote per email discussion with Dave",
       "revId": "ff7e9659cfafcf70d65191db9f905cb5b1877d71",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c30dc4c_93d2caea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:01:41Z",
+      "side": 1,
+      "message": "Thanks for the patch. Can you please rebase it on VPP master?",
+      "revId": "ff7e9659cfafcf70d65191db9f905cb5b1877d71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
