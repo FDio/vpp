@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "abbf5ef9_4abf13e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-01-09T20:32:39Z",
+      "side": 1,
+      "message": "Hi Alexander,\n\nI think it would be better to avoid having the uninitialized bytes in the first place.\n\nIt seems like this probably arises from the fact that in lcp_router_route_mk_prefix(), ip46_address_reset() is called for FIB_PROTOCOL_IP4 but not for FIB_PROTOCOL_IP6. Prior to support for MPLS being added a few months ago, it would have been called for both address families.\n\nCan you call ip46_address_reset() for FIB_PROTOCOL_IP6 in lcp_router_route_mk_prefix() to eliminate the possibility of uninitialized data?\n\nThanks,\n-Matt",
+      "revId": "fbb5266a0bd59de0bdc2bdd8591235f98405f813",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
