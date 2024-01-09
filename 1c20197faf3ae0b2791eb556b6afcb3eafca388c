@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "84c05bee_8c0d81d4",
+        "filename": "extras/libmemif/docs/buildinstructions_doc.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-01-09T17:06:11Z",
+      "side": 1,
+      "message": "This step produces a compiler warning which should be resolved:\n\n/scratch/dwallacelf/lf/vpp.37953/extras/libmemif/src/main.c: In function ‘memif_connect_handler’:\n/scratch/dwallacelf/lf/vpp.37953/extras/libmemif/src/main.c:419:7: warning: ignoring return value of ‘read’ declared with attribute ‘warn_unused_result’ [-Wunused-result]\n  419 |       read (ms-\u003etimer_fd, \u0026u64, sizeof (u64));\n      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+      "revId": "1c20197faf3ae0b2791eb556b6afcb3eafca388c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "233378e5_2a423f99",
+        "filename": "extras/libmemif/docs/buildinstructions_doc.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-01-09T17:06:11Z",
+      "side": 1,
+      "message": "It would be better if verbose output of the tests could be enabled via an environment variable.  E.g. \u0027make test V\u003d1\u0027",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 67,
+        "endChar": 37
+      },
+      "revId": "1c20197faf3ae0b2791eb556b6afcb3eafca388c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
