@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0680f199_5b6a2639",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:12:45Z",
+      "side": 1,
+      "message": "Thanks for the patch. Just minor changes requested.",
+      "revId": "a5b083b1000ffce6ab1cd9f03efe98d9380037fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51f7a11c_92aade47",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1287,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:12:45Z",
+      "side": 1,
+      "message": "Can you please move this to outside of the inner for loop.",
+      "revId": "a5b083b1000ffce6ab1cd9f03efe98d9380037fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1139550_de60d047",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1288,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-09T11:12:45Z",
+      "side": 1,
+      "message": "I would replace all the occurrences of this to a variable which is initialized above the all loops.",
+      "range": {
+        "startLine": 1288,
+        "startChar": 26,
+        "endLine": 1288,
+        "endChar": 63
+      },
+      "revId": "a5b083b1000ffce6ab1cd9f03efe98d9380037fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
