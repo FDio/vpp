@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ce1bdcb_192419fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-01-09T08:20:19Z",
+      "side": 1,
+      "message": "Good catch, but I suspect we should do that for all the flavours (ip4_rewrite_bcast_node etc)? And looking at src/vnet/ip/ip6_forward.c it looks like siblings of ip6-rewrite don\u0027t have the errors defined either?\nAlso, can we add a test for that (probably just check the error counter is set for error cases already tested, hopefully?).",
+      "revId": "a56a86f9f762f9f606a044d1215869fc51e5e0d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
