@@ -16,6 +16,24 @@
       "message": "For me, prepending a vector to itself is at best a corner case. If it were my code, I would probably add \"restrict\" keywords, document the function as requiring v1 !\u003d v2, and ASSERTing (v1 !\u003d v2).\n\nWhatever you decide to do, please update the commit comment to reflect the specific corner-case you found. As in: \"Don\u0027t access freed memory in vec_prepend when v1 \u003d\u003d v2...\"",
       "revId": "a8100dfb32d473077983b4cdc0bc93b64d8c9b15",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87e68d80_bb4d439b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-10T08:14:00Z",
+      "side": 1,
+      "message": "Thanks, Dave. I\u0027ve removed v1 \u003d\u003d v2 workaround, however there also was the v1 reallocation use-after-free, so that part of the fix remains.",
+      "parentUuid": "d8f54749_b5071326",
+      "revId": "a8100dfb32d473077983b4cdc0bc93b64d8c9b15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
