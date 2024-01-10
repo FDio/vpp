@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "21201f37_ef59b6be",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2457
+      },
+      "writtenOn": "2024-01-10T03:10:39Z",
+      "side": 1,
+      "message": "Issue: default socket file doesn\u0027t work on Arm.\nworkaround: Add custom socket path -s /run/vpp/memif.sock\n\nRoot cause:\nchar socket_path[108]; \nThis is garbage data on Arm platform, all zero on x86. \n\n#define SOCKET_PATH \"/run/vpp/memif.sock\"\nstrncpy (socket_path, SOCKET_PATH, strlen (SOCKET_PATH));\nstrncpy (socket_path, SOCKET_PATH, sizeof (SOCKET_PATH));\n\nstrlen: socket_path \"/run/vpp/memif.sockblahblah...\"\nsizeof: socket_path \"/run/vpp/memif.sock\\0\"\n\nThis change is not related to custom socket path length, it might be another issue not covered in this patch.",
+      "parentUuid": "2d55660a_787a7810",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "19d4029f_2e3706f5",
         "filename": "extras/libmemif/examples/common/packet_handler.c",
         "patchSetId": 3
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6f5c94e0_1665fcdb",
+        "filename": "extras/libmemif/examples/common/packet_handler.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 2457
+      },
+      "writtenOn": "2024-01-10T03:10:39Z",
+      "side": 1,
+      "message": "When libmemif as master mode, vpp slave mode, ping from vpp,\nlibmemif segfault, add -b 2048 to workaround\nnot pingable.\nlibmemif reply wrong packet\n\ncreate interface memif id 0 slave\nset int state memif0/0 up\nset int ip addr memif0/0 192.168.1.2/24\nvpp# ping 192.168.1.1\n\nshow trace \n00:00:41:493967: memif-input\n  memif: hw_if_index 3 next-index 4\n    slot: ring 0\n00:00:41:493987: ethernet-input\n  ARP: 02:fe:45:0a:b6:b5 -\u003e ff:ff:ff:ff:ff:ff\n00:00:41:493998: arp-input\n  request, type ethernet/IP4, address size 6/4\n  02:fe:45:0a:b6:b5/192.168.1.2 -\u003e 00:00:00:00:00:00/192.168.1.1\n00:00:41:494004: arp-reply\n  request, type ethernet/IP4, address size 6/4\n  02:fe:45:0a:b6:b5/192.168.1.2 -\u003e 00:00:00:00:00:00/192.168.1.1\n00:00:41:494010: error-drop\n  rx:memif0/0\n00:00:41:494016: drop\n  arp-reply: IP4 source address matches local interface\n  \nThis change is to fix this issue.",
+      "parentUuid": "19d4029f_2e3706f5",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2f2672b2_376ae462",
         "filename": "extras/libmemif/examples/test_app/main.c",
         "patchSetId": 3
@@ -48,6 +84,24 @@
       "writtenOn": "2024-01-09T11:43:35Z",
       "side": 1,
       "message": "What is the problem with \u0027:\u0027 between \u0027h\u0027 and \u0027v\u0027?",
+      "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3bbdf5d5_805fc6ff",
+        "filename": "extras/libmemif/examples/test_app/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 2457
+      },
+      "writtenOn": "2024-01-10T03:10:39Z",
+      "side": 1,
+      "message": "with \u0027:\u0027 after \u0027h\u0027, it require a option after -h,",
+      "parentUuid": "2f2672b2_376ae462",
       "revId": "296749d977dbf644243314a6ad1fa0c2beb3aa32",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
