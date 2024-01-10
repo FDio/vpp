@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd47e8f5_ff962a19",
+        "filename": "extras/libmemif/docs/buildinstructions_doc.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-10T18:51:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "84c05bee_8c0d81d4",
+      "revId": "1c20197faf3ae0b2791eb556b6afcb3eafca388c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "233378e5_2a423f99",
@@ -31,6 +49,30 @@
       "writtenOn": "2024-01-09T17:06:11Z",
       "side": 1,
       "message": "It would be better if verbose output of the tests could be enabled via an environment variable.  E.g. \u0027make test V\u003d1\u0027",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 67,
+        "endChar": 37
+      },
+      "revId": "1c20197faf3ae0b2791eb556b6afcb3eafca388c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "287e6cee_8549e579",
+        "filename": "extras/libmemif/docs/buildinstructions_doc.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-01-10T18:51:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "233378e5_2a423f99",
       "range": {
         "startLine": 67,
         "startChar": 0,
