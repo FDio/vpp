@@ -43,6 +43,7 @@ help:
 	@echo "Make targets:"
 	@echo " test                 - run tests"
 	@echo " build                - build test infra"
+	@echo " build-cov			 - coverage build of VPP and Docker images"
 	@echo " build-debug          - build test infra (vpp debug image)"
 	@echo " build-go             - just build golang files"
 	@echo " fixstyle             - format .go source files"
@@ -74,11 +75,21 @@ build-vpp-release:
 build-vpp-debug:
 	@make -C ../.. build
 
+build-vpp-gcov:
+	@make -C ../.. build-vpp-gcov
+
 .PHONY: test
 test: .deps.ok .build.vpp
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC)
+
+.PHONY: test-cov
+test-cov: .deps.ok .build.vpp
+	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
+		--vppsrc=$(VPPSRC)
+	@make -C ../.. test-cov-post HS_TEST=1
 
 build-go:
 	go build ./tools/http_server
@@ -86,6 +97,11 @@ build-go:
 build: .deps.ok build-vpp-release build-go
 	@rm -f .build.vpp
 	bash ./script/build_hst.sh release
+	@touch .build.vpp
+
+build-gcov: .deps.ok build-vpp-gcov build-go
+	@rm -f .build.vpp
+	bash ./script/build_hst.sh gcov
 	@touch .build.vpp
 
 build-debug: .deps.ok build-vpp-debug build-go
