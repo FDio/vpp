@@ -53,6 +53,7 @@ help:
 	@echo " test                 - run tests"
 	@echo " test-debug           - run tests (vpp debug image)"
 	@echo " build                - build test infra"
+	@echo " build-cov			 - coverage build of VPP and Docker images"
 	@echo " build-debug          - build test infra (vpp debug image)"
 	@echo " build-go             - just build golang files"
 	@echo " fixstyle             - format .go source files"
@@ -88,6 +89,9 @@ build-vpp-release:
 build-vpp-debug:
 	@make -C ../.. build
 
+build-vpp-gcov:
+	@make -C ../.. build-vpp-gcov
+
 .build.ok: build
 	@touch .build.ok
 
@@ -112,6 +116,13 @@ test-debug: .deps.ok .build_debug.ok
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
 	@bash ./script/compress.sh
 
+.PHONY: test-cov
+test-cov: .deps.ok .build.ok
+	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
+		--vppsrc=$(VPPSRC)
+	@make -C ../.. test-cov-post HS_TEST=1
+
 .PHONY: build-go
 build-go:
 	go build ./tools/http_server
@@ -121,6 +132,11 @@ build: .deps.ok build-vpp-release build-go
 	@rm -f .build.ok
 	bash ./script/build_hst.sh release
 	@touch .build.ok
+
+build-cov: .deps.ok build-vpp-gcov build-go
+	@rm -f .build.vpp
+	bash ./script/build_hst.sh gcov
+	@touch .build.vpp
 
 .PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug build-go
