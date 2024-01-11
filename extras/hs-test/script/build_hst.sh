@@ -21,6 +21,8 @@ export VPP_WS=../..
 
 if [ "$1" == "debug" ]; then
 	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_debug-native/vpp
+elif [ "$1" == "gcov" ]; then
+  VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp_gcov-native/vpp
 else
 	VPP_BUILD_ROOT=${VPP_WS}/build-root/build-vpp-native/vpp
 fi
