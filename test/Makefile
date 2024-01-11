@@ -348,12 +348,12 @@ cov-prep: test-dep
 cov-post: wipe-cov $(BUILD_COV_DIR)
 	@lcov --capture \
 		--directory $(VPP_BUILD_DIR) \
-		--output-file $(BUILD_COV_DIR)/coverage.info
+		--output-file $(BUILD_COV_DIR)/coverage$(HS_TEST).info
 	@test -z "$(EXTERN_COV_DIR)" || \
 		lcov --capture \
 		--directory $(EXTERN_COV_DIR) \
-		--output-file $(BUILD_COV_DIR)/extern-coverage.info
-	@lcov --remove $(BUILD_COV_DIR)/coverage.info \
+		--output-file $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info
+	@lcov --remove $(BUILD_COV_DIR)/coverage$(HS_TEST).info \
 		"/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
 		"*_test.*" "*vat*" "*rdma*" "*/vpp-api/client/*" "*/plugins/af_packet/*" \
 		"*/plugins/af_xdp/*" "*/plugins/avf/*" "*/plugins/dma_intel/*" \
@@ -361,15 +361,17 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		"*/plugins/perfmon/arm*" "*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
 		"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/builtinurl/*" "*/vnet/flow/*" \
 		"*/plugins/http_static/builtinurl/*" "*/plugins/dev_iavf/*" \
-		-o $(BUILD_COV_DIR)/coverage-filtered.info
-	@genhtml $(BUILD_COV_DIR)/coverage-filtered.info \
+		-o $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info
+	@genhtml $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info \
 		--output-directory $(BUILD_COV_DIR)/html
 	@test -z "$(EXTERN_COV_DIR)" || \
-		genhtml $(BUILD_COV_DIR)/extern-coverage.info \
+		genhtml $(BUILD_COV_DIR)/extern-coverage$(HS_TEST).info \
 			--output-directory $(BUILD_COV_DIR)/extern-html
 	@echo
 	@echo "Build finished. Code coverage report is in $(BUILD_COV_DIR)/html/index.html"
 	@test -z "$(EXTERN_COV_DIR)" || echo "Code coverage report for out-of-tree objects is in $(BUILD_COV_DIR)/extern-html/index.html"
+	@test -d $(BR)/test-coverage-merged || mkdir $(BR)/test-coverage-merged
+	@cp -f $(BUILD_COV_DIR)/coverage-filtered$(HS_TEST).info $(BR)/test-coverage-merged
 
 .PHONY: cov
 cov:
@@ -428,6 +430,7 @@ help:
 	@echo " test-cov-prep          - coverage phase #1 : prepare lcov"
 	@echo " test-cov-build         - coverage phase #2 : build gcov image & run tests against it (use TEST=)"
 	@echo " test-cov-post          - coverage phase #3 : generate lcov html report"
+	@echo " test-cov-both          - generate and merge code coverage report for Python and Golang tests"
 	@echo " test-all               - build and run functional and extended tests"
 	@echo " test-all-debug         - build and run functional and extended tests (debug build)"
 	@echo " test-all-cov           - generate code coverage report for functional and extended tests"

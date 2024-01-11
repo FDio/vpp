@@ -225,6 +225,7 @@ help:
 	@echo " build                - build debug binaries"
 	@echo " build-release        - build release binaries"
 	@echo " build-coverity       - build coverity artifacts"
+	@echo " build-vpp-gcov 		 - build gcov vpp only"
 	@echo " rebuild              - wipe and build debug binaries"
 	@echo " rebuild-release      - wipe and build release binaries"
 	@echo " run                  - run debug binary"
@@ -232,6 +233,8 @@ help:
 	@echo " debug                - run debug binary with debugger"
 	@echo " debug-release        - run release binary with debugger"
 	@echo " test                 - build and run tests"
+	@echo " test-cov-hs   		 - build and run host stack tests with coverage"
+	@echo " test-cov-both	  	 - build and run python and host stack tests, merge coverage data"
 	@echo " test-help            - show help on test framework"
 	@echo " run-vat              - run vpp-api-test tool"
 	@echo " pkg-deb              - build DEB packages"
@@ -420,6 +423,9 @@ rebuild: wipe build
 build-release: $(BR)/.deps.ok
 	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
+build-vpp-gcov:
+	$(call test,vpp_gcov)
+
 .PHONY: wipe-release
 wipe-release: test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
@@ -466,6 +472,20 @@ test-cov:
 	$(eval TEST_GCOV=1)
 	$(call test,vpp_gcov,cov)
 
+.PHONY: test-cov-hs
+test-cov-hs:
+	@make -C extras/hs-test build-gcov
+	@make -C extras/hs-test test-cov
+
+.PHONY: test-cov-both
+test-cov-both:
+	@echo "Running Python, Golang tests and merging coverage reports."
+	find . -name '*.gcda' -delete
+	@make test-cov
+	find . -name '*.gcda' -delete
+	@make test-cov-hs
+	@make cov-merge
+
 .PHONY: test-cov-build
 test-cov-build:
 	$(eval CC=gcc)
@@ -481,6 +501,14 @@ test-cov-prep:
 test-cov-post:
 	$(eval CC=gcc)
 	$(call test,vpp_gcov,cov-post)
+
+.PHONY: cov-merge
+cov-merge:
+	@lcov --add-tracefile $(BR)/test-coverage-merged/coverage-filtered.info \
+		-a $(BR)/test-coverage-merged/coverage-filtered1.info -o $(BR)/test-coverage-merged/coverage-merged.info
+	@genhtml $(BR)/test-coverage-merged/coverage-merged.info \
+		--output-directory $(BR)/test-coverage-merged/html
+	@echo "Code coverage report is in $(BR)/test-coverage-merged/html/index.html"
 
 .PHONY: test-all
 test-all:
