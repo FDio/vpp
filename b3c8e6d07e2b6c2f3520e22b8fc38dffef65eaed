@@ -16,6 +16,24 @@
       "message": "Is it really needed to move away from a static inline function?",
       "revId": "b3c8e6d07e2b6c2f3520e22b8fc38dffef65eaed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4016fdbd_642ef2c1",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2024-01-11T08:56:14Z",
+      "side": 1,
+      "message": "I wanted to log actual function name instead of http_state_change",
+      "parentUuid": "658ea826_0babe989",
+      "revId": "b3c8e6d07e2b6c2f3520e22b8fc38dffef65eaed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

@@ -16,6 +16,24 @@
       "message": "Can\u0027t remember now, do we really want to drop the while loop?",
       "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c922deb0_797426c3",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2024-01-11T08:56:14Z",
+      "side": 0,
+      "message": "I think the loop isn\u0027t needed anymore because of async rx. The loop was used for feeding the app with rx data until drained, but we don\u0027t have such control anymore",
+      "parentUuid": "3da5e00f_e347baf9",
+      "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
