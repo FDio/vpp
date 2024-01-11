@@ -34,6 +34,24 @@
       "parentUuid": "3da5e00f_e347baf9",
       "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51e522a5_0a7c5375",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-11T09:25:52Z",
+      "side": 0,
+      "message": "This is also used on server side for sending reply. In wait_for_app_reply we send the header and start sending the actual data in app_io_more_data. The rescheduling for sending if tx buffer is not drained is only done in app_io_more_data.\n\nIs that still working without the loop?",
+      "parentUuid": "c922deb0_797426c3",
+      "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
