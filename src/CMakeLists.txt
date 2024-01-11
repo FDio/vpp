@@ -220,6 +220,14 @@ include(cmake/plugin.cmake)
 option(VPP_HOST_TOOLS_ONLY "Build only host tools" OFF)
 if(VPP_HOST_TOOLS_ONLY)
   set(SUBDIRS tools/vppapigen cmake)
+  install(
+    PROGRAMS
+    vpp-api/vapi/vapi_c_gen.py
+    vpp-api/vapi/vapi_cpp_gen.py
+    vpp-api/vapi/vapi_json_parser.py
+    DESTINATION ${VPP_RUNTIME_DIR}
+    COMPONENT vpp-dev
+  )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   find_package(OpenSSL)
   set(SUBDIRS
