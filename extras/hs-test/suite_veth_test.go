@@ -53,9 +53,7 @@ func (s *VethsSuite) SetupTest() {
 
 func (s *VethsSuite) setupServerVpp() {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
-
-	err := serverVpp.start()
-	s.assertNil(err)
+	s.assertNil(serverVpp.start())
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	idx, err := serverVpp.createAfPacket(serverVeth)
@@ -65,9 +63,7 @@ func (s *VethsSuite) setupServerVpp() {
 
 func (s *VethsSuite) setupClientVpp() {
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
-
-	err := clientVpp.start()
-	s.assertNil(err)
+	s.assertNil(clientVpp.start())
 
 	clientVeth := s.netInterfaces[clientInterfaceName]
 	idx, err := clientVpp.createAfPacket(clientVeth)

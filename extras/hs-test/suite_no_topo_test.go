@@ -30,9 +30,9 @@ func (s *NoTopoSuite) SetupTest() {
 	cpus := s.AllocateCpus()
 	container := s.getContainerByName(singleTopoContainerVpp)
 	vpp, _ := container.newVppInstance(cpus, sessionConfig)
-	vpp.start()
+	s.assertNil(vpp.start())
 
 	tapInterface := s.netInterfaces[tapInterfaceName]
 
-	vpp.createTap(tapInterface)
+	s.assertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }
