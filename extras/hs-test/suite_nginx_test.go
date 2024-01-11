@@ -33,13 +33,13 @@ func (s *NginxSuite) SetupTest() {
 	// ... for proxy
 	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
 	proxyVpp, _ := vppProxyContainer.newVppInstance(cpus, sessionConfig)
-	proxyVpp.start()
+	s.assertNil(proxyVpp.start())
 
 	clientInterface := s.netInterfaces[mirroringClientInterfaceName]
-	proxyVpp.createTap(clientInterface, 1)
+	s.assertNil(proxyVpp.createTap(clientInterface, 1))
 
 	serverInterface := s.netInterfaces[mirroringServerInterfaceName]
-	proxyVpp.createTap(serverInterface, 2)
+	s.assertNil(proxyVpp.createTap(serverInterface, 2))
 
 	nginxContainer := s.getTransientContainerByName(nginxProxyContainerName)
 	nginxContainer.create()
@@ -56,7 +56,7 @@ func (s *NginxSuite) SetupTest() {
 		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,
 	)
-	nginxContainer.start()
+	s.assertNil(nginxContainer.start())
 
 	proxyVpp.waitForApp("nginx-", 5)
 }

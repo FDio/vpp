@@ -31,7 +31,7 @@ func (s *NsSuite) SetupTest() {
 	cpus := s.AllocateCpus()
 	container := s.getContainerByName("vpp")
 	vpp, _ := container.newVppInstance(cpus, sessionConfig)
-	vpp.start()
+	s.assertNil(vpp.start())
 
 	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
 	s.assertNil(err)

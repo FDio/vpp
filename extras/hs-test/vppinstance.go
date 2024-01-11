@@ -159,6 +159,7 @@ func (vpp *VppInstance) start() error {
 		core.DefaultReconnectInterval)
 	if err != nil {
 		fmt.Println("async connect error: ", err)
+		return err
 	}
 	vpp.connection = conn
 
@@ -172,12 +173,15 @@ func (vpp *VppInstance) start() error {
 	ch, err := conn.NewAPIChannel()
 	if err != nil {
 		fmt.Println("creating channel failed: ", err)
+		return err
 	}
 	if err := ch.CheckCompatiblity(vpe.AllMessages()...); err != nil {
 		fmt.Println("compatibility error: ", err)
+		return err
 	}
 	if err := ch.CheckCompatiblity(interfaces.AllMessages()...); err != nil {
 		fmt.Println("compatibility error: ", err)
+		return err
 	}
 	vpp.apiChannel = ch
 
