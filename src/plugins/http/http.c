@@ -767,6 +767,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
     {
       clib_warning ("couldn't send response header!");
       sc = HTTP_STATUS_INTERNAL_ERROR;
+      vec_free (header);
       goto error;
     }
   vec_free (header);
