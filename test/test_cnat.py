@@ -23,6 +23,8 @@ from vpp_papi import VppEnum
 
 N_PKTS = 15
 N_REMOTE_HOSTS = 3
+N_SESSIONS_MAX = 256
+N_SESSIONS_PER_VRF = 200
 
 SRC = 0
 DST = 1
@@ -47,7 +49,9 @@ class CnatCommonTestCase(VppTestCase):
         "scanner",
         "off",
         "session-max",
-        "256",
+        f"{N_SESSIONS_MAX}",
+        "session-max-per-vrf",
+        f"{N_SESSIONS_PER_VRF}",
         "session-log2-pool-size",
         "1",
         "}",
@@ -942,6 +946,59 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 1, 6661)
         ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
+
+        self.vapi.cnat_session_purge()
+
+    def test_snat_limit(self):
+        """CNAT Source Nat sessions limit"""
+        # this tests both hitting max-session and max-session-per-vrf, as we
+        # have 1 vrf for ipv4 and a different one for ipv6
+
+        n_pkts = N_SESSIONS_MAX + 10
+        p4 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+                / UDP(sport=4000, dport=5000 + i)
+                / Raw("\xa5" * 100)
+            )
+            for i in range(n_pkts)
+        ]
+        p6 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+                / UDP(sport=4000, dport=5000 + i)
+                / Raw("\xa5" * 100)
+            )
+            for i in range(n_pkts)
+        ]
+
+        # start from a clean state...
+        self.vapi.cnat_session_purge()
+        node4 = "/err/cnat-snat-ip4/session allocation failure"
+        node6 = "/err/cnat-snat-ip6/session allocation failure"
+        err4 = self.statistics.get_err_counter(node4)
+        err6 = self.statistics.get_err_counter(node6)
+
+        # when sending IPv4 traffic, we can send up to N_SESSIONS_PER_VRF
+        # packets
+        self.send_and_expect(self.pg0, p4, self.pg1, n_rx=N_SESSIONS_PER_VRF)
+        # when sending IPv6 traffic, we can only send up to N_SESSIONS_MAX-1 as
+        # IPv4 traffic already consumed sessions, and session 0 is always
+        # pre-allocated
+        self.send_and_expect(
+            self.pg0, p6, self.pg1, n_rx=N_SESSIONS_MAX - N_SESSIONS_PER_VRF - 1
+        )
+        self.vapi.cnat_session_purge()
+        # once everything expired, sessions should go through again
+        self.send_and_expect(self.pg0, p4[-10:] + p6[-10:], self.pg1)
+
+        # make sure we record drops as session alloc failures
+        err4 = self.statistics.get_err_counter(node4) - err4
+        err6 = self.statistics.get_err_counter(node6) - err6
+        self.assertEqual(err4, n_pkts - N_SESSIONS_PER_VRF)
+        self.assertEqual(err6, n_pkts - N_SESSIONS_MAX + N_SESSIONS_PER_VRF + 1)
 
         self.vapi.cnat_session_purge()
 
