@@ -11,6 +11,7 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
+
 void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
@@ -149,38 +150,33 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .is_mp_safe = 1,
 };
 
+static_always_inline void
+cnat_session_free__ (cnat_session_t *session)
+{
+  if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
+    {
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
+			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
+			      session->key.fib_index, 1 /* is_session */);
+    }
+  cnat_timestamp_free (session->value.cs_session_index,
+		       session->key.cs_5tuple.af == AF_IP6 /* is_v6 */);
+}
+
 /* This is call when adding a session that already exists
  * we need to cleanup refcounts to keep things consistant */
 void
 cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
 {
   cnat_session_t *session = (cnat_session_t *) kv;
-
-  if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
-    {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
-			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
-			      session->key.fib_index, 1 /* is_session */);
-    }
-
-  cnat_timestamp_free (session->value.cs_session_index);
+  cnat_session_free__ (session);
 }
 
 void
 cnat_session_free (cnat_session_t * session)
 {
   cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
-  /* age it */
-
-  if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
-    {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
-			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
-			      session->key.fib_index, 1 /* is_session */);
-    }
-
-  cnat_timestamp_free (session->value.cs_session_index);
-
+  cnat_session_free__ (session);
   cnat_bihash_add_del (&cnat_session_db, bkey, 0 /* is_add */);
 }
 
@@ -361,6 +357,12 @@ cnat_session_init (vlib_main_t * vm)
   (&cnat_session_db, "CNat Session DB", session_max / BIHASH_KVP_PER_PAGE /* buckets */,
    session_max * sizeof (cnat_bihash_kv_t) * 1.2 /* memory */);
   BV (clib_bihash_set_kvp_format_fn) (&cnat_session_db, format_cnat_session);
+
+  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip4, CNAT_FIB_TABLE,
+				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, CNAT_FIB_TABLE,
+				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+
   return (NULL);
 }
 
