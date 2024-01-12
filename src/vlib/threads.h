@@ -45,22 +45,6 @@ typedef struct vlib_thread_registration_
   uword *coremask;
 } vlib_thread_registration_t;
 
-/*
- * Frames have their cpu / vlib_main_t index in the low-order N bits
- * Make VLIB_MAX_CPUS a power-of-two, please...
- */
-
-#ifndef VLIB_MAX_CPUS
-#define VLIB_MAX_CPUS 256
-#endif
-
-#if VLIB_MAX_CPUS > CLIB_MAX_MHEAPS
-#error Please increase number of per-cpu mheaps
-#endif
-
-#define VLIB_CPU_MASK (VLIB_MAX_CPUS - 1)	/* 0x3f, max */
-#define VLIB_OFFSET_MASK (~VLIB_CPU_MASK)
-
 #define VLIB_LOG2_THREAD_STACK_SIZE (21)
 #define VLIB_THREAD_STACK_SIZE (1<<VLIB_LOG2_THREAD_STACK_SIZE)
 
