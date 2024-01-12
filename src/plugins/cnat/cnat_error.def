@@ -16,3 +16,4 @@
 cnat_error (NONE, "no error")
 cnat_error (EXHAUSTED_PORTS, "no more free ports")
 cnat_error (RETRIES_PORTS, "port allocation retries")
+cnat_error (SESSION_ALLOCATION_FAILURE, "session allocation failure")
