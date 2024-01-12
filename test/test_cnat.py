@@ -21,6 +21,8 @@ from vpp_papi import VppEnum
 
 N_PKTS = 15
 N_REMOTE_HOSTS = 3
+N_SESSIONS_MAX = 256
+N_SESSIONS_PER_VRF = 200
 
 SRC = 0
 DST = 1
@@ -45,7 +47,9 @@ class CnatCommonTestCase(VppTestCase):
         "scanner",
         "off",
         "session-max",
-        "256",
+        f"{N_SESSIONS_MAX}",
+        "session-max-per-vrf",
+        f"{N_SESSIONS_PER_VRF}",
         "session-log2-pool-size",
         "1",
         "}",
@@ -190,8 +194,14 @@ class CnatTestContext(object):
         return IPv6 if self.is_v6 else IP
 
     def cnat_send(
-        self, src_pg, src_id, src_port, dst_pg, dst_id, dst_port, no_replies=False
-    ):
+            self,
+            src_pg,
+            src_id,
+            src_port,
+            dst_pg,
+            dst_id,
+            dst_port,
+            no_replies=False):
         if isinstance(src_id, int):
             self.src_addr = self.get_ip46(src_pg.remote_hosts[src_id])
         else:
@@ -249,19 +259,26 @@ class CnatTestContext(object):
             self._test.assertEqual(rx[self.IP46].dst, self.expect_dst_addr)
             self._test.assertEqual(rx[self.IP46].src, self.expect_src_addr)
             if self.L4PROTO in [TCP, UDP]:
-                self._test.assertEqual(rx[self.L4PROTO].dport, self.expect_dst_port)
-                self._test.assertEqual(rx[self.L4PROTO].sport, self.expect_src_port)
+                self._test.assertEqual(
+                    rx[self.L4PROTO].dport, self.expect_dst_port)
+                self._test.assertEqual(
+                    rx[self.L4PROTO].sport, self.expect_src_port)
             elif self.L4PROTO in [ICMP] and not self.is_v6:
-                self._test.assertEqual(rx[self.L4PROTO].type, self.expect_dst_port)
-                self._test.assertEqual(rx[self.L4PROTO].id, self.expect_src_port)
+                self._test.assertEqual(
+                    rx[self.L4PROTO].type, self.expect_dst_port)
+                self._test.assertEqual(
+                    rx[self.L4PROTO].id, self.expect_src_port)
             elif self.L4PROTO in [ICMP] and self.is_v6:
-                self._test.assertEqual(rx[ICMPv6EchoRequest].id, self.expect_src_port)
+                self._test.assertEqual(
+                    rx[ICMPv6EchoRequest].id, self.expect_src_port)
         return self
 
     def cnat_send_return(self):
         """This sends the return traffic"""
         if self.L4PROTO in [TCP, UDP]:
-            l4 = self.L4PROTO(sport=self.expect_dst_port, dport=self.expect_src_port)
+            l4 = self.L4PROTO(
+                sport=self.expect_dst_port,
+                dport=self.expect_src_port)
         elif self.L4PROTO in [ICMP] and not self.is_v6:
             # icmp type 0 if echo reply
             l4 = self.L4PROTO(id=self.expect_src_port, type=0)
@@ -305,12 +322,13 @@ class CnatTestContext(object):
         InnerIP = self.rxs[0][self.IP46]
         p1 = (
             Ether(
-                src=self.expected_dst_pg.remote_mac, dst=self.expected_dst_pg.local_mac
-            )
-            / self.IP46(src=self.expect_dst_addr, dst=self.expect_src_addr)
-            / ICMPelem
-            / InnerIP
-        )
+                src=self.expected_dst_pg.remote_mac,
+                dst=self.expected_dst_pg.local_mac) /
+            self.IP46(
+                src=self.expect_dst_addr,
+                dst=self.expect_src_addr) /
+            ICMPelem /
+            InnerIP)
         self.return_rxs = self._test.send_and_expect(
             self.expected_dst_pg, p1 * N_PKTS, self.expected_src_pg
         )
@@ -326,8 +344,10 @@ class CnatTestContext(object):
             self._test.assertEqual(rx[self.IP46].src, self.dst_addr)
             self._test.assertEqual(rx[ICMP46][IP46err].src, self.src_addr)
             self._test.assertEqual(rx[ICMP46][IP46err].dst, self.dst_addr)
-            self._test.assertEqual(rx[ICMP46][IP46err][L4err].sport, self.src_port)
-            self._test.assertEqual(rx[ICMP46][IP46err][L4err].dport, self.dst_port)
+            self._test.assertEqual(
+                rx[ICMP46][IP46err][L4err].sport, self.src_port)
+            self._test.assertEqual(
+                rx[ICMP46][IP46err][L4err].dport, self.dst_port)
         return self
 
 
@@ -392,23 +412,39 @@ class TestCNatTranslation(CnatCommonTestCase):
             ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
             for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
                 # from client to vip
-                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                ctx.cnat_send(
+                    self.pg0,
+                    src_pgi,
+                    sport,
+                    self.pg1,
+                    vip.ip,
+                    vip.port)
                 dport1 = ctx.rxs[0][ctx.L4PROTO].dport
                 ctx._test.assertIn(
-                    dport1,
-                    [translation.paths[0][DST].port, translation.paths[1][DST].port],
-                )
-                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dport1)
+                    dport1, [
+                        translation.paths[0][DST].port, translation.paths[1][DST].port], )
+                ctx.cnat_expect(
+                    self.pg0,
+                    src_pgi,
+                    sport,
+                    self.pg1,
+                    nbr,
+                    dport1)
 
                 ctx.cnat_send(
                     self.pg0, src_pgi, sport + 122, self.pg1, vip.ip, vip.port
                 )
                 dport2 = ctx.rxs[0][ctx.L4PROTO].dport
                 ctx._test.assertIn(
-                    dport2,
-                    [translation.paths[0][DST].port, translation.paths[1][DST].port],
-                )
-                ctx.cnat_expect(self.pg0, src_pgi, sport + 122, self.pg1, nbr, dport2)
+                    dport2, [
+                        translation.paths[0][DST].port, translation.paths[1][DST].port], )
+                ctx.cnat_expect(
+                    self.pg0,
+                    src_pgi,
+                    sport + 122,
+                    self.pg1,
+                    nbr,
+                    dport2)
 
                 ctx._test.assertEqual(dport1, dport2)
 
@@ -426,9 +462,21 @@ class TestCNatTranslation(CnatCommonTestCase):
             ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
             for src_pgi, sport in product(range(N_REMOTE_HOSTS), [1234, 1233]):
                 # from client to vip
-                ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                ctx.cnat_send(
+                    self.pg0,
+                    src_pgi,
+                    sport,
+                    self.pg1,
+                    vip.ip,
+                    vip.port)
                 dst_port = translation.paths[0][DST].port
-                ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg1, nbr, dst_port)
+                ctx.cnat_expect(
+                    self.pg0,
+                    src_pgi,
+                    sport,
+                    self.pg1,
+                    nbr,
+                    dst_port)
                 # from vip to client
                 ctx.cnat_send_return().cnat_expect_return()
 
@@ -437,8 +485,13 @@ class TestCNatTranslation(CnatCommonTestCase):
                 # translation are dropped
                 #
                 ctx.cnat_send(
-                    self.pg0, src_pgi, sport, self.pg1, vip.ip, 6666, no_replies=True
-                )
+                    self.pg0,
+                    src_pgi,
+                    sport,
+                    self.pg1,
+                    vip.ip,
+                    6666,
+                    no_replies=True)
 
                 #
                 # packets from the VIP that do not match a
@@ -462,7 +515,13 @@ class TestCNatTranslation(CnatCommonTestCase):
             for src_pgi in range(N_REMOTE_HOSTS):
                 for sport in [1234, 1233]:
                     # from client to vip
-                    ctx.cnat_send(self.pg0, src_pgi, sport, self.pg1, vip.ip, vip.port)
+                    ctx.cnat_send(
+                        self.pg0,
+                        src_pgi,
+                        sport,
+                        self.pg1,
+                        vip.ip,
+                        vip.port)
                     ctx.cnat_expect(
                         self.pg0, src_pgi, sport, self.pg1, nbr, old_dst_port
                     )
@@ -473,7 +532,13 @@ class TestCNatTranslation(CnatCommonTestCase):
             # new flows go to the new backend
             #
             for src_pgi in range(N_REMOTE_HOSTS):
-                ctx.cnat_send(self.pg0, src_pgi, 9999, self.pg2, vip.ip, vip.port)
+                ctx.cnat_send(
+                    self.pg0,
+                    src_pgi,
+                    9999,
+                    self.pg2,
+                    vip.ip,
+                    vip.port)
                 ctx.cnat_expect(self.pg0, src_pgi, 9999, self.pg2, 0, 5000)
 
             self.logger.info(self.vapi.cli("sh cnat session verbose"))
@@ -497,8 +562,15 @@ class TestCNatTranslation(CnatCommonTestCase):
             for src_pgi in range(N_REMOTE_HOSTS):
                 for sport in [1234, 1233]:
                     # from client to vip
-                    ctx.cnat_send(self.pg0, src_pgi, sport, self.pg2, vip.ip, vip.port)
-                    ctx.cnat_expect(self.pg0, src_pgi, sport, self.pg2, 0, 5000)
+                    ctx.cnat_send(
+                        self.pg0,
+                        src_pgi,
+                        sport,
+                        self.pg2,
+                        vip.ip,
+                        vip.port)
+                    ctx.cnat_expect(
+                        self.pg0, src_pgi, sport, self.pg2, 0, 5000)
 
     def _test_icmp(self):
         #
@@ -792,7 +864,8 @@ class TestCNatSourceNAT(CnatCommonTestCase):
             )
 
         # add remote host to exclude list
-        self.vapi.cnat_snat_policy_add_del_exclude_pfx(prefix=exclude_prefix, is_add=1)
+        self.vapi.cnat_snat_policy_add_del_exclude_pfx(
+            prefix=exclude_prefix, is_add=1)
 
         # We should not source NAT the id=1
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
@@ -805,7 +878,8 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send_return().cnat_expect_return()
 
         # remove remote host from exclude list
-        self.vapi.cnat_snat_policy_add_del_exclude_pfx(prefix=exclude_prefix, is_add=0)
+        self.vapi.cnat_snat_policy_add_del_exclude_pfx(
+            prefix=exclude_prefix, is_add=0)
         self.vapi.cnat_session_purge()
 
         # We should source NAT again
@@ -817,6 +891,58 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 1, 6661)
         ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
+
+        self.vapi.cnat_session_purge()
+
+    def test_snat_limit(self):
+        """CNAT Source Nat sessions limit"""
+        # this tests both hitting max-session and max-session-per-vrf, as we
+        # have 1 vrf for ipv4 and a different one for ipv6
+
+        n_pkts = N_SESSIONS_MAX + 10
+        p4 = [(Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+               / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+               / UDP(sport=4000, dport=5000 + i)
+               / Raw('\xa5' * 100)) for i in range(n_pkts)]
+        p6 = [(Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+               / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+               / UDP(sport=4000, dport=5000 + i)
+               / Raw('\xa5' * 100)) for i in range(n_pkts)]
+
+        # start from a clean state...
+        self.vapi.cnat_session_purge()
+        node4 = "/err/cnat-snat-ip4/session allocation failure"
+        node6 = "/err/cnat-snat-ip6/session allocation failure"
+        err4 = self.statistics.get_err_counter(node4)
+        err6 = self.statistics.get_err_counter(node6)
+
+        # when sending IPv4 traffic, we can send up to N_SESSIONS_PER_VRF
+        # packets
+        self.send_and_expect(self.pg0, p4, self.pg1, n_rx=N_SESSIONS_PER_VRF)
+        # when sending IPv6 traffic, we can only send up to N_SESSIONS_MAX-1 as
+        # IPv4 traffic already consumed sessions, and session 0 is always
+        # pre-allocated
+        self.send_and_expect(
+            self.pg0,
+            p6,
+            self.pg1,
+            n_rx=N_SESSIONS_MAX -
+            N_SESSIONS_PER_VRF -
+            1)
+        self.vapi.cnat_session_purge()
+        # once everything expired, sessions should go through again
+        self.send_and_expect(self.pg0, p4[-10:] + p6[-10:], self.pg1)
+
+        # make sure we record drops as session alloc failures
+        err4 = self.statistics.get_err_counter(node4) - err4
+        err6 = self.statistics.get_err_counter(node6) - err6
+        self.assertEqual(err4, n_pkts - N_SESSIONS_PER_VRF)
+        self.assertEqual(
+            err6,
+            n_pkts -
+            N_SESSIONS_MAX +
+            N_SESSIONS_PER_VRF +
+            1)
 
         self.vapi.cnat_session_purge()
 
@@ -849,20 +975,17 @@ class TestCNatDHCP(CnatCommonTestCase):
 
     def check_resolved(self, tr, addr_id, is_v6=False):
         qt = tr.query_vpp_config()
-        self.assertEqual(
-            str(qt.vip.addr), self.make_addr(tr.vip.sw_if_index, addr_id, is_v6)
-        )
+        self.assertEqual(str(qt.vip.addr), self.make_addr(
+            tr.vip.sw_if_index, addr_id, is_v6))
         self.assertEqual(len(qt.paths), len(tr.paths))
         for path_tr, path_qt in zip(tr.paths, qt.paths):
             src_qt = path_qt.src_ep
             dst_qt = path_qt.dst_ep
             src_tr, dst_tr = path_tr
-            self.assertEqual(
-                str(src_qt.addr), self.make_addr(src_tr.sw_if_index, addr_id, is_v6)
-            )
-            self.assertEqual(
-                str(dst_qt.addr), self.make_addr(dst_tr.sw_if_index, addr_id, is_v6)
-            )
+            self.assertEqual(str(src_qt.addr), self.make_addr(
+                src_tr.sw_if_index, addr_id, is_v6))
+            self.assertEqual(str(dst_qt.addr), self.make_addr(
+                dst_tr.sw_if_index, addr_id, is_v6))
 
     def add_del_address(self, pg, addr_id, is_add=True, is_v6=False):
         self.vapi.sw_interface_add_del_address(
@@ -876,9 +999,11 @@ class TestCNatDHCP(CnatCommonTestCase):
         for i in self.pg_interfaces:
             i.admin_up()
         paths = [
-            (Endpoint(pg=self.pg1, is_v6=is_v6), Endpoint(pg=self.pg2, is_v6=is_v6)),
-            (Endpoint(pg=self.pg1, is_v6=is_v6), Endpoint(pg=self.pg3, is_v6=is_v6)),
-        ]
+            (Endpoint(
+                pg=self.pg1, is_v6=is_v6), Endpoint(
+                pg=self.pg2, is_v6=is_v6)), (Endpoint(
+                    pg=self.pg1, is_v6=is_v6), Endpoint(
+                    pg=self.pg3, is_v6=is_v6)), ]
         ep = Endpoint(pg=self.pg0, is_v6=is_v6)
         t = Translation(self, TCP, ep, paths, 0x9F).add_vpp_config()
         # Add an address on every interface
@@ -918,9 +1043,8 @@ class TestCNatDHCP(CnatCommonTestCase):
             str(r.snat_ip4),
             self.make_addr(self.pg0.sw_if_index, addr_id=0, is_v6=False),
         )
-        self.assertEqual(
-            str(r.snat_ip6), self.make_addr(self.pg0.sw_if_index, addr_id=0, is_v6=True)
-        )
+        self.assertEqual(str(r.snat_ip6), self.make_addr(
+            self.pg0.sw_if_index, addr_id=0, is_v6=True))
         # Add a new address on every interface, remove the old one
         # and check it is reflected in the cnat config
         for pg in self.pg_interfaces:
@@ -933,9 +1057,8 @@ class TestCNatDHCP(CnatCommonTestCase):
             str(r.snat_ip4),
             self.make_addr(self.pg0.sw_if_index, addr_id=1, is_v6=False),
         )
-        self.assertEqual(
-            str(r.snat_ip6), self.make_addr(self.pg0.sw_if_index, addr_id=1, is_v6=True)
-        )
+        self.assertEqual(str(r.snat_ip6), self.make_addr(
+            self.pg0.sw_if_index, addr_id=1, is_v6=True))
         # remove the configuration
         for pg in self.pg_interfaces:
             self.add_del_address(pg, addr_id=1, is_add=False, is_v6=False)
