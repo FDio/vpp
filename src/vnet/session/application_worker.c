@@ -102,7 +102,7 @@ app_worker_free (app_worker_t * app_wrk)
 	  segment_manager_init_free (sm);
 	}
     }
-  vec_reset_length (handles);
+  vec_free (handles);
   vec_free (sm_indices);
   hash_free (app_wrk->listeners_table);
 
