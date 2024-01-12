@@ -254,6 +254,8 @@ typedef struct cnat_timestamp_t_
 
   u32 index;
 
+  u32 fib_index;
+
   clib_bitmap_t ts_rw_bm;
 
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
@@ -273,6 +275,11 @@ typedef struct cnat_timestamp_mpool_t_
   cnat_timestamp_t **ts_pools;
   /* Bitmap of pools with free space */
   clib_bitmap_t *ts_free;
+  /* How many sessions per VRF */
+  int *sessions_per_vrf_ip4;
+  int *sessions_per_vrf_ip6;
+  /* max number of sessions per vrf */
+  int max_sessions_per_vrf;
   /* max number of pools */
   u32 pool_max;
   /* fixed pool size */
