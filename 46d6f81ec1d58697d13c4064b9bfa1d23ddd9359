@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e675539_5775b055",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-12T18:05:45Z",
+      "side": 1,
+      "message": "initialize it to ~0",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "601db131_0b03f893",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-12T18:05:45Z",
+      "side": 1,
+      "message": "Can we switch to C style comments?",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f489af5_ee7a288d",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-12T18:05:45Z",
+      "side": 1,
+      "message": "From the moment I\u0027ve seen this logic (ah: + goto), I didn\u0027t like it. Since we do the code refactoring can we simplify it?",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "613efd3e_3d9da152",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-12T18:05:45Z",
+      "side": 1,
+      "message": "I think that has_space0 doesn\u0027t need braces.",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18ef9242_77866a3a",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-01-12T18:05:45Z",
+      "side": 1,
+      "message": "If initialization is done correctly I don\u0027t think we need this else statment.",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
