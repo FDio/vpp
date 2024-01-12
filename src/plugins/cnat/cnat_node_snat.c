@@ -150,13 +150,22 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       rw = (ts->ts_rw_bm & (1 << CNAT_LOCATION_FIB)) ? &ts->cts_rewrites[CNAT_LOCATION_FIB] : NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts);
-
-  /* Return traffic is handled by cnat_node_vip */
+    {
+      rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts);
+    }
+  else
+    {
+      /* CNAT_LOOKUP_IS_ERR or CNAT_LOOKUP_IS_RETURN
+       * Return traffic is handled by cnat_node_vip */
+      b->error = node->errors[CNAT_ERROR_SESSION_ALLOCATION_FAILURE];
+      *next0 = CNAT_NODE_SNAT_NEXT_DROP;
+      goto trace;
+    }
 
   cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
 
+trace:
   if (PREDICT_FALSE (do_trace))
     cnat_add_trace (vm, node, b, ts, rw);
 }
