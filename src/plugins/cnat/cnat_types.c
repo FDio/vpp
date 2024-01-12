@@ -216,7 +216,9 @@ cnat_lazy_init (void)
 
   clib_rwlock_init (&ctm->ts_lock);
   /* timestamp 0 is default */
-  cnat_timestamp_alloc ();
+  cnat_timestamp_alloc (CNAT_FIB_TABLE, false /* is_v6 */);
+  /* timestamp 0 should not count toward per vrf limit */
+  vec_elt (ctm->sessions_per_vrf_ip4, 0)++;
 
   cnat_enable_disable_scanner (cm->default_scanner_state);
 
@@ -281,15 +283,22 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "session-log2-pool-size %u", &log2_pool_sz))
 	;
       else if (unformat (input, "session-max %u", &session_max))
-	{
-	  if (session_max > CNAT_MAX_SESSIONS)
-	    return clib_error_return (0, "cnat session-max %u > %u", session_max,
-				      CNAT_MAX_SESSIONS);
-	}
+	;
+      else if (unformat (input, "session-max-per-vrf %u", &ctm->max_sessions_per_vrf))
+	;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
+
+  if (session_max > CNAT_MAX_SESSIONS)
+    return clib_error_return (0, "cnat session-max %u > %u", session_max, CNAT_MAX_SESSIONS);
+
+  if (0 == ctm->max_sessions_per_vrf)
+    ctm->max_sessions_per_vrf = session_max;
+  else if (ctm->max_sessions_per_vrf > session_max)
+    return clib_error_return (0, "cnat session-max-per-vrf %u > %u", ctm->max_sessions_per_vrf,
+			      session_max);
 
   /* session index is 32-bits and made of pool index + object index */
   u64 smax = session_max + (1ULL << log2_pool_sz) - 1;
