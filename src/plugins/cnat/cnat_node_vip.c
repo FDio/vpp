@@ -182,11 +182,20 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 		   NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
+    {
+      rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
+      if (!rw)
+	{
+	  b->error = node->errors[CNAT_ERROR_SESSION_ALLOCATION_FAILURE];
+	  *next0 = CNAT_NODE_VIP_NEXT_DROP;
+	  goto trace;
+	}
+    }
 
   cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
 
+trace:
   if (PREDICT_FALSE (do_trace))
     cnat_add_trace (vm, node, b, ts, rw);
 }
@@ -219,7 +228,8 @@ VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
@@ -234,7 +244,8 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
