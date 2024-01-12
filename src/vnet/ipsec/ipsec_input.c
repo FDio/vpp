@@ -272,6 +272,150 @@ ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la,
     return 1;
   return 0;
 }
+always_inline void
+ipsec_ah_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
+			 ah_header_t *ah0, u32 thread_index, ipsec_spd_t *spd0,
+			 vlib_buffer_t **b, vlib_node_runtime_t *node,
+			 u64 *ipsec_bypassed, u64 *ipsec_dropped,
+			 u64 *ipsec_matched, u64 *ipsec_unprocessed, u16 *next)
+
+{
+  ipsec_policy_t *p0 = NULL;
+  u32 pi0;
+  u8 has_space0;
+  bool search_flow_cache = false;
+  // if flow cache is enabled, first search through flow cache for a
+  // policy match and revert back to linear search on failure
+  search_flow_cache = im->input_flow_cache_flag;
+
+ah:
+  if (search_flow_cache)
+    {
+      p0 = ipsec4_input_spd_find_flow_cache_entry (
+	im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+	IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
+    }
+
+  else
+    {
+      p0 = ipsec_input_protect_policy_match (
+	spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
+	clib_net_to_host_u32 (ip0->dst_address.as_u32),
+	clib_net_to_host_u32 (ah0->spi));
+    }
+
+  has_space0 = vlib_buffer_has_space (b[0], (clib_address_t) (ah0 + 1) -
+					      (clib_address_t) ip0);
+
+  if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
+    {
+      *ipsec_matched += 1;
+
+      pi0 = p0 - im->policies;
+      vlib_increment_combined_counter (&ipsec_spd_policy_counters,
+				       thread_index, pi0, 1,
+				       clib_net_to_host_u16 (ip0->length));
+
+      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
+      next[0] = im->ah4_decrypt_next_index;
+      goto trace1;
+    }
+  else
+    {
+      p0 = 0;
+      pi0 = ~0;
+    }
+
+  if (search_flow_cache)
+    {
+      p0 = ipsec4_input_spd_find_flow_cache_entry (
+	im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+	IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
+    }
+
+  else
+    {
+      p0 = ipsec_input_policy_match (
+	spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
+	clib_net_to_host_u32 (ip0->dst_address.as_u32),
+	IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
+    }
+
+  if (PREDICT_TRUE ((p0 != NULL)))
+    {
+      *ipsec_bypassed += 1;
+
+      pi0 = p0 - im->policies;
+      vlib_increment_combined_counter (&ipsec_spd_policy_counters,
+				       thread_index, pi0, 1,
+				       clib_net_to_host_u16 (ip0->length));
+
+      goto trace1;
+    }
+  else
+    {
+      p0 = 0;
+      pi0 = ~0;
+    };
+
+  if (search_flow_cache)
+    {
+      p0 = ipsec4_input_spd_find_flow_cache_entry (
+	im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
+	IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+    }
+
+  else
+    {
+      p0 = ipsec_input_policy_match (
+	spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
+	clib_net_to_host_u32 (ip0->dst_address.as_u32),
+	IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
+    }
+
+  if (PREDICT_TRUE ((p0 != NULL)))
+    {
+      *ipsec_dropped += 1;
+
+      pi0 = p0 - im->policies;
+      vlib_increment_combined_counter (&ipsec_spd_policy_counters,
+				       thread_index, pi0, 1,
+				       clib_net_to_host_u16 (ip0->length));
+
+      next[0] = IPSEC_INPUT_NEXT_DROP;
+      goto trace1;
+    }
+  else
+    {
+      p0 = 0;
+      pi0 = ~0;
+    };
+
+  // flow cache search failed, retry with linear search
+  if (search_flow_cache && p0 == NULL)
+    {
+      search_flow_cache = false;
+      goto ah;
+    }
+
+  /* Drop by default if no match on PROTECT, BYPASS or DISCARD */
+  *ipsec_unprocessed += 1;
+  next[0] = IPSEC_INPUT_NEXT_DROP;
+
+trace1:
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
+      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+    {
+      ipsec_input_trace_t *tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
+
+      tr->proto = ip0->protocol;
+      tr->sa_id = p0 ? p0->sa_id : ~0;
+      tr->spi = has_space0 ? clib_net_to_host_u32 (ah0->spi) : ~0;
+      tr->seq = has_space0 ? clib_net_to_host_u32 (ah0->seq_no) : ~0;
+      tr->spd = spd0->id;
+      tr->policy_index = pi0;
+    }
+}
 
 always_inline void
 ipsec_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
@@ -523,15 +667,12 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
-      u32 next32, pi0;
+      u32 next32;
       ip4_header_t *ip0;
       esp_header_t *esp0 = NULL;
       ah_header_t *ah0;
       ip4_ipsec_config_t *c0;
       ipsec_spd_t *spd0;
-      ipsec_policy_t *p0 = NULL;
-      u8 has_space0;
-      bool search_flow_cache = false;
 
       if (n_left_from > 2)
 	{
@@ -582,140 +723,9 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	{
 	  ah0 = (ah_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
-	  // if flow cache is enabled, first search through flow cache for a
-	  // policy match and revert back to linear search on failure
-	  search_flow_cache = im->input_flow_cache_flag;
-
-	ah:
-	  if (search_flow_cache)
-	    {
-	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
-		IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT);
-	    }
-
-	  else
-	    {
-	      p0 = ipsec_input_protect_policy_match (
-		spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		clib_net_to_host_u32 (ah0->spi));
-	    }
-
-	  has_space0 =
-	    vlib_buffer_has_space (b[0],
-				   (clib_address_t) (ah0 + 1) -
-				   (clib_address_t) ip0);
-
-	  if (PREDICT_TRUE ((p0 != NULL) & (has_space0)))
-	    {
-	      ipsec_matched += 1;
-
-	      pi0 = p0 - im->policies;
-	      vlib_increment_combined_counter
-		(&ipsec_spd_policy_counters,
-		 thread_index, pi0, 1, clib_net_to_host_u16 (ip0->length));
-
-	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
-	      next[0] = im->ah4_decrypt_next_index;
-	      goto trace1;
-	    }
-	  else
-	    {
-	      p0 = 0;
-	      pi0 = ~0;
-	    }
-
-	  if (search_flow_cache)
-	    {
-	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
-		IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
-	    }
-
-	  else
-	    {
-	      p0 = ipsec_input_policy_match (
-		spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS);
-	    }
-
-	  if (PREDICT_TRUE ((p0 != NULL)))
-	    {
-	      ipsec_bypassed += 1;
-
-	      pi0 = p0 - im->policies;
-	      vlib_increment_combined_counter (
-		&ipsec_spd_policy_counters, thread_index, pi0, 1,
-		clib_net_to_host_u16 (ip0->length));
-
-	      goto trace1;
-	    }
-	  else
-	    {
-	      p0 = 0;
-	      pi0 = ~0;
-	    };
-
-	  if (search_flow_cache)
-	    {
-	      p0 = ipsec4_input_spd_find_flow_cache_entry (
-		im, ip0->src_address.as_u32, ip0->dst_address.as_u32,
-		IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
-	    }
-
-	  else
-	    {
-	      p0 = ipsec_input_policy_match (
-		spd0, clib_net_to_host_u32 (ip0->src_address.as_u32),
-		clib_net_to_host_u32 (ip0->dst_address.as_u32),
-		IPSEC_SPD_POLICY_IP4_INBOUND_DISCARD);
-	    }
-
-	  if (PREDICT_TRUE ((p0 != NULL)))
-	    {
-	      ipsec_dropped += 1;
-
-	      pi0 = p0 - im->policies;
-	      vlib_increment_combined_counter (
-		&ipsec_spd_policy_counters, thread_index, pi0, 1,
-		clib_net_to_host_u16 (ip0->length));
-
-	      next[0] = IPSEC_INPUT_NEXT_DROP;
-	      goto trace1;
-	    }
-	  else
-	    {
-	      p0 = 0;
-	      pi0 = ~0;
-	    };
-
-	  // flow cache search failed, retry with linear search
-	  if (search_flow_cache && p0 == NULL)
-	    {
-	      search_flow_cache = false;
-	      goto ah;
-	    }
-
-	  /* Drop by default if no match on PROTECT, BYPASS or DISCARD */
-	  ipsec_unprocessed += 1;
-	  next[0] = IPSEC_INPUT_NEXT_DROP;
-
-	trace1:
-	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
-	      PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      ipsec_input_trace_t *tr =
-		vlib_add_trace (vm, node, b[0], sizeof (*tr));
-
-	      tr->proto = ip0->protocol;
-	      tr->sa_id = p0 ? p0->sa_id : ~0;
-	      tr->spi = has_space0 ? clib_net_to_host_u32 (ah0->spi) : ~0;
-	      tr->seq = has_space0 ? clib_net_to_host_u32 (ah0->seq_no) : ~0;
-	      tr->spd = spd0->id;
-	      tr->policy_index = pi0;
-	    }
+	  ipsec_ah_packet_process (vm, im, ip0, ah0, thread_index, spd0, b,
+				   node, &ipsec_bypassed, &ipsec_dropped,
+				   &ipsec_matched, &ipsec_unprocessed, next);
 	}
       else
 	{
