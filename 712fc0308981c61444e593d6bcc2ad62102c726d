@@ -33,6 +33,24 @@
       "message": "does `make checkstyle` work with this?",
       "revId": "712fc0308981c61444e593d6bcc2ad62102c726d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b2d4138c_17b5e945",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-01-15T10:09:18Z",
+      "side": 1,
+      "message": "It does not - but luckily checkstyle.sh allows for the version to be set in the environment. See https://gerrit.fd.io/r/c/vpp/+/40194 for a possible fix.",
+      "parentUuid": "7554e044_48098080",
+      "revId": "712fc0308981c61444e593d6bcc2ad62102c726d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
