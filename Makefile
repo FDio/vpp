@@ -109,6 +109,8 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-11)
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-12)
 	DEB_DEPENDS += virtualenv
 	DEB_DEPENDS += clang-14 clang-format-14
+      	# for extras/scripts/checkstyle.sh
+	export CLANG_FORMAT_VER=14
 	LIBFFI=libffi8
 else
 	DEB_DEPENDS += clang-11 clang-format-11
