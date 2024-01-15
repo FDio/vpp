@@ -49,16 +49,70 @@ prom_string (char *s)
 }
 
 static void
-dump_metrics (FILE * stream, u8 ** patterns)
+print_metric_v1 (FILE *stream, stat_segment_data_t *res)
+{
+  int j, k;
+
+  switch (res->type)
+    {
+    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+      fformat (stream, "# TYPE %s counter\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+	for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
+	  fformat (stream, "%s{thread=\"%d\",interface=\"%d\"} %lld\n",
+		   prom_string (res->name), k, j,
+		   res->simple_counter_vec[k][j]);
+      break;
+
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+      fformat (stream, "# TYPE %s_packets counter\n", prom_string (res->name));
+      fformat (stream, "# TYPE %s_bytes counter\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
+	  {
+	    fformat (stream,
+		     "%s_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
+		     prom_string (res->name), k, j,
+		     res->combined_counter_vec[k][j].packets);
+	    fformat (stream, "%s_bytes{thread=\"%d\",interface=\"%d\"} %lld\n",
+		     prom_string (res->name), k, j,
+		     res->combined_counter_vec[k][j].bytes);
+	  }
+      break;
+    case STAT_DIR_TYPE_SCALAR_INDEX:
+      fformat (stream, "# TYPE %s counter\n", prom_string (res->name));
+      fformat (stream, "%s %.2f\n", prom_string (res->name),
+	       res->scalar_value);
+      break;
+
+    case STAT_DIR_TYPE_NAME_VECTOR:
+      fformat (stream, "# TYPE %s_info gauge\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->name_vector); k++)
+	if (res->name_vector[k])
+	  fformat (stream, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
+		   prom_string (res->name), k, res->name_vector[k]);
+      break;
+
+    case STAT_DIR_TYPE_EMPTY:
+      break;
+
+    default:
+      fformat (stderr, "Unknown value %d\n", res->type);
+      ;
+    }
+}
+
+static void
+dump_metrics (FILE *stream, u8 **patterns)
 {
   stat_segment_data_t *res;
-  int i, j, k;
+  int i;
   static u32 *stats = 0;
 
 retry:
   res = stat_segment_dump (stats);
   if (res == 0)
-    {				/* Memory layout has changed */
+    { /* Memory layout has changed */
       if (stats)
 	vec_free (stats);
       stats = stat_segment_ls (patterns);
@@ -67,60 +121,9 @@ retry:
 
   for (i = 0; i < vec_len (res); i++)
     {
-      switch (res[i].type)
-	{
-	case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
-	    for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
-	      fformat (stream, "%s{thread=\"%d\",interface=\"%d\"} %lld\n",
-		       prom_string (res[i].name), k, j,
-		       res[i].simple_counter_vec[k][j]);
-	  break;
-
-	case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-	  fformat (stream, "# TYPE %s_packets counter\n",
-		   prom_string (res[i].name));
-	  fformat (stream, "# TYPE %s_bytes counter\n",
-		   prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
-	    for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
-	      {
-		fformat (stream,
-			 "%s_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
-			 prom_string (res[i].name), k, j,
-			 res[i].combined_counter_vec[k][j].packets);
-		fformat (stream,
-			 "%s_bytes{thread=\"%d\",interface=\"%d\"} %lld\n",
-			 prom_string (res[i].name), k, j,
-			 res[i].combined_counter_vec[k][j].bytes);
-	      }
-	  break;
-	case STAT_DIR_TYPE_SCALAR_INDEX:
-	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
-	  fformat (stream, "%s %.2f\n", prom_string (res[i].name),
-		   res[i].scalar_value);
-	  break;
-
-	case STAT_DIR_TYPE_NAME_VECTOR:
-	  fformat (stream, "# TYPE %s_info gauge\n",
-		   prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].name_vector); k++)
-	    if (res[i].name_vector[k])
-	      fformat (stream, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
-		       prom_string (res[i].name), k, res[i].name_vector[k]);
-	  break;
-
-	case STAT_DIR_TYPE_EMPTY:
-	  break;
-
-	default:
-	  fformat (stderr, "Unknown value %d\n", res[i].type);
-	  ;
-	}
+      print_metric_v1 (stream, &res[i]);
     }
   stat_segment_data_free (res);
-
 }
 
 
