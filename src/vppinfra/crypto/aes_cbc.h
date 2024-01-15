@@ -27,17 +27,10 @@ clib_aes_cbc_encrypt (const aes_cbc_key_data_t *kd, const u8 *src, uword len,
   for (int i = 0; i < len; i += 16)
     {
       int j;
-#if __x86_64__
       r = u8x16_xor3 (r, *(u8x16u *) (src + i), k[0]);
       for (j = 1; j < rounds; j++)
 	r = aes_enc_round_x1 (r, k[j]);
       r = aes_enc_last_round_x1 (r, k[rounds]);
-#else
-      r ^= *(u8x16u *) (src + i);
-      for (j = 1; j < rounds - 1; j++)
-	r = vaesmcq_u8 (vaeseq_u8 (r, k[j]));
-      r = vaeseq_u8 (r, k[j]) ^ k[rounds];
-#endif
       *(u8x16u *) (dst + i) = r;
     }
 }
