@@ -183,6 +183,18 @@ These types of functions are placed in the ``utils.go`` file. If the external pr
 add its installation to ``extras/hs-test/Dockerfile.vpp`` in ``apt-get install`` command.
 Alternatively copy the executable from host system to the Docker image, similarly how the VPP executables and libraries are being copied.
 
+**Skipping tests**
+
+``HstSuite`` provides several methods that can be called in tests for skipping it conditionally or unconditionally such as:
+``skip()``, ``SkipIfMultiWorker()``, ``SkipUnlessExtendedTestsBuilt()``.
+However the tests currently run under test suites which set up topology and containers before actual test is run. For the reason of saving
+test run time it is not advisable to use beforementioned skip methods and instead prefix test name with ``Skip``:
+
+::
+
+    func (s *MySuite) SkipTest(){
+
+
 **Eternal dependencies**
 
 * Linux tools ``ip``, ``brctl``
