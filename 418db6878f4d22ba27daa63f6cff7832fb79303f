@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57ccda28_7d996b84",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 840,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "Let\u0027s cleanup the logic here because it\u0027s server specific not client specific, e.g., we shouldn\u0027t be sending server an error instead of a request",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02abc640_09942358",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "re-add `return HTTP_SM_STOP`",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b391146f_2860856f",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "Do this only if there\u0027s more data to be read from ts-\u003erx_fifo.",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de1e1b89_d9f8af11",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "Is this really needed here? Let\u0027s move it after 891. If hc-\u003eto_recv is 0 after update, change hc state. Also, let\u0027s make sure `rv \u003c\u003d hc-\u003eto_recv`",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fdc989d6_5ce039ef",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "No need if we rescheduled, i.e., we didn\u0027t enqueue any bytes to app",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b9011754_b0e74e6c",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-15T14:10:05Z",
+      "side": 1,
+      "message": "Instead of this, we should request a dequeue notification, i.e., `svm_fifo_add_want_deq_ntf (as-\u003erx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);`",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
