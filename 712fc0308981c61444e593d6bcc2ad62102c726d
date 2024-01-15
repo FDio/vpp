@@ -16,6 +16,23 @@
       "message": "recheck (commit message)",
       "revId": "712fc0308981c61444e593d6bcc2ad62102c726d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7554e044_48098080",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-01-15T05:09:38Z",
+      "side": 1,
+      "message": "does `make checkstyle` work with this?",
+      "revId": "712fc0308981c61444e593d6bcc2ad62102c726d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
