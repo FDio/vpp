@@ -35,6 +35,8 @@
 /* https://github.com/prometheus/prometheus/wiki/Default-port-allocations */
 #define SERVER_PORT 9482
 
+#define MAX_TOKENS 10
+
 static char *
 prom_string (char *s)
 {
@@ -49,16 +51,255 @@ prom_string (char *s)
 }
 
 static void
-dump_metrics (FILE * stream, u8 ** patterns)
+print_metric_v1 (FILE *stream, stat_segment_data_t *res)
+{
+  int j, k;
+
+  switch (res->type)
+    {
+    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+      fformat (stream, "# TYPE %s counter\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+	for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
+	  fformat (stream, "%s{thread=\"%d\",interface=\"%d\"} %lld\n",
+		   prom_string (res->name), k, j,
+		   res->simple_counter_vec[k][j]);
+      break;
+
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+      fformat (stream, "# TYPE %s_packets counter\n", prom_string (res->name));
+      fformat (stream, "# TYPE %s_bytes counter\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
+	  {
+	    fformat (stream,
+		     "%s_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
+		     prom_string (res->name), k, j,
+		     res->combined_counter_vec[k][j].packets);
+	    fformat (stream, "%s_bytes{thread=\"%d\",interface=\"%d\"} %lld\n",
+		     prom_string (res->name), k, j,
+		     res->combined_counter_vec[k][j].bytes);
+	  }
+      break;
+    case STAT_DIR_TYPE_SCALAR_INDEX:
+      fformat (stream, "# TYPE %s counter\n", prom_string (res->name));
+      fformat (stream, "%s %.2f\n", prom_string (res->name),
+	       res->scalar_value);
+      break;
+
+    case STAT_DIR_TYPE_NAME_VECTOR:
+      fformat (stream, "# TYPE %s_info gauge\n", prom_string (res->name));
+      for (k = 0; k < vec_len (res->name_vector); k++)
+	if (res->name_vector[k])
+	  fformat (stream, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
+		   prom_string (res->name), k, res->name_vector[k]);
+      break;
+
+    case STAT_DIR_TYPE_EMPTY:
+      break;
+
+    default:
+      fformat (stderr, "Unknown value %d\n", res->type);
+      ;
+    }
+}
+
+static void
+sanitize (char *str, int len)
+{
+  for (int i = 0; i < len; i++)
+    {
+      if (!isalnum (str[i]))
+	str[i] = '_';
+    }
+}
+
+static int
+tokenize (const char *name, char **tokens, int *lengths, int max_tokens)
+{
+  char *p = (char *) name;
+  char *savep = p;
+
+  int i = 0;
+  while (*p && i < max_tokens - 1)
+    {
+      if (*p == '/')
+	{
+	  tokens[i] = (char *) savep;
+	  lengths[i] = (int) (p - savep);
+	  i++;
+	  p++;
+	  savep = p;
+	}
+      else
+	{
+	  p++;
+	}
+    }
+  tokens[i] = (char *) savep;
+  lengths[i] = (int) (p - savep);
+
+  i++;
+  return i;
+}
+
+static void
+print_metric_v2 (FILE *stream, stat_segment_data_t *res)
+{
+  int num_tokens = 0;
+  char *tokens[MAX_TOKENS];
+  int lengths[MAX_TOKENS];
+  int j, k;
+
+  num_tokens = tokenize (res->name, tokens, lengths, MAX_TOKENS);
+  switch (res->type)
+    {
+    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+      if (res->simple_counter_vec == 0)
+	return;
+      for (k = 0; k < vec_len (res->simple_counter_vec); k++)
+	for (j = 0; j < vec_len (res->simple_counter_vec[k]); j++)
+	  {
+	    if ((num_tokens == 4) &&
+		(!strncmp (tokens[1], "nodes", lengths[1]) ||
+		 !strncmp (tokens[1], "interfaces", lengths[1])))
+	      {
+		sanitize (tokens[1], lengths[1]);
+		sanitize (tokens[3], lengths[3]);
+		fformat (
+		  stream,
+		  "%.*s_%.*s{%.*s=\"%.*s\",index=\"%d\",thread=\"%d\"} %lu\n",
+		  lengths[1], tokens[1], lengths[3], tokens[3], lengths[1] - 1,
+		  tokens[1], lengths[2], tokens[2], j, k,
+		  res->simple_counter_vec[k][j]);
+	      }
+	    else if ((num_tokens == 3) &&
+		     !strncmp (tokens[1], "sys", lengths[1]))
+	      {
+		sanitize (tokens[1], lengths[1]);
+		fformat (stream, "%.*s_%.*s{index=\"%d\",thread=\"%d\"} %lu\n",
+			 lengths[1], tokens[1], lengths[2], tokens[2], j, k,
+			 res->simple_counter_vec[k][j]);
+	      }
+	    else if (!strncmp (tokens[1], "mem", lengths[1]))
+	      {
+		if (num_tokens == 3)
+		  {
+		    fformat (
+		      stream,
+		      "%.*s{heap=\"%.*s\",index=\"%d\",thread=\"%d\"} %lu\n",
+		      lengths[1], tokens[1], lengths[2], tokens[2], j, k,
+		      res->simple_counter_vec[k][j]);
+		  }
+		else if (num_tokens == 4)
+		  {
+		    fformat (stream,
+			     "%.*s_%.*s{heap=\"%.*s\",index=\"%d\",thread=\"%"
+			     "d\"} %lu\n",
+			     lengths[1], tokens[1], lengths[3], tokens[3],
+			     lengths[2], tokens[2], j, k,
+			     res->simple_counter_vec[k][j]);
+		  }
+		else
+		  {
+		    print_metric_v1 (stream, res);
+		  }
+	      }
+	    else if (!strncmp (tokens[1], "err", lengths[1]))
+	      {
+		// NOTE: the error is in token3, but it may contain '/'.
+		// Considering this is the last token, it is safe to print
+		// token3 until the end of res->name
+		fformat (stream,
+			 "%.*s{node=\"%.*s\",error=\"%s\",index=\"%d\",thread="
+			 "\"%d\"} %lu\n",
+			 lengths[1], tokens[1], lengths[2], tokens[2],
+			 tokens[3], j, k, res->simple_counter_vec[k][j]);
+	      }
+	    else
+	      {
+		print_metric_v1 (stream, res);
+	      }
+	  }
+      break;
+
+    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+      if (res->combined_counter_vec == 0)
+	return;
+      for (k = 0; k < vec_len (res->combined_counter_vec); k++)
+	for (j = 0; j < vec_len (res->combined_counter_vec[k]); j++)
+	  {
+	    if ((num_tokens == 4) &&
+		!strncmp (tokens[1], "interfaces", lengths[1]))
+	      {
+		sanitize (tokens[1], lengths[1]);
+		sanitize (tokens[3], lengths[3]);
+		fformat (stream,
+			 "%.*s_%.*s_packets{interface=\"%.*s\",index=\"%d\","
+			 "thread=\"%d\"} %lu\n",
+			 lengths[1], tokens[1], lengths[3], tokens[3],
+			 lengths[2], tokens[2], j, k,
+			 res->combined_counter_vec[k][j].packets);
+		fformat (stream,
+			 "%.*s_%.*s_bytes{interface=\"%.*s\",index=\"%d\","
+			 "thread=\"%d\"} %lu\n",
+			 lengths[1], tokens[1], lengths[3], tokens[3],
+			 lengths[2], tokens[2], j, k,
+			 res->combined_counter_vec[k][j].bytes);
+	      }
+	    else
+	      {
+		print_metric_v1 (stream, res);
+	      }
+	  }
+      break;
+
+    case STAT_DIR_TYPE_SCALAR_INDEX:
+      if ((num_tokens == 4) &&
+	  !strncmp (tokens[1], "buffer-pools", lengths[1]))
+	{
+	  sanitize (tokens[1], lengths[1]);
+	  sanitize (tokens[3], lengths[3]);
+	  fformat (stream, "%.*s_%.*s{pool=\"%.*s\"} %.2f\n", lengths[1],
+		   tokens[1], lengths[3], tokens[3], lengths[2], tokens[2],
+		   res->scalar_value);
+	}
+      else if ((num_tokens == 3) && !strncmp (tokens[1], "sys", lengths[1]))
+	{
+	  sanitize (tokens[1], lengths[1]);
+	  sanitize (tokens[2], lengths[2]);
+	  fformat (stream, "%.*s_%.*s %.2f\n", lengths[1], tokens[1],
+		   lengths[2], tokens[2], res->scalar_value);
+	  if (!strncmp (tokens[2], "boottime", lengths[2]))
+	    {
+	      struct timeval tv;
+	      gettimeofday (&tv, NULL);
+	      fformat (stream, "sys_uptime %.2f\n",
+		       tv.tv_sec - res->scalar_value);
+	    }
+	}
+      else
+	{
+	  print_metric_v1 (stream, res);
+	}
+      break;
+
+    default:;
+      fformat (stderr, "Unhandled type %d name %s\n", res->type, res->name);
+    }
+}
+
+static void
+dump_metrics (FILE *stream, u8 **patterns, u8 v2)
 {
   stat_segment_data_t *res;
-  int i, j, k;
+  int i;
   static u32 *stats = 0;
 
 retry:
   res = stat_segment_dump (stats);
   if (res == 0)
-    {				/* Memory layout has changed */
+    { /* Memory layout has changed */
       if (stats)
 	vec_free (stats);
       stats = stat_segment_ls (patterns);
@@ -67,60 +308,12 @@ retry:
 
   for (i = 0; i < vec_len (res); i++)
     {
-      switch (res[i].type)
-	{
-	case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
-	    for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
-	      fformat (stream, "%s{thread=\"%d\",interface=\"%d\"} %lld\n",
-		       prom_string (res[i].name), k, j,
-		       res[i].simple_counter_vec[k][j]);
-	  break;
-
-	case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
-	  fformat (stream, "# TYPE %s_packets counter\n",
-		   prom_string (res[i].name));
-	  fformat (stream, "# TYPE %s_bytes counter\n",
-		   prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
-	    for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
-	      {
-		fformat (stream,
-			 "%s_packets{thread=\"%d\",interface=\"%d\"} %lld\n",
-			 prom_string (res[i].name), k, j,
-			 res[i].combined_counter_vec[k][j].packets);
-		fformat (stream,
-			 "%s_bytes{thread=\"%d\",interface=\"%d\"} %lld\n",
-			 prom_string (res[i].name), k, j,
-			 res[i].combined_counter_vec[k][j].bytes);
-	      }
-	  break;
-	case STAT_DIR_TYPE_SCALAR_INDEX:
-	  fformat (stream, "# TYPE %s counter\n", prom_string (res[i].name));
-	  fformat (stream, "%s %.2f\n", prom_string (res[i].name),
-		   res[i].scalar_value);
-	  break;
-
-	case STAT_DIR_TYPE_NAME_VECTOR:
-	  fformat (stream, "# TYPE %s_info gauge\n",
-		   prom_string (res[i].name));
-	  for (k = 0; k < vec_len (res[i].name_vector); k++)
-	    if (res[i].name_vector[k])
-	      fformat (stream, "%s_info{index=\"%d\",name=\"%s\"} 1\n",
-		       prom_string (res[i].name), k, res[i].name_vector[k]);
-	  break;
-
-	case STAT_DIR_TYPE_EMPTY:
-	  break;
-
-	default:
-	  fformat (stderr, "Unknown value %d\n", res[i].type);
-	  ;
-	}
+      if (v2)
+	print_metric_v2 (stream, &res[i]);
+      else
+	print_metric_v1 (stream, &res[i]);
     }
   stat_segment_data_free (res);
-
 }
 
 
@@ -128,7 +321,7 @@ retry:
 #define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
 
 static void
-http_handler (FILE * stream, u8 ** patterns)
+http_handler (FILE *stream, u8 **patterns, u8 v2)
 {
   char status[80] = { 0 };
   if (fgets (status, sizeof (status) - 1, stream) == 0)
@@ -180,7 +373,7 @@ http_handler (FILE * stream, u8 ** patterns)
       return;
     }
   fputs ("HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n", stream);
-  dump_metrics (stream, patterns);
+  dump_metrics (stream, patterns, v2);
 }
 
 static int
@@ -244,8 +437,9 @@ main (int argc, char **argv)
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;
   u16 port = SERVER_PORT;
   char *usage =
-    "%s: usage [socket-name <name>] [port <0 - 65535>] <patterns> ...\n";
+    "%s: usage [socket-name <name>] [port <0 - 65535>] [v2] <patterns> ...\n";
   int rv;
+  u8 v2 = 0;
 
   /* Allocating 256MB heap */
   clib_mem_init (0, 256 << 20);
@@ -258,6 +452,8 @@ main (int argc, char **argv)
     {
       if (unformat (a, "socket-name %s", &stat_segment_name))
 	;
+      if (unformat (a, "v2"))
+	v2 = 1;
       else if (unformat (a, "port %d", &port))
 	;
       else if (unformat (a, "%s", &pattern))
@@ -320,7 +516,7 @@ main (int argc, char **argv)
 	  continue;
 	}
       /* Single reader at the moment */
-      http_handler (stream, patterns);
+      http_handler (stream, patterns, v2);
       fclose (stream);
     }
 
