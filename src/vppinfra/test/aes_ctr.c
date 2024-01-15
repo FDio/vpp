@@ -2,7 +2,7 @@
  * Copyright(c) 2024 Cisco Systems, Inc.
  */
 
-#if defined(__AES__)
+#if defined(__AES__) || defined(__ARM_FEATURE_CRYPTO)
 #include <vppinfra/format.h>
 #include <vppinfra/test/test.h>
 #include <vppinfra/crypto/aes_ctr.h>
