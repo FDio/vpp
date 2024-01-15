@@ -1,12 +1,11 @@
 package main
 
 func (s *VethsSuite) TestVppEchoQuic() {
-	s.skip("quic test skipping..")
 	s.testVppEcho("quic")
 }
 
-func (s *VethsSuite) TestVppEchoUdp() {
-	s.skip("udp echo currently broken in vpp, skipping..")
+// udp echo currently broken in vpp, skipping
+func (s *VethsSuite) SkipTestVppEchoUdp() {
 	s.testVppEcho("udp")
 }
 

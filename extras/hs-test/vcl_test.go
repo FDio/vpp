@@ -105,8 +105,8 @@ func (s *VethsSuite) TestVclEchoUdp() {
 	s.testVclEcho("udp")
 }
 
-func (s *VethsSuite) TestVclRetryAttach() {
-	s.skip("this test takes too long, for now it's being skipped")
+// this test takes too long, for now it's being skipped
+func (s *VethsSuite) SkipTestVclRetryAttach() {
 	s.testRetryAttach("tcp")
 }
 
