@@ -52,6 +52,24 @@
       "parentUuid": "c922deb0_797426c3",
       "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fece7d2_df4e3d3a",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2024-01-15T10:56:48Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "51e522a5_0a7c5375",
+      "revId": "7ad11458a32389fa76ace9ea3e3ffc5110794b14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
