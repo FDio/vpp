@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b25d4894_e818965e",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-16T22:28:03Z",
+      "side": 0,
+      "message": "\u003c\u003d16 case was intentionally, for performance reasons placed first, please avoid refactoring and fixing bugs in the same patch",
+      "revId": "5d13416f38cbb12e97a7ca696c6186f3a5b4fa98",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
