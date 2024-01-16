@@ -344,6 +344,48 @@ cov-prep: test-dep
 	@lcov --zerocounters --directory $(VPP_BUILD_DIR)
 	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 
+COV_REM_NOT_CODE="/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
+				 "*_test.*" "*test_*" "*vat*"  "*/vnet/unix/gdb_funcs.c" \
+				 "*pg.c"
+
+COV_REM_DRIVERS="*rdma*" "*/plugins/af_packet/*" "*/plugins/af_xdp/*" \
+				"*/plugins/avf/*" "*/plugins/dma_intel/*" "*/vlib/pci/*" \
+				"*/vnet/devices/*" "*/vlib/dma/*" "*/plugins/vmxnet3/*" \
+				"*/vnet/devices/virtio/*" "*/plugins/perfmon/arm*" \
+				"*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
+				"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/dev_iavf/*"
+
+COV_REM_UNUSED_FEAT="*/plugins/ioam/analyse/*" "*/plugins/ioam/lib-*/*" \
+				    "*/plugins/ioam/export-common/*" "*/vnet/srp/*" \
+					"*/lawful-intercept/*" "*/lisp/*" "*/vnet/osi/*" \
+					"*/plugins/nsh/*"
+
+COV_REM_TODO_NO_TEST="*/vpp-api/client/*" "*/plugins/prom/*" \
+					 "*/plugins/tlspicotls/*" "*/plugins/tlsmbedtls/*" \
+					 "*/vppinfra/perfmon/*" "*/plugins/ila/*" \
+					 "*/vlib/linux/*" "*/vnet/util/radix.c" "*/vapi/vapi.hpp" \
+					 "*/vpp/api/types.c" "*/vpp/api/json_format.c" \
+					 "*/plugins/ioam/*/*.h" "*/linux/netns.c" "*/vnet/flow/*" \
+					 "*/vppinfra/random.c" "*/vppinfra/ring.h" \
+				 	 "*/vppinfra/bihash_vec8_8.h" "*/vppinfra/maplog.c" \
+					 "*/vppinfra/format_table.c" "*/vppinfra/timing_wheel.c" \
+					 "*/vppinfra/macros.c" "*/vppinfra/valloc.c" \
+					 "*/vppinfra/jsonformat.c" "*/vppinfra/vector/array_mask.h" \
+					 "*/vppinfra/vector/toeplitz.c" "*/plugins/vrrp/vrrp_packet.h" \
+					 "*/vnet/srv6/sr.h" "*/vlibapi/api_format.c" \
+					 "*/vlibapi/node_serialize.c" "*/plugins/quic/error.c" \
+					 "*/vnet/ipfix-export/flow_report_classify.h" \
+					 "*/vnet/ip/ip6_ll_types.c" "*/vnet/ip/ip_psh_cksum.h" \
+					 "*/vnet/ip/ip6_hop_by_hop.h" "*/vnet/ip/ip_format_fns.h" \
+					 "*/vnet/dpo/classify_dpo.h" "*/vnet/dpo/l3_proxy_dpo.h" \
+					 "*/vnet/ipsec/esp_format.c" "*/vnet/ethernet/sfp.c" \
+					 "*/vnet/ethernet/ethernet_format_fns.h" \
+					 "*/plugins/ikev2/ikev2_format.c" "*/vnet/bier/bier_types.c"
+
+COV_REM_ALT_TEST="*/plugins/hs_apps/*" "*/plugins/builtinurl/*" \
+				 "*/plugins/http/*.h" "*/plugins/http_static/http_cache.c" \
+				 "*/plugins/http_static/builtinurl/*"
+
 .PHONY: cov-post
 cov-post: wipe-cov $(BUILD_COV_DIR)
 	@lcov --capture \
@@ -354,13 +396,11 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 		--directory $(EXTERN_COV_DIR) \
 		--output-file $(BUILD_COV_DIR)/extern-coverage.info
 	@lcov --remove $(BUILD_COV_DIR)/coverage.info \
-		"/usr/include/*" "*/build-root/*" "/opt/*" "/usr/lib/*" \
-		"*_test.*" "*vat*" "*rdma*" "*/vpp-api/client/*" "*/plugins/af_packet/*" \
-		"*/plugins/af_xdp/*" "*/plugins/avf/*" "*/plugins/dma_intel/*" \
-		"*/plugins/hs_apps/*" "*/plugins/vmxnet3/*" "*/vnet/devices/virtio/*" \
-		"*/plugins/perfmon/arm*" "*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
-		"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/builtinurl/*" "*/vnet/flow/*" \
-		"*/plugins/http_static/builtinurl/*" "*/plugins/dev_iavf/*" \
+		$(COV_REM_NOT_CODE) \
+		$(COV_REM_DRIVERS)  \
+		$(COV_REM_TODO_NO_TEST) \
+		$(COV_REM_UNUSED_FEAT) \
+		$(COV_REM_ALT_TEST) \
 		-o $(BUILD_COV_DIR)/coverage-filtered.info
 	@genhtml $(BUILD_COV_DIR)/coverage-filtered.info \
 		--output-directory $(BUILD_COV_DIR)/html
