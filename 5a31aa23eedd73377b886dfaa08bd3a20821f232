@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "25bf8fce_51156176",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-16T22:17:17Z",
+      "side": 1,
+      "message": "please avoid refactoring code and fixing issue in the same patch",
+      "revId": "5a31aa23eedd73377b886dfaa08bd3a20821f232",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
