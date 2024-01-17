@@ -16,6 +16,24 @@
       "message": "This would be an excellent change to try to merge for 24.02 release.\nMany users have an additional chmod 664 in /run/vpp/*.sock to work around this issue.",
       "revId": "6cd44f95a5e4e2d60ab5d07f25a8f7396af29778",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ccfb9af_6268923f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3034
+      },
+      "writtenOn": "2024-01-17T16:51:47Z",
+      "side": 1,
+      "message": "thanks!",
+      "parentUuid": "353336a9_c4c4a9e5",
+      "revId": "6cd44f95a5e4e2d60ab5d07f25a8f7396af29778",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
