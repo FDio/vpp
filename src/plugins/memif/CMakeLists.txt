@@ -33,3 +33,5 @@ add_vpp_plugin(memif
   INSTALL_HEADERS
   memif.h
 )
+
+add_compile_definitions(MEMIF_CACHELINE_SIZE=${VPP_CACHE_LINE_SIZE})
