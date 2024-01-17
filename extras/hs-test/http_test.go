@@ -53,7 +53,7 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 
 	defer func() { os.Remove(query) }()
 	curlCont := s.getContainerByName("curl")
-	args := fmt.Sprintf("curl --noproxy '*' --http3-only -k https://%s:8443/%s", serverAddress, query)
+	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.extraRunningArgs = args
 	o, err := curlCont.combinedOutput()
 	s.assertNil(err)
