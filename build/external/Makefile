@@ -15,7 +15,7 @@
 SHELL := /bin/bash
 
 DL_CACHE_DIR = $(HOME)/Downloads
-MAKE ?= make
+MAKE ?= gmake
 MAKE_ARGS ?= -j
 BUILD_DIR        ?= $(CURDIR)/_build
 INSTALL_DIR      ?= $(CURDIR)/_install
@@ -157,17 +157,17 @@ ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	@echo "development package by invoking 'make install-ext-deps'"
 	@echo "from the top level directory"
 	@echo "=========================================================="
-	make config
+	gmake config
 else
 ifneq ($(INSTALLED_VER),)
 	make check-deb
 endif
 ifneq ($(INSTALLED_RPM_VER),)
-	make check-rpm
+	gmake check-rpm
 endif
 endif
 
 ebuild-install:
 ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
-	make install
+	gmake install
 endif

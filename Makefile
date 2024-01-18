@@ -298,7 +298,7 @@ help:
 
 $(BR)/.deps.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
-	make install-dep
+	gmake install-dep
 endif
 ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
@@ -371,7 +371,7 @@ endif
 install-deps: install-dep
 
 define make
-	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
+	@gmake -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
 $(BR)/scripts/.version:
@@ -436,9 +436,9 @@ rebuild-release: wipe-release build-release
 export TEST_DIR ?= $(WS_ROOT)/test
 
 define test
-	$(if $(filter-out $(2),retest),make -C $(BR) PLATFORM=vpp TAG=$(1) CC=$(CC) vpp-install,)
+	$(if $(filter-out $(2),retest),gmake -C $(BR) PLATFORM=vpp TAG=$(1) CC=$(CC) vpp-install,)
 	$(eval libs:=lib lib64)
-	make -C test \
+	gmake -C test \
 	  VPP_BUILD_DIR=$(BR)/build-$(1)-native/vpp \
 	  VPP_BIN=$(BR)/install-$(1)-native/vpp/bin/vpp \
 	  VPP_INSTALL_PATH=$(BR)/install-$(1)-native/ \
@@ -511,15 +511,15 @@ papi-wipe: test-wipe-papi
 
 .PHONY: test-wipe-papi
 test-wipe-papi:
-	@make -C test wipe-papi
+	@gmake -C test wipe-papi
 
 .PHONY: test-help
 test-help:
-	@make -C test help
+	@gmake -C test help
 
 .PHONY: test-wipe
 test-wipe:
-	@make -C test wipe
+	@gmake -C test wipe
 
 .PHONY: test-shell
 test-shell:
@@ -552,27 +552,27 @@ test-wipe-doc:
 .PHONY: test-wipe-cov
 test-wipe-cov:
 	$(call make,$(PLATFORM)_gcov,$(addsuffix -wipe,$(TARGETS)))
-	@make -C test wipe-cov
+	@gmake -C test wipe-cov
 
 .PHONY: test-wipe-all
 test-wipe-all:
-	@make -C test wipe-all
+	@gmake -C test wipe-all
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle
 test-checkstyle:
 	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
-	@make -C test checkstyle-python-all
+	@gmake -C test checkstyle-python-all
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: test-checkstyle-diff
 test-checkstyle-diff:
 	$(warning test-checkstyle-diff is deprecated. Running checkstyle-python.")
-	@make -C test checkstyle-python-all
+	@gmake -C test checkstyle-python-all
 
 .PHONY: test-refresh-deps
 test-refresh-deps:
-	@make -C test refresh-deps
+	@gmake -C test refresh-deps
 
 .PHONY: retest
 retest:
@@ -634,7 +634,7 @@ debug:
 .PHONY: build-coverity
 build-coverity:
 	$(call make,$(PLATFORM)_coverity,install-packages)
-	@make -C build-root PLATFORM=vpp TAG=vpp_coverity libmemif-install
+	@gmake -C build-root PLATFORM=vpp TAG=vpp_coverity libmemif-install
 
 .PHONY: debug-release
 debug-release:
@@ -672,15 +672,15 @@ pkg-deb-debug:
 
 .PHONY: pkg-rpm
 pkg-rpm: dist
-	make -C extras/rpm
+	gmake -C extras/rpm
 
 .PHONY: pkg-srpm
 pkg-srpm: dist
-	make -C extras/rpm srpm
+	gmake -C extras/rpm srpm
 
 .PHONY: install-ext-deps
 install-ext-deps:
-	make -C build/external install-$(PKG)
+	gmake -C build/external install-$(PKG)
 
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
@@ -727,12 +727,12 @@ checkstyle-commit:
 .PHONY: checkstyle-test
 checkstyle-test:
 	$(warning test-checkstyle is deprecated. Running checkstyle-python.")
-	@make -C test checkstyle-python-all
+	@gmake -C test checkstyle-python-all
 
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: checkstyle-python
 checkstyle-python:
-	@make -C test checkstyle-python-all
+	@gmake -C test checkstyle-python-all
 
 .PHONY: checkstyle-all
 checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell
@@ -744,7 +744,7 @@ fixstyle:
 # Note: All python venv consolidated in test/Makefile, test/requirements*.txt
 .PHONY: fixstyle-python
 fixstyle-python:
-	@make -C test fixstyle-python-all
+	@gmake -C test fixstyle-python-all
 
 .PHONY: checkstyle-api
 checkstyle-api:
@@ -788,22 +788,22 @@ wipe-doxygen:
 
 .PHONY: docs-%
 docs-%:
-	@make -C $(WS_ROOT)/docs $*
+	@gmake -C $(WS_ROOT)/docs $*
 
 .PHONY: docs
 docs:
-	@make -C $(WS_ROOT)/docs docs
+	@gmake -C $(WS_ROOT)/docs docs
 
 .PHONY: pkg-verify
 pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp")
-	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+	@gmake -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")
-	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
+	@gmake -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
-	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
+	@gmake -C build-root PLATFORM=vpp TAG=vpp libmemif-install
 	$(call banner,"Building $(PKG) packages")
-	@make pkg-$(PKG)
+	@gmake pkg-$(PKG)
 
 # Note: 'make verify' target is not used by ci-management scripts
 MAKE_VERIFY_GATE_OS ?= ubuntu-22.04
@@ -813,11 +813,11 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
 	$(call banner,"Testing vppapigen")
 	@src/tools/vppapigen/test_vppapigen.py
 	$(call banner,"Running tests")
-	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	@gmake COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 else
 	$(call banner,"Skipping tests. Tests under 'make verify' supported on $(MAKE_VERIFY_GATE_OS)")
 endif
 
 .PHONY: check-dpdk-mlx
 check-dpdk-mlx:
-	@[ $$(make -sC build/external dpdk-show-DPDK_MLX_DEFAULT) = y ]
+	@[ $$(gmake -sC build/external dpdk-show-DPDK_MLX_DEFAULT) = y ]

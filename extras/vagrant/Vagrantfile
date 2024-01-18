@@ -21,7 +21,7 @@ Vagrant.configure(2) do |config|
 
   post_build = ( ENV['VPP_VAGRANT_POST_BUILD'] )
   if post_build == "test"
-    config.vm.provision "shell", inline: "echo Testing VPP; cd /vpp; make test"
+    config.vm.provision "shell", inline: "echo Testing VPP; cd /vpp; gmake test"
   elsif post_build == "install"
     config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"install.sh"), :args => "/vpp"
     config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"clearinterfaces.sh")
