@@ -17,6 +17,7 @@
 static_always_inline void
 clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
 {
+  u32 n_left;
 #if defined(CLIB_HAVE_VEC512)
   u32x16 mask16 = u32x16_splat (mask);
   if (n_elts <= 16)
@@ -26,9 +27,10 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
       u32x16_mask_store (r & mask16, src, m);
       return;
     }
-  for (int i = 0; i < n_elts; i += 16)
+  for (int i = 0; i < (n_elts & (~0xFU)); i += 16)
     *((u32x16u *) (src + i)) &= mask16;
   *((u32x16u *) (src + n_elts - 16)) &= mask16;
+  n_left = n_elts & 0xFU;
 #elif defined(CLIB_HAVE_VEC256)
   u32x8 mask8 = u32x8_splat (mask);
 #if defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
@@ -57,12 +59,15 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
       u32x4 mask4 = u32x4_splat (mask);
       *(u32x4u *) src &= mask4;
       *(u32x4u *) (src + n_elts - 4) &= mask4;
+      return;
     }
 #endif
 
-  for (int i = 0; i < n_elts; i += 8)
+  for (int i = 0; i < (n_elts & (~0x7U)); i += 8)
     *((u32x8u *) (src + i)) &= mask8;
   *((u32x8u *) (src + n_elts - 8)) &= mask8;
+
+  n_left = n_elts & 0x7U;
 #elif defined(CLIB_HAVE_VEC128)
   u32x4 mask4 = u32x4_splat (mask);
 
@@ -79,18 +84,20 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
       return;
     }
 
-  for (int i = 0; i < n_elts; i += 4)
+  for (int i = 0; i < (n_elts & (~0x3U)); i += 4)
     *((u32x4u *) (src + i)) &= mask4;
   *((u32x4u *) (src + n_elts - 4)) &= mask4;
-  return;
+
+  n_left = n_elts & 0x3U;
 #else
-  while (n_elts > 0)
+  n_left = n_elts;
+#endif
+  while (n_left > 0)
     {
       src[0] &= mask;
       src++;
-      n_elts--;
+      n_left--;
     }
-#endif
 }
 
 static_always_inline void
