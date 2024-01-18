@@ -117,7 +117,7 @@ vlib_pci_intr_enable (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 {
   const vlib_pci_config_reg_command_t cmd = { .intx_disable = 1 };
   clib_error_t *err;
-  int already_set;
+  int already_set = 0;
 
   err = _vlib_pci_config_set_control_bit (vm, h, cmd.as_u16, 0, &already_set);
   log_debug (h, "interrupt%senabled", already_set ? " " : " already ");
@@ -129,7 +129,7 @@ vlib_pci_intr_disable (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 {
   const vlib_pci_config_reg_command_t cmd = { .intx_disable = 1 };
   clib_error_t *err;
-  int already_set;
+  int already_set = 0;
 
   err = _vlib_pci_config_set_control_bit (vm, h, cmd.as_u16, 1, &already_set);
   log_debug (h, "interrupt%sdisabled", already_set ? " " : " already ");
@@ -141,7 +141,7 @@ vlib_pci_bus_master_enable (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 {
   const vlib_pci_config_reg_command_t cmd = { .bus_master = 1 };
   clib_error_t *err;
-  int already_set;
+  int already_set = 0;
 
   err = _vlib_pci_config_set_control_bit (vm, h, cmd.as_u16, 1, &already_set);
   log_debug (h, "bus-master%senabled", already_set ? " " : " already ");
@@ -153,7 +153,7 @@ vlib_pci_bus_master_disable (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 {
   const vlib_pci_config_reg_command_t cmd = { .bus_master = 1 };
   clib_error_t *err;
-  int already_set;
+  int already_set = 0;
 
   err = _vlib_pci_config_set_control_bit (vm, h, cmd.as_u16, 0, &already_set);
   log_debug (h, "bus-master%sdisabled", already_set ? " " : " already ");
