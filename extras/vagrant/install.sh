@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Get Command Line arguements if present
 VPP_DIR=$1

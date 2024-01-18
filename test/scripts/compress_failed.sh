@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "$(ls -A ${FAILED_DIR})" ]
 then

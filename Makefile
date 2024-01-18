@@ -14,7 +14,7 @@
 export WS_ROOT=$(CURDIR)
 export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
-SHELL:=/bin/bash
+SHELL:=$(shell which bash)
 GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
