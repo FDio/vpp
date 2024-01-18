@@ -42,4 +42,4 @@ external_configure = echo
 
 external_build = echo
 
-external_install =  make $(DPDK_MAKE_ARGS) -C external ebuild-build ebuild-install
+external_install =  gmake $(DPDK_MAKE_ARGS) -C external ebuild-build ebuild-install
