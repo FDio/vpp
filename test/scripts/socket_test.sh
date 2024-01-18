@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/usr/bin/env bash
 #
 # socket_test.sh -- script to run socket tests.
 #

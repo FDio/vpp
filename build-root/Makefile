@@ -39,7 +39,7 @@
 ######################################################################
 
 # Scripts require non-POSIX parts of bash
-SHELL := /bin/bash
+SHELL := $(shell which bash)
 
 # Where this makefile lives
 MU_BUILD_ROOT_DIR = $(shell pwd)
@@ -962,7 +962,7 @@ $(PLATFORM_IMAGE_DIR)/ro.img ro-image: $(patsubst %,%-find-source,$(ROOT_PACKAGE
 	chmod 0755 $${tmp_dir} ;					\
 	cd $${tmp_dir} ;						\
 	trap "rm -rf $${tmp_dir}" err ;					\
-	fakeroot /bin/bash -c "{					\
+	fakeroot $(SHELL) -c "{					\
 	  set -eu$(BUILD_DEBUG) ;					\
 	  $(MAKE) -C $(MU_BUILD_ROOT_DIR) IMAGE_INSTALL_DIR=$${tmp_dir}	\
 	    $(patsubst %,%-image_install,				\
@@ -1054,7 +1054,7 @@ rw-image: rw-image-check-type ro-image
 	chmod 0755 $${tmp_dir} ;				\
 	cd $${tmp_dir} ;					\
 	trap "rm -rf $${tmp_dir}" err ;				\
-	fakeroot /bin/bash -c "{				\
+	fakeroot $(SHELL) -c "{				\
 	  set -eu$(BUILD_DEBUG) ;				\
 	  $(linuxrc_makedev) ;					\
 	  $(call rw_image_embed_ro_image_fn,$${ro_image}) ;	\

@@ -12,7 +12,7 @@
 # limitations under the License.
 
 # Scripts require non-POSIX parts of bash
-SHELL := /bin/bash
+SHELL := $(shell which bash)
 
 DL_CACHE_DIR = $(HOME)/Downloads
 MAKE ?= make
