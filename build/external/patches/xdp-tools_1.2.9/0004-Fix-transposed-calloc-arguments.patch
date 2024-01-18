@@ -1,0 +1,54 @@
+From b184d103bd767e2286cdb2b0639a2470dce205d5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Toke=20H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Date: Thu, 18 Jan 2024 13:22:47 +0100
+Subject: [PATCH] Fix transposed calloc() arguments
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Calls to calloc() are supposed to have the number of elements as the first
+argument, but we erroneously transposed the arguments in a couple of places. It
+seems GCC 14 has started to warn about this, which exposed this as build
+breakage.
+
+Signed-off-by: Toke Høiland-Jørgensen <toke@redhat.com>
+---
+ lib/util/params.c               | 2 +-
+ lib/util/xpcapng.c              | 6 +++---
+ xdp-trafficgen/xdp-trafficgen.c | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/lib/util/xpcapng.c b/lib/util/xpcapng.c
+index e453b88..8cfc947 100644
+--- a/lib/util/xpcapng.c
++++ b/lib/util/xpcapng.c
+@@ -226,7 +226,7 @@ static bool pcapng_write_shb(struct xpcapng_dumper *pd, const char *comment,
+ 	shb_length += sizeof(uint32_t);
+ 
+ 	/* Allocate the SHB and fill it. */
+-	shb = calloc(shb_length, 1);
++	shb = calloc(1, shb_length);
+ 	if (shb == NULL) {
+ 		errno = ENOMEM;
+ 		return false;
+@@ -318,7 +318,7 @@ static bool pcapng_write_idb(struct xpcapng_dumper *pd, const char *name,
+ 	idb_length += sizeof(uint32_t);
+ 
+ 	/* Allocate the IDB and fill it. */
+-	idb = calloc(idb_length, 1);
++	idb = calloc(1, idb_length);
+ 	if (idb == NULL) {
+ 		errno = ENOMEM;
+ 		return false;
+@@ -549,7 +549,7 @@ struct xpcapng_dumper *xpcapng_dump_open(const char *file,
+ 		goto error_exit;
+ 	}
+ 
+-	pd = calloc(sizeof(*pd), 1);
++	pd = calloc(1, sizeof(*pd));
+ 	if (pd == NULL) {
+ 		errno = ENOMEM;
+ 		goto error_exit;
+-- 
+2.43.0
+
