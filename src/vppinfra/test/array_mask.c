@@ -83,7 +83,7 @@ static array_mask_test_t tests[] = {
 static clib_error_t *
 test_clib_array_mask_u32 (clib_error_t *err)
 {
-  u32 i, j;
+  u32 i, j, len;
   for (i = 0; i < ARRAY_LEN (tests) - 1; i++)
     {
       u32 src[256];
@@ -99,6 +99,27 @@ test_clib_array_mask_u32 (clib_error_t *err)
 				      "testcase %u failed at "
 				      "(src[%u] = 0x%x, expected 0x%x)",
 				      i, j, src[j], t->expected[j]);
+	}
+    }
+
+  for (i = 0; i < ARRAY_LEN (tests) - 1; i++)
+    {
+      for (len = 1; len <= 256; len++)
+	{
+	  u32 src[len];
+	  for (j = 0; j < ARRAY_LEN (src); j++)
+	    src[j] = j;
+
+	  array_mask_test_t *t = tests + i;
+	  clib_array_mask_u32_wrapper (src, t->mask, ARRAY_LEN (src));
+	  for (j = 0; j < ARRAY_LEN (src); j++)
+	    {
+	      if (src[j] != t->expected[j])
+		return clib_error_return (err,
+					  "testcase %u failed at "
+					  "(src[%u] = 0x%x, expected 0x%x)",
+					  i, j, src[j], t->expected[j]);
+	    }
 	}
     }
 
