@@ -16,6 +16,24 @@
       "message": "what is this weird char at the end of the subject line?",
       "revId": "9e171c8a7bd56987961fcf118148acc546ebcd2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60dd861f_cd6cdbe2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2024-01-18T19:26:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4d8d70ec_6b8621a9",
+      "revId": "9e171c8a7bd56987961fcf118148acc546ebcd2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
