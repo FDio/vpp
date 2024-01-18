@@ -118,9 +118,9 @@ vpp-make-test()
         retry_count=1
     fi
     if [ "$is_feature" == "true" ] ; then
-        run_make_test="make test$all$debug TEST=$1 SANITY=no TEST_JOBS=$jobs"
+        run_make_test="gmake test$all$debug TEST=$1 SANITY=no TEST_JOBS=$jobs"
     else
-        run_make_test="make test$all$debug TEST=*.*.$1 SANITY=no"
+        run_make_test="gmake test$all$debug TEST=*.*.$1 SANITY=no"
     fi
 
     old_pwd=$(pwd)

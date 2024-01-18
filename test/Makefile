@@ -107,7 +107,7 @@ $(PIP_TOOLS_INSTALL_DONE):
 
 $(PYTHON_DEPENDS): requirements.txt
 	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
+		  CUSTOM_COMPILE_COMMAND='gmake test-refresh-deps (or update requirements.txt)' \
 		  python3 -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
 
 $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
@@ -373,7 +373,7 @@ cov-post: wipe-cov $(BUILD_COV_DIR)
 
 .PHONY: cov
 cov:
-	make -C . cov-prep test cov-post
+	gmake -C . cov-prep test cov-post
 
 .PHONY: wipe-cov
 wipe-cov: wipe

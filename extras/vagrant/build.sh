@@ -36,12 +36,12 @@ echo OS_VERSION_ID: $OS_VERSION_ID
 
 # Install dependencies
 cd $VPP_DIR
-make UNATTENDED=yes install-dep
+gmake UNATTENDED=yes install-dep
 
 # Really really clean things up so we can be sure
 # that the build works even when switching distros
-$SUDOCMD make wipe
-(cd build-root/;$SUDOCMD make distclean)
+$SUDOCMD gmake wipe
+(cd build-root/;$SUDOCMD gmake distclean)
 rm -f build-root/.bootstrap.ok
 
 if [ $OS_ID == "centos" ]; then
@@ -57,14 +57,14 @@ if [ $OS_ID == "centos" ]; then
 fi
 
 # Build and install packaging
-$SUDOCMD make bootstrap
+$SUDOCMD gmake bootstrap
 
 if [ "$OS_ID" == "ubuntu" ]; then
-    $SUDOCMD make pkg-deb
+    $SUDOCMD gmake pkg-deb
 elif [ "$OS_ID" == "debian" ]; then
-    $SUDOCMD make pkg-deb
+    $SUDOCMD gmake pkg-deb
 elif [ "$OS_ID" == "centos" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
-    $SUDOCMD make pkg-rpm
+    $SUDOCMD gmake pkg-rpm
 fi
 

@@ -365,7 +365,7 @@ NATIVE_TOOLS_$(IS_LINUX) += $(NATIVE_TOOLS_LINUX)
 CROSS_TOOLS_$(IS_LINUX) += glibc gcc
 
 # must be first for bootstrapping
-NATIVE_TOOLS = findutils make
+NATIVE_TOOLS = findutils gmake
 
 # basic tools needed for build system
 NATIVE_TOOLS += git automake autoconf libtool texinfo tar
@@ -614,7 +614,7 @@ check_platform =								\
        -a ! -x "`which 2> /dev/null $${target_gcc}`" ] ; then			\
     $(call build_msg_fn,							\
 	   No cross-compiler found for platform $(PLATFORM) target $(TARGET);	\
-	     try make PLATFORM=$(PLATFORM) install-tools) ;			\
+	     try $(MAKE) PLATFORM=$(PLATFORM) install-tools) ;			\
     exit 1 ;									\
   fi
 
@@ -800,7 +800,7 @@ pull-all:
 	$(call build_msg_fn,Git pull build tools) ;				\
 	$(call tool_make_target_fn,pull-all) ;					\
 	$(call build_msg_fn,Git pull packages for platform $(PLATFORM)) ;	\
-	make PLATFORM=$(PLATFORM) $(patsubst %,%-pull-all,$(ROOT_PACKAGES))
+	$(MAKE) PLATFORM=$(PLATFORM) $(patsubst %,%-pull-all,$(ROOT_PACKAGES))
 
 .PHONY: %-diff
 %-diff:
@@ -968,7 +968,7 @@ $(PLATFORM_IMAGE_DIR)/ro.img ro-image: $(patsubst %,%-find-source,$(ROOT_PACKAGE
 	    $(patsubst %,%-image_install,				\
 	      basic_system						\
 	      $(ROOT_PACKAGES)) ;					\
-	  : make dev directory ;					\
+	  : $(MAKE) dev directory ;					\
 	  $(linuxrc_makedev) ;						\
 	  echo @@@@ Relocating ELF executables to run in / @@@@ ;	\
 	  scripts/set-rpath /$(arch_lib_dir):/lib ;			\
