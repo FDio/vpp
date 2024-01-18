@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3a04cd8_cd10b78d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-01-18T16:53:20Z",
+      "side": 1,
+      "message": "If possible, it may be a good idea to change instances where \u0027make\u0027 is invoked to \u0027$(MAKE)\u0027 rather than \u0027gmake\u0027. That should propagate whatever specific name was used to invoke gnu make to recursive make calls. That might work better if someone tries to build on some distro/platform where gmake is not provided as a synonym to make.",
+      "revId": "58304c711bb631add774d5091e8dcd7719e10aa5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
