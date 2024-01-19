@@ -84,7 +84,8 @@ cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   t->generic_flow_id = vnet_buffer2 (b)->session.generic_flow_id;
   t->flow_state = vnet_buffer2 (b)->session.state;
 
-  clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
+  if (ts)
+    clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
 
   t->flags = 0;
   if (rw)
@@ -1050,7 +1051,8 @@ cnat_translation (vlib_buffer_t *b, ip_address_family_t af,
 always_inline uword
 cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame, ip_address_family_t af, u8 do_trace,
-		    cnat_node_sub_t cnat_sub, u8 is_feature)
+		    cnat_node_sub_t cnat_sub, u8 is_feature,
+		    bool alloc_if_not_found)
 {
   u32 n_left, *from;
   f64 now = vlib_time_now (vm);
@@ -1127,19 +1129,19 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0],
 					  &bvalue[0]);
       cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now,
-				    hash[0], is_v6);
+				    hash[0], is_v6, alloc_if_not_found);
       rv[1] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[1], &bkey[1],
 					  &bvalue[1]);
       cnat_lookup_create_or_return (b[1], rv[1], &bkey[1], &bvalue[1], now,
-				    hash[1], is_v6);
+				    hash[1], is_v6, alloc_if_not_found);
       rv[2] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[2], &bkey[2],
 					  &bvalue[2]);
       cnat_lookup_create_or_return (b[2], rv[2], &bkey[2], &bvalue[2], now,
-				    hash[2], is_v6);
+				    hash[2], is_v6, alloc_if_not_found);
       rv[3] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[3], &bkey[3],
 					  &bvalue[3]);
       cnat_lookup_create_or_return (b[3], rv[3], &bkey[3], &bvalue[3], now,
-				    hash[3], is_v6);
+				    hash[3], is_v6, alloc_if_not_found);
 
       if (cnat_sub != NULL)
 	{
@@ -1219,7 +1221,7 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       rv[0] = cnat_bihash_search_i2_hash (&cnat_session_db, hash[0], &bkey[0],
 					  &bvalue[0]);
       cnat_lookup_create_or_return (b[0], rv[0], &bkey[0], &bvalue[0], now,
-				    hash[0], is_v6);
+				    hash[0], is_v6, alloc_if_not_found);
 
       if (cnat_sub != NULL)
 	cnat_sub (vm, node, b[0], &next[0], af, now, do_trace);
