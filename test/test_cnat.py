@@ -783,6 +783,18 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send(self.pg0, 0, 0xFEED, self.pg1, 0, 8)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 0, 8)
         ctx.cnat_send_return().cnat_expect_return()
+        # check for unknown return session
+        # expire all sessions and send return: this should be dropped as
+        # unknown return session
+        node = "/err/ip%d-cnat-return/unknown session" % (6 if is_v6 else 4)
+        self.vapi.cnat_session_purge()
+        err = self.statistics.get_err_counter(node)
+        try:
+            ctx.cnat_send_return()
+        except:
+            pass
+        err = self.statistics.get_err_counter(node) - err
+        self.assertEqual(err, N_PKTS)
 
     def sourcenat_test_icmp_traceroute_conf(self, is_v6=False):
         # IPv4 ICMP
