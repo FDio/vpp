@@ -176,12 +176,15 @@ cnat_timestamp_free (u32 index, bool is_v6)
 
 static_always_inline void
 cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
-			      cnat_bihash_kv_t *bvalue, f64 now, u64 hash, bool is_v6)
+			      cnat_bihash_kv_t *bvalue, f64 now, u64 hash, bool is_v6,
+			      bool alloc_if_not_found)
 {
   vnet_buffer2 (b)->session.flags = 0;
   cnat_session_t *session = (cnat_session_t *) bvalue;
   if (rv)
     {
+      if (!alloc_if_not_found)
+	goto err;
       cnat_session_t *ksession = (cnat_session_t *) bkey;
       index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));

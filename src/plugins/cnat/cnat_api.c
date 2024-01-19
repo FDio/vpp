@@ -156,7 +156,7 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
 
   flags = mp->translation.flags;
   if (!mp->translation.is_real_ip)
-    flags |= CNAT_FLAG_EXCLUSIVE;
+    flags |= CNAT_TR_FLAG_EXCLUSIVE;
 
   lb_type = (cnat_lb_type_t) mp->translation.lb_type;
   flow_hash_config = (flow_hash_config_t) clib_net_to_host_u32 (

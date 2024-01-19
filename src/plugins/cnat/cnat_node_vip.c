@@ -175,9 +175,9 @@ VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP4, 1 /* do_trace */, cnat_vip_node_fn,
-			       0 /* is_feature */);
+			       0 /* is_feature */, true /* alloc_if_not_found */);
   return cnat_lookup_inline (vm, node, frame, AF_IP4, 0 /* do_trace */, cnat_vip_node_fn,
-			     0 /* is_feature */);
+			     0 /* is_feature */, true /* alloc_if_not_found */);
 }
 
 VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
@@ -186,9 +186,9 @@ VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_lookup_inline (vm, node, frame, AF_IP6, 1 /* do_trace */, cnat_vip_node_fn,
-			       0 /* is_feature */);
+			       0 /* is_feature */, true /* alloc_if_not_found */);
   return cnat_lookup_inline (vm, node, frame, AF_IP6, 0 /* do_trace */, cnat_vip_node_fn,
-			     0 /* is_feature */);
+			     0 /* is_feature */, true /* alloc_if_not_found */);
 }
 
 VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
@@ -213,6 +213,93 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
+  .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
+  .next_nodes =
+  {
+    [CNAT_NODE_VIP_NEXT_DROP] = "ip6-drop",
+    [CNAT_NODE_VIP_NEXT_LOOKUP] = "ip6-lookup",
+  },
+};
+
+static void
+cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, u16 *next0,
+		     ip_address_family_t af, f64 now, u8 do_trace)
+{
+  cnat_timestamp_rewrite_t *rw = 0;
+  cnat_timestamp_t *ts = 0;
+  cnat_client_t *cc;
+
+  if (CNAT_LOOKUP_IS_RETURN != vnet_buffer2 (b)->session.state)
+    {
+      ASSERT (0 == vnet_buffer2 (b)->session.generic_flow_id);
+      ASSERT (CNAT_LOOKUP_IS_ERR == vnet_buffer2 (b)->session.state);
+      /* not a return session: expire & drop */
+      b->error = node->errors[CNAT_ERROR_UNKNOWN_SESSION];
+      *next0 = CNAT_NODE_VIP_NEXT_DROP;
+      goto trace;
+    }
+
+  cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = cc->cc_parent.dpoi_index;
+  *next0 = cc->cc_parent.dpoi_next_node;
+
+  ts = cnat_timestamp_update (vnet_buffer2 (b)->session.generic_flow_id, now);
+  rw = (ts->ts_rw_bm & (1 << (CNAT_IS_RETURN + CNAT_LOCATION_FIB))) ?
+	 &ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB] :
+	 NULL;
+
+  cnat_translation (b, af, rw, &ts->lifetime, 0 /* iph_offset */);
+  cnat_set_rw_next_node (b, rw, next0);
+
+trace:
+  if (PREDICT_FALSE (do_trace))
+    cnat_add_trace (vm, node, b, ts, rw);
+}
+
+VLIB_NODE_FN (cnat_return_ip4_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    return cnat_lookup_inline (vm, node, frame, AF_IP4, 1 /* do_trace */, cnat_return_node_fn,
+			       0 /* is_feature */, false /* alloc_if_not_found */);
+  return cnat_lookup_inline (vm, node, frame, AF_IP4, 0 /* do_trace */, cnat_return_node_fn,
+			     0 /* is_feature */, false /* alloc_if_not_found */);
+}
+
+VLIB_NODE_FN (cnat_return_ip6_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    return cnat_lookup_inline (vm, node, frame, AF_IP6, 1 /* do_trace */, cnat_return_node_fn,
+			       0 /* is_feature */, false /* alloc_if_not_found */);
+  return cnat_lookup_inline (vm, node, frame, AF_IP6, 0 /* do_trace */, cnat_return_node_fn,
+			     0 /* is_feature */, false /* alloc_if_not_found */);
+}
+
+VLIB_REGISTER_NODE (cnat_return_ip4_node) =
+{
+  .name = "ip4-cnat-return",
+  .vector_size = sizeof (u32),
+  .format_trace = format_cnat_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
+  .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
+  .next_nodes =
+  {
+    [CNAT_NODE_VIP_NEXT_DROP] = "ip4-drop",
+    [CNAT_NODE_VIP_NEXT_LOOKUP] = "ip4-lookup",
+  },
+};
+
+VLIB_REGISTER_NODE (cnat_return_ip6_node) =
+{
+  .name = "ip6-cnat-return",
+  .vector_size = sizeof (u32),
+  .format_trace = format_cnat_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
