@@ -542,7 +542,7 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   u32 del_index = INDEX_INVALID;
   ip_protocol_t proto = IP_PROTOCOL_TCP;
   cnat_endpoint_t vip;
-  u8 flags = CNAT_FLAG_EXCLUSIVE;
+  u8 flags = CNAT_TR_FLAG_EXCLUSIVE;
   cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *e = 0;
@@ -564,9 +564,9 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
       else if (unformat (line_input, "noclient"))
 	flags |= CNAT_TR_FLAG_NO_CLIENT;
       else if (unformat (line_input, "vip %U", unformat_cnat_ep, &vip))
-	flags |= CNAT_FLAG_EXCLUSIVE;
+	flags |= CNAT_TR_FLAG_EXCLUSIVE;
       else if (unformat (line_input, "real %U", unformat_cnat_ep, &vip))
-	flags &= ~CNAT_FLAG_EXCLUSIVE;
+	flags &= ~CNAT_TR_FLAG_EXCLUSIVE;
       else if (unformat (line_input, "to %U", unformat_cnat_ep_tuple, &tmp))
 	{
 	  vec_add2 (paths, path, 1);
