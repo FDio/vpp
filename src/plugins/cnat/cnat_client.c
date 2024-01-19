@@ -14,6 +14,11 @@ cnat_client_db_t cnat_client_db;
 dpo_type_t cnat_client_dpo;
 fib_source_t cnat_fib_source;
 
+static u32 cnat_client_node_ip4_cnat_tx;
+static u32 cnat_client_node_ip6_cnat_tx;
+static u32 cnat_client_node_ip4_cnat_return;
+static u32 cnat_client_node_ip6_cnat_return;
+
 static_always_inline u8
 cnat_client_is_clone (cnat_client_t * cc)
 {
@@ -191,8 +196,8 @@ cnat_client_add_pfx (const ip_address_t *pfx, u8 pfx_len, u32 fib_index, u8 flag
   dpo_stack (cnat_client_dpo, dproto, &cc->cc_parent, drop_dpo_get (dproto));
 
   fib_flags = FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
-  fib_flags |= (flags & CNAT_FLAG_EXCLUSIVE) ?
-    FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
+  fib_flags |=
+    (flags & CNAT_TR_FLAG_EXCLUSIVE) ? FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
 
   fei = fib_table_entry_special_dpo_add (fib_index, &fib_pfx, cnat_fib_source, fib_flags, &tmp);
 
@@ -249,6 +254,31 @@ cnat_client_dpo_interpose (const dpo_id_t * original,
 	   original->dpoi_proto, cc_clone - cnat_client_pool);
 }
 
+static u32 *
+cnat_client_dpo_get_next_node (const dpo_id_t *dpo)
+{
+  const cnat_client_t *cc = cnat_client_get (dpo->dpoi_index);
+  u32 *nodes = 0;
+  bool is_return = cc->flags & CNAT_TR_FLAG_RETURN_ONLY;
+  u32 n, r;
+  switch (dpo->dpoi_proto)
+    {
+    case DPO_PROTO_IP4:
+      n = cnat_client_node_ip4_cnat_tx;
+      r = cnat_client_node_ip4_cnat_return;
+      break;
+    case DPO_PROTO_IP6:
+      n = cnat_client_node_ip6_cnat_tx;
+      r = cnat_client_node_ip6_cnat_return;
+      break;
+    default:
+      return 0;
+    }
+
+  vec_add1 (nodes, is_return ? r : n);
+  return nodes;
+}
+
 int
 cnat_client_purge (void)
 {
@@ -274,7 +304,7 @@ format_cnat_client (u8 * s, va_list * args)
 	      format_ip_address, &cc->cc_ip, cc->tr_refcnt, cc->session_refcnt,
 	      cc->cc_locks);
 
-  if (cc->flags & CNAT_FLAG_EXCLUSIVE)
+  if (cc->flags & CNAT_TR_FLAG_EXCLUSIVE)
     s = format (s, " exclusive");
 
   if (cnat_client_is_clone (cc))
@@ -384,12 +414,19 @@ const static dpo_vft_t cnat_client_dpo_vft = {
   .dv_unlock = cnat_client_dpo_unlock,
   .dv_format = format_cnat_client_dpo,
   .dv_mk_interpose = cnat_client_dpo_interpose,
+  .dv_get_next_node = cnat_client_dpo_get_next_node,
 };
 
 static clib_error_t *
 cnat_client_init (vlib_main_t * vm)
 {
   cnat_main_t *cm = &cnat_main;
+
+  cnat_client_node_ip4_cnat_tx = vlib_get_node_by_name (vm, (u8 *) "ip4-cnat-tx")->index;
+  cnat_client_node_ip6_cnat_tx = vlib_get_node_by_name (vm, (u8 *) "ip6-cnat-tx")->index;
+  cnat_client_node_ip4_cnat_return = vlib_get_node_by_name (vm, (u8 *) "ip4-cnat-return")->index;
+  cnat_client_node_ip6_cnat_return = vlib_get_node_by_name (vm, (u8 *) "ip6-cnat-return")->index;
+
   cnat_client_dpo = dpo_register_new_type (&cnat_client_dpo_vft,
 					   cnat_client_dpo_nodes);
 
