@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT OPENSSL_FOUND)
+  message(WARNING "OpenSSL not found - lisp plugin disabled")
+  return()
+endif()
+
 ##############################################################################
 # LISP control plane: lisp-cp
 ##############################################################################

@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT OPENSSL_FOUND)
+  message(WARNING "OpenSSL not found - wireguard plugin disabled")
+  return()
+endif()
+
 if (OPENSSL_VERSION VERSION_LESS 1.1.0)
+  message(WARNING "OpenSSL too old - wireguard plugin disabled")
   return()
 endif()
 

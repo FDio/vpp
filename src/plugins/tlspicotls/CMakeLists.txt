@@ -1,5 +1,10 @@
 include (CheckFunctionExists)
 
+if(NOT OPENSSL_FOUND)
+  message(WARNING "OpenSSL not found - tlspicotls plugin disabled")
+  return()
+endif()
+
 # We should rely on a picotls specific version, but as
 # we expect dependancies to be built with vpp-ext-deps
 # it's reasonable to make this check to avoid breaking

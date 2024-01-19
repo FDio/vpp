@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT OPENSSL_FOUND)
+  message(WARNING "OpenSSL not found - quic plugin disabled")
+  return()
+endif()
+
 unset(QUIC_LINK_LIBRARIES)
 set(EXPECTED_QUICLY_VERSION "0.1.4-vpp")
 
