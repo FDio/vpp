@@ -47,8 +47,7 @@
 #include <vppinfra/lock.h>
 #include <vlib/error.h>		/* for vlib_error_t */
 
-#include <vlib/config.h>	/* for __PRE_DATA_SIZE */
-#define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
+#include <vlib/config.h> /* for VLIB_BUFFER_PRE_DATA_SIZE */
 
 #define VLIB_BUFFER_DEFAULT_DATA_SIZE (2048)
 
