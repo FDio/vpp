@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e011761d_a17619ad",
+        "filename": "src/plugins/quic/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-19T21:05:31Z",
+      "side": 1,
+      "message": "Hm, quicly builds without openssl on the system? I\u0027d expect some of the tests lower to fail although this could be cleaned up ...",
+      "revId": "5840c66bbc15b265e280997b028442f9fedd92f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
