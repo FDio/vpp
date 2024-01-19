@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4586c57a_db18da28",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-19T12:28:38Z",
+      "side": 1,
+      "message": "$(MAKE) ?",
+      "revId": "5eb36d448145fdbf81e1757b071c822677ba284f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
