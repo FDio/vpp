@@ -15,6 +15,7 @@ cmake_minimum_required(VERSION 3.13)
 
 if(DEFINED VPP_PLATFORM AND VPP_PLATFORM STREQUAL "default")
   unset(VPP_PLATFORM)
+  unset(VPP_PLATFORM CACHE)
   set(VPP_PLATFORM_NAME "default")
 elseif(DEFINED VPP_PLATFORM)
   set(platform_file ${CMAKE_SOURCE_DIR}/cmake/platform/${VPP_PLATFORM}.cmake)
