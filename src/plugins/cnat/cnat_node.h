@@ -84,7 +84,8 @@ cnat_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   t->generic_flow_id = vnet_buffer2 (b)->session.generic_flow_id;
   t->flow_state = vnet_buffer2 (b)->session.state;
 
-  clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
+  if (ts)
+    clib_memcpy (&t->ts, ts, sizeof (cnat_timestamp_t));
 
   t->flags = 0;
   if (rw)
