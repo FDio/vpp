@@ -34,6 +34,24 @@
       "parentUuid": "e011761d_a17619ad",
       "revId": "5840c66bbc15b265e280997b028442f9fedd92f6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d8c1cdf_0792622c",
+        "filename": "src/plugins/quic/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-01-20T18:26:10Z",
+      "side": 1,
+      "message": "quicly also depends on openssl in theory, so was expecting checks lower to disable the plugin. And it\u0027s not only that include, several parts of quicly/picotls rely on openssl for cert manipulation. Oh well, won\u0027t debug it now, was just curious and your check is much cleaner",
+      "parentUuid": "9929cfa6_ab8233e0",
+      "revId": "5840c66bbc15b265e280997b028442f9fedd92f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
