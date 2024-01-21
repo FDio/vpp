@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "422d2daf_91c15648",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-21T10:38:56Z",
+      "side": 1,
+      "message": "i see this very risky as it add even more mess to very messy plugin. Instead I  will see what needs to bi done to re-implement this in new device driver infra (vhet/devn",
+      "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
