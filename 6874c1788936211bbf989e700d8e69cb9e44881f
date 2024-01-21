@@ -16,6 +16,24 @@
       "message": "i see this very risky as it add even more mess to very messy plugin. Instead I  will see what needs to bi done to re-implement this in new device driver infra (vhet/devn",
       "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f7e8bbd3_e45661ce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-01-21T12:50:35Z",
+      "side": 1,
+      "message": "Thanks for taking a look. Please let me know if I can assist somehow in re-implementing this plugin. I\u0027d like to see a full control over dpdk interfaces via api in upstream.",
+      "parentUuid": "422d2daf_91c15648",
+      "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
