@@ -473,9 +473,12 @@ class VPPApiClient:
         self._apifiles = apifiles
         self.stats = {}
 
+        if self.apidir is None and hasattr(self.__class__, "apidir"):
+            # Keep supporting the old style of providing apidir.
+            self.apidir = self.__class__.apidir
         try:
             self.apifiles, self.messages, self.services = VPPApiJSONFiles.load_api(
-                apifiles, apidir
+                apifiles, self.apidir
             )
         except VPPRuntimeError as e:
             if testmode:
