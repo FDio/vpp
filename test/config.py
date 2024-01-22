@@ -201,7 +201,6 @@ parser.add_argument(
 parser.add_argument(
     "--sanity", action="store_true", help="perform sanity vpp run before running tests"
 )
-parser.add_argument("--api-preload", action="store_true", help="preload API files")
 
 parser.add_argument(
     "--force-foreground",
