@@ -76,7 +76,10 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  mask[0] = clib_mask_compare_u16_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  mask[0] = 0;
+  for (int i = 0; i < n_elts; i++)
+    if (a[i] == v)
+      mask[0] |= 1ULL << i;
 }
 
 static_always_inline u64
@@ -160,7 +163,10 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = 0;
+  for (int i = 0; i < n_elts; i++)
+    if (a[i] == v)
+      bitmap[0] |= 1ULL << i;
 }
 
 static_always_inline u64
@@ -219,7 +225,10 @@ clib_mask_compare_u64 (u64 v, u64 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u64_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = 0;
+  for (int i = 0; i < n_elts; i++)
+    if (a[i] == v)
+      bitmap[0] |= 1ULL << i;
 }
 
 #endif

@@ -48,6 +48,7 @@ static_always_inline u32
 clib_compress_u64 (u64 *dst, u64 *src, u64 *mask, u32 n_elts)
 {
   u64 *dst0 = dst;
+  u32 i;
   while (n_elts >= 64)
     {
       if (mask[0] == ~0ULL)
@@ -66,7 +67,9 @@ clib_compress_u64 (u64 *dst, u64 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u64_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  foreach_set_bit_index (i, mask[0] & pow2_mask (n_elts))
+    dst++[0] = src[i];
+  return dst - dst0;
 }
 
 static_always_inline u32 *
@@ -111,6 +114,7 @@ static_always_inline u32
 clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
 {
   u32 *dst0 = dst;
+  u32 i;
   while (n_elts >= 64)
     {
       if (mask[0] == ~0ULL)
@@ -129,7 +133,9 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  foreach_set_bit_index (i, mask[0] & pow2_mask (n_elts))
+    dst++[0] = src[i];
+  return dst - dst0;
 }
 
 static_always_inline u16 *
@@ -165,6 +171,7 @@ static_always_inline u32
 clib_compress_u16 (u16 *dst, u16 *src, u64 *mask, u32 n_elts)
 {
   u16 *dst0 = dst;
+  u32 i;
   while (n_elts >= 64)
     {
       if (mask[0] == ~0ULL)
@@ -183,7 +190,9 @@ clib_compress_u16 (u16 *dst, u16 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u16_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  foreach_set_bit_index (i, mask[0] & pow2_mask (n_elts))
+    dst++[0] = src[i];
+  return dst - dst0;
 }
 
 static_always_inline u8 *
@@ -215,6 +224,7 @@ static_always_inline u32
 clib_compress_u8 (u8 *dst, u8 *src, u64 *mask, u32 n_elts)
 {
   u8 *dst0 = dst;
+  u32 i;
   while (n_elts >= 64)
     {
       if (mask[0] == ~0ULL)
@@ -233,7 +243,9 @@ clib_compress_u8 (u8 *dst, u8 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u8_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  foreach_set_bit_index (i, mask[0] & pow2_mask (n_elts))
+    dst++[0] = src[i];
+  return dst - dst0;
 }
 
 #endif
