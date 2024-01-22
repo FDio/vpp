@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9ad7025_7c3d0853",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-01-22T15:15:19Z",
+      "side": 1,
+      "message": "Currently I prefer this over the revert at 40224.",
+      "revId": "c92e3ecbfb02a6bfabd92a0db6217330151a4394",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
