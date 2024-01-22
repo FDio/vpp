@@ -16,6 +16,24 @@
       "message": "please avoid refactoring code and fixing issue in the same patch",
       "revId": "5a31aa23eedd73377b886dfaa08bd3a20821f232",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "245a56eb_8a651f9f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-22T10:19:49Z",
+      "side": 1,
+      "message": "This is less of a refactor now, however it brings a bit more of the same duplicated code.",
+      "parentUuid": "25bf8fce_51156176",
+      "revId": "5a31aa23eedd73377b886dfaa08bd3a20821f232",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
