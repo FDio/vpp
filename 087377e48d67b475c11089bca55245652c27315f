@@ -16,6 +16,23 @@
       "message": "Most device tests passed.",
       "revId": "087377e48d67b475c11089bca55245652c27315f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2170575a_f78e2422",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-01-22T15:15:41Z",
+      "side": 1,
+      "message": "Currently I prefer 40231 over this.",
+      "revId": "087377e48d67b475c11089bca55245652c27315f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
