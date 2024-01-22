@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfef53e3_edb0682e",
+        "filename": "src/vppinfra/vector/compress.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-22T16:58:31Z",
+      "side": 1,
+      "message": "Isn\u0027t this suboptimal in case of AVX512? I understand old code was doing buffer overrun* , but that can be fixed with masked stores instead of dropping a ball on vector code...\n\n* NB i did that intentionally knowing that in real world such buffer underrun will not happen and my priority was performance",
+      "revId": "7b4f55371530b91f874b8ea176159051ab22e179",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50ccf096_9a885b2d",
+        "filename": "src/vppinfra/vector/mask_compare.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-01-22T16:58:31Z",
+      "side": 1,
+      "message": "same comment like in compress.h...",
+      "revId": "7b4f55371530b91f874b8ea176159051ab22e179",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
