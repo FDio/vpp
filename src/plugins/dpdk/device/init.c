@@ -822,7 +822,7 @@ unformat_max_simd_bitwidth (unformat_input_t *input, va_list *va)
 {
   uword *max_simd_bitwidth = va_arg (*va, uword *);
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (!unformat (input, "%u", max_simd_bitwidth))
 	goto error;
@@ -830,8 +830,8 @@ unformat_max_simd_bitwidth (unformat_input_t *input, va_list *va)
       if (*max_simd_bitwidth != DPDK_MAX_SIMD_BITWIDTH_256 &&
 	  *max_simd_bitwidth != DPDK_MAX_SIMD_BITWIDTH_512)
 	goto error;
+      return 1;
     }
-  return 1;
 error:
   return 0;
 }
