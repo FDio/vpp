@@ -49,6 +49,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
     FIB_NODE_TYPE_IPSEC_SA,
     FIB_NODE_TYPE_IP_PUNT_REDIRECT,
+    FIB_NODE_TYPE_VTI,
     FIB_NODE_TYPE_ENTRY_TRACK,
     /**
      * Marker. New types before this one. leave the test last.
@@ -78,6 +79,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_VXLAN_GBP_TUNNEL] = "vxlan-gbp-tunnel",	\
     [FIB_NODE_TYPE_IPSEC_SA] = "ipsec-sa",                      \
     [FIB_NODE_TYPE_IP_PUNT_REDIRECT] = "ip-punt-redirect",      \
+    [FIB_NODE_TYPE_VTI] = "vti",                                \
     [FIB_NODE_TYPE_ENTRY_TRACK] = "fib-entry-track"             \
 }
 
