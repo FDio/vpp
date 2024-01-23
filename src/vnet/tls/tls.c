@@ -820,7 +820,10 @@ tls_connect (transport_endpoint_cfg_t * tep)
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;
   if ((rv = vnet_connect (cargs)))
-    return rv;
+    {
+      tls_ctx_half_open_free (ctx_index);
+      return rv;
+    }
 
   /* Track half-open tcp session in case we need to clean it up */
   ctx->tls_session_handle = cargs->sh;
