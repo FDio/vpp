@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bc028cf8_10f6ec95",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-23T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "db87cab0_9ddc5b48",
+      "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "665cb762_07ca222a",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-01-22T17:09:45Z",
       "side": 1,
       "message": "((u32x8u *) (src + n_elts - 8)) \u0026\u003d mask8;",
+      "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be8d78ac_e0ca0762",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-23T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "665cb762_07ca222a",
       "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b67f7e40_b1f960e8",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-23T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "744a2f7c_fc74fb44",
+      "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f9c94e0e_c9074694",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "819df865_4c60b677",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-23T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f9c94e0e_c9074694",
+      "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "583fcbcf_3e9b2bb9",
@@ -82,6 +154,24 @@
       "writtenOn": "2024-01-22T17:09:45Z",
       "side": 1,
       "message": "#endif",
+      "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "323ae46c_4c671bc5",
+        "filename": "src/vppinfra/vector/array_mask.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-23T17:16:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "583fcbcf_3e9b2bb9",
       "revId": "5418865136d2bd33225d606ff30694c84b350c3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
