@@ -194,12 +194,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
 	  s = session_get (evt->session_index, thread_index);
-	  if (s->session_state <= SESSION_STATE_TRANSPORT_CLOSING)
+	  if (!(s->flags & SESSION_F_APP_CLOSED))
 	    app->cb_fns.session_disconnect_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_RESET:
 	  s = session_get (evt->session_index, thread_index);
-	  if (s->session_state <= SESSION_STATE_TRANSPORT_CLOSING)
+	  if (!(s->flags & SESSION_F_APP_CLOSED))
 	    app->cb_fns.session_reset_callback (s);
 	  break;
 	case SESSION_CTRL_EVT_UNLISTEN_REPLY:
