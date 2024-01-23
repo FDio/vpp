@@ -39,15 +39,16 @@
 /* *INDENT-OFF* */
 typedef struct tls_cxt_id_
 {
-  union {
-    session_handle_t app_session_handle;
-    u32 parent_app_api_ctx;
-  };
+  session_handle_t app_session_handle;
   session_handle_t tls_session_handle;
   void *migrate_ctx;
   u32 parent_app_wrk_index;
   u32 ssl_ctx;
-  u32 listener_ctx_index;
+  union
+  {
+    u32 listener_ctx_index;
+    u32 parent_app_api_ctx;
+  };
   u8 tcp_is_ip4;
   u8 tls_engine_id;
 } tls_ctx_id_t;
