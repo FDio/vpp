@@ -216,6 +216,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
     {
       TLS_DBG (1, "failed to allocate fifos");
       session_free (app_session);
+      ctx->no_app_session = 1;
       return rv;
     }
   ctx->app_session_handle = session_handle (app_session);
@@ -455,12 +456,15 @@ tls_session_reset_callback (session_t * s)
       tls_disconnect_transport (ctx);
     }
   else
-    if ((app_session =
-	 session_get_if_valid (ctx->c_s_index, ctx->c_thread_index)))
     {
-      session_free (app_session);
-      ctx->c_s_index = SESSION_INVALID_INDEX;
-      tls_disconnect_transport (ctx);
+      app_session = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
+      if (app_session)
+	{
+	  session_free (app_session);
+	  ctx->c_s_index = SESSION_INVALID_INDEX;
+	  ctx->no_app_session = 1;
+	  tls_disconnect_transport (ctx);
+	}
     }
 }
 
