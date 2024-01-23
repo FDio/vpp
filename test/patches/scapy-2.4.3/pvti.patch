@@ -1,0 +1,47 @@
+diff --git a/scapy/layers/pvti.py b/scapy/layers/pvti.py
+new file mode 100644
+index 0000000..e2ca888
+--- /dev/null
++++ b/scapy/layers/geneve.py
+@@ -0,0 +1,41 @@
++#! /usr/bin/env python3
++# (PVTI):
++# Packet Vector Tunnel Interface
++
++from scapy.packet import Packet, bind_layers
++from scapy.layers.l2 import Ether
++from scapy.layers.inet import IP, UDP
++from scapy.layers.inet6 import IPv6
++from scapy.fields import FlagsField, XByteField, ThreeBytesField, \
++    ConditionalField, ShortField, ByteEnumField, X3BytesField
++
++#
++# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++# |             Total Length                                      |
++# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++# |  n_pad_bytes  |   padding .....                               |
++# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++# |       chunk total len         |            pad0               |
++# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++# |                        pad1                                   |
++# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++#
++
++class PVTI(Packet):
++    name = "PVTI"
++
++    fields_desc = [
++        # INIT = ver + optlen + o + c + rsvd (all zeros)
++        LEIntField("total_len", 0x0),
++        # PROTOCOL is a 2-bytes field
++        ByteField("pad_bytes", 0),
++    ]
++
++    def mysummary(self):
++        return self.sprintf("PVTI (len=%PVTI.total_len%)")
++
++bind_layers(UDP, PVTI, dport=6192)  # RFC standard port
++# By default, set both ports to the test
++bind_layers(UDP, PVTI, sport=6192, dport=6192)
++
++
