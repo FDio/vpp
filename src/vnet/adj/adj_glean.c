@@ -45,7 +45,7 @@ adj_glean_db_lookup (fib_protocol_t proto,
 {
     uword *p;
 
-    if (vec_len(adj_gleans[proto]) <= sw_if_index)
+    if ((proto >= FIB_PROTOCOL_IP_MAX) || vec_len(adj_gleans[proto]) <= sw_if_index)
         return (ADJ_INDEX_INVALID);
 
     p = hash_get_mem (adj_gleans[proto][sw_if_index], nh_addr);
@@ -66,6 +66,7 @@ adj_glean_db_insert (fib_protocol_t proto,
 
     vlib_worker_thread_barrier_sync(vm);
 
+    ASSERT(proto < FIB_PROTOCOL_IP_MAX);
     vec_validate(adj_gleans[proto], sw_if_index);
 
     if (NULL == adj_gleans[proto][sw_if_index])
@@ -195,6 +196,7 @@ adj_glean_walk_proto (fib_protocol_t proto,
     adj_index_t ai, *aip, *ais = NULL;
     ip46_address_t *conn;
 
+    ASSERT(proto < FIB_PROTOCOL_IP_MAX);
     if (vec_len(adj_gleans[proto]) <= sw_if_index ||
         NULL == adj_gleans[proto][sw_if_index])
         return;
@@ -212,7 +214,7 @@ adj_glean_walk_proto (fib_protocol_t proto,
     vec_foreach(aip, ais)
     {
         if (ADJ_WALK_RC_STOP == cb(*aip, data))
-            return;
+            break;
     }
     vec_free(ais);
 }
@@ -244,6 +246,7 @@ adj_glean_get (fib_protocol_t proto,
         ip46_address_t *conn;
         adj_index_t ai;
 
+        ASSERT(proto < FIB_PROTOCOL_IP_MAX);
         if (vec_len(adj_gleans[proto]) <= sw_if_index ||
             NULL == adj_gleans[proto][sw_if_index])
             return (ADJ_INDEX_INVALID);
@@ -265,6 +268,7 @@ adj_glean_get_src (fib_protocol_t proto,
     const ip_adjacency_t *adj;
     adj_index_t ai;
 
+    ASSERT(proto < FIB_PROTOCOL_IP_MAX);
     if (vec_len(adj_gleans[proto]) <= sw_if_index ||
         NULL == adj_gleans[proto][sw_if_index])
         return (NULL);
