@@ -1574,6 +1574,7 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
 #include "{module}.api.h"
 #undef vl_printfun
 
+#include "{module}.api_json.h"
 """
 
     write(hdr.format(module=module))
@@ -1586,6 +1587,7 @@ def generate_c_boilerplate(services, defines, counters, file_crc, module, stream
             '   u16 msg_id_base = vl_msg_api_get_msg_ids ("{}_{crc:08x}", '
             "VL_MSG_{m}_LAST);\n".format(module, crc=file_crc, m=module.upper())
         )
+        write(f"   vec_add1(am->json_api_repr, (u8 *)json_api_repr_{module});\n")
 
     for d in defines:
         write(

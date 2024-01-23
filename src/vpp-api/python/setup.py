@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
 try:
     from setuptools import setup, find_packages
@@ -22,7 +21,7 @@ requirements = []
 
 setup(
     name="vpp_papi",
-    version="2.0.0",
+    version="2.1.0",
     description="VPP Python binding",
     author="Ole Troan",
     author_email="ot@cisco.com",
@@ -31,6 +30,7 @@ setup(
     test_suite="vpp_papi.tests",
     install_requires=requirements,
     packages=find_packages(),
+    package_data={"vpp_papi": ["data/*.json"]},
     long_description="""VPP Python language binding.""",
     zip_safe=True,
 )
