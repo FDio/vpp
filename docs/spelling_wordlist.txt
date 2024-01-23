@@ -903,6 +903,9 @@ pthreads
 pton
 pushingapatch
 putatively
+pvti
+PVTI
+Pvti
 pwait
 py
 pypi
