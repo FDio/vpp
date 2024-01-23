@@ -1,0 +1,8 @@
+---
+name: Packet Vector Tunnel
+maintainer: Andrew Yourtchenko <ayourtch@gmail.com>
+features:
+  - support inner MTU up to 64K over standard 1280..1500 MTU substrate
+description: "Large MTU Tunnels"
+state: development
+properties: [API, CLI]
