@@ -64,7 +64,7 @@ function(vpp_generate_api_json_header file dir component)
   add_custom_command (OUTPUT ${output_name}
     COMMAND mkdir -p ${output_dir}
     COMMAND ${PYENV} ${VPP_APIGEN}
-    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --output ${output_name}
+    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --outputdir ${output_dir} --output ${output_name}
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )

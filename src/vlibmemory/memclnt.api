@@ -27,7 +27,7 @@ service {
 };
 
 /*
- * Create a client registration 
+ * Create a client registration
  */
 define memclnt_create {
   option deprecated;
@@ -50,7 +50,7 @@ define memclnt_create_reply {
 };
 
 /*
- * Delete a client registration 
+ * Delete a client registration
  */
 define memclnt_delete {
     u32 index;                  /* index, used e.g. by API trace replay */
@@ -155,7 +155,7 @@ typedef message_table_entry
 };
 
 /*
- * Create a socket client registration. 
+ * Create a socket client registration.
  */
 define sockclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
@@ -172,7 +172,7 @@ define sockclnt_create_reply {
 };
 
 /*
- * Delete a client registration 
+ * Delete a client registration
  */
 define sockclnt_delete {
     u32 client_index;
@@ -251,4 +251,15 @@ define memclnt_create_v2_reply {
     u64 handle;                 /* handle by which vlib knows this client */
     u32 index;                  /* index, used e.g. by API trace replay */
     u64 message_table;          /* serialized message table in shmem */
+};
+
+define get_api_json {
+    u32 client_index;
+    u32 context;
+};
+
+define get_api_json_reply {
+    u32 context;
+    i32 retval;
+    string json[];
 };
