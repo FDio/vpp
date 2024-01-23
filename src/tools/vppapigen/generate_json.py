@@ -110,6 +110,15 @@ def main():
                         ],
                         f.name,
                     ),
+                    "outputdir": "%s/%s/"
+                    % (
+                        output_path,
+                        output_dir_map[
+                            f.as_posix().split("/")[
+                                src_dir_depth + BASE_DIR.count("/") - 1
+                            ]
+                        ],
+                    ),
                     "input_file": f.as_posix(),
                     "includedir": [src_dir.as_posix()],
                     "output_module": "JSON",
