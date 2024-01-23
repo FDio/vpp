@@ -1,0 +1,809 @@
+{
+    "types": [
+        [
+            "module_version",
+            [
+                "u32",
+                "major"
+            ],
+            [
+                "u32",
+                "minor"
+            ],
+            [
+                "u32",
+                "patch"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ]
+        ],
+        [
+            "message_table_entry",
+            [
+                "u16",
+                "index"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ]
+        ]
+    ],
+    "messages": [
+        [
+            "memclnt_create",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "ctx_quota"
+            ],
+            [
+                "u64",
+                "input_queue"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ],
+            [
+                "u32",
+                "api_versions",
+                8
+            ],
+            {
+                "crc": "0x9c5e1c2f",
+                "options": {
+                    "deprecated": null
+                },
+                "comment": "/*\n * Create a client registration\n */"
+            }
+        ],
+        [
+            "memclnt_create_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "response"
+            ],
+            [
+                "u64",
+                "handle"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            [
+                "u64",
+                "message_table"
+            ],
+            {
+                "crc": "0x42ec4560",
+                "options": {
+                    "deprecated": null
+                }
+            }
+        ],
+        [
+            "memclnt_delete",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            [
+                "u64",
+                "handle"
+            ],
+            [
+                "bool",
+                "do_cleanup"
+            ],
+            {
+                "crc": "0x7e1c04e3",
+                "options": {},
+                "comment": "/*\n * Delete a client registration\n */"
+            }
+        ],
+        [
+            "memclnt_delete_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "i32",
+                "response"
+            ],
+            [
+                "u64",
+                "handle"
+            ],
+            {
+                "crc": "0x3d3b6312",
+                "options": {}
+            }
+        ],
+        [
+            "rx_thread_exit",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u8",
+                "dummy"
+            ],
+            {
+                "crc": "0xc3a3a452",
+                "options": {},
+                "comment": "/*\n * Client RX thread exit\n */"
+            }
+        ],
+        [
+            "memclnt_rx_thread_suspend",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u8",
+                "dummy"
+            ],
+            {
+                "crc": "0xc3a3a452",
+                "options": {},
+                "comment": "/*\n * Client RX thread suspend\n */"
+            }
+        ],
+        [
+            "memclnt_read_timeout",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u8",
+                "dummy"
+            ],
+            {
+                "crc": "0xc3a3a452",
+                "options": {},
+                "comment": "/*\n * Client read timeout\n */"
+            }
+        ],
+        [
+            "rpc_call",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u64",
+                "function"
+            ],
+            [
+                "u8",
+                "multicast"
+            ],
+            [
+                "u8",
+                "need_barrier_sync"
+            ],
+            [
+                "u8",
+                "send_reply"
+            ],
+            [
+                "u32",
+                "data_len"
+            ],
+            [
+                "u8",
+                "data",
+                0,
+                "data_len"
+            ],
+            {
+                "crc": "0x7e8a2c95",
+                "options": {},
+                "comment": "/*\n * RPC\n */"
+            }
+        ],
+        [
+            "rpc_call_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804",
+                "options": {}
+            }
+        ],
+        [
+            "get_first_msg_id",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ],
+            {
+                "crc": "0xebf79a66",
+                "options": {},
+                "comment": "/*\n * Lookup message-ID base by name\n */"
+            }
+        ],
+        [
+            "get_first_msg_id_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            [
+                "u16",
+                "first_msg_id"
+            ],
+            {
+                "crc": "0x7d337472",
+                "options": {}
+            }
+        ],
+        [
+            "api_versions",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            {
+                "crc": "0x51077d14",
+                "options": {},
+                "comment": "/*\n * Get API version table (includes built-in and plugins)\n */"
+            }
+        ],
+        [
+            "api_versions_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            [
+                "u32",
+                "count"
+            ],
+            [
+                "vl_api_module_version_t",
+                "api_versions",
+                0,
+                "count"
+            ],
+            {
+                "crc": "0x5f0d99d6",
+                "options": {}
+            }
+        ],
+        [
+            "trace_plugin_msg_ids",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "string",
+                "plugin_name",
+                128
+            ],
+            [
+                "u16",
+                "first_msg_id"
+            ],
+            [
+                "u16",
+                "last_msg_id"
+            ],
+            {
+                "crc": "0xf476d3ce",
+                "options": {},
+                "comment": "/*\n * Trace the plugin message-id allocator\n * so we stand a chance of dealing with different sets of plugins\n * at api trace replay time\n */"
+            }
+        ],
+        [
+            "sockclnt_create",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ],
+            {
+                "crc": "0x455fb9c4",
+                "options": {},
+                "comment": "/*\n * Create a socket client registration.\n */"
+            }
+        ],
+        [
+            "sockclnt_create_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "response"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            [
+                "u16",
+                "count"
+            ],
+            [
+                "vl_api_message_table_entry_t",
+                "message_table",
+                0,
+                "count"
+            ],
+            {
+                "crc": "0x35166268",
+                "options": {}
+            }
+        ],
+        [
+            "sockclnt_delete",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            {
+                "crc": "0x8ac76db6",
+                "options": {},
+                "comment": "/*\n * Delete a client registration\n */"
+            }
+        ],
+        [
+            "sockclnt_delete_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "response"
+            ],
+            {
+                "crc": "0x8f38b1ee",
+                "options": {}
+            }
+        ],
+        [
+            "sock_init_shm",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "u32",
+                "requested_size"
+            ],
+            [
+                "u8",
+                "nitems"
+            ],
+            [
+                "u64",
+                "configs",
+                0,
+                "nitems"
+            ],
+            {
+                "crc": "0x51646d92",
+                "options": {},
+                "comment": "/*\n * Initialize shm api over socket api\n */"
+            }
+        ],
+        [
+            "sock_init_shm_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804",
+                "options": {}
+            }
+        ],
+        [
+            "memclnt_keepalive",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            {
+                "crc": "0x51077d14",
+                "options": {},
+                "comment": "/*\n * Memory client ping / response\n * Only sent on inactive connections\n */"
+            }
+        ],
+        [
+            "memclnt_keepalive_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            {
+                "crc": "0xe8d4e804",
+                "options": {}
+            }
+        ],
+        [
+            "control_ping",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            {
+                "crc": "0x51077d14",
+                "options": {},
+                "comment": "/** \\brief Control ping from client to api server request\n    @param client_index - opaque cookie to identify the sender\n    @param context - sender context, to match reply w/ request\n*/"
+            }
+        ],
+        [
+            "control_ping_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "vpe_pid"
+            ],
+            {
+                "crc": "0xf6b0b8ca",
+                "options": {},
+                "comment": "/** \\brief Control ping from the client to the server response\n    @param client_index - opaque cookie to identify the sender\n    @param context - sender context, to match reply w/ request\n    @param retval - return code for the request\n    @param vpe_pid - the pid of the vpe, returned by the server\n*/"
+            }
+        ],
+        [
+            "memclnt_create_v2",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "ctx_quota"
+            ],
+            [
+                "u64",
+                "input_queue"
+            ],
+            [
+                "string",
+                "name",
+                64
+            ],
+            [
+                "u32",
+                "api_versions",
+                8
+            ],
+            [
+                "bool",
+                "keepalive",
+                {
+                    "default": "true"
+                }
+            ],
+            {
+                "crc": "0xc4bd4882",
+                "options": {}
+            }
+        ],
+        [
+            "memclnt_create_v2_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "response"
+            ],
+            [
+                "u64",
+                "handle"
+            ],
+            [
+                "u32",
+                "index"
+            ],
+            [
+                "u64",
+                "message_table"
+            ],
+            {
+                "crc": "0x42ec4560",
+                "options": {}
+            }
+        ],
+        [
+            "get_api_json",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "client_index"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            {
+                "crc": "0x51077d14",
+                "options": {}
+            }
+        ],
+        [
+            "get_api_json_reply",
+            [
+                "u16",
+                "_vl_msg_id"
+            ],
+            [
+                "u32",
+                "context"
+            ],
+            [
+                "i32",
+                "retval"
+            ],
+            [
+                "string",
+                "json",
+                0
+            ],
+            {
+                "crc": "0xea715b59",
+                "options": {}
+            }
+        ]
+    ],
+    "unions": [],
+    "enums": [],
+    "enumflags": [],
+    "services": {
+        "memclnt_rx_thread_suspend": {
+            "reply": "null"
+        },
+        "memclnt_read_timeout": {
+            "reply": "null"
+        },
+        "rx_thread_exit": {
+            "reply": "null"
+        },
+        "trace_plugin_msg_ids": {
+            "reply": "null"
+        },
+        "memclnt_create": {
+            "reply": "memclnt_create_reply"
+        },
+        "memclnt_delete": {
+            "reply": "memclnt_delete_reply"
+        },
+        "rpc_call": {
+            "reply": "rpc_call_reply"
+        },
+        "get_first_msg_id": {
+            "reply": "get_first_msg_id_reply"
+        },
+        "api_versions": {
+            "reply": "api_versions_reply"
+        },
+        "sockclnt_create": {
+            "reply": "sockclnt_create_reply"
+        },
+        "sockclnt_delete": {
+            "reply": "sockclnt_delete_reply"
+        },
+        "sock_init_shm": {
+            "reply": "sock_init_shm_reply"
+        },
+        "memclnt_keepalive": {
+            "reply": "memclnt_keepalive_reply"
+        },
+        "control_ping": {
+            "reply": "control_ping_reply"
+        },
+        "memclnt_create_v2": {
+            "reply": "memclnt_create_v2_reply"
+        },
+        "get_api_json": {
+            "reply": "get_api_json_reply"
+        }
+    },
+    "options": {
+        "version": "2.1.0"
+    },
+    "aliases": {},
+    "vl_api_version": "0xb197c551",
+    "imports": [],
+    "counters": [],
+    "paths": []
+}
