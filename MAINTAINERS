@@ -847,6 +847,11 @@ I:	tracenode
 M:	Maxime Peim <mpeim@cisco.com>
 F:	src/plugins/tracenode
 
+Plugin - Packet Vector Tunnel Interface
+I:	pvti
+M:	Andrew Yourtchenko <ayourtch@gmail.com>
+F:	src/plugins/pvti
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
