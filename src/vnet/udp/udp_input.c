@@ -224,6 +224,10 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
 				udp->src_port, TRANSPORT_PROTO_UDP);
     }
 
+  /* Set the sw_if_index[VLIB_RX] to the interface we received
+   * the connection on (the local interface) */
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->ip.rx_sw_if_index;
+
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     b->current_length = hdr->data_length;
   else
