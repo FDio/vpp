@@ -129,6 +129,12 @@ clib_mem_main_init (void)
   else				/* likely kernel older than 4.14 */
     mm->log2_default_hugepage_sz = legacy_get_log2_default_hugepage_size ();
 
+  if (mm->log2_default_hugepage_sz == 0) {
+        mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz = mm->log2_page_sz;
+  } else {
+      mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz;
+  }
+
   mm->log2_sys_default_hugepage_sz = mm->log2_default_hugepage_sz;
 
   /* numa nodes */

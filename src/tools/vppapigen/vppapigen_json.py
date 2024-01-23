@@ -1,5 +1,7 @@
 # JSON generation
 import json
+import sys
+import os
 
 process_imports = True
 
@@ -88,7 +90,25 @@ def walk_defs(s, is_message=False):
 #
 # Plugin entry point
 #
-def run(output_dir, filename, s):
+
+def contents_to_c_string(contents):
+    # Escape backslashes and double quotes
+    contents = contents.replace('\\', '\\\\').replace('"', '\\"')
+    # Replace newlines with \n
+    contents = contents.replace('\n', '\\n')
+    return '"' + contents + '"'
+
+def run(output_dir, apifilename, s):
+
+    if not output_dir:
+        sys.stderr.write("Missing --outputdir argument")
+        return None
+
+    basename = os.path.basename(apifilename)
+    filename_json_repr = os.path.join(output_dir + "/" + basename + "_json.h")
+    filename, _ = os.path.splitext(basename)
+    modulename = filename.replace(".", "_")
+
     j = {}
 
     j["types"] = walk_defs([o for o in s["types"] if o.__class__.__name__ == "Typedef"])
@@ -106,4 +126,9 @@ def run(output_dir, filename, s):
     j["vl_api_version"] = hex(s["file_crc"])
     j["imports"] = walk_imports(i for i in s["Import"])
     j["counters"], j["paths"] = walk_counters(s["Counters"], s["Paths"])
-    return json.dumps(j, indent=4, separators=(",", ": "))
+    r = json.dumps(j, indent=4, separators=(",", ": "))
+    c_string = contents_to_c_string(r)
+    with open(filename_json_repr, "w", encoding="UTF-8") as f:
+        print(f'const char *json_api_repr_{modulename} = {c_string};', file=f)
+    # return json.dumps(j, indent=4, separators=(",", ": "))
+    return r

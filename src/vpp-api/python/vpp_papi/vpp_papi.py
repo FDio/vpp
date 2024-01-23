@@ -18,7 +18,6 @@ from __future__ import print_function
 from __future__ import absolute_import
 import ctypes
 import ipaddress
-import sys
 import multiprocessing as mp
 import os
 import queue
@@ -30,6 +29,7 @@ import fnmatch
 import weakref
 import atexit
 import time
+import pkg_resources
 from .vpp_format import verify_enum_hint
 from .vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType, VPPUnionType
 from .vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
@@ -61,7 +61,6 @@ __all__ = (
     "VPPValueError",
     "VPPApiClient",
 )
-
 
 def metaclass(metaclass):
     @functools.wraps(metaclass)
@@ -281,15 +280,28 @@ class VPPApiJSONFiles:
 
     @classmethod
     def process_json_file(self, apidef_file):
-        return self._process_json(apidef_file.read())
+        api = json.load(apidef_file)
+        return self._process_json(api)
 
     @classmethod
     def process_json_str(self, json_str):
-        return self._process_json(json_str)
+        api = json.loads(json_str)
+        return self._process_json(api)
+
+    @classmethod
+    def process_json_array_str(self, json_str):
+        services = {}
+        messages = {}
+
+        apis = json.loads(json_str)
+        for a in apis:
+            m, s = self._process_json(a)
+            messages.update(m)
+            services.update(s)
+        return messages, services
 
     @staticmethod
-    def _process_json(json_str):  # -> Tuple[Dict, Dict]
-        api = json.loads(json_str)
+    def _process_json(api):  # -> Tuple[Dict, Dict]
         types = {}
         services = {}
         messages = {}
@@ -373,7 +385,6 @@ class VPPApiJSONFiles:
                 try:
                     messages[m[0]] = VPPMessage(m[0], m[1:])
                 except VPPNotImplementedError:
-                    ### OLE FIXME
                     logger.error("Not implemented error for {}".format(m[0]))
         except KeyError:
             pass
@@ -435,6 +446,7 @@ class VPPApiClient:
         read_timeout=5,
         use_socket=True,
         server_address="/run/vpp/api.sock",
+        bootstrapapi=False,
     ):
         """Create a VPP API object.
 
@@ -472,25 +484,33 @@ class VPPApiClient:
         self.server_address = server_address
         self._apifiles = apifiles
         self.stats = {}
+        self.bootstrapapi = bootstrapapi
 
-        if self.apidir is None and hasattr(self.__class__, "apidir"):
-            # Keep supporting the old style of providing apidir.
-            self.apidir = self.__class__.apidir
-        try:
-            self.apifiles, self.messages, self.services = VPPApiJSONFiles.load_api(
-                apifiles, self.apidir
-            )
-        except VPPRuntimeError as e:
-            if testmode:
-                self.apifiles = []
-            else:
-                raise e
+        if not bootstrapapi:
+            if self.apidir is None and hasattr(self.__class__, "apidir"):
+                # Keep supporting the old style of providing apidir.
+                self.apidir = self.__class__.apidir
+            try:
+                self.apifiles, self.messages, self.services = VPPApiJSONFiles.load_api(
+                    apifiles, self.apidir
+                )
+            except VPPRuntimeError as e:
+                if testmode:
+                    self.apifiles = []
+                else:
+                    raise e
+        else:
+            # Bootstrap the API (memclnt.api bundled with VPP PAPI)
+            resource_path = '/'.join(('data', 'memclnt.api.json'))
+            file_content = pkg_resources.resource_string(__name__, resource_path)
+            self.messages, self.services = VPPApiJSONFiles.process_json_str(file_content)
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
             raise VPPValueError(1, "Missing JSON message definitions")
-        if not (verify_enum_hint(VppEnum.vl_api_address_family_t)):
-            raise VPPRuntimeError("Invalid address family hints. " "Cannot continue.")
+        if not bootstrapapi:
+            if not (verify_enum_hint(VppEnum.vl_api_address_family_t)):
+                raise VPPRuntimeError("Invalid address family hints. " "Cannot continue.")
 
         self.transport = VppTransport(
             self, read_timeout=read_timeout, server_address=server_address
@@ -573,6 +593,22 @@ class VPPApiClient:
             else:
                 self.logger.debug("No such message type or failed CRC checksum: %s", n)
 
+    def get_api_definitions(self):
+        '''get_api_definition. Bootstrap from the embedded memclnt.api.json file.'''
+
+        # Bootstrap so we can call the get_api_json function
+        self._register_functions(do_async=False)
+
+        r = self.api.get_api_json()
+        if r.retval != 0:
+            raise VPPApiError('Failed to load API definitions from VPP')
+
+        # Process JSON
+        m, s = VPPApiJSONFiles.process_json_array_str(r.json)
+        self.messages.update(m)
+        self.services.update(s)
+
+
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen, do_async):
         pfx = chroot_prefix.encode("utf-8") if chroot_prefix else None
 
@@ -580,6 +616,10 @@ class VPPApiClient:
         if rv != 0:
             raise VPPIOError(2, "Connect failed")
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
+
+        # Register functions
+        if self.bootstrapapi:
+            self.get_api_definitions()
         self._register_functions(do_async=do_async)
 
         # Initialise control ping
@@ -588,6 +628,7 @@ class VPPApiClient:
             ("control_ping" + "_" + crc[2:])
         )
         self.control_ping_msgdef = self.messages["control_ping"]
+
         if self.async_thread:
             self.event_thread = threading.Thread(target=self.thread_msg_handler)
             self.event_thread.daemon = True
@@ -659,6 +700,7 @@ class VPPApiClient:
         )
 
         (i, ci, context), size = header.unpack(msg, 0)
+
         if self.id_names[i] == "rx_thread_exit":
             return
 
