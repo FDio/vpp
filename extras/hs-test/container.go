@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	logDir string = "/tmp/hs-test/"
+	logDir    string = "/tmp/hs-test/"
+	volumeDir string = "/volumes"
 )
 
 var (
@@ -37,7 +38,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func newContainer(yamlInput ContainerConfig) (*Container, error) {
+func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -48,6 +49,7 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 	container.volumes = make(map[string]Volume)
 	container.envVars = make(map[string]string)
 	container.name = containerName
+	container.suite = suite
 
 	if image, ok := yamlInput["image"]; ok {
 		container.image = image.(string)
@@ -74,19 +76,20 @@ func newContainer(yamlInput ContainerConfig) (*Container, error) {
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		r := strings.NewReplacer("$HST_DIR", workDir)
+		workingVolumeDir := logDir + container.suite.T().Name() + volumeDir
+		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
+		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
 			volumeMap := volu.(ContainerConfig)
-			hostDir := r.Replace(volumeMap["host-dir"].(string))
+			hostDir := workDirReplacer.Replace(volumeMap["host-dir"].(string))
+			hostDir = volDirReplacer.Replace(hostDir)
 			containerDir := volumeMap["container-dir"].(string)
 			isDefaultWorkDir := false
 
 			if isDefault, ok := volumeMap["is-default-work-dir"]; ok {
 				isDefaultWorkDir = isDefault.(bool)
 			}
-
 			container.addVolume(hostDir, containerDir, isDefaultWorkDir)
-
 		}
 	}
 
@@ -342,7 +345,7 @@ func (c *Container) stop() error {
 func (c *Container) createConfig(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
-	f, err := os.CreateTemp("/tmp/hs-test/", "hst-config")
+	f, err := os.CreateTemp(logDir, "hst-config")
 	c.suite.assertNil(err)
 	defer os.Remove(f.Name())
 

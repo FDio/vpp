@@ -26,7 +26,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	s.log("starting VPPs")
 
 	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		clientContainer.getContainerWorkDir())
+		clientContainer.getHostWorkDir())
 	err := clnVclConf.
 		newStanza("vcl").
 		append("rx-fifo-size 4000000").
@@ -39,7 +39,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	s.assertNil(err)
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		serverContainer.getContainerWorkDir())
+		serverContainer.getHostWorkDir())
 	err = srvVclConf.
 		newStanza("vcl").
 		append("rx-fifo-size 4000000").

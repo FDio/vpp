@@ -222,13 +222,15 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Volumes {
 		volumeMap := elem["volume"].(VolumeConfig)
 		hostDir := volumeMap["host-dir"].(string)
+		workingVolumeDir := logDir + s.T().Name() + volumeDir
+		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
+		hostDir = volDirReplacer.Replace(hostDir)
 		s.volumes = append(s.volumes, hostDir)
 	}
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := newContainer(elem)
-		newContainer.suite = s
+		newContainer, err := newContainer(s, elem)
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
 		}
