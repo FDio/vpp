@@ -27,6 +27,7 @@
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
+#include <vnet/mpls/mpls_lookup.h>
 
 /* l2 connection type */
 typedef enum l2_input_flags_t_
@@ -327,7 +328,7 @@ vnet_update_l2_len (vlib_buffer_t *b)
 
 /*
  * Compute flow hash of an ethernet packet, use 5-tuple hash if L3 packet
- * is ip4 or ip6. Otherwise hash on smac/dmac/etype.
+ * is ip4, ip6, or mpls. Otherwise hash on smac/dmac/etype.
  * The vlib buffer current pointer is expected to be at ethernet header
  * and vnet l2.l2_len is expected to be setup already.
  */
@@ -342,6 +343,9 @@ vnet_l2_compute_flow_hash (vlib_buffer_t * b)
     return ip4_compute_flow_hash ((ip4_header_t *) l3h, IP_FLOW_HASH_DEFAULT);
   else if (ethertype == ETHERNET_TYPE_IP6)
     return ip6_compute_flow_hash ((ip6_header_t *) l3h, IP_FLOW_HASH_DEFAULT);
+  else if (ethertype == ETHERNET_TYPE_MPLS)
+    return mpls_compute_flow_hash ((mpls_unicast_header_t *) l3h,
+				   IP_FLOW_HASH_DEFAULT);
   else
     {
       u32 a, b, c;

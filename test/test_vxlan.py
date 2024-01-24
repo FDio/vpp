@@ -11,7 +11,9 @@ from scapy.layers.l2 import Ether
 from scapy.layers.l2 import ARP
 from scapy.packet import Raw, bind_layers
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.layers.vxlan import VXLAN
+from scapy.contrib.mpls import MPLS
 
 import util
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -287,6 +289,71 @@ class TestVxlan(BridgeDomain, VppTestCase):
         # Set scapy listen custom port for VxLAN
         bind_layers(UDP, VXLAN, dport=self.dport)
 
+    def encap_packets(self):
+        def encap_frames(frame, n=10):
+            frames = []
+
+            # Provide IP flow hash difference.
+            for i in range(n):
+                p = frame.copy()
+                p[UDP].dport += i
+                frames.append(p)
+
+            self.pg1.add_stream(frames)
+
+            self.pg0.enable_capture()
+            self.pg_start()
+
+            # Pick received frames and check if they're correctly encapsulated.
+            out = self.pg0.get_capture(n)
+            sports = set()
+            for i in range(n):
+                pkt = out[i]
+                self.check_encapsulation(pkt, self.single_tunnel_vni)
+
+                payload = self.decapsulate(pkt)
+                self.assert_eq_pkts(payload, frames[i])
+
+                sports.add(pkt[UDP].sport)
+
+            # Check src port randomization presence, not concerned with the
+            # src ports split ratio, just as long as there are more then one.
+            self.assertGreaterEqual(len(sports), min(n, 2))
+
+        frame_ip4 = (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / UDP(sport=20000, dport=10000)
+            / Raw("\xa5" * 100)
+        )
+        encap_frames(frame_ip4)
+
+        frame_ip6 = (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
+            / UDP(sport=20000, dport=10000)
+            / Raw("\xa5" * 100)
+        )
+        encap_frames(frame_ip6)
+
+        frame_mpls4 = (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / MPLS(label=44, ttl=64)
+            / IP(src="4.3.2.1", dst="1.2.3.4")
+            / UDP(sport=20000, dport=10000)
+            / Raw("\xa5" * 100)
+        )
+        encap_frames(frame_mpls4)
+
+        frame_mpls6 = (
+            Ether(src="00:00:00:00:00:02", dst="00:00:00:00:00:01")
+            / MPLS(label=44, ttl=64)
+            / IPv6(src="2001:db8::4321", dst="2001:db8::1234")
+            / UDP(sport=20000, dport=10000)
+            / Raw("\xa5" * 100)
+        )
+        encap_frames(frame_mpls6)
+
     def encap_big_packet(self):
         self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1500, 0, 0, 0])
 
@@ -330,7 +397,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         from BridgeDoman
         """
         self.createVxLANInterfaces()
-        super(TestVxlan, self).test_encap()
+        self.encap_packets()
 
     def test_encap_big_packet(self):
         """Encapsulation test send big frame from pg1

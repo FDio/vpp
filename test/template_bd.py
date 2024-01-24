@@ -5,6 +5,8 @@ import abc
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
+from scapy.contrib.mpls import MPLS
 
 
 class BridgeDomain(metaclass=abc.ABCMeta):
@@ -61,8 +63,16 @@ class BridgeDomain(metaclass=abc.ABCMeta):
         """
         self.assertEqual(pkt1[Ether].src, pkt2[Ether].src)
         self.assertEqual(pkt1[Ether].dst, pkt2[Ether].dst)
-        self.assertEqual(pkt1[IP].src, pkt2[IP].src)
-        self.assertEqual(pkt1[IP].dst, pkt2[IP].dst)
+        if MPLS in pkt1 or MPLS in pkt2:
+            self.assertEqual(pkt1[MPLS].label, pkt2[MPLS].label)
+            self.assertEqual(pkt1[MPLS].cos, pkt2[MPLS].cos)
+            self.assertEqual(pkt1[MPLS].ttl, pkt2[MPLS].ttl)
+        if IP in pkt1 or IP in pkt2:
+            self.assertEqual(pkt1[IP].src, pkt2[IP].src)
+            self.assertEqual(pkt1[IP].dst, pkt2[IP].dst)
+        elif IPv6 in pkt1 or IPv6 in pkt2:
+            self.assertEqual(pkt1[IPv6].src, pkt2[IPv6].src)
+            self.assertEqual(pkt1[IPv6].dst, pkt2[IPv6].dst)
         self.assertEqual(pkt1[UDP].sport, pkt2[UDP].sport)
         self.assertEqual(pkt1[UDP].dport, pkt2[UDP].dport)
         self.assertEqual(pkt1[Raw], pkt2[Raw])
