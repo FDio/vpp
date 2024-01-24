@@ -68,6 +68,7 @@ extern clib_perfmon_main_t clib_perfmon_main;
 static_always_inline void
 clib_perfmon_ioctl (int fd, u32 req)
 {
+#ifdef __linux__
 #ifdef __x86_64__
   asm volatile("syscall"
 	       :
@@ -75,6 +76,7 @@ clib_perfmon_ioctl (int fd, u32 req)
 	       : "rcx", "r11" /* registers modified by kernel */);
 #else
   ioctl (fd, req, PERF_IOC_FLAG_GROUP);
+#endif
 #endif
 }
 
@@ -87,6 +89,7 @@ u64 *clib_perfmon_capture (clib_perfmon_ctx_t *ctx, u32 n_ops, char *fmt, ...);
 void clib_perfmon_capture_group (clib_perfmon_ctx_t *ctx, char *fmt, ...);
 format_function_t format_perfmon_bundle;
 
+#ifdef __linux__
 static_always_inline void
 clib_perfmon_reset (clib_perfmon_ctx_t *ctx)
 {
@@ -102,6 +105,23 @@ clib_perfmon_disable (clib_perfmon_ctx_t *ctx)
 {
   clib_perfmon_ioctl (ctx->group_fd, PERF_EVENT_IOC_DISABLE);
 }
+#elif __FreeBSD__
+static_always_inline void
+clib_perfmon_reset (clib_perfmon_ctx_t *ctx)
+{
+  /* TODO: Implement for FreeBSD */
+}
+static_always_inline void
+clib_perfmon_enable (clib_perfmon_ctx_t *ctx)
+{
+  /* TODO: Implement for FreeBSD */
+}
+static_always_inline void
+clib_perfmon_disable (clib_perfmon_ctx_t *ctx)
+{
+  /* TODO: Implement for FreeBSD */
+}
+#endif	/* linux */
 
 #define CLIB_PERFMON_BUNDLE(x)                                                \
   static clib_perfmon_bundle_reg_t clib_perfmon_bundle_reg_##x;               \
