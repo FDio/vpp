@@ -195,6 +195,21 @@ test run time it is not advisable to use aforementioned skip methods and instead
     func (s *MySuite) SkipTest(){
 
 
+**Debugging a test**
+
+It is possible to debug VPP by attaching ``gdb`` before test execution by adding ``DEBUG=true`` like follows:
+
+::
+
+    $ make test TEST=TestVeths/TestLDPreloadIperfVpp DEBUG=true
+    ...
+    run following command in different terminal:
+    docker exec -it server-vpp gdb -ex "attach $(docker exec server-vpp pidof vpp)"
+    Afterwards press CTRL+C to continue
+
+If a test consists of more VPP instances then this is done for each of them.
+
+
 **Eternal dependencies**
 
 * Linux tools ``ip``, ``brctl``
