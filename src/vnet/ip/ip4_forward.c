@@ -1206,9 +1206,11 @@ format_ip4_forward_next_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t *t = va_arg (*args, ip4_forward_next_trace_t *);
   u32 indent = format_get_indent (s);
-  s = format (s, "%U%U",
-	      format_white_space, indent,
-	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
+
+  s = format (s, "%Ufib:%d adj:%d flow:0x%08x", format_white_space, indent,
+	      t->fib_index, t->dpo_index, t->flow_hash);
+  s = format (s, "\n%U%U", format_white_space, indent, format_ip4_header,
+	      t->packet_data, sizeof (t->packet_data));
   return s;
 }
 #endif

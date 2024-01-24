@@ -966,8 +966,7 @@ format_ip6_forward_next_trace (u8 * s, va_list * args)
   ip6_forward_next_trace_t *t = va_arg (*args, ip6_forward_next_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%Ufib:%d adj:%d flow:%d",
-	      format_white_space, indent,
+  s = format (s, "%Ufib:%d adj:%d flow:0x%08x", format_white_space, indent,
 	      t->fib_index, t->adj_index, t->flow_hash);
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
