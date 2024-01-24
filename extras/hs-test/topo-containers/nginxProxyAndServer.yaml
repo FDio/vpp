@@ -1,7 +1,7 @@
 ---
 volumes:
   - volume: &shared-vol-proxy
-      host-dir: /tmp/shared-vol-proxy
+      host-dir: "$HST_VOLUME_DIR/shared-vol-proxy"
 
 containers:
   - name: "vpp-proxy"
