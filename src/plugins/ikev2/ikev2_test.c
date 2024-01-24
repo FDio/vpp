@@ -396,8 +396,78 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
 
-  fformat (vam->ofp, "profile index %d sa index: %d\n",
-	   mp->sa.profile_index, mp->sa.sa_index);
+  fformat (vam->ofp, "profile index %u sa index: %d\n", mp->sa.profile_index,
+	   mp->sa.sa_index);
+  fformat (vam->ofp, " iip %U ispi %lx rip %U rspi %lx\n", format_ip_address,
+	   &iaddr, sa->ispi, format_ip_address, &raddr, sa->rspi);
+  fformat (vam->ofp, " %U ", format_ikev2_sa_transform, &sa->encryption);
+  fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &sa->prf);
+  fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &sa->integrity);
+  fformat (vam->ofp, "%U \n", format_ikev2_sa_transform, &sa->dh);
+
+  fformat (vam->ofp, "  SK_d    %U\n", format_hex_bytes, k->sk_d, k->sk_d_len);
+
+  fformat (vam->ofp, "  SK_a  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_ai, k->sk_ai_len, format_hex_bytes, k->sk_ar, k->sk_ar_len);
+
+  fformat (vam->ofp, "  SK_e  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_ei, k->sk_ei_len, format_hex_bytes, k->sk_er, k->sk_er_len);
+
+  fformat (vam->ofp, "  SK_p  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_pi, k->sk_pi_len, format_hex_bytes, k->sk_pr, k->sk_pr_len);
+
+  fformat (vam->ofp, "  identifier (i) %U\n", format_ikev2_id_type_and_data,
+	   &sa->i_id);
+  fformat (vam->ofp, "  identifier (r) %U\n", format_ikev2_id_type_and_data,
+	   &sa->r_id);
+
+  vam->result_ready = 1;
+}
+
+static int
+api_ikev2_sa_v2_dump (vat_main_t *vam)
+{
+  ikev2_test_main_t *im = &ikev2_test_main;
+  vl_api_ikev2_sa_v2_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  /* Construct the API message */
+  M (IKEV2_SA_V2_DUMP, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!im->ping_id)
+    im->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (im->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+  vam->result_ready = 0;
+
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ikev2_sa_v2_details_t_handler (vl_api_ikev2_sa_v2_details_t *mp)
+{
+  vat_main_t *vam = ikev2_test_main.vat_main;
+  vl_api_ikev2_sa_v2_t *sa = &mp->sa;
+  ip_address_t iaddr;
+  ip_address_t raddr;
+  vl_api_ikev2_keys_t *k = &sa->keys;
+  vl_api_ikev2_sa_v2_t_endian (sa);
+
+  ip_address_decode2 (&sa->iaddr, &iaddr);
+  ip_address_decode2 (&sa->raddr, &raddr);
+
+  fformat (vam->ofp, "profile name %s sa index: %d\n", mp->sa.profile_name,
+	   mp->sa.sa_index);
   fformat (vam->ofp, " iip %U ispi %lx rip %U rspi %lx\n", format_ip_address,
 	   &iaddr, sa->ispi, format_ip_address, &raddr, sa->rspi);
   fformat (vam->ofp, " %U ", format_ikev2_sa_transform, &sa->encryption);
