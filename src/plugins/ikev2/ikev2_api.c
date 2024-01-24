@@ -207,19 +207,56 @@ ikev2_copy_stats (vl_api_ikev2_sa_stats_t *dst, const ikev2_stats_t *src)
   dst->n_sa_auth_req = src->n_sa_auth_req;
 }
 
+static vl_api_ikev2_state_t
+ikev2_state_encode (ikev2_state_t state)
+{
+  switch (state)
+    {
+    case IKEV2_STATE_SA_INIT:
+      return SA_INIT;
+    case IKEV2_STATE_DELETED:
+      return DELETED;
+    case IKEV2_STATE_AUTH_FAILED:
+      return AUTH_FAILED;
+    case IKEV2_STATE_AUTHENTICATED:
+      return AUTHENTICATED;
+    case IKEV2_STATE_NOTIFY_AND_DELETE:
+      return NOTIFY_AND_DELETE;
+    case IKEV2_STATE_TS_UNACCEPTABLE:
+      return TS_UNACCEPTABLE;
+    case IKEV2_STATE_NO_PROPOSAL_CHOSEN:
+      return NO_PROPOSAL_CHOSEN;
+    default:
+      return UNKNOWN;
+    }
+}
+
 static void
 send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
 {
+  ikev2_main_t *km = &ikev2_main;
   vl_api_ikev2_sa_details_t *rmp = 0;
   int rv = 0;
   ikev2_sa_transform_t *tr;
+  ikev2_profile_t *p;
+
+  p = pool_elt_at_index (km->profiles, sa->profile_index);
+  if (!p)
+    return;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_DETAILS,
   {
     vl_api_ikev2_sa_t *rsa = &rmp->sa;
     vl_api_ikev2_keys_t* k = &rsa->keys;
-    rsa->profile_index = rsa->profile_index;
+
+    int size_data = sizeof (rsa->profile_name) - 1;
+    if (vec_len (p->name) < size_data)
+      size_data = vec_len (p->name);
+    clib_memcpy (rsa->profile_name, p->name, size_data);
+
+    rsa->state = ikev2_state_encode (sa->state);
+
     rsa->sa_index = api_sa_index;
     ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
     ip_address_encode2 (&sa->raddr, &rsa->raddr);
