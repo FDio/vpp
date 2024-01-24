@@ -821,13 +821,15 @@ error:
       close (fd2);
       fd2 = -1;
     }
-  vec_foreach_index (i, apif->fds)
-    if (apif->fds[i] != -1)
-      close (apif->fds[i]);
-  vec_free (apif->fds);
+
   vec_free (host_if_name_dup);
+
   if (apif)
     {
+      vec_foreach_index (i, apif->fds)
+	if (apif->fds[i] != -1)
+	  close (apif->fds[i]);
+      vec_free (apif->fds);
       memset (apif, 0, sizeof (*apif));
       pool_put (apm->interfaces, apif);
     }
