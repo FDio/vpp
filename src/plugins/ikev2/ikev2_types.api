@@ -138,10 +138,24 @@ typedef ikev2_sa_stats
   u16 n_init_sa_retransmit;
 };
 
+enum ikev2_state
+{
+  UNKNOWN,
+  SA_INIT,
+  DELETED,
+  AUTH_FAILED,
+  AUTHENTICATED,
+  NOTIFY_AND_DELETE,
+  TS_UNACCEPTABLE,
+  NO_PROPOSAL_CHOSEN,
+};
+
 typedef ikev2_sa
 {
   u32 sa_index;
-  u32 profile_index;
+  string profile_name[64];
+
+  vl_api_ikev2_state_t state;
 
   u64 ispi;
   u64 rspi;
