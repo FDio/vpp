@@ -396,8 +396,8 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
 
-  fformat (vam->ofp, "profile index %d sa index: %d\n",
-	   mp->sa.profile_index, mp->sa.sa_index);
+  fformat (vam->ofp, "profile name %s sa index: %d\n", mp->sa.profile_name,
+	   mp->sa.sa_index);
   fformat (vam->ofp, " iip %U ispi %lx rip %U rspi %lx\n", format_ip_address,
 	   &iaddr, sa->ispi, format_ip_address, &raddr, sa->rspi);
   fformat (vam->ofp, " %U ", format_ikev2_sa_transform, &sa->encryption);
