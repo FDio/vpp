@@ -17,7 +17,17 @@
 
 #include <vlib/main.h>
 #include <vppinfra/callback.h>
+#ifdef __linux__
 #include <linux/sched.h>
+#elif __FreeBSD__
+#include <sys/sched.h>
+/*
+ * FreeBSD only defines POSIX scheduling policies in sys/sched.h, map idle
+ * and batch policies to SCHED_OTHER.
+ */
+#define SCHED_BATCH SCHED_OTHER
+#define SCHED_IDLE SCHED_OTHER
+#endif	/* __linux__ */
 
 void vlib_set_thread_name (char *name);
 
