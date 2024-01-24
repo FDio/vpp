@@ -122,16 +122,22 @@ vl_api_want_ping_finished_events_t_handler (
       while ((sleep_interval =
 		time_ping_sent + ping_interval - vlib_time_now (vm)) > 0.0)
 	{
-	  uword event_type;
+	  uword event_count;
 	  vlib_process_wait_for_event_or_clock (vm, sleep_interval);
-	  event_type = vlib_process_get_events (vm, 0);
 
-	  if (event_type == ~0)
+	  if (dst_addr.version == AF_IP4)
+	    event_count =
+	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP4);
+	  else if (dst_addr.version == AF_IP6)
+	    event_count =
+	      vlib_process_get_events_with_type (vm, 0, PING_RESPONSE_IP6);
+	  else
 	    break;
 
-	  if (event_type == PING_RESPONSE_IP4 ||
-	      event_type == PING_RESPONSE_IP6)
-	    reply_count += 1;
+	  if (event_count == 0)
+	    break;
+
+	  reply_count += 1;
 	}
     }
 
