@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -209,7 +208,7 @@ func (s *HstSuite) getTransientContainerByName(name string) *Container {
 }
 
 func (s *HstSuite) loadContainerTopology(topologyName string) {
-	data, err := ioutil.ReadFile(containerTopologyDir + topologyName + ".yaml")
+	data, err := os.ReadFile(containerTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		s.T().Fatalf("read error: %v", err)
 	}
@@ -237,7 +236,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 }
 
 func (s *HstSuite) loadNetworkTopology(topologyName string) {
-	data, err := ioutil.ReadFile(networkTopologyDir + topologyName + ".yaml")
+	data, err := os.ReadFile(networkTopologyDir + topologyName + ".yaml")
 	if err != nil {
 		s.T().Fatalf("read error: %v", err)
 	}
