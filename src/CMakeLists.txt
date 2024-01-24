@@ -112,14 +112,24 @@ endif()
 ##############################################################################
 # cross compiling
 ##############################################################################
-if(CMAKE_CROSSCOMPILING)
-  set(CMAKE_IGNORE_PATH
-    /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/
-    /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/lib/
-  )
-endif()
-set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  if(CMAKE_CROSSCOMPILING)
+    set(CMAKE_IGNORE_PATH
+      /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/
+      /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/lib/
+    )
+  endif()
+  set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  if(CMAKE_CROSSCOMPILING)
+    set(CMAKE_IGNORE_PATH
+      /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-freebsd/
+      /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-freebsd/lib/
+    )
+  endif()
+  set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-freebsd)
+endif()
 ##############################################################################
 # build config
 ##############################################################################
@@ -253,6 +263,13 @@ if(VPP_HOST_TOOLS_ONLY)
     COMPONENT vpp-dev
   )
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  find_package(OpenSSL)
+  set(SUBDIRS
+    vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl vpp-api
+    plugins tools/vppapigen tools/g2 tools/perftool cmake pkg
+    tools/appimage
+  )
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
   find_package(OpenSSL)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl vpp-api
