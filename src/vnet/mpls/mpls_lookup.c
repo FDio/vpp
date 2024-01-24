@@ -44,13 +44,13 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_lookup_trace_t * t = va_arg (*args, mpls_lookup_trace_t *);
 
-  s = format (s, "MPLS: next [%d], lookup fib index %d, LB index %d hash %x "
-              "label %d eos %d", 
-              t->next_index, t->lfib_index, t->lb_index, t->hash,
-              vnet_mpls_uc_get_label(
-                  clib_net_to_host_u32(t->label_net_byte_order)),
-              vnet_mpls_uc_get_s(
-                  clib_net_to_host_u32(t->label_net_byte_order)));
+  s = format (
+    s,
+    "MPLS: next [%d], lookup fib index %d, LB index %d hash 0x%08x "
+    "label %d eos %d",
+    t->next_index, t->lfib_index, t->lb_index, t->hash,
+    vnet_mpls_uc_get_label (clib_net_to_host_u32 (t->label_net_byte_order)),
+    vnet_mpls_uc_get_s (clib_net_to_host_u32 (t->label_net_byte_order)));
   return s;
 }
 
@@ -482,8 +482,8 @@ format_mpls_load_balance_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_load_balance_trace_t * t = va_arg (*args, mpls_load_balance_trace_t *);
 
-  s = format (s, "MPLS: next [%d], LB index %d hash %d",
-              t->next_index, t->lb_index, t->hash);
+  s = format (s, "MPLS: next [%d], LB index %d hash 0x%08x", t->next_index,
+	      t->lb_index, t->hash);
   return s;
 }
 
@@ -553,75 +553,77 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
            * We don't want to use the same hash value at each level in the recursion
            * graph as that would lead to polarisation
            */
-          hc0 = vnet_buffer (p0)->ip.flow_hash = 0;
-          hc1 = vnet_buffer (p1)->ip.flow_hash = 0;
+	  hc0 = hc1 = 0;
 
-          if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
-          {
-              if (PREDICT_TRUE (vnet_buffer(p0)->ip.flow_hash))
-              {
-                  hc0 = vnet_buffer(p0)->ip.flow_hash = vnet_buffer(p0)->ip.flow_hash >> 1;
-              }
-              else
-              {
-                  hc0 = vnet_buffer(p0)->ip.flow_hash = mpls_compute_flow_hash(mpls0, hc0);
-              }
-              dpo0 = load_balance_get_fwd_bucket(lb0, (hc0 & lb0->lb_n_buckets_minus_1));
-          }
-          else
-          {
-              dpo0 = load_balance_get_bucket_i (lb0, 0);
-          }
-          if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
-          {
-              if (PREDICT_TRUE (vnet_buffer(p1)->ip.flow_hash))
-              {
-                  hc1 = vnet_buffer(p1)->ip.flow_hash = vnet_buffer(p1)->ip.flow_hash >> 1;
-              }
-              else
-              {
-                  hc1 = vnet_buffer(p1)->ip.flow_hash = mpls_compute_flow_hash(mpls1, hc1);
-              }
-              dpo1 = load_balance_get_fwd_bucket(lb1, (hc1 & lb1->lb_n_buckets_minus_1));
-          }
-          else
-          {
-              dpo1 = load_balance_get_bucket_i (lb1, 0);
-          }
+	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	    {
+	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
+		{
+		  hc0 = vnet_buffer (p0)->ip.flow_hash =
+		    vnet_buffer (p0)->ip.flow_hash >> 1;
+		}
+	      else
+		{
+		  hc0 = vnet_buffer (p0)->ip.flow_hash =
+		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config);
+		}
+	      dpo0 = load_balance_get_fwd_bucket (
+		lb0, (hc0 & lb0->lb_n_buckets_minus_1));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	    }
+	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+	    {
+	      if (PREDICT_TRUE (vnet_buffer (p1)->ip.flow_hash))
+		{
+		  hc1 = vnet_buffer (p1)->ip.flow_hash =
+		    vnet_buffer (p1)->ip.flow_hash >> 1;
+		}
+	      else
+		{
+		  hc1 = vnet_buffer (p1)->ip.flow_hash =
+		    mpls_compute_flow_hash (mpls1, lb1->lb_hash_config);
+		}
+	      dpo1 = load_balance_get_fwd_bucket (
+		lb1, (hc1 & lb1->lb_n_buckets_minus_1));
+	    }
+	  else
+	    {
+	      dpo1 = load_balance_get_bucket_i (lb1, 0);
+	    }
 
-          next0 = dpo0->dpoi_next_node;
-          next1 = dpo1->dpoi_next_node;
+	  next0 = dpo0->dpoi_next_node;
+	  next1 = dpo1->dpoi_next_node;
 
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-          vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi0, 1,
-               vlib_buffer_length_in_chain (vm, p0));
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi1, 1,
-               vlib_buffer_length_in_chain (vm, p1));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
 
-          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_load_balance_trace_t *tr = vlib_add_trace (vm, node,
-                                                              p0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->lb_index = lbi0;
-              tr->hash = hc0;
-          }
-          if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_load_balance_trace_t *tr = vlib_add_trace (vm, node,
-                                                              p1, sizeof (*tr));
-              tr->next_index = next1;
-              tr->lb_index = lbi1;
-              tr->hash = hc1;
-          }
+	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_load_balance_trace_t *tr =
+		vlib_add_trace (vm, node, p0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->lb_index = lbi0;
+	      tr->hash = hc0;
+	    }
+	  if (PREDICT_FALSE (p1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_load_balance_trace_t *tr =
+		vlib_add_trace (vm, node, p1, sizeof (*tr));
+	      tr->next_index = next1;
+	      tr->lb_index = lbi1;
+	      tr->hash = hc1;
+	    }
 
-          vlib_validate_buffer_enqueue_x2 (vm, node, next,
-                                           to_next, n_left_to_next,
-                                           pi0, pi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (
+	    vm, node, next, to_next, n_left_to_next, pi0, pi1, next0, next1);
        }
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -646,44 +648,45 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 
           lb0 = load_balance_get(lbi0);
 
-          hc0 = vnet_buffer (p0)->ip.flow_hash = 0;
-          if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
-          {
-              if (PREDICT_TRUE (vnet_buffer(p0)->ip.flow_hash))
-              {
-                  hc0 = vnet_buffer(p0)->ip.flow_hash = vnet_buffer(p0)->ip.flow_hash >> 1;
-              }
-              else
-              {
-                  hc0 = vnet_buffer(p0)->ip.flow_hash = mpls_compute_flow_hash(mpls0, hc0);
-              }
-               dpo0 = load_balance_get_fwd_bucket(lb0, (hc0 & lb0->lb_n_buckets_minus_1));
-          }
-          else
-          {
-              dpo0 = load_balance_get_bucket_i (lb0, 0);
-          }
+	  hc0 = 0;
+	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
+	    {
+	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
+		{
+		  hc0 = vnet_buffer (p0)->ip.flow_hash =
+		    vnet_buffer (p0)->ip.flow_hash >> 1;
+		}
+	      else
+		{
+		  hc0 = vnet_buffer (p0)->ip.flow_hash =
+		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config);
+		}
+	      dpo0 = load_balance_get_fwd_bucket (
+		lb0, (hc0 & lb0->lb_n_buckets_minus_1));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	    }
 
-          next0 = dpo0->dpoi_next_node;
-          vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_load_balance_trace_t *tr = vlib_add_trace (vm, node,
-                                                              p0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->lb_index = lbi0;
-              tr->hash = hc0;
-          }
+	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_load_balance_trace_t *tr =
+		vlib_add_trace (vm, node, p0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->lb_index = lbi0;
+	      tr->hash = hc0;
+	    }
 
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi0, 1,
-               vlib_buffer_length_in_chain (vm, p0));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 
-          vlib_validate_buffer_enqueue_x1 (vm, node, next,
-                                           to_next, n_left_to_next,
-                                           pi0, next0);
-        }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next,
+					   n_left_to_next, pi0, next0);
+	}
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
     }
