@@ -662,6 +662,8 @@ class IkePeer(VppTestCase):
             self.initiate_del_sa_from_initiator()
         r = self.vapi.ikev2_sa_dump()
         self.assertEqual(len(r), 0)
+        r = self.vapi.ikev2_sa_v2_dump()
+        self.assertEqual(len(r), 0)
         sas = self.vapi.ipsec_sa_dump()
         self.assertEqual(len(sas), 0)
         self.p.remove_vpp_config()
@@ -967,6 +969,75 @@ class IkePeer(VppTestCase):
         )
         self.assertEqual(len(r), 1)
         self.verify_ts(r[0].ts, tsr[0], False)
+
+    def verify_ike_sas_v2(self):
+        r = self.vapi.ikev2_sa_v2_dump()
+        self.assertEqual(len(r), 1)
+        sa = r[0].sa
+        self.assertEqual(self.sa.ispi, (sa.ispi).to_bytes(8, "big"))
+        self.assertEqual(self.sa.rspi, (sa.rspi).to_bytes(8, "big"))
+        if self.ip6:
+            if self.sa.is_initiator:
+                self.assertEqual(sa.iaddr, IPv6Address(self.pg0.remote_ip6))
+                self.assertEqual(sa.raddr, IPv6Address(self.pg0.local_ip6))
+            else:
+                self.assertEqual(sa.iaddr, IPv6Address(self.pg0.local_ip6))
+                self.assertEqual(sa.raddr, IPv6Address(self.pg0.remote_ip6))
+        else:
+            if self.sa.is_initiator:
+                self.assertEqual(sa.iaddr, IPv4Address(self.pg0.remote_ip4))
+                self.assertEqual(sa.raddr, IPv4Address(self.pg0.local_ip4))
+            else:
+                self.assertEqual(sa.iaddr, IPv4Address(self.pg0.local_ip4))
+                self.assertEqual(sa.raddr, IPv4Address(self.pg0.remote_ip4))
+        self.verify_keymat(sa.keys, self.sa, "sk_d")
+        self.verify_keymat(sa.keys, self.sa, "sk_ai")
+        self.verify_keymat(sa.keys, self.sa, "sk_ar")
+        self.verify_keymat(sa.keys, self.sa, "sk_ei")
+        self.verify_keymat(sa.keys, self.sa, "sk_er")
+        self.verify_keymat(sa.keys, self.sa, "sk_pi")
+        self.verify_keymat(sa.keys, self.sa, "sk_pr")
+
+        self.assertEqual(sa.i_id.type, self.sa.id_type)
+        self.assertEqual(sa.r_id.type, self.sa.id_type)
+        self.assertEqual(sa.i_id.data_len, len(self.sa.i_id))
+        self.assertEqual(sa.r_id.data_len, len(self.idr))
+        self.assertEqual(bytes(sa.i_id.data, "ascii"), self.sa.i_id)
+        self.assertEqual(bytes(sa.r_id.data, "ascii"), self.idr)
+
+        r = self.vapi.ikev2_child_sa_dump(sa_index=sa.sa_index)
+        self.assertEqual(len(r), 1)
+        csa = r[0].child_sa
+        self.assertEqual(csa.sa_index, sa.sa_index)
+        c = self.sa.child_sas[0]
+        if hasattr(c, "sk_ai"):
+            self.verify_keymat(csa.keys, c, "sk_ai")
+            self.verify_keymat(csa.keys, c, "sk_ar")
+        self.verify_keymat(csa.keys, c, "sk_ei")
+        self.verify_keymat(csa.keys, c, "sk_er")
+        self.assertEqual(csa.i_spi.to_bytes(4, "big"), c.ispi)
+        self.assertEqual(csa.r_spi.to_bytes(4, "big"), c.rspi)
+
+        tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
+        tsi = tsi[0]
+        tsr = tsr[0]
+        r = self.vapi.ikev2_traffic_selector_dump(
+            is_initiator=True, sa_index=sa.sa_index, child_sa_index=csa.child_sa_index
+        )
+        self.assertEqual(len(r), 1)
+        ts = r[0].ts
+        self.verify_ts(r[0].ts, tsi[0], True)
+
+        r = self.vapi.ikev2_traffic_selector_dump(
+            is_initiator=False, sa_index=sa.sa_index, child_sa_index=csa.child_sa_index
+        )
+        self.assertEqual(len(r), 1)
+        self.verify_ts(r[0].ts, tsr[0], False)
+
+        n = self.vapi.ikev2_nonce_get(is_initiator=True, sa_index=sa.sa_index)
+        self.verify_nonce(n, self.sa.i_nonce)
+        n = self.vapi.ikev2_nonce_get(is_initiator=False, sa_index=sa.sa_index)
+        self.verify_nonce(n, self.sa.r_nonce)
 
     def verify_nonce(self, api_nonce, nonce):
         self.assertEqual(api_nonce.data_len, len(nonce))
@@ -1289,6 +1360,7 @@ class TemplateInitiator(IkePeer):
         self.sa.calc_child_keys()
         self.send_auth_response()
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
 
 
 class TemplateResponder(IkePeer):
@@ -1598,11 +1670,17 @@ class TemplateResponder(IkePeer):
         self.assertEqual(1, s.n_sa_auth_req)
         self.assertEqual(1, s.n_sa_init_req)
 
+        r = self.vapi.ikev2_sa_v2_dump()
+        s = r[0].sa.stats
+        self.assertEqual(1, s.n_sa_auth_req)
+        self.assertEqual(1, s.n_sa_init_req)
+
     def test_responder(self):
         self.send_sa_init_req()
         self.send_sa_auth()
         self.verify_ipsec_sas()
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
         self.verify_counters()
 
 
@@ -2063,6 +2141,7 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
 
         # verify that only the second request was accepted
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
         self.verify_ipsec_sas(is_rekey=True)
 
 
@@ -2107,6 +2186,7 @@ class TestInitiatorRekey(TestInitiatorPsk):
         super(TestInitiatorRekey, self).test_initiator()
         self.rekey_from_initiator()
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
         self.verify_ipsec_sas(is_rekey=True)
 
 
@@ -2188,6 +2268,8 @@ class TestResponderDpd(TestResponderPsk):
         time.sleep(3)
         ike_sas = self.vapi.ikev2_sa_dump()
         self.assertEqual(len(ike_sas), 0)
+        ike_sas = self.vapi.ikev2_sa_v2_dump()
+        self.assertEqual(len(ike_sas), 0)
         ipsec_sas = self.vapi.ipsec_sa_dump()
         self.assertEqual(len(ipsec_sas), 0)
 
@@ -2225,9 +2307,12 @@ class TestResponderRekey(TestResponderPsk):
         super(TestResponderRekey, self).test_responder()
         self.process_rekey_response(self.send_rekey_from_initiator())
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
         self.verify_ipsec_sas(is_rekey=True)
         self.assert_counter(1, "rekey_req", "ip4")
         r = self.vapi.ikev2_sa_dump()
+        self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
+        r = self.vapi.ikev2_sa_v2_dump()
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
@@ -2253,6 +2338,7 @@ class TestResponderRekeyRepeat(TestResponderRekey):
             self.fail("old IPsec SA not expired")
         self.process_rekey_response(self.send_rekey_from_initiator())
         self.verify_ike_sas()
+        self.verify_ike_sas_v2()
         self.verify_ipsec_sas(sa_count=3)
 
 
@@ -2455,6 +2541,8 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
         self.assertEqual(plain, b"")
         self.assert_counter(1, "keepalive", "ip4")
         r = self.vapi.ikev2_sa_dump()
+        self.assertEqual(1, r[0].sa.stats.n_keepalives)
+        r = self.vapi.ikev2_sa_v2_dump()
         self.assertEqual(1, r[0].sa.stats.n_keepalives)
 
     def test_initiator(self):
