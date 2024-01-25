@@ -84,6 +84,7 @@ extern test_main_t test_main;
     __VA_ARGS__, {}                                                           \
   }
 
+#ifdef __linux__
 static_always_inline void
 test_perf_event_reset (test_perf_t *t)
 {
@@ -99,6 +100,23 @@ test_perf_event_disable (test_perf_t *t)
 {
   clib_perfmon_ioctl (t->fd, PERF_EVENT_IOC_DISABLE);
 }
+#elif __FreeBSD__
+static_always_inline void
+test_perf_event_reset (test_perf_t *t)
+{
+  /* TODO: Implement for FreeBSD */
+}
+static_always_inline void
+test_perf_event_enable (test_perf_t *t)
+{
+  /* TODO: Implement for FreeBSD */
+}
+static_always_inline void
+test_perf_event_disable (test_perf_t *t)
+{
+  /* TODO: Implement for FreeBSD */
+}
+#endif
 
 void *test_mem_alloc (uword size);
 void *test_mem_alloc_and_fill_inc_u8 (uword size, u8 start, u8 mask);
