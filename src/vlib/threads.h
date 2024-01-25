@@ -17,7 +17,11 @@
 
 #include <vlib/main.h>
 #include <vppinfra/callback.h>
+#ifdef __linux__
 #include <linux/sched.h>
+#elif __FreeBSD__
+#include <sys/sched.h>
+#endif /* __linux__ */
 
 void vlib_set_thread_name (char *name);
 
@@ -210,12 +214,20 @@ __foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)
        __foreach_vlib_main_helper (ii, &this_vlib_main); ii++)                \
     if (this_vlib_main)
 
-#define foreach_sched_policy \
-  _(SCHED_OTHER, OTHER, "other") \
-  _(SCHED_BATCH, BATCH, "batch") \
-  _(SCHED_IDLE, IDLE, "idle")   \
-  _(SCHED_FIFO, FIFO, "fifo")   \
-  _(SCHED_RR, RR, "rr")
+#define foreach_sched_policy_posix                                            \
+  _ (SCHED_IDLE, IDLE, "idle")                                                \
+  _ (SCHED_FIFO, FIFO, "fifo")                                                \
+  _ (SCHED_RR, RR, "rr")
+#define foreach_sched_policy_linux                                            \
+  _ (SCHED_BATCH, BATCH, "batch")                                             \
+  _ (SCHED_IDLE, IDLE, "idle")
+
+#ifdef __linux__
+#define foreach_sched_policy                                                  \
+  foreach_sched_policy_posix foreach_sched_policy_linux
+#else
+#define foreach_sched_policy foreach_sched_policy_posix
+#endif /* __linux__ */
 
 typedef enum
 {
