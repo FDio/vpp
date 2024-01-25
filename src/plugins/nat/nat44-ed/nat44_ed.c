@@ -2453,6 +2453,13 @@ nat44_plugin_enable (nat44_config_t c)
   sm->outside_vrf_id = c.outside_vrf;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (
     FIB_PROTOCOL_IP4, c.outside_vrf, sm->fib_src_hi);
+  if (sm->outside_vrf_id != 0)
+    {
+      nat_outside_fib_t *outside_fib;
+      vec_add2 (sm->outside_fibs, outside_fib, 1);
+      outside_fib->fib_index = sm->outside_fib_index;
+      outside_fib->refcount = 1;
+    }
 
   nat44_ed_db_init ();
 
@@ -2694,6 +2701,9 @@ nat44_plugin_disable ()
 
   vec_free (sm->max_translations_per_fib);
   sm->max_translations_per_fib = 0;
+
+  vec_free (sm->outside_fibs);
+  sm->outside_fibs = 0;
 
   nat44_ed_db_free ();
 
