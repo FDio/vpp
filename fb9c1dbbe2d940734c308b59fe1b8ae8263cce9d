@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b25b1c50_20eb3e2a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-01-26T17:28:38Z",
+      "side": 1,
+      "message": "Dear Filip,\n\nCould you kindly review my patch?\n\nThanks,\nDenys.",
+      "revId": "fb9c1dbbe2d940734c308b59fe1b8ae8263cce9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
