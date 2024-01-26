@@ -430,6 +430,7 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
 
   uc = va_arg (*args, ucontext_t *);
 
+#ifdef __linux__
 #if defined (powerpc)
   regs = &uc->uc_mcontext.uc_regs->gregs[0];
 #elif defined (powerpc64)
@@ -452,6 +453,13 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
   reg_no = 0;
   regs = 0;
 #endif
+#elif __FreeBSD__
+#if defined(__amd64__)
+  reg_no = 0;
+  regs = (void *) &uc->uc_mcontext.mc_rip;
+#else
+#endif /* __amd64__ */
+#endif /* __linux__ */
 
   if (! regs)
     return format (s, "unsupported");
