@@ -67,7 +67,9 @@
 #include <linux/types.h>
 #include <linux/netlink.h>
 #endif
-#endif
+#elif __FreeBSD__
+#include <netlink/netlink.h>
+#endif /* __linux__ */
 
 #endif /* ! __KERNEL__ */
 
