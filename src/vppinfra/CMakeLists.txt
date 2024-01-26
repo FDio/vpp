@@ -71,9 +71,6 @@ set(VPPINFRA_SRCS
   mhash.c
   mpcap.c
   pcap.c
-  perfmon/bundle_default.c
-  perfmon/bundle_core_power.c
-  perfmon/perfmon.c
   pmalloc.c
   pool.c
   ptclosure.c
@@ -103,6 +100,15 @@ set(VPPINFRA_SRCS
   vector/toeplitz.c
   cJSON.c
 )
+
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  # TODO: Temporarily don't build perfmon on non-Linux
+  set(VPPINFRA_SRCS
+    perfmon/bundle_default.c
+    perfmon/bundle_core_power.c
+    perfmon/perfmon.c
+  )
+endif()
 
 set(VPPINFRA_HEADERS
   bihash_12_4.h
