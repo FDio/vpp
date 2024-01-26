@@ -248,11 +248,16 @@ static void
 sigaction_handler (int signum, siginfo_t * i, void *notused)
 {
   u32 action, opaque;
+#ifdef __linux__
 
   action = (u32) (uword) i->si_ptr;
   action >>= 28;
   opaque = (u32) (uword) i->si_ptr;
   opaque &= ~(0xF0000000);
+#elif __FreeBSD__
+  action = i->si_code;
+  opaque = 0;
+#endif /* __linux__ */
 
   clib_warning ("signal %d, action %d, opaque %x", signum, action, opaque);
 }
