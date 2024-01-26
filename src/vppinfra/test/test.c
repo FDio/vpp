@@ -161,6 +161,12 @@ test_perf (test_main_t *tm)
   clib_perfmon_free (ctx);
   return err;
 }
+#elif __FreeBSD__
+clib_error_t *
+test_perf (test_main_t *tm)
+{
+  return NULL;
+}
 #endif
 
 int
