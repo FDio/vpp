@@ -271,8 +271,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
   else
     {
+#ifdef __linux__
       if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
 	mmap_flags |= MAP_HUGETLB;
+#endif /* __linux__ */
 
       mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
       a->fd = -1;
