@@ -229,7 +229,12 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
    )
 endif()
 
-option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." OFF)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+  option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." ON)
+else()
+  option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." OFF)
+endif()
+
 if(VPP_USE_EXTERNAL_LIBEXECINFO)
   set(EXECINFO_LIB execinfo)
 endif()
