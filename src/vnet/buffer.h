@@ -467,7 +467,7 @@ typedef struct
   } qos;
 
   u8 loop_counter;
-  u8 __unused[5];
+  u8 pad[5]; /* unused */
 
   /**
    * The L4 payload size set on input on GSO enabled interfaces
