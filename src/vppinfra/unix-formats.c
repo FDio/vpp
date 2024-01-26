@@ -409,7 +409,9 @@ u8 * format_signal (u8 * s, va_list * args)
       _ (SIGPROF);
       _ (SIGWINCH);
       _ (SIGIO);
+#ifdef __linux__
       _ (SIGPWR);
+#endif /* __linux */
 #ifdef SIGSYS
       _ (SIGSYS);
 #endif
