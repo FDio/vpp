@@ -241,6 +241,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       return 0;
     }
 
+#ifdef __linux__
   if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
     {
       pm->error = clib_sysfs_prealloc_hugepages (numa_node,
@@ -249,6 +250,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       if (pm->error)
 	return 0;
     }
+#endif /* __linux__ */
 
   rv = clib_mem_set_numa_affinity (numa_node, /* force */ 1);
   if (rv == CLIB_MEM_ERROR && numa_node != 0)
