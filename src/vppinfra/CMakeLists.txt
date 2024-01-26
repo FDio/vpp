@@ -71,9 +71,6 @@ set(VPPINFRA_SRCS
   mhash.c
   mpcap.c
   pcap.c
-  perfmon/bundle_default.c
-  perfmon/bundle_core_power.c
-  perfmon/perfmon.c
   pmalloc.c
   pool.c
   ptclosure.c
@@ -220,6 +217,10 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     linux/mem.c
     linux/sysfs.c
     linux/netns.c
+# TODO: Temporarily don't build perfmon on non-Linux
+    perfmon/bundle_default.c
+    perfmon/bundle_core_power.c
+    perfmon/perfmon.c
    )
 endif()
 
