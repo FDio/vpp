@@ -226,7 +226,7 @@ static clib_error_t *
 default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
 			int fds[], int num_fds)
 {
-#ifdef CLIB_LINUX
+#if CLIB_LINUX
   char ctl[CMSG_SPACE (sizeof (int) * num_fds) +
 	   CMSG_SPACE (sizeof (struct ucred))];
   struct ucred *cr = 0;
@@ -261,7 +261,7 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
     {
       if (cmsg->cmsg_level == SOL_SOCKET)
 	{
-#ifdef CLIB_LINUX
+#if CLIB_LINUX
 	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
 	    {
 	      cr = (struct ucred *) CMSG_DATA (cmsg);
@@ -314,11 +314,13 @@ static const struct
     .family = AF_INET,
     .type = CLIB_SOCKET_TYPE_INET,
     .skip_prefix = 1 },
+#if CLIB_LINUX
   { .prefix = "abstract:",
     .family = AF_UNIX,
     .type = CLIB_SOCKET_TYPE_LINUX_ABSTRACT,
     .skip_prefix = 1,
     .is_local = 1 },
+#endif /* CLIB_LINUX */
   { .prefix = "/",
     .family = AF_UNIX,
     .type = CLIB_SOCKET_TYPE_UNIX,
