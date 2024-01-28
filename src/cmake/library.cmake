@@ -72,7 +72,7 @@ macro(add_vpp_library lib)
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_tojson.h
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h
-	DESTINATION include/${lib}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${lib}/${dir}
 	COMPONENT vpp-dev
       )
     endforeach()
@@ -96,7 +96,7 @@ macro(add_vpp_library lib)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file}
-	DESTINATION include/${lib}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${lib}/${dir}
 	COMPONENT ${ARG_COMPONENT}-dev
       )
     endforeach()
@@ -111,7 +111,7 @@ function (add_vpp_headers path)
     get_filename_component(dir ${file} DIRECTORY)
     install(
       FILES ${file}
-      DESTINATION include/${path}/${dir}
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${path}/${dir}
       COMPONENT vpp-dev
     )
   endforeach()

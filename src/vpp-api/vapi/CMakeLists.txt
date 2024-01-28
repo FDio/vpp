@@ -45,7 +45,7 @@ install(
     vapi_json_parser.py
     vapi_cpp_gen.py
   DESTINATION
-    share/vpp
+    ${CMAKE_INSTALL_DATADIR}/vpp
   COMPONENT
     vpp-dev
 )
