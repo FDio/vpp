@@ -70,7 +70,7 @@ function(vpp_generate_api_json_header file dir component)
   )
   install(
     FILES ${output_name}
-    DESTINATION share/vpp/api/${dir}/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/vpp/api/${dir}/
     COMPONENT ${component}
   )
 endfunction()
@@ -101,7 +101,7 @@ function(vpp_generate_vapi_c_header f)
   )
   install(
     FILES ${output_name}
-    DESTINATION include/vapi
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vapi
     COMPONENT vpp-dev
   )
 endfunction ()
@@ -128,7 +128,7 @@ function (vpp_generate_vapi_cpp_header f)
   )
   install(
     FILES ${output_name}
-    DESTINATION include/vapi
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vapi
     COMPONENT vpp-dev
   )
 endfunction ()

@@ -43,7 +43,7 @@ install(
     vppapigen_json.py
     generate_json.py
   DESTINATION
-    share/vpp
+    ${CMAKE_INSTALL_DATADIR}/vpp
   COMPONENT
     vpp-dev
 )

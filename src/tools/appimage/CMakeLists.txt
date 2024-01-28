@@ -18,7 +18,7 @@ if(VPP_BUILD_APPIMAGE)
                 WORLD_READ WORLD_EXECUTE)
   install(FILES vpp.desktop DESTINATION .)
   install(FILES vpp.png DESTINATION .)
-  install(FILES vpp.svg DESTINATION share/icons/hicolor/scalable/vpp.svg)
+  install(FILES vpp.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/vpp.svg)
   install(CODE "EXECUTE_PROCESS(COMMAND ln -s . ./usr
                 WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX})")
   install(CODE "EXECUTE_PROCESS(

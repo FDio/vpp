@@ -40,7 +40,7 @@ macro(add_vpp_plugin name)
       ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_enum.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_types.h
-      DESTINATION include/vpp_plugins/${name}/${dir}
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name}/${dir}
       COMPONENT ${PLUGIN_DEV_COMPONENT}
     )
   endforeach()
@@ -82,7 +82,7 @@ macro(add_vpp_plugin name)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file}
-	DESTINATION include/vpp_plugins/${name}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name}/${dir}
 	COMPONENT vpp-dev
       )
     endforeach()
