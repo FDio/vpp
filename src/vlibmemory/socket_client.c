@@ -22,6 +22,14 @@
 #define _GNU_SOURCE
 #include <sys/socket.h>
 
+#ifdef __FreeBSD__
+#define _WANT_UCRED
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#include <sys/un.h>
+#endif /* __FreeBSD__ */
+
 #include <svm/ssvm.h>
 #include <vlibmemory/socket_client.h>
 #include <vlibmemory/memory_client.h>
@@ -278,7 +286,11 @@ vl_sock_api_recv_fd_msg_internal (socket_client_main_t * scm, int fds[],
   struct msghdr mh = { 0 };
   struct iovec iov[1];
   ssize_t size = 0;
+#ifdef __linux__
   struct ucred *cr = 0;
+#elif __FreeBSD__
+  struct cmsgcred *cr = 0;
+#endif /* __linux__ */
   struct cmsghdr *cmsg;
   pid_t pid __attribute__ ((unused));
   uid_t uid __attribute__ ((unused));
@@ -318,6 +330,7 @@ vl_sock_api_recv_fd_msg_internal (socket_client_main_t * scm, int fds[],
     {
       if (cmsg->cmsg_level == SOL_SOCKET)
 	{
+#ifdef __linux__
 	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
 	    {
 	      cr = (struct ucred *) CMSG_DATA (cmsg);
@@ -325,6 +338,15 @@ vl_sock_api_recv_fd_msg_internal (socket_client_main_t * scm, int fds[],
 	      gid = cr->gid;
 	      pid = cr->pid;
 	    }
+#elif __FreeBSD__
+	  if (cmsg->cmsg_type == SCM_CREDS)
+	    {
+	      cr = (struct cmsgcred *) CMSG_DATA (cmsg);
+	      uid = cr->cmcred_uid;
+	      gid = cr->cmcred_gid;
+	      pid = cr->cmcred_pid;
+	    }
+#endif /* __linux__ */
 	  else if (cmsg->cmsg_type == SCM_RIGHTS)
 	    {
 	      clib_memcpy_fast (fds, CMSG_DATA (cmsg), sizeof (int) * n_fds);
