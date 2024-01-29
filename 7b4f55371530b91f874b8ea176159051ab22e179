@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a5f0bc74_187630ca",
+        "filename": "src/vppinfra/vector/compress.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-01-29T13:54:55Z",
+      "side": 1,
+      "message": "\u003e NB i did that intentionally knowing that in real world such buffer underrun will not happen and my priority was performance\n\nWell, sanitizer (rightfully) crashes in these places, and it yet again breaks ASAN tests on master that we run internally.\n\nHowever even not taking to account sanitizers, it still may cause issues whenever  overrun gets us to the next page. Currently it is unlikely to be not readable, but it seems not to be impossible either.\n\nAnd even worse, using these functions over compile time known size objects may trigger some unwanted UB optimizations.\n\nI\u0027ll try to rewrite it with vector instructions as much as possible, but I don\u0027t think it should be dismissed as \"one more time sanitizer complains about nothing\"",
+      "parentUuid": "bfef53e3_edb0682e",
+      "revId": "7b4f55371530b91f874b8ea176159051ab22e179",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "50ccf096_9a885b2d",
         "filename": "src/vppinfra/vector/mask_compare.h",
         "patchSetId": 2
