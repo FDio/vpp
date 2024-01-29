@@ -16,6 +16,9 @@
 
 #include <signal.h>
 #include <math.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif /* __FreeBSD__ */
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
@@ -237,7 +240,11 @@ vlib_thread_init (vlib_main_t * vm)
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
   w->cpu_id = tm->main_lcore;
+#ifdef __FreeBSD__
+  w->lwp = pthread_getthreadid_np ();
+#else
   w->lwp = syscall (SYS_gettid);
+#endif /* __FreeBSD__ */
   w->thread_id = pthread_self ();
   tm->n_vlib_mains = 1;
 
@@ -404,7 +411,11 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 {
   vlib_worker_thread_t *w = arg;
 
+#ifdef __FreeBSD__
+  w->lwp = pthread_getthreadid_np ();
+#else
   w->lwp = syscall (SYS_gettid);
+#endif /* __FreeBSD__ */
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;
