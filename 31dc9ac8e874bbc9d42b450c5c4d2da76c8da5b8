@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9f0cfc2c_2b7c8ab3",
+        "filename": "test/test_gso.py",
+        "patchSetId": 28
+      },
+      "lineNbr": 878,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-01-29T22:02:36Z",
+      "side": 1,
+      "message": "after disabling, test that the same injected packets aren\u0027t GSO\u0027d.",
+      "revId": "31dc9ac8e874bbc9d42b450c5c4d2da76c8da5b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
