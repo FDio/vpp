@@ -65,9 +65,6 @@ add_vpp_library(vlib
   format.c
   handoff_trace.c
   init.c
-  linux/pci.c
-  linux/vfio.c
-  linux/vmbus.c
   log.c
   main.c
   node.c
@@ -98,6 +95,11 @@ add_vpp_library(vlib
   dma/dma.c
   dma/cli.c
 
+  LINUX_SOURCES
+  linux/pci.c
+  linux/vfio.c
+  linux/vmbus.c
+
   MULTIARCH_SOURCES
   buffer_funcs.c
   drop.c
@@ -118,7 +120,6 @@ add_vpp_library(vlib
   format_funcs.h
   global_funcs.h
   init.h
-  linux/vfio.h
   log.h
   main.h
   node_funcs.h
@@ -140,6 +141,9 @@ add_vpp_library(vlib
   unix/unix.h
   vlib.h
   vmbus/vmbus.h
+
+  LINUX_HEADERS
+  linux/vfio.h
 
   API_FILES
   pci/pci_types.api

@@ -15,12 +15,23 @@ macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
     "LTO"
     "COMPONENT"
-    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
+    "SOURCES;LINUX_SOURCES;FREEBSD_SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;LINUX_HEADERS;DEPENDS"
     ${ARGN}
   )
 
   set (lo ${lib}_objs)
-  add_library(${lo} OBJECT ${ARG_SOURCES})
+#  add_library(${lo} OBJECT ${ARG_SOURCES})
+
+  if(ARG_LINUX_SOURCES AND "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    add_library(${lo} OBJECT ${ARG_SOURCES} ${ARG_LINUX_SOURCES})
+  elseif(ARG_FREEBSD_SOURCES AND "${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+    add_library(${lo} OBJECT ${ARG_SOURCES} ${ARG_FREEBSD_SOURCES})
+  else()
+    add_library(${lo} OBJECT ${ARG_SOURCES})
+  endif()
+
+#  message(FATAL_ERROR "stop here")
+
   set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   target_compile_options(${lo} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
 
@@ -93,6 +104,16 @@ macro(add_vpp_library lib)
   # install headers
   if(ARG_INSTALL_HEADERS)
     foreach(file ${ARG_INSTALL_HEADERS})
+      get_filename_component(dir ${file} DIRECTORY)
+      install(
+	FILES ${file}
+	DESTINATION include/${lib}/${dir}
+	COMPONENT ${ARG_COMPONENT}-dev
+      )
+    endforeach()
+  endif()
+  if(ARG_LINUX_HEADERS)
+    foreach(file ${ARG_LINUX_HEADERS})
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file}
