@@ -20,7 +20,12 @@
 #ifndef included_punt_h
 #define included_punt_h
 
+#ifdef __linux__
 #include <linux/un.h>
+#elif __FreeBSD__
+#include <sys/un.h>
+#define UNIX_PATH_MAX SUNPATHLEN
+#endif /* __linux__ */
 #include <stdbool.h>
 #include <vnet/ip/ip.h>
 
