@@ -20,8 +20,13 @@
 #include <fcntl.h>
 #include <net/if.h>
 
+#ifdef __linux__
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#elif __FreeBSD__
+#include <netlink/netlink.h>
+#include <netlink/netlink_route.h>
+#endif
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
