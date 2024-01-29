@@ -94,11 +94,10 @@ typedef struct
   volatile u32 workers_before_barrier;
   volatile u32 done_work_before_barrier;
 
-  long lwp;
+  long thread_id;
   int cpu_id;
   int core_id;
   int numa_id;
-  pthread_t thread_id;
 } vlib_worker_thread_t;
 
 extern vlib_worker_thread_t *vlib_worker_threads;

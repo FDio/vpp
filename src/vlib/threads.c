@@ -16,6 +16,9 @@
 
 #include <signal.h>
 #include <math.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif /* __FreeBSD__ */
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
@@ -237,8 +240,11 @@ vlib_thread_init (vlib_main_t * vm)
   w->thread_mheap = clib_mem_get_heap ();
   w->thread_stack = vlib_thread_stacks[0];
   w->cpu_id = tm->main_lcore;
-  w->lwp = syscall (SYS_gettid);
-  w->thread_id = pthread_self ();
+#ifdef __FreeBSD__
+  w->thread_id = pthread_getthreadid_np ();
+#else
+  w->thread_id = syscall (SYS_gettid);
+#endif /* __FreeBSD__ */
   tm->n_vlib_mains = 1;
 
   vlib_get_thread_core_numa (w, w->cpu_id);
@@ -246,11 +252,11 @@ vlib_thread_init (vlib_main_t * vm)
   if (tm->sched_policy != ~0)
     {
       struct sched_param sched_param;
-      if (!sched_getparam (w->lwp, &sched_param))
+      if (!sched_getparam (w->thread_id, &sched_param))
 	{
 	  if (tm->sched_priority != ~0)
 	    sched_param.sched_priority = tm->sched_priority;
-	  sched_setscheduler (w->lwp, tm->sched_policy, &sched_param);
+	  sched_setscheduler (w->thread_id, tm->sched_policy, &sched_param);
 	}
     }
 
@@ -404,7 +410,11 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 {
   vlib_worker_thread_t *w = arg;
 
-  w->lwp = syscall (SYS_gettid);
+#ifdef __FreeBSD__
+  w->thread_id = pthread_getthreadid_np ();
+#else
+  w->thread_id = syscall (SYS_gettid);
+#endif /* __FreeBSD__ */
   w->thread_id = pthread_self ();
 
   __os_thread_index = w - vlib_worker_threads;

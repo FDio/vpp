@@ -183,7 +183,7 @@ get_thread_data (vl_api_thread_data_t *td, int index)
   if (w->registration)
     strncpy ((char *) td->type, (char *) w->registration->name,
 	     ARRAY_LEN (td->type) - 1);
-  td->pid = htonl (w->lwp);
+  td->pid = htonl (w->thread_id);
   td->cpu_id = htonl (w->cpu_id);
   td->core = htonl (w->core_id);
   td->cpu_socket = htonl (w->numa_id);
