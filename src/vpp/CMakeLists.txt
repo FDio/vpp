@@ -90,7 +90,7 @@ endif()
 add_vpp_executable(vpp
   ENABLE_EXPORTS
   SOURCES ${VPP_SOURCES}
-  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES svm vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} ${EPOLL_LIB}
   DEPENDS vpp_version_h api_headers
 )
 
@@ -99,7 +99,7 @@ add_vpp_executable(vpp
 ##############################################################################
 add_vpp_executable(vppctl
   SOURCES app/vppctl.c
-  LINK_LIBRARIES vppinfra
+  LINK_LIBRARIES vppinfra ${EPOLL_LIB}
 )
 
 ##############################################################################
@@ -122,7 +122,7 @@ add_vpp_executable(vpp_get_stats
 
 add_vpp_executable(vpp_prometheus_export
   SOURCES app/vpp_prometheus_export.c
-  LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient
+  LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ${EPOLL_LIB}
   DEPENDS api_headers
 )
 
