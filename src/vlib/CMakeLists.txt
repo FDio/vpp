@@ -54,6 +54,17 @@ install(
 ##############################################################################
 # vlib shared library
 ##############################################################################
+
+set(PLATFORM_SOURCES
+  linux/pci.c
+  linux/vfio.c
+  linux/vmbus.c
+)
+
+set(PLATFORM_HEADERS
+  linux/vfio.h
+)
+
 add_vpp_library(vlib
   SOURCES
   buffer.c
@@ -65,9 +76,6 @@ add_vpp_library(vlib
   format.c
   handoff_trace.c
   init.c
-  linux/pci.c
-  linux/vfio.c
-  linux/vmbus.c
   log.c
   main.c
   node.c
@@ -97,6 +105,7 @@ add_vpp_library(vlib
   vmbus/vmbus.c
   dma/dma.c
   dma/cli.c
+  ${PLATFORM_SOURCES}
 
   MULTIARCH_SOURCES
   buffer_funcs.c
@@ -118,7 +127,6 @@ add_vpp_library(vlib
   format_funcs.h
   global_funcs.h
   init.h
-  linux/vfio.h
   log.h
   main.h
   node_funcs.h
@@ -140,6 +148,7 @@ add_vpp_library(vlib
   unix/unix.h
   vlib.h
   vmbus/vmbus.h
+  ${PLATFORM_HEADERS}
 
   API_FILES
   pci/pci_types.api
