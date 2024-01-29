@@ -110,7 +110,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	  perfmon_instance_t *in;
 	  vec_add2 (it->instances, in, 1);
 	  in->cpu = w->cpu_id;
-	  in->pid = w->lwp;
+	  in->pid = w->thread_id;
 	  in->name = (char *) format (0, "%s (%u)%c", w->name, i, 0);
 	}
       if (is_node)

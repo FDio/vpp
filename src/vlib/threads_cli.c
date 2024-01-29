@@ -57,12 +57,12 @@ show_threads_fn (vlib_main_t * vm,
       w = vlib_worker_threads + i;
       u8 *line = NULL;
 
-      line = format (line, "%-7d%-20s%-12s%-8d",
-		     i,
-		     w->name ? w->name : (u8 *) "",
-		     w->registration ? w->registration->name : "", w->lwp);
+      line =
+	format (line, "%-7d%-20s%-12s%-8d", i, w->name ? w->name : (u8 *) "",
+		w->registration ? w->registration->name : "", w->thread_id);
 
-      line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
+      line =
+	format (line, "%-25U", format_sched_policy_and_priority, w->thread_id);
 
       int cpu_id = w->cpu_id;
       if (cpu_id > -1 && tm->main_lcore != ~0)
