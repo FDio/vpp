@@ -47,8 +47,10 @@
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#ifdef __linux__
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#endif /* __linux__ */
 
 vlib_pci_main_t pci_main;
 
