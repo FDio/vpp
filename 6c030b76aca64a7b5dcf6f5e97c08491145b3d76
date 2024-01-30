@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eac8df03_952f9b2b",
+        "filename": "src/vnet/adj/adj_glean.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-01-30T22:24:37Z",
+      "side": 1,
+      "message": "maybe break instead of return?",
+      "revId": "6c030b76aca64a7b5dcf6f5e97c08491145b3d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
