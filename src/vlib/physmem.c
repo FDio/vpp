@@ -104,8 +104,10 @@ vlib_physmem_init (vlib_main_t * vm)
     vpm->flags |= VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP;
   vec_free (pt);
 
+#ifdef __linux__
   if ((error = linux_vfio_init (vm)))
     return error;
+#endif /* __linux__ */
 
   p = clib_mem_alloc_aligned (sizeof (clib_pmalloc_main_t),
 			      CLIB_CACHE_LINE_BYTES);
