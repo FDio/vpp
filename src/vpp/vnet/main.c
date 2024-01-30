@@ -15,6 +15,9 @@
 
 #define _GNU_SOURCE
 #include <pthread.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif /* __FreeBSD__ */
 #include <sched.h>
 
 #include <vppinfra/clib.h>
