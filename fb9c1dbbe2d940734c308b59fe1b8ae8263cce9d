@@ -16,6 +16,23 @@
       "message": "Dear Filip,\n\nCould you kindly review my patch?\n\nThanks,\nDenys.",
       "revId": "fb9c1dbbe2d940734c308b59fe1b8ae8263cce9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ab72fe8_f8672deb",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2024-01-30T11:58:07Z",
+      "side": 1,
+      "message": "A conversion function between internal and API SA state would be better.",
+      "revId": "fb9c1dbbe2d940734c308b59fe1b8ae8263cce9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
