@@ -27,6 +27,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <netdb.h>
+#ifdef __FreeBSD__
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif /* __FreeBSD__ */
 #include <sys/socket.h>
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
