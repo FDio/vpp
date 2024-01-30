@@ -25,7 +25,6 @@
 #include <sys/un.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/eventfd.h>
 #include <inttypes.h>
 #include <limits.h>
