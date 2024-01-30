@@ -45,7 +45,7 @@ static int
 vl_api_lcp_itf_pair_add (u32 phy_sw_if_index, lip_host_type_t lip_host_type,
 			 u8 *mp_host_if_name, size_t sizeof_host_if_name,
 			 u8 *mp_namespace, size_t sizeof_mp_namespace,
-			 u32 *host_sw_if_index_p)
+			 u32 *host_sw_if_index_p, u32 *vif_index_p)
 {
   u8 *host_if_name, *netns;
   int host_len, netns_len, rv;
@@ -63,6 +63,13 @@ vl_api_lcp_itf_pair_add (u32 phy_sw_if_index, lip_host_type_t lip_host_type,
 
   rv = lcp_itf_pair_create (phy_sw_if_index, host_if_name, lip_host_type,
 			    netns, host_sw_if_index_p);
+
+  if (!rv && (vif_index_p != NULL))
+    {
+      lcp_itf_pair_t *pair =
+	lcp_itf_pair_get (lcp_itf_pair_find_by_phy (phy_sw_if_index));
+      *vif_index_p = pair->lip_vif_index;
+    }
 
   vec_free (host_if_name);
   vec_free (netns);
@@ -86,7 +93,7 @@ vl_api_lcp_itf_pair_add_del_t_handler (vl_api_lcp_itf_pair_add_del_t *mp)
     {
       rv = vl_api_lcp_itf_pair_add (
 	phy_sw_if_index, lip_host_type, mp->host_if_name,
-	sizeof (mp->host_if_name), mp->netns, sizeof (mp->netns), NULL);
+	sizeof (mp->host_if_name), mp->netns, sizeof (mp->netns), NULL, NULL);
     }
   else
     {
@@ -111,10 +118,10 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
   lip_host_type = api_decode_host_type (mp->host_if_type);
   if (mp->is_add)
     {
-      rv = vl_api_lcp_itf_pair_add (phy_sw_if_index, lip_host_type,
-				    mp->host_if_name,
-				    sizeof (mp->host_if_name), mp->netns,
-				    sizeof (mp->netns), &host_sw_if_index);
+      rv = vl_api_lcp_itf_pair_add (
+	phy_sw_if_index, lip_host_type, mp->host_if_name,
+	sizeof (mp->host_if_name), mp->netns, sizeof (mp->netns),
+	&host_sw_if_index, NULL);
     }
   else
     {
@@ -124,6 +131,37 @@ vl_api_lcp_itf_pair_add_del_v2_t_handler (vl_api_lcp_itf_pair_add_del_v2_t *mp)
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO2_END (VL_API_LCP_ITF_PAIR_ADD_DEL_V2_REPLY,
 		    { rmp->host_sw_if_index = host_sw_if_index; });
+}
+
+static void
+vl_api_lcp_itf_pair_add_del_v3_t_handler (vl_api_lcp_itf_pair_add_del_v3_t *mp)
+{
+  u32 phy_sw_if_index, host_sw_if_index = ~0, vif_index = ~0;
+  vl_api_lcp_itf_pair_add_del_v3_reply_t *rmp;
+  lip_host_type_t lip_host_type;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX_END (mp);
+
+  phy_sw_if_index = mp->sw_if_index;
+  lip_host_type = api_decode_host_type (mp->host_if_type);
+  if (mp->is_add)
+    {
+      rv = vl_api_lcp_itf_pair_add (
+	phy_sw_if_index, lip_host_type, mp->host_if_name,
+	sizeof (mp->host_if_name), mp->netns, sizeof (mp->netns),
+	&host_sw_if_index, &vif_index);
+    }
+  else
+    {
+      rv = lcp_itf_pair_delete (phy_sw_if_index);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO2_END (VL_API_LCP_ITF_PAIR_ADD_DEL_V3_REPLY, ({
+		      rmp->host_sw_if_index = host_sw_if_index;
+		      rmp->vif_index = vif_index;
+		    }));
 }
 
 static void
@@ -159,6 +197,31 @@ vl_api_lcp_itf_pair_get_t_handler (vl_api_lcp_itf_pair_get_t *mp)
   REPLY_AND_DETAILS_MACRO_END (
     VL_API_LCP_ITF_PAIR_GET_REPLY, lcp_itf_pair_pool,
     ({ send_lcp_itf_pair_details (cursor, rp, mp->context); }));
+}
+
+static void
+vl_api_lcp_itf_pair_get_v2_t_handler (vl_api_lcp_itf_pair_get_v2_t *mp)
+{
+  vl_api_lcp_itf_pair_get_v2_reply_t *rmp;
+  i32 rv = 0;
+
+  if (mp->sw_if_index == ~0)
+    {
+      REPLY_AND_DETAILS_MACRO_END (
+	VL_API_LCP_ITF_PAIR_GET_REPLY, lcp_itf_pair_pool,
+	({ send_lcp_itf_pair_details (cursor, rp, mp->context); }));
+    }
+  else
+    {
+      VALIDATE_SW_IF_INDEX_END (mp);
+      send_lcp_itf_pair_details (
+	lcp_itf_pair_find_by_phy (mp->sw_if_index),
+	vl_api_client_index_to_registration (mp->client_index), mp->context);
+
+      BAD_SW_IF_INDEX_LABEL;
+      REPLY_MACRO2_END (VL_API_LCP_ITF_PAIR_GET_V2_REPLY,
+			({ rmp->cursor = ~0; }));
+    }
 }
 
 static void
