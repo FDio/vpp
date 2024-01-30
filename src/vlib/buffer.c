@@ -43,7 +43,11 @@
  * Allocate/free network buffers.
  */
 
+#ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#else
+#include <vppinfra/freebsd/system.h>
+#endif /* __linux_ */
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>

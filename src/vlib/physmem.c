@@ -22,7 +22,11 @@
 #include <unistd.h>
 
 #include <vppinfra/clib.h>
+#ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#else
+#include <vppinfra/freebsd/system.h>
+#endif /* __linux__ */
 #include <vlib/vlib.h>
 #include <vlib/physmem.h>
 #include <vlib/unix/unix.h>

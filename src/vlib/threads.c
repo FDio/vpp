@@ -19,7 +19,11 @@
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
+#ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#else
+#include <vppinfra/freebsd/system.h>
+#endif /* __FreeBSD__ */
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
