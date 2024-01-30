@@ -144,7 +144,7 @@ add_vpp_library(vlib
   API_FILES
   pci/pci_types.api
 
-  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS} ${FREEBSD_LIBS}
 
   DEPENDS api_headers
 )
