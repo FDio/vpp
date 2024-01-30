@@ -16,7 +16,11 @@
  */
 
 #include <sys/socket.h>
+#ifdef __linux__
 #include <linux/if.h>
+#else
+#include <net/if.h>
+#endif /* __linux__ */
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
