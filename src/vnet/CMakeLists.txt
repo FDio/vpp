@@ -995,6 +995,7 @@ list(APPEND VNET_API_FILES
 # tap interface (with virtio backend)
 ##############################################################################
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 list(APPEND VNET_SOURCES
   devices/tap/cli.c
   devices/tap/tap.c
@@ -1008,6 +1009,7 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES
   devices/tap/tapv2.api
 )
+endif()
 
 ##############################################################################
 # tap interface (with virtio backend)
