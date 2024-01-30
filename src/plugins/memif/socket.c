@@ -25,7 +25,9 @@
 #include <sys/un.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
+#ifdef __linux__
 #include <sys/prctl.h>
+#endif /* __linux__ */
 #include <sys/eventfd.h>
 #include <inttypes.h>
 #include <limits.h>
