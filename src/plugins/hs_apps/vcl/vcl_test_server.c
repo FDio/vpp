@@ -154,6 +154,17 @@ vts_session_close (vcl_test_session_t *conn)
   if (!conn->is_open)
     return;
 
+/*
+ * XXX: Unfortunately libepoll-shim requires some hacks to work, one of these
+ * defines 'close' as a macro. This collides with vcl test callback 'close'.
+ * Undef the 'close' macro on FreeBSD if it exists.
+ */
+#ifdef __FreeBSD__
+#ifdef close
+#undef close
+#endif
+#endif /* __FreeBSD__ */
+
   if (vt->protos[vsm->server_cfg.proto]->close)
     vt->protos[vsm->server_cfg.proto]->close (conn);
 
