@@ -16,6 +16,24 @@
       "message": "maybe break instead of return?",
       "revId": "6c030b76aca64a7b5dcf6f5e97c08491145b3d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed8984b2_9279e563",
+        "filename": "src/vnet/adj/adj_glean.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-01-31T21:32:36Z",
+      "side": 1,
+      "message": "Done.\n\nNot sure why this code was changed from break -\u003e return when it was refactored in 601972bb",
+      "parentUuid": "eac8df03_952f9b2b",
+      "revId": "6c030b76aca64a7b5dcf6f5e97c08491145b3d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
