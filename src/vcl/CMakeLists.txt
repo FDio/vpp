@@ -35,6 +35,7 @@ if (LDP_HAS_GNU_SOURCE)
   add_compile_definitions(HAVE_GNU_SOURCE)
 endif(LDP_HAS_GNU_SOURCE)
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 add_vpp_library(vcl_ldpreload
   SOURCES
   ldp_socket_wrapper.c
@@ -51,3 +52,4 @@ add_vpp_headers(vcl
   vcl_locked.h
   ldp_socket_wrapper.h
 )
+endif()
