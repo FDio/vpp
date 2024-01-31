@@ -37,12 +37,29 @@ from vm_test_config import test_config
 #
 
 
-def filter_tests(test):
-    """Filter test IDs to include only those selected to run."""
-    selection = test_config["tests_to_run"]
-    if not selection or selection == " ":
-        return True
-    else:
+class TestSelector:
+    """Selects specified test(s) from vm_test_config to run
+
+    The selected_test field specifies a comma separated or range(s) of
+    tests to run (default='' i.e all_tests) e.g. setting the selected_tests
+    attribute to "1,3-4,19-23" runs tests with ID's 1, 3, 4, 19, 20, 21,
+    22 & 23 from the spec file vm_test_config
+    """
+
+    def __init__(self, selected_tests="") -> None:
+        self.selected_tests = selected_tests
+
+    def filter_tests(self, test):
+        """Works with the filter fn. to include only selected tests."""
+
+        if self.selected_tests:
+            selection = self.selected_tests
+        else:
+            selection = test_config["tests_to_run"]
+
+        if not selection or selection == " ":
+            return True
+
         test_ids_to_run = []
         for test_id in selection.split(","):
             if "-" in test_id.strip():
@@ -56,7 +73,6 @@ def filter_tests(test):
 # Test Config variables
 client_namespace = test_config["client_namespace"]
 server_namespace = test_config["server_namespace"]
-tests = filter(filter_tests, test_config["tests"])
 af_packet_config = test_config["af_packet"]
 layer2 = test_config["L2"]
 layer3 = test_config["L3"]
@@ -107,8 +123,17 @@ def create_test(test_name, test, ip_version, mtu):
     return test_func
 
 
-def generate_vpp_interface_tests():
-    """Generate unittests for testing vpp interfaces."""
+def generate_vpp_interface_tests(tests, test_class):
+    """Generate unittests for testing vpp interfaces
+
+    Generates unittests from test spec. and sets them as attributes
+    to the test_class.
+    Args:
+       tests      : list of test specs from vm_test_config['tests']
+       test_class : the name of the test class to which the
+                    generated tests are set as attributes.
+    """
+
     if config.skip_netns_tests:
         print("Skipping netns tests")
     for test in tests:
@@ -132,25 +157,17 @@ def generate_vpp_interface_tests():
                 test_func = create_test(
                     test_name=test_name, test=test, ip_version=ip_version, mtu=mtu
                 )
-                setattr(TestVPPInterfacesQemu, test_name, test_func)
+                setattr(test_class, test_name, test_func)
 
 
 @tag_fixme_debian11
-class TestVPPInterfacesQemu(VppTestCase):
+class TestVPPInterfacesQemu:
     """Test VPP interfaces inside a QEMU VM for IPv4/v6.
 
     Test Setup:
     Linux_ns1--iperfClient--host-int1--vpp-af_packet-int1--VPP-BD
              --vppaf_packet_int2--host-int2--iperfServer--Linux_ns2
     """
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestVPPInterfacesQemu, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestVPPInterfacesQemu, cls).tearDownClass()
 
     def setUpTestToplogy(self, test, ip_version):
         """Setup the test topology.
@@ -160,7 +177,7 @@ class TestVPPInterfacesQemu(VppTestCase):
         3. Enable desired vif features such as GSO & GRO.
         3. Cross-Connect interfaces in VPP using L2 or L3.
         """
-        super(TestVPPInterfacesQemu, self).setUp()
+        # super(TestVPPInterfacesQemu, self).setUp()
         # Need to support multiple interface types as the memif interface
         # in VPP is connected to the iPerf client & server by x-connecting
         # to a tap interface in their respective namespaces.
@@ -674,8 +691,6 @@ class TestVPPInterfacesQemu(VppTestCase):
         else:
             return False
 
-
-generate_vpp_interface_tests()
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
