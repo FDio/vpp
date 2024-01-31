@@ -65,9 +65,10 @@ openssl_ctx_free (tls_ctx_t * ctx)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
 
   /* Cleanup ssl ctx unless migrated */
-  if (!ctx->is_migrated)
+  if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
-      if (SSL_is_init_finished (oc->ssl) && !ctx->is_passive_close)
+      if (SSL_is_init_finished (oc->ssl) &&
+	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
 	SSL_shutdown (oc->ssl);
 
       SSL_free (oc->ssl);
@@ -277,7 +278,7 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
 	  ctx->c_s_index = SESSION_INVALID_INDEX;
 	  tls_disconnect_transport (ctx);
 	}
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
     }
   else
     {
@@ -297,9 +298,9 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 
   while (SSL_in_init (oc->ssl))
     {
-      if (ctx->resume)
+      if (ctx->flags & TLS_CONN_F_RESUME)
 	{
-	  ctx->resume = 0;
+	  ctx->flags &= ~TLS_CONN_F_RESUME;
 	}
       else if (!svm_fifo_max_dequeue_cons (tls_session->rx_fifo))
 	break;
@@ -364,7 +365,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
   else
     {
       /* Need to check transport status */
-      if (ctx->is_passive_close)
+      if (ctx->flags & TLS_CONN_F_PASSIVE_CLOSE)
 	{
 	  openssl_handle_handshake_failure (ctx);
 	  return -1;
@@ -441,7 +442,8 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 
 check_tls_fifo:
 
-  if (PREDICT_FALSE (ctx->app_closed && BIO_ctrl_pending (oc->rbio) <= 0))
+  if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
+		     BIO_ctrl_pending (oc->rbio) <= 0))
     openssl_confirm_app_close (ctx);
 
   /* Deschedule and wait for deq notification if fifo is almost full */
@@ -513,7 +515,7 @@ done:
   if (read)
     tls_add_vpp_q_tx_evt (us);
 
-  if (PREDICT_FALSE (ctx->app_closed &&
+  if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
 		     !svm_fifo_max_enqueue_prod (us->rx_fifo)))
     openssl_confirm_app_close (ctx);
 
@@ -1070,7 +1072,7 @@ openssl_app_close (tls_ctx_t * ctx)
       && !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
     openssl_confirm_app_close (ctx);
   else
-    ctx->app_closed = 1;
+    ctx->flags |= TLS_CONN_F_APP_CLOSED;
   return 0;
 }
 

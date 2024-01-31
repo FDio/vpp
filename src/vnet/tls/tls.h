@@ -57,7 +57,13 @@ typedef struct tls_cxt_id_
 STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
-#define foreach_tls_conn_flags _ (HO_DONE, "ho done")
+#define foreach_tls_conn_flags                                                \
+  _ (HO_DONE, "ho-done")                                                      \
+  _ (PASSIVE_CLOSE, "passive-close")                                          \
+  _ (APP_CLOSED, "app-closed")                                                \
+  _ (MIGRATED, "migrated")                                                    \
+  _ (NO_APP_SESSION, "no-app-session")                                        \
+  _ (RESUME, "resume")
 
 typedef enum tls_conn_flags_bit_
 {
@@ -93,11 +99,6 @@ typedef struct tls_ctx_
 #define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
 #define migration_ctx	       c_tls_ctx_id.migrate_ctx
 
-  u8 is_passive_close;
-  u8 resume;
-  u8 app_closed;
-  u8 no_app_session;
-  u8 is_migrated;
   tls_conn_flags_t flags;
   u8 *srv_hostname;
   u32 evt_index;
