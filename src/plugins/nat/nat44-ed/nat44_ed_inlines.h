@@ -438,6 +438,9 @@ per_vrf_sessions_register_session (snat_session_t *s, u32 thread_index)
     vec_elt_at_index (sm->per_thread_data, thread_index);
   per_vrf_sessions_t *per_vrf_sessions;
 
+  if (sm->in2out_ip_fib_index)
+    return;
+
   per_vrf_sessions_cleanup (thread_index);
 
   // s->per_vrf_sessions_index == ~0 ... reuse of old session
@@ -479,6 +482,9 @@ per_vrf_sessions_unregister_session (snat_session_t *s, u32 thread_index)
   snat_main_per_thread_data_t *tsm;
   per_vrf_sessions_t *per_vrf_sessions;
 
+  if (sm->in2out_ip_fib_index)
+    return;
+
   ASSERT (s->per_vrf_sessions_index != ~0);
 
   tsm = vec_elt_at_index (sm->per_thread_data, thread_index);
@@ -498,6 +504,9 @@ per_vrf_sessions_is_expired (snat_session_t *s, u32 thread_index)
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   per_vrf_sessions_t *per_vrf_sessions;
+
+  if (sm->in2out_ip_fib_index)
+    return 0;
 
   ASSERT (s->per_vrf_sessions_index != ~0);
 
@@ -845,6 +854,17 @@ nat44_ed_is_unk_proto (u8 proto)
   };
 
   return 1 - lookup_table[proto];
+}
+
+static_always_inline u32
+nat_ed_get_in2out_fib_index (u32 sw_if_index, vlib_buffer_t *b, u8 is_in2out)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (sm->in2out_ip_fib_index && is_in2out)
+    return vnet_buffer (b)->ip.fib_index;
+  else
+    return fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
 }
 
 #endif /* __included_nat44_ed_inlines_h__ */

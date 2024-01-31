@@ -1652,6 +1652,9 @@ update_per_vrf_sessions_pool (u32 fib_index, int is_del)
   snat_main_t *sm = &snat_main;
   nat_fib_t *fib;
 
+  if (sm->in2out_ip_fib_index)
+    return;
+
   // we don't care if it is outside/inside fib
   // we just care about their ref_count
   // if it reaches 0 sessions should expire
@@ -2956,7 +2959,7 @@ nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
   u32 fib_index = rx_fib_index;
   if (b)
     {
-      if (PREDICT_FALSE (is_output))
+      if (PREDICT_FALSE (is_output && !sm->in2out_ip_fib_index))
 	{
 	  fib_index = sm->outside_fib_index;
 	  nat_fib_t *outside_fib;
@@ -3672,6 +3675,25 @@ VLIB_REGISTER_NODE (nat_default_node) = {
     [NAT_NEXT_OUT2IN_CLASSIFY] = "nat44-out2in-worker-handoff",
   },
 };
+
+static clib_error_t *
+nat44_ed_config (vlib_main_t *vm, unformat_input_t *input)
+{
+  snat_main_t *sm = &snat_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "in2out-ip-fib-index"))
+	{
+	  sm->in2out_ip_fib_index = 1;
+	}
+      else
+	break;
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (nat44_ed_config, "nat44-ed");
 
 void
 nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f)
