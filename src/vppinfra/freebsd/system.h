@@ -29,4 +29,7 @@ clib_error_t *clib_sysfs_prealloc_hugepages (int numa_node, int log2_page_size,
 
 uword *clib_sysfs_list_to_bitmap (char *filename);
 
+uword *clib_system_get_cpu_bitmap (void);
+uword *clib_system_get_domain_bitmap (void);
+
 #endif /* included_freebsd_system_h */

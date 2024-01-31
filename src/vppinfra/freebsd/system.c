@@ -67,3 +67,45 @@ clib_sysfs_list_to_bitmap (char *filename)
 {
   return NULL;
 }
+
+__clib_export uword *
+clib_system_get_cpu_bitmap (void)
+{
+  cpuset_t mask;
+  uword *r = NULL;
+
+  clib_bitmap_alloc (r, CPU_SETSIZE);
+
+  if (cpuset_getaffinity (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			  sizeof (mask), &mask) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, (struct bitset *) &mask));
+
+  return r;
+}
+
+__clib_export uword *
+clib_system_get_domain_bitmap (void)
+{
+  domainset_t domain;
+  uword *r = NULL;
+  int policy;
+
+  clib_bitmap_alloc (r, CPU_SETSIZE);
+
+  if (cpuset_getdomain (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			sizeof (domain), &domain, &policy) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, (struct bitset *) &domain));
+  return r;
+}
