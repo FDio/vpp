@@ -180,7 +180,7 @@ static void
 picotls_handle_handshake_failure (tls_ctx_t * ctx)
 {
   session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-  ctx->no_app_session = 1;
+  ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
   ctx->c_s_index = SESSION_INVALID_INDEX;
   tls_disconnect_transport (ctx);
 }
@@ -213,7 +213,7 @@ picotls_app_close (tls_ctx_t * ctx)
   if (!svm_fifo_max_dequeue_cons (app_session->tx_fifo))
     picotls_confirm_app_close (ctx);
   else
-    ctx->app_closed = 1;
+    ctx->flags |= TLS_CONN_F_APP_CLOSED;
 
   return 0;
 }
@@ -625,7 +625,7 @@ picotls_ctx_write (tls_ctx_t *ctx, session_t *app_session,
 
 check_tls_fifo:
 
-  if (ctx->app_closed)
+  if (ctx->flags & TLS_CONN_F_APP_CLOSED)
     picotls_app_close (ctx);
 
   /* Deschedule and wait for deq notification if fifo is almost full */

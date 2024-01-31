@@ -164,7 +164,7 @@ tls_ctx_ho_try_free (u32 ho_index)
       tls_add_postponed_ho_cleanups (ho_index);
       return;
     }
-  if (!ctx->no_app_session)
+  if (!(ctx->flags & TLS_CONN_F_NO_APP_SESSION))
     session_half_open_delete_notify (&ctx->connection);
   tls_ctx_half_open_free (ho_index);
 }
@@ -216,7 +216,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
     {
       TLS_DBG (1, "failed to allocate fifos");
       session_free (app_session);
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return rv;
     }
   ctx->app_session_handle = session_handle (app_session);
@@ -237,7 +237,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     {
       if (ctx->tls_type == TRANSPORT_PROTO_TLS)
 	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return -1;
     }
 
@@ -246,7 +246,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
       /* Free app session pre-allocated when transport was established */
       if (ctx->tls_type == TRANSPORT_PROTO_TLS)
 	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       goto send_reply;
     }
 
@@ -276,7 +276,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   if ((err = app_worker_init_connected (app_wrk, app_session)))
     {
       app_worker_connect_notify (app_wrk, 0, err, ctx->parent_app_api_context);
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       session_free (app_session);
       return -1;
     }
@@ -290,7 +290,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     {
       TLS_DBG (1, "failed to notify app");
       session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return -1;
     }
 
@@ -447,7 +447,7 @@ tls_session_reset_callback (session_t * s)
   session_t *app_session;
 
   ctx = tls_ctx_get (s->opaque);
-  ctx->is_passive_close = 1;
+  ctx->flags |= TLS_CONN_F_PASSIVE_CLOSE;
   tc = &ctx->connection;
   if (tls_ctx_handshake_is_over (ctx))
     {
@@ -462,7 +462,7 @@ tls_session_reset_callback (session_t * s)
 	{
 	  session_free (app_session);
 	  ctx->c_s_index = SESSION_INVALID_INDEX;
-	  ctx->no_app_session = 1;
+	  ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
 	  tls_disconnect_transport (ctx);
 	}
     }
@@ -500,7 +500,7 @@ tls_session_disconnect_callback (session_t * tls_session)
 	  || vlib_thread_is_main_w_barrier ());
 
   ctx = tls_ctx_get_w_thread (tls_session->opaque, tls_session->thread_index);
-  ctx->is_passive_close = 1;
+  ctx->flags |= TLS_CONN_F_PASSIVE_CLOSE;
   tls_ctx_transport_close (ctx);
 }
 
@@ -543,7 +543,7 @@ tls_session_accept_callback (session_t * tls_session)
     {
       /* Do not free ctx yet, in case we have pending rx events */
       session_free (app_session);
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       tls_disconnect_transport (ctx);
     }
 
@@ -564,7 +564,8 @@ tls_app_rx_callback (session_t *ts)
     return 0;
 
   ctx = tls_ctx_get (ts->opaque);
-  if (PREDICT_FALSE (ctx->no_app_session || ctx->app_closed))
+  if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_NO_APP_SESSION) ||
+		     (ctx->flags & TLS_CONN_F_APP_CLOSED)))
     {
       TLS_DBG (1, "Local App closed");
       return 0;
@@ -693,7 +694,7 @@ tls_app_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
     }
 
   ctx = tls_ctx_get (s->opaque);
-  if (!ctx->no_app_session)
+  if (!(ctx->flags & TLS_CONN_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
 }
@@ -719,7 +720,7 @@ dtls_migrate_ctx (void *arg)
   /* Probably the app detached while the session was migrating. Cleanup */
   if (session_half_open_migrated_notify (&ctx->connection))
     {
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
       return;
     }
@@ -738,7 +739,7 @@ dtls_session_migrate_callback (session_t *us, session_handle_t new_sh)
   ctx = tls_ctx_get_w_thread (us->opaque, us->thread_index);
   ctx->tls_session_handle = new_sh;
   cloned_ctx = tls_ctx_detach (ctx);
-  ctx->is_migrated = 1;
+  ctx->flags |= TLS_CONN_F_MIGRATED;
   session_half_open_migrate_notify (&ctx->connection);
 
   session_send_rpc_evt_to_thread (new_thread, dtls_migrate_ctx,
@@ -753,7 +754,7 @@ tls_session_transport_closed_callback (session_t *ts)
   tls_ctx_t *ctx;
 
   ctx = tls_ctx_get_w_thread (ts->opaque, ts->thread_index);
-  if (!ctx->no_app_session)
+  if (!(ctx->flags & TLS_CONN_F_NO_APP_SESSION))
     session_transport_closed_notify (&ctx->connection);
 }
 
@@ -1003,7 +1004,7 @@ tls_cleanup_ho (u32 ho_index)
   if (ctx->tls_session_handle == SESSION_INVALID_HANDLE)
     {
       ASSERT (ctx->flags & TLS_CONN_F_HO_DONE);
-      ctx->no_app_session = 1;
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return;
     }
 
@@ -1016,7 +1017,7 @@ tls_cleanup_ho (u32 ho_index)
       tls_ctx_half_open_free (ho_index);
     }
   else
-    ctx->no_app_session = 1;
+    ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
 }
 
 int

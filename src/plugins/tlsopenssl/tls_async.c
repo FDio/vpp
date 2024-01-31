@@ -437,7 +437,7 @@ tls_async_do_job (int eidx, u32 thread_index)
 
   if (ctx)
     {
-      ctx->resume = 1;
+      ctx->flags |= TLS_CONN_F_RESUME;
       session_send_rpc_evt_to_thread (thread_index, event_handler, event);
     }
   return 1;
