@@ -64,7 +64,11 @@ bio_tls_read (BIO * b, char *out, int outl)
   if (!s)
     {
       clib_warning ("no session");
+#ifdef __linux__
       errno = EBADFD;
+#else
+      errno = EBADF;
+#endif /* __linux__ */
       return -1;
     }
 
@@ -105,7 +109,11 @@ bio_tls_write (BIO * b, const char *in, int inl)
   if (!s)
     {
       clib_warning ("no session");
+#ifdef __linux__
       errno = EBADFD;
+#else
+      errno = EBADF;
+#endif /* __linux__ */
       return -1;
     }
 
