@@ -65,6 +65,7 @@ class VppIperf:
             sys.exit(1)
 
     def start_iperf_server(self):
+        """Starts the  iperf server and returns the process cmdline args."""
         args = [
             "ip",
             "netns",
@@ -75,11 +76,11 @@ class VppIperf:
             "-D",
         ]
         args.extend(self.server_args.split())
-        args = " ".join(args)
-        self.logger.debug(f"Starting iperf server: {args}")
+        cmd = " ".join(args)
+        self.logger.debug(f"Starting iperf server: {cmd}")
         try:
-            return subprocess.run(
-                args,
+            subprocess.run(
+                cmd,
                 timeout=self.duration + 5,
                 encoding="utf-8",
                 shell=True,
@@ -88,6 +89,7 @@ class VppIperf:
             )
         except subprocess.TimeoutExpired as e:
             raise Exception("Error: Timeout expired for iPerf", e.output)
+        return args[4:]
 
     def start_iperf_client(self):
         args = [
@@ -125,7 +127,7 @@ class VppIperf:
         """
         self.ensure_init()
         if not client_only:
-            self.start_iperf_server()
+            return self.start_iperf_server()
         if not server_only:
             result = self.start_iperf_client()
             self.logger.debug(f"Iperf client args: {result.args}")
@@ -192,17 +194,22 @@ def start_iperf(
     return iperf.start(server_only=server_only, client_only=client_only)
 
 
-def stop_iperf():
-    args = ["pkill", "iperf"]
-    args = " ".join(args)
-    try:
-        return subprocess.run(
-            args,
-            encoding="utf-8",
-            shell=True,
-        )
-    except Exception:
-        pass
+def stop_iperf(iperf_cmd):
+    """Stop the iperf process matching the iperf_cmd string."""
+    args = ["pgrep", "-x", "-f", iperf_cmd]
+    p = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
+    )
+    stdout, _ = p.communicate()
+    for pid in stdout.split():
+        try:
+            subprocess.run(
+                f"kill -9 {pid}",
+                encoding="utf-8",
+                shell=True,
+            )
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
