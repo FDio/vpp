@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  message(WARNING "-- vppcom is currently only support on Linux - disabled")
+  return()
+endif()
+
 ##############################################################################
 # vppcom shared library
 ##############################################################################
