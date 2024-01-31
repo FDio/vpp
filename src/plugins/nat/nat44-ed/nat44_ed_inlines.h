@@ -847,6 +847,17 @@ nat44_ed_is_unk_proto (u8 proto)
   return 1 - lookup_table[proto];
 }
 
+static_always_inline u32
+nat_ed_get_in2out_fib_index (u32 sw_if_index, vlib_buffer_t *b)
+{
+  snat_main_t *sm = &snat_main;
+
+  if (sm->in2out_ip_fib_index)
+    return vnet_buffer (b)->ip.fib_index;
+  else
+    return fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
+}
+
 #endif /* __included_nat44_ed_inlines_h__ */
 
 /*

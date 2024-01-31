@@ -753,7 +753,7 @@ nat44_ed_not_translate_output_feature (snat_main_t *sm, vlib_buffer_t *b,
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_interface_t *i;
   snat_session_t *s;
-  u32 rx_fib_index = ip4_fib_table_get_index_for_sw_if_index (rx_sw_if_index);
+  u32 rx_fib_index = nat_ed_get_in2out_fib_index (rx_sw_if_index, b);
   u32 tx_fib_index = ip4_fib_table_get_index_for_sw_if_index (tx_sw_if_index);
 
   /* src NAT check */
@@ -1099,8 +1099,7 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
       tx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       cntr_sw_if_index0 =
 	is_output_feature ? tx_sw_if_index0 : rx_sw_if_index0;
-      rx_fib_index0 = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-							   rx_sw_if_index0);
+      rx_fib_index0 = nat_ed_get_in2out_fib_index (rx_sw_if_index0, b0);
       lookup.fib_index = rx_fib_index0;
 
       if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
@@ -1376,8 +1375,7 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
       tx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       cntr_sw_if_index0 =
 	is_output_feature ? tx_sw_if_index0 : rx_sw_if_index0;
-      rx_fib_index0 = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-							   rx_sw_if_index0);
+      rx_fib_index0 = nat_ed_get_in2out_fib_index (rx_sw_if_index0, b0);
 
       if (PREDICT_FALSE (!is_output_feature && ip0->ttl == 1))
 	{

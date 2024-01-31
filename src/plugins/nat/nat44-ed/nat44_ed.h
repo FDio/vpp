@@ -638,6 +638,9 @@ typedef struct snat_main_s
   /* nat44 plugin enabled */
   u8 enabled;
 
+  /* use ip fib index instead of interface fib index */
+  u8 in2out_ip_fib_index;
+
   /* TCP session state machine table:
    *   first dimension is possible states
    *   second dimension is direction (in2out/out2in)

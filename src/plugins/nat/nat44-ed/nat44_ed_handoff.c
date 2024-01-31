@@ -149,10 +149,10 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       sw_if_index2 = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
       sw_if_index3 = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
 
-      rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
-      rx_fib_index1 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index1);
-      rx_fib_index2 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index2);
-      rx_fib_index3 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index3);
+      rx_fib_index0 = nat_ed_get_in2out_fib_index (sw_if_index0, b[0]);
+      rx_fib_index1 = nat_ed_get_in2out_fib_index (sw_if_index1, b[1]);
+      rx_fib_index2 = nat_ed_get_in2out_fib_index (sw_if_index2, b[2]);
+      rx_fib_index3 = nat_ed_get_in2out_fib_index (sw_if_index3, b[4]);
 
       if (is_in2out)
 	{
@@ -210,7 +210,6 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       u32 iph_offset0 = 0;
       ip4_header_t *ip0;
 
-
       if (is_output)
 	iph_offset0 = vnet_buffer (b[0])->ip.save_rewrite_length;
 
@@ -221,7 +220,7 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       vnet_buffer2 (b[0])->nat.arc_next = arc_next0;
 
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
-      rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+      rx_fib_index0 = nat_ed_get_in2out_fib_index (sw_if_index0, b[0]);
 
       if (is_in2out)
 	{
