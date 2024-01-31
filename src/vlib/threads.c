@@ -190,10 +190,15 @@ vlib_thread_init (vlib_main_t * vm)
   ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
+#ifdef __linux__
   tm->cpu_core_bitmap =
     clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
   tm->cpu_socket_bitmap =
     clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+#else
+  tm->cpu_core_bitmap = clib_system_get_cpu_bitmap ();
+  tm->cpu_socket_bitmap = clib_system_get_domain_bitmap ();
+#endif /* __linux__ */
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
