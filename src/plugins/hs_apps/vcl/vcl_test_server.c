@@ -28,6 +28,17 @@
 #include <vppinfra/mem.h>
 #include <pthread.h>
 
+/*
+ * XXX: Unfortunately libepoll-shim requires some hacks to work, one of these
+ * defines 'close' as a macro. This collides with vcl test callback 'close'.
+ * Undef the 'close' macro on FreeBSD if it exists.
+ */
+#ifdef __FreeBSD__
+#ifdef close
+#undef close
+#endif
+#endif /* __FreeBSD__ */
+
 typedef struct
 {
   uint16_t port;
