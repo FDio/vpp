@@ -1071,8 +1071,6 @@ openssl_app_close (tls_ctx_t * ctx)
   if (BIO_ctrl_pending (oc->rbio) <= 0
       && !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
     openssl_confirm_app_close (ctx);
-  else
-    ctx->flags |= TLS_CONN_F_APP_CLOSED;
   return 0;
 }
 
