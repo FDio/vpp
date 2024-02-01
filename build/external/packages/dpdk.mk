@@ -33,8 +33,11 @@ dpdk_tarball_md5sum_21.11    := 58660bbbe9e95abce86e47692b196555
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
+ifeq ($(shell uname), FreeBSD)
+dpdk_depends		     := $(if $(ARCH_X86_64), ipsec-mb)
+else
 dpdk_depends		     := rdma-core $(if $(ARCH_X86_64), ipsec-mb)
-
+endif
 DPDK_MLX_DEFAULT             := $(shell if grep -q "rdma=$(rdma-core_version) dpdk=$(dpdk_version)" mlx_rdma_dpdk_matrix.txt; then echo 'y'; else echo 'n'; fi)
 DPDK_MLX4_PMD                ?= $(DPDK_MLX_DEFAULT)
 DPDK_MLX5_PMD                ?= $(DPDK_MLX_DEFAULT)
