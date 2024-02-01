@@ -90,8 +90,10 @@ else()
     ##############################################################################
     # libnuma
     ##############################################################################
-    vpp_plugin_find_library(dpdk NUMA_LIB "numa")
-    list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
+    if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+      vpp_plugin_find_library(dpdk NUMA_LIB "numa")
+      list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
+    endif()
 
     ##############################################################################
     # Mellanox libraries
