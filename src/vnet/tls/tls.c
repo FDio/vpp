@@ -845,6 +845,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
   ctx = tls_ctx_get (ctx_handle);
+  ctx->flags |= TLS_CONN_F_APP_CLOSED;
   tls_ctx_app_close (ctx);
 }
 
