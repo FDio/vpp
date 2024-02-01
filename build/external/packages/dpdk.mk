@@ -172,6 +172,7 @@ DPDK_MESON_ARGS = \
 	-Db_pie=true \
 	-Dmachine=$(DPDK_MACHINE) \
 	--buildtype=$(DPDK_BUILD_TYPE) \
+	-Denable_kmods=false \
 	${DPDK_MLX_CONFIG_FLAG}
 
 PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
