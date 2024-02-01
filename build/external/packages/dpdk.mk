@@ -134,14 +134,19 @@ endif
 DPDK_DRIVERS_DISABLED := $(shell echo $(DPDK_DRIVERS_DISABLED) | tr -d '\\\t ')
 DPDK_LIBS_DISABLED := $(shell echo $(DPDK_LIBS_DISABLED) | tr -d '\\\t ')
 
+SED=sed
+ifeq ($shell(uname), FreeBSD)
+SED=gsed
+endif
+
 HASH := \#
 # post-meson-setup snippet to alter rte_build_config.h
 define dpdk_config
 if grep -q RTE_$(1) $(dpdk_src_dir)/config/rte_config.h ; then	\
-sed -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
+$(SED) -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
 	$(dpdk_src_dir)/config/rte_config.h; \
 elif grep -q RTE_$(1) $(dpdk_build_dir)/rte_build_config.h ; then \
-sed -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
+$(SED) -i -e 's/$(HASH)define RTE_$(1).*/$(HASH)define RTE_$(1) $(DPDK_$(1))/' \
 	$(dpdk_build_dir)/rte_build_config.h; \
 else \
 echo '$(HASH)define RTE_$(1) $(DPDK_$(1))' \
@@ -157,7 +162,7 @@ if [[ "$(DPDK_$(1))" == "y" ]]; then \
           >> $(dpdk_build_dir)/rte_build_config.h ; \
     fi; \
 elif [[ "$(DPDK_$(1))" == "n" ]]; then \
-    sed -i '/$(HASH)define RTE_$(1) .*/d' $(dpdk_build_dir)/rte_build_config.h \
+    $(SED) -i '/$(HASH)define RTE_$(1) .*/d' $(dpdk_build_dir)/rte_build_config.h \
       $(dpdk_src_dir)/config/rte_config.h ; \
 fi
 endef
