@@ -16,6 +16,29 @@
       "message": "Fixed.",
       "revId": "86f9b84ebaa909cd10009b6844ceebfb8025b481",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e22943d4_186f6deb",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2024-02-01T07:27:33Z",
+      "side": 1,
+      "message": "It\u0027s better not to have the default case. If a new state is added, compilers usually emit a warning here that a case for the new state is missing. Otherwise the patch looks good.",
+      "range": {
+        "startLine": 229,
+        "startChar": 0,
+        "endLine": 230,
+        "endChar": 21
+      },
+      "revId": "86f9b84ebaa909cd10009b6844ceebfb8025b481",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
