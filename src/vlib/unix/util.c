@@ -44,6 +44,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif /* __FreeBSD__ */
 
 clib_error_t *
 foreach_directory_file (char *dir_name,
@@ -181,6 +184,24 @@ vlib_unix_validate_runtime_file (unix_main_t * um,
 
   *full_path = fp;
   return error;
+}
+
+int
+vlib_unix_get_exec_path (char *path, size_t pathlen)
+{
+#ifdef __FreeBSD__
+  int mib[4];
+  size_t cb = pathlen;
+
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_PATHNAME;
+  mib[3] = -1;
+
+  if (sysctl (mib, 4, path, &cb, NULL, 0) == -1)
+    return -1;
+  return cb;
+#endif /* __FreeBSD__ */
 }
 
 /*

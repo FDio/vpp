@@ -170,6 +170,8 @@ clib_error_t *vlib_unix_validate_runtime_file (unix_main_t * um,
 					       const char *path,
 					       u8 ** full_path);
 
+int vlib_unix_get_exec_path (char *path, size_t pathlen);
+
 #endif /* included_unix_unix_h */
 
 /*
