@@ -1045,14 +1045,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 no_vmbus = 0;
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
+#ifdef __linux__
   u8 *huge_dir_path = 0;
+#endif /* __linux__ */
   u32 vendor, device, domain, bus, func;
   void *fmt_func;
   void *fmt_addr;
   f64 poll_interval;
 
+#ifdef __linux__
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
+#endif /* __linux__ */
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
   mhash_init (&conf->device_config_index_by_vmbus_addr, sizeof (uword),
@@ -1396,10 +1400,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 				      RTE_VECT_SIMD_256 :
 				      RTE_VECT_SIMD_512);
 
+#if __linux__
   /* lazy umount hugepages */
   umount2 ((char *) huge_dir_path, MNT_DETACH);
   rmdir ((char *) huge_dir_path);
   vec_free (huge_dir_path);
+#endif /* __linux__ */
 
   /* main thread 1st */
   if ((error = dpdk_buffer_pools_create (vm)))
