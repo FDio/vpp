@@ -17,7 +17,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#ifdef __linux__
 #include <linux/vfio.h>
+#endif /* __linux__ */
 #include <sys/ioctl.h>
 
 #include <vnet/vnet.h>
