@@ -187,9 +187,11 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
 {
   dpdk_main_t *dm = &dpdk_main;
   struct rte_pci_device *pci_dev;
-  struct rte_vmbus_device *vmbus_dev;
   vlib_pci_addr_t pci_addr;
+#ifdef __linux__
+  struct rte_vmbus_device *vmbus_dev;
   vlib_vmbus_addr_t vmbus_addr;
+#endif /* __linux__ */
   uword *p = 0;
 
   if ((pci_dev = dpdk_get_pci_device (di)))
@@ -202,6 +204,7 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
 	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
     }
 
+#ifdef __linux__
   if ((vmbus_dev = dpdk_get_vmbus_device (di)))
     {
       unformat_input_t input_vmbus;
@@ -216,6 +219,7 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
 		       &vmbus_addr);
       unformat_free (&input_vmbus);
     }
+#endif /* __linux__ */
 
   if (p)
     return pool_elt_at_index (dm->conf->dev_confs, p[0]);
