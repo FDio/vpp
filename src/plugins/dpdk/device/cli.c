@@ -89,11 +89,17 @@ show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
 		   vlib_cli_command_t * cmd)
 {
   clib_error_t *err = 0;
-  u32 pipe_max_size;
   int fds[2];
   u8 *s = 0;
   int n, n_try;
   FILE *f;
+
+  /*
+   * XXX: Pipes on FreeBSD grow dynamically up to 64KB (FreeBSD 15), don't
+   * manually tweak this value on FreeBSD at the moment.
+   */
+#ifdef __linux__
+  u32 pipe_max_size;
 
   err = clib_sysfs_read ("/proc/sys/fs/pipe-max-size", "%u", &pipe_max_size);
 
@@ -112,6 +118,7 @@ show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
       err = clib_error_return_unix (0, "fcntl(F_SETPIPE_SZ)");
       goto error;
     }
+#endif /* __linux__ */
 
   if (fcntl (fds[0], F_SETFL, O_NONBLOCK) == -1)
     {
