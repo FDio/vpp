@@ -29,6 +29,8 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 
+static session_lookup_main_t sl_main;
+
 /**
  * Network namespace index (i.e., fib index) to session lookup table. We
  * should have one per network protocol type but for now we only support IP4/6
@@ -169,6 +171,19 @@ session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
     }
   else
     {
+      u8 needs_sync = !vlib_thread_is_main_w_barrier ();
+      session_lookup_main_t *slm = &sl_main;
+
+      /* Stop workers, otherwise consumers might be affected. This is
+       * acceptable because new tables should seldom be allocated */
+      if (needs_sync)
+	{
+	  vlib_workers_sync ();
+
+	  /* We might have a race, only one worker allowed at once */
+	  clib_spinlock_lock (&slm->st_alloc_lock);
+	}
+
       st = session_table_alloc ();
       table_index = session_table_index (st);
       vec_validate_init_empty (fib_index_to_table_index[fib_proto], fib_index,
@@ -176,6 +191,13 @@ session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
       fib_index_to_table_index[fib_proto][fib_index] = table_index;
       st->active_fib_proto = fib_proto;
       session_table_init (st, fib_proto);
+
+      if (needs_sync)
+	{
+	  clib_spinlock_unlock (&slm->st_alloc_lock);
+	  vlib_workers_continue ();
+	}
+
       return st;
     }
 }
@@ -1792,6 +1814,10 @@ VLIB_CLI_COMMAND (show_session_lookup_command, static) = {
 void
 session_lookup_init (void)
 {
+  session_lookup_main_t *slm = &sl_main;
+
+  clib_spinlock_init (&slm->st_alloc_lock);
+
   /*
    * Allocate default table and map it to fib_index 0
    */

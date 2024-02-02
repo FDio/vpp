@@ -29,6 +29,11 @@ typedef enum session_lookup_result_
   SESSION_LOOKUP_RESULT_FILTERED
 } session_lookup_result_t;
 
+typedef struct session_lookup_main_
+{
+  clib_spinlock_t st_alloc_lock;
+} session_lookup_main_t;
+
 session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
 				 ip4_address_t * rmt, u16 lcl_port,
 				 u16 rmt_port, u8 proto);
