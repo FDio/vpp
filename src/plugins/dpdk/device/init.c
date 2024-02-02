@@ -570,8 +570,18 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       continue;
     }
 
+#ifdef __FreeBSD__
+    /*
+     * The defines for the PCI_CLASS_* types are platform specific and differ
+     * on FreeBSD.
+     */
+    if (d->device_class != PCI_CLASS_NETWORK &&
+	d->device_class != PCI_CLASS_PROCESSOR_CO)
+      continue;
+#else
     if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && d->device_class != PCI_CLASS_PROCESSOR_CO)
       continue;
+#endif /* __FreeBSD__ */
 
     if (num_whitelisted)
       {
