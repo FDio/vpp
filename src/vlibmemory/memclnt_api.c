@@ -578,19 +578,6 @@ vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t *mp)
   clib_warning ("unimplemented");
 }
 
-void
-vl_api_send_pending_rpc_requests (vlib_main_t *vm)
-{
-  vlib_main_t *vm_global = vlib_get_first_main ();
-
-  ASSERT (vm != vm_global);
-
-  clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
-  vec_append (vm_global->pending_rpc_requests, vm->pending_rpc_requests);
-  vec_reset_length (vm->pending_rpc_requests);
-  clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
-}
-
 always_inline void
 vl_api_rpc_call_main_thread_inline (void *fp, u8 *data, u32 data_length,
 				    u8 force_rpc)

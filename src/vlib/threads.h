@@ -174,6 +174,7 @@ void vlib_worker_thread_node_refork (void);
  * Wait until each of the workers has been once around the track
  */
 void vlib_worker_wait_one_loop (void);
+void vlib_worker_flush_pending_rpc_requests (vlib_main_t *vm);
 
 static_always_inline uword
 vlib_get_thread_index (void)
