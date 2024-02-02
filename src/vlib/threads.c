@@ -1587,6 +1587,19 @@ vlib_worker_wait_one_loop (void)
 }
 
 void
+vlib_worker_flush_pending_rpc_requests (vlib_main_t *vm)
+{
+  vlib_main_t *vm_global = vlib_get_first_main ();
+
+  ASSERT (vm != vm_global);
+
+  clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
+  vec_append (vm_global->pending_rpc_requests, vm->pending_rpc_requests);
+  vec_reset_length (vm->pending_rpc_requests);
+  clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
+}
+
+void
 vlib_worker_thread_fn (void *arg)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
