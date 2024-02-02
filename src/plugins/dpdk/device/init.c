@@ -1280,6 +1280,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (conf->eal_init_args, (u8 *) "--no-telemetry");
     }
 
+#ifdef __linux__
   if (!file_prefix)
     {
       tmp = format (0, "--file-prefix%c", 0);
@@ -1287,6 +1288,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       tmp = format (0, "vpp%c", 0);
       vec_add1 (conf->eal_init_args, tmp);
     }
+#endif
 
   if (no_pci == 0 && geteuid () == 0)
     dpdk_bind_devices_to_uio (conf);
