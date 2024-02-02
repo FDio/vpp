@@ -17,6 +17,9 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef __FreeBSD__
+#include <sys/memrange.h>
+#endif /* __FreeBSD__ */
 #include <fcntl.h>
 #include <unistd.h>
 #include <sched.h>
@@ -184,8 +187,9 @@ next_chunk:
 }
 
 static void
-pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
+pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 {
+#ifdef __linux
   uword seek, va, pa, p;
   int fd;
   u32 elts_per_page = 1U << (pm->def_log2_page_sz - pm->lookup_log2_page_sz);
@@ -223,6 +227,45 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
 
   if (fd != -1)
     close (fd);
+#elif defined(__FreeBSD__)
+  struct mem_extract meme;
+  uword p;
+  int fd;
+  u32 elts_per_page = 1U << (pm->def_log2_page_sz - pm->lookup_log2_page_sz);
+
+  vec_validate_aligned (pm->lookup_table,
+			vec_len (pm->pages) * elts_per_page - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  p = (uword) first * elts_per_page;
+  if (pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP)
+    {
+      while (p < (uword) elts_per_page * count)
+	{
+	  pm->lookup_table[p] =
+	    pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
+	  p++;
+	}
+      return;
+    }
+
+  fd = open ((char *) "/dev/mem", O_RDONLY);
+  if (fd == -1)
+    return;
+
+  while (p < (uword) elts_per_page * count)
+    {
+      meme.me_vaddr =
+	pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
+      if (ioctl (fd, MEM_EXTRACT_PADDR, &meme) == -1)
+	continue;
+      pm->lookup_table[p] = meme.me_vaddr - meme.me_paddr;
+      p++;
+    }
+  return;
+#else
+#error "Unsupported OS"
+#endif
 }
 
 static inline clib_pmalloc_page_t *
