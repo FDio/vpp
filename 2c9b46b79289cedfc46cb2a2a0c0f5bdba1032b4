@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9ce4416_b504756c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3060
+      },
+      "writtenOn": "2024-02-02T10:56:21Z",
+      "side": 1,
+      "message": "CI failure appears to be unrelated to this change.",
+      "revId": "2c9b46b79289cedfc46cb2a2a0c0f5bdba1032b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
