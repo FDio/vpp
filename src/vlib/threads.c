@@ -1519,6 +1519,7 @@ vlib_workers_sync (void)
       u32 thread_index = vlib_get_thread_index ();
       vlib_rpc_call_main_thread (vlib_worker_sync_rpc, (u8 *) &thread_index,
 				 sizeof (thread_index));
+      vlib_worker_flush_pending_rpc_requests (vlib_get_main ());
     }
 
   /* Wait until main thread asks for barrier */
