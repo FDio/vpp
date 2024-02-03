@@ -250,10 +250,10 @@ int transport_alloc_local_port (u8 proto, ip46_address_t *ip,
 				transport_endpoint_cfg_t *rmt);
 int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t *rmt,
 				    ip46_address_t *lcl_addr, u16 *lcl_port);
-void transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip,
-				     u16 port);
-int transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip,
-				      u16 port);
+void transport_share_local_endpoint (u8 proto, u32 fib_index,
+				     ip46_address_t *lcl_ip, u16 port);
+int transport_release_local_endpoint (u8 proto, u32 fib_index,
+				      ip46_address_t *lcl_ip, u16 port);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 void transport_init (void);
 
