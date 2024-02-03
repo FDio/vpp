@@ -123,8 +123,8 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
       udp_connection_free (uc);
       return 0;
     }
-  transport_share_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
-				  uc->c_lcl_port);
+  transport_share_local_endpoint (TRANSPORT_PROTO_UDP, uc->c_fib_index,
+				  &uc->c_lcl_ip, uc->c_lcl_port);
   return uc;
 }
 
