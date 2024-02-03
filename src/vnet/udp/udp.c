@@ -91,8 +91,8 @@ udp_connection_free (udp_connection_t * uc)
 static void
 udp_connection_cleanup (udp_connection_t * uc)
 {
-  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
-				    uc->c_lcl_port);
+  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, uc->c_fib_index,
+				    &uc->c_lcl_ip, uc->c_lcl_port);
   udp_connection_unregister_port (uc->c_lcl_port, uc->c_is_ip4);
   udp_connection_free (uc);
 }
@@ -399,8 +399,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
       /* If specific source port was requested abort */
       if (rmt->peer.port)
 	{
-	  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
-					    lcl_port);
+	  transport_release_local_endpoint (
+	    TRANSPORT_PROTO_UDP, rmt->fib_index, &lcl_addr, lcl_port);
 	  return SESSION_E_PORTINUSE;
 	}
 
@@ -408,8 +408,8 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
       while (udp_connection_port_used_extern (clib_net_to_host_u16 (lcl_port),
 					      rmt->is_ip4))
 	{
-	  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &lcl_addr,
-					    lcl_port);
+	  transport_release_local_endpoint (
+	    TRANSPORT_PROTO_UDP, rmt->fib_index, &lcl_addr, lcl_port);
 	  lcl_port =
 	    transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr, rmt);
 	  if (lcl_port < 1)
