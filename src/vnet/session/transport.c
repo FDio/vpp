@@ -247,15 +247,15 @@ format_transport_state (u8 *s, va_list *args)
 }
 
 u32
-transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
-			   ip46_address_t * ip, u16 port)
+transport_endpoint_lookup (transport_endpoint_table_t *ht, u8 proto,
+			   u32 fib_index, ip46_address_t *ip, u16 port)
 {
   clib_bihash_kv_24_8_t kv;
   int rv;
 
   kv.key[0] = ip->as_u64[0];
   kv.key[1] = ip->as_u64[1];
-  kv.key[2] = (u64) port << 8 | (u64) proto;
+  kv.key[2] = (u64) fib_index << 32 | (u64) port << 8 | (u64) proto;
 
   rv = clib_bihash_search_inline_24_8 (ht, &kv);
   if (rv == 0)
@@ -272,7 +272,7 @@ transport_endpoint_table_add (transport_endpoint_table_t * ht, u8 proto,
 
   kv.key[0] = te->ip.as_u64[0];
   kv.key[1] = te->ip.as_u64[1];
-  kv.key[2] = (u64) te->port << 8 | (u64) proto;
+  kv.key[2] = (u64) te->fib_index << 32 | (u64) te->port << 8 | (u64) proto;
   kv.value = value;
 
   clib_bihash_add_del_24_8 (ht, &kv, 1);
@@ -286,7 +286,7 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
 
   kv.key[0] = te->ip.as_u64[0];
   kv.key[1] = te->ip.as_u64[1];
-  kv.key[2] = (u64) te->port << 8 | (u64) proto;
+  kv.key[2] = (u64) te->fib_index << 32 | (u64) te->port << 8 | (u64) proto;
 
   clib_bihash_add_del_24_8 (ht, &kv, 0);
 }
@@ -547,14 +547,15 @@ transport_program_endpoint_cleanup (u32 lepi)
 }
 
 int
-transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip, u16 port)
+transport_release_local_endpoint (u8 proto, u32 fib_index,
+				  ip46_address_t *lcl_ip, u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
   u32 lepi;
 
-  lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
-				    port);
+  lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto,
+				    fib_index, lcl_ip, port);
   if (lepi == ENDPOINT_INVALID_INDEX)
     return -1;
 
@@ -574,7 +575,8 @@ transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip, u16 port)
 }
 
 static int
-transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
+transport_endpoint_mark_used (u8 proto, u32 fib_index, ip46_address_t *ip,
+			      u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
@@ -582,8 +584,8 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
 
   ASSERT (vlib_get_thread_index () <= transport_cl_thread ());
 
-  tei =
-    transport_endpoint_lookup (&tm->local_endpoints_table, proto, ip, port);
+  tei = transport_endpoint_lookup (&tm->local_endpoints_table, proto,
+				   fib_index, ip, port);
   if (tei != ENDPOINT_INVALID_INDEX)
     return SESSION_E_PORTINUSE;
 
@@ -601,7 +603,8 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
 }
 
 void
-transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
+transport_share_local_endpoint (u8 proto, u32 fib_index,
+				ip46_address_t *lcl_ip, u16 port)
 {
   transport_main_t *tm = &tp_main;
   local_endpoint_t *lep;
@@ -610,8 +613,8 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
   /* Active opens should call this only from a control thread, which are also
    * used to allocate and free ports. So, pool has only one writer and
    * potentially many readers. Listeners are allocated with barrier */
-  lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
-				    port);
+  lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto,
+				    fib_index, lcl_ip, port);
   if (lepi != ENDPOINT_INVALID_INDEX)
     {
       lep = pool_elt_at_index (tm->local_endpoints, lepi);
@@ -653,7 +656,8 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 	    }
 	}
 
-      if (!transport_endpoint_mark_used (proto, lcl_addr, port))
+      if (!transport_endpoint_mark_used (proto, rmt->fib_index, lcl_addr,
+					 port))
 	break;
 
       /* IP:port pair already in use, check if 6-tuple available */
@@ -662,7 +666,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 	continue;
 
       /* 6-tuple is available so increment lcl endpoint refcount */
-      transport_share_local_endpoint (proto, lcl_addr, port);
+      transport_share_local_endpoint (proto, rmt->fib_index, lcl_addr, port);
 
       break;
     }
@@ -783,7 +787,8 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
     {
       *lcl_port = rmt_cfg->peer.port;
 
-      if (!transport_endpoint_mark_used (proto, lcl_addr, rmt_cfg->peer.port))
+      if (!transport_endpoint_mark_used (proto, rmt->fib_index, lcl_addr,
+					 rmt_cfg->peer.port))
 	return 0;
 
       /* IP:port pair already in use, check if 6-tuple available */
@@ -793,7 +798,8 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 	return SESSION_E_PORTINUSE;
 
       /* 6-tuple is available so increment lcl endpoint refcount */
-      transport_share_local_endpoint (proto, lcl_addr, rmt_cfg->peer.port);
+      transport_share_local_endpoint (proto, rmt->fib_index, lcl_addr,
+				      rmt_cfg->peer.port);
 
       return 0;
     }
