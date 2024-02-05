@@ -63,6 +63,8 @@ ifeq ($(filter ubuntu debian linuxmint,$(OS_ID)),$(OS_ID))
 PKG=deb
 else ifeq ($(filter rhel centos fedora opensuse-leap rocky almalinux,$(OS_ID)),$(OS_ID))
 PKG=rpm
+else ifeq ($(filter freebsd,$(OS_ID)),$(OS_ID))
+PKG=pkg
 endif
 
 # +libganglia1-dev if building the gmond plugin
@@ -220,6 +222,18 @@ ifeq ($(OS_ID),opensuse-leap)
 endif
 
 RPM_SUSE_DEPENDS += $(RPM_SUSE_BUILDTOOLS_DEPS) $(RPM_SUSE_DEVEL_DEPS) $(RPM_SUSE_PYTHON_DEPS) $(RPM_SUSE_PLATFORM_DEPS)
+
+# FreeBSD build and test dependancies
+
+FBSD_PY_PRE=py311
+
+FBSD_TEST_DEPS = setsid rust $(FBSD_PY_PRE)-pyshark
+FBSD_PYTHON_DEPS = python3 $(FBSD_PY_PRE)-pyelftools $(FBSD_PY_PRE)-ply
+FBSD_DEVEL_DEPS = cscope gdb
+FBSD_BUILD_DEPS = bash gmake sudo
+FBSD_BUILD_DEPS += git sudo autoconf automake curl gsed
+FBSD_BUILD_DEPS += pkgconf ninja cmake libepoll-shim jansson
+FBSD_DEPS = $(FBSD_BUILD_DEPS) $(FBSD_PYTHON_DEPS) $(FBSD_TEST_DEPS) $(FBSD_DEVEL_DEPS)
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -391,8 +405,10 @@ endif
 else ifeq ($(filter opensuse-leap-15.3 opensuse-leap-15.4 ,$(OS_ID)-$(OS_VERSION_ID)),$(OS_ID)-$(OS_VERSION_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install  -y $(RPM_SUSE_DEPENDS)
+else ifeq ($(OS_ID), freebsd)
+	@sudo pkg install -y $(FBSD_DEPS)
 else
-	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE-leap systems")
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS, openSUSE-leap or FreeBSD systems")
 endif
 	git config commit.template .git_commit_template.txt
 
