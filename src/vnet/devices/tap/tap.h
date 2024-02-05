@@ -63,6 +63,7 @@ typedef struct
   u8 host_ip6_gw_set;
   u8 host_mtu_set;
   u32 host_mtu_size;
+  u32 busypoll_timeout_us;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -87,6 +88,7 @@ typedef struct
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
   u32 host_mtu_size;
+  u32 busypoll_timeout_us;
 } tap_interface_details_t;
 
 typedef struct

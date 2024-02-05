@@ -83,6 +83,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.rx_ring_sz = tmp;
 	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
 	    args.tx_ring_sz = tmp;
+	  else if (unformat (line_input, "busypoll-timeout-us %d", &tmp))
+	    args.busypoll_timeout_us = tmp;
 	  else
 	    if (unformat
 		(line_input, "host-mtu-size %d", &args.host_mtu_size))
@@ -147,7 +149,8 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
     "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
     "[host-mtu-size <size>] [no-gso|gso [gro-coalesce]|csum-offload] "
-    "[persist] [attach] [tun] [packed] [in-order]",
+    "[persist] [attach] [tun] [packed] [in-order] [busypoll-timeout-us "
+    "<timeout>]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */

@@ -386,6 +386,8 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 	    vlib_cli_output (vm, "  host-mac-addr: %U",
 			     format_ethernet_address, vif->host_mac_addr);
 	  vlib_cli_output (vm, "  host-carrier-up: %u", vif->host_carrier_up);
+	  vlib_cli_output (vm, "  busypoll-timeout-us: %u",
+			   vif->busypoll_timeout_us);
 
 	  vec_foreach_index (i, vif->vhost_fds)
 	    str = format (str, " %d", vif->vhost_fds[i]);

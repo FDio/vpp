@@ -191,6 +191,7 @@ typedef struct
       u8 host_ip4_prefix_len;
       u8 host_ip6_prefix_len;
       u8 host_carrier_up;	/* host tun/tap driver link carrier state */
+      u32 busypoll_timeout_us;
     };
     struct			/* native virtio */
     {

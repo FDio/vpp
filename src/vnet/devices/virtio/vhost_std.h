@@ -75,6 +75,10 @@ typedef struct
 #define VHOST_SET_VRING_CALL _IOW(VHOST_VIRTIO, 0x21, vhost_vring_file_t)
 #define VHOST_SET_VRING_ERR _IOW(VHOST_VIRTIO, 0x22, vhost_vring_file_t)
 #define VHOST_NET_SET_BACKEND _IOW(VHOST_VIRTIO, 0x30, vhost_vring_file_t)
+#define VHOST_SET_VRING_BUSYLOOP_TIMEOUT                                      \
+  _IOW (VHOST_VIRTIO, 0x23, vhost_vring_state_t)
+#define VHOST_GET_VRING_BUSYLOOP_TIMEOUT                                      \
+  _IOW (VHOST_VIRTIO, 0x24, vhost_vring_state_t)
 
 #endif
 

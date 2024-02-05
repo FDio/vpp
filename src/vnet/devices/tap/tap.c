@@ -202,6 +202,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vif->id = args->id;
   vif->num_txqs = clib_max (args->num_tx_queues, thm->n_vlib_mains);
   vif->num_rxqs = clib_max (args->num_rx_queues, 1);
+  vif->busypoll_timeout_us = args->busypoll_timeout_us;
 
   if (args->tap_flags & TAP_FLAG_ATTACH)
     {
@@ -600,6 +601,14 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 			state.index, state.num);
       _IOCTL (fd, VHOST_SET_VRING_NUM, &state);
 
+      if (args->busypoll_timeout_us)
+	{
+	  state.num = args->busypoll_timeout_us;
+	  virtio_log_debug (vif, "VHOST_SET_VRING_BUSYLOOP_TIMEOUT: time %lu",
+			    state.num);
+	  _IOCTL (fd, VHOST_SET_VRING_BUSYLOOP_TIMEOUT, &state);
+	}
+
       addr.flags = 0;
       addr.desc_user_addr = pointer_to_uword (vring->desc);
       addr.avail_user_addr = pointer_to_uword (vring->avail);
@@ -902,6 +911,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     vring = vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS(0));
     tapid->tx_ring_sz = vring->queue_size;
     tapid->tap_flags = vif->tap_flags;
+    tapid->busypoll_timeout_us = vif->busypoll_timeout_us;
     clib_memcpy(&tapid->host_mac_addr, vif->host_mac_addr, 6);
     if (vif->host_if_name)
       {
