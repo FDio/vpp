@@ -16,6 +16,23 @@
       "message": "perftest-2n-spr mrrANDnic_intel-e810cqANDdrv_avfAND1cAND64bANDethip4-ip4base",
       "revId": "038dad7ef29b0b724071edb5f8cc7a9845584454",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "577f0c25_31245c77",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-02-05T15:32:24Z",
+      "side": 1,
+      "message": "\u003e https://jenkins.fd.io/job/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-spr/23/ : FAILURE (skipped)\n\nRegressions across all AVF tests, -11% for this one.",
+      "revId": "038dad7ef29b0b724071edb5f8cc7a9845584454",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
