@@ -217,6 +217,12 @@ typedef struct
 
 typedef struct
 {
+  vnet_flow_dev_ops_function_t *flow_ops_function;
+  format_function_t *format_flow;
+} vnet_dev_flow_t;
+
+typedef struct
+{
   vnet_dev_op_t *alloc;
   vnet_dev_op_t *init;
   vnet_dev_op_no_rv_t *deinit;
@@ -325,6 +331,7 @@ typedef struct vnet_dev_port
   vnet_dev_tx_queue_ops_t tx_queue_ops;
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
+  vnet_dev_flow_t flow;
 
   struct
   {
@@ -475,6 +482,7 @@ typedef struct
 
   vnet_dev_node_t *rx_node;
   vnet_dev_node_t *tx_node;
+  vnet_dev_flow_t *flow;
 
   struct
   {

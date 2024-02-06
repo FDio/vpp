@@ -266,6 +266,7 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->port_ops = args->port.ops;
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
+  port->flow = *args->flow;
 
   if (args->port.args)
     for (vnet_dev_arg_t *a = args->port.args; a->type != VNET_DEV_ARG_END; a++)
@@ -584,6 +585,9 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port)
       dev_class->format_tx_trace = port->tx_node.format_trace;
       dev_class->tx_function_error_counters = port->tx_node.error_counters;
       dev_class->tx_function_n_errors = port->tx_node.n_error_counters;
+
+      dev_class->format_flow = port->flow.format_flow;
+      dev_class->flow_ops_function = port->flow.flow_ops_function;
 
       /* create new interface including tx and output nodes */
       port->intf.hw_if_index = vnet_eth_register_interface (
