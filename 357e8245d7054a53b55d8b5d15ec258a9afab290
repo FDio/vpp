@@ -33,6 +33,24 @@
       "message": "Hi Jay, \n\nMy team is currently working to apply the same key update on ipsec_sa.c and we are about to finish the validation. I think it will be better to submit/merge them together with-in this patch-set. Sorry about the delay. \n\nRegards\n\nKai",
       "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "604fef72_209e1eac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2024-02-06T16:41:21Z",
+      "side": 1,
+      "message": "Hi Kai,\n\nGlad to hear about that! No worries about the delay. Please keep us posted on the progress of your validation. If you need any help from our side, please don\u0027t hesitate to let us know.\n\nCheers,\nJay Wang",
+      "parentUuid": "41eda611_5e81be6b",
+      "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
