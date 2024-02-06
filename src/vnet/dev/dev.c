@@ -399,6 +399,7 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.mac_addr_change_function = vnet_dev_port_mac_change,
 	.mac_addr_add_del_function = vnet_dev_add_del_mac_address,
 	.flow_ops_function = vnet_dev_flow_ops_fn,
+	.format_flow = format_vnet_dev_flow,
 	.set_rss_queues_function = vnet_dev_interface_set_rss_queues,
       };
       driver->dev_class_index = vnet_register_device_class (vm, dev_class);
