@@ -1080,6 +1080,11 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 
   snd_space = tcp_available_output_snd_space (tc);
 
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  /*start persist timer if snd_wnd is zero*/
+  if ((tc->snd_wnd < tc->snd_mss) &&
+		  !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	  tcp_persist_timer_set (&wrk->timer_wheel, tc);
   /* If we got dupacks or sacked bytes but we're not yet in recovery, try
    * to force the peer to send enough dupacks to start retransmitting as
    * per Limited Transmit (RFC3042)
