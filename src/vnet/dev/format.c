@@ -490,3 +490,18 @@ format_vnet_dev_port_tx_offloads (u8 *s, va_list *args)
 
   return s;
 }
+
+u8 *
+format_vnet_dev_flow (u8 *s, va_list *args)
+{
+  u32 dev_instance = va_arg (*args, u32);
+  u32 flow_index = va_arg (*args, u32);
+  uword private_data = va_arg (*args, uword);
+  vnet_dev_port_t *port = vnet_dev_get_port_from_dev_instance (dev_instance);
+
+  if (port->port_ops.format_flow)
+    s = format (s, "%U", port->port_ops.format_flow, port, flow_index,
+		private_data);
+
+  return s;
+}

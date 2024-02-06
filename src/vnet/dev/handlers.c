@@ -146,9 +146,47 @@ int
 vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op,
 		      u32 dev_instance, u32 flow_index, uword *private_data)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vnet_dev_port_t *p = vnet_dev_get_port_from_dev_instance (dev_instance);
-  log_warn (p->dev, "unsupported request for flow_ops received");
-  return VNET_FLOW_ERROR_NOT_SUPPORTED;
+  vnet_dev_port_cfg_change_req_t req;
+  vnet_dev_rv_t rv;
+
+  switch (op)
+    {
+    case VNET_FLOW_DEV_OP_ADD_FLOW:
+      req.type = VNET_DEV_PORT_CFG_ADD_RX_FLOW;
+      break;
+    case VNET_FLOW_DEV_OP_DEL_FLOW:
+      req.type = VNET_DEV_PORT_CFG_DEL_RX_FLOW;
+      break;
+    case VNET_FLOW_DEV_OP_GET_COUNTER:
+      req.type = VNET_DEV_PORT_CFG_GET_RX_FLOW_COUNTER;
+      break;
+    case VNET_FLOW_DEV_OP_RESET_COUNTER:
+      req.type = VNET_DEV_PORT_CFG_RESET_RX_FLOW_COUNTER;
+      break;
+    default:
+      log_warn (p->dev, "unsupported request for flow_ops received");
+      return VNET_FLOW_ERROR_NOT_SUPPORTED;
+    }
+
+  req.flow_index = flow_index;
+  req.private_data = private_data;
+
+  rv = vnet_dev_port_cfg_change_req_validate (vm, p, &req);
+  if (rv != VNET_DEV_OK)
+    {
+      log_err (p->dev, "validation failed for flow_ops");
+      return VNET_FLOW_ERROR_NOT_SUPPORTED;
+    }
+
+  if ((rv = vnet_dev_process_port_cfg_change_req (vm, p, &req)) != VNET_DEV_OK)
+    {
+      log_err (p->dev, "request for flow_ops failed");
+      return vnet_dev_flow_err (vm, rv);
+    }
+
+  return 0;
 }
 
 clib_error_t *

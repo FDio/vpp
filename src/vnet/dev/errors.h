@@ -39,6 +39,8 @@
   _ (UNKNOWN_INTERFACE, "unknown interface")                                  \
   _ (UNSUPPORTED_CONFIG, "unsupported config")                                \
   _ (UNSUPPORTED_DEVICE, "unsupported device")                                \
-  _ (UNSUPPORTED_DEVICE_VER, "unsupported device version")
+  _ (UNSUPPORTED_DEVICE_VER, "unsupported device version")                    \
+  _ (ALREADY_DONE, "already done")                                            \
+  _ (NO_SUCH_INTERFACE, "no such interface")
 
 #endif /* _VNET_DEV_ERRORS_H_ */

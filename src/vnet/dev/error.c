@@ -6,6 +6,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
+#include <vnet/flow/flow.h>
 
 clib_error_t *
 vnet_dev_port_err (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rv_t rv,
@@ -26,4 +27,28 @@ vnet_dev_port_err (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rv_t rv,
 			   port->port_id, format_vnet_dev_rv, rv, s);
   vec_free (s);
   return err;
+}
+
+int
+vnet_dev_flow_err (vlib_main_t *vm, vnet_dev_rv_t rv)
+{
+  if (rv == VNET_DEV_OK)
+    return 0;
+
+  switch (rv)
+    {
+      /* clang-format off */
+#define _(n, e, s)                                            \
+    case VNET_DEV_ERR_##e:                                    \
+      return VNET_FLOW_ERROR_##e;
+    foreach_flow_error;
+#undef _
+      /* clang-format on */
+    default:
+      ASSERT (0);
+    }
+
+  ASSERT (0);
+
+  return 0;
 }
