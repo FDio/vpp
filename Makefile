@@ -23,6 +23,10 @@ MACHINE=$(shell uname -m)
 SUDO?=sudo -E
 DPDK_CONFIG?=no-pci
 
+ifeq ($(strip $(SHELL)),)
+$(error "bash not found, VPP requires bash to build")
+endif
+
 ,:=,
 define disable_plugins
 $(if $(1), \
