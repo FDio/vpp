@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "236b9e8f_06ff5725",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2024-02-06T15:38:23Z",
+      "side": 1,
+      "message": "Hello Damjan/Fan/Gabriel/Kai,\n\nCan you help review this patch and merge it if possible? If you need more clarification, please let us know since Lijian is not working at Arm any more.\n\nThanks,\nJay Wang",
+      "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
