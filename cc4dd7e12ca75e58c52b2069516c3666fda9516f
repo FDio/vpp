@@ -67,6 +67,24 @@
       "message": "Overall looks good, but please don\u0027t change existing APIs, you should add a new version: see https://github.com/FDio/vpp/blob/master/src/tools/vppapigen/VPPAPI.rst#api-change-process",
       "revId": "cc4dd7e12ca75e58c52b2069516c3666fda9516f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "950420e6_0dd2953a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-02-06T14:11:32Z",
+      "side": 1,
+      "message": "The API in question is in \"in_progress\" .\n\ndefine ikev2_sa_dump\n{\n  u32 client_index;\n  u32 context;\n\n  option status \u003d \"in_progress\";\n};\n\nThe \"In-Progress\" APIs or the APIs with the semantic version of 0.x.y are not subject to any stability checks, thus the developers are free to introduce them, modify their signatures, and as well remove them completely at will. The users should not use the in-progress APIs without the interactions with its maintainers, nor base the production code on those APIs. The goal of \"in-progress\" APIs to allow rapid iteration and modifications to ensure the API signature and function is stabilized. These API calls may be used for testing or experimentation and prototyping.\n\nDo you want me to remove status \"in-progress\" from all IKEv2 APIs and introduce a new set of APIs?",
+      "parentUuid": "5dea3715_58d7d5b9",
+      "revId": "cc4dd7e12ca75e58c52b2069516c3666fda9516f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
