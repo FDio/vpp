@@ -136,6 +136,12 @@ class VPPStats:
         if self.connected:
             return
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+
+        # Our connect races the corresponding recv_fds call in VPP, if we beat
+        # VPP then we will try (unsuccessfully) to recieve file descriptors and
+        # will have gone away before VPP can respond to our connect.  A short
+        # timeout here stops this error occuring.
+        sock.settimeout(1)
         sock.connect(self.socketname)
 
         mfd = recv_fd(sock)
