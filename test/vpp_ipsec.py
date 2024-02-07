@@ -1,3 +1,5 @@
+import socket
+
 from vpp_object import VppObject
 from ipaddress import ip_address
 from vpp_papi import VppEnum
