@@ -6,6 +6,7 @@ import threading
 import copy
 import fcntl
 import time
+import errno
 
 try:
     import unittest2 as unittest
@@ -55,7 +56,7 @@ class serverSocketThread(threading.Thread):
                 # Ethernet
                 self.rx_pkts.append(Ether(data[8:]))
             except IOError as e:
-                if e.errno == 11:
+                if e.errno == errno.EAGAIN:
                     # nothing to receive, stop running or sleep a little
                     if self.stop_running:
                         break
