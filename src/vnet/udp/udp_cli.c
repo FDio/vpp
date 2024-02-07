@@ -302,6 +302,98 @@ VLIB_CLI_COMMAND (show_udp_ports_cmd, static) = {
   .is_mp_safe = 1,
 };
 
+static void
+table_format_udp_transport_port_ (vlib_main_t *vm, table_t *t, int *c,
+				  int port, int is_ip4)
+{
+  udp_main_t *um = &udp_main;
+  u32 refcnt;
+  u16 port_ne;
+
+  port_ne = clib_host_to_net_u16 (port);
+  refcnt = um->transport_ports_refcnt[is_ip4][port_ne];
+  if (!refcnt)
+    return;
+
+  if (!udp_is_valid_dst_port (port, is_ip4))
+    {
+      clib_warning ("Port %u is not registered refcnt %u!", port, refcnt);
+      return;
+    }
+
+  table_format_cell (t, *c, 0, "%d", port);
+  table_format_cell (t, *c, 1, is_ip4 ? "ip4" : "ip6");
+  table_format_cell (t, *c, 2, "%d", refcnt);
+
+  (*c)++;
+}
+
+static void
+table_format_udp_transport_port (vlib_main_t *vm, table_t *t, int *c, int port,
+				 int ipv)
+{
+  if (ipv == -1 || ipv == 0)
+    table_format_udp_transport_port_ (vm, t, c, port, 1 /* is_ip4 */);
+  if (ipv == -1 || ipv == 1)
+    table_format_udp_transport_port_ (vm, t, c, port, 0 /* is_ip4 */);
+}
+
+static clib_error_t *
+show_udp_transport_ports (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  table_t table = {}, *t = &table;
+  int ipv = -1, port = -1, c = 0;
+  clib_error_t *err = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ip4"))
+	ipv = 0;
+      else if (unformat (input, "ip6"))
+	ipv = 1;
+      else if (unformat (input, "%d", &port))
+	;
+      else
+	{
+	  err = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, input);
+	  goto out;
+	}
+    }
+
+  table_add_header_col (t, 3, "port", "proto", "ref-cnt");
+
+  if (port > 65535)
+    {
+      err = clib_error_return (0, "wrong port %d", port);
+      goto out;
+    }
+
+  if (port < 0)
+    {
+      for (port = 0; port < 65536; port++)
+	table_format_udp_transport_port (vm, t, &c, port, ipv);
+    }
+  else
+    {
+      table_format_udp_transport_port (vm, t, &c, port, ipv);
+    }
+
+  vlib_cli_output (vm, "%U\n", format_table, t);
+
+out:
+  table_free (t);
+  return err;
+}
+
+VLIB_CLI_COMMAND (show_udp_transport_ports_cmd, static) = {
+  .path = "show udp transport ports",
+  .function = show_udp_transport_ports,
+  .short_help = "show udp transport ports [ip4|ip6] [<port>]",
+  .is_mp_safe = 1,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
