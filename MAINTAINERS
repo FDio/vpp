@@ -892,3 +892,8 @@ M:	vpp-dev Mailing List <vpp-dev@fd.io>
 C:	Missing Maintainer
 F:	*
 F:	*/
+
+Netmap
+I:	netmap
+M:	Tom Jones <thj@freebsd.org>
+F:	src/plugins/netmap/
