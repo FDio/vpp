@@ -4,6 +4,7 @@
 import datetime
 import base64
 import os
+import struct
 
 from hashlib import blake2s
 from config import config
