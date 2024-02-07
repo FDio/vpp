@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33610b90_7de4727a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2708
+      },
+      "writtenOn": "2024-02-07T07:03:07Z",
+      "side": 1,
+      "message": "This is  when the peer acked all the data hence snd_una became same as snd_nxt , also peer advertised zero window on the last ack received. We will not start persist timer as retransmission timer is on at this point of time. now if we enqueue data on tx fifo it will be stuck since snd_wnd is less than snd_mss. I think we need to send window probes in this scenario to get snd_wnd updated",
+      "revId": "ca03e56dcc08ed831c82ffa881cdedf301c87535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
