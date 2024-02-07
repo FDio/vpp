@@ -21,7 +21,7 @@ panic() {
 atexit() {
 	group_id=`ps -p $$ -o pgid=`
 	my_id=$$
-	ids=`pgrep -g $group_id -d ' ' | sed "s/\b$my_id\b//g"`
+	ids=`pgrep -g $group_id -d ' ' | gsed "s/\b$my_id\b//g"`
 	echo "Killing possible remaining process IDs: $ids"
 	for id in $ids
 	do
