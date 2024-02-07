@@ -91,10 +91,9 @@ udp_connection_free (udp_connection_t * uc)
 static void
 udp_connection_cleanup (udp_connection_t * uc)
 {
-  /* Unregister port from udp_local only if refcount went to zero */
-  if (!transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
-					 uc->c_lcl_port))
-    udp_connection_unregister_port (uc->c_lcl_port, uc->c_is_ip4);
+  transport_release_local_endpoint (TRANSPORT_PROTO_UDP, &uc->c_lcl_ip,
+				    uc->c_lcl_port);
+  udp_connection_unregister_port (uc->c_lcl_port, uc->c_is_ip4);
   udp_connection_free (uc);
 }
 
