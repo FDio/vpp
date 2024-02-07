@@ -6,6 +6,7 @@
 #
 
 import os
+import socket
 import time
 import queue
 from six import moves, iteritems
