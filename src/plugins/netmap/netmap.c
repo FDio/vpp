@@ -20,22 +20,17 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <vnet/devices/netmap/net_netmap.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/netmap/netmap.h>
+
+#include <netmap/net_netmap.h>
+#include <netmap/netmap.h>
+#include <netmap/netmap.api_enum.h>
+#include <netmap/netmap.api_types.h>
 
 netmap_main_t netmap_main;
-
-static u32
-netmap_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			u32 flags)
-{
-  /* nothing for now */
-  return 0;
-}
 
 static clib_error_t *
 netmap_fd_read_ready (clib_file_t * uf)
@@ -88,12 +83,11 @@ int
 netmap_worker_thread_enable ()
 {
   /* if worker threads are enabled, switch to polling mode */
-  foreach_vlib_main ((
-		       {
-		       vlib_node_set_state (this_vlib_main,
-					    netmap_input_node.index,
-					    VLIB_NODE_STATE_POLLING);
-		       }));
+  foreach_vlib_main ()
+    {
+      vlib_node_set_state (this_vlib_main, netmap_input_node.index,
+			   VLIB_NODE_STATE_POLLING);
+    }
 
   return 0;
 }
@@ -101,12 +95,11 @@ netmap_worker_thread_enable ()
 int
 netmap_worker_thread_disable ()
 {
-  foreach_vlib_main ((
-		       {
-		       vlib_node_set_state (this_vlib_main,
-					    netmap_input_node.index,
-					    VLIB_NODE_STATE_INTERRUPT);
-		       }));
+  foreach_vlib_main ()
+    {
+      vlib_node_set_state (this_vlib_main, netmap_input_node.index,
+			   VLIB_NODE_STATE_INTERRUPT);
+    }
 
   return 0;
 }
@@ -117,9 +110,9 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
 {
   netmap_main_t *nm = &netmap_main;
   int ret = 0;
+  uint32_t nr_reg;
   netmap_if_t *nif = 0;
   u8 hw_addr[6];
-  clib_error_t *error = 0;
   vnet_sw_interface_t *sw;
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
@@ -179,10 +172,39 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   reg->refcnt++;
 
   nif->nifp = NETMAP_IF (reg->mem, req->nr_offset);
-  nif->first_rx_ring = 0;
-  nif->last_rx_ring = 0;
-  nif->first_tx_ring = 0;
-  nif->last_tx_ring = 0;
+  nr_reg = nif->req->nr_flags & NR_REG_MASK;
+
+  if (nr_reg == NR_REG_SW)
+    { /* host stack */
+      nif->first_tx_ring = nif->last_tx_ring = nif->req->nr_tx_rings;
+      nif->first_rx_ring = nif->last_rx_ring = nif->req->nr_rx_rings;
+    }
+  else if (nr_reg == NR_REG_ALL_NIC)
+    { /* only nic */
+      nif->first_tx_ring = 0;
+      nif->first_rx_ring = 0;
+      nif->last_tx_ring = nif->req->nr_tx_rings - 1;
+      nif->last_rx_ring = nif->req->nr_rx_rings - 1;
+    }
+  else if (nr_reg == NR_REG_NIC_SW)
+    {
+      nif->first_tx_ring = 0;
+      nif->first_rx_ring = 0;
+      nif->last_tx_ring = nif->req->nr_tx_rings;
+      nif->last_rx_ring = nif->req->nr_rx_rings;
+    }
+  else if (nr_reg == NR_REG_ONE_NIC)
+    {
+      /* XXX check validity */
+      nif->first_tx_ring = nif->last_tx_ring = nif->first_rx_ring =
+	nif->last_rx_ring = nif->req->nr_ringid & NETMAP_RING_MASK;
+    }
+  else
+    { /* pipes */
+      nif->first_tx_ring = nif->last_tx_ring = 0;
+      nif->first_rx_ring = nif->last_rx_ring = 0;
+    }
+
   nif->host_if_name = if_name;
   nif->per_interface_next_index = ~0;
 
@@ -213,17 +235,14 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
       hw_addr[1] = 0xfe;
     }
 
-  error = ethernet_register_interface (vnm, netmap_device_class.index,
-				       nif->if_index, hw_addr,
-				       &nif->hw_if_index,
-				       netmap_eth_flag_change);
+  vnet_eth_interface_registration_t eir = {};
 
-  if (error)
-    {
-      clib_error_report (error);
-      ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-      goto error;
-    }
+  eir.dev_class_index = netmap_device_class.index;
+  eir.dev_instance = nif->if_index;
+  eir.address = hw_addr;
+  eir.cb.set_max_frame_size = NULL;
+
+  nif->hw_if_index = vnet_eth_register_interface (vnm, &eir);
 
   sw = vnet_get_hw_sw_interface (vnm, nif->hw_if_index);
   nif->sw_if_index = sw->sw_if_index;

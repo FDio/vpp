@@ -39,10 +39,10 @@
 #ifndef _NET_NETMAP_H_
 #define _NET_NETMAP_H_
 
-#define	NETMAP_API	11		/* current API version */
+#define NETMAP_API 14 /* current API version */
 
-#define	NETMAP_MIN_API	11		/* min and max versions accepted */
-#define	NETMAP_MAX_API	15
+#define NETMAP_MIN_API 14 /* min and max versions accepted */
+#define NETMAP_MAX_API 15
 /*
  * Some fields should be cache-aligned to reduce contention.
  * The alignment is architecture and OS dependent, but rather than

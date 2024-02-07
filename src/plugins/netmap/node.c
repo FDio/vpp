@@ -25,8 +25,8 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
-#include <vnet/devices/netmap/net_netmap.h>
-#include <vnet/devices/netmap/netmap.h>
+#include <netmap/net_netmap.h>
+#include <netmap/netmap.h>
 
 #define foreach_netmap_input_error
 
@@ -112,7 +112,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_free_bufs +=
 	vlib_buffer_alloc (vm, &nm->rx_buffers[thread_index][n_free_bufs],
 			   VLIB_FRAME_SIZE);
-      _vec_len (nm->rx_buffers[thread_index]) = n_free_bufs;
+      vec_set_len (nm->rx_buffers[thread_index], n_free_bufs);
     }
 
   cur_ring = nif->first_rx_ring;
@@ -166,7 +166,8 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  prev_bi0 = bi0;
 		  bi0 = nm->rx_buffers[thread_index][last_empty_buffer];
 		  b0 = vlib_get_buffer (vm, bi0);
-		  _vec_len (nm->rx_buffers[thread_index]) = last_empty_buffer;
+		  vec_set_len (nm->rx_buffers[thread_index],
+			       last_empty_buffer);
 		  n_free_bufs--;
 
 		  /* copy data */
@@ -200,11 +201,12 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* trace */
 	      if (PREDICT_FALSE (n_trace > 0))
 		{
-		  if (PREDICT_TRUE (first_b0 != 0))
+		  if (PREDICT_TRUE (first_b0 != 0) &&
+		      vlib_trace_buffer (vm, node, next0, first_b0,
+					 /* follow_chain */ 0))
 		    {
 		      netmap_input_trace_t *tr;
-		      vlib_trace_buffer (vm, node, next0, first_b0,
-					 /* follow_chain */ 0);
+
 		      vlib_set_trace_count (vm, node, --n_trace);
 		      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 		      tr->next_index = next0;
@@ -212,10 +214,6 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      memcpy (&tr->slot, slot, sizeof (struct netmap_slot));
 		    }
 		}
-
-	      /* redirect if feature path enabled */
-	      vnet_feature_start_device_input_x1 (nif->sw_if_index, &next0,
-						  first_b0);
 
 	      /* enque and take next packet */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
