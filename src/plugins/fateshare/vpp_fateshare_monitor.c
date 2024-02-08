@@ -4,7 +4,12 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef __linux__
 #include <sys/prctl.h> // prctl(), PR_SET_PDEATHSIG
+#else
+#include <signal.h>
+#include <sys/procctl.h>
+#endif /* __linux__ */
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -82,6 +87,7 @@ launch_command (char *scmd, char *logname_base)
     }
 
   /* child */
+#ifdef __linux__
   int r = prctl (PR_SET_PDEATHSIG, SIGTERM);
   if (r == -1)
     {
@@ -89,6 +95,17 @@ launch_command (char *scmd, char *logname_base)
       sleep (5);
       exit (1);
     }
+#else
+  int r, s = SIGTERM;
+
+  r = procctl (P_PID, 0, PROC_PDEATHSIG_CTL, &s);
+  if (r == -1)
+    {
+      perror ("procctl");
+      exit (1);
+    }
+#endif /* __linux__ */
+
   if (getppid () != ppid_before_fork)
     {
       sleep (5);
@@ -180,12 +197,23 @@ main (int argc, char **argv)
       exit (2);
     }
 
+#ifdef __linux__
   int r = prctl (PR_SET_PDEATHSIG, SIGTERM);
   if (r == -1)
     {
       perror (0);
       exit (1);
     }
+#else
+  int r, s = SIGTERM;
+
+  r = procctl (P_PID, 0, PROC_PDEATHSIG_CTL, &s);
+  if (r == -1)
+    {
+      perror ("procctl");
+      exit (1);
+    }
+#endif /* __linux__ */
 
   /* Establish handler. */
   struct sigaction sa;

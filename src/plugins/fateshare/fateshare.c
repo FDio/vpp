@@ -26,7 +26,11 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifdef __linux__
 #include <sys/prctl.h> // prctl(), PR_SET_PDEATHSIG
+#else
+#include <sys/procctl.h>
+#endif /* __linux__ */
 #include <limits.h>
 
 fateshare_main_t fateshare_main;
@@ -86,12 +90,23 @@ launch_monitor (fateshare_main_t *kmp)
     {
       dup2 (logfd, 1);
       dup2 (logfd, 2);
+#ifdef __linux__
       int r = prctl (PR_SET_PDEATHSIG, SIGTERM);
       if (r == -1)
 	{
 	  perror (0);
 	  exit (1);
 	}
+#else
+      int r, s = SIGTERM;
+
+      r = procctl (P_PID, 0, PROC_PDEATHSIG_CTL, &s);
+      if (r == -1)
+	{
+	  perror (0);
+	  exit (1);
+	}
+#endif /* __linux__ */
       pid_t current_ppid = getppid ();
       if (current_ppid != ppid_before_fork)
 	{
