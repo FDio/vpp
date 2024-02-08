@@ -21,4 +21,7 @@ add_vpp_plugin(ip_session_redirect
 
   API_TEST_SOURCES
   test_api.c
+
+  INSTALL_HEADERS
+  ip_session_redirect.h
 )
