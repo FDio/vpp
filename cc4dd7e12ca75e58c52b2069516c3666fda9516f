@@ -85,6 +85,24 @@
       "parentUuid": "5dea3715_58d7d5b9",
       "revId": "cc4dd7e12ca75e58c52b2069516c3666fda9516f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23b979b3_a2014730",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T11:21:04Z",
+      "side": 1,
+      "message": "Hi Denys, sorry for the delay as I was traveling. Yes, I think that would be the thing to do. Those APIs have been around w/o change for quite some time, which in my book means \"stable\" :)\nI suspect some control plane might have started to rely on it, so I think it is good stewardship for our downstream consumers to mark them as stable and introduce a new version.\nYou could even mark the original dump as stable and deprecated at the same time, so users are aware it is eventually going away.",
+      "parentUuid": "950420e6_0dd2953a",
+      "revId": "cc4dd7e12ca75e58c52b2069516c3666fda9516f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
