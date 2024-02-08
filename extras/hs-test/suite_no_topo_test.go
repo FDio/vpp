@@ -1,11 +1,9 @@
 package main
 
-const (
-	singleTopoContainerVpp   = "vpp"
-	singleTopoContainerNginx = "nginx"
+var singleTopoContainerVpp string = "vpp" + pid
+var singleTopoContainerNginx string = "nginx" + pid
 
-	tapInterfaceName = "hst_tap_host"
-)
+var tapInterfaceName string = "htaphos" + pid
 
 type NoTopoSuite struct {
 	HstSuite

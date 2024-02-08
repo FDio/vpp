@@ -4,11 +4,9 @@ import (
 	"time"
 )
 
-const (
-	// These correspond to names used in yaml config
-	serverInterfaceName = "vppsrv"
-	clientInterfaceName = "vppcln"
-)
+// These correspond to names used in yaml config ('srv', 'cln')
+var serverInterfaceName string = "srv" + pid
+var clientInterfaceName string = "cln" + pid
 
 type VethsSuite struct {
 	HstSuite
@@ -33,40 +31,40 @@ func (s *VethsSuite) SetupTest() {
 		append("use-app-socket-api").close()
 
 	// ... For server
-	serverContainer := s.getContainerByName("server-vpp")
+	serverContainer := s.getContainerByName("server-vpp" + pid)
 
 	cpus := s.AllocateCpus()
-	serverVpp, _ := serverContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(serverVpp)
+	serverVpp, err := serverContainer.newVppInstance(cpus, sessionConfig)
+	s.assertNotNil(serverVpp, err)
 
-	s.setupServerVpp()
+	s.setupServerVpp(pid)
 
 	// ... For client
-	clientContainer := s.getContainerByName("client-vpp")
+	clientContainer := s.getContainerByName("client-vpp" + pid)
 
 	cpus = s.AllocateCpus()
-	clientVpp, _ := clientContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(clientVpp)
+	clientVpp, err := clientContainer.newVppInstance(cpus, sessionConfig)
+	s.assertNotNil(clientVpp, err)
 
-	s.setupClientVpp()
+	s.setupClientVpp(pid)
 }
 
-func (s *VethsSuite) setupServerVpp() {
-	serverVpp := s.getContainerByName("server-vpp").vppInstance
+func (s *VethsSuite) setupServerVpp(pid string) {
+	serverVpp := s.getContainerByName("server-vpp" + pid).vppInstance
 	s.assertNil(serverVpp.start())
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	idx, err := serverVpp.createAfPacket(serverVeth)
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 }
 
-func (s *VethsSuite) setupClientVpp() {
-	clientVpp := s.getContainerByName("client-vpp").vppInstance
+func (s *VethsSuite) setupClientVpp(pid string) {
+	clientVpp := s.getContainerByName("client-vpp" + pid).vppInstance
 	s.assertNil(clientVpp.start())
 
 	clientVeth := s.netInterfaces[clientInterfaceName]
 	idx, err := clientVpp.createAfPacket(clientVeth)
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 }

@@ -14,10 +14,10 @@ func (s *VethsSuite) TestVppEchoTcp() {
 }
 
 func (s *VethsSuite) testVppEcho(proto string) {
-	serverVethAddress := s.netInterfaces["vppsrv"].ip4AddressString()
+	serverVethAddress := s.netInterfaces[serverInterfaceName].ip4AddressString()
 	uri := proto + "://" + serverVethAddress + "/12344"
 
-	echoSrvContainer := s.getContainerByName("server-app")
+	echoSrvContainer := s.getContainerByName("server-app" + pid)
 	serverCommand := "vpp_echo server TX=RX" +
 		" socket-name " + echoSrvContainer.getContainerWorkDir() + "/var/run/app_ns_sockets/default" +
 		" use-app-socket-api" +
@@ -25,7 +25,7 @@ func (s *VethsSuite) testVppEcho(proto string) {
 	s.log(serverCommand)
 	echoSrvContainer.execServer(serverCommand)
 
-	echoClnContainer := s.getContainerByName("client-app")
+	echoClnContainer := s.getContainerByName("client-app" + pid)
 
 	clientCommand := "vpp_echo client" +
 		" socket-name " + echoClnContainer.getContainerWorkDir() + "/var/run/app_ns_sockets/default" +

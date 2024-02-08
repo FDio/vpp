@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,6 +26,7 @@ var isUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var isVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var vppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
+var pid string = fmt.Sprint(os.Getpid())
 
 type HstSuite struct {
 	suite.Suite
@@ -72,6 +74,9 @@ func (s *HstSuite) TearDownTest() {
 	}
 	s.resetContainers()
 	s.removeVolumes()
+	for ip := range ips{
+		os.Remove(ips[ip])
+	}
 }
 
 func (s *HstSuite) skipIfUnconfiguring() {
@@ -102,7 +107,55 @@ func (s *HstSuite) setupContainers() {
 	}
 }
 
+func logVppInstance(container *Container, maxLines int){
+	if container.vppInstance == nil{
+		return
+	}
+
+	logSource := container.getHostWorkDir() + defaultLogFilePath
+	file, err := os.Open(logSource)
+	
+	if err != nil{
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	var counter int
+
+	for scanner.Scan(){
+		lines = append(lines, scanner.Text())
+		counter++
+		if counter > maxLines {
+			lines = lines[1:]
+			counter--
+		}
+	}
+
+	fmt.Println("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
+	for _, line := range lines{
+		fmt.Println(line)
+	}
+	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
+
+}
+
 func (s *HstSuite) hstFail() {
+	
+	fmt.Println("Containers: " + fmt.Sprint(s.containers))
+	for _, container := range s.containers{
+		out, err := container.log(20)
+		if err != nil{
+			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
+			break
+		}
+		fmt.Printf("\nvvvvvvvvvvvvvvv " +
+					container.name + ":\n" +
+					out +
+					"^^^^^^^^^^^^^^^\n\n")
+		logVppInstance(container, 20)
+	}
 	s.T().FailNow()
 }
 
@@ -229,7 +282,8 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := newContainer(s, elem)
+		newContainer, err := newContainer(s, elem, pid)
+		newContainer.suite = s
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
 		}
@@ -319,7 +373,7 @@ func (s *HstSuite) getTestId() string {
 }
 
 func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s")
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", pid[len(pid)-4:])
 	if env != nil {
 		cmd.Env = env
 	}
@@ -343,7 +397,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", pid[len(pid)-4:])
 		if env != nil {
 			cmd.Env = env
 		}
@@ -365,11 +419,11 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 }
 
 func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort, pid}, netNs)
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {
-		fmt.Println("Failed to start http server")
+		fmt.Println("Failed to start http server: " + fmt.Sprint(err))
 		return
 	}
 	running <- struct{}{}

@@ -12,20 +12,20 @@ func (s *NsSuite) TestHttpTps() {
 	port := "8080"
 	finished := make(chan error, 1)
 
-	container := s.getContainerByName("vpp")
+	container := s.getContainerByName("vpp" + pid)
 
 	// configure vpp in the container
 	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	go s.startWget(finished, client_ip, port, "test_file_10M", "client")
+	go s.startWget(finished, client_ip, port, "test_file_10M", "cln" + pid)
 	// wait for client
 	err := <-finished
 	s.assertNil(err)
 }
 
 func (s *VethsSuite) TestHttpCli() {
-	serverContainer := s.getContainerByName("server-vpp")
-	clientContainer := s.getContainerByName("client-vpp")
+	serverContainer := s.getContainerByName("server-vpp" + pid)
+	clientContainer := s.getContainerByName("client-vpp" + pid)
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 
@@ -44,15 +44,15 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 	s.SkipUnlessExtendedTestsBuilt()
 
 	query := "index.html"
-	nginxCont := s.getContainerByName("nginx-http3")
+	nginxCont := s.getContainerByName("nginx-http3" + pid)
 	s.assertNil(nginxCont.run())
 
-	vpp := s.getContainerByName("vpp").vppInstance
+	vpp := s.getContainerByName("vpp" + pid).vppInstance
 	vpp.waitForApp("nginx-", 5)
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
 
 	defer func() { os.Remove(query) }()
-	curlCont := s.getContainerByName("curl")
+	curlCont := s.getContainerByName("curl" + pid)
 	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.extraRunningArgs = args
 	o, err := curlCont.combinedOutput()
@@ -63,7 +63,7 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 func (s *NoTopoSuite) TestHttpStaticProm() {
 	finished := make(chan error, 1)
 	query := "stats.prom"
-	vpp := s.getContainerByName("vpp").vppInstance
+	vpp := s.getContainerByName("vpp" + pid).vppInstance
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
 	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 	s.log(vpp.vppctl("prom enable"))
@@ -76,10 +76,10 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	query := "return_ok"
 	finished := make(chan error, 1)
 
-	nginxCont := s.getContainerByName("nginx")
+	nginxCont := s.getContainerByName("nginx" + pid)
 	s.assertNil(nginxCont.run())
 
-	vpp := s.getContainerByName("vpp").vppInstance
+	vpp := s.getContainerByName("vpp" + pid).vppInstance
 	vpp.waitForApp("nginx-", 5)
 
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
@@ -105,14 +105,14 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
 
-	vpp := s.getContainerByName("vpp").vppInstance
+	vpp := s.getContainerByName("vpp" + pid).vppInstance
 
-	nginxCont := s.getContainerByName("nginx")
+	nginxCont := s.getContainerByName(singleTopoContainerNginx)
 	s.assertNil(nginxCont.run())
 	vpp.waitForApp("nginx-", 5)
 
 	if ab_or_wrk == "ab" {
-		abCont := s.getContainerByName("ab")
+		abCont := s.getContainerByName("ab" + pid)
 		args := fmt.Sprintf("-n %d -c %d", nRequests, nClients)
 		if mode == "rps" {
 			args += " -k"
@@ -126,16 +126,16 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		o, err := abCont.combinedOutput()
 		rps := parseString(o, "Requests per second:")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	} else {
-		wrkCont := s.getContainerByName("wrk")
+		wrkCont := s.getContainerByName("wrk" + pid)
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
 			serverAddress)
 		wrkCont.extraRunningArgs = args
 		o, err := wrkCont.combinedOutput()
 		rps := parseString(o, "requests")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }

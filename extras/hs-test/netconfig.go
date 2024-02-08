@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -75,9 +76,14 @@ var (
 func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterface, error) {
 	var newInterface *NetInterface = &NetInterface{}
 	var err error
+	pid := fmt.Sprint(os.Getpid())
 	newInterface.ip4AddrAllocator = a
 	newInterface.name = cfg["name"].(string)
 	newInterface.networkNumber = DEFAULT_NETWORK_NUM
+
+	if newInterface.name != "" {
+		newInterface.name += pid
+	}
 
 	if interfaceType, ok := cfg["type"]; ok {
 		newInterface.category = interfaceType.(string)
@@ -91,7 +97,7 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 	}
 
 	if netns, ok := cfg["netns"]; ok {
-		newInterface.networkNamespace = netns.(string)
+		newInterface.networkNamespace = netns.(string) + pid
 	}
 
 	if ip, ok := cfg["ip4"]; ok {
@@ -115,7 +121,6 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 	if newInterface.peer, err = newNetworkInterface(peer, a); err != nil {
 		return &NetInterface{}, err
 	}
-
 	return newInterface, nil
 }
 
@@ -223,8 +228,9 @@ func (b *NetConfigBase) Type() string {
 }
 
 func newNetNamespace(cfg NetDevConfig) (NetworkNamespace, error) {
+	pid := fmt.Sprint(os.Getpid())
 	var networkNamespace NetworkNamespace
-	networkNamespace.name = cfg["name"].(string)
+	networkNamespace.name = cfg["name"].(string) + pid
 	networkNamespace.category = NetNs
 	return networkNamespace, nil
 }
@@ -238,8 +244,9 @@ func (ns *NetworkNamespace) unconfigure() {
 }
 
 func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
+	pid := fmt.Sprint(os.Getpid())
 	var bridge NetworkBridge
-	bridge.name = cfg["name"].(string)
+	bridge.name = cfg["name"].(string) + pid
 	bridge.category = Bridge
 	for _, v := range cfg["interfaces"].([]interface{}) {
 		bridge.interfaces = append(bridge.interfaces, v.(string))
@@ -247,7 +254,7 @@ func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
 
 	bridge.networkNamespace = ""
 	if netns, ok := cfg["netns"]; ok {
-		bridge.networkNamespace = netns.(string)
+		bridge.networkNamespace = netns.(string) + pid
 	}
 	return bridge, nil
 }
@@ -298,8 +305,7 @@ func setDevUpDown(dev, ns string, isUp bool) error {
 	cmd := appendNetns(c, ns)
 	err := cmd.Run()
 	if err != nil {
-		s := fmt.Sprintf("error bringing %s device %s!", dev, op)
-		return errors.New(s)
+		return fmt.Errorf("error bringing %s device %s! (cmd: '%s')", dev, op, cmd)
 	}
 	return nil
 }
@@ -314,7 +320,7 @@ func addDelNetns(name string, isAdd bool) error {
 	cmd := exec.Command("ip", "netns", op, name)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.New("add/del netns failed")
+		return fmt.Errorf("add/del netns failed (cmd: '%s')", cmd)
 	}
 	return nil
 }
@@ -356,25 +362,25 @@ func addDelBridge(brName, ns string, isAdd bool) error {
 	cmd := appendNetns(c, ns)
 	err := cmd.Run()
 	if err != nil {
-		s := fmt.Sprintf("%s %s failed!", op, brName)
+		s := fmt.Sprintf("%s %s failed! err: '%s'", op, brName, err)
 		return errors.New(s)
 	}
 	return nil
 }
 
 func addBridge(brName string, ifs []string, ns string) error {
+	pid := fmt.Sprint(os.Getpid())
 	err := addDelBridge(brName, ns, true)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range ifs {
-		c := []string{"brctl", "addif", brName, v}
+		c := []string{"brctl", "addif", brName, v+pid}
 		cmd := appendNetns(c, ns)
 		err = cmd.Run()
 		if err != nil {
-			s := fmt.Sprintf("error adding %s to bridge %s: %v", v, brName, err)
-			return errors.New(s)
+			return fmt.Errorf("error adding %s to bridge %s: %s", v+pid, brName, err)
 		}
 	}
 	err = setDevUp(brName, ns)

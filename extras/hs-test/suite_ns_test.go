@@ -1,10 +1,13 @@
 package main
 
-const (
-	// These correspond to names used in yaml config
-	clientInterface = "hst_client_vpp"
-	serverInterface = "hst_server_vpp"
+import (
+	"fmt"
 )
+
+// These correspond to names used in yaml config
+var clientInterface string = "hclnvpp" + pid
+var serverInterface string = "hsrvvpp" + pid
+
 
 type NsSuite struct {
 	HstSuite
@@ -29,11 +32,14 @@ func (s *NsSuite) SetupTest() {
 		append("event-queue-length 100000").close()
 
 	cpus := s.AllocateCpus()
-	container := s.getContainerByName("vpp")
+	container := s.getContainerByName("vpp" + pid)
 	vpp, _ := container.newVppInstance(cpus, sessionConfig)
 	s.assertNil(vpp.start())
 
 	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
+	if err != nil{
+		fmt.Println(err)
+	}
 	s.assertNil(err)
 	s.assertNotEqual(0, idx)
 
@@ -42,4 +48,6 @@ func (s *NsSuite) SetupTest() {
 	s.assertNotEqual(0, idx)
 
 	container.exec("chmod 777 -R %s", container.getContainerWorkDir())
+
+	
 }
