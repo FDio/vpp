@@ -33,6 +33,24 @@
       "message": "Could you please open this patch again? I will upload a rebased version.",
       "revId": "b6b4dc90859cd3b60128cb93e8371f65af4920f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4091ffd1_b3dab5a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T08:52:01Z",
+      "side": 1,
+      "message": "Hi Stanislav, I restored it!",
+      "parentUuid": "ed4ba14a_a54a7ea1",
+      "revId": "b6b4dc90859cd3b60128cb93e8371f65af4920f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
