@@ -29,4 +29,6 @@ add_vpp_plugin(vhost
 
   API_FILES
   vhost_user.api
+
+  SUPPORTED_OS_LIST Linux
 )
