@@ -80,7 +80,7 @@ ip_session_redirect_find (ip_session_redirect_main_t *im, u32 table_index,
   return pool_elt_at_index (im->pool, p[0]);
 }
 
-int
+__clib_export int
 ip_session_redirect_add (vlib_main_t *vm, u32 table_index, u32 opaque_index,
 			 dpo_proto_t proto, int is_punt, const u8 *match,
 			 const fib_route_path_t *rpaths)
@@ -138,7 +138,7 @@ ip_session_redirect_add (vlib_main_t *vm, u32 table_index, u32 opaque_index,
   return ip_session_redirect_stack (ipr);
 }
 
-int
+__clib_export int
 ip_session_redirect_del (vlib_main_t *vm, u32 table_index, const u8 *match)
 {
   ip_session_redirect_main_t *im = &ip_session_redirect_main;
