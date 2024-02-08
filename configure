@@ -33,6 +33,7 @@ OPTIONS:
   --wipe, -w              Wipe whole repo (except startup.* files)
   --sanitize, -s          Enable sanitizer (mem)
   --platform, -p          Specify target platform
+  --option, -o            Enable specific VPP options (fib8, fib16)
 __EOF__
 }
 
@@ -101,6 +102,19 @@ while (( "$#" )); do
 	mem)
 	  shift 1
 	  args+=("-DVPP_ENABLE_SANITIZE_ADDR=ON")
+	  ;;
+      esac
+      ;;
+    -o|--option)
+      shift 1
+      case "$1" in
+	fib8)
+	  shift 1
+	  args+=("-DVPP_IP_FIB_MTRIE_16=OFF")
+	  ;;
+	fib16)
+	  shift 1
+	  args+=("-DVPP_IP_FIB_MTRIE_16=ON")
 	  ;;
       esac
       ;;
