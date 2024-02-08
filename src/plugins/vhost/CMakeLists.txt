@@ -11,6 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  message(WARNING "vhost is only currently support on Linux - vhost plugin disabled")
+  return()
+endif()
+
+
 add_vpp_plugin(vhost
   SOURCES
   plugin.c

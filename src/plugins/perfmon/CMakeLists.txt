@@ -11,6 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  message(WARNING "perfmon is only currently support on Linux - perfmon plugin disabled")
+  return()
+endif()
+
+
 if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*|aarch64.*")
   return()
 endif()

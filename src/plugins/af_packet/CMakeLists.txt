@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+  message(WARNING "af_packet is only currently support on Linux - af_packet plugin disabled")
+  return()
+endif()
+
 add_vpp_plugin(af_packet
   SOURCES
   plugin.c
