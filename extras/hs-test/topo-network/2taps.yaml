@@ -1,6 +1,6 @@
 ---
 devices:
-  - name: "hst_client"
+  - name: "hstcln"
     type: "tap"
     ip4:
       network: 1
@@ -8,7 +8,7 @@ devices:
       name: ""
       ip4:
         network: 1
-  - name: "hst_server"
+  - name: "hstsrv"
     type: "tap"
     ip4:
       network: 2
