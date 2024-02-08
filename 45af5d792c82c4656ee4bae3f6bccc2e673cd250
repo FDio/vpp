@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "705901b2_cf2bbb29",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T13:42:54Z",
+      "side": 1,
+      "message": "Thanks for moving to v2. I have a few comments.",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4db5c058_27a7b9f7",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T13:42:54Z",
+      "side": 1,
+      "message": "I don\u0027t think this is needed anymore?",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "094b8fb8_fabe26b8",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T13:42:54Z",
+      "side": 1,
+      "message": "I don\u0027t think this is needed anymore?",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb6d840a_9ba5ae3f",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T13:42:54Z",
+      "side": 1,
+      "message": "pool_elt_at_index() will never return a null pointer, even if the index is invalid. To check whether index is valid, you should use pool_is_free_index() instead.\nThat said, I think sa-\u003eprofile_index should *always* be valid here, hence I think you should remove the test altogether.",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f3bf2d5_2af35b92",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-08T13:42:54Z",
+      "side": 1,
+      "message": "same comment as before, pool_elt_at_index() should never returns a null pointer, and sa-\u003eprofile_index should always be valid, hence this check should not be needed",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
