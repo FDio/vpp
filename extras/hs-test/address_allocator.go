@@ -1,8 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"os"
+)
 
 type AddressCounter = int
+var ips []string
+var chosenOctet int
 
 type Ip4AddressAllocator struct {
 	networks map[int]AddressCounter
@@ -28,10 +34,43 @@ func (a *Ip4AddressAllocator) NewIp4InterfaceAddress(inputNetworkNumber ...int) 
 		return "", fmt.Errorf("no available IPv4 addresses")
 	}
 
-	address := fmt.Sprintf("10.10.%v.%v/24", networkNumber, numberOfAddresses)
+	counter := 10
+	var address string
+	// Creates a file every time an IP is assigned: used to keep track of addresses in use.
+	// If an address is not in use, 'counter' is then saved to 'chosenOctet' and it is used for the remaining tests.
+	for {
+		if chosenOctet != 0{
+			address = fmt.Sprintf("10.%v.%v.%v", chosenOctet, networkNumber, numberOfAddresses)
+			file, err := os.Create(address)
+			if err != nil{
+				return "", errors.New("unable to create file: " + fmt.Sprint(err))
+			}
+			file.Close()
+			break
+		} else {
+			_, err := os.Stat(fmt.Sprintf("10.%v.%v.%v", counter, networkNumber, numberOfAddresses))
+			if err == nil{
+				counter++
+			} else if os.IsNotExist(err){
+				address = fmt.Sprintf("10.%v.%v.%v", counter, networkNumber, numberOfAddresses)
+				file, err := os.Create(address)
+
+				if err != nil{
+					return "", errors.New("unable to create file: " + fmt.Sprint(err))
+				}
+				chosenOctet = counter
+				file.Close()
+				break
+			} else {
+				return "", errors.New("an error occured while checking if a file exists: " + fmt.Sprint(err))
+			}
+		}
+	}
+
+	ips = append(ips, address)
 	a.networks[networkNumber] = numberOfAddresses + 1
 
-	return address, nil
+	return address + "/24", nil
 }
 
 func NewIp4AddressAllocator() *Ip4AddressAllocator {

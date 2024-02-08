@@ -38,7 +38,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
+func newContainer(suite *HstSuite, yamlInput ContainerConfig, pid string) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -48,7 +48,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	var container = new(Container)
 	container.volumes = make(map[string]Volume)
 	container.envVars = make(map[string]string)
-	container.name = containerName
+	container.name = containerName + pid
 	container.suite = suite
 
 	if image, ok := yamlInput["image"]; ok {
@@ -76,7 +76,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + container.suite.T().Name() + volumeDir
+		workingVolumeDir := logDir + container.suite.T().Name() + pid + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -249,7 +249,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config")
+	f, err := os.CreateTemp("/tmp", "hst-config" + pid)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 	c.suite.T().Helper()
 	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err)
+	c.suite.assertNil(err, "Try removing all containers before running")
 	return string(byteOutput)
 }
 
@@ -324,12 +324,19 @@ func (c *Container) saveLogs() {
 	f.Close()
 }
 
-func (c *Container) log() string {
-	cmd := "docker logs " + c.name
+// Outputs logs from docker containers. Set 'maxLines' to 0 to output the full log.
+func (c *Container) log(maxLines int) (string, error) {
+	var cmd string
+	if maxLines == 0 {
+		cmd = "docker logs " + c.name
+	} else {
+		cmd = fmt.Sprintf("docker logs --tail %d %s", maxLines, c.name)
+	}
+
 	c.suite.log(cmd)
 	o, err := exechelper.CombinedOutput(cmd)
-	c.suite.assertNil(err)
-	return string(o)
+	// c.suite.assertNil(err)
+	return string(o), err
 }
 
 func (c *Container) stop() error {
@@ -348,7 +355,6 @@ func (c *Container) createConfig(targetConfigName string, templateName string, v
 	f, err := os.CreateTemp(logDir, "hst-config")
 	c.suite.assertNil(err)
 	defer os.Remove(f.Name())
-
 	err = template.Execute(f, values)
 	c.suite.assertNil(err)
 

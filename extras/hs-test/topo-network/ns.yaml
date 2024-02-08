@@ -1,23 +1,23 @@
 ---
 devices:
-  - name: "client"
+  - name: "cln"
     type: "netns"
 
-  - name: "server"
+  - name: "srv"
     type: "netns"
 
-  - name: "hst_client_vpp"
+  - name: "hclnvpp"
     type: "veth"
     peer:
-      name: "client"
-      netns: "client"
+      name: "cln"
+      netns: "cln"
       ip4:
         network: 1
 
-  - name: "hst_server_vpp"
+  - name: "hsrvvpp"
     type: "veth"
     peer:
-      name: "server"
-      netns: "server"
+      name: "srv"
+      netns: "srv"
       ip4:
         network: 2

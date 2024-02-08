@@ -33,12 +33,12 @@ func (s *VethsSuite) TestXEchoVclClientTcp() {
 
 func (s *VethsSuite) testXEchoVclClient(proto string) {
 	port := "12345"
-	serverVpp := s.getContainerByName("server-vpp").vppInstance
+	serverVpp := s.getContainerByName("server-vpp" + pid).vppInstance
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVpp.vppctl("test echo server uri %s://%s/%s fifo-size 64k", proto, serverVeth.ip4AddressString(), port)
 
-	echoClnContainer := s.getTransientContainerByName("client-app")
+	echoClnContainer := s.getTransientContainerByName("client-app" + pid)
 	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client -N 100 -p " + proto + " " + serverVeth.ip4AddressString() + " " + port
@@ -59,8 +59,8 @@ func (s *VethsSuite) TestXEchoVclServerTcp() {
 
 func (s *VethsSuite) testXEchoVclServer(proto string) {
 	port := "12345"
-	srvVppCont := s.getContainerByName("server-vpp")
-	srvAppCont := s.getContainerByName("server-app")
+	srvVppCont := s.getContainerByName("server-vpp" + pid)
+	srvAppCont := s.getContainerByName("server-app" + pid)
 
 	srvAppCont.createFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
@@ -70,7 +70,7 @@ func (s *VethsSuite) testXEchoVclServer(proto string) {
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVethAddress := serverVeth.ip4AddressString()
 
-	clientVpp := s.getContainerByName("client-vpp").vppInstance
+	clientVpp := s.getContainerByName("client-vpp" + pid).vppInstance
 	o := clientVpp.vppctl("test echo client uri %s://%s/%s fifo-size 64k verbose mbytes 2", proto, serverVethAddress, port)
 	s.log(o)
 	s.assertContains(o, "Test finished at")
@@ -78,8 +78,8 @@ func (s *VethsSuite) testXEchoVclServer(proto string) {
 
 func (s *VethsSuite) testVclEcho(proto string) {
 	port := "12345"
-	srvVppCont := s.getContainerByName("server-vpp")
-	srvAppCont := s.getContainerByName("server-app")
+	srvVppCont := s.getContainerByName("server-vpp" + pid)
+	srvAppCont := s.getContainerByName("server-app" + pid)
 
 	srvAppCont.createFile("/vcl.conf", getVclConfig(srvVppCont))
 	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
@@ -88,7 +88,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVethAddress := serverVeth.ip4AddressString()
 
-	echoClnContainer := s.getTransientContainerByName("client-app")
+	echoClnContainer := s.getTransientContainerByName("client-app" + pid)
 	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
 	testClientCommand := "vcl_test_client -p " + proto + " " + serverVethAddress + " " + port
@@ -111,14 +111,16 @@ func (s *VethsSuite) SkipTestVclRetryAttach() {
 }
 
 func (s *VethsSuite) testRetryAttach(proto string) {
-	srvVppContainer := s.getTransientContainerByName("server-vpp")
+	srvVppContainer := s.getTransientContainerByName("server-vpp" + pid)
 
-	echoSrvContainer := s.getContainerByName("server-app")
+	echoSrvContainer := s.getContainerByName("server-app" + pid)
 
 	echoSrvContainer.createFile("/vcl.conf", getVclConfig(echoSrvContainer))
 
+	port := "12346"
+
 	echoSrvContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
-	echoSrvContainer.execServer("vcl_test_server -p " + proto + " 12346")
+	echoSrvContainer.execServer("vcl_test_server -p " + proto + " " + port)
 
 	s.log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.log("... Running first echo client test, before disconnect.")
@@ -126,10 +128,10 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	serverVethAddress := serverVeth.ip4AddressString()
 
-	echoClnContainer := s.getTransientContainerByName("client-app")
+	echoClnContainer := s.getTransientContainerByName("client-app" + pid)
 	echoClnContainer.createFile("/vcl.conf", getVclConfig(echoClnContainer))
 
-	testClientCommand := "vcl_test_client -U -p " + proto + " " + serverVethAddress + " 12346"
+	testClientCommand := "vcl_test_client -U -p " + proto + " " + serverVethAddress + " " + port
 	echoClnContainer.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	o := echoClnContainer.exec(testClientCommand)
 	s.log(o)
@@ -140,7 +142,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	stopVppCommand := "/bin/bash -c 'ps -C vpp_main -o pid= | xargs kill -9'"
 	srvVppContainer.exec(stopVppCommand)
 
-	s.setupServerVpp()
+	s.setupServerVpp(pid)
 
 	s.log("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
