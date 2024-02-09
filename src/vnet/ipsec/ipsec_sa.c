@@ -411,6 +411,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   else
     sa->crypto_async_key_index = sa->crypto_sync_key_index;
 
+  vnet_crypto_key_update (vm, sa->crypto_async_key_index);
+
   if (im->async_mode)
     {
       ipsec_sa_set_async_mode (sa, 1);
