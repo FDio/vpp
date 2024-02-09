@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "379ee5e5_f9580974",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T13:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4db5c058_27a7b9f7",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "094b8fb8_fabe26b8",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-02-08T13:42:54Z",
       "side": 1,
       "message": "I don\u0027t think this is needed anymore?",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f095e35_9fa15ebf",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T13:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "094b8fb8_fabe26b8",
       "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f81895c_156601d5",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T13:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fb6d840a_9ba5ae3f",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2f3bf2d5_2af35b92",
@@ -82,6 +136,24 @@
       "writtenOn": "2024-02-08T13:42:54Z",
       "side": 1,
       "message": "same comment as before, pool_elt_at_index() should never returns a null pointer, and sa-\u003eprofile_index should always be valid, hence this check should not be needed",
+      "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30aa73a3_c3f0be49",
+        "filename": "src/plugins/ikev2/ikev2_cli.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T13:38:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2f3bf2d5_2af35b92",
       "revId": "45af5d792c82c4656ee4bae3f6bccc2e673cd250",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

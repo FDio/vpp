@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55135743_f088a2b2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T13:38:16Z",
+      "side": 1,
+      "message": "Thank you so much, looks great! I have one last request: could you add a unit test for your new dump API in test/test_ikev2.py:test_profile_api()? That will ensure it does not break silently in later versions.",
+      "revId": "ddc680af275b21ca3cd9ca9024d472241cd35f19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
