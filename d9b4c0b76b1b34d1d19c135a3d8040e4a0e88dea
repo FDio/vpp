@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d45e77f_f5ced3e8",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-09T17:42:42Z",
+      "side": 1,
+      "message": "Mover all these error handling improvements to a separate patch. Include logVppInstance improvements",
+      "revId": "d9b4c0b76b1b34d1d19c135a3d8040e4a0e88dea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba0cb7b9_c7e0de47",
+        "filename": "extras/hs-test/raw_session_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-09T17:42:42Z",
+      "side": 1,
+      "message": "Can we hide the use of the pid, in all test calls, by asking the suite/reset of the infra to track the pids?",
+      "range": {
+        "startLine": 20,
+        "startChar": 57,
+        "endLine": 20,
+        "endChar": 61
+      },
+      "revId": "d9b4c0b76b1b34d1d19c135a3d8040e4a0e88dea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b8ae116_a5e1a429",
+        "filename": "extras/hs-test/topo-network/2peerVeth.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-09T17:42:42Z",
+      "side": 1,
+      "message": "Let\u0027s move these yaml file changes to a separate gerrit. Include fixes like the one in extras/hs-test/raw_session_test.go where raw string was replaced with a variable name",
+      "range": {
+        "startLine": 6,
+        "startChar": 11,
+        "endLine": 6,
+        "endChar": 14
+      },
+      "revId": "d9b4c0b76b1b34d1d19c135a3d8040e4a0e88dea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
