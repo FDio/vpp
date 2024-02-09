@@ -70,6 +70,24 @@
       "parentUuid": "77c403cd_fc0b7d7b",
       "revId": "ddc680af275b21ca3cd9ca9024d472241cd35f19",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a1447e8_6509cd54",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-09T14:31:02Z",
+      "side": 1,
+      "message": "Yes, if you look at test_profile_api(), you can see it programs some profiles, then dump them and check that the dump is correct.\nI think you can just add your dump_v2 there as well.",
+      "parentUuid": "02ddf78d_370a64df",
+      "revId": "ddc680af275b21ca3cd9ca9024d472241cd35f19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
