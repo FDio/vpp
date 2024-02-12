@@ -366,7 +366,6 @@ ip6_icmp_error (vlib_main_t * vm,
 			       -(sizeof (ip6_header_t) +
 				 sizeof (icmp46_header_t) + 4));
 
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p0->current_length =
 	    p0->current_length > 1280 ? 1280 : p0->current_length;
