@@ -34,6 +34,41 @@
       "parentUuid": "422d2daf_91c15648",
       "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "abb7f10f_c13bf1a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-02-12T10:06:28Z",
+      "side": 1,
+      "message": "I have tested it in AWS and it didn\u0027t work for ENA:\n\nDBGvpp# create interface dpdk 0000:00:06.0 \ncreate interface dpdk: rte_eal_hotplug_add failed \nDBGvpp# create int dpdk 0000:00:07.0\ncreate interface dpdk: rte_eal_hotplug_add failed\nDBGvpp# create int dpdk 0000:00:07.0 num-rx-queues 1 num-tx-queues 1\ncreate interface dpdk: rte_eal_hotplug_add failed\nDBGvpp# create int dpdk 0000:00:07.0 num-rx-queues 4 num-tx-queues 4\ncreate interface dpdk: rte_eal_hotplug_add failed \n\n\nDelete interface cli triggers the assert in DPDK node.\ndelete interface dpdk VirtualFunctionEthernet0/6/0 \nDBGvpp# 4: /home/ubuntu/vpp/src/plugins/dpdk/device/node.c:556 (dpdk_input_node_fn_icl) assertion `(pv[i].dev_instance) \u003c vec_len (dm-\u003edevices)\u0027 fails",
+      "parentUuid": "f7e8bbd3_e45661ce",
+      "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd8c93e4_d917d836",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-02-12T10:06:28Z",
+      "side": 1,
+      "message": "Thanks for the patch. But I had tested it in AWS with ENA interfaces where it failed to create interface or delete interface.",
+      "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
