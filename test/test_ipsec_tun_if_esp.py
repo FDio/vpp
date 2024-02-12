@@ -1231,12 +1231,34 @@ class TestIpsec4TunIfEspNoAlgo(TemplateIpsec4TunProtect, TemplateIpsec, IpsecTun
         self.config_sa_tra(p)
         self.config_protect(p)
 
-        tx = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4, dst=p.remote_tun_if_host)
+        tx = self.gen_pkts(
+            self.pg1, src=self.pg1.remote_ip4, dst=p.remote_tun_if_host, count=127
+        )
         self.send_and_assert_no_replies(self.pg1, tx)
 
         self.unconfig_protect(p)
         self.unconfig_sa(p)
         self.unconfig_network(p)
+
+    def test_tun_44_async(self):
+        """IPSec SA with NULL algos using async crypto"""
+        p = self.ipv4_params
+
+        self.vapi.ipsec_set_async_mode(async_enable=True)
+        self.config_network(p)
+        self.config_sa_tra(p)
+        self.config_protect(p)
+
+        tx = self.gen_pkts(
+            self.pg1, src=self.pg1.remote_ip4, dst=p.remote_tun_if_host, count=127
+        )
+        self.send_and_assert_no_replies(self.pg1, tx)
+
+        self.unconfig_protect(p)
+        self.unconfig_sa(p)
+        self.unconfig_network(p)
+
+        self.vapi.ipsec_set_async_mode(async_enable=False)
 
 
 @tag_fixme_vpp_workers
