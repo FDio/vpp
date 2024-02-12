@@ -60,6 +60,7 @@ vl_api_want_ping_finished_events_t_handler (
   vlib_main_t *vm = vlib_get_main ();
   ping_main_t *pm = &ping_main;
   vl_api_want_ping_finished_events_reply_t *rmp;
+  int rv = 0;
 
   uword curr_proc = vlib_current_process (vm);
 
@@ -76,13 +77,11 @@ vl_api_want_ping_finished_events_t_handler (
 
   set_cli_process_id_by_icmp_id_mt (vm, icmp_id, curr_proc);
 
-  int rv = 0;
   u32 request_count = 0;
   u32 reply_count = 0;
-
   u32 table_id = 0;
   ip_address_t dst_addr = { 0 };
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
   f64 ping_interval = clib_net_to_host_f64 (mp->interval);
   u32 ping_repeat = ntohl (mp->repeat);
   u32 data_len = PING_DEFAULT_DATA_LEN;
@@ -90,15 +89,8 @@ vl_api_want_ping_finished_events_t_handler (
   u32 verbose = 0;
   ip_address_decode2 (&mp->address, &dst_addr);
 
-  vl_api_registration_t *rp;
-  rp = vl_api_client_index_to_registration (mp->client_index);
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id =
-    htons ((VL_API_WANT_PING_FINISHED_EVENTS_REPLY) + (REPLY_MSG_ID_BASE));
-  rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-  vl_api_send_msg (rp, (u8 *) rmp);
+  REPLY_MACRO (VL_API_WANT_PING_FINISHED_EVENTS_REPLY);
+  VALIDATE_SW_IF_INDEX (mp);
 
   int i;
   send_ip46_ping_result_t res = SEND_PING_OK;
@@ -134,6 +126,8 @@ vl_api_want_ping_finished_events_t_handler (
 	    reply_count += 1;
 	}
     }
+
+  BAD_SW_IF_INDEX_LABEL;
 
   ping_api_send_ping_event (mp, request_count, reply_count);
 
