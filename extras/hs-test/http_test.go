@@ -126,7 +126,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		o, err := abCont.combinedOutput()
 		rps := parseString(o, "Requests per second:")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	} else {
 		wrkCont := s.getContainerByName("wrk")
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
@@ -135,7 +135,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		o, err := wrkCont.combinedOutput()
 		rps := parseString(o, "requests")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }

@@ -36,7 +36,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		append("use-mq-eventfd").
 		append(clientAppSocketApi).close().
 		saveToFile(clientVclFileName)
-	s.assertNil(err)
+	s.assertNil(err, err)
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
 		serverContainer.getHostWorkDir())
@@ -49,7 +49,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 		append("use-mq-eventfd").
 		append(serverAppSocketApi).close().
 		saveToFile(serverVclFileName)
-	s.assertNil(err)
+	s.assertNil(err, err)
 
 	s.log("attaching server to vpp")
 
@@ -57,7 +57,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	go s.startServerApp(srvCh, stopServerCh, srvEnv)
 
 	err = <-srvCh
-	s.assertNil(err)
+	s.assertNil(err, err)
 
 	s.log("attaching client to vpp")
 	var clnRes = make(chan string, 1)
@@ -68,7 +68,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 
 	// wait for client's result
 	err = <-clnCh
-	s.assertNil(err)
+	s.assertNil(err, err)
 
 	// stop server
 	stopServerCh <- struct{}{}

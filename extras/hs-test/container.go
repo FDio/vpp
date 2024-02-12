@@ -285,7 +285,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 	c.suite.T().Helper()
 	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err)
+	c.suite.assertNil(err, err)
 	return string(byteOutput)
 }
 
@@ -324,12 +324,18 @@ func (c *Container) saveLogs() {
 	f.Close()
 }
 
-func (c *Container) log() string {
-	cmd := "docker logs " + c.name
+// Outputs logs from docker containers. Set 'maxLines' to 0 to output the full log.
+func (c *Container) log(maxLines int) (string, error) {
+	var cmd string
+	if maxLines == 0 {
+		cmd = "docker logs " + c.name
+	} else {
+		cmd = fmt.Sprintf("docker logs --tail %d %s", maxLines, c.name)
+	}
+
 	c.suite.log(cmd)
 	o, err := exechelper.CombinedOutput(cmd)
-	c.suite.assertNil(err)
-	return string(o)
+	return string(o), err
 }
 
 func (c *Container) stop() error {
