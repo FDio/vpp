@@ -22,7 +22,9 @@
 #include <sched.h>
 
 #include <vppinfra/format.h>
+#ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#endif
 #include <vppinfra/mem.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pmalloc.h>

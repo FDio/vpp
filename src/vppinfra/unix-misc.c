@@ -268,7 +268,7 @@ __clib_export clib_bitmap_t *
 os_get_online_cpu_core_bitmap ()
 {
 #if __linux__
-  return clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
+  return clib_sysfs_read_bitmap ("/sys/devices/system/cpu/online");
 #else
   return 0;
 #endif
@@ -278,9 +278,52 @@ __clib_export clib_bitmap_t *
 os_get_online_cpu_node_bitmap ()
 {
 #if __linux__
-  return clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+  return clib_sysfs_read_bitmap ("/sys/devices/system/node/online");
 #else
   return 0;
+#endif
+}
+__clib_export clib_bitmap_t *
+os_get_cpu_on_node_bitmap (int node)
+{
+#if __linux__
+  return clib_sysfs_read_bitmap ("/sys/devices/system/node/node%u/cpulist",
+				 node);
+#else
+  return 0;
+#endif
+}
+
+__clib_export clib_bitmap_t *
+os_get_cpu_with_memory_bitmap ()
+{
+#if __linux__
+  return clib_sysfs_read_bitmap ("/sys/devices/system/node/has_memory");
+#else
+  return 0;
+#endif
+}
+
+__clib_export int
+os_get_cpu_phys_core_id (int cpu_id)
+{
+#if __linux
+  int core_id = -1;
+  clib_error_t *err;
+  u8 *p;
+
+  p =
+    format (0, "/sys/devices/system/cpu/cpu%u/topology/core_id%c", cpu_id, 0);
+  err = clib_sysfs_read ((char *) p, "%d", &core_id);
+  vec_free (p);
+  if (err)
+    {
+      clib_error_free (err);
+      return -1;
+    }
+  return core_id;
+#else
+  return -1;
 #endif
 }
 

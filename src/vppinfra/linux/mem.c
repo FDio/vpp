@@ -31,7 +31,6 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
-#include <vppinfra/linux/sysfs.h>
 
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE 1024

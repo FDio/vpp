@@ -237,13 +237,21 @@ clib_sysfs_prealloc_hugepages (int numa_node, int log2_page_size, int nr)
   return clib_sysfs_set_nr_hugepages (numa_node, log2_page_size, n + needed);
 }
 
-__clib_export uword *
-clib_sysfs_list_to_bitmap (char *filename)
+__clib_export clib_bitmap_t *
+clib_sysfs_read_bitmap (char *fmt, ...)
 {
   FILE *fp;
   uword *r = 0;
+  va_list va;
+  u8 *filename;
 
-  fp = fopen (filename, "r");
+  va_start (va, fmt);
+  filename = va_format (0, fmt, &va);
+  va_end (va);
+  vec_add1 (filename, 0);
+
+  fp = fopen ((char *) filename, "r");
+  vec_free (filename);
 
   if (fp != NULL)
     {

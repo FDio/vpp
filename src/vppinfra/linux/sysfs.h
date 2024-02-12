@@ -17,6 +17,7 @@
 #define included_linux_sysfs_h
 
 #include <vppinfra/error.h>
+#include <vppinfra/bitmap.h>
 
 clib_error_t *clib_sysfs_write (char *file_name, char *fmt, ...);
 
@@ -33,7 +34,7 @@ clib_error_t *clib_sysfs_get_surplus_hugepages (int numa_node,
 clib_error_t *clib_sysfs_prealloc_hugepages (int numa_node,
 					     int log2_page_size, int nr);
 
-uword *clib_sysfs_list_to_bitmap (char *filename);
+uword *clib_sysfs_read_bitmap (char *fmt, ...);
 
 #endif /* included_linux_sysfs_h */
 
