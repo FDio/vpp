@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b635d82_3f2106d0",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-12T12:44:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d45e77f_f5ced3e8",
+      "revId": "d9b4c0b76b1b34d1d19c135a3d8040e4a0e88dea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ba0cb7b9_c7e0de47",
@@ -54,6 +72,30 @@
       "writtenOn": "2024-02-09T17:42:42Z",
       "side": 1,
       "message": "Let\u0027s move these yaml file changes to a separate gerrit. Include fixes like the one in extras/hs-test/raw_session_test.go where raw string was replaced with a variable name",
+      "range": {
+        "startLine": 6,
+        "startChar": 11,
+        "endLine": 6,
+        "endChar": 14
+      },
+      "revId": "d9b4c0b76b1b34d1d19c135a3d8040e4a0e88dea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9d10aaa_857f7945",
+        "filename": "extras/hs-test/topo-network/2peerVeth.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-12T12:44:19Z",
+      "side": 1,
+      "message": "The yaml file changes were done because after appending the PID to interface names, some of the names exceeded the character limit (which seems to be 15 chars) - I\u0027d like to push both the yaml file changes and the PID stuff together",
+      "parentUuid": "8b8ae116_a5e1a429",
       "range": {
         "startLine": 6,
         "startChar": 11,
