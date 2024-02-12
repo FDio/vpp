@@ -99,7 +99,7 @@ class TestMTU(VppTestCase):
             chksum=0x2DBB,
         )
         icmp4_reply = (
-            IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4, ttl=254, len=576, id=0)
+            IP(src=self.pg0.local_ip4, dst=self.pg0.remote_ip4, ttl=255, len=576, id=0)
             / p_icmp4
             / p_ip4
             / p_payload
