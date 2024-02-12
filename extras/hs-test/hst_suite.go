@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -102,7 +103,54 @@ func (s *HstSuite) setupContainers() {
 	}
 }
 
+func logVppInstance(container *Container, maxLines int){
+	if container.vppInstance == nil{
+		return
+	}
+
+	logSource := container.getHostWorkDir() + defaultLogFilePath
+	file, err := os.Open(logSource)
+
+	if err != nil{
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	var counter int
+
+	for scanner.Scan(){
+		lines = append(lines, scanner.Text())
+		counter++
+		if counter > maxLines {
+			lines = lines[1:]
+			counter--
+		}
+	}
+
+	fmt.Println("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
+	for _, line := range lines{
+		fmt.Println(line)
+	}
+	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
+
+}
+
 func (s *HstSuite) hstFail() {
+	fmt.Println("Containers: " + fmt.Sprint(s.containers))
+	for _, container := range s.containers{
+		out, err := container.log(20)
+		if err != nil{
+			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
+			break
+		}
+		fmt.Printf("\nvvvvvvvvvvvvvvv " +
+					container.name + ":\n" +
+					out +
+					"^^^^^^^^^^^^^^^\n\n")
+		logVppInstance(container, 20)
+	}
 	s.T().FailNow()
 }
 
@@ -369,7 +417,7 @@ func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, ad
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {
-		fmt.Println("Failed to start http server")
+		fmt.Println("Failed to start http server: " + fmt.Sprint(err))
 		return
 	}
 	running <- struct{}{}
