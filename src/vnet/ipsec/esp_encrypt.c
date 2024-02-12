@@ -607,6 +607,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 current_sa_bytes = 0, spi = 0;
   u8 esp_align = 4, iv_sz = 0, icv_sz = 0;
   ipsec_sa_t *sa0 = 0;
+  u8 sa_drop_no_crypto = 0;
   vlib_buffer_t *lb;
   vnet_crypto_op_t **crypto_ops = &ptd->crypto_ops;
   vnet_crypto_op_t **integ_ops = &ptd->integ_ops;
@@ -692,16 +693,10 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sa0 = ipsec_sa_get (sa_index0);
 	  current_sa_index = sa_index0;
 
-	  if (PREDICT_FALSE ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
-			      sa0->integ_alg == IPSEC_INTEG_ALG_NONE) &&
-			     !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa0)))
-	    {
-	      err = ESP_ENCRYPT_ERROR_NO_ENCRYPTION;
-	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
-					  n_noop, noop_nexts, drop_next,
-					  sa_index0);
-	      goto trace;
-	    }
+	  sa_drop_no_crypto = ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
+				sa0->integ_alg == IPSEC_INTEG_ALG_NONE) &&
+			       !ipsec_sa_is_set_NO_ALGO_NO_DROP (sa0));
+
 	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
 					  current_sa_index);
 
@@ -713,6 +708,14 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  icv_sz = sa0->integ_icv_size;
 	  iv_sz = sa0->crypto_iv_size;
 	  is_async = im->async_mode | ipsec_sa_is_set_IS_ASYNC (sa0);
+	}
+
+      if (PREDICT_FALSE (sa_drop_no_crypto != 0))
+	{
+	  err = ESP_ENCRYPT_ERROR_NO_ENCRYPTION;
+	  esp_encrypt_set_next_index (b[0], node, thread_index, err, n_noop,
+				      noop_nexts, drop_next, sa_index0);
+	  goto trace;
 	}
 
       if (PREDICT_FALSE ((u16) ~0 == sa0->thread_index))
