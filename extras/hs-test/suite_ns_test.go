@@ -34,11 +34,11 @@ func (s *NsSuite) SetupTest() {
 	s.assertNil(vpp.start())
 
 	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 
 	idx, err = vpp.createAfPacket(s.netInterfaces[clientInterface])
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 
 	container.exec("chmod 777 -R %s", container.getContainerWorkDir())

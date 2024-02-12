@@ -40,5 +40,5 @@ func (s *VethsSuite) TestTcpWithLoss() {
 		serverVeth.ip4AddressString())
 	s.log(output)
 	s.assertNotEqual(len(output), 0)
-	s.assertNotContains(output, "failed: timeout")
+	s.assertNotContains(output, "failed: timeout", output)
 }

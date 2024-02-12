@@ -20,7 +20,7 @@ func (s *NsSuite) TestHttpTps() {
 	go s.startWget(finished, client_ip, port, "test_file_10M", "client")
 	// wait for client
 	err := <-finished
-	s.assertNil(err)
+	s.assertNil(err, err)
 }
 
 func (s *VethsSuite) TestHttpCli() {
@@ -56,7 +56,7 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.extraRunningArgs = args
 	o, err := curlCont.combinedOutput()
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertContains(o, "<http>", "<http> not found in the result!")
 }
 
@@ -69,7 +69,7 @@ func (s *NoTopoSuite) TestHttpStaticProm() {
 	s.log(vpp.vppctl("prom enable"))
 	go s.startWget(finished, serverAddress, "80", query, "")
 	err := <-finished
-	s.assertNil(err)
+	s.assertNil(err, err)
 }
 
 func (s *NoTopoSuite) TestNginxAsServer() {
@@ -126,7 +126,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		o, err := abCont.combinedOutput()
 		rps := parseString(o, "Requests per second:")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	} else {
 		wrkCont := s.getContainerByName("wrk")
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
@@ -135,7 +135,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		o, err := wrkCont.combinedOutput()
 		rps := parseString(o, "requests")
 		s.log(rps, err)
-		s.assertNil(err)
+		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	}
 	return nil
 }

@@ -36,8 +36,8 @@ func (s *VethsSuite) SetupTest() {
 	serverContainer := s.getContainerByName("server-vpp")
 
 	cpus := s.AllocateCpus()
-	serverVpp, _ := serverContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(serverVpp)
+	serverVpp, err := serverContainer.newVppInstance(cpus, sessionConfig)
+	s.assertNotNil(serverVpp, err)
 
 	s.setupServerVpp()
 
@@ -45,8 +45,8 @@ func (s *VethsSuite) SetupTest() {
 	clientContainer := s.getContainerByName("client-vpp")
 
 	cpus = s.AllocateCpus()
-	clientVpp, _ := clientContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(clientVpp)
+	clientVpp, err := clientContainer.newVppInstance(cpus, sessionConfig)
+	s.assertNotNil(clientVpp, err)
 
 	s.setupClientVpp()
 }
@@ -57,7 +57,7 @@ func (s *VethsSuite) setupServerVpp() {
 
 	serverVeth := s.netInterfaces[serverInterfaceName]
 	idx, err := serverVpp.createAfPacket(serverVeth)
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 }
 
@@ -67,6 +67,6 @@ func (s *VethsSuite) setupClientVpp() {
 
 	clientVeth := s.netInterfaces[clientInterfaceName]
 	idx, err := clientVpp.createAfPacket(clientVeth)
-	s.assertNil(err)
+	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 }
