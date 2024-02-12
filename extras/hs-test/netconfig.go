@@ -298,8 +298,7 @@ func setDevUpDown(dev, ns string, isUp bool) error {
 	cmd := appendNetns(c, ns)
 	err := cmd.Run()
 	if err != nil {
-		s := fmt.Sprintf("error bringing %s device %s!", dev, op)
-		return errors.New(s)
+		return fmt.Errorf("error bringing %s device %s! (cmd: '%s')", dev, op, cmd)
 	}
 	return nil
 }
@@ -314,7 +313,7 @@ func addDelNetns(name string, isAdd bool) error {
 	cmd := exec.Command("ip", "netns", op, name)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.New("add/del netns failed")
+		return fmt.Errorf("add/del netns failed (cmd: '%s')", cmd)
 	}
 	return nil
 }
@@ -356,7 +355,7 @@ func addDelBridge(brName, ns string, isAdd bool) error {
 	cmd := appendNetns(c, ns)
 	err := cmd.Run()
 	if err != nil {
-		s := fmt.Sprintf("%s %s failed!", op, brName)
+		s := fmt.Sprintf("%s %s failed! err: '%s'", op, brName, err)
 		return errors.New(s)
 	}
 	return nil
@@ -373,8 +372,7 @@ func addBridge(brName string, ifs []string, ns string) error {
 		cmd := appendNetns(c, ns)
 		err = cmd.Run()
 		if err != nil {
-			s := fmt.Sprintf("error adding %s to bridge %s: %v", v, brName, err)
-			return errors.New(s)
+			return fmt.Errorf("error adding %s to bridge %s: %s", v, brName, err)
 		}
 	}
 	err = setDevUp(brName, ns)

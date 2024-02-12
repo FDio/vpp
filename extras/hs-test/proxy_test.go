@@ -15,7 +15,7 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 
 	// create test file
 	err := exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
-	s.assertNil(err, "failed to run truncate command")
+	s.assertNil(err, "failed to run truncate command: " + fmt.Sprint(err))
 	defer func() { os.Remove(srcFile) }()
 
 	s.log("test file created...")
@@ -39,7 +39,7 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	c += fmt.Sprintf("%s:555/%s", clientVeth.ip4AddressString(), srcFile)
 	s.log(c)
 	_, err = exechelper.CombinedOutput(c)
-	s.assertNil(err, "failed to run wget")
+	s.assertNil(err, "failed to run wget: '%s', cmd: %s", err, c)
 	stopServer <- struct{}{}
 
 	defer func() { os.Remove(outputFile) }()
@@ -66,19 +66,20 @@ func (s *NsSuite) TestVppProxyHttpTcp() {
 	proto := "tcp"
 	configureVppProxy(s, proto)
 	err := testProxyHttpTcp(s, proto)
-	s.assertNil(err)
+	s.assertNil(err, err)
 }
 
 func (s *NsSuite) TestVppProxyHttpTls() {
 	proto := "tls"
 	configureVppProxy(s, proto)
 	err := testProxyHttpTcp(s, proto)
-	s.assertNil(err)
+	s.assertNil(err, err)
 }
 
 func configureEnvoyProxy(s *NsSuite) {
 	envoyContainer := s.getContainerByName("envoy")
-	envoyContainer.create()
+	err := envoyContainer.create()
+	s.assertNil(err, "Error creating envoy container: %s", err)
 
 	serverVeth := s.netInterfaces[serverInterface]
 	address := struct {
@@ -97,5 +98,5 @@ func configureEnvoyProxy(s *NsSuite) {
 func (s *NsSuite) TestEnvoyProxyHttpTcp() {
 	configureEnvoyProxy(s)
 	err := testProxyHttpTcp(s, "tcp")
-	s.assertNil(err)
+	s.assertNil(err, err)
 }
