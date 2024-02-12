@@ -19,7 +19,6 @@
 #include <vppinfra/format.h>
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
-#include <vppinfra/linux/sysfs.h>
 #include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
@@ -427,30 +426,21 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 void
 vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 {
-  const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
-  const char *sys_node_path = "/sys/devices/system/node/node";
   clib_bitmap_t *nbmp = 0, *cbmp = 0;
-  u32 node;
-  u8 *p = 0;
-  int core_id = -1, numa_id = -1;
+  int node, core_id = -1, numa_id = -1;
 
-  p = format (p, "%s%u/topology/core_id%c", sys_cpu_path, cpu_id, 0);
-  clib_sysfs_read ((char *) p, "%d", &core_id);
-  vec_reset_length (p);
-
+  core_id = os_get_cpu_phys_core_id (cpu_id);
   nbmp = os_get_online_cpu_node_bitmap ();
+
   clib_bitmap_foreach (node, nbmp)  {
-    p = format (p, "%s%u/cpulist%c", sys_node_path, node, 0);
-    clib_sysfs_read ((char *) p, "%U", unformat_bitmap_list, &cbmp);
-    if (clib_bitmap_get (cbmp, cpu_id))
-      numa_id = node;
-    vec_reset_length (cbmp);
-    vec_reset_length (p);
+      cbmp = os_get_cpu_on_node_bitmap (node);
+      if (clib_bitmap_get (cbmp, cpu_id))
+	numa_id = node;
+      vec_reset_length (cbmp);
   }
 
   vec_free (nbmp);
   vec_free (cbmp);
-  vec_free (p);
 
   w->core_id = core_id;
   w->numa_id = numa_id;

@@ -43,7 +43,6 @@
  * Allocate/free network buffers.
  */
 
-#include <vppinfra/linux/sysfs.h>
 #include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vlib/vlib.h>
@@ -837,10 +836,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
   bmp = os_get_online_cpu_node_bitmap ();
-
-  if ((err = clib_sysfs_read ("/sys/devices/system/node/has_memory", "%U",
-			      unformat_bitmap_list, &bmp_has_memory)))
-    clib_error_free (err);
+  bmp_has_memory = os_get_cpu_with_memory_bitmap ();
 
   if (bmp && bmp_has_memory)
     bmp = clib_bitmap_and (bmp, bmp_has_memory);
