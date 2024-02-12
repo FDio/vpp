@@ -325,6 +325,7 @@ ip4_icmp_error (vlib_main_t * vm,
 			       -sizeof (ip4_header_t) -
 			       sizeof (icmp46_header_t) - 4);
 
+	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p0->current_length =
 	    p0->current_length > 576 ? 576 : p0->current_length;
 	  out_ip0 = vlib_buffer_get_current (p0);
