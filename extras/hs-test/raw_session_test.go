@@ -14,7 +14,7 @@ func (s *VethsSuite) TestVppEchoTcp() {
 }
 
 func (s *VethsSuite) testVppEcho(proto string) {
-	serverVethAddress := s.netInterfaces[serverInterfaceName].ip4AddressString()
+	serverVethAddress := s.getInterfaceByName(serverInterfaceName).ip4AddressString()
 	uri := proto + "://" + serverVethAddress + "/12344"
 
 	echoSrvContainer := s.getContainerByName("server-app")

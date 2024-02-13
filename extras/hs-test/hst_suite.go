@@ -38,10 +38,12 @@ type HstSuite struct {
 	cpuAllocator     *CpuAllocatorT
 	cpuContexts      []*CpuContext
 	cpuPerVpp        int
+	pid				 string
 }
 
 func (s *HstSuite) SetupSuite() {
 	var err error
+	s.pid = fmt.Sprint(os.Getpid())
 	s.cpuAllocator, err = CpuAllocator()
 	if err != nil {
 		s.FailNow("failed to init cpu allocator: %v", err)
@@ -73,6 +75,9 @@ func (s *HstSuite) TearDownTest() {
 	}
 	s.resetContainers()
 	s.removeVolumes()
+	for ip := range ips{
+		os.Remove(ips[ip])
+	}
 }
 
 func (s *HstSuite) skipIfUnconfiguring() {
@@ -242,8 +247,12 @@ func (s *HstSuite) removeVolumes() {
 	}
 }
 
+func (s *HstSuite) getInterfaceByName(name string) *NetInterface {
+	return s.netInterfaces[name + s.pid]
+}
+
 func (s *HstSuite) getContainerByName(name string) *Container {
-	return s.containers[name]
+	return s.containers[name + s.pid]
 }
 
 /*
@@ -251,7 +260,7 @@ func (s *HstSuite) getContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) getTransientContainerByName(name string) *Container {
-	containerCopy := *s.containers[name]
+	containerCopy := *s.containers[name + s.pid]
 	return &containerCopy
 }
 
@@ -277,7 +286,8 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := newContainer(s, elem)
+		newContainer, err := newContainer(s, elem, s.pid)
+		newContainer.suite = s
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
 		}
@@ -367,7 +377,7 @@ func (s *HstSuite) getTestId() string {
 }
 
 func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s")
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.pid[len(s.pid)-4:])
 	if env != nil {
 		cmd.Env = env
 	}
@@ -391,7 +401,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.pid[len(s.pid)-4:])
 		if env != nil {
 			cmd.Env = env
 		}
@@ -413,7 +423,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 }
 
 func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort, s.pid}, netNs)
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {
