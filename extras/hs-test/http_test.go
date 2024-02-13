@@ -17,7 +17,7 @@ func (s *NsSuite) TestHttpTps() {
 	// configure vpp in the container
 	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	go s.startWget(finished, client_ip, port, "test_file_10M", "client")
+	go s.startWget(finished, client_ip, port, "test_file_10M", "cln")
 	// wait for client
 	err := <-finished
 	s.assertNil(err)
@@ -107,7 +107,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	vpp := s.getContainerByName("vpp").vppInstance
 
-	nginxCont := s.getContainerByName("nginx")
+	nginxCont := s.getContainerByName(singleTopoContainerNginx)
 	s.assertNil(nginxCont.run())
 	vpp.waitForApp("nginx-", 5)
 

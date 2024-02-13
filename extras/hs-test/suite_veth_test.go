@@ -6,8 +6,8 @@ import (
 
 const (
 	// These correspond to names used in yaml config
-	serverInterfaceName = "vppsrv"
-	clientInterfaceName = "vppcln"
+	serverInterfaceName = "srv"
+	clientInterfaceName = "cln"
 )
 
 type VethsSuite struct {

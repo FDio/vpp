@@ -14,13 +14,14 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	serverRunning := make(chan struct{}, 1)
 
 	// create test file
-	err := exechelper.Run(fmt.Sprintf("ip netns exec server truncate -s %s %s", srcFile, srcFile))
+	err := exechelper.Run(fmt.Sprintf("ip netns exec srv truncate -s %s %s", "10M", srcFile))
 	s.assertNil(err, "failed to run truncate command")
 	defer func() { os.Remove(srcFile) }()
+	defer func() { os.Remove(outputFile) }()
 
 	s.log("test file created...")
 
-	go s.startHttpServer(serverRunning, stopServer, ":666", "server")
+	go s.startHttpServer(serverRunning, stopServer, ":666", "srv")
 	// TODO better error handling and recovery
 	<-serverRunning
 
@@ -31,18 +32,16 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	s.log("http server started...")
 
 	clientVeth := s.netInterfaces[clientInterface]
-	c := fmt.Sprintf("ip netns exec client wget --no-proxy --retry-connrefused"+
+	c := fmt.Sprintf("ip netns exec cln wget --no-proxy --retry-connrefused"+
 		" --retry-on-http-error=503 --tries=10 -O %s ", outputFile)
 	if proto == "tls" {
 		c += " --secure-protocol=TLSv1_3 --no-check-certificate https://"
 	}
-	c += fmt.Sprintf("%s:555/%s", clientVeth.ip4AddressString(), srcFile)
+	c += fmt.Sprintf("%s:555/10M", clientVeth.ip4AddressString())
 	s.log(c)
 	_, err = exechelper.CombinedOutput(c)
 	s.assertNil(err, "failed to run wget")
 	stopServer <- struct{}{}
-
-	defer func() { os.Remove(outputFile) }()
 
 	s.assertNil(assertFileSize(outputFile, srcFile))
 	return nil

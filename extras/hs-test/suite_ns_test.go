@@ -2,8 +2,8 @@ package main
 
 const (
 	// These correspond to names used in yaml config
-	clientInterface = "hst_client_vpp"
-	serverInterface = "hst_server_vpp"
+	clientInterface = "hclnvpp"
+	serverInterface = "hsrvvpp"
 )
 
 type NsSuite struct {
