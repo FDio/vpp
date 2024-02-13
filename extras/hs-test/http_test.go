@@ -18,7 +18,7 @@ func (s *NsSuite) TestHttpTps() {
 	// configure vpp in the container
 	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	go s.startWget(finished, client_ip, port, "test_file_10M", clientNetns)
+	go s.startWget(finished, client_ip, port, "test_file_10M", clientNetns + pid)
 	// wait for client
 	err := <-finished
 	s.assertNil(err, err)

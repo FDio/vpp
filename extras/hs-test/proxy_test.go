@@ -8,22 +8,22 @@ import (
 )
 
 func testProxyHttpTcp(s *NsSuite, proto string) error {
-	const outputFile = "test.data"
-	const srcFile = "httpTestFile"
-	const fileSize = "10M"
+	var outputFile string = "test" + pid + ".data"
+	var srcFile string = "httpTestFile" + pid
+	const fileSize string = "10M"
 	stopServer := make(chan struct{}, 1)
 	serverRunning := make(chan struct{}, 1)
 	serverNetns := "srv"
 	clientNetns := "cln"
 
 	// create test file
-	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNetns, fileSize, srcFile))
+	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNetns + pid, fileSize, srcFile))
 	s.assertNil(err, "failed to run truncate command: " + fmt.Sprint(err))
 	defer func() { os.Remove(srcFile) }()
 
 	s.log("test file created...")
 
-	go s.startHttpServer(serverRunning, stopServer, ":666", serverNetns)
+	go s.startHttpServer(serverRunning, stopServer, ":666", serverNetns + pid)
 	// TODO better error handling and recovery
 	<-serverRunning
 
@@ -35,7 +35,7 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 
 	clientVeth := s.netInterfaces[clientInterface]
 	c := fmt.Sprintf("ip netns exec %s wget --no-proxy --retry-connrefused"+
-		" --retry-on-http-error=503 --tries=10 -O %s ", clientNetns, outputFile)
+		" --retry-on-http-error=503 --tries=10 -O %s ", clientNetns + pid, outputFile)
 	if proto == "tls" {
 		c += " --secure-protocol=TLSv1_3 --no-check-certificate https://"
 	}

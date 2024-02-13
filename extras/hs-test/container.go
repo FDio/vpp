@@ -38,7 +38,7 @@ type Container struct {
 	vppInstance      *VppInstance
 }
 
-func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
+func newContainer(suite *HstSuite, yamlInput ContainerConfig, pid string) (*Container, error) {
 	containerName := yamlInput["name"].(string)
 	if len(containerName) == 0 {
 		err := fmt.Errorf("container name must not be blank")
@@ -48,7 +48,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	var container = new(Container)
 	container.volumes = make(map[string]Volume)
 	container.envVars = make(map[string]string)
-	container.name = containerName
+	container.name = containerName + pid
 	container.suite = suite
 
 	if image, ok := yamlInput["image"]; ok {
@@ -76,7 +76,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + container.suite.T().Name() + volumeDir
+		workingVolumeDir := logDir + container.suite.T().Name() + pid + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -249,7 +249,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config")
+	f, err := os.CreateTemp("/tmp", "hst-config" + pid)
 	if err != nil {
 		return err
 	}

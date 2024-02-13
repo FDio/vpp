@@ -1,10 +1,8 @@
 package main
 
-const (
-	// These correspond to names used in yaml config
-	clientInterface = "hclnvpp"
-	serverInterface = "hsrvvpp"
-)
+// These correspond to names used in yaml config
+var clientInterface string = "hclnvpp" + pid
+var serverInterface string = "hsrvvpp" + pid
 
 type NsSuite struct {
 	HstSuite
