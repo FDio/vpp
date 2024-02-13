@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cc7436a_9c019757",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-13T16:46:31Z",
+      "side": 1,
+      "message": "just define variable which holds suffix instead of duplicating everything....",
+      "revId": "c44262db7c17265e837b22f07c9017e3befc53f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63e33e0d_f6c74648",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-13T16:46:31Z",
+      "side": 1,
+      "message": "instead of duplicating:\nelseif(\"${CMAKE_SYSTEM_NAME}\" MATCHES \"Linux|FreeBSD\")",
+      "revId": "c44262db7c17265e837b22f07c9017e3befc53f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
