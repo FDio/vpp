@@ -757,6 +757,7 @@ fib_entry_src_action_uninstall (fib_entry_t *fib_entry)
 	    &fib_entry->fe_prefix,
 	    &fib_entry->fe_lb);
 
+	vlib_worker_wait_one_loop();
 	dpo_reset(&fib_entry->fe_lb);
     }
 }
