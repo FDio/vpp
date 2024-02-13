@@ -594,12 +594,13 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   u32 ctx_handle;
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
-  ho_ctx->flags |= TLS_CONN_F_HO_DONE;
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
+
   /* Half-open freed on tcp half-open cleanup notification */
+  __atomic_fetch_or (&ho_ctx->flags, TLS_CONN_F_HO_DONE, __ATOMIC_RELEASE);
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
