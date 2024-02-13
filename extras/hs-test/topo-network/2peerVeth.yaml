@@ -3,23 +3,23 @@ devices:
   - name: "hsns"
     type: "netns"
 
-  - name: "vppsrv"
+  - name: "srv"
     type: "veth"
     preset-hw-address: "00:00:5e:00:53:01"
     peer:
-      name: "vppsrv_veth"
+      name: "srv_veth"
       netns: "hsns"
 
-  - name: "vppcln"
+  - name: "cln"
     type: "veth"
     peer:
-      name: "vppcln_veth"
+      name: "cln_veth"
       netns: "hsns"
 
   - name: "br"
     type: "bridge"
     netns: "hsns"
     interfaces:
-      - vppsrv_veth
-      - vppcln_veth
+      - srv_veth
+      - cln_veth
 

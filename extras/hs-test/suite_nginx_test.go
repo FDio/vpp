@@ -2,11 +2,11 @@ package main
 
 const (
 	// These correspond to names used in yaml config
-	mirroringClientInterfaceName = "hst_client"
-	mirroringServerInterfaceName = "hst_server"
-	vppProxyContainerName        = "vpp-proxy"
-	nginxProxyContainerName      = "nginx-proxy"
-	nginxServerContainerName     = "nginx-server"
+	mirroringClientInterfaceName = "hstcln"
+	mirroringServerInterfaceName = "hstsrv"
+	vppProxyContainerName		 = "vpp-proxy"
+	nginxProxyContainerName 	 = "nginx-proxy"
+	nginxServerContainerName 	 = "nginx-server"
 )
 
 type NginxSuite struct {

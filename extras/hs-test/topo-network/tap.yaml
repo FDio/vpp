@@ -1,6 +1,6 @@
 ---
 devices:
-  - name: "hst_tap_host"
+  - name: "htaphost"
     type: "tap"
     ip4:
       network: 1
