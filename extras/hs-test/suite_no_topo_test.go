@@ -3,8 +3,8 @@ package main
 const (
 	singleTopoContainerVpp = "vpp"
 	singleTopoContainerNginx = "nginx"
-	tapInterfaceName = "htaphos"
 )
+var tapInterfaceName string = "htaphos" + pid
 
 type NoTopoSuite struct {
 	HstSuite
