@@ -1,12 +1,12 @@
 package main
 
+// These correspond to names used in yaml config
 const (
-	// These correspond to names used in yaml config
-	mirroringClientInterfaceName = "hstcln"
-	mirroringServerInterfaceName = "hstsrv"
 	vppProxyContainerName		 = "vpp-proxy"
 	nginxProxyContainerName 	 = "nginx-proxy"
 	nginxServerContainerName 	 = "nginx-server"
+	mirroringClientInterfaceName = "hstcln"
+	mirroringServerInterfaceName = "hstsrv"
 )
 
 type NginxSuite struct {
@@ -35,10 +35,10 @@ func (s *NginxSuite) SetupTest() {
 	proxyVpp, _ := vppProxyContainer.newVppInstance(cpus, sessionConfig)
 	s.assertNil(proxyVpp.start())
 
-	clientInterface := s.netInterfaces[mirroringClientInterfaceName]
+	clientInterface := s.getInterfaceByName(mirroringClientInterfaceName)
 	s.assertNil(proxyVpp.createTap(clientInterface, 1))
 
-	serverInterface := s.netInterfaces[mirroringServerInterfaceName]
+	serverInterface := s.getInterfaceByName(mirroringServerInterfaceName)
 	s.assertNil(proxyVpp.createTap(serverInterface, 2))
 
 	nginxContainer := s.getTransientContainerByName(nginxProxyContainerName)

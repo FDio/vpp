@@ -38,10 +38,12 @@ type HstSuite struct {
 	cpuAllocator     *CpuAllocatorT
 	cpuContexts      []*CpuContext
 	cpuPerVpp        int
+	pid				 string
 }
 
 func (s *HstSuite) SetupSuite() {
 	var err error
+	s.pid = fmt.Sprint(os.Getpid())
 	s.cpuAllocator, err = CpuAllocator()
 	if err != nil {
 		s.FailNow("failed to init cpu allocator: %v", err)
@@ -73,6 +75,9 @@ func (s *HstSuite) TearDownTest() {
 	}
 	s.resetContainers()
 	s.removeVolumes()
+	for ip := range ips{
+		os.Remove(ips[ip])
+	}
 }
 
 func (s *HstSuite) skipIfUnconfiguring() {
@@ -134,7 +139,6 @@ func logVppInstance(container *Container, maxLines int){
 		fmt.Println(line)
 	}
 	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
-
 }
 
 func (s *HstSuite) hstFail() {
@@ -242,8 +246,16 @@ func (s *HstSuite) removeVolumes() {
 	}
 }
 
+func (s *HstSuite) getNetNamespaceByName(name string) string {
+	return name + s.pid
+}
+
+func (s *HstSuite) getInterfaceByName(name string) *NetInterface {
+	return s.netInterfaces[name + s.pid]
+}
+
 func (s *HstSuite) getContainerByName(name string) *Container {
-	return s.containers[name]
+	return s.containers[name + s.pid]
 }
 
 /*
@@ -251,7 +263,7 @@ func (s *HstSuite) getContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) getTransientContainerByName(name string) *Container {
-	containerCopy := *s.containers[name]
+	containerCopy := *s.containers[name + s.pid]
 	return &containerCopy
 }
 
@@ -277,7 +289,8 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := newContainer(s, elem)
+		newContainer, err := newContainer(s, elem, s.pid)
+		newContainer.suite = s
 		if err != nil {
 			s.T().Fatalf("container config error: %v", err)
 		}
@@ -298,7 +311,32 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 
 	s.ip4AddrAllocator = NewIp4AddressAllocator()
 	s.netInterfaces = make(map[string]*NetInterface)
+
 	for _, elem := range yamlTopo.Devices {
+		if _, ok := elem["name"]; ok {
+			elem["name"] = elem["name"].(string) + s.pid
+		}
+
+		if peer, ok := elem["peer"].(NetDevConfig); ok {
+			if peer["name"].(string) != ""{
+				peer["name"] = peer["name"].(string) + s.pid
+			}
+			if _, ok := peer["netns"]; ok{
+				peer["netns"] = peer["netns"].(string) + s.pid
+			}
+		}
+
+		if _, ok := elem["netns"]; ok {
+			elem["netns"] = elem["netns"].(string) + s.pid
+		}
+
+		if _, ok := elem["interfaces"]; ok {
+			interfaceCount := len(elem["interfaces"].([]interface{}))
+			for i := 0; i < interfaceCount; i++ {
+				elem["interfaces"].([]interface{})[i] = elem["interfaces"].([]interface{})[i].(string) + s.pid
+			}
+		}
+
 		switch elem["type"].(string) {
 		case NetNs:
 			{
@@ -366,8 +404,17 @@ func (s *HstSuite) getTestId() string {
 	return s.testIds[testName]
 }
 
+// Returns last 4 digits of PID
+func (s *HstSuite) getPortFromPid() string {
+	port := s.pid
+	for len(port) < 4 {
+		port += "0"
+	}
+	return port[len(port)-4:]
+}
+
 func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s")
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.getPortFromPid())
 	if env != nil {
 		cmd.Env = env
 	}
@@ -391,7 +438,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g")
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.getPortFromPid())
 		if env != nil {
 			cmd.Env = env
 		}
@@ -413,7 +460,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 }
 
 func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort, s.pid}, netNs)
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {

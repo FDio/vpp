@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
+// These correspond to names used in yaml config
 const (
-	// These correspond to names used in yaml config
 	serverInterfaceName = "srv"
 	clientInterfaceName = "cln"
 )
@@ -25,7 +25,6 @@ func (s *VethsSuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
-
 	var sessionConfig Stanza
 	sessionConfig.
 		newStanza("session").
@@ -55,7 +54,7 @@ func (s *VethsSuite) setupServerVpp() {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 	s.assertNil(serverVpp.start())
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	idx, err := serverVpp.createAfPacket(serverVeth)
 	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
@@ -65,7 +64,7 @@ func (s *VethsSuite) setupClientVpp() {
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
 	s.assertNil(clientVpp.start())
 
-	clientVeth := s.netInterfaces[clientInterfaceName]
+	clientVeth := s.getInterfaceByName(clientInterfaceName)
 	idx, err := clientVpp.createAfPacket(clientVeth)
 	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
