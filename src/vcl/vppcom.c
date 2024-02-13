@@ -2830,7 +2830,7 @@ vppcom_epoll_create (void)
 
 static void
 vcl_epoll_ctl_add_unhandled_event (vcl_worker_t *wrk, vcl_session_t *s,
-				   u8 is_epollet, session_evt_type_t evt)
+				   u32 is_epollet, session_evt_type_t evt)
 {
   if (!is_epollet)
     {
