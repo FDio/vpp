@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b49bca7_1f392189",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-13T16:30:12Z",
+      "side": 1,
+      "message": "let\u0027s be more generic and just do:\n\n#else\n  return 0;\n#endif",
+      "revId": "af622435935e8b3ba4b2fce7b59296cb08a489c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
