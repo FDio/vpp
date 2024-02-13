@@ -13,8 +13,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	http.HandleFunc("/10M", func(w http.ResponseWriter, r *http.Request) {
-		file, _ := os.Open("10M")
+	http.HandleFunc("/httpTestFile", func(w http.ResponseWriter, r *http.Request) {
+		file, _ := os.Open("httpTestFile")
 		defer file.Close()
 		io.Copy(w, file)
 	})

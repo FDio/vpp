@@ -1,10 +1,9 @@
 package main
 
 const (
-	singleTopoContainerVpp   = "vpp"
+	singleTopoContainerVpp = "vpp"
 	singleTopoContainerNginx = "nginx"
-
-	tapInterfaceName = "hst_tap_host"
+	tapInterfaceName = "htaphost"
 )
 
 type NoTopoSuite struct {

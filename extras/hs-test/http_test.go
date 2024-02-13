@@ -11,13 +11,14 @@ func (s *NsSuite) TestHttpTps() {
 	client_ip := iface.ip4AddressString()
 	port := "8080"
 	finished := make(chan error, 1)
+	clientNetns := "cln"
 
 	container := s.getContainerByName("vpp")
 
 	// configure vpp in the container
 	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	go s.startWget(finished, client_ip, port, "test_file_10M", "client")
+	go s.startWget(finished, client_ip, port, "test_file_10M", clientNetns)
 	// wait for client
 	err := <-finished
 	s.assertNil(err, err)
@@ -107,7 +108,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	vpp := s.getContainerByName("vpp").vppInstance
 
-	nginxCont := s.getContainerByName("nginx")
+	nginxCont := s.getContainerByName(singleTopoContainerNginx)
 	s.assertNil(nginxCont.run())
 	vpp.waitForApp("nginx-", 5)
 
