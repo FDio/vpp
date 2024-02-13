@@ -1,9 +1,9 @@
 package main
 
+// These correspond to names used in yaml config
+var mirroringClientInterfaceName string = "hstcln" + pid
+var mirroringServerInterfaceName string = "hstsrv" + pid
 const (
-	// These correspond to names used in yaml config
-	mirroringClientInterfaceName = "hstcln"
-	mirroringServerInterfaceName = "hstsrv"
 	vppProxyContainerName		 = "vpp-proxy"
 	nginxProxyContainerName 	 = "nginx-proxy"
 	nginxServerContainerName 	 = "nginx-server"

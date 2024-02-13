@@ -4,11 +4,9 @@ import (
 	"time"
 )
 
-const (
-	// These correspond to names used in yaml config
-	serverInterfaceName = "srv"
-	clientInterfaceName = "cln"
-)
+// These correspond to names used in yaml config ('srv', 'cln')
+var serverInterfaceName string = "srv" + pid
+var clientInterfaceName string = "cln" + pid
 
 type VethsSuite struct {
 	HstSuite
