@@ -14,7 +14,7 @@ func (s *TapSuite) TestLinuxIperf() {
 	s.assertNil(err, err)
 	s.log("server running")
 
-	ipAddress := s.netInterfaces[tapInterfaceName].ip4AddressString()
+	ipAddress := s.getInterfaceByName(tapInterfaceName).ip4AddressString()
 	go s.startClientApp(ipAddress, nil, clnCh, clnRes)
 	s.log("client running")
 	s.log(<-clnRes)

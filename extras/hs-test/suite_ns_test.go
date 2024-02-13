@@ -1,7 +1,7 @@
 package main
 
+// These correspond to names used in yaml config
 const (
-	// These correspond to names used in yaml config
 	clientInterface = "hclnvpp"
 	serverInterface = "hsrvvpp"
 )
@@ -33,11 +33,11 @@ func (s *NsSuite) SetupTest() {
 	vpp, _ := container.newVppInstance(cpus, sessionConfig)
 	s.assertNil(vpp.start())
 
-	idx, err := vpp.createAfPacket(s.netInterfaces[serverInterface])
+	idx, err := vpp.createAfPacket(s.getInterfaceByName(serverInterface))
 	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 
-	idx, err = vpp.createAfPacket(s.netInterfaces[clientInterface])
+	idx, err = vpp.createAfPacket(s.getInterfaceByName(clientInterface))
 	s.assertNil(err, err)
 	s.assertNotEqual(0, idx)
 

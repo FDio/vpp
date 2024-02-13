@@ -5,7 +5,7 @@ import (
 )
 
 func (s *NginxSuite) TestMirroring() {
-	proxyAddress := s.netInterfaces[mirroringClientInterfaceName].peer.ip4AddressString()
+	proxyAddress := s.getInterfaceByName(mirroringClientInterfaceName).peer.ip4AddressString()
 
 	path := "/64B.json"
 
