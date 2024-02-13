@@ -1,9 +1,9 @@
 package main
 
 const (
-	singleTopoContainerVpp = "vpp"
-	singleTopoContainerNginx = "nginx"
-	tapInterfaceName = "htaphost"
+	singleTopoContainerVpp 		= "vpp"
+	singleTopoContainerNginx 	= "nginx"
+	tapInterfaceName			= "htaphost"
 )
 
 type NoTopoSuite struct {
@@ -31,7 +31,7 @@ func (s *NoTopoSuite) SetupTest() {
 	vpp, _ := container.newVppInstance(cpus, sessionConfig)
 	s.assertNil(vpp.start())
 
-	tapInterface := s.netInterfaces[tapInterfaceName]
+	tapInterface := s.getInterfaceByName(tapInterfaceName)
 
 	s.assertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }

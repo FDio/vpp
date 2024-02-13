@@ -62,7 +62,7 @@ func (s *VethsSuite) TestLDPreloadIperfVpp() {
 	s.log("attaching client to vpp")
 	var clnRes = make(chan string, 1)
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clientVclFileName)
-	serverVethAddress := s.netInterfaces[serverInterfaceName].ip4AddressString()
+	serverVethAddress := s.getInterfaceByName(serverInterfaceName).ip4AddressString()
 	go s.startClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
 	s.log(<-clnRes)
 

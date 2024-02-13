@@ -7,11 +7,11 @@ import (
 )
 
 func (s *NsSuite) TestHttpTps() {
-	iface := s.netInterfaces[clientInterface]
+	iface := s.getInterfaceByName(clientInterface)
 	client_ip := iface.ip4AddressString()
 	port := "8080"
 	finished := make(chan error, 1)
-	clientNetns := "cln"
+	clientNetns := s.getNetNamespaceByName("cln")
 
 	container := s.getContainerByName("vpp")
 
@@ -28,7 +28,7 @@ func (s *VethsSuite) TestHttpCli() {
 	serverContainer := s.getContainerByName("server-vpp")
 	clientContainer := s.getContainerByName("client-vpp")
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 
 	serverContainer.vppInstance.vppctl("http cli server")
 
@@ -50,7 +50,7 @@ func (s *NoTopoSuite) TestNginxHttp3() {
 
 	vpp := s.getContainerByName("vpp").vppInstance
 	vpp.waitForApp("nginx-", 5)
-	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 
 	defer func() { os.Remove(query) }()
 	curlCont := s.getContainerByName("curl")
@@ -65,7 +65,7 @@ func (s *NoTopoSuite) TestHttpStaticProm() {
 	finished := make(chan error, 1)
 	query := "stats.prom"
 	vpp := s.getContainerByName("vpp").vppInstance
-	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 	s.log(vpp.vppctl("prom enable"))
 	go s.startWget(finished, serverAddress, "80", query, "")
@@ -83,7 +83,7 @@ func (s *NoTopoSuite) TestNginxAsServer() {
 	vpp := s.getContainerByName("vpp").vppInstance
 	vpp.waitForApp("nginx-", 5)
 
-	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 
 	defer func() { os.Remove(query) }()
 	go s.startWget(finished, serverAddress, "80", query, "")
@@ -104,7 +104,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	nRequests := 1000000
 	nClients := 1000
 
-	serverAddress := s.netInterfaces[tapInterfaceName].peer.ip4AddressString()
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 
 	vpp := s.getContainerByName("vpp").vppInstance
 
