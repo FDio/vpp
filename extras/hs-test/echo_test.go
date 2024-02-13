@@ -2,7 +2,7 @@ package main
 
 func (s *VethsSuite) TestEchoBuiltin() {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 
 	serverVpp.vppctl("test echo server " +
 		" uri tcp://" + serverVeth.ip4AddressString() + "/1234")
@@ -19,7 +19,7 @@ func (s *VethsSuite) TestEchoBuiltin() {
 func (s *VethsSuite) TestTcpWithLoss() {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	serverVpp.vppctl("test echo server uri tcp://%s/20022",
 		serverVeth.ip4AddressString())
 
@@ -33,7 +33,7 @@ func (s *VethsSuite) TestTcpWithLoss() {
 	clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
 		" packet-size 1400 packets-per-drop 1000")
 
-	clientVpp.vppctl("nsim output-feature enable-disable " + s.netInterfaces[clientInterfaceName].name)
+	clientVpp.vppctl("nsim output-feature enable-disable " + s.getInterfaceByName(clientInterfaceName).name)
 
 	// Do echo test from client-vpp container
 	output := clientVpp.vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes mbytes 50",
