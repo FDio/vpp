@@ -35,7 +35,7 @@ func (s *VethsSuite) testXEchoVclClient(proto string) {
 	port := "12345"
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	serverVpp.vppctl("test echo server uri %s://%s/%s fifo-size 64k", proto, serverVeth.ip4AddressString(), port)
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
@@ -67,7 +67,7 @@ func (s *VethsSuite) testXEchoVclServer(proto string) {
 	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s %s", proto, port)
 	srvAppCont.execServer(vclSrvCmd)
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	serverVethAddress := serverVeth.ip4AddressString()
 
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
@@ -85,7 +85,7 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	srvAppCont.addEnvVar("VCL_CONFIG", "/vcl.conf")
 	srvAppCont.execServer("vcl_test_server " + port)
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	serverVethAddress := serverVeth.ip4AddressString()
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
@@ -123,7 +123,7 @@ func (s *VethsSuite) testRetryAttach(proto string) {
 	s.log("This whole test case can take around 3 minutes to run. Please be patient.")
 	s.log("... Running first echo client test, before disconnect.")
 
-	serverVeth := s.netInterfaces[serverInterfaceName]
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	serverVethAddress := serverVeth.ip4AddressString()
 
 	echoClnContainer := s.getTransientContainerByName("client-app")
