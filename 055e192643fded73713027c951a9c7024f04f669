@@ -1,0 +1,176 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3da7323e_6e37eb26",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "Thanks a lot. Some quick nits",
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ef2f175_6cc19136",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "Thanks for all of these!",
+      "range": {
+        "startLine": 5,
+        "startChar": 31,
+        "endLine": 5,
+        "endChar": 50
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09ca083b_50b91e95",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "let\u0027s make this a local clientNetns variable. We\u0027ll probably need to make this test dependent at one point",
+      "range": {
+        "startLine": 20,
+        "startChar": 61,
+        "endLine": 20,
+        "endChar": 64
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47040671_6846b077",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "Let\u0027s make srv and cln netns local variables as well. Also wondering if we could use newCommand (see hst_suite.go) or maybe add a new command to hst_suite that executes generic commands in namespaces.",
+      "range": {
+        "startLine": 17,
+        "startChar": 50,
+        "endLine": 17,
+        "endChar": 53
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f149844_538457da",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "why the change? If we want to avoid confusion between size and name, add another `const srcFileSize \u003d \"10M\"`",
+      "range": {
+        "startLine": 17,
+        "startChar": 74,
+        "endLine": 17,
+        "endChar": 79
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61b6577d_392e0789",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "Hm, the file exists only after the test runs successfully. But I guess this would work",
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7f02e95_603fd30e",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "why not keep on using srcFile?",
+      "range": {
+        "startLine": 40,
+        "startChar": 26,
+        "endLine": 40,
+        "endChar": 29
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d6ac609_01df7ad4",
+        "filename": "extras/hs-test/topo-network/tap.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-13T19:19:42Z",
+      "side": 1,
+      "message": "is it too much if we leave the t at the end? What\u0027s our char limit? Wondering because we won\u0027t understand our var names",
+      "range": {
+        "startLine": 3,
+        "startChar": 11,
+        "endLine": 3,
+        "endChar": 18
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
