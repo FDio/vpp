@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b02e0c7a_435d233d",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-13T16:15:36Z",
+      "side": 1,
+      "message": "don\u0027t duplicate, just wrap BATCH and IDLE with __linux",
+      "revId": "0c12d29c5955b05150a23a07c405479f10308b53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
