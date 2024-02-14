@@ -101,6 +101,24 @@
       "message": "Verification failed because \"tracedump\" is not a component listed in the MAINTAINERS file. Try \"vppapitrace\"...\n\nChanging the commit message will trigger an automatic reverification.",
       "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5321469_178d4bda",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-02-14T16:57:27Z",
+      "side": 1,
+      "message": "Fixed",
+      "parentUuid": "c6aeb5d6_ec8cd880",
+      "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
