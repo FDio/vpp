@@ -51,6 +51,24 @@
       "parentUuid": "41eda611_5e81be6b",
       "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42502ebe_edd35a7a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-14T16:48:22Z",
+      "side": 1,
+      "message": "Hi Kai, if you have no objection to the patch I can merge Lijian\u0027s patchset as it is.",
+      "parentUuid": "604fef72_209e1eac",
+      "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
