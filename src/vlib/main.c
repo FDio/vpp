@@ -1491,7 +1491,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   u64 cpu_time_now;
   f64 now;
   vlib_frame_queue_main_t *fqm;
-  u32 frame_queue_check_counter = 0;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1551,25 +1550,15 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	vlib_worker_thread_barrier_check ();
 
-      if (PREDICT_FALSE (vm->n_active_frame_queues +
-			 frame_queue_check_counter))
+      if (PREDICT_FALSE (vm->n_active_frame_queues))
 	{
 	  vlib_frame_queue_dequeue_fn_t *fn;
-
-	  if (vm->n_active_frame_queues)
-	    frame_queue_check_counter = 100;
 
 	  vec_foreach (fqm, tm->frame_queue_mains)
 	    {
 	      fn = fqm->frame_queue_dequeue_fn;
 	      n_active_frame_queues += (fn) (vm, fqm);
 	    }
-
-	  /* No handoff queue work found? */
-	  if (n_active_frame_queues)
-	    frame_queue_check_counter = 100;
-	  else
-	    frame_queue_check_counter--;
 	}
 
       if (PREDICT_FALSE (vec_len (vm->worker_thread_main_loop_callbacks)))
