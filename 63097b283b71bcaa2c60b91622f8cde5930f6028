@@ -67,6 +67,23 @@
       "message": "recheck",
       "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c840e787_c9787d9e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-02-14T14:24:37Z",
+      "side": 1,
+      "message": "Dear Ole,\n\nPlease review.\n\nThanks,\nDenys.",
+      "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
