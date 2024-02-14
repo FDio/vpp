@@ -16,6 +16,23 @@
       "message": "Dear Dave,\n\nPlease check my fix.\nI can not pass Jenkins test as far as MAINTAINERS file misses tracedump plugin section\n\nRegards,\nDenys.",
       "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b726113_666161cd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2024-02-14T01:26:28Z",
+      "side": 1,
+      "message": "thanks…",
+      "revId": "63097b283b71bcaa2c60b91622f8cde5930f6028",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
