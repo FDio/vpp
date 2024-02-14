@@ -34,6 +34,24 @@
       "parentUuid": "edd4a525_0a08b6cc",
       "revId": "cf5fe6c87f3ede0b7e88cfc8c852f43f52809650",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "adf75c55_41044faf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-14T15:05:13Z",
+      "side": 1,
+      "message": "self.sa is an IKEv2SA python object which does not have a profile_name attribute.\nDoes your test work locally? You can try to run it with something like make test TEST\u003dtest_ikev2\nI suspect it don\u0027t meaning the test must be fixed.\nsa.profile_name is the profile name you got from the API dump. It must be checked against the expected value for the profile name in the test.",
+      "parentUuid": "3dad8881_894f7821",
+      "revId": "cf5fe6c87f3ede0b7e88cfc8c852f43f52809650",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
