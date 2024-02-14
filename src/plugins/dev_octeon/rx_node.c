@@ -131,6 +131,10 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
       ctx->n_rx_bytes += b[1]->current_length = d[1].sg0.seg1_size;
       ctx->n_rx_bytes += b[2]->current_length = d[2].sg0.seg1_size;
       ctx->n_rx_bytes += b[3]->current_length = d[3].sg0.seg1_size;
+      b[0]->flow_id = d[0].parse.w[3] >> 48;
+      b[1]->flow_id = d[1].parse.w[3] >> 48;
+      b[2]->flow_id = d[2].parse.w[3] >> 48;
+      b[3]->flow_id = d[3].parse.w[3] >> 48;
       ctx->n_segs += 4;
       segs = d[0].sg0.segs + d[1].sg0.segs + d[2].sg0.segs + d[3].sg0.segs;
 
@@ -149,6 +153,7 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
       ctx->to_next[0] = vlib_get_buffer_index (vm, b[0]);
       b[0]->template = bt;
       ctx->n_rx_bytes += b[0]->current_length = d[0].sg0.seg1_size;
+      b[0]->flow_id = d[0].parse.w[3] >> 48;
       ctx->n_segs += 1;
       if (d[0].sg0.segs > 1)
 	oct_rx_attach_tail (vm, ctx, b[0], d + 0);

@@ -9,6 +9,9 @@
 #include <vppinfra/format.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
+#include <vnet/flow/flow.h>
+#include <vnet/udp/udp.h>
+#include <vnet/ipsec/esp.h>
 #include <base/roc_api.h>
 #include <dev_octeon/hw_defs.h>
 
@@ -33,10 +36,21 @@ typedef struct
 
 typedef struct
 {
+  /* vnet flow index */
+  u32 vnet_flow_index;
+
+  u32 index;
+  /* Internal flow object */
+  struct roc_npc_flow *npc_flow;
+} oct_flow_entry_t;
+
+typedef struct
+{
   u8 lf_allocated : 1;
   u8 tm_initialized : 1;
   u8 npc_initialized : 1;
   struct roc_npc npc;
+  oct_flow_entry_t *flow_entries;
 } oct_port_t;
 
 typedef struct
@@ -87,6 +101,7 @@ typedef struct
 format_function_t format_oct_port_status;
 format_function_t format_oct_rx_trace;
 format_function_t format_oct_tx_trace;
+format_function_t format_oct_flow;
 
 /* port.c */
 vnet_dev_rv_t oct_port_init (vlib_main_t *, vnet_dev_port_t *);
@@ -107,6 +122,11 @@ void oct_rxq_deinit (vlib_main_t *, vnet_dev_rx_queue_t *);
 void oct_txq_deinit (vlib_main_t *, vnet_dev_tx_queue_t *);
 format_function_t format_oct_rxq_info;
 format_function_t format_oct_txq_info;
+
+int oct_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_id,
+		     u32 flow_index, uword *priv_data);
+u32 oct_flow_query (vlib_main_t *vm, vnet_dev_port_t *port, u32 flow_index,
+		    uword private_data, u64 *hits);
 
 #define log_debug(dev, f, ...)                                                \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, oct_log.class, "%U: " f,                    \

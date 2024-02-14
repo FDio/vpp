@@ -10,6 +10,9 @@
 #include <dev_octeon/common.h>
 #include <vnet/ethernet/ethernet.h>
 
+#define OCT_FLOW_PREALLOC_SIZE 1
+#define OCT_FLOW_MAX_PRIORITY  7
+
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
   .subclass_name = "port",
@@ -95,6 +98,8 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   roc_nix_rss_key_set (nix, default_rss_key);
 
   cp->npc.roc_nix = nix;
+  cp->npc.flow_prealloc_size = OCT_FLOW_PREALLOC_SIZE;
+  cp->npc.flow_max_priority = OCT_FLOW_MAX_PRIORITY;
   if ((rrv = roc_npc_init (&cp->npc)))
     {
       oct_port_deinit (vm, port);

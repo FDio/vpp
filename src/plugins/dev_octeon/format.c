@@ -162,3 +162,26 @@ format_oct_tx_trace (u8 *s, va_list *args)
 
   return s;
 }
+
+u8 *
+format_oct_flow (u8 *s, va_list *args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  vnet_dev_port_t **pp, *port;
+  u32 dev_instance = va_arg (*args, u32);
+  u32 flow_index = va_arg (*args, u32);
+  uword private_data = va_arg (*args, uword);
+  u64 hits;
+
+  pp = pool_elt_at_index (dm->ports_by_dev_instance, dev_instance);
+  port = pp[0];
+
+  if (flow_index == ~0)
+    return s;
+
+  if (oct_flow_query (vm, port, flow_index, private_data, &hits) == 0)
+    s = format (s, "flow (%u) hit count: %lu", flow_index, hits);
+
+  return s;
+}

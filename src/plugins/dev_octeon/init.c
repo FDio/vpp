@@ -37,6 +37,11 @@ vnet_dev_node_t oct_tx_node = {
   .n_error_counters = ARRAY_LEN (oct_tx_node_counters),
 };
 
+vnet_dev_flow_t oct_flow = {
+  .flow_ops_function = oct_flow_ops_fn,
+  .format_flow = format_oct_flow,
+};
+
 static struct
 {
   u16 device_id;
@@ -142,6 +147,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
     },
     .rx_node = &oct_rx_node,
     .tx_node = &oct_tx_node,
+    .flow = &oct_flow,
     .rx_queue = {
       .config = {
         .data_size = sizeof (oct_rxq_t),
