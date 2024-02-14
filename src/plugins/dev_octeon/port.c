@@ -10,6 +10,9 @@
 #include <dev_octeon/common.h>
 #include <vnet/ethernet/ethernet.h>
 
+#define OCT_FLOW_PREALLOC_SIZE 1
+#define OCT_FLOW_MAX_PRIORITY  7
+
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
   .subclass_name = "port",
@@ -95,6 +98,8 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   roc_nix_rss_key_set (nix, default_rss_key);
 
   cp->npc.roc_nix = nix;
+  cp->npc.flow_prealloc_size = OCT_FLOW_PREALLOC_SIZE;
+  cp->npc.flow_max_priority = OCT_FLOW_MAX_PRIORITY;
   if ((rrv = roc_npc_init (&cp->npc)))
     {
       oct_port_deinit (vm, port);
@@ -360,7 +365,7 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
-oct_port_cfg_change_precheck (vlib_main_t *vm, vnet_dev_port_t *port,
+oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
 {
   vnet_dev_rv_t rv = VNET_DEV_OK;
@@ -376,6 +381,14 @@ oct_port_cfg_change_precheck (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
+      break;
+
+    case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
+    case VNET_DEV_PORT_CFG_DEL_RX_FLOW:
+    case VNET_DEV_PORT_CFG_GET_RX_FLOW_COUNTER:
+    case VNET_DEV_PORT_CFG_RESET_RX_FLOW_COUNTER:
+      rv = oct_flow_validate_params (vm, port, req->type, req->flow_index,
+				     req->private_data);
       break;
 
     default:
@@ -394,8 +407,6 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
-      {
-      }
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
@@ -408,6 +419,15 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
+
+    case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
+    case VNET_DEV_PORT_CFG_DEL_RX_FLOW:
+    case VNET_DEV_PORT_CFG_GET_RX_FLOW_COUNTER:
+    case VNET_DEV_PORT_CFG_RESET_RX_FLOW_COUNTER:
+      rv = oct_flow_ops_fn (vm, port, req->type, req->flow_index,
+			    req->private_data);
+
       break;
 
     default:

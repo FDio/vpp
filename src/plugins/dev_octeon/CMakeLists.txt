@@ -30,6 +30,7 @@ add_vpp_plugin(dev_octeon
   roc_helper.c
   rx_node.c
   tx_node.c
+  flow.c
 
   MULTIARCH_SOURCES
   rx_node.c
