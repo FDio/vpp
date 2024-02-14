@@ -91,7 +91,8 @@ mbedtls_ctx_free (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
 
-  if (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER && !ctx->is_passive_close)
+  if (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER &&
+      !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
     mbedtls_ssl_close_notify (&mc->ssl);
   if (mc->ssl.conf->endpoint == MBEDTLS_SSL_IS_SERVER)
     {
