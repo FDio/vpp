@@ -50,6 +50,23 @@
       "message": "Hello Dave,\nDo you mind reviewing this patch?",
       "revId": "6361c640e4e137a2b42fffb95890794ba0c256a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "398116c2_2afccda9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-02-15T09:26:48Z",
+      "side": 1,
+      "message": "Hello guys,\nCan we take look at this patch? it\u0027s very small but it helps to avoid vpp crash when ~0 is sent or something that is out-of-bounds.",
+      "revId": "6361c640e4e137a2b42fffb95890794ba0c256a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
