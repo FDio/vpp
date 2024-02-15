@@ -1132,10 +1132,10 @@ ct_handle_cleanups (void *args)
       clib_fifo_sub2 (wrk->pending_cleanups, req);
       ct = ct_connection_get (req->ct_index, thread_index);
       s = session_get (ct->c_s_index, ct->c_thread_index);
-      if (!svm_fifo_has_event (s->tx_fifo))
-	ct_session_postponed_cleanup (ct);
-      else
+      if (svm_fifo_has_event (s->tx_fifo) || (s->flags & SESSION_F_RX_EVT))
 	clib_fifo_add1 (wrk->pending_cleanups, *req);
+      else
+	ct_session_postponed_cleanup (ct);
       n_to_handle -= 1;
     }
 
@@ -1411,6 +1411,7 @@ ct_session_tx (session_t * s)
   peer_s = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
+  peer_s->flags |= SESSION_F_RX_EVT;
   return session_enqueue_notify (peer_s);
 }
 
