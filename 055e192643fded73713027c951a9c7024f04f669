@@ -64,6 +64,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b972ee7_62e54bf1",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "09ca083b_50b91e95",
+      "range": {
+        "startLine": 20,
+        "startChar": 61,
+        "endLine": 20,
+        "endChar": 64
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "47040671_6846b077",
@@ -110,6 +134,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb2fc5d5_7ab128b4",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6f149844_538457da",
+      "range": {
+        "startLine": 17,
+        "startChar": 74,
+        "endLine": 17,
+        "endChar": 79
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96c8e59c_a15adbf1",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "1. Done\n2. I don\u0027t think that adding a new command would help that much as it would only shorten the line at the expense of adding ~5 more elsewhere.",
+      "parentUuid": "47040671_6846b077",
+      "range": {
+        "startLine": 17,
+        "startChar": 50,
+        "endLine": 17,
+        "endChar": 53
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61b6577d_392e0789",
@@ -123,6 +195,24 @@
       "writtenOn": "2024-02-13T19:19:42Z",
       "side": 1,
       "message": "Hm, the file exists only after the test runs successfully. But I guess this would work",
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f1e6882_bb9d41b0",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "Wanted it to be grouped together but I guess it\u0027s better to move it below the wget command.",
+      "parentUuid": "61b6577d_392e0789",
       "revId": "055e192643fded73713027c951a9c7024f04f669",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -150,6 +240,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "351e94b8_b84040dd",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e7f02e95_603fd30e",
+      "range": {
+        "startLine": 40,
+        "startChar": 26,
+        "endLine": 40,
+        "endChar": 29
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7d6ac609_01df7ad4",
@@ -163,6 +277,30 @@
       "writtenOn": "2024-02-13T19:19:42Z",
       "side": 1,
       "message": "is it too much if we leave the t at the end? What\u0027s our char limit? Wondering because we won\u0027t understand our var names",
+      "range": {
+        "startLine": 3,
+        "startChar": 11,
+        "endLine": 3,
+        "endChar": 18
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddb209bf_19cd5350",
+        "filename": "extras/hs-test/topo-network/tap.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:00:57Z",
+      "side": 1,
+      "message": "Should be 15. Just tested it and \u0027htaphost\u0027 seems to work.",
+      "parentUuid": "7d6ac609_01df7ad4",
       "range": {
         "startLine": 3,
         "startChar": 11,
