@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "21abefd5_ee4d4d45",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-15T12:01:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2ef2f175_6cc19136",
+      "range": {
+        "startLine": 5,
+        "startChar": 31,
+        "endLine": 5,
+        "endChar": 50
+      },
+      "revId": "055e192643fded73713027c951a9c7024f04f669",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "09ca083b_50b91e95",
