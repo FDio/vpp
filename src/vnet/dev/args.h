@@ -24,7 +24,7 @@ typedef enum
 typedef union
 {
   u8 boolean;
-  u8 uint32;
+  u32 uint32;
   u8 *string;
 } vnet_dev_arg_value_t;
 
