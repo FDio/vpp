@@ -10,6 +10,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <dev_octeon/octeon.h>
+#include <dev_octeon/crypto.h>
 
 #include <base/roc_api.h>
 #include <common.h>
@@ -113,7 +114,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rrv = roc_nix_dev_init (cd->nix)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_dev_init");
 
-  if (roc_nix_npc_mac_addr_get (cd->nix, mac_addr))
+  if ((rrv = roc_nix_npc_mac_addr_get (cd->nix, mac_addr)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_npc_mac_addr_get");
 
   vnet_dev_port_add_args_t port_add_args = {
@@ -182,17 +183,91 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   return vnet_dev_port_add (vm, dev, 0, &port_add_args);
 }
 
+static int
+oct_conf_cpt (vlib_main_t *vm, vnet_dev_t *dev, struct roc_cpt *roc_cpt,
+	      int nb_lf)
+{
+  int rrv;
+  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_SE)) < 0)
+    {
+      log_err (dev, "Could not add CPT SE engines");
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
+    }
+  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_IE)) < 0)
+    {
+      log_err (dev, "Could not add CPT IE engines");
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
+    }
+  if (roc_cpt->eng_grp[CPT_ENG_TYPE_IE] != ROC_CPT_DFLT_ENG_GRP_SE_IE)
+    {
+      log_err (dev, "Invalid CPT IE engine group configuration");
+      return -1;
+    }
+  if (roc_cpt->eng_grp[CPT_ENG_TYPE_SE] != ROC_CPT_DFLT_ENG_GRP_SE)
+    {
+      log_err (dev, "Invalid CPT SE engine group configuration");
+      return -1;
+    }
+  if ((rrv = roc_cpt_dev_configure (roc_cpt, nb_lf)) < 0)
+    {
+      log_err (dev, "could not configure crypto device %U",
+	       format_vlib_pci_addr, roc_cpt->pci_dev->addr);
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_configure");
+    }
+  return 0;
+}
+
+static vnet_dev_rv_t
+oct_conf_cpt_queue (vlib_main_t *vm, vnet_dev_t *dev, struct roc_cpt *roc_cpt)
+{
+  extern oct_crypto_dev_t oct_crypto_dev;
+  struct roc_cpt_lmtline *cpt_lmtline;
+  struct roc_cpt_lf *cpt_lf;
+  int rrv;
+
+  cpt_lf = &oct_crypto_dev.lf;
+  cpt_lmtline = &oct_crypto_dev.lmtline;
+
+  cpt_lf->nb_desc = 8192;
+  cpt_lf->lf_id = 0;
+  if ((rrv = roc_cpt_lf_init (roc_cpt, cpt_lf)) < 0)
+    return cnx_return_roc_err (dev, rrv, "roc_cpt_lf_init");
+
+  roc_cpt_iq_enable (cpt_lf);
+
+  if ((rrv = roc_cpt_lmtline_init (roc_cpt, cpt_lmtline, 0) < 0))
+    return cnx_return_roc_err (dev, rrv, "roc_cpt_lmtline_init");
+
+  return 0;
+}
+
 static vnet_dev_rv_t
 oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
 {
+  extern oct_plt_init_param_t oct_plt_init_param;
   oct_device_t *cd = vnet_dev_get_data (dev);
+  extern oct_crypto_dev_t oct_crypto_dev;
   int rrv;
-  struct roc_cpt cpt = {
-    .pci_dev = &cd->plt_pci_dev,
-  };
 
-  if ((rrv = roc_cpt_dev_init (&cpt)))
+  oct_crypto_dev.roc_cpt = oct_plt_init_param.oct_plt_zmalloc (
+    sizeof (struct roc_cpt), CLIB_CACHE_LINE_BYTES);
+  oct_crypto_dev.roc_cpt->pci_dev = &cd->plt_pci_dev;
+
+  oct_crypto_dev.dev = dev;
+
+  if ((rrv = roc_cpt_dev_init (oct_crypto_dev.roc_cpt)))
     return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_init");
+
+  if ((rrv = oct_conf_cpt (vm, dev, oct_crypto_dev.roc_cpt, 1)))
+    return rrv;
+
+  if ((rrv = oct_conf_cpt_queue (vm, dev, oct_crypto_dev.roc_cpt)))
+    return rrv;
+
+  oct_conf_sw_queue (vm, dev);
+
+  oct_init_crypto_engine_handlers (vm, dev);
+
   return VNET_DEV_OK;
 }
 

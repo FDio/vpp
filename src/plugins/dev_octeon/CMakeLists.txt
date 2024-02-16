@@ -31,6 +31,7 @@ add_vpp_plugin(dev_octeon
   rx_node.c
   tx_node.c
   flow.c
+  crypto.c
 
   MULTIARCH_SOURCES
   rx_node.c
