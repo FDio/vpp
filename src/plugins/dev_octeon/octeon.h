@@ -30,7 +30,8 @@ typedef enum
   OCT_DEVICE_TYPE_RVU_VF,
   OCT_DEVICE_TYPE_LBK_VF,
   OCT_DEVICE_TYPE_SDP_VF,
-  OCT_DEVICE_TYPE_CPT_VF,
+  OCT_DEVICE_TYPE_O10K_CPT_VF,
+  OCT_DEVICE_TYPE_O9K_CPT_VF,
 } __clib_packed oct_device_type_t;
 
 typedef struct
@@ -41,7 +42,6 @@ typedef struct
   u8 full_duplex : 1;
   u32 speed;
   struct plt_pci_device plt_pci_dev;
-  struct roc_cpt cpt;
   struct roc_nix *nix;
 } oct_device_t;
 
@@ -102,7 +102,6 @@ typedef struct
   u64 aura_handle;
   u64 io_addr;
   void *lmt_addr;
-
   oct_npa_batch_alloc_cl128_t *ba_buffer;
   u8 ba_first_cl;
   u8 ba_num_cl;
