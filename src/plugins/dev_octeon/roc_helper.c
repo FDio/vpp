@@ -75,13 +75,12 @@ oct_drv_physmem_alloc (vlib_main_t *vm, u32 size, u32 align)
 
   if (align)
     {
-      /* Force cache line alloc in case alignment is less than cache line */
-      align = align < CLIB_CACHE_LINE_BYTES ? CLIB_CACHE_LINE_BYTES : align;
+      /* Force ROC align alloc in case alignment is less than ROC align */
+      align = align < ROC_ALIGN ? ROC_ALIGN : align;
       mem = vlib_physmem_alloc_aligned_on_numa (vm, size, align, 0);
     }
   else
-    mem =
-      vlib_physmem_alloc_aligned_on_numa (vm, size, CLIB_CACHE_LINE_BYTES, 0);
+    mem = vlib_physmem_alloc_aligned_on_numa (vm, size, ROC_ALIGN, 0);
   if (!mem)
     return NULL;
 
