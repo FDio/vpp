@@ -10,6 +10,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <dev_octeon/octeon.h>
+#include <dev_octeon/crypto.h>
 
 #include <base/roc_api.h>
 #include <common.h>
@@ -54,7 +55,9 @@ static struct
   _ (0xa064, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
   _ (0xa0f8, LBK_VF, "Marvell Octeon Loopback Unit VF"),
   _ (0xa0f7, SDP_VF, "Marvell Octeon System DPI Packet Interface Unit VF"),
-  _ (0xa0f3, CPT_VF, "Marvell Octeon Cryptographic Accelerator Unit VF"),
+  _ (0xa0f3, O10K_CPT_VF,
+     "Marvell Octeon-10 Cryptographic Accelerator Unit VF"),
+  _ (0xa0fe, O9K_CPT_VF, "Marvell Octeon-9 Cryptographic Accelerator Unit VF"),
 #undef _
 };
 
@@ -191,17 +194,113 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   return vnet_dev_port_add (vm, dev, 0, &port_add_args);
 }
 
+static int
+oct_conf_cpt (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd,
+	      int nb_lf)
+{
+  struct roc_cpt *roc_cpt = ocd->roc_cpt;
+  int rrv;
+
+  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_SE)) < 0)
+    {
+      log_err (dev, "Could not add CPT SE engines");
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
+    }
+  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_IE)) < 0)
+    {
+      log_err (dev, "Could not add CPT IE engines");
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
+    }
+  if (roc_cpt->eng_grp[CPT_ENG_TYPE_IE] != ROC_CPT_DFLT_ENG_GRP_SE_IE)
+    {
+      log_err (dev, "Invalid CPT IE engine group configuration");
+      return -1;
+    }
+  if (roc_cpt->eng_grp[CPT_ENG_TYPE_SE] != ROC_CPT_DFLT_ENG_GRP_SE)
+    {
+      log_err (dev, "Invalid CPT SE engine group configuration");
+      return -1;
+    }
+  if ((rrv = roc_cpt_dev_configure (roc_cpt, nb_lf, false, 0)) < 0)
+    {
+      log_err (dev, "could not configure crypto device %U",
+	       format_vlib_pci_addr, roc_cpt->pci_dev->addr);
+      return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_configure");
+    }
+  return 0;
+}
+
+static vnet_dev_rv_t
+oct_conf_cpt_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd)
+{
+  struct roc_cpt *roc_cpt = ocd->roc_cpt;
+  struct roc_cpt_lmtline *cpt_lmtline;
+  struct roc_cpt_lf *cpt_lf;
+  int rrv;
+
+  cpt_lf = &ocd->lf;
+  cpt_lmtline = &ocd->lmtline;
+
+  cpt_lf->nb_desc = OCT_CPT_LF_MAX_NB_DESC;
+  cpt_lf->lf_id = 0;
+  if ((rrv = roc_cpt_lf_init (roc_cpt, cpt_lf)) < 0)
+    return cnx_return_roc_err (dev, rrv, "roc_cpt_lf_init");
+
+  roc_cpt_iq_enable (cpt_lf);
+
+  if ((rrv = roc_cpt_lmtline_init (roc_cpt, cpt_lmtline, 0) < 0))
+    return cnx_return_roc_err (dev, rrv, "roc_cpt_lmtline_init");
+
+  return 0;
+}
+
 static vnet_dev_rv_t
 oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
 {
+  oct_crypto_main_t *ocm = &oct_crypto_main;
+  extern oct_plt_init_param_t oct_plt_init_param;
   oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_crypto_dev_t *ocd = NULL;
   int rrv;
-  struct roc_cpt cpt = {
-    .pci_dev = &cd->plt_pci_dev,
-  };
 
-  if ((rrv = roc_cpt_dev_init (&cpt)))
+  if (ocm->n_cpt == OCT_MAX_N_CPT_DEV || ocm->started)
+    return VNET_DEV_ERR_NOT_SUPPORTED;
+
+  ocd = oct_plt_init_param.oct_plt_zmalloc (sizeof (oct_crypto_dev_t),
+					    CLIB_CACHE_LINE_BYTES);
+
+  ocd->roc_cpt = oct_plt_init_param.oct_plt_zmalloc (sizeof (struct roc_cpt),
+						     CLIB_CACHE_LINE_BYTES);
+  ocd->roc_cpt->pci_dev = &cd->plt_pci_dev;
+
+  ocd->dev = dev;
+
+  if ((rrv = roc_cpt_dev_init (ocd->roc_cpt)))
     return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_init");
+
+  if ((rrv = oct_conf_cpt (vm, dev, ocd, 1)))
+    return rrv;
+
+  if ((rrv = oct_conf_cpt_queue (vm, dev, ocd)))
+    return rrv;
+
+  if (!ocm->n_cpt)
+    {
+      /*
+       * Initialize s/w queues, which are common across multiple
+       * crypto devices
+       */
+      oct_conf_sw_queue (vm, dev);
+
+      ocm->crypto_dev[0] = ocd;
+    }
+
+  ocm->crypto_dev[1] = ocd;
+
+  oct_init_crypto_engine_handlers (vm, dev);
+
+  ocm->n_cpt++;
+
   return VNET_DEV_OK;
 }
 
@@ -256,7 +355,8 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     case OCT_DEVICE_TYPE_SDP_VF:
       return oct_init_nix (vm, dev);
 
-    case OCT_DEVICE_TYPE_CPT_VF:
+    case OCT_DEVICE_TYPE_O10K_CPT_VF:
+    case OCT_DEVICE_TYPE_O9K_CPT_VF:
       return oct_init_cpt (vm, dev);
 
     default:
