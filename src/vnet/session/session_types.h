@@ -24,6 +24,7 @@
 #define SESSION_CTRL_MSG_MAX_SIZE 86
 #define SESSION_CTRL_MSG_TX_MAX_SIZE 160
 #define SESSION_NODE_FRAME_SIZE 128
+#define SESSION_NODE_MAX_CTRL_EVTS   128
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
