@@ -205,6 +205,7 @@ udp_connection_from_transport (transport_connection_t * tc)
 
 void udp_connection_free (udp_connection_t * uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
+void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 always_inline udp_connection_t *
 udp_connection_clone_safe (u32 connection_index, u32 thread_index)
