@@ -1942,12 +1942,12 @@ static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
-  u32 thread_index = vm->thread_index, __clib_unused n_evts;
+  u32 thread_index = vm->thread_index, __clib_unused new_evts;
   session_evt_elt_t *elt, *ctrl_he, *new_he, *old_he;
   session_main_t *smm = vnet_get_session_main ();
   session_worker_t *wrk = &smm->wrk[thread_index];
   clib_llist_index_t ei, next_ei, old_ti;
-  int n_tx_packets;
+  int n_tx_packets, n_evts = 0;
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
@@ -1973,8 +1973,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    *  Dequeue new internal mq events
    */
 
-  n_evts = session_wrk_handle_mq (wrk, wrk->vpp_event_queue);
-  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_evts);
+  new_evts = session_wrk_handle_mq (wrk, wrk->vpp_event_queue);
+  SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, new_evts);
 
   /*
    * Handle control events
@@ -1991,6 +1991,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       next_ei = clib_llist_next_index (elt, evt_list);
       clib_llist_remove (wrk->event_elts, evt_list, elt);
       session_event_dispatch_ctrl (wrk, elt);
+      if (++n_evts >= SESSION_NODE_MAX_CTRL_EVTS)
+	goto pending_tx;
     }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, CTRL_EVTS, wrk);
@@ -2053,6 +2055,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, OLD_IO_EVTS, wrk);
+
+pending_tx:
 
   if (vec_len (wrk->pending_tx_buffers))
     session_flush_pending_tx_buffers (wrk, node);
