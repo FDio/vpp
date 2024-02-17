@@ -2231,8 +2231,8 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  if (max_deq > tc->burst_acked)
 	    break;
 
-	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
+	  tcp_send_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 	  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			 tcp_cfg.lastack_time);

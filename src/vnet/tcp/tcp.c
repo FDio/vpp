@@ -410,8 +410,8 @@ tcp_connection_close (tcp_connection_t * tc)
     case TCP_STATE_CLOSE_WAIT:
       if (!transport_max_tx_dequeue (&tc->connection))
 	{
-	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);
+	  tcp_send_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
 			    tcp_cfg.lastack_time);
