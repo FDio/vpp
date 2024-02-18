@@ -16,6 +16,24 @@
       "message": "don\u0027t duplicate, just wrap BATCH and IDLE with __linux",
       "revId": "0c12d29c5955b05150a23a07c405479f10308b53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f83a69ff_a1edc11d",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-18T16:35:49Z",
+      "side": 1,
+      "message": "diff --git a/src/vlib/threads.h b/src/vlib/threads.h\nindex e5a1f6d7e..0005821fa 100644\n--- a/src/vlib/threads.h\n+++ b/src/vlib/threads.h\n@@ -214,13 +214,21 @@ __foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)\n        __foreach_vlib_main_helper (ii, \u0026this_vlib_main); ii++)                \\\n     if (this_vlib_main)\n\n-#define foreach_sched_policy \\\n+#define foreach_sched_policy_posix \\\n   _(SCHED_OTHER, OTHER, \"other\") \\\n-  _(SCHED_BATCH, BATCH, \"batch\") \\\n-  _(SCHED_IDLE, IDLE, \"idle\")   \\\n   _(SCHED_FIFO, FIFO, \"fifo\")   \\\n   _(SCHED_RR, RR, \"rr\")\n\n+#define foreach_sched_policy_linux \\\n+  _(SCHED_BATCH, BATCH, \"batch\") \\\n+  _(SCHED_IDLE, IDLE, \"idle\")\n+\n+#ifdef __linux\n+#define foreach_sched_policy foreach_sched_policy_posix foreach_sched_policy_linux\n+#else\n+#define foreach_sched_policy foreach_sched_policy_posix\n+#endif\n+\n typedef enum\n {\n #define _(v,f,s) SCHED_POLICY_##f \u003d v,",
+      "parentUuid": "b02e0c7a_435d233d",
+      "revId": "0c12d29c5955b05150a23a07c405479f10308b53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
