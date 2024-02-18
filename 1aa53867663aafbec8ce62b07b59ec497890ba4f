@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30ce5f57_9d2badc8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-18T16:18:50Z",
+      "side": 1,
+      "message": "while on fist look it looks nice, soon it will start to be messy, you will need LINUX_MULTIARCH_SOURCES, FREEBSD_MULTIARCH_SOURCES, etc. Let\u0027s do it like in vppinfra/CMakeLists.txt by simply appending list before it is passed to add_vpp_library.",
+      "revId": "1aa53867663aafbec8ce62b07b59ec497890ba4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
