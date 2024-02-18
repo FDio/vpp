@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d47b8cf_267f50b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-18T16:12:56Z",
+      "side": 1,
+      "message": "do it once, no need to do it 3 times, also FREEBSD_LIBS doesn\u0027t sound to me like a good idea, i would go with EPOLL_LIB instead which will allow files to be linked only to libs they really need",
+      "revId": "a57c10caf4b5743e5b839296dfce6403cfb4eb19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
