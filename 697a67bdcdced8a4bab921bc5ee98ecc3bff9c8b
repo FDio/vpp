@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b40f2c43_809edc44",
+        "filename": "src/vppinfra/freebsd/mem.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-18T16:00:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1660d7c2_567483e7",
+      "revId": "697a67bdcdced8a4bab921bc5ee98ecc3bff9c8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5599dad6_7283ef17",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-02-13T16:19:37Z",
       "side": 1,
       "message": "not needed anymore",
+      "revId": "697a67bdcdced8a4bab921bc5ee98ecc3bff9c8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d7abd65_088ad6d0",
+        "filename": "src/vppinfra/freebsd/mem.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-18T16:00:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5599dad6_7283ef17",
       "revId": "697a67bdcdced8a4bab921bc5ee98ecc3bff9c8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
