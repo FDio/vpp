@@ -388,14 +388,19 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
 
   if (!w->registration->use_pthreads)
     {
+      vlib_barrier_stage_t stage;
 
       /* Initial barrier sync, for both worker and i/o threads */
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+      FOREACH_VLIB_BARRIER_STAGE (stage)
+      clib_atomic_inc (
+	&vlib_worker_threads->workers_at_barrier_per_stage[stage]);
 
-      while (*vlib_worker_threads->wait_at_barrier)
+      while (*vlib_worker_threads->wait_barrier)
 	;
 
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
+      FOREACH_VLIB_BARRIER_STAGE (stage)
+      clib_atomic_dec (
+	&vlib_worker_threads->workers_at_barrier_per_stage[stage]);
     }
 }
 
@@ -561,10 +566,15 @@ start_workers (vlib_main_t * vm)
 
   if (n_vlib_mains > 1)
     {
-      vlib_worker_threads->wait_at_barrier =
+      vlib_worker_threads->wait_barrier =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
-      vlib_worker_threads->workers_at_barrier =
+      vlib_worker_threads->active_frame_queues =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
+      vlib_worker_threads->wait_stage = clib_mem_alloc_aligned (
+	sizeof (vlib_barrier_stage_t), CLIB_CACHE_LINE_BYTES);
+      vlib_worker_threads->workers_at_barrier_per_stage =
+	clib_mem_alloc_aligned (sizeof (u32) * VLIB_BARRIER_N_STAGES,
+				CLIB_CACHE_LINE_BYTES);
 
       vlib_worker_threads->node_reforks_required =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
@@ -573,8 +583,11 @@ start_workers (vlib_main_t * vm)
       clib_spinlock_init (&vm->pending_rpc_lock);
 
       /* Ask for an initial barrier sync */
-      *vlib_worker_threads->workers_at_barrier = 0;
-      *vlib_worker_threads->wait_at_barrier = 1;
+      clib_memset ((u32 *) vlib_worker_threads->workers_at_barrier_per_stage,
+		   0, sizeof (u32) * VLIB_BARRIER_N_STAGES);
+      *vlib_worker_threads->wait_barrier = 1;
+      *vlib_worker_threads->wait_stage = VLIB_BARRIER_STAGE_LAST;
+      *vlib_worker_threads->active_frame_queues = 0;
 
       /* Without update or refork */
       *vlib_worker_threads->node_reforks_required = 0;
@@ -583,6 +596,7 @@ start_workers (vlib_main_t * vm)
       /* init timing */
       vm->barrier_epoch = 0;
       vm->barrier_no_close_before = 0;
+      vm->n_active_frame_queues = 0;
 
       worker_thread_index = 1;
       clib_spinlock_init (&vm->worker_thread_main_loop_callback_lock);
@@ -859,7 +873,7 @@ worker_thread_node_runtime_update_internal (void)
   vm = vlib_get_first_main ();
   nm = &vm->node_main;
 
-  ASSERT (*vlib_worker_threads->wait_at_barrier == 1);
+  ASSERT (vlib_main_is_barrier ());
 
   /*
    * Scrape all runtime stats, so we don't lose node runtime(s) with
@@ -1260,6 +1274,7 @@ VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 void
 vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
 {
+  vlib_barrier_stage_t stage;
   f64 deadline;
   f64 now = vlib_time_now (vm);
   u32 count = vlib_get_n_threads () - 1;
@@ -1269,17 +1284,29 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
     return;
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
-  *vlib_worker_threads->wait_at_barrier = 1;
-  while (*vlib_worker_threads->workers_at_barrier != count)
-    {
-      if ((now = vlib_time_now (vm)) > deadline)
-	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
-	  os_panic ();
-	}
-      CLIB_PAUSE ();
-    }
-  *vlib_worker_threads->wait_at_barrier = 0;
+
+  /*
+   * no need to run through the stages in the initial sync,
+   * since no work has yet commenced.
+   * just go straight to release
+   */
+  *vlib_worker_threads->wait_barrier = 1;
+  *vlib_worker_threads->wait_stage = VLIB_BARRIER_STAGE_LAST;
+
+  FOREACH_VLIB_BARRIER_STAGE (stage)
+  {
+    while (vlib_worker_threads->workers_at_barrier_per_stage[stage] != count)
+      {
+	if ((now = vlib_time_now (vm)) > deadline)
+	  {
+	    fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	    os_panic ();
+	  }
+	CLIB_PAUSE ();
+      }
+  }
+  *vlib_worker_threads->wait_stage = VLIB_BARRIER_N_STAGES;
+  *vlib_worker_threads->wait_barrier = 0;
 }
 
 /**
@@ -1291,7 +1318,15 @@ vlib_worker_thread_barrier_held (void)
   if (vlib_get_n_threads () < 2)
     return (1);
 
-  return (*vlib_worker_threads->wait_at_barrier == 1);
+  return (vlib_main_is_barrier ());
+}
+
+static u8
+vlib_worker_stage_reached (vlib_main_t *vm, vlib_barrier_stage_t stage,
+			   u32 n_workers)
+{
+  return (vlib_worker_threads->workers_at_barrier_per_stage[stage] ==
+	  n_workers);
 }
 
 void
@@ -1303,7 +1338,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   f64 t_open;
   f64 t_closed;
   f64 max_vector_rate;
-  u32 count;
+  u32 n_workers;
   int i;
 
   if (vlib_get_n_threads () < 2)
@@ -1312,7 +1347,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   ASSERT (vlib_get_thread_index () == 0);
 
   vlib_worker_threads[0].barrier_caller = func_name;
-  count = vlib_get_n_threads () - 1;
+  n_workers = vlib_get_n_threads () - 1;
 
   /* Record entry relative to last close */
   now = vlib_time_now (vm);
@@ -1374,26 +1409,47 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
 
-  *vlib_worker_threads->wait_at_barrier = 1;
-  while (*vlib_worker_threads->workers_at_barrier != count)
-    {
-      if ((now = vlib_time_now (vm)) > deadline)
-	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
-	  os_panic ();
-	}
-    }
+  /*
+   * Move the SM back to the start and enusre that is seen by the threads
+   * before they hit the barrier.
+   */
+  *vlib_worker_threads->wait_stage = VLIB_BARRIER_STAGE_FIRST;
+  CLIB_MEMORY_STORE_BARRIER ();
+  *vlib_worker_threads->wait_barrier = 1;
+
+  /*
+   * Staged approach to pausing the workers.
+   * All workers start at the RELEASED stage, so begin from one passed that.
+   */
+  vlib_barrier_stage_t stage;
+
+  FOREACH_VLIB_BARRIER_STAGE (stage)
+  {
+    /* Wait untill all workers get to this stage */
+    while (!vlib_worker_stage_reached (vm, stage, n_workers))
+      {
+	if ((now = vlib_time_now (vm)) > deadline)
+	  {
+	    fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	    os_panic ();
+	  }
+	vlib_worker_drain_frame_queues (vm);
+      }
+
+    /* move on */
+    *vlib_worker_threads->wait_stage = stage;
+  }
 
   t_closed = now - vm->barrier_epoch;
 
   barrier_trace_sync (t_entry, t_open, t_closed);
-
 }
 
 void
 vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_barrier_stage_t stage;
   f64 deadline;
   f64 now;
   f64 minimum_open;
@@ -1449,17 +1505,21 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   vm->time_last_barrier_release = vlib_time_now (vm);
   CLIB_MEMORY_STORE_BARRIER ();
 
-  *vlib_worker_threads->wait_at_barrier = 0;
+  *vlib_worker_threads->wait_stage = VLIB_BARRIER_N_STAGES;
+  CLIB_MEMORY_STORE_BARRIER ();
+  *vlib_worker_threads->wait_barrier = 0;
 
-  while (*vlib_worker_threads->workers_at_barrier > 0)
-    {
-      if ((now = vlib_time_now (vm)) > deadline)
-	{
-	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
-	  os_panic ();
-	}
-    }
-
+  FOREACH_VLIB_BARRIER_STAGE (stage)
+  {
+    while (vlib_worker_threads->workers_at_barrier_per_stage[stage] > 0)
+      {
+	if ((now = vlib_time_now (vm)) > deadline)
+	  {
+	    fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
+	    os_panic ();
+	  }
+      }
+  }
   /* Wait for reforks before continuing */
   if (refork_needed)
     {
@@ -1501,6 +1561,177 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 }
 
 static void
+vlib_worker_proceed_default (vlib_main_t *vm)
+{
+}
+
+static void
+vlib_worker_proceed_to_flush_done (vlib_main_t *vm)
+{
+  /*
+   * This workers's frame queues can keep refilling as other workers flush
+   * theirs
+   */
+  while (*vlib_worker_threads->active_frame_queues)
+    vlib_worker_drain_frame_queues (vm);
+
+  /*
+   * once the main thread has moved to the FLUSH_DONE state, then all workers
+   * have completely flushed their frame queues
+   */
+}
+
+/**
+ * A state machine of functions that decide whether we can proceed to the
+ * next stage. The index is the next stage.
+ * This state machine is always linearly progreesing, hence it's 1D.
+ */
+vlib_barrier_stage_fn_t vlib_barrier_stage_sm[VLIB_BARRIER_N_STAGES] = {
+  [VLIB_BARRIER_STAGE_FIRST] = vlib_worker_proceed_default,
+  [VLIB_BARRIER_STAGE_FLUSH_START] = vlib_worker_proceed_default,
+  [VLIB_BARRIER_STAGE_FLUSH_DONE] = vlib_worker_proceed_to_flush_done,
+};
+
+void
+vlib_worker_thread_barrier_wait (void)
+{
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 thread_index = vm->thread_index;
+  f64 t = vlib_time_now (vm);
+
+  if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
+    clib_call_callbacks (vm->barrier_perf_callbacks, vm,
+			 vm->clib_time.last_cpu_time, 0 /* enter */);
+
+  if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
+    {
+      vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
+      // clang-format off
+      ELOG_TYPE_DECLARE (e) = {
+        .format = "barrier-wait-thread-%d",
+        .format_args = "i4",
+      };
+      // clang-format on
+
+      struct
+      {
+	u32 thread_index;
+      } __clib_packed *ed;
+
+      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+      ed->thread_index = thread_index;
+    }
+
+  if (CLIB_DEBUG > 0)
+    {
+      vm = vlib_get_main ();
+      vm->parked_at_barrier = 1;
+    }
+
+  vlib_barrier_stage_t stage;
+
+  /*
+   * do the staged progression to the WAIT stage
+   */
+  FOREACH_VLIB_BARRIER_STAGE (stage)
+  {
+    vlib_barrier_stage_sm[stage](vm);
+    /*
+     * in all cases, once this worker can proceed to the next stage
+     * signal to the main thread that it has done so
+     */
+    clib_atomic_inc (
+      &vlib_worker_threads->workers_at_barrier_per_stage[stage]);
+
+    /*
+     * Wait until the main thread gets to the same stage as this worker.
+     */
+    while (stage > *vlib_worker_threads->wait_stage)
+      ;
+  }
+
+  /*
+   * Wait for the main thread to release the workers
+   */
+  while (*vlib_worker_threads->wait_barrier == 1)
+    ;
+
+  /*
+   * Recompute the offset from thread-0 time.
+   * Note that vlib_time_now adds vm->time_offset, so
+   * clear it first. Save the resulting idea of "now", to
+   * see how well we're doing. See show_clock_command_fn(...)
+   */
+  {
+    f64 now;
+    vm->time_offset = 0.0;
+    now = vlib_time_now (vm);
+    vm->time_offset = vgm->vlib_mains[0]->time_last_barrier_release - now;
+    vm->time_last_barrier_release = vlib_time_now (vm);
+  }
+
+  if (CLIB_DEBUG > 0)
+    vm->parked_at_barrier = 0;
+
+  FOREACH_VLIB_BARRIER_STAGE (stage)
+  clib_atomic_dec (&vlib_worker_threads->workers_at_barrier_per_stage[stage]);
+
+  if (PREDICT_FALSE (*vlib_worker_threads->node_reforks_required))
+    {
+      if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
+	{
+	  t = vlib_time_now (vm) - t;
+	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
+	  // clang-format off
+          ELOG_TYPE_DECLARE (e) = {
+            .format = "barrier-refork-thread-%d",
+            .format_args = "i4",
+          };
+	  // clang-format on
+
+	  struct
+	  {
+	    u32 thread_index;
+	  } __clib_packed *ed;
+
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+	  ed->thread_index = thread_index;
+	}
+
+      vlib_worker_thread_node_refork ();
+      clib_atomic_fetch_add (vlib_worker_threads->node_reforks_required, -1);
+      while (*vlib_worker_threads->node_reforks_required)
+	;
+    }
+  if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
+    {
+      t = vlib_time_now (vm) - t;
+      vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
+      // clang-format off
+      ELOG_TYPE_DECLARE (e) = {
+        .format = "barrier-released-thread-%d: %dus",
+        .format_args = "i4i4",
+      };
+      // clang-format on
+
+      struct
+      {
+	u32 thread_index;
+	u32 duration;
+      } __clib_packed *ed;
+
+      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
+      ed->thread_index = thread_index;
+      ed->duration = (int) (1000000.0 * t);
+    }
+
+  if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
+    clib_call_callbacks (vm->barrier_perf_callbacks, vm,
+			 vm->clib_time.last_cpu_time, 1 /* leave */);
+}
+
+static void
 vlib_worker_sync_rpc (void *args)
 {
   ASSERT (vlib_thread_is_main_w_barrier ());
@@ -1513,7 +1744,7 @@ vlib_workers_sync (void)
   if (PREDICT_FALSE (!vlib_num_workers ()))
     return;
 
-  if (!(*vlib_worker_threads->wait_at_barrier) &&
+  if (!vlib_main_is_barrier () &&
       !clib_atomic_swap_rel_n (&vlib_worker_threads->wait_before_barrier, 1))
     {
       u32 thread_index = vlib_get_thread_index ();
@@ -1523,13 +1754,13 @@ vlib_workers_sync (void)
     }
 
   /* Wait until main thread asks for barrier */
-  while (!(*vlib_worker_threads->wait_at_barrier))
+  while (!vlib_main_is_barrier ())
     ;
 
   /* Stop before barrier and make sure all threads are either
    * at worker barrier or the barrier before it */
   clib_atomic_fetch_add (&vlib_worker_threads->workers_before_barrier, 1);
-  while (vlib_num_workers () > (*vlib_worker_threads->workers_at_barrier +
+  while (vlib_num_workers () > (vlib_n_workers_at_barrier () +
 				vlib_worker_threads->workers_before_barrier))
     ;
 }

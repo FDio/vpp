@@ -1438,6 +1438,50 @@ dispatch_suspended_process (vlib_main_t * vm,
   return t;
 }
 
+void
+vlib_worker_drain_frame_queues (vlib_main_t *vm)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_frame_queue_main_t *fqm;
+
+  if (PREDICT_FALSE (vm->n_active_frame_queues))
+    {
+      vlib_frame_queue_dequeue_fn_t *fn;
+      u32 n_queues = 0;
+
+      vec_foreach (fqm, tm->frame_queue_mains)
+	{
+	  fn = fqm->frame_queue_dequeue_fn;
+	  n_queues += (fn) (vm, fqm);
+	}
+
+      if (n_queues)
+	{
+	  /* Input nodes may have added work to the pending vector.
+	     Process pending vector until there is nothing left.
+	     All pending vectors will be processed from input -> output. */
+	  u64 cpu_time_now = clib_cpu_time_now ();
+
+	  for (u32 i = 0; i < _vec_len (nm->pending_frames); i++)
+	    cpu_time_now += dispatch_pending_node (vm, i, cpu_time_now);
+
+	  /* Reset pending vector for next iteration. */
+	  vec_set_len (nm->pending_frames, 0);
+
+	  /* Only decrement the active frames queue count, once all buffers
+	   * in those queues have been dispatched.
+	   * This ensures that if, as a reuslt of frame processing, a buffer
+	   * was sent to another frame queue, the sum of active frame queues
+	   * across all workers does not drop to 0
+	   */
+	  clib_atomic_fetch_sub (&vm->n_active_frame_queues, n_queues);
+	  clib_atomic_fetch_sub (vlib_worker_threads->active_frame_queues,
+				 n_queues);
+	}
+    }
+}
+
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1495,6 +1539,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
   while (1)
     {
+      u32 n_active_frame_queues = 0;
       vlib_node_runtime_t *n;
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
@@ -1506,25 +1551,22 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	vlib_worker_thread_barrier_check ();
 
-      if (PREDICT_FALSE (vm->check_frame_queues + frame_queue_check_counter))
+      if (PREDICT_FALSE (vm->n_active_frame_queues +
+			 frame_queue_check_counter))
 	{
-	  u32 processed = 0;
 	  vlib_frame_queue_dequeue_fn_t *fn;
 
-	  if (vm->check_frame_queues)
-	    {
-	      frame_queue_check_counter = 100;
-	      vm->check_frame_queues = 0;
-	    }
+	  if (vm->n_active_frame_queues)
+	    frame_queue_check_counter = 100;
 
 	  vec_foreach (fqm, tm->frame_queue_mains)
 	    {
 	      fn = fqm->frame_queue_dequeue_fn;
-	      processed += (fn) (vm, fqm);
+	      n_active_frame_queues += (fn) (vm, fqm);
 	    }
 
 	  /* No handoff queue work found? */
-	  if (processed)
+	  if (n_active_frame_queues)
 	    frame_queue_check_counter = 100;
 	  else
 	    frame_queue_check_counter--;
@@ -1593,6 +1635,21 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
       /* Reset pending vector for next iteration. */
       vec_set_len (nm->pending_frames, 0);
+
+      /*
+       * Only decrement the active frames queue count, once all buffers
+       * in those queues have been dispatch.
+       * This ensures that if, as a reuslt of frame processing, a buffer
+       * was sent to another frame queue, the sum of active frame queues
+       * across all workers does not drop to 0
+       */
+      if (n_active_frame_queues)
+	{
+	  clib_atomic_fetch_sub (&vm->n_active_frame_queues,
+				 n_active_frame_queues);
+	  clib_atomic_fetch_sub (vlib_worker_threads->active_frame_queues,
+				 n_active_frame_queues);
+	}
 
       if (is_main)
 	{

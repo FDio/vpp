@@ -27,6 +27,9 @@
 #define clib_atomic_fetch_or(a, b) __sync_fetch_and_or(a, b)
 #define clib_atomic_fetch_nand(a, b) __sync_fetch_nand(a, b)
 
+#define clib_atomic_inc(a) __sync_fetch_and_add (a, 1)
+#define clib_atomic_dec(a) __sync_fetch_and_sub (a, 1)
+
 #define clib_atomic_add_fetch(a, b) __sync_add_and_fetch(a, b)
 #define clib_atomic_sub_fetch(a, b) __sync_sub_and_fetch(a, b)
 #define clib_atomic_and_fetch(a, b) __sync_and_and_fetch(a, b)

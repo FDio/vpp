@@ -247,7 +247,7 @@ typedef struct vlib_main_t
     (struct vlib_main_t *, u64 t, int leave);
 
   /* Need to check the frame queues */
-  volatile uword check_frame_queues;
+  volatile u32 n_active_frame_queues;
 
   /* RPC requests, main thread only */
   uword *pending_rpc_requests;

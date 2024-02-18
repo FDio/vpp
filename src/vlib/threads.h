@@ -63,12 +63,35 @@ typedef struct
 }
 vlib_frame_queue_elt_t;
 
+typedef enum vlib_barrier_stage_t_
+{
+  VLIB_BARRIER_STAGE_FIRST,
+  /* workers handoff queue flush start */
+  VLIB_BARRIER_STAGE_FLUSH_START,
+  /* workers handoff queue flush done */
+  VLIB_BARRIER_STAGE_FLUSH_DONE,
+
+  VLIB_BARRIER_STAGE_LAST = VLIB_BARRIER_STAGE_FLUSH_DONE,
+
+  VLIB_BARRIER_N_STAGES,
+} vlib_barrier_stage_t;
+
+#define FOREACH_VLIB_BARRIER_STAGE(_s)                                        \
+  for (_s = VLIB_BARRIER_STAGE_FIRST; _s < VLIB_BARRIER_N_STAGES; _s++)
+
+STATIC_ASSERT (sizeof (32) * VLIB_BARRIER_N_STAGES < CLIB_CACHE_LINE_BYTES,
+	       "barrier stage counters do fit in a cache line");
+
+typedef void (*vlib_barrier_stage_fn_t) (vlib_main_t *vm);
+
 typedef struct
 {
   /* First cache line */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 *wait_at_barrier;
-  volatile u32 *workers_at_barrier;
+  volatile vlib_barrier_stage_t *wait_stage;
+  volatile u32 *wait_barrier;
+  volatile u32 *active_frame_queues;
+  volatile u32 *workers_at_barrier_per_stage;
 
   /* Second Cache Line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -98,6 +121,9 @@ typedef struct
 } vlib_worker_thread_t;
 
 extern vlib_worker_thread_t *vlib_worker_threads;
+
+/** state machine fo stage transitions */
+extern vlib_barrier_stage_fn_t vlib_barrier_stage_sm[VLIB_BARRIER_N_STAGES];
 
 typedef struct
 {
@@ -334,121 +360,21 @@ vlib_get_current_worker_index ()
   return vlib_get_thread_index () - 1;
 }
 
+extern void vlib_worker_drain_frame_queues (vlib_main_t *vm);
+
+static inline u8
+vlib_main_is_barrier (void)
+{
+  return (*vlib_worker_threads->wait_barrier == 1);
+}
+
+extern void vlib_worker_thread_barrier_wait (void);
+
 static inline void
 vlib_worker_thread_barrier_check (void)
 {
-  if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
-    {
-      vlib_global_main_t *vgm = vlib_get_global_main ();
-      vlib_main_t *vm = vlib_get_main ();
-      u32 thread_index = vm->thread_index;
-      f64 t = vlib_time_now (vm);
-
-      if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
-	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			     vm->clib_time.last_cpu_time, 0 /* enter */ );
-
-      if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
-	{
-	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-	  /* *INDENT-OFF* */
-	  ELOG_TYPE_DECLARE (e) = {
-	    .format = "barrier-wait-thread-%d",
-	    .format_args = "i4",
-	  };
-	  /* *INDENT-ON* */
-
-	  struct
-	  {
-	    u32 thread_index;
-	  } __clib_packed *ed;
-
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
-	  ed->thread_index = thread_index;
-	}
-
-      if (CLIB_DEBUG > 0)
-	{
-	  vm = vlib_get_main ();
-	  vm->parked_at_barrier = 1;
-	}
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
-      while (*vlib_worker_threads->wait_at_barrier)
-	;
-
-      /*
-       * Recompute the offset from thread-0 time.
-       * Note that vlib_time_now adds vm->time_offset, so
-       * clear it first. Save the resulting idea of "now", to
-       * see how well we're doing. See show_clock_command_fn(...)
-       */
-      {
-	f64 now;
-	vm->time_offset = 0.0;
-	now = vlib_time_now (vm);
-	vm->time_offset = vgm->vlib_mains[0]->time_last_barrier_release - now;
-	vm->time_last_barrier_release = vlib_time_now (vm);
-      }
-
-      if (CLIB_DEBUG > 0)
-	vm->parked_at_barrier = 0;
-      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
-
-      if (PREDICT_FALSE (*vlib_worker_threads->node_reforks_required))
-	{
-	  if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
-	    {
-	      t = vlib_time_now (vm) - t;
-	      vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-              /* *INDENT-OFF* */
-              ELOG_TYPE_DECLARE (e) = {
-                .format = "barrier-refork-thread-%d",
-                .format_args = "i4",
-              };
-              /* *INDENT-ON* */
-
-	      struct
-	      {
-		u32 thread_index;
-	      } __clib_packed *ed;
-
-	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				    w->elog_track);
-	      ed->thread_index = thread_index;
-	    }
-
-	  vlib_worker_thread_node_refork ();
-	  clib_atomic_fetch_add (vlib_worker_threads->node_reforks_required,
-				 -1);
-	  while (*vlib_worker_threads->node_reforks_required)
-	    ;
-	}
-      if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
-	{
-	  t = vlib_time_now (vm) - t;
-	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-	  /* *INDENT-OFF* */
-	  ELOG_TYPE_DECLARE (e) = {
-	    .format = "barrier-released-thread-%d: %dus",
-	    .format_args = "i4i4",
-	  };
-	  /* *INDENT-ON* */
-
-	  struct
-	  {
-	    u32 thread_index;
-	    u32 duration;
-	  } __clib_packed *ed;
-
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
-	  ed->thread_index = thread_index;
-	  ed->duration = (int) (1000000.0 * t);
-	}
-
-      if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
-	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			     vm->clib_time.last_cpu_time, 1 /* leave */ );
-    }
+  if (PREDICT_FALSE (*vlib_worker_threads->wait_barrier == 1))
+    vlib_worker_thread_barrier_wait ();
 }
 
 always_inline vlib_main_t *
@@ -465,9 +391,18 @@ vlib_get_worker_vlib_main (u32 worker_index)
 static inline u8
 vlib_thread_is_main_w_barrier (void)
 {
-  return (!vlib_num_workers ()
-	  || ((vlib_get_thread_index () == 0
-	       && vlib_worker_threads->wait_at_barrier[0])));
+  return (!vlib_num_workers () ||
+	  (vlib_get_thread_index () == 0 && vlib_main_is_barrier ()));
+}
+
+/**
+ * return the number of workers that are waiting at the barrier
+ */
+static inline u32
+vlib_n_workers_at_barrier (void)
+{
+  return (vlib_worker_threads
+	    ->workers_at_barrier_per_stage[VLIB_BARRIER_STAGE_LAST]);
 }
 
 u8 *vlib_thread_stack_init (uword thread_index);

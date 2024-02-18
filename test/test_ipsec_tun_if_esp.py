@@ -767,6 +767,18 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp, IpsecTun6Tests):
         self.tun6_encrypt_node_name = "esp6-encrypt-tun"
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
+    def test_tun_del_in_use(self):
+        """ipsec del in use"""
+        self.tun6_encrypt_node_name = "esp6-encrypt-tun"
+        self.verify_tun_66(self.params[socket.AF_INET6], count=257)
+        # remove the SAs whilst they are still in use
+        # there are internally locked so forwarding coninues
+        self.unconfig_sa(self.params[socket.AF_INET6])
+        self.verify_tun_66(self.params[socket.AF_INET6], count=257)
+        # remove the protection that uses them
+        self.unconfig_protect(self.params[socket.AF_INET6])
+        self.verify_drop_tun_66(self.params[socket.AF_INET6], count=1)
+
 
 class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp, IpsecTun6HandoffTests):
     """Ipsec ESP 6 Handoff tests"""

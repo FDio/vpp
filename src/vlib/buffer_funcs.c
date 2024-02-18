@@ -298,7 +298,7 @@ vlib_buffer_enqueue_to_thread_inline (vlib_main_t *vm,
   vlib_frame_bitmap_t mask, used_elts = {};
   vlib_frame_queue_elt_t *hf = 0;
   u16 thread_index;
-  u32 n_comp, off = 0, n_left = n_packets;
+  u32 n_comp, off = 0, n_left = n_packets, n_queues = 0;
 
   thread_index = thread_indices[0];
 
@@ -314,11 +314,14 @@ more:
 
   if (hf)
     {
+      vlib_main_t *other = vlib_get_main_by_index (thread_index);
+
       if (node->flags & VLIB_NODE_FLAG_TRACE)
 	hf->maybe_trace = 1;
       hf->n_vectors = n_comp;
+      clib_atomic_inc (&other->n_active_frame_queues);
       __atomic_store_n (&hf->valid, 1, __ATOMIC_RELEASE);
-      vlib_get_main_by_index (thread_index)->check_frame_queues = 1;
+      n_queues++;
     }
   else
     n_drop += n_comp;
@@ -342,6 +345,8 @@ more:
 
   if (drop_on_congestion && n_drop)
     vlib_buffer_free (vm, drop_list, n_drop);
+
+  clib_atomic_fetch_add (vlib_worker_threads->active_frame_queues, n_queues);
 
   return n_packets - n_drop;
 }
