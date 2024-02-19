@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bfa69d8e_3022de92",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2818
+      },
+      "writtenOn": "2024-02-19T05:58:56Z",
+      "side": 1,
+      "message": "append saddr for o2i flow:\n\nfix before:\n\n    i2o 192.168.1.2 proto ICMP port 15084 fib 1\n    o2i 20.0.1.17 proto ICMP port 15084 fib 0\n       external host 20.0.1.19:15084\n       i2o flow: match: saddr 192.168.1.2 sport 15084 daddr 20.0.1.19 dport 15084 proto ICMP fib_idx 1 rewrite: saddr 20.0.1.17 daddr 192.168.5.2 icmp-id 15084 txfib 0 \n       o2i flow: match: saddr 192.168.5.2 sport 15084 daddr 20.0.1.17 dport 15084 proto ICMP fib_idx 0 rewrite: daddr 192.168.1.2 icmp-id 15084 txfib 1 \n       index 2\n       last heard 14.23\n       timeout in 51.11\n       total pkts 9, total bytes 456\n       static translation\n \n ---------------------------------------------------------------------      \n  fix after:\n  \n    i2o 192.168.1.2 proto ICMP port 15084 fib 1\n    o2i 20.0.1.17 proto ICMP port 15084 fib 0\n       external host 20.0.1.19:15084\n       i2o flow: match: saddr 192.168.1.2 sport 15084 daddr 20.0.1.19 dport 15084 proto ICMP fib_idx 1 rewrite: saddr 20.0.1.17 daddr 192.168.5.2 icmp-id 15084 txfib 0 \n       o2i flow: match: saddr 192.168.5.2 sport 15084 daddr 20.0.1.17 dport 15084 proto ICMP fib_idx 0 rewrite: saddr 20.0.1.19 daddr 192.168.1.2 icmp-id 15084 txfib 1 \n       index 2\n       last heard 194.53\n       timeout in 59.11\n       total pkts 89, total bytes 7616\n       static translation",
+      "revId": "3b6c441c7c5512ebbc326b6d94b6cf76142bbfbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
