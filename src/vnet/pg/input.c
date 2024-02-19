@@ -1639,8 +1639,8 @@ pg_generate_packets (vlib_node_runtime_t * node,
   pg_interface_t *pi;
   int i;
 
-  pi = pool_elt_at_index (pg->interfaces,
-			  pg->if_id_by_sw_if_index[s->sw_if_index[VLIB_RX]]);
+  pi = pool_elt_at_index (
+    pg->interfaces, pg->if_index_by_sw_if_index[s->sw_if_index[VLIB_RX]]);
   bi0 = s->buffer_indices;
 
   n_packets_in_fifo = pg_stream_fill (pg, s, n_packets_to_generate);
@@ -1864,9 +1864,9 @@ VLIB_NODE_FN (pg_input_mac_filter) (vlib_main_t * vm,
       pg_interface_t *pi;
       mac_address_t in;
 
-      pi = pool_elt_at_index
-	(pg->interfaces,
-	 pg->if_id_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[VLIB_RX]]);
+      pi = pool_elt_at_index (
+	pg->interfaces,
+	pg->if_index_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[VLIB_RX]]);
       eth = vlib_buffer_get_current (b[0]);
 
       mac_address_from_bytes (&in, eth->dst_address);

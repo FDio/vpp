@@ -249,7 +249,7 @@ VNET_HW_INTERFACE_CLASS (pg_tun_hw_interface_class) = {
 };
 
 u32
-pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
+pg_interface_add_or_get (pg_main_t *pg, u32 if_id, u8 gso_enabled,
 			 u32 gso_size, u8 coalesce_enabled,
 			 pg_interface_mode_t mode)
 {
@@ -315,8 +315,8 @@ pg_interface_add_or_get (pg_main_t *pg, uword if_id, u8 gso_enabled,
 
       hash_set (pg->if_index_by_if_id, if_id, i);
 
-      vec_validate (pg->if_id_by_sw_if_index, hi->sw_if_index);
-      pg->if_id_by_sw_if_index[hi->sw_if_index] = i;
+      vec_validate (pg->if_index_by_sw_if_index, hi->sw_if_index);
+      pg->if_index_by_sw_if_index[hi->sw_if_index] = i;
 
       if (vlib_num_workers ())
 	{
@@ -559,6 +559,11 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
        * interprets [VLIB_TX] as a fib index...
        */
       s->sw_if_index[VLIB_RX] = pi->sw_if_index;
+    }
+  else if (vec_len (pg->if_index_by_sw_if_index) <= s->sw_if_index[VLIB_RX])
+    {
+      vec_validate (pg->if_index_by_sw_if_index, s->sw_if_index[VLIB_RX]);
+      pg->if_index_by_sw_if_index[s->sw_if_index[VLIB_RX]] = s->pg_if_index;
     }
 
   /* Connect the graph. */

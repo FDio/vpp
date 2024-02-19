@@ -349,7 +349,7 @@ typedef struct pg_main_t
   /* Pool of interfaces. */
   pg_interface_t *interfaces;
   uword *if_index_by_if_id;
-  uword *if_id_by_sw_if_index;
+  uword *if_index_by_sw_if_index;
 
   /* Vector of buffer indices for use in pg_stream_fill_replay, per thread */
   u32 **replay_buffers_by_thread;
@@ -383,7 +383,7 @@ void pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
 					   u32 tx_node_index);
 
 /* Find/create free packet-generator interface index. */
-u32 pg_interface_add_or_get (pg_main_t *pg, uword stream_index, u8 gso_enabled,
+u32 pg_interface_add_or_get (pg_main_t *pg, u32 stream_index, u8 gso_enabled,
 			     u32 gso_size, u8 coalesce_enabled,
 			     pg_interface_mode_t mode);
 
