@@ -69,6 +69,23 @@
       "parentUuid": "604fef72_209e1eac",
       "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3fbba28_ddd926a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2024-02-19T14:44:10Z",
+      "side": 1,
+      "message": "Yes, please feel free to merge the patch, we will submit a sperate path for ipsec sa update. Thanks",
+      "revId": "357e8245d7054a53b55d8b5d15ec258a9afab290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
