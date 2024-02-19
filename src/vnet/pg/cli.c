@@ -440,6 +440,12 @@ new_stream (vlib_main_t * vm,
       goto done;
     }
 
+  if (s.if_id == ~0)
+    {
+      error = clib_error_create ("source interface not given");
+      goto done;
+    }
+
   if (s.node_index == ~0)
     {
       if (pcap_file_name != 0)
@@ -685,7 +691,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 {
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 if_id, gso_enabled = 0, gso_size = 0, coalesce_enabled = 0;
+  u32 if_id = ~0, gso_enabled = 0, gso_size = 0, coalesce_enabled = 0;
   clib_error_t *error = NULL;
   pg_interface_mode_t mode = PG_MODE_ETHERNET;
 
