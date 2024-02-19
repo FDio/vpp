@@ -560,6 +560,11 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
        */
       s->sw_if_index[VLIB_RX] = pi->sw_if_index;
     }
+  else
+    {
+      vec_validate (pg->if_id_by_sw_if_index, s->sw_if_index[VLIB_RX]);
+      pg->if_id_by_sw_if_index[s->sw_if_index[VLIB_RX]] = s->if_id;
+    }
 
   /* Connect the graph. */
   s->next_index = vlib_node_add_next (vm, device_input_node.index,
