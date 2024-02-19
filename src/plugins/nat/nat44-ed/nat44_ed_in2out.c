@@ -523,6 +523,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  nat_6t_flow_dport_rewrite_set (&s->o2i, l_port);
 	}
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
+      nat_6t_flow_saddr_rewrite_set (&s->o2i, r_addr.as_u32);
 
       if (nat_ed_alloc_addr_and_port (
 	    sm, rx_fib_index, tx_sw_if_index, proto, thread_index, l_addr,
@@ -567,6 +568,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	}
       nat_6t_flow_daddr_rewrite_set (&s->o2i, l_addr.as_u32);
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
+      nat_6t_flow_saddr_rewrite_set (&s->o2i, r_addr.as_u32);
       if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))
 	{
 	  nat_elog_notice (sm, "out2in key add failed");
