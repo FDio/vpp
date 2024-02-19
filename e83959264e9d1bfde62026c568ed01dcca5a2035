@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5956da7_fcfa16a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2024-02-19T12:43:49Z",
+      "side": 1,
+      "message": "Legitimate validation failure, -1 for the moment.\n\nmake TEST\u003dtest_mpcap.TestMpcap.test_mpcap_unittest test-debug\" to reproduce / debug.",
+      "revId": "e83959264e9d1bfde62026c568ed01dcca5a2035",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
