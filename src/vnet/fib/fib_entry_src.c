@@ -876,7 +876,6 @@ fib_entry_src_covered_inherit_add_i (fib_entry_t *fib_entry,
              * from this cover, i.e. this is a modify.
              */
             esrc = fib_entry_src_action_update_from_cover(fib_entry, cover_src);
-            fib_entry_source_change(fib_entry, esrc->fes_src, esrc->fes_src);
         }
         else
         {
