@@ -1895,6 +1895,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
   ikev2_id_t *id_rem, *id_loc;
   ikev2_auth_t *sa_auth;
   u8 *authmsg, *psk = 0, *auth = 0;
+  vlib_main_t *vm = vlib_get_main ();
 
   authmsg = ikev2_sa_generate_authmsg (sa, sa->is_initiator);
 
@@ -1928,6 +1929,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 	  if (!clib_memcmp (auth, sa_auth->data, vec_len (sa_auth->data)))
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      sa->auth_timestamp = vlib_time_now (vm);
 	      vec_free (auth);
 	      ret = p;
 	      break;
@@ -1946,6 +1948,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 	  if (ikev2_verify_sign (p->auth.key, sa_auth->data, authmsg) == 1)
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      sa->auth_timestamp = vlib_time_now (vm);
 	      ret = p;
 	      break;
 	    }
@@ -2229,6 +2232,8 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
   ikev2_add_ipsec_tunnel_args_t a;
 
   clib_memset (&a, 0, sizeof (a));
+
+  child->timestamp = vlib_time_now (vm);
 
   if (!child->r_proposals)
     {

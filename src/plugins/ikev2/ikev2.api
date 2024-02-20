@@ -84,6 +84,8 @@ define ikev2_sa_v2_dump
 {
   u32 client_index;
   u32 context;
+
+  option status = "in_progress";
 };
 
 /** \brief Details about IKE SA
@@ -111,6 +113,7 @@ define ikev2_sa_v2_details
   i32 retval;
 
   vl_api_ikev2_sa_v2_t sa;
+  option status = "in_progress";
 };
 
 /** \brief Dump child SA of specific SA
@@ -139,6 +142,35 @@ define ikev2_child_sa_details
   i32 retval;
 
   vl_api_ikev2_child_sa_t child_sa;
+  option status = "in_progress";
+};
+
+/** \brief Dump child SA of specific SA
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_index - index of specific sa
+*/
+define ikev2_child_sa_v2_dump
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sa_index;
+  option vat_help = "sa_index <index>";
+  option status = "in_progress";
+};
+
+/** \brief Child SA details
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param child_sa - child SA data
+*/
+define ikev2_child_sa_v2_details
+{
+  u32 context;
+  i32 retval;
+
+  vl_api_ikev2_child_sa_v2_t child_sa;
   option status = "in_progress";
 };
 
