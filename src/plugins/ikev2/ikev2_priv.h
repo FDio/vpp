@@ -307,6 +307,8 @@ typedef struct
   f64 time_to_expiration;
   u8 is_expired;
   i8 rekey_retries;
+
+  f64 timestamp;
 } ikev2_child_sa_t;
 
 typedef struct
@@ -488,6 +490,8 @@ typedef struct
   u8 keys_generated;
 
   ikev2_stats_t stats;
+
+  f64 auth_timestamp;
 } ikev2_sa_t;
 
 
