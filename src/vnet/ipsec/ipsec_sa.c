@@ -197,6 +197,7 @@ int
 ipsec_sa_update (u32 id, u16 src_port, u16 dst_port, const tunnel_t *tun,
 		 bool is_tun)
 {
+  vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
   u32 sa_index;
@@ -321,6 +322,20 @@ ipsec_sa_update (u32 id, u16 src_port, u16 dst_port, const tunnel_t *tun,
 	  src_port != clib_net_to_host_u16 (sa->udp_hdr.src_port))
 	sa->udp_hdr.src_port = clib_host_to_net_u16 (src_port);
     }
+
+  if (ipsec_sa_is_set_IS_ASYNC (sa))
+    {
+      if (!ipsec_sa_is_set_IS_AEAD (sa))
+         vnet_crypto_key_update (vm, sa->crypto_async_key_index);
+    }
+  else
+    {
+      vnet_crypto_key_update (vm, sa->crypto_sync_key_index);
+    }
+
+  if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
+      vnet_crypto_key_update (vm, sa->integ_sync_key_index);
+
   return (0);
 }
 
