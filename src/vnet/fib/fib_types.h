@@ -633,7 +633,7 @@ extern int fib_route_path_is_attached (const fib_route_path_t *rpath);
 /**
  * A help string to list the FIB path options
  */
-#define FIB_ROUTE_PATH_HELP "[next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]"
+#define FIB_ROUTE_PATH_HELP "[next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4|rx-ip6 <interface>] [out-labels <value value value>]"
 
 /**
  * return code to control pat-hlist walk

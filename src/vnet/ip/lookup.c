@@ -620,7 +620,7 @@ VLIB_CLI_COMMAND (ip_route_command, static) = {
 		"[next-hop-table <value>] [weight <value>] [preference "
 		"<value>] [udp-encap <value>] [ip4-lookup-in-table <value>] "
 		"[ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] "
-		"[resolve-via-host] [resolve-via-connected] [rx-ip4 "
+		"[resolve-via-host] [resolve-via-connected] [rx-ip4|rx-ip6 "
 		"<interface>] [out-labels <value value value>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
