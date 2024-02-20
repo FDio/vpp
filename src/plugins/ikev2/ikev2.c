@@ -1889,7 +1889,7 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
 
 static ikev2_profile_t *
 ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
-		      ikev2_sa_transform_t *tr_prf, u8 *key_pad)
+		      ikev2_sa_transform_t *tr_prf, u8 *key_pad, vlib_main_t *vm)
 {
   ikev2_profile_t *ret = 0, *p;
   ikev2_id_t *id_rem, *id_loc;
@@ -1928,6 +1928,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 	  if (!clib_memcmp (auth, sa_auth->data, vec_len (sa_auth->data)))
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      sa->auth_timestamp = vlib_time_now (vm);
 	      vec_free (auth);
 	      ret = p;
 	      break;
@@ -1946,6 +1947,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 	  if (ikev2_verify_sign (p->auth.key, sa_auth->data, authmsg) == 1)
 	    {
 	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      sa->auth_timestamp = vlib_time_now (vm);
 	      ret = p;
 	      break;
 	    }
@@ -1961,7 +1963,7 @@ ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
 }
 
 static void
-ikev2_sa_auth (ikev2_sa_t *sa)
+ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *sel_p = 0;
@@ -1982,7 +1984,7 @@ ikev2_sa_auth (ikev2_sa_t *sa)
     }
 
   key_pad = format (0, "%s", IKEV2_KEY_PAD);
-  sel_p = ikev2_select_profile (km, sa, tr_prf, key_pad);
+  sel_p = ikev2_select_profile (km, sa, tr_prf, key_pad, vm);
 
   if (sel_p)
     {
@@ -2229,6 +2231,8 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
   ikev2_add_ipsec_tunnel_args_t a;
 
   clib_memset (&a, 0, sizeof (a));
+
+  child->timestamp = vlib_time_now (vm);
 
   if (!child->r_proposals)
     {
@@ -3424,7 +3428,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
 	      res = ikev2_process_auth_req (vm, sa0, ike0, rlen);
 	      if (res)
-		ikev2_sa_auth (sa0);
+		ikev2_sa_auth (sa0, vm);
 	      else
 		vlib_node_increment_counter (vm, node->node_index,
 					     IKEV2_ERROR_MALFORMED_PACKET, 1);
