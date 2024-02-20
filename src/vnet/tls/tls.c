@@ -1167,10 +1167,11 @@ tls_transport_endpoint_get (u32 ctx_handle, u32 thread_index,
 			    transport_endpoint_t * tep, u8 is_lcl)
 {
   tls_ctx_t *ctx = tls_ctx_get_w_thread (ctx_handle, thread_index);
-  session_t *tcp_session;
+  session_t *ts;
 
-  tcp_session = session_get_from_handle (ctx->tls_session_handle);
-  session_get_endpoint (tcp_session, tep, is_lcl);
+  ts = session_get_from_handle (ctx->tls_session_handle);
+  if (ts && ts->session_state < SESSION_STATE_TRANSPORT_DELETED)
+    session_get_endpoint (ts, tep, is_lcl);
 }
 
 static void
