@@ -497,6 +497,76 @@ vl_api_ikev2_sa_v2_details_t_handler (vl_api_ikev2_sa_v2_details_t *mp)
 }
 
 static int
+api_ikev2_sa_v3_dump (vat_main_t *vam)
+{
+  ikev2_test_main_t *im = &ikev2_test_main;
+  vl_api_ikev2_sa_v3_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  /* Construct the API message */
+  M (IKEV2_SA_V3_DUMP, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!im->ping_id)
+    im->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (im->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+  vam->result_ready = 0;
+
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ikev2_sa_v3_details_t_handler (vl_api_ikev2_sa_v3_details_t *mp)
+{
+  vat_main_t *vam = ikev2_test_main.vat_main;
+  vl_api_ikev2_sa_v3_t *sa = &mp->sa;
+  ip_address_t iaddr;
+  ip_address_t raddr;
+  vl_api_ikev2_keys_t *k = &sa->keys;
+  vl_api_ikev2_sa_v3_t_endian (sa);
+
+  ip_address_decode2 (&sa->iaddr, &iaddr);
+  ip_address_decode2 (&sa->raddr, &raddr);
+
+  fformat (vam->ofp, "profile name %s sa index: %d\n", mp->sa.profile_name,
+	   mp->sa.sa_index);
+  fformat (vam->ofp, " iip %U ispi %lx rip %U rspi %lx\n", format_ip_address,
+	   &iaddr, sa->ispi, format_ip_address, &raddr, sa->rspi);
+  fformat (vam->ofp, " %U ", format_ikev2_sa_transform, &sa->encryption);
+  fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &sa->prf);
+  fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &sa->integrity);
+  fformat (vam->ofp, "%U \n", format_ikev2_sa_transform, &sa->dh);
+
+  fformat (vam->ofp, "  SK_d    %U\n", format_hex_bytes, k->sk_d, k->sk_d_len);
+
+  fformat (vam->ofp, "  SK_a  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_ai, k->sk_ai_len, format_hex_bytes, k->sk_ar, k->sk_ar_len);
+
+  fformat (vam->ofp, "  SK_e  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_ei, k->sk_ei_len, format_hex_bytes, k->sk_er, k->sk_er_len);
+
+  fformat (vam->ofp, "  SK_p  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_pi, k->sk_pi_len, format_hex_bytes, k->sk_pr, k->sk_pr_len);
+
+  fformat (vam->ofp, "  identifier (i) %U\n", format_ikev2_id_type_and_data,
+	   &sa->i_id);
+  fformat (vam->ofp, "  identifier (r) %U\n", format_ikev2_id_type_and_data,
+	   &sa->r_id);
+
+  vam->result_ready = 1;
+}
+
+static int
 api_ikev2_child_sa_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -545,6 +615,83 @@ api_ikev2_child_sa_dump (vat_main_t * vam)
 
 static void
 vl_api_ikev2_child_sa_details_t_handler (vl_api_ikev2_child_sa_details_t * mp)
+{
+  vat_main_t *vam = ikev2_test_main.vat_main;
+  vl_api_ikev2_child_sa_t *child_sa = &mp->child_sa;
+  vl_api_ikev2_keys_t *k = &child_sa->keys;
+  vl_api_ikev2_child_sa_t_endian (child_sa);
+
+  fformat (vam->ofp, "  child sa %u:\n", child_sa->child_sa_index);
+
+  fformat (vam->ofp, "    %U ", format_ikev2_sa_transform,
+	   &child_sa->encryption);
+  fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &child_sa->integrity);
+  fformat (vam->ofp, "%U \n", format_ikev2_sa_transform, &child_sa->esn);
+
+  fformat (vam->ofp, "    spi(i) %lx spi(r) %lx\n", child_sa->i_spi,
+	   child_sa->r_spi);
+
+  fformat (vam->ofp, "    SK_e  i:%U\n          r:%U\n", format_hex_bytes,
+	   k->sk_ei, k->sk_ei_len, format_hex_bytes, k->sk_er, k->sk_er_len);
+  if (k->sk_ai_len)
+    {
+      fformat (vam->ofp, "    SK_a  i:%U\n          r:%U\n", format_hex_bytes,
+	       k->sk_ai, k->sk_ai_len, format_hex_bytes, k->sk_ar,
+	       k->sk_ar_len);
+    }
+  vam->result_ready = 1;
+}
+
+static int
+api_ikev2_child_sa_v2_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  ikev2_test_main_t *im = &ikev2_test_main;
+  vl_api_ikev2_child_sa_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+  u32 sa_index = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sa_index %d", &sa_index))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sa_index == ~0)
+    return -99;
+
+  /* Construct the API message */
+  M (IKEV2_CHILD_SA_DUMP, mp);
+
+  mp->sa_index = clib_net_to_host_u32 (sa_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  if (!im->ping_id)
+    im->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (im->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+  vam->result_ready = 0;
+
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ikev2_child_sa_v2_details_t_handler (
+  vl_api_ikev2_child_sa_details_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_child_sa_t *child_sa = &mp->child_sa;

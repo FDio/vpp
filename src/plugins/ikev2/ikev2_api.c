@@ -405,6 +405,100 @@ vl_api_ikev2_sa_v2_dump_t_handler (vl_api_ikev2_sa_v2_dump_t *mp)
 }
 
 static void
+send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
+{
+  ikev2_main_t *km = &ikev2_main;
+  vl_api_ikev2_sa_v3_details_t *rmp = 0;
+  int rv = 0;
+  ikev2_sa_transform_t *tr;
+  ikev2_profile_t *p;
+  p = pool_elt_at_index (km->profiles, sa->profile_index);
+  vlib_main_t *vm = vlib_get_main ();
+
+  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_V3_DETAILS, {
+    vl_api_ikev2_sa_v3_t *rsa = &rmp->sa;
+    vl_api_ikev2_keys_t *k = &rsa->keys;
+
+    int size_data = sizeof (rsa->profile_name) - 1;
+    if (vec_len (p->name) < size_data)
+      size_data = vec_len (p->name);
+    clib_memcpy (rsa->profile_name, p->name, size_data);
+
+    rsa->state = ikev2_state_encode (sa->state);
+
+    rsa->uptime = vlib_time_now (vm) - sa->auth_timestamp;
+
+    rsa->sa_index = api_sa_index;
+    ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
+    ip_address_encode2 (&sa->raddr, &rsa->raddr);
+    rsa->ispi = sa->ispi;
+    rsa->rspi = sa->rspi;
+    cp_id (&rsa->i_id, &sa->i_id);
+    cp_id (&rsa->r_id, &sa->r_id);
+
+    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+    if (tr)
+      cp_sa_transform (&rsa->encryption, tr);
+
+    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+    if (tr)
+      cp_sa_transform (&rsa->prf, tr);
+
+    tr =
+      ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+    if (tr)
+      cp_sa_transform (&rsa->integrity, tr);
+
+    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
+    if (tr)
+      cp_sa_transform (&rsa->dh, tr);
+
+    k->sk_d_len = vec_len (sa->sk_d);
+    clib_memcpy (&k->sk_d, sa->sk_d, k->sk_d_len);
+
+    k->sk_ai_len = vec_len (sa->sk_ai);
+    clib_memcpy (&k->sk_ai, sa->sk_ai, k->sk_ai_len);
+
+    k->sk_ar_len = vec_len (sa->sk_ar);
+    clib_memcpy (&k->sk_ar, sa->sk_ar, k->sk_ar_len);
+
+    k->sk_ei_len = vec_len (sa->sk_ei);
+    clib_memcpy (&k->sk_ei, sa->sk_ei, k->sk_ei_len);
+
+    k->sk_er_len = vec_len (sa->sk_er);
+    clib_memcpy (&k->sk_er, sa->sk_er, k->sk_er_len);
+
+    k->sk_pi_len = vec_len (sa->sk_pi);
+    clib_memcpy (&k->sk_pi, sa->sk_pi, k->sk_pi_len);
+
+    k->sk_pr_len = vec_len (sa->sk_pr);
+    clib_memcpy (&k->sk_pr, sa->sk_pr, k->sk_pr_len);
+
+    ikev2_copy_stats (&rsa->stats, &sa->stats);
+
+    vl_api_ikev2_sa_v3_t_endian (rsa);
+  });
+}
+
+static void
+vl_api_ikev2_sa_v3_dump_t_handler (vl_api_ikev2_sa_v3_dump_t *mp)
+{
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+
+  vec_foreach (tkm, km->per_thread_data)
+    {
+      pool_foreach (sa, tkm->sas)
+	{
+	  u32 api_sa_index =
+	    ikev2_encode_sa_index (sa - tkm->sas, tkm - km->per_thread_data);
+	  send_sa_v3 (sa, mp, api_sa_index);
+	}
+    }
+}
+
+static void
 send_child_sa (ikev2_child_sa_t * child,
 	       vl_api_ikev2_child_sa_dump_t * mp, u32 child_sa_index,
 	       u32 sa_index)
@@ -485,6 +579,85 @@ vl_api_ikev2_child_sa_dump_t_handler (vl_api_ikev2_child_sa_dump_t * mp)
     u32 child_sa_index = child - sa->childs;
     send_child_sa (child, mp, child_sa_index, sai);
   }
+}
+
+static void
+send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
+		  u32 child_sa_index, u32 sa_index)
+{
+  vl_api_ikev2_child_sa_v2_details_t *rmp = 0;
+  int rv = 0;
+  ikev2_sa_transform_t *tr;
+  vlib_main_t *vm = vlib_get_main ();
+
+  REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_V2_DETAILS, {
+    vl_api_ikev2_keys_t *k = &rmp->child_sa.keys;
+    rmp->child_sa.child_sa_index = child_sa_index;
+    rmp->child_sa.uptime = vlib_time_now (vm) - child->timestamp;
+    rmp->child_sa.sa_index = sa_index;
+    rmp->child_sa.i_spi = child->i_proposals ? child->i_proposals[0].spi : 0;
+    rmp->child_sa.r_spi = child->r_proposals ? child->r_proposals[0].spi : 0;
+
+    tr =
+      ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+    if (tr)
+      cp_sa_transform (&rmp->child_sa.encryption, tr);
+
+    tr = ikev2_sa_get_td_for_type (child->r_proposals,
+				   IKEV2_TRANSFORM_TYPE_INTEG);
+    if (tr)
+      cp_sa_transform (&rmp->child_sa.integrity, tr);
+
+    tr =
+      ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
+    if (tr)
+      cp_sa_transform (&rmp->child_sa.esn, tr);
+
+    k->sk_ei_len = vec_len (child->sk_ei);
+    clib_memcpy (&k->sk_ei, child->sk_ei, k->sk_ei_len);
+
+    k->sk_er_len = vec_len (child->sk_er);
+    clib_memcpy (&k->sk_er, child->sk_er, k->sk_er_len);
+
+    if (vec_len (child->sk_ai))
+      {
+	k->sk_ai_len = vec_len (child->sk_ai);
+	clib_memcpy (&k->sk_ai, child->sk_ai, k->sk_ai_len);
+
+	k->sk_ar_len = vec_len (child->sk_ar);
+	clib_memcpy (&k->sk_ar, child->sk_ar, k->sk_ar_len);
+      }
+
+    vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa);
+  });
+}
+
+static void
+vl_api_ikev2_child_sa_v2_dump_t_handler (vl_api_ikev2_child_sa_v2_dump_t *mp)
+{
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_main_per_thread_data_t *tkm;
+  ikev2_sa_t *sa;
+  ikev2_child_sa_t *child;
+  u32 sai = ~0, ti = ~0;
+
+  ikev2_decode_sa_index (clib_net_to_host_u32 (mp->sa_index), &sai, &ti);
+
+  if (vec_len (im->per_thread_data) <= ti)
+    return;
+
+  tkm = vec_elt_at_index (im->per_thread_data, ti);
+
+  if (pool_len (tkm->sas) <= sai || pool_is_free_index (tkm->sas, sai))
+    return;
+
+  sa = pool_elt_at_index (tkm->sas, sai);
+
+  vec_foreach (child, sa->childs)
+    {
+      u32 child_sa_index = child - sa->childs;
+      send_child_sa_v2 (child, mp, child_sa_index, sai);
+    }
 }
 
 static void
