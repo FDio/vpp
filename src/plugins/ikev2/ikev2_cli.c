@@ -74,11 +74,15 @@ format_ikev2_child_sa (u8 * s, va_list * va)
   ikev2_ts_t *ts;
   ikev2_sa_transform_t *tr;
   u8 *c = 0;
+  vlib_main_t *vm = vlib_get_main ();
 
   u32 indent = format_get_indent (s);
   indent += 1;
 
   s = format (s, "child sa %u:", index);
+
+  s = format (s, "\n    uptime: %f (s)\n    ",
+	      vlib_time_now (vm) - child->timestamp);
 
   tr = ikev2_sa_get_td_for_type (child->r_proposals,
 				 IKEV2_TRANSFORM_TYPE_ENCR);
@@ -135,6 +139,7 @@ format_ikev2_sa (u8 * s, va_list * va)
   ikev2_sa_transform_t *tr;
   ikev2_child_sa_t *child;
   u32 indent = 1;
+  vlib_main_t *vm = vlib_get_main ();
 
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
@@ -167,6 +172,9 @@ format_ikev2_sa (u8 * s, va_list * va)
     {
       s = format (s, "\n state: %s", stateNames[sa->state]);
     }
+
+  s =
+    format (s, "\n uptime: %f (s)\n", vlib_time_now (vm) - sa->auth_timestamp);
 
   s = format (s, "\n%U", format_white_space, indent);
 
