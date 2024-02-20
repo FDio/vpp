@@ -10264,7 +10264,57 @@ fib_test_inherit (void)
                                       &l99_o_10_10_10_3),
              "%U via interposer label",
              format_fib_prefix,&pfx_10_10_10_21_s_32);
+    fib_table_entry_special_remove(0,
+                                   &pfx_10_10_10_0_s_24,
+                                   FIB_SOURCE_SPECIAL);
 
+    const ip46_address_t nh_0_0_0_0 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x00000000),
+    };
+    const fib_prefix_t pfx_0_0_0_0_s_0 = {
+        .fp_len = 0,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_0_0_0_0,
+    };
+
+     /* we have prio(API) < prio(hi_src) < prio(SPECIAL) */
+     /* Add/remove an interposer source from the top of the subtrie. The
+      * interposer source is inherited.
+      */
+     fib_table_entry_special_dpo_add(0,
+                                     &pfx_0_0_0_0_s_0,
+                                     hi_src,
+                                     (FIB_ENTRY_FLAG_COVERED_INHERIT |
+                                        FIB_ENTRY_FLAG_INTERPOSE),
+                                     &interposer);
+    /*
+     * Add/remove an interposer source from the top of the subtrie. The
+     * interposer source is inherited, the previous inheritance is discarded.
+     */
+    fib_table_entry_special_dpo_add(0,
+                                    &pfx_10_10_10_0_s_24,
+                                    FIB_SOURCE_SPECIAL,
+                                    (FIB_ENTRY_FLAG_COVERED_INHERIT |
+                                        FIB_ENTRY_FLAG_INTERPOSE),
+                                     &interposer);
+    /* force a tree walk */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_0_0_0_0_s_0,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    &nh_10_10_10_3,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_special_remove(0,
+                                   &pfx_10_10_10_0_s_24,
+                                   FIB_SOURCE_SPECIAL);
+    fib_table_entry_special_remove(0,
+                                   &pfx_0_0_0_0_s_0,
+                                   hi_src);
     /*
      * cleanup
      */
@@ -10275,6 +10325,7 @@ fib_test_inherit (void)
     fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, FIB_SOURCE_API);
     fib_table_entry_delete(0, &pfx_10_10_0_0_s_16, FIB_SOURCE_API);
     fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, FIB_SOURCE_SPECIAL);
+    fib_table_entry_delete(0, &pfx_0_0_0_0_s_0, FIB_SOURCE_API);
     adj_unlock(ai_10_10_10_1);
     adj_unlock(ai_10_10_10_2);
     adj_unlock(ai_10_10_10_3);
