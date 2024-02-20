@@ -1161,7 +1161,8 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 
     esrc = fib_entry_src_find(fib_entry, source);
 
-    ASSERT(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE);
+    if (PREDICT_FALSE(!(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_ACTIVE)))
+        return;
 
     FIB_ENTRY_DBG(fib_entry, "reactivate: %d to %d",
 		  fib_entry->fe_parent,
