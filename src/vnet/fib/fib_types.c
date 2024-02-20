@@ -708,6 +708,13 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = DPO_PROTO_IP4;
             rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
         }
+        else if (unformat (input, "rx-ip6 %U",
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP6;
+            rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
+        }
       else if (unformat (input, "local"))
 	{
 	  clib_memset (&rpath->frp_addr, 0, sizeof (rpath->frp_addr));
@@ -775,6 +782,7 @@ fib_route_path_is_attached (const fib_route_path_t *rpath)
      * L3 game with these
      */
     if (rpath->frp_flags & (FIB_ROUTE_PATH_DVR |
+                            FIB_ROUTE_PATH_INTF_RX |
                             FIB_ROUTE_PATH_UDP_ENCAP))
     {
         return (0);
