@@ -19,7 +19,19 @@ class TestFIB(VppAsfTestCase):
 
     def test_fib(self):
         """FIB Unit Tests"""
-        error = self.vapi.cli("test fib")
+        try:
+            error = self.vapi.cli("test fib")
+        except Exception as e:
+            print(self.vapi.cli("sh ip fib 0.0.0.0/0"))
+            print("--------------------")
+            print(self.vapi.cli("sh ip fib 10.0.0.0/8"))
+            print("--------------------")
+            print(self.vapi.cli("sh ip fib 10.10.0.0/16"))
+            print("--------------------")
+            print(self.vapi.cli("sh ip fib 10.10.10.0/24"))
+            print("--------------------")
+            print(self.vapi.cli("sh ip fib 10.10.10.21/32"))
+            raise
 
         # shameless test of CLIs to bump lcov results...
         # no i mean to ensure they don't crash
