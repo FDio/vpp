@@ -16,6 +16,24 @@
       "message": "append saddr for o2i flow:\n\nfix before:\n\n    i2o 192.168.1.2 proto ICMP port 15084 fib 1\n    o2i 20.0.1.17 proto ICMP port 15084 fib 0\n       external host 20.0.1.19:15084\n       i2o flow: match: saddr 192.168.1.2 sport 15084 daddr 20.0.1.19 dport 15084 proto ICMP fib_idx 1 rewrite: saddr 20.0.1.17 daddr 192.168.5.2 icmp-id 15084 txfib 0 \n       o2i flow: match: saddr 192.168.5.2 sport 15084 daddr 20.0.1.17 dport 15084 proto ICMP fib_idx 0 rewrite: daddr 192.168.1.2 icmp-id 15084 txfib 1 \n       index 2\n       last heard 14.23\n       timeout in 51.11\n       total pkts 9, total bytes 456\n       static translation\n \n ---------------------------------------------------------------------      \n  fix after:\n  \n    i2o 192.168.1.2 proto ICMP port 15084 fib 1\n    o2i 20.0.1.17 proto ICMP port 15084 fib 0\n       external host 20.0.1.19:15084\n       i2o flow: match: saddr 192.168.1.2 sport 15084 daddr 20.0.1.19 dport 15084 proto ICMP fib_idx 1 rewrite: saddr 20.0.1.17 daddr 192.168.5.2 icmp-id 15084 txfib 0 \n       o2i flow: match: saddr 192.168.5.2 sport 15084 daddr 20.0.1.17 dport 15084 proto ICMP fib_idx 0 rewrite: saddr 20.0.1.19 daddr 192.168.1.2 icmp-id 15084 txfib 1 \n       index 2\n       last heard 194.53\n       timeout in 59.11\n       total pkts 89, total bytes 7616\n       static translation",
       "revId": "3b6c441c7c5512ebbc326b6d94b6cf76142bbfbe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c0c04da_5e3e355e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2818
+      },
+      "writtenOn": "2024-02-20T03:46:18Z",
+      "side": 1,
+      "message": "it\u0027s a interesting bugs i founded:\nwhen I test nat hairpping feature with eip. such as icmp 192.168.1.2 -\u003e 20.0.1.19, when 20.0.1.9 icmp reply, one case, it will match o2i flow(nat44_ed_in2out.c:1230) which has\u0027t the saddr rewrite header. It will cause:\n1. icmp reply packet can not snat with it\u0027s eip(20.0.1.19)\n2. in function \u0027nat_6t_flow_ip4_translate\u0027,the checksum is wrong with wrong invalid saddr. And asset crash in debug version.\n\n\nTest and capture:\n\n1. icmp request: 192.168.1.2 -\u003e 20.0.1.19:\n11:13:34.428962 da:ad:59:1c:3e:b3 \u003e de:ad:00:00:00:01, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 25647, offset 0, flags [DF], proto ICMP (1), length 84)\n    192.168.1.2 \u003e 20.0.1.19: ICMP echo request, id 16471, seq 1, length 64\n\n2. vpp hairpin snat and dnat: 192.168.1.2(20.0.1.17) -\u003e 20.0.1.19(192.168.1.3)\n11:13:34.445330 de:ad:00:00:00:01 \u003e da:ad:59:1c:3e:b3, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 25647, offset 0, flags [DF], proto ICMP (1), length 84)\n    20.0.1.17 \u003e 192.168.1.3: ICMP echo request, id 16471, seq 1, length 64\n\n3. icmp reply: 192.168.1.3 -\u003e 20.0.1.17:\n11:13:34.445392 da:ad:59:1c:3e:b3 \u003e de:ad:00:00:00:01, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 8816, offset 0, flags [none], proto ICMP (1), length 84)\n    192.168.1.3 \u003e 20.0.1.17: ICMP echo reply, id 16471, seq 1, length 64\n\n\n4. vpp hairpin snat and dnat: 192.168.1.3(20.0.1.19) -\u003e 20.0.1.17 (192.168.1.2)\n11:13:34.461122 de:ad:00:00:00:01 \u003e da:ad:59:1c:3e:b3, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 8816, offset 0, flags [none], proto ICMP (1), length 84)\n    192.168.1.3 \u003e 192.168.1.2: ICMP echo reply, id 16471, seq 1, length 64\n\nwrong packet:\n192.168.1.3 \u003e 192.168.1.2: ICMP echo reply, id 16471, seq 1, length 64\nit should be:\n20.0.1.19 \u003e 192.168.1.2: ICMP echo reply, id 16471, seq 1, length 64",
+      "parentUuid": "bfa69d8e_3022de92",
+      "revId": "3b6c441c7c5512ebbc326b6d94b6cf76142bbfbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
