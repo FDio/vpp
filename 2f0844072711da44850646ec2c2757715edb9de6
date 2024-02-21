@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b5bb60a_c103f63b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-21T18:35:00Z",
+      "side": 1,
+      "message": "Some quick questions",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac6850e2_3e895fe5",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-21T18:35:00Z",
+      "side": 1,
+      "message": "Should we store the pid within the suite and just reuse it in all tests, without passing it as var?",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23e160a1_766c0bd7",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-21T18:35:00Z",
+      "side": 1,
+      "message": "Should we be pushing pid here into netns, interface and bridge creation?",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0dbada8e_4c9078ad",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-21T18:35:00Z",
+      "side": 1,
+      "message": "Add pid to clientNetns above. \n\nAlthough, I\u0027m thinking it\u0027d be nice to have a map from client netns name within test (cln above) to client netns instantiated (and this would be the one with pid in the name).",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ee14314_2619c110",
+        "filename": "extras/hs-test/suite_nginx_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-21T18:35:00Z",
+      "side": 1,
+      "message": "Ouch. Do we have multiple net interfaces with the same name per suite? If not, can we make sure the key does not have the pid in it, but the instantiated interface name has pid in it",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
