@@ -455,7 +455,9 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   crypto_sw_scheduler_queue_t *current_queue = 0;
   u32 tail, head;
   u8 found = 0;
+  u8 recheck_queues = 1;
 
+run_next_queues:
   /* get a pending frame to process */
   if (ptd->self_crypto_enabled)
     {
@@ -565,6 +567,11 @@ crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
       return f;
     }
 
+  if (!found && recheck_queues)
+    {
+      recheck_queues = 0;
+      goto run_next_queues;
+    }
   return 0;
 }
 
