@@ -429,6 +429,60 @@ VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_crypto_async_dispatch_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  u8 adaptive = 0;
+  u8 mode = VLIB_NODE_STATE_POLLING;
+  u8 is_adaptive_selected = 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "polling"))
+	mode = VLIB_NODE_STATE_POLLING;
+      else if (unformat (line_input, "interrupt"))
+	mode = VLIB_NODE_STATE_INTERRUPT;
+      else if (unformat (line_input, "adaptive"))
+	{
+	  is_adaptive_selected = 1;
+	  if (unformat (line_input, "on"))
+	    adaptive = 1;
+	  else if (unformat (line_input, "off"))
+	    adaptive = 0;
+	  else
+	    {
+	      error = clib_error_return (0, "invalid params");
+	      goto done;
+	    }
+	}
+      else
+	{
+	  error = clib_error_return (0, "invalid params");
+	  goto done;
+	}
+    }
+  if (!is_adaptive_selected)
+    clib_warning ("adaptive config not selected, setting to off mode.");
+
+  vnet_crypto_set_async_dispatch (mode, adaptive);
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_mode_command, static) = {
+  .path = "set crypto async dispatch ",
+  .short_help =
+    "set crypto async dispatch <polling|interrupt> adaptive <on|off>",
+  .function = set_crypto_async_dispatch_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
