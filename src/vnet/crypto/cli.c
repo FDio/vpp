@@ -429,6 +429,45 @@ VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_crypto_async_dispatch_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u8 adaptive = 0;
+  u8 mode = VLIB_NODE_STATE_INTERRUPT;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "polling"))
+	mode = VLIB_NODE_STATE_POLLING;
+      else if (unformat (line_input, "interrupt"))
+	mode = VLIB_NODE_STATE_INTERRUPT;
+      else if (unformat (line_input, "adaptive"))
+	adaptive = 1;
+      else
+	{
+	  error = clib_error_return (0, "invalid params");
+	  goto done;
+	}
+    }
+
+  vnet_crypto_set_async_dispatch (mode, adaptive);
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_mode_command, static) = {
+  .path = "set crypto async dispatch mode",
+  .short_help = "set crypto async dispatch mode <polling|interrupt|adaptive>",
+  .function = set_crypto_async_dispatch_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
