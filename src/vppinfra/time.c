@@ -76,8 +76,11 @@ clock_frequency_from_proc_filesystem (void)
   f64 ppc_timebase = 0;		/* warnings be gone */
   unformat_input_t input;
 
-/* $$$$ aarch64 kernel doesn't report "cpu MHz" */
-#if defined(__aarch64__)
+#if defined(__x86_64__)
+  if (clib_cpu_supports_aperfmperf ())
+    return 0.0;
+#elif defined(__aarch64__)
+  /* $$$$ aarch64 kernel doesn't report "cpu MHz" */
   return 0.0;
 #endif
 

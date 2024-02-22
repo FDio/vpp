@@ -150,6 +150,7 @@ _CLIB_MARCH_FN_REGISTRATION(fn)
   _ (movdir64b, 7, ecx, 28)                                                   \
   _ (enqcmd, 7, ecx, 29)                                                      \
   _ (avx512_fp16, 7, edx, 23)                                                 \
+  _ (aperfmperf, 0x00000006, ecx, 0)                                          \
   _ (invariant_tsc, 0x80000007, edx, 8)                                       \
   _ (monitorx, 0x80000001, ecx, 29)
 
