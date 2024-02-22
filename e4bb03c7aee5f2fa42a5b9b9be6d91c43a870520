@@ -33,6 +33,24 @@
       "message": "Please have a look at https://github.com/FDio/vpp/blob/master/src/vnet/ipsec/ipsec_sa.c#L407 to https://github.com/FDio/vpp/blob/master/src/vnet/ipsec/ipsec_sa.c#L412C38-L412C59.\n\nSo the idea should be:\n1. If sync, both crypto_sync_key_index and integ_sync_key_index should be updated.\n2. If async, \n  a. If AEAD, the sa-\u003ecrypto_async_key_index should be updated.\n  b. If not AEAD, there should be a new vnet_crypto_key_update_linked() function to update the async key expansion for async engines.",
       "revId": "e4bb03c7aee5f2fa42a5b9b9be6d91c43a870520",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1822628c_717ab7ae",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-22T10:36:10Z",
+      "side": 1,
+      "message": "Sorry, for sync, integ_sync_key_index should only be updated for not IPSEC_INTEG_ALG_NONE case. Please remember we don\u0027t have hash only async algs.",
+      "parentUuid": "e880c4f6_2ebdfe7e",
+      "revId": "e4bb03c7aee5f2fa42a5b9b9be6d91c43a870520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
