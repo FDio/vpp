@@ -214,6 +214,12 @@ vl_api_lcp_itf_pair_get_v2_t_handler (vl_api_lcp_itf_pair_get_v2_t *mp)
   else
     {
       VALIDATE_SW_IF_INDEX_END (mp);
+
+      if (lcp_itf_pair_find_by_phy (mp->sw_if_index) == INDEX_INVALID)
+	{
+	  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+	  goto bad_sw_if_index;
+	}
       send_lcp_itf_pair_details (
 	lcp_itf_pair_find_by_phy (mp->sw_if_index),
 	vl_api_client_index_to_registration (mp->client_index), mp->context);
