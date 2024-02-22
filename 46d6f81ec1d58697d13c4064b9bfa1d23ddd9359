@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "151ab5db_d2c91020",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-22T10:36:49Z",
+      "side": 1,
+      "message": "Any update to this patch?",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6e675539_5775b055",
