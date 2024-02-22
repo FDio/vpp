@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "087956f3_43007dc3",
+        "filename": "src/vnet/crypto/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-22T09:35:52Z",
+      "side": 1,
+      "message": "The help here should be \"set crypto async dispatch \u003cpolling|interrupt|adaptive\u003e \u003con|off\u003e\"?",
+      "revId": "9c3b24a9a346889a48dd1e539d93814d3684fcc3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
