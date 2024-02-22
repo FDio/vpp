@@ -93,10 +93,12 @@ format_error_trace (u8 * s, va_list * va)
   u32 i;
 
   error_node = vlib_get_node (vm, vlib_error_get_node (&vm->node_main, e[0]));
-  i = counter_index (vm, vlib_error_get_code (&vm->node_main, e[0])) +
-    error_node->error_heap_index;
+  i = counter_index (vm, vlib_error_get_code (&vm->node_main, e[0]));
   if (i != CLIB_U32_MAX)
-    s = format (s, "%v: %s", error_node->name, em->counters_heap[i].desc);
+    {
+      i += error_node->error_heap_index;
+      s = format (s, "%v: %s", error_node->name, em->counters_heap[i].desc);
+    }
 
   return s;
 }
