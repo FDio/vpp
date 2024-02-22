@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5133a89e_f40febae",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-22T10:27:21Z",
+      "side": 1,
+      "message": "Looks like a miss here. If it is AEAD, the key also should be updated with either sa-\u003ecrypto_async_key_index or sa-\u003ecrypto_sync_key_index.",
+      "revId": "e4bb03c7aee5f2fa42a5b9b9be6d91c43a870520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
