@@ -34,6 +34,24 @@
       "parentUuid": "6a5ac3ab_98b355dc",
       "revId": "8f17267c1c1b2a740466e4be18811e76d564450b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82e14154_39b1858a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-02-22T09:38:14Z",
+      "side": 1,
+      "message": "Thanks Neale! I rebased the change as last rebase was a bit old, could you +2 again please?",
+      "parentUuid": "27ff950b_412343ca",
+      "revId": "8f17267c1c1b2a740466e4be18811e76d564450b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
