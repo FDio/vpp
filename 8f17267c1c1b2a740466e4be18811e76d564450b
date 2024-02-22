@@ -16,6 +16,24 @@
       "message": "Hi Neale, any update on that one?",
       "revId": "8f17267c1c1b2a740466e4be18811e76d564450b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27ff950b_412343ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-02-22T01:11:06Z",
+      "side": 1,
+      "message": "i think using the fragment\u0027s l4 proto is a good approach. that gives the possibility that 3-tuple matching would work, if configured, for fragments.",
+      "parentUuid": "6a5ac3ab_98b355dc",
+      "revId": "8f17267c1c1b2a740466e4be18811e76d564450b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
