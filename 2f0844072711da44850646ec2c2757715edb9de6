@@ -90,6 +90,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "503c7140_549c2cae",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-23T18:46:21Z",
+      "side": 1,
+      "message": "Just realized that we\u0027re changing the names of the interfaces only in the suite but not on linux. For instance, we\u0027re not calling newNetworkInterface with an interface name that has pid in it. Is that enough to avoid conflicts?",
+      "parentUuid": "d56ee2f9_a7c62a28",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0dbada8e_4c9078ad",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 3
@@ -125,6 +143,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "07de4c71_643b9556",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-23T18:46:21Z",
+      "side": 1,
+      "message": "For now it\u0027s only one place but long term it\u0027s easier to reuse/refactor if everything is in one place. \n\nThanks for the change but I\u0027m still thinking now if we should have a suite map that maps from test namespace, i.e., `cln`, to linux instantiated namespace, i.e., `cln` + pid. Probably we should have a chat about it.",
+      "parentUuid": "6f3a381e_13ed5889",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "1ee14314_2619c110",
         "filename": "extras/hs-test/suite_nginx_test.go",
         "patchSetId": 3
@@ -154,6 +190,24 @@
       "side": 1,
       "message": "We do and it\u0027s not a problem *for now*, because testify can only run tests in series. Right now, PIDs are used to prevent conflicts between two instances/test runs. I\u0027m aware that it will become a problem with Ginkgo\u0027s parallel test runs but I\u0027m not there yet.\n\nAnyways, I\u0027ve created a new function to return the interface, so those vars are constants again.",
       "parentUuid": "1ee14314_2619c110",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31b0d894_8114496d",
+        "filename": "extras/hs-test/suite_nginx_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-23T18:46:21Z",
+      "side": 1,
+      "message": "Awesome. Thanks!",
+      "parentUuid": "7416e127_b244ebc2",
       "revId": "2f0844072711da44850646ec2c2757715edb9de6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

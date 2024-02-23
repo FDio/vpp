@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c79dd96a_6b317833",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-23T18:46:21Z",
+      "side": 1,
+      "message": "Nice trick, but let\u0027s add a port generator function that returns this. Otherwise I\u0027m sure we\u0027ll end up staring at it in the future asking what is this :)",
+      "range": {
+        "startLine": 380,
+        "startChar": 49,
+        "endLine": 380,
+        "endChar": 69
+      },
+      "revId": "1301faf1d951a738db84fba1eb846f525f7f035c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
