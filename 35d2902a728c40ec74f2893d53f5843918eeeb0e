@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3096d5b_329dab5c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-23T09:48:54Z",
+      "side": 1,
+      "message": "This will not work. All device operations must be serialized through dev process node. Simply calling function may cause race condition.\n\nHere is what should be done:\n\n1. add new port cfg types:\ndiff --git a/src/vnet/dev/dev.h b/src/vnet/dev/dev.h\nindex e7c6ca45f..882e5edfe 100644\n--- a/src/vnet/dev/dev.h\n+++ b/src/vnet/dev/dev.h\n@@ -144,7 +144,11 @@ typedef struct\n   _ (ADD_SECONDARY_HW_ADDR)                                                   \\\n   _ (REMOVE_SECONDARY_HW_ADDR)                                                \\\n   _ (RXQ_INTR_MODE_ENABLE)                                                    \\\n-  _ (RXQ_INTR_MODE_DISABLE)\n+  _ (RXQ_INTR_MODE_DISABLE)                                                   \\\n+  _ (ADD_RX_FLOW)                                                                \\\n+  _ (DEL_RX_FLOW)                                                                \\\n+  _ (GET_RX_FLOW_COUNTER)                                                        \\\n+  _ (RESET_RX_FLOW_COUNTER)\n\n2. update vnet_dev_flow_ops_fn() so it invokes port_cfg_change_validate and port_cfg_change (similar to what vnet_dev_port_mac_change() does)\n\n3. inside the driver handle those events accordingly",
+      "revId": "35d2902a728c40ec74f2893d53f5843918eeeb0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
