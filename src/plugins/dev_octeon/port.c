@@ -10,6 +10,8 @@
 #include <dev_octeon/common.h>
 #include <vnet/ethernet/ethernet.h>
 
+#define OCT_ETH_LINK_SPEED_100G 100000 /**< 100 Gbps */
+
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
   .subclass_name = "port",
@@ -166,9 +168,19 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_port_state_changes_t changes = {};
   int rrv;
 
-  rrv = roc_nix_mac_link_info_get (nix, &link_info);
-  if (rrv)
-    return;
+  if (roc_nix_is_lbk (nix))
+    {
+      link_info.status = 1;
+      link_info.full_duplex = 1;
+      link_info.autoneg = 0;
+      link_info.speed = OCT_ETH_LINK_SPEED_100G;
+    }
+  else
+    {
+      rrv = roc_nix_mac_link_info_get (nix, &link_info);
+      if (rrv)
+	return;
+    }
 
   if (cd->status != link_info.status)
     {
