@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ce133b8_d14863ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-02-23T11:28:30Z",
+      "side": 1,
+      "message": "Hello Matthew,\n\nI prepared this little patch that fixes some things for lcp pair created in non default-ns. As in different network namespaces netdevs don\u0027t have unique ifindexes - I\u0027d prefer just to skip such interfaces and do not populate them to hashmap. Otherwise, some changes in default-ns can trigger updates on the wrong interface.\n\nFor instance, in my deployments I usually have a bunch of bridge and vxlan interfaces in linux and most likely the first bridge have ifindex 2. And I have multiple netns per wan interface (wan1, wan2 and so on) where the only interface is lcp for wan interface (also with ifindex 2). And usually assigning any ip address on that bridge cause assigning such address on the wan interface.\n\nThis issue could be addressed in multiple ways, however I\u0027m fine with broken behaviour for non-default-ns lcp interfaces. In my control plane I manually assign all the settings to it (and I don\u0027t need yet route synchronization).\n\nI wonder what is your opinion on this topic. Cheers.",
+      "revId": "f49d350eff2fc0c48c8f05bad3be8e5c2c1f3dcd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
