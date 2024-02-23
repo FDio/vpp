@@ -51,6 +51,7 @@ static struct
   }
 
   _ (0xa063, RVU_PF, "Marvell Octeon Resource Virtualization Unit PF"),
+  _ (0xa0f8, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
   _ (0xa0f3, CPT_VF, "Marvell Octeon Cryptographic Accelerator Unit VF"),
 #undef _
 };
@@ -238,7 +239,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   strncpy ((char *) cd->plt_pci_dev.name, dev->device_id,
 	   sizeof (cd->plt_pci_dev.name) - 1);
 
-  if (cd->type == OCT_DEVICE_TYPE_RVU_PF)
+  if (cd->type == OCT_DEVICE_TYPE_RVU_PF || cd->type == OCT_DEVICE_TYPE_RVU_VF)
     return oct_init_nix (vm, dev);
   else if (cd->type == OCT_DEVICE_TYPE_CPT_VF)
     return oct_init_cpt (vm, dev);
