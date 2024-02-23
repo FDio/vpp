@@ -117,6 +117,15 @@ class VppInterface(metaclass=abc.ABCMeta):
         return self._name
 
     @property
+    def tag(self):
+        """Tag of the interface."""
+        return self._tag
+
+    @tag.setter
+    def tag(self, value):
+        self._tag = value
+
+    @property
     def dump(self):
         """RAW result of sw_interface_dump for this interface."""
         return self._dump
@@ -200,6 +209,19 @@ class VppInterface(metaclass=abc.ABCMeta):
         self.test.vapi.sw_interface_set_mac_address(self.sw_if_index, mac.packed)
         return self
 
+    def set_name(self, name):
+        self._name = name
+        self.test.vapi.sw_interface_set_interface_name(self.sw_if_index, name)
+        return self
+
+    def set_tag(self, tag):
+        is_add = 1 if tag else 0
+        self._tag = tag
+        self.test.vapi.sw_interface_tag_add_del(
+            sw_if_index=self.sw_if_index, tag=tag, is_add=is_add
+        )
+        return self
+
     def set_sw_if_index(self, sw_if_index):
         if sw_if_index > 255:
             raise RuntimeError("Don't support sw_if_index values greater than 255.")
@@ -233,6 +255,7 @@ class VppInterface(metaclass=abc.ABCMeta):
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name
                 self._local_mac = intf.l2_address
+                self._tag = intf.tag
                 self._dump = intf
                 break
         else:

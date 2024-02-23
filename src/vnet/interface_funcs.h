@@ -40,6 +40,12 @@
 #ifndef included_vnet_interface_funcs_h
 #define included_vnet_interface_funcs_h
 
+/* update the interface name and symlinks in statseg */
+void stat_segment_update_hw_interface_name (vnet_main_t *vnm, u32 hw_if_index);
+
+/* set the interface tag value to statseg */
+void stat_segment_set_sw_interface_tag (u32 sw_if_index, u8 *tag);
+
 always_inline vnet_hw_interface_t *
 vnet_get_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 {
@@ -150,6 +156,7 @@ vnet_set_sw_interface_tag (vnet_main_t * vnm, u8 * tag, u32 sw_if_index)
     }
 
   hash_set (vnm->interface_tag_by_sw_if_index, sw_if_index, tag);
+  stat_segment_set_sw_interface_tag (sw_if_index, tag);
 }
 
 static inline void
@@ -161,6 +168,7 @@ vnet_clear_sw_interface_tag (vnet_main_t * vnm, u32 sw_if_index)
     {
       u8 *oldtag = (u8 *) p[0];
       hash_unset (vnm->interface_tag_by_sw_if_index, sw_if_index);
+      stat_segment_set_sw_interface_tag (sw_if_index, NULL);
       vec_free (oldtag);
     }
 }

@@ -67,6 +67,7 @@ class StatsClientTestCase(VppTestCase):
 
     def test_symlink_values(self):
         """Test symlinks reported values"""
+
         self.create_pg_interfaces(range(2))
 
         for i in self.pg_interfaces:
@@ -84,7 +85,13 @@ class StatsClientTestCase(VppTestCase):
         self.send_and_expect(self.pg0, p, self.pg1)
         pg1_tx = self.statistics.get_counter("/interfaces/pg1/tx")
         if_tx = self.statistics.get_counter("/if/tx")
+        self.assertEqual(pg1_tx[0]["bytes"], if_tx[0][self.pg1.sw_if_index]["bytes"])
 
+        self.pg1.set_name("new-pg1")
+        with self.assertRaises(KeyError):
+            self.statistics.get_counter("/interfaces/pg1/tx")
+        pg1_tx = self.statistics.get_counter("/interfaces/new-pg1/tx")
+        if_tx = self.statistics.get_counter("/if/tx")
         self.assertEqual(pg1_tx[0]["bytes"], if_tx[0][self.pg1.sw_if_index]["bytes"])
 
     def test_symlink_add_del_interfaces(self):
@@ -149,6 +156,26 @@ class StatsClientTestCase(VppTestCase):
 
         for i in self.lo_interfaces:
             i.remove_vpp_config()
+
+    def test_interface_tags(self):
+        """Test interface tags"""
+
+        self.create_loopback_interfaces(2)
+        for i in self.lo_interfaces:
+            self.assertTrue(i.name.startswith("loop"))
+            i.set_tag(i.name)
+
+        if_tags = self.statistics.get_counter("/if/tags")
+        for i in self.lo_interfaces:
+            self.assertEqual(if_tags[i.sw_if_index], i.name)
+
+        self.loop0.set_tag("")
+        if_tags = self.statistics.get_counter("/if/tags")
+        self.assertEqual(if_tags[self.loop0.sw_if_index], None)
+
+        self.loop1.remove_vpp_config()
+        if_tags = self.statistics.get_counter("/if/tags")
+        self.assertEqual(if_tags[self.loop1.sw_if_index], None)
 
     @unittest.skip("Manual only")
     def test_mem_leak(self):

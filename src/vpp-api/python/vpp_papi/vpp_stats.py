@@ -393,6 +393,16 @@ class SimpleList(list):
         return sum(self)
 
 
+class StatsNameList(list):
+    """Name counter"""
+
+    def __getitem__(self, item):
+        """Supports partial numpy style 2d support. Slice by column [:,1]"""
+        if isinstance(item, int):
+            return list.__getitem__(self, item)
+        return list.__getitem__(self, item[1])
+
+
 class StatsEntry:
     """An individual stats entry"""
 
@@ -441,10 +451,10 @@ class StatsEntry:
 
     def name(self, stats):
         """Name counter"""
-        counter = []
+        counter = StatsNameList()
         for name in StatsVector(stats, self.value, "P"):
-            if name[0]:
-                counter.append(get_string(stats, name[0]))
+            s = get_string(stats, name[0]) if name[0] else None
+            counter.append(s)
         return counter
 
     SYMLINK_FMT1 = Struct("II")
