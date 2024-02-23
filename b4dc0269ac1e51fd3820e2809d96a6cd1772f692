@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ab241ce_1f1dd4c6",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-23T18:02:03Z",
+      "side": 1,
+      "message": "Can you convert this into if not linux return?",
+      "revId": "b4dc0269ac1e51fd3820e2809d96a6cd1772f692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
