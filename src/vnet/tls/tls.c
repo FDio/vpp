@@ -517,7 +517,7 @@ tls_session_accept_callback (session_t * tls_session)
 
   ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
-  memcpy (ctx, lctx, sizeof (*lctx));
+  clib_memcpy (ctx, lctx, sizeof (*lctx));
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
   tls_session->session_state = SESSION_STATE_READY;
@@ -534,6 +534,7 @@ tls_session_accept_callback (session_t * tls_session)
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
   app_session->connection_index = ctx->tls_ctx_handle;
+  app_session->app_wrk_index = APP_INVALID_INDEX;
   ctx->c_s_index = app_session->session_index;
 
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
