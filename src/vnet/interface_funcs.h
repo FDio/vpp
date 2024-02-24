@@ -43,6 +43,10 @@
 /* update the interface name and symlinks in statseg */
 void stat_segment_update_hw_interface_name (vnet_main_t *vnm, u32 hw_if_index);
 
+/* update the interface link speed in statseg */
+void stat_segment_update_hw_interface_link_speed (vnet_main_t *vnm,
+						  u32 hw_if_index);
+
 /* set the interface tag value to statseg */
 void stat_segment_set_sw_interface_tag (u32 sw_if_index, u8 *tag);
 
@@ -386,6 +390,7 @@ vnet_hw_interface_set_link_speed (vnet_main_t * vnm, u32 hw_if_index,
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   hw->link_speed = link_speed;
+  stat_segment_update_hw_interface_link_speed (vnm, hw_if_index);
 }
 
 /* Change interface flags (e.g. up, down, enable, disable). */

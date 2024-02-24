@@ -137,6 +137,8 @@ void vlib_stats_set_timestamp (u32 entry_index, f64 value);
 
 /* counter vector */
 u32 vlib_stats_add_counter_vector (char *fmt, ...);
+void vlib_stats_set_counter_vector (u32 entry_index, u32 idx0, u32 idx1,
+				    u64 value);
 
 /* counter pair vector */
 u32 vlib_stats_add_counter_pair_vector (char *fmt, ...);

@@ -94,12 +94,26 @@ class StatsClientTestCase(VppTestCase):
         if_tx = self.statistics.get_counter("/if/tx")
         self.assertEqual(pg1_tx[0]["bytes"], if_tx[0][self.pg1.sw_if_index]["bytes"])
 
+        pg0_speed = self.statistics.get_counter("/interfaces/pg0/speed")
+        with self.assertRaises(KeyError):
+            self.statistics.get_counter("/interfaces/pg1/speed")
+        if_speed = self.statistics.get_counter("/if/speed")
+        self.assertGreater(pg0_speed[0], 0)
+        self.assertEqual(pg0_speed[0], if_speed[0][self.pg0.sw_if_index])
+
     def test_symlink_add_del_interfaces(self):
         """Test symlinks when adding and deleting interfaces"""
+
         # We first create and delete interfaces
         self.create_loopback_interfaces(1)
         self.create_pg_interfaces(range(1))
+
         self.loop0.remove_vpp_config()
+        with self.assertRaises(KeyError):
+            self.statistics.get_counter("/interfaces/loop0/tx")
+        with self.assertRaises(KeyError):
+            self.statistics.get_counter("/interfaces/loop0/speed")
+
         self.create_pg_interfaces(range(2))
 
         for i in self.pg_interfaces:

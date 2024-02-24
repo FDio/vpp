@@ -368,6 +368,24 @@ vlib_stats_add_counter_vector (char *fmt, ...)
 					name);
 }
 
+void
+vlib_stats_set_counter_vector (u32 entry_index, u32 idx0, u32 idx1, u64 value)
+{
+  counter_t **counters;
+  int will_expand;
+
+  will_expand = vlib_stats_validate_will_expand (entry_index, idx0, idx1);
+  if (will_expand)
+    vlib_stats_segment_lock ();
+
+  vlib_stats_validate (entry_index, idx0, idx1);
+  counters = vlib_stats_get_entry_data_pointer (entry_index);
+  counters[idx0][idx1] = value;
+
+  if (will_expand)
+    vlib_stats_segment_unlock ();
+}
+
 u32
 vlib_stats_add_counter_pair_vector (char *fmt, ...)
 {

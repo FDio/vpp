@@ -73,6 +73,7 @@ pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
 
   if (want_enabled)
     {
+      vnet_hw_interface_set_link_speed (vnm, pi->hw_if_index, 1000 * 1000);
       vnet_hw_interface_set_flags (vnm, pi->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
 
@@ -133,6 +134,8 @@ pg_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
 
+  vnet_hw_interface_set_link_speed (vnm, hw_if_index,
+				    hw_flags ? 1000 * 1000 : 0);
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
   return 0;
