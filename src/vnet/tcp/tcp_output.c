@@ -838,10 +838,9 @@ tcp_send_fin (tcp_connection_t * tc)
       /* Out of buffers so program fin retransmit ASAP */
       tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
 			tcp_cfg.alloc_err_timeout);
-      if (fin_snt)
-	tc->snd_nxt += 1;
-      else
-	/* Make sure retransmit retries a fin not data */
+      tc->snd_nxt += 1;
+      /* Make sure retransmit retries a fin not data with right snd_nxt */
+      if (!fin_snt)
 	tc->flags |= TCP_CONN_FINSNT;
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
