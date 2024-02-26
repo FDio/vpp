@@ -692,6 +692,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      current_sa_packets, current_sa_bytes);
 	  current_sa_packets = current_sa_bytes = 0;
 
+	  if (PREDICT_FALSE (!ipsec_sa_is_valid (sa_index0)))
+	    {
+	      err = ESP_ENCRYPT_ERROR_INVALID_SA;
+	      esp_encrypt_set_next_index (b[0], node, thread_index, err,
+					  n_noop, noop_nexts, drop_next,
+					  sa_index0);
+	      goto trace;
+	    }
+
 	  sa0 = ipsec_sa_get (sa_index0);
 	  current_sa_index = sa_index0;
 

@@ -846,6 +846,12 @@ ipsec_sa_get (u32 sa_index)
   return (pool_elt_at_index (ipsec_sa_pool, sa_index));
 }
 
+always_inline bool
+ipsec_sa_is_valid (u32 sa_index)
+{
+  return (pool_is_free_index (ipsec_sa_pool, sa_index) == 0);
+}
+
 #endif /* __IPSEC_SPD_SA_H__ */
 
 /*
