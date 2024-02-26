@@ -762,6 +762,12 @@ counters esp_encrypt {
   units "packets";
   description "no available frame (packet dropped)";
   };
+  invalid_sa {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid SA (packet dropped)";
+  };
 };
 
 counters ah_encrypt {
