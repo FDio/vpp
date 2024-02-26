@@ -162,8 +162,10 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	    {
 	      if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 		{
-		  session_set_state (s, old_state);
-		  app_worker_close_notify (app_wrk, s);
+		  session_set_state (s,
+				     clib_max (old_state, s->session_state));
+		  if (!(s->flags & SESSION_F_APP_CLOSED))
+		    app->cb_fns.session_disconnect_callback (s);
 		}
 	    }
 	  break;
@@ -188,8 +190,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	    }
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
-	      session_set_state (s, old_state);
-	      app_worker_close_notify (app_wrk, s);
+	      session_set_state (s, clib_max (old_state, s->session_state));
+	      if (!(s->flags & SESSION_F_APP_CLOSED))
+		app->cb_fns.session_disconnect_callback (s);
 	    }
 	  break;
 	case SESSION_CTRL_EVT_DISCONNECTED:
