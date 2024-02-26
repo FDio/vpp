@@ -55,17 +55,17 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   u32 i, j, count, n_left = n_ops;
   u32xN placeholder_mask = { };
   u32xN len = { };
-  vnet_crypto_key_index_t key_index[N_AES_BYTES];
-  u8 *src[N_AES_BYTES] = {};
-  u8 *dst[N_AES_BYTES] = {};
+  vnet_crypto_key_index_t key_index[4 * N_AES_LANES];
+  u8 *src[4 * N_AES_LANES] = {};
+  u8 *dst[4 * N_AES_LANES] = {};
   u8xN r[4] = {};
   u8xN k[15][4] = {};
 
-  for (i = 0; i < N_AES_BYTES; i++)
+  for (i = 0; i < 4 * N_AES_LANES; i++)
     key_index[i] = ~0;
 
 more:
-  for (i = 0; i < N_AES_BYTES; i++)
+  for (i = 0; i < 4 * N_AES_LANES; i++)
     if (len[i] == 0)
       {
 	if (n_left == 0)
@@ -198,7 +198,7 @@ more:
 
   len -= u32xN_splat (count);
 
-  for (i = 0; i < N_AES_BYTES; i++)
+  for (i = 0; i < 4 * N_AES_LANES; i++)
     {
       src[i] += count;
       dst[i] += count;
