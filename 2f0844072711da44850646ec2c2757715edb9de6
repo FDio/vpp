@@ -108,6 +108,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "068c8c0d_d46ede09",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-26T09:55:05Z",
+      "side": 1,
+      "message": "Linux interfaces have PIDs in them too - line 84 in netconfig.go",
+      "parentUuid": "503c7140_549c2cae",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0dbada8e_4c9078ad",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 3

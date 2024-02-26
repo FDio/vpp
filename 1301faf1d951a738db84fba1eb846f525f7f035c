@@ -22,6 +22,30 @@
       },
       "revId": "1301faf1d951a738db84fba1eb846f525f7f035c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4fb45e4f_7dc1953a",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-02-26T09:55:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c79dd96a_6b317833",
+      "range": {
+        "startLine": 380,
+        "startChar": 49,
+        "endLine": 380,
+        "endChar": 69
+      },
+      "revId": "1301faf1d951a738db84fba1eb846f525f7f035c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
