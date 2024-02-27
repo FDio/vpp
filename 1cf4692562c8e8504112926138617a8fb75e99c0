@@ -16,6 +16,24 @@
       "message": "Logically I think the patch is ok. @Vratko if it is not too much trouble can you have a quick check on performance impact on CSIT?",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29e72226_f25a3af0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-02-27T16:52:30Z",
+      "side": 1,
+      "message": "\u003e Logically I think the patch is ok. @Vratko if it is not too much trouble can you have a quick check on performance impact on CSIT?\n\nIs there anything I can check and update here?",
+      "parentUuid": "d44641b0_32b5bb30",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
