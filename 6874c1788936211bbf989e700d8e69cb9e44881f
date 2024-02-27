@@ -69,6 +69,24 @@
       "message": "Thanks for the patch. But I had tested it in AWS with ENA interfaces where it failed to create interface or delete interface.",
       "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60844495_0cc984bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-02-27T10:39:46Z",
+      "side": 1,
+      "message": "Hello Mohsin, thanks for testing it out. I think I know what to fix, but at the moment I don\u0027t have intel nics to test it out. We tried only on 1 developer\u0027s laptop and it worked fine :) \n\nAt the moment I\u0027m waiting until I get x520 to fix it and test it properly and perhaps to add a couple of UTs.",
+      "parentUuid": "cd8c93e4_d917d836",
+      "revId": "6874c1788936211bbf989e700d8e69cb9e44881f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
