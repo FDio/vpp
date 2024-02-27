@@ -23,3 +23,4 @@ will discuss basic operations, and the state of a running FD.io VPP on a system.
    twovppinstances.rst
    routing.rst
    switching.rst
+   nat.rst
