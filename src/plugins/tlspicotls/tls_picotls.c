@@ -205,6 +205,22 @@ picotls_transport_close (tls_ctx_t * ctx)
 }
 
 static int
+picotls_transport_reset (tls_ctx_t *ctx)
+{
+  if (!picotls_handshake_is_over (ctx))
+    {
+      picotls_handle_handshake_failure (ctx);
+      return 0;
+    }
+
+  session_transport_reset_notify (&ctx->connection);
+  session_transport_closed_notify (&ctx->connection);
+  tls_disconnect_transport (ctx);
+
+  return 0;
+}
+
+static int
 picotls_app_close (tls_ctx_t * ctx)
 {
   session_t *app_session;
@@ -742,6 +758,7 @@ const static tls_engine_vft_t picotls_engine = {
   .ctx_read = picotls_ctx_read,
   .ctx_write = picotls_ctx_write,
   .ctx_transport_close = picotls_transport_close,
+  .ctx_transport_reset = picotls_transport_reset,
   .ctx_app_close = picotls_app_close,
   .ctx_reinit_cachain = picotls_reinit_ca_chain,
 };

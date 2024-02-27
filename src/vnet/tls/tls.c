@@ -406,6 +406,12 @@ tls_ctx_transport_close (tls_ctx_t * ctx)
 }
 
 static inline int
+tls_ctx_transport_reset (tls_ctx_t *ctx)
+{
+  return tls_vfts[ctx->tls_ctx_engine].ctx_transport_reset (ctx);
+}
+
+static inline int
 tls_ctx_app_close (tls_ctx_t * ctx)
 {
   return tls_vfts[ctx->tls_ctx_engine].ctx_app_close (ctx);
@@ -440,32 +446,13 @@ tls_notify_app_io_error (tls_ctx_t *ctx)
 }
 
 void
-tls_session_reset_callback (session_t * s)
+tls_session_reset_callback (session_t *ts)
 {
   tls_ctx_t *ctx;
-  transport_connection_t *tc;
-  session_t *app_session;
 
-  ctx = tls_ctx_get (s->opaque);
+  ctx = tls_ctx_get_w_thread (ts->opaque, ts->thread_index);
   ctx->flags |= TLS_CONN_F_PASSIVE_CLOSE;
-  tc = &ctx->connection;
-  if (tls_ctx_handshake_is_over (ctx))
-    {
-      session_transport_reset_notify (tc);
-      session_transport_closed_notify (tc);
-      tls_disconnect_transport (ctx);
-    }
-  else
-    {
-      app_session = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
-      if (app_session)
-	{
-	  session_free (app_session);
-	  ctx->c_s_index = SESSION_INVALID_INDEX;
-	  ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
-	  tls_disconnect_transport (ctx);
-	}
-    }
+  tls_ctx_transport_reset (ctx);
 }
 
 static void
