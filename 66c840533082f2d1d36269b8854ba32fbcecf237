@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9d91fd8_a39e9b3c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-02-27T12:33:24Z",
+      "side": 1,
+      "message": "Found this while learning about VPP. This is my first patch here, please let me know if I should have done something differently.",
+      "revId": "66c840533082f2d1d36269b8854ba32fbcecf237",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
