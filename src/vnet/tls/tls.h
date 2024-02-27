@@ -144,6 +144,7 @@ typedef struct tls_engine_vft_
   int (*ctx_start_listen) (tls_ctx_t * ctx);
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
   int (*ctx_transport_close) (tls_ctx_t * ctx);
+  int (*ctx_transport_reset) (tls_ctx_t *ctx);
   int (*ctx_app_close) (tls_ctx_t * ctx);
   int (*ctx_reinit_cachain) (void);
 } tls_engine_vft_t;

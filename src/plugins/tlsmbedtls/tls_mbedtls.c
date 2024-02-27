@@ -552,6 +552,21 @@ mbedtls_transport_close (tls_ctx_t * ctx)
 }
 
 static int
+mbedtls_transport_reset (tls_ctx_t *ctx)
+{
+  if (!mbedtls_handshake_is_over (ctx))
+    {
+      session_close (session_get_from_handle (ctx->tls_session_handle));
+      return 0;
+    }
+
+  session_transport_reset_notify (&ctx->connection);
+  session_transport_closed_notify (&ctx->connection);
+  tls_disconnect_transport (ctx);
+  return 0;
+}
+
+static int
 mbedtls_app_close (tls_ctx_t * ctx)
 {
   tls_disconnect_transport (ctx);
@@ -579,6 +594,7 @@ const static tls_engine_vft_t mbedtls_engine = {
   .ctx_start_listen = mbedtls_start_listen,
   .ctx_stop_listen = mbedtls_stop_listen,
   .ctx_transport_close = mbedtls_transport_close,
+  .ctx_transport_reset = mbedtls_transport_reset,
   .ctx_app_close = mbedtls_app_close,
   .ctx_reinit_cachain = mbedtls_reinit_ca_chain,
 };

@@ -1061,6 +1061,22 @@ openssl_transport_close (tls_ctx_t * ctx)
 }
 
 static int
+openssl_transport_reset (tls_ctx_t *ctx)
+{
+  if (!openssl_handshake_is_over (ctx))
+    {
+      openssl_handle_handshake_failure (ctx);
+      return 0;
+    }
+
+  session_transport_reset_notify (&ctx->connection);
+  session_transport_closed_notify (&ctx->connection);
+  tls_disconnect_transport (ctx);
+
+  return 0;
+}
+
+static int
 openssl_app_close (tls_ctx_t * ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
@@ -1151,6 +1167,7 @@ const static tls_engine_vft_t openssl_engine = {
   .ctx_start_listen = openssl_start_listen,
   .ctx_stop_listen = openssl_stop_listen,
   .ctx_transport_close = openssl_transport_close,
+  .ctx_transport_reset = openssl_transport_reset,
   .ctx_app_close = openssl_app_close,
   .ctx_reinit_cachain = openssl_reinit_ca_chain,
 };
