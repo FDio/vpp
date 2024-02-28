@@ -165,6 +165,38 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
   return n;
 }
 
+#ifdef PLATFORM_OCTEON9
+static_always_inline u32
+oct_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, u16 n_refill)
+{
+  u32 n_alloc, n_free;
+  u32 buffer_indices[n_refill];
+  vlib_buffer_t *buffers[n_refill];
+  u8 bpi = vnet_dev_get_rx_queue_buffer_pool_index (rxq);
+  oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
+  u64 aura = roc_npa_aura_handle_to_aura (crq->aura_handle);
+  const uint64_t addr =
+    roc_npa_aura_handle_to_base (crq->aura_handle) + NPA_LF_AURA_OP_FREE0;
+
+  if (n_refill < 256)
+    return 0;
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, n_refill);
+  if (PREDICT_FALSE (n_alloc < n_refill))
+    goto alloc_fail;
+
+  vlib_get_buffers (vm, buffer_indices, (vlib_buffer_t **) buffers, n_alloc);
+
+  for (n_free = 0; n_free < n_alloc; n_free++)
+    roc_store_pair ((u64) buffers[n_free], aura, addr);
+
+  return n_alloc;
+
+alloc_fail:
+  vlib_buffer_unalloc_to_pool (vm, buffer_indices, n_alloc, bpi);
+  return 0;
+}
+#else
 static_always_inline void
 oct_rxq_refill_batch (vlib_main_t *vm, u64 lmt_id, u64 addr,
 		      oct_npa_lf_aura_batch_free_line_t *lines, u32 *bi,
@@ -260,6 +292,7 @@ oct_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, u16 n_refill)
 
   return n_enq;
 }
+#endif
 
 static_always_inline void
 oct_rx_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
