@@ -34,6 +34,24 @@
       "parentUuid": "d44641b0_32b5bb30",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "12b9f56a_bfe2a255",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-02-28T13:44:38Z",
+      "side": 1,
+      "message": "No. Just for precaution. When crypto display adaptive mode was introduced, although not showing in many tests, it caused a big performance impact to CSIT ipsec async tests.",
+      "parentUuid": "29e72226_f25a3af0",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
