@@ -205,12 +205,13 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
   app_listener = listen_session_get_from_handle (lctx->app_session_handle);
 
-  app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-  app_session->app_wrk_index = ctx->parent_app_wrk_index;
-  app_session->connection_index = ctx->tls_ctx_handle;
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_ACCEPTING;
   app_session->session_type = app_listener->session_type;
   app_session->listener_handle = listen_session_get_handle (app_listener);
-  app_session->session_state = SESSION_STATE_ACCEPTING;
+  app_session->app_wrk_index = ctx->parent_app_wrk_index;
+  app_session->connection_index = ctx->tls_ctx_handle;
+  ctx->c_s_index = app_session->session_index;
 
   if ((rv = app_worker_init_accepted (app_session)))
     {
@@ -235,39 +236,32 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_index);
   if (!app_wrk)
     {
-      if (ctx->tls_type == TRANSPORT_PROTO_TLS)
-	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return -1;
     }
 
   if (err)
     {
-      /* Free app session pre-allocated when transport was established */
-      if (ctx->tls_type == TRANSPORT_PROTO_TLS)
-	session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       goto send_reply;
     }
 
-  /* For DTLS the app session is not preallocated because the underlying udp
-   * session might migrate to a different worker during the handshake */
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_CREATED;
+  app_session->connection_index = ctx->tls_ctx_handle;
+  ctx->c_s_index = app_session->session_index;
+
   if (ctx->tls_type == TRANSPORT_PROTO_DTLS)
     {
-      session_type_t st;
       /* Cleanup half-open session as we don't get notification from udp */
       session_half_open_delete_notify (&ctx->connection);
-      app_session = session_alloc (ctx->c_thread_index);
-      app_session->session_state = SESSION_STATE_CREATED;
-      ctx->c_s_index = app_session->session_index;
-      st =
+      app_session->session_type =
 	session_type_from_proto_and_ip (TRANSPORT_PROTO_DTLS, ctx->tcp_is_ip4);
-      app_session->session_type = st;
-      app_session->connection_index = ctx->tls_ctx_handle;
     }
   else
     {
-      app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+      app_session->session_type =
+	session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
     }
 
   app_session->app_wrk_index = ctx->parent_app_wrk_index;
@@ -494,7 +488,7 @@ tls_session_disconnect_callback (session_t * tls_session)
 int
 tls_session_accept_callback (session_t * tls_session)
 {
-  session_t *tls_listener, *app_session;
+  session_t *tls_listener;
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
@@ -514,23 +508,12 @@ tls_session_accept_callback (session_t * tls_session)
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   ctx->ckpair_index = lctx->ckpair_index;
 
-  /* Preallocate app session. Avoids allocating a session post handshake
-   * on tls_session rx and potentially invalidating the session pool */
-  app_session = session_alloc (ctx->c_thread_index);
-  app_session->session_state = SESSION_STATE_CREATED;
-  app_session->session_type =
-    session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
-  app_session->connection_index = ctx->tls_ctx_handle;
-  app_session->app_wrk_index = APP_INVALID_INDEX;
-  ctx->c_s_index = app_session->session_index;
-
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
 	   tls_listener->opaque, vlib_get_thread_index (), ctx_handle);
 
   if (tls_ctx_init_server (ctx))
     {
       /* Do not free ctx yet, in case we have pending rx events */
-      session_free (app_session);
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       tls_disconnect_transport (ctx);
     }
@@ -577,9 +560,7 @@ int
 tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 			  session_t *tls_session, session_error_t err)
 {
-  session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
-  session_type_t st;
   u32 ctx_handle;
 
   ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
@@ -602,15 +583,6 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
   tls_session->session_state = SESSION_STATE_READY;
-
-  /* Preallocate app session. Avoids allocating a session post handshake
-   * on tls_session rx and potentially invalidating the session pool */
-  app_session = session_alloc (ctx->c_thread_index);
-  app_session->session_state = SESSION_STATE_CREATED;
-  ctx->c_s_index = app_session->session_index;
-  st = session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
-  app_session->session_type = st;
-  app_session->connection_index = ctx->tls_ctx_handle;
 
   if (tls_ctx_init_client (ctx))
     {
