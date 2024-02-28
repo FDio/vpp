@@ -29,6 +29,44 @@ typedef struct
   lmt_line_t *lmt_lines;
 } oct_tx_ctx_t;
 
+#ifdef PLATFORM_OCTEON9
+static_always_inline u32
+oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
+{
+  oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
+  u16 off = ctq->hdr_off;
+  u64 ah = ctq->aura_handle;
+  u32 n_freed = 0, n;
+
+  ah = ctq->aura_handle;
+
+  if ((n = roc_npa_aura_op_available (ah)) >= 32)
+    {
+      u64 buffers[n];
+      u32 bi[n];
+
+      n_freed = roc_npa_aura_op_bulk_alloc (ah, buffers, n, 0, 1);
+      vlib_get_buffer_indices_with_offset (vm, (void **) &buffers, bi, n_freed,
+					   off);
+      vlib_buffer_free_no_next (vm, bi, n_freed);
+    }
+
+  return n_freed;
+}
+
+static_always_inline void
+oct_lmt_copy (void *lmt_addr, u64 io_addr, void *desc, u64 dwords)
+{
+  u64 lmt_status;
+
+  do
+    {
+      roc_lmt_mov_seg (lmt_addr, desc, dwords);
+      lmt_status = roc_lmt_submit_ldeor (io_addr);
+    }
+  while (lmt_status == 0);
+}
+#else
 static_always_inline u32
 oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 {
@@ -122,6 +160,7 @@ oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 
   return n_freed;
 }
+#endif
 
 static_always_inline u8
 oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
@@ -139,6 +178,11 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
       .subdc = NIX_SUBDC_SG,
     },
   };
+
+#ifdef PLATFORM_OCTEON9
+  /* Override line for Octeon9 */
+  line = ctx->lmt_lines;
+#endif
 
   if (!simple && flags & VLIB_BUFFER_NEXT_PRESENT)
     {
@@ -220,8 +264,12 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
       t->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
     }
 
+#ifdef PLATFORM_OCTEON9
+  oct_lmt_copy (line, ctx->lmt_ioaddr, &d, n_dwords);
+#else
   for (u32 i = 0; i < n_dwords; i++)
     line->dwords[i] = d.as_u128[i];
+#endif
 
   return n_dwords;
 }
@@ -304,6 +352,7 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
   ioaddr = ctx->lmt_ioaddr;
   n_lines = n_pkts;
 
+#ifndef PLATFORM_OCTEON9
   if (PREDICT_FALSE (or_flags_16 & VLIB_BUFFER_NEXT_PRESENT))
     {
       dpl = dwords_per_line;
@@ -332,6 +381,7 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
     }
 
   roc_lmt_submit_steorl (lmt_arg, ioaddr);
+#endif
 
   return n_pkts;
 }
@@ -346,7 +396,11 @@ VNET_DEV_NODE_FN (oct_tx_node)
   u32 *from = vlib_frame_vector_args (frame);
   u32 n, n_enq, n_left, n_pkts = frame->n_vectors;
   vlib_buffer_t *buffers[VLIB_FRAME_SIZE + 8], **b = buffers;
+#ifdef PLATFORM_OCTEON9
+  u64 lmt_id = 0;
+#else
   u64 lmt_id = vm->thread_index << ROC_LMT_LINES_PER_CORE_LOG2;
+#endif
 
   oct_tx_ctx_t ctx = {
     .node = node,
