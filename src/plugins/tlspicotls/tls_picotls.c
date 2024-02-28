@@ -179,7 +179,6 @@ picotls_stop_listen (tls_ctx_t * lctx)
 static void
 picotls_handle_handshake_failure (tls_ctx_t * ctx)
 {
-  session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
   ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
   ctx->c_s_index = SESSION_INVALID_INDEX;
   tls_disconnect_transport (ctx);
