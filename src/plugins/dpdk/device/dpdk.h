@@ -222,11 +222,13 @@ typedef struct
   dpdk_port_conf_t conf;
 } dpdk_device_t;
 
+#define DPDK_MIN_POLL_INTERVAL (0.001) /* 1msec */
+
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
-#define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
+#define DPDK_MIN_STATS_POLL_INTERVAL  DPDK_MIN_POLL_INTERVAL
 
 #define DPDK_LINK_POLL_INTERVAL       (3.0)
-#define DPDK_MIN_LINK_POLL_INTERVAL   (0.001)	/* 1msec */
+#define DPDK_MIN_LINK_POLL_INTERVAL   DPDK_MIN_POLL_INTERVAL
 
 #define foreach_dpdk_device_config_item                                       \
   _ (num_rx_queues)                                                           \
