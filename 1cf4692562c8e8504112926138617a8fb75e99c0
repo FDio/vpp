@@ -52,6 +52,24 @@
       "parentUuid": "29e72226_f25a3af0",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95bc1fe9_51b8464d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-02-28T14:04:44Z",
+      "side": 1,
+      "message": "True.. my other PR of adding CLI was to get around the adaptive change impact. \nNo worries, will wait for confirmation.",
+      "parentUuid": "12b9f56a_bfe2a255",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
