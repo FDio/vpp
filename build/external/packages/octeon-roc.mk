@@ -2,19 +2,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # https://spdx.org/licenses/Apache-2.0.html
 
-octeon-roc_version             := 0.3
+octeon-roc_version             := 0.4
 octeon-roc_tarball             := octeon-roc-v$(octeon-roc_version).tar.gz
-octeon-roc_tarball_md5sum      := e4a16beb76a6c63af1600dd4d1d752b8
+octeon-roc_tarball_md5sum      := fa4ea47aae4507a342bb8fc6e8b66bd3
 
 octeon-roc_tarball_strip_dirs  := 1
 octeon-roc_url                 := https://github.com/MarvellEmbeddedProcessors/marvell-vpp/archive/refs/tags/$(octeon-roc_tarball)
+
+ifeq ($(VPP_PLATFORM), octeon9)
+roc-platform:=-DROC_PLATFORM_O9
+else
+roc-platform:=-DROC_PLATFORM_O10
+endif
 
 define  octeon-roc_config_cmds
 	@true
 endef
 
 define  octeon-roc_build_cmds
-	@cd ${octeon-roc_src_dir} && rm -f $(octeon-roc_build_log) && $(CMAKE) ${octeon-roc_src_dir} -DCMAKE_INSTALL_PREFIX='$(octeon-roc_install_dir)' >> $(octeon-roc_build_log)
+	@cd ${octeon-roc_src_dir} && rm -f $(octeon-roc_build_log) && \
+           $(CMAKE) ${octeon-roc_src_dir} -DCMAKE_INSTALL_PREFIX='$(octeon-roc_install_dir)' \
+              -DCMAKE_C_FLAGS='$(roc-platform)'>> $(octeon-roc_build_log)
 	@$(MAKE) -C ${octeon-roc_src_dir} >> $(octeon-roc_build_log)
 endef
 
