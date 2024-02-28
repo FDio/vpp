@@ -49,6 +49,12 @@ oct_plt_get_thread_index (void)
   return __os_thread_index;
 }
 
+static u64
+oct_plt_get_cache_line_size (void)
+{
+  return CLIB_CACHE_LINE_BYTES;
+}
+
 static void
 oct_drv_physmem_free (vlib_main_t *vm, void *mem)
 {
@@ -178,4 +184,5 @@ oct_plt_init_param_t oct_plt_init_param = {
   .oct_plt_spinlock_unlock = oct_plt_spinlock_unlock,
   .oct_plt_spinlock_trylock = oct_plt_spinlock_trylock,
   .oct_plt_get_thread_index = oct_plt_get_thread_index,
+  .oct_plt_get_cache_line_size = oct_plt_get_cache_line_size,
 };

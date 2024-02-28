@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2022 Cisco Systems, Inc.
 
-if (NOT VPP_PLATFORM_NAME STREQUAL "octeon10")
+if (NOT VPP_PLATFORM_NAME STREQUAL "octeon10" AND NOT VPP_PLATFORM_NAME STREQUAL "octeon9")
   return()
 endif()
 
@@ -20,6 +20,10 @@ if (NOT OCTEON_ROC_LIB)
 endif()
 
 include_directories (${OCTEON_ROC_DIR}/)
+
+if (VPP_PLATFORM_NAME STREQUAL "octeon9")
+   add_compile_definitions(PLATFORM_OCTEON9)
+endif()
 
 add_vpp_plugin(dev_octeon
   SOURCES
