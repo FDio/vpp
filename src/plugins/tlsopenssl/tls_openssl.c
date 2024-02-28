@@ -263,8 +263,6 @@ openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
 static void
 openssl_handle_handshake_failure (tls_ctx_t * ctx)
 {
-  session_t *app_session;
-
   /* Failed to renegotiate handshake */
   if (ctx->flags & TLS_CONN_F_HS_DONE)
     {
@@ -275,18 +273,8 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
 
   if (SSL_is_server (((openssl_ctx_t *) ctx)->ssl))
     {
-      /*
-       * Cleanup pre-allocated app session and close transport
-       */
-      app_session =
-	session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
-      if (app_session)
-	{
-	  session_free (app_session);
-	  ctx->c_s_index = SESSION_INVALID_INDEX;
-	  tls_disconnect_transport (ctx);
-	}
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
+      tls_disconnect_transport (ctx);
     }
   else
     {
