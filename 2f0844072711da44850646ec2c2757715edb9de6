@@ -126,6 +126,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "521661ff_0e2b6430",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-29T22:29:25Z",
+      "side": 1,
+      "message": "Oh, somehow I missed that. So that\u0027s it, let\u0027s change the interface here in the suite and append pid to it (above line 323), before we pass it to the helper netconfig. That is, netconfig should be oblivious to the logic we\u0027re using to generate unique interfaces.\n\nProbably we should do something similar for container.go, i.e., we should pass the parsed yaml + pid modifications instead of asking it to append the pid. But that\u0027s for the next improvement",
+      "parentUuid": "068c8c0d_d46ede09",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "0dbada8e_4c9078ad",
         "filename": "extras/hs-test/http_test.go",
         "patchSetId": 3

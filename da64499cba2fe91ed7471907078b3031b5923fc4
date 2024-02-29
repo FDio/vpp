@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13ee93ba_75b65898",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-29T22:29:25Z",
+      "side": 1,
+      "message": "Looking good! A few more comments",
+      "revId": "da64499cba2fe91ed7471907078b3031b5923fc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe1e6665_64a038d8",
+        "filename": "extras/hs-test/proxy_test.go",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-02-29T22:29:25Z",
+      "side": 1,
+      "message": "can we make a new `s.getNamespaceByName()` or something like that? Also we should add a suite function that gives us a filename, e.g., s.makeTestFilename(base_string). Where base string could be something that\u0027s formattable, i.e., \"test%s.data\". \n\nThen we won\u0027t have to do this concatenation manually and in the future we could use something different to pids.",
+      "revId": "da64499cba2fe91ed7471907078b3031b5923fc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
