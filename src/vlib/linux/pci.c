@@ -38,6 +38,8 @@
  */
 
 #include <vppinfra/linux/sysfs.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
@@ -257,11 +259,7 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
     }
   if (di->numa_node == -1)
     {
-      /* if '/sys/bus/pci/devices/<device id>/numa_node' returns -1 and
-         it is a SMP system, set numa_node to 0. */
-      if ((err = clib_sysfs_read ("/sys/devices/system/node/online", "%U",
-				  unformat_bitmap_list, &bmp)))
-	clib_error_free (err);
+      bmp = os_get_online_cpu_node_bitmap ();
       if (clib_bitmap_count_set_bits (bmp) == 1)
 	di->numa_node = 0;
     }

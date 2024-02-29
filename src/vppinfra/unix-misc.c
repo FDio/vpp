@@ -37,8 +37,12 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/os.h>
+#include <vppinfra/bitmap.h>
 #include <vppinfra/unix.h>
 #include <vppinfra/format.h>
+#ifdef __linux__
+#include <vppinfra/linux/sysfs.h>
+#endif
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -258,6 +262,26 @@ __clib_export __clib_weak uword
 os_get_nthreads (void)
 {
   return 1;
+}
+
+__clib_export clib_bitmap_t *
+os_get_online_cpu_core_bitmap ()
+{
+#if __linux__
+  return clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
+#else
+  return 0;
+#endif
+}
+
+__clib_export clib_bitmap_t *
+os_get_online_cpu_node_bitmap ()
+{
+#if __linux__
+  return clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+#else
+  return 0;
+#endif
 }
 
 /*

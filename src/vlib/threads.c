@@ -20,6 +20,8 @@
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
 #include <vppinfra/linux/sysfs.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
@@ -186,10 +188,8 @@ vlib_thread_init (vlib_main_t * vm)
   ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
-  tm->cpu_core_bitmap =
-    clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
-  tm->cpu_socket_bitmap =
-    clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+  tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
+  tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
@@ -440,9 +440,7 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
   clib_sysfs_read ((char *) p, "%d", &core_id);
   vec_reset_length (p);
 
-  /* *INDENT-OFF* */
-  clib_sysfs_read ("/sys/devices/system/node/online", "%U",
-        unformat_bitmap_list, &nbmp);
+  nbmp = os_get_online_cpu_node_bitmap ();
   clib_bitmap_foreach (node, nbmp)  {
     p = format (p, "%s%u/cpulist%c", sys_node_path, node, 0);
     clib_sysfs_read ((char *) p, "%U", unformat_bitmap_list, &cbmp);
@@ -451,7 +449,7 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
     vec_reset_length (cbmp);
     vec_reset_length (p);
   }
-  /* *INDENT-ON* */
+
   vec_free (nbmp);
   vec_free (cbmp);
   vec_free (p);
