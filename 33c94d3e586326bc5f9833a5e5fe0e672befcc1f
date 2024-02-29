@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d094521_2818c62a",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 193,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-02-29T14:56:25Z",
+      "side": 1,
+      "message": "doens\u0027t have lot of sense to have vppinfra function, and then do it directly for linux. Can you simply move linux implementation also to vppinfra....",
+      "revId": "33c94d3e586326bc5f9833a5e5fe0e672befcc1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
