@@ -20,6 +20,8 @@
 #include <vppinfra/time_range.h>
 #include <vppinfra/interrupt.h>
 #include <vppinfra/linux/sysfs.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
@@ -186,10 +188,8 @@ vlib_thread_init (vlib_main_t * vm)
   ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
-  tm->cpu_core_bitmap =
-    clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
-  tm->cpu_socket_bitmap =
-    clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+  tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
+  tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
