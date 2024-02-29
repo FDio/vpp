@@ -53,6 +53,12 @@ clib_error_t *clib_file_contents (char *file, u8 ** result);
 /* As above but for /proc file system on Linux. */
 clib_error_t *unix_proc_file_contents (char *file, u8 ** result);
 
+/* Retrieve bitmap of online cpu cures */
+clib_bitmap_t *os_get_online_cpu_core_bitmap ();
+
+/* Retrieve bitmap of online cpu nodes (sockets) */
+clib_bitmap_t *os_get_online_cpu_node_bitmap ();
+
 #endif /* included_clib_unix_h */
 
 /*

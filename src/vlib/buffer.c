@@ -44,6 +44,8 @@
  */
 
 #include <vppinfra/linux/sysfs.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/stats/stats.h>
@@ -840,9 +842,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
-  if ((err = clib_sysfs_read ("/sys/devices/system/node/online", "%U",
-			      unformat_bitmap_list, &bmp)))
-    clib_error_free (err);
+  bmp = os_get_online_cpu_node_bitmap ();
 
   if ((err = clib_sysfs_read ("/sys/devices/system/node/has_memory", "%U",
 			      unformat_bitmap_list, &bmp_has_memory)))
