@@ -656,6 +656,10 @@ session_enqueue_notify_inline (session_t *s, u8 is_cl)
 int
 session_enqueue_notify (session_t *s)
 {
+  ASSERT (!(s->flags & SESSION_F_IS_CLESS));
+  if (s->flags & SESSION_F_RX_EVT)
+    return 0;
+  s->flags |= SESSION_F_RX_EVT;
   return session_enqueue_notify_inline (s, 0 /* is_cl */);
 }
 

@@ -1411,7 +1411,6 @@ ct_session_tx (session_t * s)
   peer_s = session_get (peer_ct->c_s_index, peer_ct->c_thread_index);
   if (peer_s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return 0;
-  peer_s->flags |= SESSION_F_RX_EVT;
   return session_enqueue_notify (peer_s);
 }
 
