@@ -145,9 +145,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  /* No app cb function currently */
 	  if (is_builtin)
 	    break;
-	  mq_send_session_bound_cb (app_wrk->wrk_index, evt->as_u64[1] >> 32,
-				    evt->session_handle,
-				    evt->as_u64[1] & 0xffffffff);
+	  app->cb_fns.session_listened_callback (
+	    app_wrk->wrk_index, evt->as_u64[1] >> 32, evt->session_handle,
+	    evt->as_u64[1] & 0xffffffff);
 	  break;
 	case SESSION_CTRL_EVT_ACCEPTED:
 	  s = session_get (evt->session_index, thread_index);
@@ -208,9 +208,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	case SESSION_CTRL_EVT_UNLISTEN_REPLY:
 	  if (is_builtin)
 	    break;
-	  mq_send_unlisten_reply (app_wrk, evt->session_handle,
-				  evt->as_u64[1] >> 32,
-				  evt->as_u64[1] & 0xffffffff);
+	  app->cb_fns.session_unlistened_callback (
+	    app_wrk->wrk_index, evt->session_handle, evt->as_u64[1] >> 32,
+	    evt->as_u64[1] & 0xffffffff);
 	  break;
 	case SESSION_CTRL_EVT_MIGRATED:
 	  s = session_get (evt->session_index, thread_index);

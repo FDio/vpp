@@ -406,13 +406,6 @@ app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_default ();
 
-/* Needed while we support both bapi and mq ctrl messages */
-int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
-			      session_handle_t handle, int rv);
-int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-				  session_t * s, session_error_t err);
-void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
-			     u32 context, int rv);
 void sapi_socket_close_w_handle (u32 api_handle);
 
 crypto_engine_type_t app_crypto_engine_type_add (void);
