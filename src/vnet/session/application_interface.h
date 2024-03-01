@@ -62,6 +62,13 @@ typedef struct session_cb_vft_
   /** Notify app that session pool migration happened */
   void (*session_migrate_callback) (session_t * s, session_handle_t new_sh);
 
+  /** Notify app (external only) that listen was processed */
+  int (*session_listened_callback) (u32 app_wrk_index, u32 api_context,
+				    session_handle_t handle, int rv);
+  /** Notify app (external only) that unlisten was processed */
+  void (*session_unlistened_callback) (u32 app_wrk_index, session_handle_t sh,
+				       u32 context, int rv);
+
   /** Direct RX callback for built-in application */
   int (*builtin_app_rx_callback) (session_t * session);
 

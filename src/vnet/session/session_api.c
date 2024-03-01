@@ -271,7 +271,7 @@ snd_msg:
   return 0;
 }
 
-int
+static int
 mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			  session_handle_t handle, int rv)
 {
@@ -325,11 +325,14 @@ snd_msg:
   return 0;
 }
 
-void
-mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
-			u32 context, int rv)
+static void
+mq_send_unlisten_cb (u32 app_wrk_index, session_handle_t sh, u32 context,
+		     int rv)
 {
   session_unlisten_reply_msg_t m = { 0 };
+  app_worker_t *app_wrk;
+
+  app_wrk = app_worker_get (app_wrk_index);
 
   m.context = context;
   m.handle = sh;
@@ -503,6 +506,8 @@ static session_cb_vft_t session_mq_cb_vft = {
   .session_reset_callback = mq_send_session_reset_cb,
   .session_migrate_callback = mq_send_session_migrate_cb,
   .session_cleanup_callback = mq_send_session_cleanup_cb,
+  .session_listened_callback = mq_send_session_bound_cb,
+  .session_unlistened_callback = mq_send_unlisten_cb,
   .add_segment_callback = mq_send_add_segment_cb,
   .del_segment_callback = mq_send_del_segment_cb,
   .builtin_app_rx_callback = mq_send_io_rx_event,
@@ -1282,6 +1287,8 @@ static session_cb_vft_t session_mq_sapi_cb_vft = {
   .session_reset_callback = mq_send_session_reset_cb,
   .session_migrate_callback = mq_send_session_migrate_cb,
   .session_cleanup_callback = mq_send_session_cleanup_cb,
+  .session_listened_callback = mq_send_session_bound_cb,
+  .session_unlistened_callback = mq_send_unlisten_cb,
   .add_segment_callback = mq_send_add_segment_sapi_cb,
   .del_segment_callback = mq_send_del_segment_sapi_cb,
   .builtin_app_rx_callback = mq_send_io_rx_event,
