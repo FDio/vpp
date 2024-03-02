@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf72ef64_b015a102",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-02T21:02:24Z",
+      "side": 1,
+      "message": "Hi, Neale, please take a look at fresh rebase",
+      "revId": "590e5229578ea7a8f79cf760483ca4a9d3616ea7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
