@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e07fb7d1_83d45baf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-02T19:28:14Z",
+      "side": 1,
+      "message": "take a look at https://gerrit.fd.io/r/c/vpp/+/40413, we\u0027re using it for almost same reasons. looks less invasive",
+      "revId": "8e32761dc933a04b460bdb2bc514771cce9793dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
