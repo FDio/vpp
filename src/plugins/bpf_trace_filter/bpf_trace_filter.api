@@ -24,3 +24,12 @@
   bool is_add [default = true];
   string filter[];
  };
+
+ autoreply define bpf_trace_filter_set_v2
+ {
+  u32 client_index;
+  u32 context;
+  bool is_add [default = true];
+  bool optimize [default = true];
+  string filter[];
+ };
