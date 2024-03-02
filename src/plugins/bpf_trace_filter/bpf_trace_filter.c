@@ -30,8 +30,24 @@ bpf_trace_filter_init (vlib_main_t *vm)
 int vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index,
 			   int func);
 
+u8 *
+format_bpf_trace_filter (u8 *s, va_list *a)
+{
+  bpf_trace_filter_main_t *btm = va_arg (*a, bpf_trace_filter_main_t *);
+  struct bpf_insn *insn;
+
+  if (!btm->prog_set)
+    return format (s, "bpf trace filter is not set");
+
+  insn = btm->prog.bf_insns;
+  for (int i = 0; i < btm->prog.bf_len; insn++, i++)
+    s = format (s, "%s\n", bpf_image (insn, i));
+
+  return s;
+}
+
 clib_error_t *
-bpf_trace_filter_set_unset (const char *bpf_expr, u8 is_del)
+bpf_trace_filter_set_unset (const char *bpf_expr, u8 is_del, u8 optimize)
 {
   bpf_trace_filter_main_t *btm = &bpf_trace_filter_main;
   if (is_del)
@@ -47,7 +63,7 @@ bpf_trace_filter_set_unset (const char *bpf_expr, u8 is_del)
       if (btm->prog_set)
 	pcap_freecode (&btm->prog);
       btm->prog_set = 0;
-      if (pcap_compile (btm->pcap, &btm->prog, (char *) bpf_expr, 0,
+      if (pcap_compile (btm->pcap, &btm->prog, (char *) bpf_expr, optimize,
 			PCAP_NETMASK_UNKNOWN))
 	{
 	  return clib_error_return (0, "Failed pcap_compile of %s", bpf_expr);
@@ -58,7 +74,7 @@ bpf_trace_filter_set_unset (const char *bpf_expr, u8 is_del)
 };
 
 int
-bpf_is_packed_traced (vlib_buffer_t *b, u32 classify_table_index, int func)
+bpf_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index, int func)
 {
   bpf_trace_filter_main_t *bfm = &bpf_trace_filter_main;
   struct pcap_pkthdr phdr = { 0 };
@@ -82,7 +98,7 @@ VLIB_REGISTER_TRACE_FILTER_FUNCTION (bpf_trace_filter_fn, static) = {
   .name = "bpf_trace_filter",
   .description = "bpf based trace filter",
   .priority = 10,
-  .function = bpf_is_packed_traced
+  .function = bpf_is_packet_traced
 };
 
 VLIB_INIT_FUNCTION (bpf_trace_filter_init);
