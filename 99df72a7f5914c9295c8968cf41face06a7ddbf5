@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73a7ebe7_84a04307",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-03-04T09:39:43Z",
+      "side": 1,
+      "message": "Thanks for updating the docs, the wiki page was really outdated",
+      "revId": "99df72a7f5914c9295c8968cf41face06a7ddbf5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
