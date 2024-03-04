@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "70c232a7_58dfa559",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-03-04T16:58:54Z",
+      "side": 1,
+      "message": "The fix is in l2, not vxlan. Can you change the component in the subject line to l2 to reflect where the fix is?",
+      "revId": "b495da9a6c56d218959bdb516541d8af97575ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
