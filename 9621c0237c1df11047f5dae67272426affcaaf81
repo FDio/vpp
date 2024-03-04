@@ -16,6 +16,23 @@
       "message": "Hello guys,\nThis patch fixes broken nat-t scnerio, where 2 flows udp/500 and udp/4500 are received from different queues (and go to different workers as well).\nHowever, I decided not to memorize ike sa (e.g. by creating hash table worker_by_rspi) and hand it over to the corresponding worker rather than handing everything over to the main thread.\nIt will open a window for a couple of simplifications (I can include them to this patch or to the next one). Also, I don\u0027t think we really need MT enabled plugin as dataplane for ipsec is already processed by multiple workers w/o issues.\nWhat do you think?",
       "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a86e2d4d_d58a49ae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-04T15:20:25Z",
+      "side": 1,
+      "message": "I think the idea of having a single thread responsible for an IKE SA is sound, but I\u0027m a bit wary of handoff\u0027ing everything to the main thread: that would open the main thread to DoS in this case.\nI understand that avoid maintaining a table to steer the SA to the correct worker, but as you\u0027ll create an entry anyway, I\u0027m not sure what the benefit is here?",
+      "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
