@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd44ac48_7132e7a0",
+        "filename": "extras/hs-test/address_allocator.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-03-04T16:50:19Z",
+      "side": 1,
+      "message": "Are these ever freed?",
+      "revId": "8743bd7ef4a78dac5d368541e6230748b3e27b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
