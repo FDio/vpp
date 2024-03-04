@@ -33,6 +33,24 @@
       "message": "I think the idea of having a single thread responsible for an IKE SA is sound, but I\u0027m a bit wary of handoff\u0027ing everything to the main thread: that would open the main thread to DoS in this case.\nI understand that avoid maintaining a table to steer the SA to the correct worker, but as you\u0027ll create an entry anyway, I\u0027m not sure what the benefit is here?",
       "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e72323cd_c803ac65",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-04T20:26:50Z",
+      "side": 1,
+      "message": "For DoS - I think we have a natural limit with 1k queue size for the handover packets. In case of DoS the excess will be dropped and the main thread should be good. Though an attack still can force vpp to drop some valid ike packets in this case.\n\nRegarding simplifications, I\u0027m just in favour of having a simpler implementation of IKE. I don\u0027t have strong arguments, only small ones:\n* for nat-t + multi-workers + multi-queue we will be handing over almost all the packets to original thread anyway (so why just don\u0027t hand it over to the main thread instead)\n* no need to call rpc_call_main_thread every time from a worker\n* it will be much more error-proof in terms of synchronization (although I don\u0027t know any issues with that)\n* less memory footprint (as we can get rid of per-thread data)\n* wireguard plugin has the same approach (main thread for control packets)\n\nPersonally, I have in production vpp with this patch (and another one that fixes phase 2 rekeying for initiator) and now it\u0027s much more stable than before.\n\nAnyway, it\u0027s up to maintainers to decide. If you want - I can handover the packets  to the serving worker by the rspi field.",
+      "parentUuid": "a86e2d4d_d58a49ae",
+      "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
