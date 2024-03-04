@@ -142,6 +142,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c683957b_8524c4cb",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-03-04T08:34:27Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "521661ff_0e2b6430",
+      "revId": "2f0844072711da44850646ec2c2757715edb9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0dbada8e_4c9078ad",
