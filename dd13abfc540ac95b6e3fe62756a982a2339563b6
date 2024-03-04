@@ -16,6 +16,24 @@
       "message": "can you please add some UT to cover this change",
       "revId": "dd13abfc540ac95b6e3fe62756a982a2339563b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f31727e0_1b25608a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-04T06:40:47Z",
+      "side": 1,
+      "message": "added test_tunnel_ecmp tests the change by sending packets with same label 33, same ports, same src ip but different dst ip over one (to skip ip flow hash) mpls tunnel with two paths (to enable mpls lb).\nbefore change mpls lb hash_config is always 0, so ip addresses are not taken into value, therefore traffic is always polarized via one mpls tunnel path.\nreverting mpls_lookup.c gives following error:\n```\nFAIL: MPLS Tunnel Tests - ECMP\n------------------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/themiron/software/vpp/vpp.upstream/test/test_mpls.py\", line 1415, in test_tunnel_ecmp\n    self.assertEqual(len(paths), 2)\nAssertionError: 1 !\u003d 2\n```\n\ndo you mean to add another one test? please give a hint what scenario, I\u0027ll add",
+      "parentUuid": "2531a264_e988ad92",
+      "revId": "dd13abfc540ac95b6e3fe62756a982a2339563b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
