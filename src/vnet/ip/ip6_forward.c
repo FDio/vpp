@@ -2139,28 +2139,27 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start_w_cfg_index
-		  (lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
-		   adj0->ia_cfg_index);
+		vnet_feature_arc_start_w_cfg_index (
+		  lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
+		  adj0->ia_cfg_index);
+
+	      if (is_midchain)
+		{
+		  if (adj0->sub_type.midchain.fixup_func)
+		    adj0->sub_type.midchain.fixup_func (
+		      vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
+		}
+	       if (is_mcast)
+		 {
+		   vnet_ip_mcast_fixup_header (
+		     IP6_MCAST_ADDR_MASK,
+		     adj0->rewrite_header.dst_mcast_offset,
+		     &ip0->dst_address.as_u32[3], (u8 *) ip0);
+		 }
 	    }
 	  else
 	    {
 	      p0->error = error_node->errors[error0];
-	    }
-
-	  if (is_midchain)
-	    {
-	      if (adj0->sub_type.midchain.fixup_func)
-		adj0->sub_type.midchain.fixup_func
-		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	    }
-	  if (is_mcast)
-	    {
-	      vnet_ip_mcast_fixup_header (IP6_MCAST_ADDR_MASK,
-					  adj0->
-					  rewrite_header.dst_mcast_offset,
-					  &ip0->dst_address.as_u32[3],
-					  (u8 *) ip0);
 	    }
 
 	  from += 1;
