@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6df5fac4_1a050dcf",
+        "filename": "src/vnet/fib/fib_entry.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-04T08:11:10Z",
+      "side": 1,
+      "message": "indeed, will change next patchset",
+      "parentUuid": "469ea281_6ec4cfa3",
+      "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23f97f05_b7315a1f",
         "filename": "src/vnet/ip/ip_api.c",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2024-03-04T07:55:35Z",
       "side": 1,
       "message": "why this change?",
+      "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3acafaeb_2655fc63",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-04T08:11:10Z",
+      "side": 1,
+      "message": "Main reason - I think pool_foreach_index() works better checking next index is valid each loop w/o caching next pool elt address unlike pool_foreach(), therefore if pool is reallocated or pool elt put, next loop iteration will be fine with next valid index.\nAt the other hand, it\u0027s api process running in main thread, no other api or cli commands creating/deleting fib tables is expected, right? If so, this is not really useful in current codebase and one main thread approach.\nShould I remove?",
+      "parentUuid": "23f97f05_b7315a1f",
       "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
