@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71cc3dec_fd7c91fd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-03-04T09:25:34Z",
+      "side": 1,
+      "message": "Hi Ole,\nAs discussed few weeks ago, I have updated the icmp error node and it does not break any test. What are your thoughts on it please?",
+      "revId": "ccab7ad08688dec8d42a8b3ec1b4659cfcd87cfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
