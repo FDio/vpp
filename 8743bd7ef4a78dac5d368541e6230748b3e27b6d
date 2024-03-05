@@ -34,6 +34,24 @@
       "parentUuid": "bd44ac48_7132e7a0",
       "revId": "8743bd7ef4a78dac5d368541e6230748b3e27b6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1496627c_11b13c93",
+        "filename": "extras/hs-test/address_allocator.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-03-05T18:28:52Z",
+      "side": 1,
+      "message": "Let\u0027s make this an address allocator function. That is, create and cleanup resources in the same unit",
+      "parentUuid": "27b93355_c4a34b26",
+      "revId": "8743bd7ef4a78dac5d368541e6230748b3e27b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
