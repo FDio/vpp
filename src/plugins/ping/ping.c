@@ -507,7 +507,7 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_request_node,static) = {
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [0] = "ip4-load-balance",
+    [0] = "ip4-lookup",
   },
 };
 /* *INDENT-ON* */
