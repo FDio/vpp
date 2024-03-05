@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b00224d_7f860b8c",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-03-05T11:05:34Z",
+      "side": 0,
+      "message": "cop api wa finally deprecated by this patch: https://gerrit.fd.io/r/c/vpp/+/31626",
+      "revId": "7ad751ba53a792cc6beaade1eb61d0bd9dc87ea5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
