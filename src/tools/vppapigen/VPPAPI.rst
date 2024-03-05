@@ -15,6 +15,18 @@ currently compile to JSON or C (used by the VPP binary itself).
 Language definition
 -------------------
 
+The current API definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+API definitions can be found under the code tree:
+
+.. code-block:: bash
+
+   $ find src/ -name "*\.api"
+   ...
+   $ find src/ -name "*_api\.c"
+   ...
+
 Defining a messages
 ~~~~~~~~~~~~~~~~~~~
 

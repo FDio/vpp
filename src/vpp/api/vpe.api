@@ -23,36 +23,6 @@ option version = "1.7.0";
 
 import "vpp/api/vpe_types.api";
 
-/*
- * Note: API placement cleanup in progress
- * If you're looking for interface APIs, please
- * see .../src/vnet/{interface.api,interface_api.c}
- * IP APIs: see .../src/vnet/ip/{ip.api, ip_api.c}
- * VXLAN APIs: see .../src/vnet/vxlan/{vxlan.api, vxlan_api.c}
- * GENEVE APIs: see .../src/vnet/geneve/{geneve.api, geneve_api.c}
- * LLDP APIs: see .../src/vnet/lldp/{lldp.api, lldp_api.c}
- * AF-PACKET APIs: see ... /vnet/devices/af_packet/{af_packet.api, af_packet_api.c}
- * VHOST-USER APIs: see .../vnet/devices/virtio/{vhost_user.api, vhost_user_api.c}
- * VXLAN GPE APIs: see .../src/vnet/vxlan-gpe/{vxlan_gpe.api, vxlan_gpe_api.c}
- * GRE APIs: see .../src/vnet/gre/{gre.api, gre_api.c}
- * L2 APIs: see .../src/vnet/l2/{l2.api, l2_api.c}
- * L2TP APIs: see .../src/vnet/l2tp/{l2tp.api, l2tp_api.c}
- * BFD APIs: see .../src/vnet/bfd/{bfd.api, bfd_api.c}
- * IPSEC APIs: see .../src/vnet/ipsec/{ipsec.api, ipsec_api.c}
- * LISP APIs: see .../src/vnet/lisp/{lisp.api, lisp_api.c}
- * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
- * SESSION APIs: .../vnet/session/{session.api session_api.c}
- * MPLS APIs: see .../src/vnet/mpls/{mpls.api, mpls_api.c}
- * SR APIs: see .../src/vnet/srv6/{sr.api, sr_api.c}
- * CLASSIFY APIs: see ... /src/vnet/classify/{classify.api, classify_api.c}
- * FLOW APIs: see ... /src/vnet/flow/{flow.api, flow_api.c}
- * DHCP APIs: see ... /src/vnet/dhcp/{dhcp.api, dhcp_api.c}
- * COP APIs: see ... /src/vnet/cop/{cop.api, cop_api.c}
- * POLICER APIs: see ... /src/vnet/policer/{policer.api, policer_api.c}
- * BIER APIs: see ... /src/vnet/policer/{bier.api, bier_api.c}.
- * flow APIs: see .../vnet/vnet/flow/{flow.api, flow_api.c}
- */
-
 /** \brief show version
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
