@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43d35497_5d7eec17",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 584,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-03-05T21:08:47Z",
+      "side": 1,
+      "message": "Instead of reading and writing directly to fields in lcp_main, can you add functions to set \u0026 get those values?",
+      "revId": "15c6ea83fc6c96a8880026ec05d8f1169d0f52a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
