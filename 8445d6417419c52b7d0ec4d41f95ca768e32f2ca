@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1799d11_64544e4f",
+        "filename": "src/vppinfra/test_mhash.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-05T18:56:11Z",
+      "side": 1,
+      "message": "new files should use SPD-X",
+      "revId": "8445d6417419c52b7d0ec4d41f95ca768e32f2ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a83a781f_94e14923",
+        "filename": "src/vppinfra/test_mhash.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-05T18:56:11Z",
+      "side": 1,
+      "message": "not needed anymore",
+      "revId": "8445d6417419c52b7d0ec4d41f95ca768e32f2ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
