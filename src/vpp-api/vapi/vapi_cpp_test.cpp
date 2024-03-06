@@ -35,6 +35,7 @@ DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = nullptr;
 static char *api_prefix = nullptr;
+static bool use_uds = false;
 static const int max_outstanding_requests = 32;
 static const int response_queue_size = 32;
 
@@ -60,8 +61,9 @@ Connection con;
 
 void setup (void)
 {
-  vapi_error_e rv = con.connect (
-      app_name, api_prefix, max_outstanding_requests, response_queue_size);
+  vapi_error_e rv =
+    con.connect (app_name, api_prefix, max_outstanding_requests,
+		 response_queue_size, true, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -452,14 +454,25 @@ Suite *test_suite (void)
 
 int main (int argc, char *argv[])
 {
-  if (3 != argc)
+  if (4 != argc)
     {
       printf ("Invalid argc==`%d'\n", argc);
       return EXIT_FAILURE;
     }
   app_name = argv[1];
   api_prefix = argv[2];
-  printf ("App name: `%s', API prefix: `%s'\n", app_name, api_prefix);
+  if (!strcmp (argv[3], "shm"))
+    use_uds = 0;
+  else if (!strcmp (argv[3], "uds"))
+    use_uds = 1;
+  else
+    {
+      printf ("Unrecognised required argument '%s', expected 'uds' or 'shm'.",
+	      argv[3]);
+      return EXIT_FAILURE;
+    }
+  printf ("App name: `%s', API prefix: `%s', use unix sockets %d\n", app_name,
+	  api_prefix, use_uds);
 
   int number_failed;
   Suite *s;
