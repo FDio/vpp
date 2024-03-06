@@ -8,7 +8,7 @@
 #include <vppinfra/memcpy.h>
 
 static_always_inline u64
-clib_mask_compare_u16_x64 (u16 v, u16 *a, u32 n_elts)
+clib_mask_compare_u16_x64 (u16 v, u16 *a)
 {
   u64 mask = 0;
 #if defined(CLIB_HAVE_VEC512)
@@ -47,6 +47,38 @@ clib_mask_compare_u16_x64 (u16 v, u16 *a, u32 n_elts)
 	  (u64) i8x16_msb_mask (i8x16_pack (v8 == av[4], v8 == av[5])) << 32 |
 	  (u64) i8x16_msb_mask (i8x16_pack (v8 == av[6], v8 == av[7])) << 48);
 #else
+  for (int i = 0; i < 64; i++)
+    if (a[i] == v)
+      mask |= 1ULL << i;
+#endif
+  return mask;
+}
+
+static_always_inline u64
+clib_mask_compare_u16_x64_n (u16 v, u16 *a, u32 n_elts)
+{
+  u64 mask = 0;
+  CLIB_UNUSED (u64 data_mask) = pow2_mask (n_elts);
+#if defined(CLIB_HAVE_VEC512)
+  u16x32 v32 = u16x32_splat (v);
+  u16x32u *av = (u16x32u *) a;
+  mask = ((u64) u16x32_is_equal_mask (
+	    u16x32_mask_load_zero (&av[0], data_mask), v32) |
+	  (u64) u16x32_is_equal_mask (
+	    u16x32_mask_load_zero (&av[1], data_mask >> 32), v32)
+	    << 32);
+#elif defined(CLIB_HAVE_VEC256) && defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u16x16 v16 = u16x16_splat (v);
+  u16x16u *av = (u16x16u *) a;
+  i8x32 x;
+
+  x = i8x32_pack (v16 == u16x16_mask_load_zero (&av[0], data_mask),
+		  v16 == u16x16_mask_load_zero (&av[1], data_mask >> 16));
+  mask = i8x32_msb_mask ((i8x32) u64x4_permute (x, 0, 2, 1, 3));
+  x = i8x32_pack (v16 == u16x16_mask_load_zero (&av[2], data_mask >> 32),
+		  v16 == u16x16_mask_load_zero (&av[3], data_mask >> 48));
+  mask |= (u64) i8x32_msb_mask ((i8x32) u64x4_permute (x, 0, 2, 1, 3)) << 32;
+#else
   for (int i = 0; i < n_elts; i++)
     if (a[i] == v)
       mask |= 1ULL << i;
@@ -68,7 +100,7 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
 {
   while (n_elts >= 64)
     {
-      mask++[0] = clib_mask_compare_u16_x64 (v, a, 64);
+      mask++[0] = clib_mask_compare_u16_x64 (v, a);
       n_elts -= 64;
       a += 64;
     }
@@ -76,11 +108,11 @@ clib_mask_compare_u16 (u16 v, u16 *a, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  mask[0] = clib_mask_compare_u16_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  mask[0] = clib_mask_compare_u16_x64_n (v, a, n_elts) & pow2_mask (n_elts);
 }
 
 static_always_inline u64
-clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
+clib_mask_compare_u32_x64 (u32 v, u32 *a)
 {
   u64 mask = 0;
 #if defined(CLIB_HAVE_VEC512)
@@ -131,6 +163,57 @@ clib_mask_compare_u32_x64 (u32 v, u32 *a, u32 n_elts)
     }
 
 #else
+  for (int i = 0; i < 64; i++)
+    if (a[i] == v)
+      mask |= 1ULL << i;
+#endif
+  return mask;
+}
+
+static_always_inline u64
+clib_mask_compare_u32_x64_n (u32 v, u32 *a, u32 n_elts)
+{
+  u64 mask = 0;
+  CLIB_UNUSED (u64 data_mask) = pow2_mask (n_elts);
+#if defined(CLIB_HAVE_VEC512)
+  u32x16 v16 = u32x16_splat (v);
+  u32x16u *av = (u32x16u *) a;
+  mask = ((u64) u32x16_is_equal_mask (
+	    u32x16_mask_load_zero (&av[0], data_mask), v16) |
+	  (u64) u32x16_is_equal_mask (
+	    u32x16_mask_load_zero (&av[1], data_mask >> 16), v16)
+	    << 16 |
+	  (u64) u32x16_is_equal_mask (
+	    u32x16_mask_load_zero (&av[2], data_mask >> 32), v16)
+	    << 32 |
+	  (u64) u32x16_is_equal_mask (
+	    u32x16_mask_load_zero (&av[3], data_mask >> 48), v16)
+	    << 48);
+#elif defined(CLIB_HAVE_VEC256) && defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u32x8 v8 = u32x8_splat (v);
+  u32x8u *av = (u32x8u *) a;
+  u32x8 m = { 0, 4, 1, 5, 2, 6, 3, 7 };
+  i8x32 c;
+
+  c = i8x32_pack (
+    i16x16_pack (
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[0], data_mask)),
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[1], data_mask >> 8))),
+    i16x16_pack (
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[2], data_mask >> 16)),
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[3], data_mask >> 24))));
+  mask = i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, m));
+
+  c = i8x32_pack (
+    i16x16_pack (
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[4], data_mask >> 32)),
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[5], data_mask >> 40))),
+    i16x16_pack (
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[6], data_mask >> 48)),
+      (i32x8) (v8 == u32x8_mask_load_zero (&av[7], data_mask >> 56))));
+  mask |= (u64) i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, m)) << 32;
+  mask |= (u64) i8x32_msb_mask ((i8x32) u32x8_permute ((u32x8) c, m)) << 32;
+#else
   for (int i = 0; i < n_elts; i++)
     if (a[i] == v)
       mask |= 1ULL << i;
@@ -152,7 +235,7 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
 {
   while (n_elts >= 64)
     {
-      bitmap++[0] = clib_mask_compare_u32_x64 (v, a, 64);
+      bitmap++[0] = clib_mask_compare_u32_x64 (v, a);
       n_elts -= 64;
       a += 64;
     }
@@ -160,11 +243,11 @@ clib_mask_compare_u32 (u32 v, u32 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u32_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = clib_mask_compare_u32_x64_n (v, a, n_elts) & pow2_mask (n_elts);
 }
 
 static_always_inline u64
-clib_mask_compare_u64_x64 (u64 v, u64 *a, u32 n_elts)
+clib_mask_compare_u64_x64 (u64 v, u64 *a)
 {
   u64 mask = 0;
 #if defined(CLIB_HAVE_VEC512)
@@ -190,6 +273,59 @@ clib_mask_compare_u64_x64 (u64 v, u64 *a, u32 n_elts)
       mask |= _pext_u64 (l | h << 32, 0x0101010101010101) << (i * 4);
     }
 #else
+  for (int i = 0; i < 64; i++)
+    if (a[i] == v)
+      mask |= 1ULL << i;
+#endif
+  return mask;
+}
+
+static_always_inline u64
+clib_mask_compare_u64_x64_n (u64 v, u64 *a, u32 n_elts)
+{
+  u64 mask = 0;
+  CLIB_UNUSED (u64 data_mask) = pow2_mask (n_elts);
+#if defined(CLIB_HAVE_VEC512)
+  u64x8 v8 = u64x8_splat (v);
+  u64x8u *av = (u64x8u *) a;
+  mask =
+    ((u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[0], data_mask), v8) |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[1], data_mask >> 8),
+				v8)
+       << 8 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[2], data_mask >> 16),
+				v8)
+       << 16 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[3], data_mask >> 24),
+				v8)
+       << 24 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[4], data_mask >> 32),
+				v8)
+       << 32 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[5], data_mask >> 40),
+				v8)
+       << 40 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[6], data_mask >> 48),
+				v8)
+       << 48 |
+     (u64) u64x8_is_equal_mask (u64x8_mask_load_zero (&av[7], data_mask >> 56),
+				v8)
+       << 56);
+
+#elif defined(CLIB_HAVE_VEC256) && defined(__BMI2__) &&                       \
+  defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u64x4 v4 = u64x4_splat (v);
+  u64x4u *av = (u64x4u *) a;
+
+  for (int i = 0; i < 16; i += 2)
+    {
+      u64 l = u8x32_msb_mask (v4 == u64x4_mask_load_zero (&av[i], data_mask));
+      u64 h = u8x32_msb_mask (
+	v4 == u64x4_mask_load_zero (&av[i + 1], data_mask >> 4));
+      mask |= _pext_u64 (l | h << 32, 0x0101010101010101) << (i * 4);
+      data_mask >>= 8;
+    }
+#else
   for (int i = 0; i < n_elts; i++)
     if (a[i] == v)
       mask |= 1ULL << i;
@@ -211,7 +347,7 @@ clib_mask_compare_u64 (u64 v, u64 *a, u64 *bitmap, u32 n_elts)
 {
   while (n_elts >= 64)
     {
-      bitmap++[0] = clib_mask_compare_u64_x64 (v, a, 64);
+      bitmap++[0] = clib_mask_compare_u64_x64 (v, a);
       n_elts -= 64;
       a += 64;
     }
@@ -219,7 +355,7 @@ clib_mask_compare_u64 (u64 v, u64 *a, u64 *bitmap, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return;
 
-  bitmap[0] = clib_mask_compare_u64_x64 (v, a, n_elts) & pow2_mask (n_elts);
+  bitmap[0] = clib_mask_compare_u64_x64_n (v, a, n_elts) & pow2_mask (n_elts);
 }
 
 #endif

@@ -51,18 +51,21 @@ static compress_test_t tests[] = {
 static clib_error_t *
 test_clib_compress_u64 (clib_error_t *err)
 {
-  u64 src[513];
-  u64 dst[513];
   u32 i, j;
-
-  for (i = 0; i < ARRAY_LEN (src); i++)
-    src[i] = i;
 
   for (i = 0; i < ARRAY_LEN (tests); i++)
     {
       compress_test_t *t = tests + i;
+      u64 src[t->n_elts];
+#ifdef CLIB_SANITIZE_ADDR
+      u64 dst[t->n_elts];
+#else  /* CLIB_SANITIZE_ADDR */
+      u64 dst[513];
+#endif /* CLIB_SANITIZE_ADDR */
       u64 *dp = dst;
       u32 r;
+      for (j = 0; j < t->n_elts; j++)
+	src[j] = j;
 
       for (j = 0; j < ARRAY_LEN (dst); j++)
 	dst[j] = 0xa5a5a5a5a5a5a5a5;
@@ -81,8 +84,10 @@ test_clib_compress_u64 (clib_error_t *err)
 	  dp++;
 	}
 
+#ifndef CLIB_SANITIZE_ADDR
       if (dst[dp - dst + 1] != 0xa5a5a5a5a5a5a5a5)
 	return clib_error_return (err, "buffer overrun in testcase %u", i);
+#endif /* CLIB_SANITIZE_ADDR */
 
       if (dp - dst != r)
 	return clib_error_return (err, "wrong number of elts in testcase %u",
@@ -95,18 +100,21 @@ test_clib_compress_u64 (clib_error_t *err)
 static clib_error_t *
 test_clib_compress_u32 (clib_error_t *err)
 {
-  u32 src[513];
-  u32 dst[513];
   u32 i, j;
-
-  for (i = 0; i < ARRAY_LEN (src); i++)
-    src[i] = i;
 
   for (i = 0; i < ARRAY_LEN (tests); i++)
     {
       compress_test_t *t = tests + i;
+      u32 src[t->n_elts];
+#ifdef CLIB_SANITIZE_ADDR
+      u32 dst[t->n_elts];
+#else  /* CLIB_SANITIZE_ADDR */
+      u32 dst[513];
+#endif /* CLIB_SANITIZE_ADDR */
       u32 *dp = dst;
       u32 r;
+      for (j = 0; j < t->n_elts; j++)
+	src[j] = j;
 
       for (j = 0; j < ARRAY_LEN (dst); j++)
 	dst[j] = 0xa5a5a5a5;
@@ -126,8 +134,10 @@ test_clib_compress_u32 (clib_error_t *err)
 	  dp++;
 	}
 
+#ifndef CLIB_SANITIZE_ADDR
       if (dst[dp - dst + 1] != 0xa5a5a5a5)
 	return clib_error_return (err, "buffer overrun in testcase %u", i);
+#endif /* CLIB_SANITIZE_ADDR */
 
       if (dp - dst != r)
 	return clib_error_return (err, "wrong number of elts in testcase %u",
@@ -140,18 +150,21 @@ test_clib_compress_u32 (clib_error_t *err)
 static clib_error_t *
 test_clib_compress_u16 (clib_error_t *err)
 {
-  u16 src[513];
-  u16 dst[513];
   u32 i, j;
-
-  for (i = 0; i < ARRAY_LEN (src); i++)
-    src[i] = i;
 
   for (i = 0; i < ARRAY_LEN (tests); i++)
     {
       compress_test_t *t = tests + i;
+      u16 src[t->n_elts];
+#ifdef CLIB_SANITIZE_ADDR
+      u16 dst[t->n_elts];
+#else  /* CLIB_SANITIZE_ADDR */
+      u16 dst[513];
+#endif /* CLIB_SANITIZE_ADDR */
       u16 *dp = dst;
       u32 r;
+      for (j = 0; j < t->n_elts; j++)
+	src[j] = j;
 
       for (j = 0; j < ARRAY_LEN (dst); j++)
 	dst[j] = 0xa5a5;
@@ -170,8 +183,10 @@ test_clib_compress_u16 (clib_error_t *err)
 	  dp++;
 	}
 
+#ifndef CLIB_SANITIZE_ADDR
       if (dst[dp - dst + 1] != 0xa5a5)
 	return clib_error_return (err, "buffer overrun in testcase %u", i);
+#endif /* CLIB_SANITIZE_ADDR */
 
       if (dp - dst != r)
 	return clib_error_return (err, "wrong number of elts in testcase %u",
@@ -184,18 +199,21 @@ test_clib_compress_u16 (clib_error_t *err)
 static clib_error_t *
 test_clib_compress_u8 (clib_error_t *err)
 {
-  u8 src[513];
-  u8 dst[513];
   u32 i, j;
-
-  for (i = 0; i < ARRAY_LEN (src); i++)
-    src[i] = i;
 
   for (i = 0; i < ARRAY_LEN (tests); i++)
     {
       compress_test_t *t = tests + i;
+      u8 src[t->n_elts];
+#ifdef CLIB_SANITIZE_ADDR
+      u8 dst[t->n_elts];
+#else  /* CLIB_SANITIZE_ADDR */
+      u8 dst[513];
+#endif /* CLIB_SANITIZE_ADDR */
       u8 *dp = dst;
       u32 r;
+      for (j = 0; j < t->n_elts; j++)
+	src[j] = j;
 
       for (j = 0; j < ARRAY_LEN (dst); j++)
 	dst[j] = 0xa5;
@@ -214,8 +232,10 @@ test_clib_compress_u8 (clib_error_t *err)
 	  dp++;
 	}
 
+#ifndef CLIB_SANITIZE_ADDR
       if (dst[dp - dst + 1] != 0xa5)
 	return clib_error_return (err, "buffer overrun in testcase %u", i);
+#endif /* CLIB_SANITIZE_ADDR */
 
       if (dp - dst != r)
 	return clib_error_return (err, "wrong number of elts in testcase %u",
