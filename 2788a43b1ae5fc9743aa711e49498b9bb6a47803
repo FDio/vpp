@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "826bba87_610bf855",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-06T09:24:11Z",
+      "side": 1,
+      "message": "I guess these paths are for human readers only, that\u0027s why they could be broken for a long time.",
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed90cf68_3d891b5c",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-06T09:24:11Z",
+      "side": 1,
+      "message": "Maybe this Note from 2016 could be deleted as well.",
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
