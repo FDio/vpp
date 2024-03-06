@@ -34,6 +34,37 @@ clib_compress_u64_x64 (u64 *dst, u64 *src, u64 mask)
   return dst;
 }
 
+static_always_inline u64 *
+clib_compress_u64_x64_masked (u64 *dst, u64 *src, u64 mask)
+{
+#if defined(CLIB_HAVE_VEC512_COMPRESS) &&                                     \
+  defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u64x8u *sv = (u64x8u *) src;
+  for (int i = 0; i < 8; i++)
+    {
+      u64x8u s = u64x8_mask_load_zero (&sv[i], mask);
+      u64x8_compress_store (s, mask, dst);
+      dst += _popcnt32 ((u8) mask);
+      mask >>= 8;
+    }
+#elif defined(CLIB_HAVE_VEC256_COMPRESS) &&                                   \
+  defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u64x4u *sv = (u64x4u *) src;
+  for (int i = 0; i < 16; i++)
+    {
+      u64x4u s = u64x4_mask_load_zero (&sv[i], mask);
+      u64x4_compress_store (s, mask, dst);
+      dst += _popcnt32 (((u8) mask) & 0x0f);
+      mask >>= 4;
+    }
+#else
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
+#endif
+  return dst;
+}
+
 /** \brief Compress array of 64-bit elemments into destination array based on
  * mask
 
@@ -66,7 +97,9 @@ clib_compress_u64 (u64 *dst, u64 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u64_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u64_x64_masked (dst, src,
+				       mask[0] & pow2_mask (n_elts)) -
+	 dst0;
 }
 
 static_always_inline u32 *
@@ -86,6 +119,38 @@ clib_compress_u32_x64 (u32 *dst, u32 *src, u64 mask)
   for (int i = 0; i < 8; i++)
     {
       u32x8_compress_store (sv[i], mask, dst);
+      dst += _popcnt32 ((u8) mask);
+      mask >>= 8;
+    }
+#else
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
+#endif
+  return dst;
+}
+
+static_always_inline u32 *
+clib_compress_u32_x64_masked (u32 *dst, u32 *src, u64 mask)
+{
+#if defined(CLIB_HAVE_VEC512_COMPRESS) &&                                     \
+  defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u32x16u *sv = (u32x16u *) src;
+  for (int i = 0; i < 4; i++)
+    {
+      u32x16u s = u32x16_mask_load_zero (&sv[i], mask);
+      u32x16_compress_store (s, mask, dst);
+      dst += _popcnt32 ((u16) mask);
+      mask >>= 16;
+    }
+
+#elif defined(CLIB_HAVE_VEC256_COMPRESS) &&                                   \
+  defined(CLIB_HAVE_VEC256_MASK_LOAD_STORE)
+  u32x8u *sv = (u32x8u *) src;
+  for (int i = 0; i < 8; i++)
+    {
+      u32x8u s = u32x8_mask_load_zero (&sv[i], mask);
+      u32x8_compress_store (s, mask, dst);
       dst += _popcnt32 ((u8) mask);
       mask >>= 8;
     }
@@ -129,7 +194,9 @@ clib_compress_u32 (u32 *dst, u32 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u32_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u32_x64_masked (dst, src,
+				       mask[0] & pow2_mask (n_elts)) -
+	 dst0;
 }
 
 static_always_inline u16 *
@@ -140,6 +207,27 @@ clib_compress_u16_x64 (u16 *dst, u16 *src, u64 mask)
   for (int i = 0; i < 2; i++)
     {
       u16x32_compress_store (sv[i], mask, dst);
+      dst += _popcnt32 ((u32) mask);
+      mask >>= 32;
+    }
+#else
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
+#endif
+  return dst;
+}
+
+static_always_inline u16 *
+clib_compress_u16_x64_masked (u16 *dst, u16 *src, u64 mask)
+{
+#if defined(CLIB_HAVE_VEC512_COMPRESS_U8_U16) &&                              \
+  defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u16x32u *sv = (u16x32u *) src;
+  for (int i = 0; i < 2; i++)
+    {
+      u16x32u s = u16x32_mask_load_zero (&sv[i], mask);
+      u16x32_compress_store (s, mask, dst);
       dst += _popcnt32 ((u32) mask);
       mask >>= 32;
     }
@@ -183,7 +271,9 @@ clib_compress_u16 (u16 *dst, u16 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u16_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u16_x64_masked (dst, src,
+				       mask[0] & pow2_mask (n_elts)) -
+	 dst0;
 }
 
 static_always_inline u8 *
@@ -192,6 +282,23 @@ clib_compress_u8_x64 (u8 *dst, u8 *src, u64 mask)
 #if defined(CLIB_HAVE_VEC512_COMPRESS_U8_U16)
   u8x64u *sv = (u8x64u *) src;
   u8x64_compress_store (sv[0], mask, dst);
+  dst += _popcnt64 (mask);
+#else
+  u32 i;
+  foreach_set_bit_index (i, mask)
+    dst++[0] = src[i];
+#endif
+  return dst;
+}
+
+static_always_inline u8 *
+clib_compress_u8_x64_masked (u8 *dst, u8 *src, u64 mask)
+{
+#if defined(CLIB_HAVE_VEC512_COMPRESS_U8_U16) &&                              \
+  defined(CLIB_HAVE_VEC512_MASK_LOAD_STORE)
+  u8x64u *sv = (u8x64u *) src;
+  u8x64u s = u8x64_mask_load_zero (sv, mask);
+  u8x64_compress_store (s, mask, dst);
   dst += _popcnt64 (mask);
 #else
   u32 i;
@@ -233,7 +340,8 @@ clib_compress_u8 (u8 *dst, u8 *src, u64 *mask, u32 n_elts)
   if (PREDICT_TRUE (n_elts == 0))
     return dst - dst0;
 
-  return clib_compress_u8_x64 (dst, src, mask[0] & pow2_mask (n_elts)) - dst0;
+  return clib_compress_u8_x64_masked (dst, src, mask[0] & pow2_mask (n_elts)) -
+	 dst0;
 }
 
 #endif
