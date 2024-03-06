@@ -19,12 +19,12 @@ class VAPITestCase(VppAsfTestCase):
     def tearDownClass(cls):
         super(VAPITestCase, cls).tearDownClass()
 
-    def test_vapi_c(self):
+    def run_vapi_c(self, use_uds):
         """run C VAPI tests"""
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_c_test"
-        worker = Worker(
-            [executable, "vapi client", self.get_api_segment_prefix()], self.logger
-        )
+        path = self.get_api_sock_path() if use_uds else self.get_api_segment_prefix()
+        transport = "uds" if use_uds else "shm"
+        worker = Worker([executable, "vapi client", path, transport], self.logger)
         worker.start()
         timeout = 60
         worker.join(timeout)
@@ -43,12 +43,18 @@ class VAPITestCase(VppAsfTestCase):
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    def test_vapi_cpp(self):
+    def test_vapi_c_shm(self):
+        self.run_vapi_c(False)
+
+    def test_vapi_c_uds(self):
+        self.run_vapi_c(True)
+
+    def run_vapi_cpp(self, use_uds):
         """run C++ VAPI tests"""
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_cpp_test"
-        worker = Worker(
-            [executable, "vapi client", self.get_api_segment_prefix()], self.logger
-        )
+        path = self.get_api_sock_path() if use_uds else self.get_api_segment_prefix()
+        transport = "uds" if use_uds else "shm"
+        worker = Worker([executable, "vapi client", path, transport], self.logger)
         worker.start()
         timeout = 120
         worker.join(timeout)
@@ -65,6 +71,12 @@ class VAPITestCase(VppAsfTestCase):
         if error:
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
+
+    def test_vapi_cpp_shm(self):
+        self.run_vapi_cpp(False)
+
+    def test_vapi_cpp_uds(self):
+        self.run_vapi_cpp(True)
 
 
 if __name__ == "__main__":
