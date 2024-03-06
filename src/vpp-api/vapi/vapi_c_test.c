@@ -43,6 +43,7 @@ DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = NULL;
 static char *api_prefix = NULL;
+static bool use_uds = false;
 static const int max_outstanding_requests = 64;
 static const int response_queue_size = 32;
 
@@ -65,8 +66,9 @@ START_TEST (test_invalid_values)
   ck_assert_ptr_eq (NULL, sv);
   rv = vapi_send (ctx, sv);
   ck_assert_int_eq (VAPI_EINVAL, rv);
-  rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING, true);
+  rv =
+    vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
+		     response_queue_size, VAPI_MODE_BLOCKING, true, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_send (ctx, NULL);
   ck_assert_int_eq (VAPI_EINVAL, rv);
@@ -367,8 +369,9 @@ START_TEST (test_connect)
   vapi_ctx_t ctx;
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING, true);
+  rv =
+    vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
+		     response_queue_size, VAPI_MODE_BLOCKING, true, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_disconnect (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -384,8 +387,9 @@ setup_blocking (void)
 {
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_BLOCKING, true);
+  rv =
+    vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
+		     response_queue_size, VAPI_MODE_BLOCKING, true, use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -394,8 +398,9 @@ setup_nonblocking (void)
 {
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = vapi_connect (ctx, app_name, api_prefix, max_outstanding_requests,
-		     response_queue_size, VAPI_MODE_NONBLOCKING, true);
+  rv = vapi_connect_ex (ctx, app_name, api_prefix, max_outstanding_requests,
+			response_queue_size, VAPI_MODE_NONBLOCKING, true,
+			use_uds);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -1065,13 +1070,14 @@ test_suite (void)
 int
 main (int argc, char *argv[])
 {
-  if (3 != argc)
+  if (4 != argc)
     {
       printf ("Invalid argc==`%d'\n", argc);
       return EXIT_FAILURE;
     }
   app_name = argv[1];
   api_prefix = argv[2];
+  use_uds = argv[3][0] == '1';
   printf ("App name: `%s', API prefix: `%s'\n", app_name, api_prefix);
 
   int number_failed;
