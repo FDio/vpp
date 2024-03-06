@@ -57,6 +57,7 @@ clib_array_mask_u32 (u32 *src, u32 mask, u32 n_elts)
       u32x4 mask4 = u32x4_splat (mask);
       *(u32x4u *) src &= mask4;
       *(u32x4u *) (src + n_elts - 4) &= mask4;
+      return;
     }
 #endif
 
