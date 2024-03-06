@@ -453,13 +453,14 @@ typedef CLIB_PACKED (struct {
   u8 n_data_u64s;
 }) ip6_ext_header_t;
 
-#define foreach_ext_hdr_type \
-  _(IP6_HOP_BY_HOP_OPTIONS) \
-  _(IPV6_ROUTE) \
-  _(IP6_DESTINATION_OPTIONS) \
-  _(MOBILITY) \
-  _(HIP) \
-  _(SHIM6)
+#define foreach_ext_hdr_type                                                  \
+  _ (IP6_HOP_BY_HOP_OPTIONS)                                                  \
+  _ (IPV6_ROUTE)                                                              \
+  _ (IPV6_FRAGMENTATION)                                                      \
+  _ (IP6_DESTINATION_OPTIONS)                                                 \
+  _ (MOBILITY)                                                                \
+  _ (HIP)                                                                     \
+  _ (SHIM6)
 
 always_inline u8
 ip6_ext_hdr (u8 nexthdr)

@@ -48,6 +48,10 @@ int ip4_full_reass_enable_disable_with_refcnt (u32 sw_if_index,
 
 uword ip4_full_reass_custom_register_next_node (uword node_index);
 
+uword ip4_full_reass_custom_context_register_next_node (uword node_index);
+
+uword ip4_full_reass_get_error_next_index ();
+
 void ip4_local_full_reass_enable_disable (int enable);
 int ip4_local_full_reass_enabled ();
 #endif /* __included_ip4_full_reass_h__ */

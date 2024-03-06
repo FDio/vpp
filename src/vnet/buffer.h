@@ -373,6 +373,7 @@ typedef struct
       u32 pad[2];		/* do not overlay w/ ip.adj_index[0,1] */
       u16 mtu;
       u8 next_index;
+      u8 df_err_next_index;	// Don't Fragment error next index
       u8 flags;			//See ip_frag.h
     } ip_frag;
 
@@ -467,7 +468,17 @@ typedef struct
   } qos;
 
   u8 loop_counter;
-  u8 pad[5]; /* unused */
+  u8 pad[3]; /* unused */
+  struct
+  {
+    /*
+     * carry over the reass_estimated_mtu from Rx to Tx interface
+     * for re-fragment
+     */
+    u16 from_reass : 1;
+    u16 reass_estimated_mtu : 12; // valid if from_reass is set
+    u16 __reserved : 3;
+  };
 
   /**
    * The L4 payload size set on input on GSO enabled interfaces
