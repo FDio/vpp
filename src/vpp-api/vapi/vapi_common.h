@@ -35,8 +35,12 @@ typedef enum
   VAPI_EINCOMPATIBLE, /**< fundamental incompatibility while connecting to vpp
                            (control ping/control ping reply mismatch) */
   VAPI_MUTEX_FAILURE, /**< failure manipulating internal mutex(es) */
-  VAPI_EUSER,	      /**< user error used for breaking dispatch,
+  VAPI_EUSER,	        /**< user error used for breaking dispatch,
                            never used by VAPI */
+  VAPI_ENOTSOCK,      /**< vapi socket doesn't refer to a socket */
+  VAPI_EACCES,	      /**< no write permission for socket */
+  VAPI_ECONNRESET,    /**< connection reset by peer*/
+  VAPI_ESOCK_FAILURE, /**< generic socket failure, check errno */
 } vapi_error_e;
 
 typedef enum
