@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "50d6e027_12c274ea",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "I\u0027m occupied in another issue. will update this patch soon.",
+      "parentUuid": "151ab5db_d2c91020",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6e675539_5775b055",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-01-12T18:05:45Z",
       "side": 1,
       "message": "initialize it to ~0",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2448e1e3_038bb205",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e675539_5775b055",
       "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a595a8c3_7dbdf480",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "601db131_0b03f893",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4f489af5_ee7a288d",
@@ -65,6 +119,24 @@
       "writtenOn": "2024-01-12T18:05:45Z",
       "side": 1,
       "message": "From the moment I\u0027ve seen this logic (ah: + goto), I didn\u0027t like it. Since we do the code refactoring can we simplify it?",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dbfbdb2a_12a29ee0",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "removed Goto logic ,",
+      "parentUuid": "4f489af5_ee7a288d",
       "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "eca9e4db_0a83a7cd",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "613efd3e_3d9da152",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "18ef9242_77866a3a",
@@ -99,6 +189,24 @@
       "writtenOn": "2024-01-12T18:05:45Z",
       "side": 1,
       "message": "If initialization is done correctly I don\u0027t think we need this else statment.",
+      "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad05a992_3f6f7c66",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-06T13:42:29Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "18ef9242_77866a3a",
       "revId": "46d6f81ec1d58697d13c4064b9bfa1d23ddd9359",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
