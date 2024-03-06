@@ -203,13 +203,19 @@ public:
    *
    * @return VAPI_OK on success, other error code on error
    */
-  vapi_error_e connect (const char *name, const char *chroot_prefix,
-                        int max_outstanding_requests, int response_queue_size,
-                        bool handle_keepalives = true)
+  vapi_error_e
+  connect (const char *name, const char *chroot_prefix,
+	   int max_outstanding_requests, int response_queue_size,
+	   bool handle_keepalives = true, bool use_uds = true)
   {
-    return vapi_connect (vapi_ctx, name, chroot_prefix,
-                         max_outstanding_requests, response_queue_size,
-                         VAPI_MODE_BLOCKING, handle_keepalives);
+    int flags = 0;
+    if (handle_keepalives)
+      flags |= VAPI_FLAG_HANDLE_KEEPALIVES;
+    if (use_uds)
+      flags |= VAPI_FLAG_USE_UDS;
+    return vapi_connect_ex (vapi_ctx, name, chroot_prefix,
+			    max_outstanding_requests, response_queue_size,
+			    flags);
   }
 
   /**

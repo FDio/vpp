@@ -47,6 +47,13 @@ typedef enum
 
 typedef unsigned int vapi_msg_id_t;
 
+typedef enum
+{
+  VAPI_FLAG_USE_UDS = 1 << 1,
+  VAPI_FLAG_NON_BLOCK = 1 << 2,
+  VAPI_FLAG_HANDLE_KEEPALIVES = 1 << 3,
+} vapi_flags_t;
+
 #define VAPI_INVALID_MSG_ID ((vapi_msg_id_t)(~0))
 
 #ifdef __cplusplus
