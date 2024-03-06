@@ -73,12 +73,23 @@ static vlib_buffer_t *
 frag_buffer_alloc (vlib_buffer_t * org_b, u32 * bi)
 {
   vlib_main_t *vm = vlib_get_main ();
+  u32 flag_mask = VLIB_BUFFER_COPY_CLONE_FLAGS_MASK;
+
   if (vlib_buffer_alloc (vm, bi, 1) != 1)
     return 0;
 
   vlib_buffer_t *b = vlib_get_buffer (vm, *bi);
   vlib_buffer_copy_trace_flag (vm, org_b, *bi);
 
+  if (vnet_buffer (org_b)->ip_frag.flags & IP_FRAG_FLAG_COPY_METADATA)
+    {
+      clib_memcpy_fast (b->opaque, org_b->opaque, sizeof (b->opaque));
+      clib_memcpy_fast (b->opaque2, org_b->opaque2, sizeof (b->opaque2));
+      b->flags = org_b->flags & flag_mask;
+      b->flow_id = org_b->flow_id;
+      /* pre_data holds decision struct */
+      clib_memcpy_fast (b->pre_data, org_b->pre_data, sizeof (b->pre_data));
+    }
   return b;
 }
 
@@ -232,10 +243,12 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 }
 
 void
-ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 mtu, u8 next_index, u8 flags)
+ip_frag_set_vnet_buffer (vlib_buffer_t *b, u16 mtu, u8 next_index,
+			 u8 df_err_next_index, u8 flags)
 {
   vnet_buffer (b)->ip_frag.mtu = mtu;
   vnet_buffer (b)->ip_frag.next_index = next_index;
+  vnet_buffer (b)->ip_frag.df_err_next_index = df_err_next_index;
   vnet_buffer (b)->ip_frag.flags = flags;
 }
 
@@ -293,7 +306,9 @@ frag_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      icmp4_error_set_vnet_buffer (p0, ICMP4_destination_unreachable,
 					   ICMP4_destination_unreachable_fragmentation_needed_and_dont_fragment_set,
 					   vnet_buffer (p0)->ip_frag.mtu);
-	      next0 = IP_FRAG_NEXT_ICMP_ERROR;
+	      next0 = vnet_buffer (p0)->ip_frag.df_err_next_index == (u8)~0 ?
+			      IP_FRAG_NEXT_ICMP_ERROR :
+			      vnet_buffer (p0)->ip_frag.df_err_next_index;
 	    }
 	  else
 	    {

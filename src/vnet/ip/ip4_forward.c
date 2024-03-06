@@ -2037,8 +2037,9 @@ ip4_mtu_check (vlib_buffer_t * b, u16 packet_len,
 	  /* IP fragmentation */
 	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
 				   (is_midchain ?
-				    IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN :
-				    IP_FRAG_NEXT_IP_REWRITE), 0);
+					    IP_FRAG_NEXT_IP_REWRITE_MIDCHAIN :
+					    IP_FRAG_NEXT_IP_REWRITE),
+				   ~0, 0);
 	  *next = IP4_REWRITE_NEXT_FRAGMENT;
 	}
     }
