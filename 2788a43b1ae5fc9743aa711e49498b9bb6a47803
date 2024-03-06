@@ -33,6 +33,52 @@
       "message": "Maybe this Note from 2016 could be deleted as well.",
       "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da03d5b5_44508df3",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-03-06T12:26:03Z",
+      "side": 1,
+      "message": "Honestly I don\u0027t know why we would enumerate the APIs in this file, and the list is incomplete / outdated.\n\nMaybe it\u0027s easier to just remove it alltogether, or make a reference to `find src/ -name \\*.api` instead.",
+      "range": {
+        "startLine": 28,
+        "startChar": 3,
+        "endLine": 28,
+        "endChar": 24
+      },
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a5dfc97_a0bcd303",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-03-06T12:26:03Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 31,
+        "startChar": 27,
+        "endLine": 31,
+        "endChar": 33
+      },
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
