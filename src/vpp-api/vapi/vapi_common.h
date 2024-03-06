@@ -22,30 +22,34 @@
 extern "C" {
 #endif
 
-typedef enum
-{
-  VAPI_OK = 0,	      /**< success */
-  VAPI_EINVAL,	      /**< invalid value encountered */
-  VAPI_EAGAIN,	      /**< operation would block */
-  VAPI_ENOTSUP,	      /**< operation not supported */
-  VAPI_ENOMEM,	      /**< out of memory */
-  VAPI_ENORESP,	      /**< no response to request */
-  VAPI_EMAP_FAIL,     /**< failure while mapping api */
-  VAPI_ECON_FAIL,     /**< failure while connecting to vpp */
-  VAPI_EINCOMPATIBLE, /**< fundamental incompatibility while connecting to vpp
-                           (control ping/control ping reply mismatch) */
-  VAPI_MUTEX_FAILURE, /**< failure manipulating internal mutex(es) */
-  VAPI_EUSER,	      /**< user error used for breaking dispatch,
-                           never used by VAPI */
-} vapi_error_e;
+  typedef enum
+  {
+    VAPI_OK = 0,	/**< success */
+    VAPI_EINVAL,	/**< invalid value encountered */
+    VAPI_EAGAIN,	/**< operation would block */
+    VAPI_ENOTSUP,	/**< operation not supported */
+    VAPI_ENOMEM,	/**< out of memory */
+    VAPI_ENORESP,	/**< no response to request */
+    VAPI_EMAP_FAIL,	/**< failure while mapping api */
+    VAPI_ECON_FAIL,	/**< failure while connecting to vpp */
+    VAPI_EINCOMPATIBLE, /**< fundamental incompatibility while connecting to
+			   vpp (control ping/control ping reply mismatch) */
+    VAPI_MUTEX_FAILURE, /**< failure manipulating internal mutex(es) */
+    VAPI_EUSER,		/**< user error used for breaking dispatch,
+			   never used by VAPI */
+    VAPI_ENOTSOCK,	/**< vapi socket doesn't refer to a socket */
+    VAPI_EACCES,	/**< no write permission for socket */
+    VAPI_ECONNRESET,	/**< connection reset by peer*/
+    VAPI_ESOCK_FAILURE, /**< generic socket failure, check errno */
+  } vapi_error_e;
 
-typedef enum
-{
-  VAPI_MODE_BLOCKING = 1,    /**< operations block until response received */
-  VAPI_MODE_NONBLOCKING = 2, /**< operations never block */
-} vapi_mode_e;
+  typedef enum
+  {
+    VAPI_MODE_BLOCKING = 1,    /**< operations block until response received */
+    VAPI_MODE_NONBLOCKING = 2, /**< operations never block */
+  } vapi_mode_e;
 
-typedef unsigned int vapi_msg_id_t;
+  typedef unsigned int vapi_msg_id_t;
 
 #define VAPI_INVALID_MSG_ID ((vapi_msg_id_t)(~0))
 
