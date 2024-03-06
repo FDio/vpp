@@ -108,6 +108,25 @@ vapi_error_e vapi_connect (vapi_ctx_t ctx, const char *name,
 			   bool handle_keepalives);
 
 /**
+ * @brief connect to vpp
+ *
+ * @param ctx opaque vapi context, must be allocated using vapi_ctx_alloc first
+ * @param name application name
+ * @param chroot_prefix shared memory prefix or path to unix socket
+ * @param max_outstanding_requests max number of outstanding requests queued
+ * @param response_queue_size size of the response queue
+ * @param mode mode of operation - blocking or nonblocking
+ * @param handle_keepalives - if true, automatically handle memclnt_keepalive
+ * @param use_uds - if true, use unix domain socket transport
+ *
+ * @return VAPI_OK on success, other error code on error
+ */
+vapi_error_e vapi_connect_ex (vapi_ctx_t ctx, const char *name,
+			      const char *path, int max_outstanding_requests,
+			      int response_queue_size, vapi_mode_e mode,
+			      bool handle_keepalives, bool use_uds);
+
+/**
  * @brief connect to vpp from a client in same process
  * @remark This MUST be called from a separate thread. If called
  *         from the main thread, it will deadlock.
