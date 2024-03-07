@@ -348,7 +348,7 @@ timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
   u64 min_t;
   uword wrapped = 0;
 
-  min_dt = ~0;
+  min_dt = ~0U;
   min_t = ~0ULL;
   vec_foreach (l, w->levels)
   {
@@ -394,7 +394,7 @@ timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
   {
     timing_wheel_overflow_elt_t *oe;
 
-    if (min_dt != ~0)
+    if (min_dt != ~0U)
       min_t = w->cpu_time_base + min_dt;
 
     /* *INDENT-OFF* */
