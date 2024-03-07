@@ -1,0 +1,221 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d647582b_4f5726a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "Good first patch.\n\nWhat I would like to see are unit tests. There are already existing unit tests for VAPI - vapi_c_test.c and vapi_cpp_test.cpp under vpp-api/vapi. It should be very easy to add command line options as required and then do a vapi_connect over either SHM or UDS.\n\ntest/asf/test_vapi.py is the python counterpart invoking these binaries. Modifying the original tests as SHM flavour and adding new ones as UDS flavour should be quite straightforward. extra_vpp_config as a property VAPITestCase could be used to instruct VPP to listen over UDS as well. If having SHM \u0026 UDS on at the same time is not supported, then the solution is to rename VAPITestCase to TemplateVapiTestCase with an empty class property, say command_line_args and define a child case VAPISHMTestCase with command_line_args \u003d self.get_api_segment_prefix() and VAPIUDSTestCase with command_line_args \u003d (whatever the binary requires for UDS connect) and extra_vpp_config \u003d (whatever VPP needs to enable UDS).",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db086123_cd883e6a",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "You could also use vec_validate_init_empty for a simpler code.",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "449ebda8_b9e8b4cb",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "I think this block should go after the #if VAPI_DEBUG_ALLOC .. #endif, otherwise debugging allocations won\u0027t work with UDS.\n\nAlso instead of return it\u0027d be cleaner to\n\nif (ctx-\u003euse_uds)\n  vec_free(msg);\nelse\n  vl_msg_api_free(msg);",
+      "range": {
+        "startLine": 281,
+        "startChar": 0,
+        "endLine": 285,
+        "endChar": 5
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e998d6cf_94975ae1",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "I have to read the code to understand what \"wait\" means. Might I suggest \"timeout\" as a better name?",
+      "range": {
+        "startLine": 407,
+        "startChar": 54,
+        "endLine": 407,
+        "endChar": 58
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00e0142c_d330467d",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "I think this could be replaced by a one liner\n\nvec_add (*vec_msg, mbp-\u003edata, data_len);",
+      "range": {
+        "startLine": 475,
+        "startChar": 0,
+        "endLine": 476,
+        "endChar": 51
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e81ceff_29466d89",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "Why allocate and set the vector length to zero?\n\nWouldn\u0027t *vec_msg \u003d NULL; indicate the same to the caller?",
+      "range": {
+        "startLine": 480,
+        "startChar": 0,
+        "endLine": 481,
+        "endChar": 33
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77c57f92_1359d50c",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 686,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "return value is not checked here.",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c44f38dc_a1342436",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "return value check?",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bef6e8d_91920ff8",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1382,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "return value check?",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "864170bb_73bb21a8",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "see my comment next to flags. I don\u0027t see a reason for one API (vapi_connect) taking bool handle_keepalives and a mode, while another API (vapi_connect_ex) takes an int of flags and decomposes those internally into boolean flags. It\u0027s inconsistent and hard(er) to debug.",
+      "range": {
+        "startLine": 125,
+        "startChar": 34,
+        "endLine": 125,
+        "endChar": 43
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76bc1386_8cf306dd",
+        "filename": "src/vpp-api/vapi/vapi_common.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T15:13:09Z",
+      "side": 1,
+      "message": "May I suggest not having these flags? These are bug prone. And they get translated to bool flags anyway. Why not have bools to start with?",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
