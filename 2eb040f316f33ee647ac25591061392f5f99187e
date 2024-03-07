@@ -16,6 +16,24 @@
       "message": "This is supposed to be an unsigned u32, so could you provide a bit more details about the issue?",
       "revId": "2eb040f316f33ee647ac25591061392f5f99187e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "864bce3e_7ee07c03",
+        "filename": "src/vppinfra/timing_wheel.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-03-07T18:27:41Z",
+      "side": 1,
+      "message": "Never mind, I\u0027ve misread a false-positive analyzer output, this patch is not needed",
+      "parentUuid": "5b93c096_1dac9427",
+      "revId": "2eb040f316f33ee647ac25591061392f5f99187e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
