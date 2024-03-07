@@ -1766,16 +1766,52 @@ elog_post_mortem_dump (void)
    */
 }
 
+#define unformat_and_mark_on(_input, _name, _flag)                            \
+  ({                                                                          \
+    u8 _match = (unformat ((_input), (_name)));                               \
+    if (_match)                                                               \
+      {                                                                       \
+	if (unformat ((_input), "off"))                                       \
+	  {                                                                   \
+	    (_flag) = 0;                                                      \
+	  }                                                                   \
+	else                                                                  \
+	  {                                                                   \
+	    (void) unformat ((_input), "on");                                 \
+	    (_flag) = 1;                                                      \
+	  }                                                                   \
+      }                                                                       \
+    _match;                                                                   \
+  })
+
 static clib_error_t *
 vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   int turn_on_mem_trace = 0;
 
+  /* Default to "on" for compatibility */
+  vm->elog_trace_api_messages = 1;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "memory-trace"))
-	turn_on_mem_trace = 1;
+      if (unformat_and_mark_on (input, "memory-trace", turn_on_mem_trace))
+	;
+      else if (unformat_and_mark_on (input, "api-trace",
+				     vm->elog_trace_api_messages))
+	;
+
+      else if (unformat_and_mark_on (input, "cli-trace",
+				     vm->elog_trace_cli_commands))
+	;
+
+      else if (unformat_and_mark_on (input, "dispatch-trace",
+				     vm->elog_trace_graph_dispatch))
+	;
+
+      else if (unformat_and_mark_on (input, "barrier-trace",
+				     vm->elog_trace_barrier))
+	;
 
       else if (unformat (input, "elog-events %d",
 			 &vgm->configured_elog_ring_size))

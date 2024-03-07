@@ -189,6 +189,7 @@ typedef struct vlib_main_t
   int elog_trace_cli_commands;
   int elog_trace_graph_dispatch;
   int elog_trace_graph_circuit;
+  int elog_trace_barrier;
   u32 elog_trace_graph_circuit_node_index;
 
   /* Node call and return event types. */

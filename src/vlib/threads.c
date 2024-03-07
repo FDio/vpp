@@ -239,6 +239,7 @@ vlib_thread_init (vlib_main_t * vm)
   w->cpu_id = tm->main_lcore;
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
+  w->barrier_elog_enabled = vm->elog_trace_barrier;
   tm->n_vlib_mains = 1;
 
   vlib_get_thread_core_numa (w, w->cpu_id);
