@@ -32,7 +32,9 @@
 #define TELOPTS
 #endif
 
+#include <vppinfra/clib.h>
 #include <arpa/telnet.h>
+#include <vpp/vnet/config.h>
 
 #define SOCKET_FILE "/run/vpp/cli.sock"
 
@@ -160,6 +162,14 @@ process_input (int sock_fd, unsigned char *rx_buf, int rx_buf_len,
   return j;
 }
 
+#ifdef CLIB_SANITIZE_ADDR
+/* default options for Address Sanitizer */
+const char *
+__asan_default_options (void)
+{
+  return VPP_SANITIZE_ADDR_OPTIONS;
+}
+#endif /* CLIB_SANITIZE_ADDR */
 
 int
 main (int argc, char *argv[])

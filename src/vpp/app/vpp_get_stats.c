@@ -19,6 +19,7 @@
 
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
+#include <vpp/vnet/config.h>
 
 static int
 stat_poll_loop (u8 ** patterns)
@@ -109,6 +110,15 @@ enum stat_client_cmd_e
   STAT_CLIENT_CMD_DUMP,
   STAT_CLIENT_CMD_TIGHTPOLL,
 };
+
+#ifdef CLIB_SANITIZE_ADDR
+/* default options for Address Sanitizer */
+const char *
+__asan_default_options (void)
+{
+  return VPP_SANITIZE_ADDR_OPTIONS;
+}
+#endif /* CLIB_SANITIZE_ADDR */
 
 int
 main (int argc, char **argv)
