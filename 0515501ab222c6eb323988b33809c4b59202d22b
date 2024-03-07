@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "af443e16_c56f2ae2",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-07T13:51:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "571b013f_ba450883",
+      "revId": "0515501ab222c6eb323988b33809c4b59202d22b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "43a4756b_7eae8a7e",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-03-07T09:06:18Z",
       "side": 1,
       "message": "obviously policy is not found - I would remove this variable, make while loop infinite and break out of it when conditions are satisfied.",
+      "revId": "0515501ab222c6eb323988b33809c4b59202d22b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "697c626f_c8cea318",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 2931
+      },
+      "writtenOn": "2024-03-07T13:51:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43a4756b_7eae8a7e",
       "revId": "0515501ab222c6eb323988b33809c4b59202d22b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
