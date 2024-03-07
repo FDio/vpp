@@ -521,7 +521,7 @@ cryptodev_frame_dequeue_internal (vlib_main_t *vm, u32 *enqueue_thread_idx)
   while (n_elts)
     {
       fe[0].status = cryptodev_status_conversion[cop[0]->op.status];
-      err0 |= (fe[0].status == VNET_CRYPTO_OP_STATUS_COMPLETED) << n;
+      err0 |= ((u64) (fe[0].status == VNET_CRYPTO_OP_STATUS_COMPLETED)) << n;
       n++;
       fe++;
       cop++;
