@@ -42,6 +42,8 @@
 #include <vppinfra/format.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#else
+#include <sys/sysctl.h>
 #endif
 
 #include <sys/stat.h>
@@ -281,6 +283,29 @@ os_get_online_cpu_node_bitmap ()
   return clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
 #else
   return 0;
+#endif
+}
+
+ssize_t
+unix_get_exec_path (char *path, size_t pathlen)
+{
+#ifdef __linux__
+  ssize_t res = readlink ("/proc/self/exe", path, pathlen);
+  /* readlink doesn't null terminate the returned path. */
+  path[pathlen - 1] = 0;
+  return res;
+#else
+  int mib[4];
+  ssize_t cb = pathlen;
+
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_PATHNAME;
+  mib[3] = -1;
+
+  if (sysctl (mib, 4, path, &cb, NULL, 0) == -1)
+    return 0;
+  return cb;
 #endif
 }
 
