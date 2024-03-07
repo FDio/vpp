@@ -48,11 +48,8 @@ vpp_find_plugin_path ()
   u8 *s;
 
   /* find executable path */
-  if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
+  if ((rv = unix_get_exec_path (path, PATH_MAX)) == 0)
     return;
-
-  /* readlink doesn't provide null termination */
-  path[rv] = 0;
 
   /* strip filename */
   if ((p = strrchr (path, '/')) == 0)
