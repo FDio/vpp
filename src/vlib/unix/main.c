@@ -39,6 +39,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/unix/plugin.h>
+#include <vppinfra/unix.h>
 
 #include <limits.h>
 #include <signal.h>
@@ -616,22 +617,23 @@ vlib_unix_main (int argc, char *argv[])
   vlib_main_t *vm = vlib_get_first_main (); /* one and only time for this! */
   unformat_input_t input;
   clib_error_t *e;
-  char buffer[PATH_MAX];
   int i;
 
   vec_validate_aligned (vgm->vlib_mains, 0, CLIB_CACHE_LINE_BYTES);
 
-  if ((i = readlink ("/proc/self/exe", buffer, sizeof (buffer) - 1)) > 0)
+  vgm->exec_path = (char *) os_get_exec_path ();
+
+  if (vgm->exec_path)
     {
-      int j;
-      buffer[i] = 0;
-      vgm->exec_path = vec_new (char, i + 1);
-      clib_memcpy_fast (vgm->exec_path, buffer, i + 1);
-      for (j = i - 1; j > 0; j--)
-	if (buffer[j - 1] == '/')
+      for (i = vec_len (vgm->exec_path) - 1; i > 0; i--)
+	if (vgm->exec_path[i - 1] == '/')
 	  break;
-      vgm->name = vec_new (char, i - j + 1);
-      clib_memcpy_fast (vgm->name, buffer + j, i - j + 1);
+
+      vgm->name = 0;
+
+      vec_add (vgm->name, vgm->exec_path + i, vec_len (vgm->exec_path) - i);
+      vec_add1 (vgm->exec_path, 0);
+      vec_add1 (vgm->name, 0);
     }
   else
     vgm->exec_path = vgm->name = argv[0];
