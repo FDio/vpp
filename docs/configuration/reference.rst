@@ -244,7 +244,7 @@ Typically, one simply enables the API message trace scheme:
 .. code-block:: console
 
    api-trace {
-     api-trace on
+     on
    }
 
 on | enable
