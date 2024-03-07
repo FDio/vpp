@@ -59,6 +59,9 @@ clib_bitmap_t *os_get_online_cpu_core_bitmap ();
 /* Retrieve bitmap of online cpu nodes (sockets) */
 clib_bitmap_t *os_get_online_cpu_node_bitmap ();
 
+/* Retrieve the path of the current executable. */
+ssize_t unix_get_exec_path (char *path, size_t pathlen);
+
 #endif /* included_clib_unix_h */
 
 /*
