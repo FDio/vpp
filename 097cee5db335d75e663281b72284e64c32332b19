@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a241a454_90bbbcca",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1868,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-07T17:19:00Z",
+      "side": 1,
+      "message": "I\u0027m guessing this is a leftover print, please remove it.",
+      "revId": "097cee5db335d75e663281b72284e64c32332b19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
