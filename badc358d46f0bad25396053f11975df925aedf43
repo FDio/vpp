@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea4df6e4_a5d39917",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-03-07T14:35:37Z",
+      "side": 1,
+      "message": "A reference must be added to this page if this ps is merged to point to the versioned docs page.\n\nI move only the part of the wiki that is worked for me (i.e.: the custom-dump and some other tools were removed with https://gerrit.fd.io/r/c/vpp/+/32652 )",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 63
+      },
+      "revId": "badc358d46f0bad25396053f11975df925aedf43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
