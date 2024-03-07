@@ -621,10 +621,9 @@ vlib_unix_main (int argc, char *argv[])
 
   vec_validate_aligned (vgm->vlib_mains, 0, CLIB_CACHE_LINE_BYTES);
 
-  if ((i = readlink ("/proc/self/exe", buffer, sizeof (buffer) - 1)) > 0)
+  if ((i = unix_get_exec_path (buffer, sizeof (buffer))) > 0)
     {
       int j;
-      buffer[i] = 0;
       vgm->exec_path = vec_new (char, i + 1);
       clib_memcpy_fast (vgm->exec_path, buffer, i + 1);
       for (j = i - 1; j > 0; j--)
