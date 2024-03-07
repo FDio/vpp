@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f4343bc_c58aae06",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Hello Klement,\nMany thanks for the review.\nI still have a couple of outstanding questions:\n* I didn\u0027t find proper vapi_error_e codes for some logic (I do `return -1`), any suggestion?\n* IMO I\u0027ve made the unit test more uglier, any suggestion how to pass `use_uds` to the binary?",
+      "parentUuid": "d647582b_4f5726a5",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "db086123_cd883e6a",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "92eb86ff_b39e37db",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "db086123_cd883e6a",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "449ebda8_b9e8b4cb",
@@ -48,6 +84,30 @@
       "writtenOn": "2024-03-07T15:13:09Z",
       "side": 1,
       "message": "I think this block should go after the #if VAPI_DEBUG_ALLOC .. #endif, otherwise debugging allocations won\u0027t work with UDS.\n\nAlso instead of return it\u0027d be cleaner to\n\nif (ctx-\u003euse_uds)\n  vec_free(msg);\nelse\n  vl_msg_api_free(msg);",
+      "range": {
+        "startLine": 281,
+        "startChar": 0,
+        "endLine": 285,
+        "endChar": 5
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f13b104_4de508c3",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "449ebda8_b9e8b4cb",
       "range": {
         "startLine": 281,
         "startChar": 0,
@@ -83,6 +143,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "90eebf84_1cfd2098",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "I tried to keep the same approach and style as it was implemented with shm transport. We also have a timeout local variable below.\n\nBut I agree it could be a bit confusing. So, are you ok if I rename argument to `timeout` and local variable to `deadline` in the both places (for shm as well)?",
+      "parentUuid": "e998d6cf_94975ae1",
+      "range": {
+        "startLine": 407,
+        "startChar": 54,
+        "endLine": 407,
+        "endChar": 58
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "00e0142c_d330467d",
         "filename": "src/vpp-api/vapi/vapi.c",
         "patchSetId": 1
@@ -94,6 +178,30 @@
       "writtenOn": "2024-03-07T15:13:09Z",
       "side": 1,
       "message": "I think this could be replaced by a one liner\n\nvec_add (*vec_msg, mbp-\u003edata, data_len);",
+      "range": {
+        "startLine": 475,
+        "startChar": 0,
+        "endLine": 476,
+        "endChar": 51
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80458f6c_5314fc7a",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 476,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "00e0142c_d330467d",
       "range": {
         "startLine": 475,
         "startChar": 0,
@@ -127,6 +235,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1cdef9db_7bcd09d9",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 481,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3e81ceff_29466d89",
+      "range": {
+        "startLine": 480,
+        "startChar": 0,
+        "endLine": 481,
+        "endChar": 33
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "77c57f92_1359d50c",
@@ -140,6 +272,24 @@
       "writtenOn": "2024-03-07T15:13:09Z",
       "side": 1,
       "message": "return value is not checked here.",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e50b05a2_45e7cdda",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 686,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "77c57f92_1359d50c",
       "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -161,6 +311,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "29f30fdf_a2cf2838",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c44f38dc_a1342436",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5bef6e8d_91920ff8",
@@ -174,6 +342,24 @@
       "writtenOn": "2024-03-07T15:13:09Z",
       "side": 1,
       "message": "return value check?",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50ff4b3a_228d2318",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1382,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5bef6e8d_91920ff8",
       "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -201,6 +387,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7b96ce7_fb18bc0c",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "864170bb_73bb21a8",
+      "range": {
+        "startLine": 125,
+        "startChar": 34,
+        "endLine": 125,
+        "endChar": 43
+      },
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "76bc1386_8cf306dd",
@@ -214,6 +424,24 @@
       "writtenOn": "2024-03-07T15:13:09Z",
       "side": 1,
       "message": "May I suggest not having these flags? These are bug prone. And they get translated to bool flags anyway. Why not have bools to start with?",
+      "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "64c26490_bdd95035",
+        "filename": "src/vpp-api/vapi/vapi_common.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-07T16:45:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "76bc1386_8cf306dd",
       "revId": "3ae1f7a2ebc6a50286d8c5a54dc17b71f697cf7a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
