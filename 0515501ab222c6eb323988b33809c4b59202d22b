@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "571b013f_ba450883",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-03-07T09:06:18Z",
+      "side": 1,
+      "message": "I think that the name of this function is misleading - it has nothing to do with goto.",
+      "revId": "0515501ab222c6eb323988b33809c4b59202d22b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43a4756b_7eae8a7e",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 1854
+      },
+      "writtenOn": "2024-03-07T09:06:18Z",
+      "side": 1,
+      "message": "obviously policy is not found - I would remove this variable, make while loop infinite and break out of it when conditions are satisfied.",
+      "revId": "0515501ab222c6eb323988b33809c4b59202d22b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
