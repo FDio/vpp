@@ -67,6 +67,13 @@ typedef struct adj_delegate_t_
 } adj_delegate_t;
 
 /**
+ * Pool of delegates
+*/
+extern adj_bfd_delegate_t *abd_pool;
+extern adj_bfd_delegate_t*
+adj_bfd_from_base (adj_delegate_t *ad);
+
+/**
  * Indication that the adjacency has been deleted. The delegate provider should free
  * the delegate.
  */

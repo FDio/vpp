@@ -36,11 +36,11 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vlib/stats/stats.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_udp.h>
-#include <vnet/bfd/bfd_main.h>
-#include <vnet/bfd/bfd_api.h>
-#include <vnet/bfd/bfd.api_enum.h>
+#include <plugins/bfd/bfd_debug.h>
+#include <plugins/bfd/bfd_udp.h>
+#include <plugins/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_api.h>
+#include <plugins/bfd/bfd.api_enum.h>
 
 #define F(sym, str)                                                           \
   STATIC_ASSERT ((int) BFD_ERROR_##sym == (int) BFD_UDP_ERROR_##sym,          \
