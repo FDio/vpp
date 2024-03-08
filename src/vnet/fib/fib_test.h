@@ -24,6 +24,33 @@
 #include <vnet/adj/adj_types.h>
 #include <vnet/dpo/replicate_dpo.h>
 
+/*
+ * Add debugs for passing tests
+ */
+static int fib_test_do_debug;
+
+#define FIB_TEST_I(_cond, _comment, _args...)			\
+({								\
+    int _evald = (_cond);					\
+    if (!(_evald)) {						\
+        fformat(stderr, "FAIL:%d: " _comment "\n",		\
+                __LINE__, ##_args);				\
+        res = 1;                                                \
+    } else {							\
+        if (fib_test_do_debug)                                  \
+            fformat(stderr, "PASS:%d: " _comment "\n",          \
+                    __LINE__, ##_args);				\
+    }								\
+    res;							\
+})
+#define FIB_TEST(_cond, _comment, _args...)			\
+{								\
+    if (FIB_TEST_I(_cond, _comment, ##_args)) {                 \
+        return 1;                                               \
+        ASSERT(!("FAIL: " _comment));				\
+    }								\
+}
+
 typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_LABEL_O_ADJ,
     FT_LB_LABEL_STACK_O_ADJ,
@@ -126,6 +153,22 @@ typedef struct fib_test_rep_bucket_t_ {
    };
 } fib_test_rep_bucket_t;
 
+/**
+ * A 'i'm not fussed is this is not efficient' store of test data
+ */
+typedef struct test_main_t_ {
+    /**
+     * HW if indicies
+     */
+    u32 hw_if_indicies[4];
+    /**
+     * HW interfaces
+     */
+    vnet_hw_interface_t * hw[4];
+
+} test_main_t;
+
+extern test_main_t test_main;
 
 extern int fib_test_validate_rep_v(const replicate_t *rep,
                                    u16 n_buckets,

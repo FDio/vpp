@@ -13,59 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_main.h>
 
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/fib/fib_walk.h>
-
-/**
- * Distillation of the BFD session states into a go/no-go for using
- * the associated tracked adjacency
- */
-typedef enum adj_bfd_state_t_
-{
-    ADJ_BFD_STATE_DOWN,
-    ADJ_BFD_STATE_UP,
-} adj_bfd_state_t;
-
-#define ADJ_BFD_STATES {                        \
-    [ADJ_BFD_STATE_DOWN] = "down",              \
-    [ADJ_BFD_STATE_UP]   = "up",                \
-}
-
-static const char *adj_bfd_state_names[] = ADJ_BFD_STATES;
-
-/**
- * BFD delegate daa
- */
-typedef struct adj_bfd_delegate_t_
-{
-    /**
-     * BFD session state
-     */
-    adj_bfd_state_t abd_state;
-
-    /**
-     * BFD session index
-     */
-    u32 abd_index;
-} adj_bfd_delegate_t;
-
-/**
- * Pool of delegates
-*/
-static adj_bfd_delegate_t *abd_pool;
-
-static inline adj_bfd_delegate_t*
-adj_bfd_from_base (adj_delegate_t *ad)
-{
-    if (NULL != ad)
-    {
-        return (pool_elt_at_index(abd_pool, ad->ad_index));
-    }
-    return (NULL);
-}
+#include <vnet/adj/adj_internal.h>
 
 static inline const adj_bfd_delegate_t*
 adj_bfd_from_const_base (const adj_delegate_t *ad)
@@ -228,29 +181,7 @@ adj_bfd_notify (bfd_listen_event_e event,
     }
 }
 
-int
-adj_bfd_is_up (adj_index_t ai)
-{
-    const adj_bfd_delegate_t *abd;
-
-    abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
-
-    if (NULL == abd)
-    {
-        /*
-         * no BFD tracking - resolved
-         */
-        return (!0);
-    }
-    else
-    {
-        /*
-         * defer to the state of the BFD tracking
-         */
-        return (ADJ_BFD_STATE_UP == abd->abd_state);
-    }
-}
-
+static const char *adj_bfd_state_names[] = ADJ_BFD_STATES;
 /**
  * Print a delegate that represents BFD tracking
  */
