@@ -433,13 +433,8 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(unnum[0].sw_if_index, self.pg2.sw_if_index)
 
         #
-        # We should respond to ARP requests for the unnumbered to address
-        # once an attached route to the source is known
-        #
-        self.send_and_assert_no_replies(
-            self.pg2, p, "ARP req for unnumbered address - no source"
-        )
-
+        # We should respond to ARP requests for an unnumbered to address
+        # from neighbors on pg2
         attached_host = VppIpRoute(
             self,
             self.pg2.remote_hosts[3].ip4,
