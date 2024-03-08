@@ -87,6 +87,15 @@ typedef enum
   URPF_N_NEXT,
 } urpf_next_t;
 
+static_always_inline u32
+urpf_get_fib_index (vlib_buffer_t *b, ip_address_family_t af, vlib_dir_t dir)
+{
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[dir];
+  if (vnet_buffer (b)->ip.adj_index[VLIB_RX] != ~0)
+    return vnet_buffer (b)->ip.adj_index[VLIB_RX];
+  return vec_elt (urpf_cfgs[af][dir], sw_if_index).fib_index;
+}
+
 static_always_inline uword
 urpf_inline (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
@@ -128,10 +137,8 @@ urpf_inline (vlib_main_t * vm,
 	  h1 += vnet_buffer (b[1])->ip.save_rewrite_length;
 	}
 
-      fib_index0 =
-	urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
-      fib_index1 =
-	urpf_cfgs[af][dir][vnet_buffer (b[1])->sw_if_index[dir]].fib_index;
+      fib_index0 = urpf_get_fib_index (b[0], af, dir);
+      fib_index1 = urpf_get_fib_index (b[1], af, dir);
 
       if (AF_IP4 == af)
 	{
@@ -250,8 +257,7 @@ urpf_inline (vlib_main_t * vm,
       if (VLIB_TX == dir)
 	h0 += vnet_buffer (b[0])->ip.save_rewrite_length;
 
-      fib_index0 =
-	urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+      fib_index0 = urpf_get_fib_index (b[0], af, dir);
 
       if (AF_IP4 == af)
 	{
