@@ -56,6 +56,7 @@
 typedef struct
 {
   index_t urpf;
+  u32 fib_index;
 } urpf_trace_t;
 
 static u8 *
@@ -65,9 +66,7 @@ format_urpf_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   urpf_trace_t *t = va_arg (*va, urpf_trace_t *);
 
-  s = format (s, "uRPF:%d", t->urpf);
-
-  return s;
+  return format (s, "uRPF:%d fib:%d", t->urpf, t->fib_index);
 }
 
 #define foreach_urpf_error                 \
@@ -86,6 +85,17 @@ typedef enum
   URPF_NEXT_DROP,
   URPF_N_NEXT,
 } urpf_next_t;
+
+static_always_inline u32
+urpf_get_fib_index (vlib_buffer_t *b, ip_address_family_t af, vlib_dir_t dir)
+{
+  u32 sw_if_index = vnet_buffer (b)->sw_if_index[dir];
+  if (vnet_buffer (b)->ip.adj_index[VLIB_RX] != ~0)
+    return vnet_buffer (b)->ip.adj_index[VLIB_RX];
+  if (vec_len (urpf_cfgs[af][dir]) <= sw_if_index)
+    return ~0;
+  return vec_elt (urpf_cfgs[af][dir], sw_if_index).fib_index;
+}
 
 static_always_inline uword
 urpf_inline (vlib_main_t * vm,
@@ -110,6 +120,7 @@ urpf_inline (vlib_main_t * vm,
       const load_balance_t *lb0, *lb1;
       u32 fib_index0, fib_index1;
       const u8 *h0, *h1;
+      bool only_one = false;
 
       /* Prefetch next iteration. */
       {
@@ -128,82 +139,173 @@ urpf_inline (vlib_main_t * vm,
 	  h1 += vnet_buffer (b[1])->ip.save_rewrite_length;
 	}
 
-      fib_index0 =
-	urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
-      fib_index1 =
-	urpf_cfgs[af][dir][vnet_buffer (b[1])->sw_if_index[dir]].fib_index;
+      fib_index0 = urpf_get_fib_index (b[0], af, dir);
+      fib_index1 = urpf_get_fib_index (b[1], af, dir);
 
-      if (AF_IP4 == af)
+      if (PREDICT_FALSE (fib_index0 == ~0 && fib_index1 == ~0))
 	{
-	  const ip4_header_t *ip0, *ip1;
-
-	  ip0 = (ip4_header_t *) h0;
-	  ip1 = (ip4_header_t *) h1;
-
-	  ip4_fib_forwarding_lookup_x2 (fib_index0,
-					fib_index1,
-					&ip0->src_address,
-					&ip1->src_address,
-					&lb_index0, &lb_index1);
-	  /* Pass multicast. */
-	  pass0 = (ip4_address_is_multicast (&ip0->src_address) ||
-		   ip4_address_is_global_broadcast (&ip0->src_address));
-	  pass1 = (ip4_address_is_multicast (&ip1->src_address) ||
-		   ip4_address_is_global_broadcast (&ip1->src_address));
+	  /* skip urpf for these buffers */
+	  pass0 = 1;
+	  pass1 = 1;
+	  goto out_two;
 	}
-      else
+      else if (PREDICT_FALSE (fib_index0 == ~0))
 	{
-	  const ip6_header_t *ip0, *ip1;
-
-	  ip0 = (ip6_header_t *) h0;
-	  ip1 = (ip6_header_t *) h1;
-
-	  lb_index0 = ip6_fib_table_fwding_lookup (fib_index0,
-						   &ip0->src_address);
-	  lb_index1 = ip6_fib_table_fwding_lookup (fib_index1,
-						   &ip1->src_address);
-	  pass0 = ip6_address_is_multicast (&ip0->src_address);
-	  pass1 = ip6_address_is_multicast (&ip1->src_address);
+	  pass0 = 1;
+	  only_one = true;
+	  fib_index0 = fib_index1;
+	}
+      else if (PREDICT_FALSE (fib_index1 == ~0))
+	{
+	  pass1 = 1;
+	  only_one = true;
 	}
 
-      lb0 = load_balance_get (lb_index0);
-      lb1 = load_balance_get (lb_index1);
-
-      if (URPF_MODE_STRICT == mode)
+      if (PREDICT_FALSE (only_one))
 	{
-	  /* for RX the check is: would this source adddress be forwarded
-	   * out of the interface on which it was recieved, if yes allow.
-	   * For TX it's; would this source address be forwarded out of the
-	   * interface through which it is being sent, if yes drop.
-	   */
-	  int res0, res1;
-
-	  res0 = fib_urpf_check (lb0->lb_urpf,
-				 vnet_buffer (b[0])->sw_if_index[dir]);
-	  res1 = fib_urpf_check (lb1->lb_urpf,
-				 vnet_buffer (b[1])->sw_if_index[dir]);
-
-	  if (VLIB_RX == dir)
+	  if (AF_IP4 == af)
 	    {
-	      pass0 |= res0;
-	      pass1 |= res1;
+	      const ip4_header_t *ip0;
+
+	      ip0 = (ip4_header_t *) h0;
+
+	      lb_index0 =
+		ip4_fib_forwarding_lookup (fib_index0, &ip0->src_address);
+
+	      /* Pass multicast. */
+	      pass0 = (ip4_address_is_multicast (&ip0->src_address) ||
+		       ip4_address_is_global_broadcast (&ip0->src_address));
 	    }
 	  else
 	    {
-	      pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
-	      pass1 |= !res1 && fib_urpf_check_size (lb1->lb_urpf);
+	      const ip6_header_t *ip0;
 
-	      /* allow locally generated */
-	      pass0 |= b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
-	      pass1 |= b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	      ip0 = (ip6_header_t *) h0;
+
+	      lb_index0 =
+		ip6_fib_table_fwding_lookup (fib_index0, &ip0->src_address);
+	      pass0 = ip6_address_is_multicast (&ip0->src_address);
+	    }
+
+	  lb0 = load_balance_get (lb_index0);
+
+	  if (URPF_MODE_STRICT == mode)
+	    {
+	      int res0;
+
+	      res0 = fib_urpf_check (lb0->lb_urpf,
+				     vnet_buffer (b[0])->sw_if_index[dir]);
+	      if (VLIB_RX == dir)
+		pass0 |= res0;
+	      else
+		{
+		  pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
+		  pass0 |= b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+		}
+	    }
+	  else
+	    pass0 |= fib_urpf_check_size (lb0->lb_urpf);
+
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      urpf_trace_t *t;
+
+	      t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->urpf = lb0->lb_urpf;
+	      t->fib_index = fib_index0;
 	    }
 	}
       else
 	{
-	  pass0 |= fib_urpf_check_size (lb0->lb_urpf);
-	  pass1 |= fib_urpf_check_size (lb1->lb_urpf);
+
+	  if (AF_IP4 == af)
+	    {
+	      const ip4_header_t *ip0, *ip1;
+
+	      ip0 = (ip4_header_t *) h0;
+	      ip1 = (ip4_header_t *) h1;
+
+	      ip4_fib_forwarding_lookup_x2 (
+		fib_index0, fib_index1, &ip0->src_address, &ip1->src_address,
+		&lb_index0, &lb_index1);
+	      /* Pass multicast. */
+	      pass0 = (ip4_address_is_multicast (&ip0->src_address) ||
+		       ip4_address_is_global_broadcast (&ip0->src_address));
+	      pass1 = (ip4_address_is_multicast (&ip1->src_address) ||
+		       ip4_address_is_global_broadcast (&ip1->src_address));
+	    }
+	  else
+	    {
+	      const ip6_header_t *ip0, *ip1;
+
+	      ip0 = (ip6_header_t *) h0;
+	      ip1 = (ip6_header_t *) h1;
+
+	      lb_index0 =
+		ip6_fib_table_fwding_lookup (fib_index0, &ip0->src_address);
+	      lb_index1 =
+		ip6_fib_table_fwding_lookup (fib_index1, &ip1->src_address);
+	      pass0 = ip6_address_is_multicast (&ip0->src_address);
+	      pass1 = ip6_address_is_multicast (&ip1->src_address);
+	    }
+
+	  lb0 = load_balance_get (lb_index0);
+	  lb1 = load_balance_get (lb_index1);
+
+	  if (URPF_MODE_STRICT == mode)
+	    {
+	      /* for RX the check is: would this source adddress be forwarded
+	       * out of the interface on which it was recieved, if yes allow.
+	       * For TX it's; would this source address be forwarded out of the
+	       * interface through which it is being sent, if yes drop.
+	       */
+	      int res0, res1;
+
+	      res0 = fib_urpf_check (lb0->lb_urpf,
+				     vnet_buffer (b[0])->sw_if_index[dir]);
+	      res1 = fib_urpf_check (lb1->lb_urpf,
+				     vnet_buffer (b[1])->sw_if_index[dir]);
+
+	      if (VLIB_RX == dir)
+		{
+		  pass0 |= res0;
+		  pass1 |= res1;
+		}
+	      else
+		{
+		  pass0 |= !res0 && fib_urpf_check_size (lb0->lb_urpf);
+		  pass1 |= !res1 && fib_urpf_check_size (lb1->lb_urpf);
+
+		  /* allow locally generated */
+		  pass0 |= b[0]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+		  pass1 |= b[1]->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED;
+		}
+	    }
+	  else
+	    {
+	      pass0 |= fib_urpf_check_size (lb0->lb_urpf);
+	      pass1 |= fib_urpf_check_size (lb1->lb_urpf);
+	    }
+
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      urpf_trace_t *t;
+
+	      t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->urpf = lb0->lb_urpf;
+	      t->fib_index = fib_index0;
+	    }
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      urpf_trace_t *t;
+
+	      t = vlib_add_trace (vm, node, b[1], sizeof (*t));
+	      t->urpf = lb1->lb_urpf;
+	      t->fib_index = fib_index1;
+	    }
 	}
 
+    out_two:
       if (PREDICT_TRUE (pass0))
 	vnet_feature_next_u16 (&next[0], b[0]);
       else
@@ -218,22 +320,6 @@ urpf_inline (vlib_main_t * vm,
 	  next[1] = URPF_NEXT_DROP;
 	  b[1]->error = node->errors[URPF_ERROR_DROP];
 	}
-
-      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  urpf_trace_t *t;
-
-	  t = vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->urpf = lb0->lb_urpf;
-	}
-      if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  urpf_trace_t *t;
-
-	  t = vlib_add_trace (vm, node, b[1], sizeof (*t));
-	  t->urpf = lb1->lb_urpf;
-	}
-
       b += 2;
       next += 2;
       n_left -= 2;
@@ -250,8 +336,13 @@ urpf_inline (vlib_main_t * vm,
       if (VLIB_TX == dir)
 	h0 += vnet_buffer (b[0])->ip.save_rewrite_length;
 
-      fib_index0 =
-	urpf_cfgs[af][dir][vnet_buffer (b[0])->sw_if_index[dir]].fib_index;
+      fib_index0 = urpf_get_fib_index (b[0], af, dir);
+      if (fib_index0 == ~0)
+	{
+	  /* skip urpf for this buffer */
+	  pass0 = 1;
+	  goto out_one;
+	}
 
       if (AF_IP4 == af)
 	{
@@ -296,20 +387,22 @@ urpf_inline (vlib_main_t * vm,
       else
 	pass0 |= fib_urpf_check_size (lb0->lb_urpf);
 
-      if (PREDICT_TRUE (pass0))
-	vnet_feature_next_u16 (&next[0], b[0]);
-      else
-	{
-	  next[0] = URPF_NEXT_DROP;
-	  b[0]->error = node->errors[URPF_ERROR_DROP];
-	}
-
       if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  urpf_trace_t *t;
 
 	  t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->urpf = lb0->lb_urpf;
+	  t->fib_index = fib_index0;
+	}
+
+    out_one:
+      if (PREDICT_TRUE (pass0))
+	vnet_feature_next_u16 (&next[0], b[0]);
+      else
+	{
+	  next[0] = URPF_NEXT_DROP;
+	  b[0]->error = node->errors[URPF_ERROR_DROP];
 	}
       b++;
       next++;
