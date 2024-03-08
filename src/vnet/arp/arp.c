@@ -427,6 +427,10 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	    }
 
+	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+					  &arp0->ip4_over_ethernet[1].ip4, 32);
+	  conn_sw_if_index0 = fib_entry_get_any_resolving_interface (dst_fei);
+
 	  {
 	    /*
 	     * we're looking for FIB entries that indicate the source
@@ -515,23 +519,19 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    while (!attached &&
 		   !fib_entry_is_sourced (src_fei, FIB_SOURCE_DEFAULT_ROUTE));
 
-	    if (!attached)
+	    if (!attached &&
+		!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 	      {
 		/*
-		 * the matching route is a not attached, i.e. it was
-		 * added as a result of routing, rather than interface/ARP
-		 * configuration. If the matching route is not a host route
-		 * (i.e. a /32)
+		 * the matching route is a not attached and not unnumbered,
+		 * i.e. it was added as a result of routing, rather than
+		 * interface/ARP configuration. If the matching route is not
+		 * a host route (i.e. a /32)
 		 */
 		error0 = ARP_ERROR_L3_SRC_ADDRESS_NOT_LOCAL;
 		goto drop;
 	      }
 	  }
-
-	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[1].ip4,
-					  32);
-	  conn_sw_if_index0 = fib_entry_get_any_resolving_interface (dst_fei);
 
 	  switch (arp_dst_fib_check (dst_fei, &dst_flags))
 	    {
@@ -625,9 +625,9 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
 	      /*
-	       * The interface the ARP is sent to or was received on is not the
-	       * interface on which the covering prefix is configured.
-	       * Maybe this is a case for unnumbered.
+	       * The interface the ARP is sent to or was received on is
+	       * not the interface on which the covering prefix is
+	       * configured. Maybe this is a case for unnumbered.
 	       */
 	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		{
@@ -642,8 +642,7 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop;
 	    }
 
-	  next0 = arp_mk_reply (vnm, p0, sw_if_index0,
-				if_addr0, arp0, eth_rx);
+	  next0 = arp_mk_reply (vnm, p0, sw_if_index0, if_addr0, arp0, eth_rx);
 
 	  /* We are going to reply to this request, so, in the absence of
 	     errors, learn the sender */
