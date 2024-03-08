@@ -427,6 +427,10 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	    }
 
+	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+					  &arp0->ip4_over_ethernet[1].ip4, 32);
+	  conn_sw_if_index0 = fib_entry_get_any_resolving_interface (dst_fei);
+
 	  {
 	    /*
 	     * we're looking for FIB entries that indicate the source
@@ -517,21 +521,35 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	    if (!attached)
 	      {
-		/*
-		 * the matching route is a not attached, i.e. it was
-		 * added as a result of routing, rather than interface/ARP
-		 * configuration. If the matching route is not a host route
-		 * (i.e. a /32)
-		 */
-		error0 = ARP_ERROR_L3_SRC_ADDRESS_NOT_LOCAL;
-		goto drop;
+		/* Honor unnumbered interface, if any */
+		if (sw_if_index0 != conn_sw_if_index0 ||
+		    sw_if_index0 !=
+		      fib_entry_get_resolving_interface (src_fei))
+		  {
+		    /*
+		     * The interface the ARP is sent to or was received on is
+		     * not the interface on which the covering prefix is
+		     * configured. Maybe this is a case for unnumbered.
+		     */
+		    if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
+		      {
+			error0 = ARP_ERROR_UNNUMBERED_MISMATCH;
+			goto drop;
+		      }
+		  }
+		else
+		  {
+		    /*
+		     * the matching route is a not attached, i.e. it was
+		     * added as a result of routing, rather than interface/ARP
+		     * configuration. If the matching route is not a host route
+		     * (i.e. a /32)
+		     */
+		    error0 = ARP_ERROR_L3_SRC_ADDRESS_NOT_LOCAL;
+		    goto drop;
+		  }
 	      }
 	  }
-
-	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[1].ip4,
-					  32);
-	  conn_sw_if_index0 = fib_entry_get_any_resolving_interface (dst_fei);
 
 	  switch (arp_dst_fib_check (dst_fei, &dst_flags))
 	    {
@@ -620,21 +638,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto next_feature;
 	    }
 
-	  /* Honor unnumbered interface, if any */
-	  if (sw_if_index0 != conn_sw_if_index0 ||
-	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
-	    {
-	      /*
-	       * The interface the ARP is sent to or was received on is not the
-	       * interface on which the covering prefix is configured.
-	       * Maybe this is a case for unnumbered.
-	       */
-	      if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
-		{
-		  error0 = ARP_ERROR_UNNUMBERED_MISMATCH;
-		  goto drop;
-		}
-	    }
 	  if (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
 	      arp0->ip4_over_ethernet[1].ip4.as_u32)
 	    {
