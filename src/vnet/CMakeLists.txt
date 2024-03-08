@@ -499,28 +499,6 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# Bidirectional Forwarding Detection
-##############################################################################
-
-list(APPEND VNET_HEADERS
-  bfd/bfd_protocol.h
-  bfd/bfd_main.h
-  bfd/bfd_api.h
-  bfd/bfd_udp.h
-)
-
-list(APPEND VNET_SOURCES
-  bfd/bfd_api.h
-  bfd/bfd_udp.c
-  bfd/bfd_main.c
-  bfd/bfd_protocol.c
-  bfd/bfd_cli.c
-  bfd/bfd_api.c
-)
-
-list(APPEND VNET_API_FILES bfd/bfd.api)
-
-##############################################################################
 # Crypto
 ##############################################################################
 
@@ -1157,7 +1135,6 @@ list(APPEND VNET_SOURCES
   fib/fib_urpf_list.c
   fib/fib_attached_export.c
   fib/fib_api.c
-  fib/fib_bfd.c
 )
 
 list(APPEND VNET_HEADERS
@@ -1201,7 +1178,6 @@ list(APPEND VNET_SOURCES
   adj/adj_nsh.c
   adj/adj.c
   adj/rewrite.c
-  adj/adj_bfd.c
   adj/adj_delegate.c
 )
 

@@ -16,7 +16,7 @@
  * @file
  * @brief BFD protocol implementation
  */
-#include <vnet/bfd/bfd_protocol.h>
+#include <plugins/bfd/bfd_protocol.h>
 
 u8
 bfd_pkt_get_version (const bfd_pkt_t * pkt)
