@@ -52,6 +52,24 @@
       "parentUuid": "f761d7c6_1a381f73",
       "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45d2ed3b_56cfc123",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-08T14:50:10Z",
+      "side": 1,
+      "message": "Thanks for pointing out at C code. Fixed here, but there are some other places of vapi that return `-1`. I suggest leave them be as shm code also does the same.\n\nBut if you have another opinion on it - let\u0027s fix them as well.",
+      "parentUuid": "8b23f667_f4fb0634",
+      "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
