@@ -34,6 +34,24 @@
       "parentUuid": "c26bc2bc_e35b889e",
       "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b23f667_f4fb0634",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-08T14:04:06Z",
+      "side": 1,
+      "message": "538   ~Msg ()\n   539   {\n   540     VAPI_DBG (\"Destroy Msg\u003c%s\u003e@%p, shm_data@%p\",\n   541               vapi_get_msg_name (get_msg_id ()), this, shm_data);\n   542     if (shm_data)\n   543       {\n   544         con.get ().msg_free (shm_data);\n   545         shm_data \u003d nullptr;\n   546       }\n   547   }\n   \nI see a NULL-check on line 542, so msg_free() is called only if vapi_send() fails. So C++ world is good.\n   \nBut in C world the convention is:\n\nvapi_msg_sw_interface_set_flags* flags \u003d vapi_alloc_sw_interface_set_flags(ctx);\n...\nif (VAPI_EAGAIN \u003d\u003d vapi_sw_interface_set_flags (ctx, msg, reply_callback))\n{\n  vapi_msg_free(flags);\n}\n\nso the caller frees the message if it\u0027s not consumed. VAPI cannot do that in vapi_sw_interface_set_flags(), because that could impact performance - a caller might want to retry sending the message without having to allocate and initialise a new one.\n\nWith that in mind, I take back my previous comment. The ordering is good as it is - on success, the message is consumed and the caller doesn\u0027t have to do anything else with it. But in error case the API contract is broken as the caller gets \u0027-1\u0027, which then vapi_send() returns as vapi_error_e and the caller gets garbage. I\u0027d say that vapi_sock_send[2]() should return proper vapi_error_e values. Especially EAGAIN is crucial to avoid memory leaks (however unlikely the failures are).",
+      "parentUuid": "f761d7c6_1a381f73",
+      "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
