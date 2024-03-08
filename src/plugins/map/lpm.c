@@ -28,8 +28,10 @@ masked_address32 (uint32_t addr, uint8_t len)
 static uint64_t
 masked_address64 (uint64_t addr, uint8_t len)
 {
-/*return len == 64 ? addr : addr & ~(~0ull >> len); This was originally causing non-64-bit masks to not match due to LSB vs MSB masking (0s at the head of the value)
-                                                    Probably needs some corner case checking in case my masking logic was off [dgeist] */
+  /*return len == 64 ? addr : addr & ~(~0ull >> len); This was originally
+     causing non-64-bit masks to not match due to LSB vs MSB masking (0s at the
+     head of the value) Probably needs some corner case checking in case my
+     masking logic was off [dgeist] */
   return len == 64 ? addr : addr & ((1ull << (len)) - 1);
 }
 
@@ -128,16 +130,19 @@ lpm_128_add (lpm_t *lpm, void *addr_v, u8 pfxlen, u32 value)
   BVT(clib_bihash_kv) kv;
   ip6_address_t *addr = addr_v;
 
-/*  kv.key[0] = masked_address64(addr->as_u64[0], pfxlen > 64 ? 64 : pfxlen); This is a quick hack. Needs more checking [dgeist] */
-  kv.key[0] = masked_address64(addr->as_u64[0], pfxlen > 64 ? 64 : 64);
+  /*  kv.key[0] = masked_address64(addr->as_u64[0], pfxlen > 64 ? 64 : pfxlen);
+   * This is a quick hack. Needs more checking [dgeist] */
+  kv.key[0] = masked_address64 (addr->as_u64[0], pfxlen > 64 ? 64 : 64);
   kv.key[1] = masked_address64(addr->as_u64[1], pfxlen > 64 ? pfxlen - 64 : 0);
   kv.key[2] = pfxlen;
   kv.value = value;
   BV(clib_bihash_add_del)(&lpm->bihash, &kv, 1);
   lpm->prefix_length_refcount[pfxlen]++;
-/*lpm->prefix_lengths_bitmap = clib_bitmap_set (lpm->prefix_lengths_bitmap, 128 - pfxlen, 1); This was populating the lengths bitmap table with a prefix of 80
-                                                                                              from "128-48" which is wrong. Needs checking [dgeist] */
-  lpm->prefix_lengths_bitmap = clib_bitmap_set (lpm->prefix_lengths_bitmap, pfxlen > 64 ? 128 - pfxlen : pfxlen, 1);
+  /*lpm->prefix_lengths_bitmap = clib_bitmap_set (lpm->prefix_lengths_bitmap,
+     128 - pfxlen, 1); This was populating the lengths bitmap table with a
+     prefix of 80 from "128-48" which is wrong. Needs checking [dgeist] */
+  lpm->prefix_lengths_bitmap = clib_bitmap_set (
+    lpm->prefix_lengths_bitmap, pfxlen > 64 ? 128 - pfxlen : pfxlen, 1);
 }
 
 static void

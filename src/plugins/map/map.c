@@ -178,7 +178,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
 
   /* Let's build a table with the MAP rule ip6 prefixes as well [dgeist] */
   mm->ip6_prefix_tbl->add (mm->ip6_prefix_tbl, &d->ip6_prefix,
-                           d->ip6_prefix_len, *map_domain_index);
+			   d->ip6_prefix_len, *map_domain_index);
 
   /* Validate packet/byte counters */
   map_domain_counter_lock (mm);
@@ -222,9 +222,9 @@ map_delete_domain (u32 map_domain_index)
 			      d->ip4_prefix_len);
   mm->ip6_src_prefix_tbl->delete (mm->ip6_src_prefix_tbl, &d->ip6_src,
 				  d->ip6_src_len);
-/* clean up the table as well [dgeist] */
+  /* clean up the table as well [dgeist] */
   mm->ip6_prefix_tbl->delete (mm->ip6_prefix_tbl, &d->ip6_prefix,
-                           d->ip6_prefix_len);
+			      d->ip6_prefix_len);
 
   /* Release user-assigned MAP domain name. */
   map_free_extras (map_domain_index);
