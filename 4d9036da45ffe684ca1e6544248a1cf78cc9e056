@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed59e667_facbdc40",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-08T10:08:53Z",
+      "side": 1,
+      "message": "I found one more issue which needs to be fixed - sending atomicity.\n\nAlso note that I updated the python code to make it more readable and explicit. Please update your change before making more changes. Thank you.",
+      "revId": "4d9036da45ffe684ca1e6544248a1cf78cc9e056",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd3b93d3_85f806c2",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 387,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-08T10:08:53Z",
+      "side": 1,
+      "message": "See my other comment about sendmsg(). Same applies here. We don\u0027t want to send the header without the data.",
+      "range": {
+        "startLine": 387,
+        "startChar": 8,
+        "endLine": 387,
+        "endChar": 9
+      },
+      "revId": "4d9036da45ffe684ca1e6544248a1cf78cc9e056",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d76655e4_f3096c1a",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1411,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-08T10:08:53Z",
+      "side": 1,
+      "message": "I see one issue here where the API contract is broken. Original logic of send2 is that it either sends both messages or none of them. Here this is obviously not met.\n\nTo cover this, the code needs to use an atomic way of sending using e.g. sendmsg().",
+      "revId": "4d9036da45ffe684ca1e6544248a1cf78cc9e056",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
