@@ -16,6 +16,24 @@
       "message": "This should be before the possible return -1 above.",
       "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f761d7c6_1a381f73",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-08T13:01:22Z",
+      "side": 1,
+      "message": "I\u0027m not 100% sure about this one. In vapi.hpp code I see the following code\n```\n    vapi_error_e rv \u003d vapi_send (vapi_ctx, req-\u003erequest.shm_data);\n    if (VAPI_OK \u003d\u003d rv)\n      {\n...\n        req-\u003erequest.shm_data \u003d nullptr; /* consumed by vapi_send */\n      }\n    else\n      {\n        vapi_swap_to_host\u003cReq\u003e (req-\u003erequest.shm_data);\n      }\n```\nand in the dctor of `class Msg` there\u0027s an explicit `msg_free` call.\n\nThough we can make vapi_msg_free tolerant to already freed vectors.\n\nWhat do you think?",
+      "parentUuid": "c26bc2bc_e35b889e",
+      "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
