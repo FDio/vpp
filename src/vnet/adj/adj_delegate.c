@@ -226,3 +226,15 @@ adj_delegate_register_new_type (const adj_delegate_vft_t *vft)
 
     return (type);
 }
+
+adj_bfd_delegate_t *abd_pool;
+
+adj_bfd_delegate_t*
+adj_bfd_from_base (adj_delegate_t *ad)
+{
+    if (NULL != ad)
+    {
+        return (pool_elt_at_index(abd_pool, ad->ad_index));
+    }
+    return (NULL);
+}

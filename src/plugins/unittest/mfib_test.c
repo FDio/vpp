@@ -52,22 +52,6 @@
     }								\
 }
 
-/**
- * A 'i'm not fussed is this is not efficient' store of test data
- */
-typedef struct test_main_t_ {
-    /**
-     * HW if indicies
-     */
-    u32 hw_if_indicies[4];
-    /**
-     * HW interfaces
-     */
-    vnet_hw_interface_t * hw[4];
-
-} test_main_t;
-static test_main_t test_main;
-
 /* fake ethernet device class, distinct from "fake-ethX" */
 static u8 * format_test_interface_name (u8 * s, va_list * args)
 {

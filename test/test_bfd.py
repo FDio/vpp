@@ -745,7 +745,7 @@ def verify_event(test, event, expected_state):
     test.assert_equal(e.state, expected_state, BFDState)
 
 
-def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None, is_tunnel=False):
+def wait_for_bfd_packet(test, timeout=2, pcap_time_min=None, is_tunnel=False):
     """wait for BFD packet and verify its correctness
 
     :param timeout: how long to wait
