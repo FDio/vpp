@@ -43,6 +43,9 @@ typedef struct
 
 extern urpf_data_t *urpf_cfgs[N_AF][VLIB_N_DIR];
 
+extern int uprf_feature_enable_disable (ip_address_family_t af, vlib_dir_t dir,
+					urpf_mode_t mode, u32 sw_if_index,
+					int enable);
 extern int urpf_update (urpf_mode_t mode, u32 sw_if_index,
 			ip_address_family_t af, vlib_dir_t dir, u32 fib_index);
 

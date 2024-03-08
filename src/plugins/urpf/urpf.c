@@ -97,6 +97,15 @@ unformat_urpf_mode (unformat_input_t * input, va_list * args)
 }
 
 int
+uprf_feature_enable_disable (ip_address_family_t af, vlib_dir_t dir,
+			     urpf_mode_t mode, u32 sw_if_index, int enable)
+{
+  return vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
+				      urpf_feats[af][dir][mode], sw_if_index,
+				      enable, 0, 0);
+}
+
+int
 urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
 	     vlib_dir_t dir, u32 table_id)
 {
@@ -131,16 +140,9 @@ urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
   if (data.mode != old.mode || data.fib_index != old.fib_index)
     {
       if (URPF_MODE_OFF != old.mode)
-	/* disable what we have */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][old.mode],
-				     sw_if_index, 0, 0, 0);
-
+	uprf_feature_enable_disable (af, dir, old.mode, sw_if_index, false);
       if (URPF_MODE_OFF != data.mode)
-	/* enable what's new */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][data.mode],
-				     sw_if_index, 1, 0, 0);
+	uprf_feature_enable_disable (af, dir, data.mode, sw_if_index, true);
     }
   /* else - no change to existing config */
   return 0;
