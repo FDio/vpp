@@ -432,14 +432,24 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(unnum[0].ip_sw_if_index, self.pg1.sw_if_index)
         self.assertEqual(unnum[0].sw_if_index, self.pg2.sw_if_index)
 
-        #
-        # We should respond to ARP requests for the unnumbered to address
-        # once an attached route to the source is known
-        #
-        self.send_and_assert_no_replies(
-            self.pg2, p, "ARP req for unnumbered address - no source"
+        # Allow for ARP requests from point-to-point ethernet neighbors
+        # without an attached route on pg2
+        self.pg2.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+        self.verify_arp_resp(
+            rx[0],
+            self.pg2.local_mac,
+            self.pg2.remote_mac,
+            self.pg1.local_ip4,
+            self.pg2.remote_hosts[3].ip4,
         )
 
+        #
+        # Allow for ARP requests from neighbors on unnumbered with
+        # an attached route on pg2
         attached_host = VppIpRoute(
             self,
             self.pg2.remote_hosts[3].ip4,
