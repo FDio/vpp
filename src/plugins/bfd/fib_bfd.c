@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_main.h>
 
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry.h>

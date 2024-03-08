@@ -20,8 +20,8 @@
 #define __included_bfd_main_h__
 
 #include <vnet/vnet.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_udp.h>
+#include <plugins/bfd/bfd_protocol.h>
+#include <plugins/bfd/bfd_udp.h>
 #include <vlib/log.h>
 #include <vppinfra/os.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>

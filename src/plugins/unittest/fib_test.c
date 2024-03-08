@@ -25,7 +25,7 @@
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_main.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/dpo/dvr_dpo.h>
