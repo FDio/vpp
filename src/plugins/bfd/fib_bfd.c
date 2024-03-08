@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_main.h>
 
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/fib/fib.h>
 
 static fib_bfd_state_t
 fib_bfd_bfd_state_to_fib (bfd_state_e bstate)

@@ -20,14 +20,14 @@
 #define __included_bfd_main_h__
 
 #include <vnet/vnet.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_udp.h>
+#include <plugins/bfd/bfd_protocol.h>
+#include <plugins/bfd/bfd_udp.h>
 #include <vlib/log.h>
 #include <vppinfra/os.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
-#define foreach_bfd_mode(F) \
-  F (asynchronous)          \
+#define foreach_bfd_mode(F)                                                   \
+  F (asynchronous)                                                            \
   F (demand)
 
 typedef enum
@@ -55,10 +55,10 @@ typedef struct
   bfd_auth_type_e auth_type;
 } bfd_auth_key_t;
 
-#define foreach_bfd_poll_state(F) \
-  F (NOT_NEEDED)                  \
-  F (NEEDED)                      \
-  F (IN_PROGRESS)                 \
+#define foreach_bfd_poll_state(F)                                             \
+  F (NOT_NEEDED)                                                              \
+  F (NEEDED)                                                                  \
+  F (IN_PROGRESS)                                                             \
   F (IN_PROGRESS_AND_QUEUED)
 
 typedef enum
@@ -71,9 +71,9 @@ typedef enum
 /**
  * hop types
  */
-#define foreach_bfd_hop(F)                     \
-  F (SINGLE, "single")                         \
-  F (MULTI,  "multi")                          \
+#define foreach_bfd_hop(F)                                                    \
+  F (SINGLE, "single")                                                        \
+  F (MULTI, "multi")
 
 typedef enum
 {
@@ -245,9 +245,9 @@ typedef struct bfd_session_s
 /**
  * listener events
  */
-#define foreach_bfd_listen_event(F)            \
-  F (CREATE, "sesion-created")                 \
-  F (UPDATE, "session-updated")                \
+#define foreach_bfd_listen_event(F)                                           \
+  F (CREATE, "sesion-created")                                                \
+  F (UPDATE, "session-updated")                                               \
   F (DELETE, "session-deleted")
 
 typedef enum
@@ -285,7 +285,7 @@ typedef struct
   bfd_session_t *sessions;
 
   /** timing wheel for scheduling timeouts */
-    TWT (tw_timer_wheel) wheel;
+  TWT (tw_timer_wheel) wheel;
 
   /** hashmap - bfd session by discriminator */
   u32 *session_by_disc;
@@ -379,12 +379,12 @@ typedef CLIB_PACKED (struct {
 /* *INDENT-ON* */
 
 static inline void
-bfd_lock (bfd_main_t * bm)
+bfd_lock (bfd_main_t *bm)
 {
   uword my_thread_index = __os_thread_index;
 
-  if (bm->owner_thread_index == my_thread_index
-      && bm->lock_recursion_count > 0)
+  if (bm->owner_thread_index == my_thread_index &&
+      bm->lock_recursion_count > 0)
     {
       bm->lock_recursion_count++;
       return;
@@ -396,7 +396,7 @@ bfd_lock (bfd_main_t * bm)
 }
 
 static inline void
-bfd_unlock (bfd_main_t * bm)
+bfd_unlock (bfd_main_t *bm)
 {
   uword my_thread_index = __os_thread_index;
   ASSERT (bm->owner_thread_index == my_thread_index);
@@ -412,57 +412,60 @@ bfd_unlock (bfd_main_t * bm)
 }
 
 static inline void
-bfd_lock_check (bfd_main_t * bm)
+bfd_lock_check (bfd_main_t *bm)
 {
   if (PREDICT_FALSE (bm->lock_recursion_count < 1))
     clib_warning ("lock check failure");
 }
 
-u8 *bfd_input_format_trace (u8 * s, va_list * args);
-bfd_session_t *bfd_get_session (bfd_main_t * bm, bfd_transport_e t);
-void bfd_put_session (bfd_main_t * bm, bfd_session_t * bs);
-bfd_session_t *bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx);
-bfd_session_t *bfd_find_session_by_disc (bfd_main_t * bm, u32 disc);
-void bfd_session_start (bfd_main_t * bm, bfd_session_t * bs);
+u8 *bfd_input_format_trace (u8 *s, va_list *args);
+bfd_session_t *bfd_get_session (bfd_main_t *bm, bfd_transport_e t);
+void bfd_put_session (bfd_main_t *bm, bfd_session_t *bs);
+bfd_session_t *bfd_find_session_by_idx (bfd_main_t *bm, uword bs_idx);
+bfd_session_t *bfd_find_session_by_disc (bfd_main_t *bm, u32 disc);
+void bfd_session_start (bfd_main_t *bm, bfd_session_t *bs);
 void bfd_session_stop (bfd_main_t *bm, bfd_session_t *bs);
 bfd_error_t bfd_consume_pkt (vlib_main_t *vm, bfd_main_t *bm,
 			     const bfd_pkt_t *bfd, u32 bs_idx);
 bfd_session_t *bfd_consume_echo_pkt (vlib_main_t *vm, bfd_main_t *bm,
 				     vlib_buffer_t *b);
 bfd_error_t bfd_verify_pkt_common (const bfd_pkt_t *pkt);
-int bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt,
-			 u16 pkt_size, bfd_session_t * bs);
-void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
+int bfd_verify_pkt_auth (vlib_main_t *vm, const bfd_pkt_t *pkt, u16 pkt_size,
+			 bfd_session_t *bs);
+void bfd_event (bfd_main_t *bm, bfd_session_t *bs);
 void bfd_init_final_control_frame (vlib_main_t *vm, vlib_buffer_t *b,
 				   bfd_session_t *bs);
-u8 *format_bfd_session (u8 * s, va_list * args);
-u8 *format_bfd_session_brief (u8 * s, va_list * args);
-u8 *format_bfd_auth_key (u8 * s, va_list * args);
-void bfd_session_set_flags (vlib_main_t * vm, bfd_session_t * bs,
+u8 *format_bfd_session (u8 *s, va_list *args);
+u8 *format_bfd_session_brief (u8 *s, va_list *args);
+u8 *format_bfd_auth_key (u8 *s, va_list *args);
+void bfd_session_set_flags (vlib_main_t *vm, bfd_session_t *bs,
 			    u8 admin_up_down);
 unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
-vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
+vnet_api_error_t bfd_auth_activate (bfd_session_t *bs, u32 conf_key_id,
 				    u8 bfd_key_id, u8 is_delayed);
-vnet_api_error_t bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed);
-vnet_api_error_t bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
+vnet_api_error_t bfd_auth_deactivate (bfd_session_t *bs, u8 is_delayed);
+vnet_api_error_t bfd_session_set_params (bfd_main_t *bm, bfd_session_t *bs,
 					 u32 desired_min_tx_usec,
 					 u32 required_min_rx_usec,
 					 u8 detect_mult);
 
 u32 bfd_nsec_to_usec (u64 nsec);
 const char *bfd_poll_state_string (bfd_poll_state_e state);
+void fib_bfd_notify (bfd_listen_event_e event, const bfd_session_t *session);
+void adj_bfd_notify (bfd_listen_event_e event, const bfd_session_t *session);
 
-#define USEC_PER_MS (1000LL)
-#define MSEC_PER_SEC (1000LL)
+#define USEC_PER_MS   (1000LL)
+#define MSEC_PER_SEC  (1000LL)
 #define NSEC_PER_USEC (1000LL)
-#define USEC_PER_SEC (MSEC_PER_SEC * USEC_PER_MS)
-#define NSEC_PER_SEC (NSEC_PER_USEC * USEC_PER_SEC)
-#define SEC_PER_NSEC ((f64)1/NSEC_PER_SEC)
+#define USEC_PER_SEC  (MSEC_PER_SEC * USEC_PER_MS)
+#define NSEC_PER_SEC  (NSEC_PER_USEC * USEC_PER_SEC)
+#define SEC_PER_NSEC  ((f64) 1 / NSEC_PER_SEC)
 
 /** timing wheel tick-rate, 1ms should be good enough */
 #define BFD_TW_TPS (MSEC_PER_SEC)
 
-/** default, slow transmission interval for BFD packets, per spec at least 1s */
+/** default, slow transmission interval for BFD packets, per spec at least 1s
+ */
 #define BFD_DEFAULT_DESIRED_MIN_TX_USEC USEC_PER_SEC
 
 /**

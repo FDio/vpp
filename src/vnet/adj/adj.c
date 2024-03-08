@@ -548,6 +548,29 @@ adj_get_sw_if_index (adj_index_t ai)
     return (adj->rewrite_header.sw_if_index);
 }
 
+int
+adj_bfd_is_up (adj_index_t ai)
+{
+    const adj_bfd_delegate_t *abd;
+
+    abd = adj_bfd_from_base(adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD));
+
+    if (NULL == abd)
+    {
+        /*
+         * no BFD tracking - resolved
+         */
+        return (!0);
+    }
+    else
+    {
+        /*
+         * defer to the state of the BFD tracking
+         */
+        return (ADJ_BFD_STATE_UP == abd->abd_state);
+    }
+}
+
 /**
  * @brief Return true if the adjacency is 'UP', i.e. can be used for forwarding
  * 0 is down, !0 is up.

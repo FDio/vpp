@@ -11,7 +11,6 @@ Core Features
     sr/index
     punt
     ipsec
-    bfd_doc
     reassembly
     ipfix_doc
     span_doc

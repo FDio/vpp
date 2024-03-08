@@ -24,11 +24,19 @@
 #include <vppinfra/xxhash.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_debug.h>
+#include <plugins/bfd/bfd_protocol.h>
+#include <plugins/bfd/bfd_main.h>
 #include <vlib/log.h>
 #include <vnet/crypto/crypto.h>
+#include <vnet/fib/fib_test.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_test.h>
+
+// test_main_t test_main;
 
 static void
 bfd_validate_counters (bfd_main_t *bm)
@@ -1338,8 +1346,7 @@ bfd_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
  * bfd process node declaration
  */
 // clang-format off
-VLIB_REGISTER_NODE (bfd_process_node, static) =
-{
+VLIB_REGISTER_NODE (bfd_process_node, static) = {
   .function = bfd_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bfd-process",
@@ -1347,14 +1354,15 @@ VLIB_REGISTER_NODE (bfd_process_node, static) =
   .format_trace = format_bfd_process_trace,
   .n_next_nodes = BFD_TX_N_NEXT,
   .next_nodes = {
-    [BFD_TX_IP4_ARP] = "ip4-arp",
-    [BFD_TX_IP6_NDP] = "ip6-discover-neighbor",
-    [BFD_TX_IP4_REWRITE] = "ip4-rewrite",
-    [BFD_TX_IP6_REWRITE] = "ip6-rewrite",
-    [BFD_TX_IP4_MIDCHAIN] = "ip4-midchain",
-    [BFD_TX_IP6_MIDCHAIN] = "ip6-midchain",
-  }
+		 [BFD_TX_IP4_ARP] = "ip4-arp",
+		 [BFD_TX_IP6_NDP] = "ip6-discover-neighbor",
+		 [BFD_TX_IP4_REWRITE] = "ip4-rewrite",
+		 [BFD_TX_IP6_REWRITE] = "ip6-rewrite",
+		 [BFD_TX_IP4_MIDCHAIN] = "ip4-midchain",
+		 [BFD_TX_IP6_MIDCHAIN] = "ip6-midchain",
+		 }
 };
+
 // clang-format on
 
 static clib_error_t *
@@ -1707,11 +1715,11 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
     }
   if (with_sha1->sha1_auth.key_id != bfd_key_id)
     {
-      BFD_ERR
-	("BFD key ID mismatch, packet key ID=%u doesn't match key ID=%u%s",
-	 with_sha1->sha1_auth.key_id, bfd_key_id,
-	 bs->
-	 auth.is_delayed ? " (but a delayed auth change is scheduled)" : "");
+      BFD_ERR (
+	"BFD key ID mismatch, packet key ID=%u doesn't match key ID=%u%s",
+	with_sha1->sha1_auth.key_id, bfd_key_id,
+	bs->auth.is_delayed ? " (but a delayed auth change is scheduled)" :
+				    "");
       return 0;
     }
 
@@ -1774,9 +1782,8 @@ bfd_verify_pkt_auth_key (vlib_main_t * vm, const bfd_pkt_t * pkt,
     case BFD_AUTH_TYPE_meticulous_keyed_sha1:
       do
 	{
-	  const u32 seq_num = clib_net_to_host_u32 (((bfd_pkt_with_sha1_auth_t
-						      *) pkt)->
-						    sha1_auth.seq_num);
+	  const u32 seq_num = clib_net_to_host_u32 (
+	    ((bfd_pkt_with_sha1_auth_t *) pkt)->sha1_auth.seq_num);
 	  return bfd_verify_pkt_auth_seq_num (
 		   vm, bs, seq_num,
 		   bfd_auth_type_is_meticulous (auth_key->auth_type)) &&
@@ -2331,6 +2338,440 @@ bfd_auth_del_key (u32 conf_key_id)
     }
   return 0;
 }
+
+/**
+ * Test BFD session interaction with FIB
+ */
+static int
+fib_test_bfd (void)
+{
+  fib_node_index_t fei;
+  test_main_t *tm;
+  int n_feis, res;
+
+  res = 0;
+  /* via 10.10.10.1 */
+  ip46_address_t nh_10_10_10_1 = {
+    .ip4.as_u32 = clib_host_to_net_u32 (0x0a0a0a01),
+  };
+  /* via 10.10.10.2 */
+  ip46_address_t nh_10_10_10_2 = {
+    .ip4.as_u32 = clib_host_to_net_u32 (0x0a0a0a02),
+  };
+  /* via 10.10.10.10 */
+  ip46_address_t nh_10_10_10_10 = {
+    .ip4.as_u32 = clib_host_to_net_u32 (0x0a0a0a0a),
+  };
+  n_feis = fib_entry_pool_size ();
+
+  tm = &test_main;
+
+  /*
+   * add interface routes. we'll assume this works. it's tested elsewhere
+   */
+  fib_prefix_t pfx_10_10_10_10_s_24 = {
+    .fp_len = 24,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_addr = nh_10_10_10_10,
+  };
+
+  fib_table_entry_update_one_path (
+    0, &pfx_10_10_10_10_s_24, FIB_SOURCE_INTERFACE,
+    (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_ATTACHED), DPO_PROTO_IP4, NULL,
+    tm->hw[0]->sw_if_index, ~0, // invalid fib index
+    1,				// weight
+    NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  fib_prefix_t pfx_10_10_10_10_s_32 = {
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_addr = nh_10_10_10_10,
+  };
+  fib_table_entry_update_one_path (
+    0, &pfx_10_10_10_10_s_32, FIB_SOURCE_INTERFACE,
+    (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_LOCAL), DPO_PROTO_IP4, NULL,
+    tm->hw[0]->sw_if_index, ~0, // invalid fib index
+    1,				// weight
+    NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  /*
+   * A BFD session via a neighbour we do not yet know
+   */
+  bfd_session_t bfd_10_10_10_1 = {
+    .udp = {
+	    .key = {
+		    .fib_index = 0,
+		    .peer_addr = nh_10_10_10_1,
+		    },
+	    },
+    .hop_type = BFD_HOP_TYPE_MULTI,
+    .local_state = BFD_STATE_init,
+  };
+
+  fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+
+  /*
+   * A new entry will be created that forwards via the adj
+   */
+  adj_index_t ai_10_10_10_1 = adj_nbr_add_or_lock (
+    FIB_PROTOCOL_IP4, VNET_LINK_IP4, &nh_10_10_10_1, tm->hw[0]->sw_if_index);
+  fib_prefix_t pfx_10_10_10_1_s_32 = {
+    .fp_addr = nh_10_10_10_1,
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_test_lb_bucket_t adj_o_10_10_10_1 = {
+    .type = FT_LB_ADJ,
+    .adj = {
+	    .adj = ai_10_10_10_1,
+	    },
+  };
+
+  fei = fib_table_lookup_exact_match (0, &pfx_10_10_10_1_s_32);
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				      &adj_o_10_10_10_1),
+	    "BFD sourced %U via %U", format_fib_prefix, &pfx_10_10_10_1_s_32,
+	    format_ip_adjacency, ai_10_10_10_1, FORMAT_IP_ADJACENCY_NONE);
+
+  /*
+   * Delete the BFD session. Expect the fib_entry to be removed
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+
+  fei = fib_table_lookup_exact_match (0, &pfx_10_10_10_1_s_32);
+  FIB_TEST (FIB_NODE_INDEX_INVALID == fei, "BFD sourced %U removed",
+	    format_fib_prefix, &pfx_10_10_10_1_s_32);
+
+  /*
+   * Add the BFD source back
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+
+  /*
+   * source the entry via the ADJ fib
+   */
+  fei = fib_table_entry_path_add (0, &pfx_10_10_10_1_s_32, FIB_SOURCE_ADJ,
+				  FIB_ENTRY_FLAG_ATTACHED, DPO_PROTO_IP4,
+				  &nh_10_10_10_1, tm->hw[0]->sw_if_index,
+				  ~0, // invalid fib index
+				  1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  /*
+   * Delete the BFD session. Expect the fib_entry to remain
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+
+  fei = fib_table_lookup_exact_match (0, &pfx_10_10_10_1_s_32);
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				      &adj_o_10_10_10_1),
+	    "BFD sourced %U remains via %U", format_fib_prefix,
+	    &pfx_10_10_10_1_s_32, format_ip_adjacency, ai_10_10_10_1,
+	    FORMAT_IP_ADJACENCY_NONE);
+
+  /*
+   * Add the BFD source back
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+
+  /*
+   * Create another ADJ FIB
+   */
+  fib_prefix_t pfx_10_10_10_2_s_32 = {
+    .fp_addr = nh_10_10_10_2,
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_table_entry_path_add (0, &pfx_10_10_10_2_s_32, FIB_SOURCE_ADJ,
+			    FIB_ENTRY_FLAG_ATTACHED, DPO_PROTO_IP4,
+			    &nh_10_10_10_2, tm->hw[0]->sw_if_index,
+			    ~0, // invalid fib index
+			    1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  /*
+   * A BFD session for the new ADJ FIB
+   */
+  bfd_session_t bfd_10_10_10_2 = {
+    .udp = {
+	    .key = {
+		    .fib_index = 0,
+		    .peer_addr = nh_10_10_10_2,
+		    },
+	    },
+    .hop_type = BFD_HOP_TYPE_MULTI,
+    .local_state = BFD_STATE_init,
+  };
+
+  fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_2);
+
+  /*
+   * remove the adj-fib source whilst the session is present
+   * then add it back
+   */
+  fib_table_entry_delete (0, &pfx_10_10_10_2_s_32, FIB_SOURCE_ADJ);
+  fib_table_entry_path_add (0, &pfx_10_10_10_2_s_32, FIB_SOURCE_ADJ,
+			    FIB_ENTRY_FLAG_ATTACHED, DPO_PROTO_IP4,
+			    &nh_10_10_10_2, tm->hw[0]->sw_if_index,
+			    ~0, // invalid fib index
+			    1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  /*
+   * Before adding a recursive via the BFD tracked ADJ-FIBs,
+   * bring one of the sessions UP, leave the other down
+   */
+  bfd_10_10_10_1.local_state = BFD_STATE_up;
+  fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+  bfd_10_10_10_2.local_state = BFD_STATE_down;
+  fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+
+  /*
+   * A recursive prefix via both of the ADJ FIBs
+   */
+  fib_prefix_t pfx_200_0_0_0_s_24 = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {
+		.ip4.as_u32 = clib_host_to_net_u32 (0xc8000000),
+		},
+  };
+  const dpo_id_t *dpo_10_10_10_1, *dpo_10_10_10_2;
+
+  dpo_10_10_10_1 = fib_entry_contribute_ip_forwarding (
+    fib_table_lookup_exact_match (0, &pfx_10_10_10_1_s_32));
+  dpo_10_10_10_2 = fib_entry_contribute_ip_forwarding (
+    fib_table_lookup_exact_match (0, &pfx_10_10_10_2_s_32));
+
+  fib_test_lb_bucket_t lb_o_10_10_10_1 = {
+    .type = FT_LB_O_LB,
+    .lb = {
+	   .lb = dpo_10_10_10_1->dpoi_index,
+	   },
+  };
+  fib_test_lb_bucket_t lb_o_10_10_10_2 = {
+    .type = FT_LB_O_LB,
+    .lb = {
+	   .lb = dpo_10_10_10_2->dpoi_index,
+	   },
+  };
+
+  /*
+   * A prefix via the adj-fib that is BFD down => DROP
+   */
+  fei = fib_table_entry_path_add (0, &pfx_200_0_0_0_s_24, FIB_SOURCE_API,
+				  FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP4,
+				  &nh_10_10_10_2, ~0, // recursive
+				  0,		      // default fib index
+				  1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  FIB_TEST (load_balance_is_drop (fib_entry_contribute_ip_forwarding (fei)),
+	    "%U resolves via drop", format_fib_prefix, &pfx_200_0_0_0_s_24);
+
+  /*
+   * add a path via the UP BFD adj-fib.
+   *  we expect that the DOWN BFD ADJ FIB is not used.
+   */
+  fei = fib_table_entry_path_add (0, &pfx_200_0_0_0_s_24, FIB_SOURCE_API,
+				  FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP4,
+				  &nh_10_10_10_1, ~0, // recursive
+				  0,		      // default fib index
+				  1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				      &lb_o_10_10_10_1),
+	    "Recursive %U only UP BFD adj-fibs", format_fib_prefix,
+	    &pfx_200_0_0_0_s_24);
+
+  /*
+   * Send a BFD state change to UP - both sessions are now up
+   *  the recursive prefix should LB over both
+   */
+  bfd_10_10_10_2.local_state = BFD_STATE_up;
+  fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				      &lb_o_10_10_10_1, &lb_o_10_10_10_2),
+	    "Recursive %U via both UP BFD adj-fibs", format_fib_prefix,
+	    &pfx_200_0_0_0_s_24);
+
+  /*
+   * Send a BFD state change to DOWN
+   *  the recursive prefix should exclude the down
+   */
+  bfd_10_10_10_2.local_state = BFD_STATE_down;
+  fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				      &lb_o_10_10_10_1),
+	    "Recursive %U via only UP", format_fib_prefix,
+	    &pfx_200_0_0_0_s_24);
+
+  /*
+   * Delete the BFD session while it is in the DOWN state.
+   *  FIB should consider the entry's state as back up
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_2);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				      &lb_o_10_10_10_1, &lb_o_10_10_10_2),
+	    "Recursive %U via both UP BFD adj-fibs post down session delete",
+	    format_fib_prefix, &pfx_200_0_0_0_s_24);
+
+  /*
+   * Delete the BFD other session while it is in the UP state.
+   */
+  fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				      &lb_o_10_10_10_1, &lb_o_10_10_10_2),
+	    "Recursive %U via both UP BFD adj-fibs post up session delete",
+	    format_fib_prefix, &pfx_200_0_0_0_s_24);
+
+  /*
+   * cleaup
+   */
+  fib_table_entry_delete (0, &pfx_200_0_0_0_s_24, FIB_SOURCE_API);
+  fib_table_entry_delete (0, &pfx_10_10_10_1_s_32, FIB_SOURCE_ADJ);
+  fib_table_entry_delete (0, &pfx_10_10_10_2_s_32, FIB_SOURCE_ADJ);
+
+  fib_table_entry_delete (0, &pfx_10_10_10_10_s_32, FIB_SOURCE_INTERFACE);
+  fib_table_entry_delete (0, &pfx_10_10_10_10_s_24, FIB_SOURCE_INTERFACE);
+
+  adj_unlock (ai_10_10_10_1);
+  /*
+   * test no-one left behind
+   */
+  FIB_TEST ((n_feis == fib_entry_pool_size ()), "Entries gone");
+  FIB_TEST (0 == adj_nbr_db_size (), "All adjacencies removed");
+
+  /*
+   * Single-hop BFD tests
+   */
+  bfd_10_10_10_1.hop_type = BFD_HOP_TYPE_SINGLE;
+  bfd_10_10_10_1.udp.key.sw_if_index = tm->hw[0]->sw_if_index;
+
+  ai_10_10_10_1 = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
+				       &nh_10_10_10_1, tm->hw[0]->sw_if_index);
+  bfd_10_10_10_1.udp.adj_index = ai_10_10_10_1;
+
+  adj_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+
+  /*
+   * whilst the BFD session is not signalled, the adj is up
+   */
+  FIB_TEST (!adj_is_up (ai_10_10_10_1), "Adj state down on uninit session");
+
+  /*
+   * bring the BFD session up
+   */
+  bfd_10_10_10_1.local_state = BFD_STATE_up;
+  adj_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+  FIB_TEST (adj_is_up (ai_10_10_10_1), "Adj state up on UP session");
+
+  /*
+   * bring the BFD session down
+   */
+  bfd_10_10_10_1.local_state = BFD_STATE_down;
+  adj_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+  FIB_TEST (!adj_is_up (ai_10_10_10_1), "Adj state down on DOWN session");
+
+  /*
+   * add an attached next hop FIB entry via the down adj
+   */
+  fib_prefix_t pfx_5_5_5_5_s_32 = {
+    .fp_addr = {
+		.ip4 = {
+			.as_u32 = clib_host_to_net_u32 (0x05050505),
+			},
+		},
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  fei = fib_table_entry_path_add (
+    0, &pfx_5_5_5_5_s_32, FIB_SOURCE_CLI, FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP4,
+    &nh_10_10_10_1, tm->hw[0]->sw_if_index, ~0, // invalid fib index
+    1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  FIB_TEST (load_balance_is_drop (fib_entry_contribute_ip_forwarding (fei)),
+	    "%U resolves via drop", format_fib_prefix, &pfx_5_5_5_5_s_32);
+
+  /*
+   * Add a path via an ADJ that is up
+   */
+  adj_index_t ai_10_10_10_2 = adj_nbr_add_or_lock (
+    FIB_PROTOCOL_IP4, VNET_LINK_IP4, &nh_10_10_10_2, tm->hw[0]->sw_if_index);
+
+  fib_test_lb_bucket_t adj_o_10_10_10_2 = {
+    .type = FT_LB_ADJ,
+    .adj = {
+	    .adj = ai_10_10_10_2,
+	    },
+  };
+  adj_o_10_10_10_1.adj.adj = ai_10_10_10_1;
+
+  fei = fib_table_entry_path_add (
+    0, &pfx_5_5_5_5_s_32, FIB_SOURCE_CLI, FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP4,
+    &nh_10_10_10_2, tm->hw[0]->sw_if_index, ~0, // invalid fib index
+    1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 1,
+				      &adj_o_10_10_10_2),
+	    "BFD sourced %U via %U", format_fib_prefix, &pfx_5_5_5_5_s_32,
+	    format_ip_adjacency, ai_10_10_10_2, FORMAT_IP_ADJACENCY_NONE);
+
+  /*
+   * Bring up the down session - should now LB
+   */
+  bfd_10_10_10_1.local_state = BFD_STATE_up;
+  adj_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+  FIB_TEST (!fib_test_validate_entry (fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, 2,
+				      &adj_o_10_10_10_1, &adj_o_10_10_10_2),
+	    "BFD sourced %U via noth adjs", format_fib_prefix,
+	    &pfx_5_5_5_5_s_32);
+
+  /*
+   * remove the BFD session state from the adj
+   */
+  adj_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+
+  /*
+   * clean-up
+   */
+  fib_table_entry_delete (0, &pfx_5_5_5_5_s_32, FIB_SOURCE_CLI);
+  adj_unlock (ai_10_10_10_1);
+  adj_unlock (ai_10_10_10_2);
+
+  /*
+   * test no-one left behind
+   */
+  FIB_TEST ((n_feis == fib_entry_pool_size ()), "Entries gone");
+  FIB_TEST (0 == adj_nbr_db_size (), "All adjacencies removed");
+
+  return (res);
+}
+
+static clib_error_t *
+bfd_test (vlib_main_t *vm, unformat_input_t *input,
+	  vlib_cli_command_t *cmd_arg)
+{
+  int res;
+
+  res = 0;
+
+  res = fib_test_bfd ();
+
+  fflush (NULL);
+  if (res)
+    {
+      return clib_error_return (0, "BFD Unit Test Failed");
+    }
+  else
+    {
+      return (NULL);
+    }
+}
+
+VLIB_CLI_COMMAND (test_bfd_command, static) = {
+  .path = "test bfd",
+  .short_help = "bfd unit tests - DO NOT RUN ON A LIVE SYSTEM",
+  .function = bfd_test,
+};
 
 bfd_main_t bfd_main;
 
