@@ -126,7 +126,7 @@ def create_test(test_name, test, ip_version, mtu):
                 )
             )
         else:
-            print(
+            return unittest.skip(
                 f"Skipping test:{test_name} as mtu:{mtu} is "
                 f"invalid for TCP/IPv{ip_version}"
             )
@@ -146,8 +146,6 @@ def generate_vpp_interface_tests(tests, test_class):
                     generated tests are set as attributes.
     """
 
-    if config.skip_netns_tests:
-        print("Skipping netns tests")
     for test in tests:
         for ip_version in test_config["ip_versions"]:
             for mtu in test_config["mtus"]:
