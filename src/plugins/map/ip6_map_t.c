@@ -529,7 +529,8 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip60 = vlib_buffer_get_current (p0);
 
 	  d0 =
-	    ip6_map_get_domain (&ip60->dst_address,
+/*	    ip6_map_get_domain (&ip60->dst_address, Originally using the IPv6 dest for rule lookup, now source [dgeist] */
+	    ip6_map_get_domain (&ip60->src_address,
 				&vnet_buffer (p0)->map_t.map_domain_index,
 				&error0);
 	  if (!d0)
