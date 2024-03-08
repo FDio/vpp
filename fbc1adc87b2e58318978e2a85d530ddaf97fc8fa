@@ -70,6 +70,24 @@
       "parentUuid": "8b23f667_f4fb0634",
       "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7892e213_76445a6e",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-08T17:42:26Z",
+      "side": 1,
+      "message": "I\u0027m not sure what you mean. I only see return -1 in vapi_client_connect/disconnect, which is code written by somebody else - I haven\u0027t studied it in depth, but it looks like unnecessary code duplication at glance. Anyhow, its return values are then converted to vapi_error_e - where applicable.\n\nWhat I don\u0027t like is if it\u0027s mixed. If you have a function, either have it return -1/0 and decide what do with it (in terms of which VAPI error to present to user) or have it return VAPI error. But don\u0027t mix it.",
+      "parentUuid": "45d2ed3b_56cfc123",
+      "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
