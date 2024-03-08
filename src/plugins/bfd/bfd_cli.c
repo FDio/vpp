@@ -23,8 +23,8 @@
 #include <vppinfra/warnings.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/format.h>
-#include <vnet/bfd/bfd_api.h>
-#include <vnet/bfd/bfd_main.h>
+#include <plugins/bfd/bfd_api.h>
+#include <plugins/bfd/bfd_main.h>
 
 static u8 *
 format_bfd_session_cli (u8 * s, va_list * args)

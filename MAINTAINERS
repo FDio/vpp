@@ -83,10 +83,10 @@ M:	Dave Barach <vpp@barachs.net>
 F:	src/vlibapi/
 F:	src/vlibmemory/
 
-VNET Bidirectional Forwarding Detection (BFD)
+Plugin Bidirectional Forwarding Detection (BFD)
 I:	bfd
 M:	Klement Sekera <klement.sekera@gmail.com>
-F:	src/vnet/bfd/
+F:	src/plugins/bfd/
 
 VNET Classifier
 I:	classify

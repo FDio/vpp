@@ -351,6 +351,37 @@ typedef struct ip_adjacency_t_
   u8 __ia_pad[48];
 } ip_adjacency_t;
 
+/**
+ * Distillation of the BFD session states into a go/no-go for using
+ * the associated tracked adjacency
+ */
+typedef enum adj_bfd_state_t_
+{
+    ADJ_BFD_STATE_DOWN,
+    ADJ_BFD_STATE_UP,
+} adj_bfd_state_t;
+
+#define ADJ_BFD_STATES {                        \
+    [ADJ_BFD_STATE_DOWN] = "down",              \
+    [ADJ_BFD_STATE_UP]   = "up",                \
+}
+
+/**
+ * BFD delegate daa
+ */
+typedef struct adj_bfd_delegate_t_
+{
+    /**
+     * BFD session state
+     */
+    adj_bfd_state_t abd_state;
+
+    /**
+     * BFD session index
+     */
+    u32 abd_index;
+} adj_bfd_delegate_t;
+
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
 	       "IP adjacency cacheline 0 is not offset");
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
