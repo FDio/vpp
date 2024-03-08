@@ -200,6 +200,9 @@ typedef struct
 
 	    /* MFIB RPF ID */
 	    u32 rpf_id;
+
+	    /* uRPF fib index */
+	    u32 urpf_fib_index;
 	  };
 	};
 
