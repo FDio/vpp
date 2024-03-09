@@ -740,8 +740,9 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 	return 0;
 
       /* IP:port pair already in use, check if 6-tuple available */
-      if (session_lookup_connection (rmt->fib_index, lcl_addr, &rmt->ip, port,
-				     rmt->port, proto, rmt->is_ip4))
+      if (session_lookup_connection (rmt->fib_index, lcl_addr, &rmt->ip,
+				     rmt_cfg->peer.port, rmt->port, proto,
+				     rmt->is_ip4))
 	return SESSION_E_PORTINUSE;
 
       /* 6-tuple is available so increment lcl endpoint refcount */
