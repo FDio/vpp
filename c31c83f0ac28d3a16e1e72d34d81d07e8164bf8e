@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8102870_54c8daee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-09T09:33:41Z",
+      "side": 1,
+      "message": "Hello Dan,\nI\u0027m not a maintainer for map, but let me show you the link[0] that would save you some time. It describes how to send patches in gerrit.\n\nAlso:\n* make sure you run `make checkstyle`, `make checkstyle-commit`, `make checkstyle-api` and `make checkstyle-python` before sending the patch.\n* you should amend all the commits into 1 (`git commit --amend`), gerrit will take care of versioning\n* personally I don\u0027t think there\u0027s much sense in commenting out the code, let\u0027s rely on git itself\n\n[0] https://wiki.fd.io/view/VPP/Pulling,_Building,_Running,_Hacking_and_Pushing_VPP_Code",
+      "revId": "c31c83f0ac28d3a16e1e72d34d81d07e8164bf8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
