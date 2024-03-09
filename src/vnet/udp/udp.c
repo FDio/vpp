@@ -420,7 +420,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 					    lcl_port);
 	  lcl_port =
 	    transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr, rmt);
-	  if (lcl_port < 1)
+	  if ((int) lcl_port < 1)
 	    return SESSION_E_PORTINUSE;
 	}
     }
@@ -432,7 +432,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   ip_copy (&uc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&uc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
   uc->c_rmt_port = rmt->port;
-  uc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
+  uc->c_lcl_port = lcl_port;
   uc->c_is_ip4 = rmt->is_ip4;
   uc->c_proto = TRANSPORT_PROTO_UDP;
   uc->c_fib_index = rmt->fib_index;
