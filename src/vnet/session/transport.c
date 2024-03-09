@@ -528,11 +528,13 @@ transport_release_local_endpoint (u8 proto, ip46_address_t *lcl_ip, u16 port)
   u32 lepi;
 
   lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
-				    clib_net_to_host_u16 (port));
+				    port);
   if (lepi == ENDPOINT_INVALID_INDEX)
     return -1;
 
-  lep = pool_elt_at_index (tm->local_endpoints, lepi);
+  /* First worker may be cleaning up ports so avoid touching free bitmap */
+  lep = &tm->local_endpoints[lepi];
+  ASSERT (lep->refcnt >= 1);
 
   /* Local endpoint no longer in use, program cleanup */
   if (!clib_atomic_sub_fetch (&lep->refcnt, 1))
@@ -583,7 +585,7 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
    * used to allocate and free ports. So, pool has only one writer and
    * potentially many readers. Listeners are allocated with barrier */
   lepi = transport_endpoint_lookup (&tm->local_endpoints_table, proto, lcl_ip,
-				    clib_net_to_host_u16 (port));
+				    port);
   if (lepi != ENDPOINT_INVALID_INDEX)
     {
       lep = pool_elt_at_index (tm->local_endpoints, lepi);
@@ -594,6 +596,8 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
 /**
  * Allocate local port and add if successful add entry to local endpoint
  * table to mark the pair as used.
+ *
+ * @return port in net order or -1 if port cannot be allocated
  */
 int
 transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
@@ -619,7 +623,10 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 	{
 	  port = random_u32 (&tm->port_allocator_seed) & PORT_MASK;
 	  if (PREDICT_TRUE (port >= min && port < max))
-	    break;
+	    {
+	      port = clib_host_to_net_u16 (port);
+	      break;
+	    }
 	}
 
       if (!transport_endpoint_mark_used (proto, lcl_addr, port))
@@ -733,10 +740,9 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
     }
   else
     {
-      port = clib_net_to_host_u16 (rmt_cfg->peer.port);
-      *lcl_port = port;
+      *lcl_port = rmt_cfg->peer.port;
 
-      if (!transport_endpoint_mark_used (proto, lcl_addr, port))
+      if (!transport_endpoint_mark_used (proto, lcl_addr, rmt_cfg->peer.port))
 	return 0;
 
       /* IP:port pair already in use, check if 6-tuple available */
@@ -746,7 +752,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 	return SESSION_E_PORTINUSE;
 
       /* 6-tuple is available so increment lcl endpoint refcount */
-      transport_share_local_endpoint (proto, lcl_addr, port);
+      transport_share_local_endpoint (proto, lcl_addr, rmt_cfg->peer.port);
 
       return 0;
     }

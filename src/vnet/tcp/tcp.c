@@ -831,7 +831,7 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
   ip_copy (&tc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
   ip_copy (&tc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
   tc->c_rmt_port = rmt->port;
-  tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
+  tc->c_lcl_port = lcl_port;
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_proto = TRANSPORT_PROTO_TCP;
   tc->c_fib_index = rmt->fib_index;
