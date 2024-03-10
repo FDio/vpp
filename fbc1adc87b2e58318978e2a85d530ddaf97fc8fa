@@ -106,6 +106,24 @@
       "parentUuid": "7892e213_76445a6e",
       "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3de8d1f5_47178017",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-10T09:09:43Z",
+      "side": 1,
+      "message": "Ah, I know what you mean now. Original shared memory transport doesn\u0027t have this so this a new concept which needs to be introduced. Looking at standard errors which e.g. sendmsg() returns, I think we should add VAPI_ECONNRESET (and others - if applicable, like VAPI_EACCES, VAPI_EINTR, VAPI_EOPNOTSUPP - if it\u0027s a possibility that our calls return X, whould pass VAPI_X to the user if we can\u0027t work around it - if nothing else, than the human somewhere up the chain can debug it easier (e.g. if permissions are wrong and VAPI_EACCES pops up).",
+      "parentUuid": "5515bea0_ad6cdfbd",
+      "revId": "fbc1adc87b2e58318978e2a85d530ddaf97fc8fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
