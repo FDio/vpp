@@ -22,6 +22,10 @@ add_vpp_plugin(urpf
   ip4_urpf.c
   ip6_urpf.c
 
+  INSTALL_HEADERS
+  urpf_dp.h
+  urpf.h
+
   API_FILES
   urpf.api
 )
