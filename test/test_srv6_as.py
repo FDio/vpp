@@ -11,10 +11,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
+from config import config
 
 from util import ppp
 
 
+@unittest.skipIf("srv6-as" in config.excluded_plugins, "Exclude srv6-as plugin tests")
 class TestSRv6As(VppTestCase):
     """SRv6 Static Proxy plugin Test Case"""
 

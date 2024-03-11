@@ -252,6 +252,7 @@ class VppVRRPVirtualRouter(VppObject):
         return pkt
 
 
+@unittest.skipIf("vrrp" in config.excluded_plugins, "Exclude VRRP plugin tests")
 class TestVRRP4(VppTestCase):
     """IPv4 VRRP Test Case"""
 
@@ -884,6 +885,7 @@ class TestVRRP4(VppTestCase):
         self.assertEqual(rx[VRRPv3].addrlist, [vip])
 
 
+@unittest.skipIf("vrrp" in config.excluded_plugins, "Exclude VRRP plugin tests")
 class TestVRRP6(VppTestCase):
     """IPv6 VRRP Test Case"""
 

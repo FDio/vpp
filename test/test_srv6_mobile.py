@@ -4,6 +4,7 @@ from framework import VppTestCase
 from ipaddress import IPv4Address
 from ipaddress import IPv6Address
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto, VppIpTable
+from config import config
 
 from vpp_srv6_mobile import (
     SRv6MobileNhtype,
@@ -14,7 +15,12 @@ from vpp_srv6_mobile import (
 from scapy.contrib.gtp import *
 from scapy.all import *
 
+import unittest
 
+
+@unittest.skipIf(
+    "srv6-mobile" in config.excluded_plugins, "Exclude srv6-mobile plugin tests"
+)
 class TestSRv6EndMGTP4E(VppTestCase):
     """SRv6 End.M.GTP4.E (SRv6 -> GTP-U)"""
 
@@ -108,6 +114,9 @@ class TestSRv6EndMGTP4E(VppTestCase):
             self.assertEqual(pkt[GTP_U_Header].teid, 0xBBBBBBBB)
 
 
+@unittest.skipIf(
+    "srv6-mobile" in config.excluded_plugins, "Exclude srv6-mobile plugin tests"
+)
 class TestSRv6TMGTP4D(VppTestCase):
     """SRv6 T.M.GTP4.D (GTP-U -> SRv6)"""
 
@@ -215,6 +224,9 @@ class TestSRv6TMGTP4D(VppTestCase):
             )
 
 
+@unittest.skipIf(
+    "srv6-mobile" in config.excluded_plugins, "Exclude srv6-mobile plugin tests"
+)
 class TestSRv6EndMGTP6E(VppTestCase):
     """SRv6 End.M.GTP6.E"""
 
@@ -306,6 +318,9 @@ class TestSRv6EndMGTP6E(VppTestCase):
             self.assertEqual(pkt[GTP_U_Header].teid, 0xBBBBBBBB)
 
 
+@unittest.skipIf(
+    "srv6-mobile" in config.excluded_plugins, "Exclude srv6-mobile plugin tests"
+)
 class TestSRv6EndMGTP6D(VppTestCase):
     """SRv6 End.M.GTP6.D"""
 

@@ -5,8 +5,10 @@ import unittest
 from asfframework import VppAsfTestCase, VppTestRunner
 
 from vpp_vhost_interface import VppVhostInterface
+from config import config
 
 
+@unittest.skipIf("vhost" in config.excluded_plugins, "Exclude Vhost plugin tests")
 class TesVhostInterface(VppAsfTestCase):
     """Vhost User Test Case"""
 

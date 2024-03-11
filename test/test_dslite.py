@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import socket
+import unittest
 
 from asfframework import tag_fixme_vpp_workers
 from framework import VppTestCase
@@ -17,9 +18,11 @@ from scapy.packet import Raw
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from config import config
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestDSlite(VppTestCase):
     """DS-Lite Test Cases"""
 
@@ -233,6 +236,7 @@ class TestDSlite(VppTestCase):
         self.logger.info(self.vapi.cli("show dslite sessions"))
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestDSliteCE(VppTestCase):
     """DS-Lite CE Test Cases"""
 

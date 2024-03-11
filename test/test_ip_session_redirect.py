@@ -13,8 +13,13 @@ from vpp_papi import VppEnum
 from vpp_ip_route import VppRoutePath
 
 from framework import VppTestCase
+from config import config
 
 
+@unittest.skipIf(
+    "ip_session_redirect" in config.excluded_plugins,
+    "Exclude IP session redirect plugin tests",
+)
 class TestIpSessionRedirect(VppTestCase):
     """IP session redirect Test Case"""
 

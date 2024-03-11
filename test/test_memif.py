@@ -14,10 +14,12 @@ from remote_test import RemoteClass, RemoteVppTestCase
 from vpp_memif import remove_all_memif_vpp_config, VppSocketFilename, VppMemif
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
+from config import config
 
 
 @tag_run_solo
 @tag_fixme_debian11
+@unittest.skipIf("memif" in config.excluded_plugins, "Exclude Memif plugin tests")
 class TestMemif(VppTestCase):
     """Memif Test Case"""
 

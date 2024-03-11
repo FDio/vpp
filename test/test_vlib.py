@@ -252,6 +252,9 @@ class TestVlibFrameLeak(VppTestCase):
             i.unconfig_ip4()
             i.admin_down()
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_vlib_mw_refork_frame_leak(self):
         """Vlib worker thread refork leak test case"""
         icmp_id = 0xB

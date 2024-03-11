@@ -3,6 +3,9 @@ from scapy.layers.inet import IP, ICMP
 from framework import VppTestCase
 from vpp_ip_route import VppIpInterfaceAddress, VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
+from config import config
+
+import unittest
 
 """ TestPing is a subclass of  VPPTestCase classes.
 
@@ -11,6 +14,7 @@ Basic test for sanity check of the ping.
 """
 
 
+@unittest.skipIf("ping" in config.excluded_plugins, "Exclude Ping plugin tests")
 class TestPing(VppTestCase):
     """Ping Test Case"""
 

@@ -14,6 +14,7 @@ from vpp_gre_interface import VppGreInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from collections import namedtuple
 from vpp_papi import VppEnum
+from config import config
 
 
 Tag = namedtuple("Tag", ["dot1", "vlan"])
@@ -21,6 +22,9 @@ DOT1AD = 0x88A8
 DOT1Q = 0x8100
 
 
+@unittest.skipIf(
+    "vxlan" in config.excluded_plugins, "Exclude tests requiring VXLAN plugin"
+)
 class TestSpan(VppTestCase):
     """SPAN Test Case"""
 

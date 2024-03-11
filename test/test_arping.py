@@ -2,6 +2,9 @@ from scapy.layers.l2 import ARP
 from scapy.layers.inet6 import ICMPv6ND_NS, ICMPv6ND_NA, IPv6
 
 from framework import VppTestCase
+from config import config
+
+import unittest
 
 """ TestArping is a subclass of  VPPTestCase classes.
 
@@ -10,6 +13,7 @@ Basic test for sanity check of arping.
 """
 
 
+@unittest.skipIf("arping" in config.excluded_plugins, "Exclude Arping plugin tests")
 class TestArping(VppTestCase):
     """Arping Test Case"""
 

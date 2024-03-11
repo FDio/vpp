@@ -19,6 +19,7 @@ from lisp import (
     LispRemoteLocator,
 )
 from util import ppp
+from config import config
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
 
@@ -157,6 +158,7 @@ class SimpleDriver(Driver):
             self.test.pg0.assert_nothing_captured()
 
 
+@unittest.skipIf("lisp" in config.excluded_plugins, "Exclude LISP plugin tests")
 class TestLisp(VppTestCase):
     """Basic LISP test"""
 
@@ -206,6 +208,7 @@ class TestLisp(VppTestCase):
         self.test_driver.run(self.deid_ip4)
 
 
+@unittest.skipIf("lisp" in config.excluded_plugins, "Exclude LISP plugin tests")
 class TestLispUT(VppTestCase):
     """Lisp UT"""
 

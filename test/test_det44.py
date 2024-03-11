@@ -12,8 +12,10 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, UDPerror
 from scapy.layers.l2 import Ether
 from util import ppp
+from config import config
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestDET44(VppTestCase):
     """Deterministic NAT Test Cases"""
 

@@ -11,10 +11,12 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from vpp_papi import VppEnum
+from config import config
 
 N_PKTS = 63
 
 
+@unittest.skipIf("urpf" in config.excluded_plugins, "Exclude URPF plugin tests")
 class TestURPF(VppTestCase):
     """Unicast Reverse Path Forwarding Test Case"""
 

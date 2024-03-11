@@ -11,6 +11,8 @@ from framework import VppTestCase
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
+from config import config
+import unittest
 
 """ TestLB is a subclass of  VPPTestCase classes.
 
@@ -32,6 +34,7 @@ from vpp_ip import INVALID_INDEX
 """
 
 
+@unittest.skipIf("lb" in config.excluded_plugins, "Exclude LB plugin tests")
 class TestLB(VppTestCase):
     """Load Balancer Test Case"""
 
