@@ -59,8 +59,8 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
 
 urpf_data_t *urpf_cfgs[N_AF][VLIB_N_DIR];
 
-u8 *
-format_urpf_mode (u8 * s, va_list * a)
+__clib_export u8 *
+format_urpf_mode (u8 *s, va_list *a)
 {
   urpf_mode_t mode = va_arg (*a, int);
 
@@ -76,8 +76,8 @@ format_urpf_mode (u8 * s, va_list * a)
   return (format (s, "unknown"));
 }
 
-static uword
-unformat_urpf_mode (unformat_input_t * input, va_list * args)
+__clib_export uword
+unformat_urpf_mode (unformat_input_t *input, va_list *args)
 {
   urpf_mode_t *mode = va_arg (*args, urpf_mode_t *);
 
@@ -94,7 +94,7 @@ unformat_urpf_mode (unformat_input_t * input, va_list * args)
     return 0;
 }
 
-int
+__clib_export int
 urpf_feature_enable_disable (ip_address_family_t af, vlib_dir_t dir,
 			     urpf_mode_t mode, u32 sw_if_index, int enable)
 {
@@ -103,7 +103,7 @@ urpf_feature_enable_disable (ip_address_family_t af, vlib_dir_t dir,
 				      enable, 0, 0);
 }
 
-int
+__clib_export int
 urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
 	     vlib_dir_t dir, u32 table_id, bool default_skip)
 {
