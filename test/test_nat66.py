@@ -13,8 +13,10 @@ from scapy.layers.inet6 import (
 from scapy.layers.l2 import Ether, GRE
 from util import ppp
 from vpp_papi import VppEnum
+from config import config
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT66(VppTestCase):
     """NAT66 Test Cases"""
 

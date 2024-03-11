@@ -23,6 +23,7 @@ from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathProto
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
+from config import config
 
 from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect
 from template_ipsec import (
@@ -373,6 +374,9 @@ class TestGSO(VppTestCase):
             sw_if_index=self.pg1.sw_if_index, enable_disable=0
         )
 
+    @unittest.skipIf(
+        "vxlan" in config.excluded_plugins, "Exclude tests requiring VXLAN plugin"
+    )
     def test_gso_vxlan(self):
         """GSO VXLAN test"""
         self.logger.info(self.vapi.cli("sh int addr"))

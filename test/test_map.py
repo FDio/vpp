@@ -8,6 +8,7 @@ from asfframework import VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from util import fragment_rfc791, fragment_rfc8200
+from config import config
 
 import scapy.compat
 from scapy.layers.l2 import Ether
@@ -22,6 +23,7 @@ from scapy.layers.inet6 import (
 )
 
 
+@unittest.skipIf("map" in config.excluded_plugins, "Exclude MAP plugin tests")
 class TestMAP(VppTestCase):
     """MAP Test Case"""
 

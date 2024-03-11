@@ -5,6 +5,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from template_bd import BridgeDomain
+from config import config
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
@@ -17,6 +18,7 @@ from vpp_ip import INVALID_INDEX
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf("gtpu" in config.excluded_plugins, "Exclude GTPU plugin tests")
 class TestGtpuUDP(VppTestCase):
     """GTPU UDP ports Test Case"""
 
@@ -119,6 +121,7 @@ class TestGtpuUDP(VppTestCase):
         )
 
 
+@unittest.skipIf("gtpu" in config.excluded_plugins, "Exclude GTPU plugin tests")
 class TestGtpu(BridgeDomain, VppTestCase):
     """GTPU Test Case"""
 

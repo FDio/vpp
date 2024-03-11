@@ -14,8 +14,12 @@ from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
 
 from util import ppp
+from config import config
 
 
+@unittest.skipIf(
+    "srv6-ad-flow" in config.excluded_plugins, "Exclude srv6-ad-flow plugin tests"
+)
 class TestSRv6AdFlow(VppTestCase):
     """SRv6 Flow-based Dynamic Proxy plugin Test Case"""
 

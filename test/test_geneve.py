@@ -5,6 +5,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner
 from template_bd import BridgeDomain
+from config import config
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP, ICMP
@@ -15,6 +16,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
 
+@unittest.skipIf("geneve" in config.excluded_plugins, "Exclude GENEVE plugin tests")
 class TestGeneve(BridgeDomain, VppTestCase):
     """GENEVE Test Case"""
 
@@ -250,6 +252,7 @@ class TestGeneve(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show geneve tunnel"))
 
 
+@unittest.skipIf("geneve" in config.excluded_plugins, "Exclude GENEVE plugin tests")
 class TestGeneveL3(VppTestCase):
     """GENEVE L3 Test Case"""
 

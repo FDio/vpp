@@ -3,8 +3,10 @@
 import unittest
 
 from asfframework import VppAsfTestCase, VppTestRunner
+from config import config
 
 
+@unittest.skipIf("adl" in config.excluded_plugins, "Exclude ADL plugin tests")
 class TestAdl(VppAsfTestCase):
     """Allow/Deny Plugin Unit Test Cases"""
 

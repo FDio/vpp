@@ -28,6 +28,7 @@ from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfB
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
+from config import config
 
 
 class ConfigIpsecAH(TemplateIpsec):
@@ -526,6 +527,9 @@ class TestIpsecAhAll(ConfigIpsecAH, IpsecTra4, IpsecTra6, IpsecTun4, IpsecTun6):
     def tearDown(self):
         super(TestIpsecAhAll, self).tearDown()
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_integ_algs(self):
         """All Engines SHA[1_96, 256, 384, 512] w/ & w/o ESN"""
         # foreach VPP crypto engine

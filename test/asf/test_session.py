@@ -9,9 +9,13 @@ from asfframework import (
     tag_run_solo,
 )
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from config import config
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
 class TestSession(VppAsfTestCase):
     """Session Test Case"""
 

@@ -10,6 +10,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import MACAddress, VppEnum
+from config import config
 
 
 class TestBondInterface(VppTestCase):
@@ -174,6 +175,9 @@ class TestBondInterface(VppTestCase):
 
         bond0.remove_vpp_config()
 
+    @unittest.skipIf(
+        "lacp" in config.excluded_plugins, "Exclude tests requiring LACP plugin"
+    )
     def test_bond_add_member(self):
         """Bond add_member/detach member test"""
 
@@ -227,6 +231,9 @@ class TestBondInterface(VppTestCase):
 
         bond0.remove_vpp_config()
 
+    @unittest.skipIf(
+        "lacp" in config.excluded_plugins, "Exclude tests requiring LACP plugin"
+    )
     def test_bond(self):
         """Bond add/delete interface test"""
         self.logger.info("Bond add interfaces")

@@ -14,8 +14,10 @@ import util
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
+from config import config
 
 
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
 class TestVxlan6(BridgeDomain, VppTestCase):
     """VXLAN over IPv6 Test Case"""
 
