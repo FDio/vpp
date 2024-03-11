@@ -19,6 +19,7 @@ from vpp_igmp import (
     wait_for_igmp_event,
 )
 from vpp_ip_route import find_mroute, VppIpTable
+from config import config
 
 
 class IgmpMode:
@@ -27,6 +28,7 @@ class IgmpMode:
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf("igmp" in config.excluded_plugins, "Exclude IGMP plugin tests")
 class TestIgmp(VppTestCase):
     """IGMP Test Case"""
 

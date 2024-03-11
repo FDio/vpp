@@ -20,8 +20,10 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
 from vpp_neighbor import VppNeighbor
+from config import config
 
 
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
 class TestVxlan(BridgeDomain, VppTestCase):
     """VXLAN Test Case"""
 
@@ -480,6 +482,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         self.logger.info(self.vapi.cli("show vxlan tunnel"))
 
 
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
 class TestVxlan2(VppTestCase):
     """VXLAN Test Case"""
 
@@ -527,6 +530,7 @@ class TestVxlan2(VppTestCase):
         rx = self.send_and_assert_no_replies(self.pg1, [p])
 
 
+@unittest.skipIf("vxlan" in config.excluded_plugins, "Exclude VXLAN plugin tests")
 class TestVxlanL2Mode(VppTestCase):
     """VXLAN Test Case"""
 

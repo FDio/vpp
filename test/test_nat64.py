@@ -36,10 +36,12 @@ from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
 from util import ppc, ppp
 from vpp_papi import VppEnum
+from config import config
 
 
 @tag_fixme_vpp_workers
 @tag_fixme_ubuntu2204
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT64(VppTestCase):
     """NAT64 Test Cases"""
 

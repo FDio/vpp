@@ -24,6 +24,7 @@ from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSpdItfBinding
 from ipaddress import ip_address
 from re import search
 from os import popen
+from config import config
 
 
 class IPsecIPv4Params:
@@ -323,6 +324,9 @@ class IpsecTcp(object):
         self.assert_packet_checksums_valid(decrypted)
 
 
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
 class IpsecTcpTests(IpsecTcp):
     def test_tcp_checksum(self):
         """verify checksum correctness for vpp generated packets"""
@@ -1849,6 +1853,9 @@ class IpsecTra4(object):
             self._verify_tra_anti_replay_algorithm_no_esn()
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class IpsecTra4Tests(IpsecTra4):
     """UT test methods for Transport v4"""
 
@@ -2029,6 +2036,9 @@ class IpsecTra6(object):
             self.assert_equal(dc[IPv6ExtHdrFragment].id, 2)
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class IpsecTra6Tests(IpsecTra6):
     """UT test methods for Transport v6"""
 

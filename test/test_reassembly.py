@@ -25,6 +25,7 @@ from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
+from config import config
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
@@ -588,6 +589,9 @@ Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737"""
         self.verify_capture(packets, dropped_packet_indexes)
         self.src_if.assert_nothing_captured()
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_local_enable_disable(self):
         """local reassembly enabled/disable"""
         self.vapi.ip_reassembly_enable_disable(
@@ -1675,6 +1679,9 @@ class TestIPv6Reassembly(VppTestCase):
         )
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_one_fragment(self):
         """whole packet in one fragment processed independently"""
         pkt = (
@@ -1702,6 +1709,9 @@ class TestIPv6Reassembly(VppTestCase):
         rx = self.send_and_expect(self.pg0, frags[1:], self.pg0, n_rx=1)
         self.assertNotIn(IPv6ExtHdrFragment, rx)
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_bunch_of_fragments(self):
         """valid fragments followed by rogue fragments and atomic fragment"""
         pkt = (
@@ -1731,6 +1741,9 @@ class TestIPv6Reassembly(VppTestCase):
         rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
         self.assertNotIn(IPv6ExtHdrFragment, rx)
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_local_enable_disable(self):
         """local reassembly enabled/disable"""
         self.vapi.ip_reassembly_enable_disable(
@@ -2366,6 +2379,9 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
                 index, seen, "Packet with packet_index %d not received" % index
             )
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_reassembly(self):
         """basic reassembly"""
 
@@ -2492,6 +2508,9 @@ class TestFIFReassembly(VppTestCase):
                 "Packet with packet_index %d not received" % index,
             )
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_fif4(self):
         """Fragments in fragments (4o4)"""
 
@@ -2567,6 +2586,9 @@ class TestFIFReassembly(VppTestCase):
         self.gre4.remove_vpp_config()
         self.logger.debug(self.vapi.ppcli("show interface"))
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_fif6(self):
         """Fragments in fragments (6o6)"""
         # TODO this should be ideally in setUpClass, but then we hit a bug

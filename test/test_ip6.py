@@ -67,6 +67,7 @@ from vpp_policer import VppPolicer, PolicerAction
 from ipaddress import IPv6Network, IPv6Address
 from vpp_gre_interface import VppGreInterface
 from vpp_teib import VppTeib
+from config import config
 
 AF_INET6 = socket.AF_INET6
 
@@ -1368,6 +1369,9 @@ class TestIPv6IfAddrRoute(VppTestCase):
             )
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class TestICMPv6Echo(VppTestCase):
     """ICMPv6 Echo Test Case"""
 
@@ -3324,6 +3328,9 @@ class TestIP6AddrReplace(VppTestCase):
             self.assertTrue(pfx.query_vpp_config())
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class TestIP6LinkLocal(VppTestCase):
     """IPv6 Link Local"""
 
@@ -3416,6 +3423,9 @@ class TestIP6LinkLocal(VppTestCase):
         p_echo_request_3.dst = self.pg1.local_mac
         self.send_and_expect(self.pg1, [p_echo_request_3], self.pg1)
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_ip6_ll_p2p(self):
         """IPv6 Link Local P2P (GRE)"""
 
@@ -3445,6 +3455,9 @@ class TestIP6LinkLocal(VppTestCase):
         self.pg0.unconfig_ip4()
         gre_if.remove_vpp_config()
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_ip6_ll_p2mp(self):
         """IPv6 Link Local P2MP (GRE)"""
 

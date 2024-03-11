@@ -21,8 +21,10 @@ from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
 from util import StatsDiff
+from config import config
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44ED(VppTestCase):
     """NAT44ED Test Case"""
 
@@ -2605,6 +2607,7 @@ class TestNAT44ED(VppTestCase):
 
 
 @tag_fixme_ubuntu2204
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
 

@@ -13,10 +13,14 @@
 #  limitations under the License.
 
 from asfframework import VppAsfTestCase
+from config import config
+
+import unittest
 
 DEFAULT_VIP = "lb_vip_details(_0=978, context=12, vip=vl_api_lb_ip_addr_t(pfx=IPv6Network(u'::/0'), protocol=<vl_api_ip_proto_t.IP_API_PROTO_RESERVED: 255>, port=0), encap=<vl_api_lb_encap_type_t.LB_API_ENCAP_TYPE_GRE4: 0>, dscp=<vl_api_ip_dscp_t.IP_API_DSCP_CS0: 0>, srv_type=<vl_api_lb_srv_type_t.LB_API_SRV_TYPE_CLUSTERIP: 0>, target_port=0, flow_table_length=0)"  # noqa
 
 
+@unittest.skipIf("lb" in config.excluded_plugins, "Exclude LB plugin tests")
 class TestLbEmptyApi(VppAsfTestCase):
     """TestLbEmptyApi"""
 
@@ -34,6 +38,7 @@ class TestLbEmptyApi(VppAsfTestCase):
         self.assertEqual(rv, [], "Expected: [] Received: %r." % rv)
 
 
+@unittest.skipIf("lb" in config.excluded_plugins, "Exclude LB plugin tests")
 class TestLbApi(VppAsfTestCase):
     """TestLbApi"""
 
@@ -55,6 +60,7 @@ class TestLbApi(VppAsfTestCase):
         self.vapi.cli("lb vip 2001::/16 del")
 
 
+@unittest.skipIf("lb" in config.excluded_plugins, "Exclude LB plugin tests")
 class TestLbAsApi(VppAsfTestCase):
     """TestLbAsApi"""
 

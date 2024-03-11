@@ -4,12 +4,14 @@ import unittest
 import ipaddress
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from config import config
 
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6DestUnreach
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
 
+@unittest.skipIf("npt66" in config.excluded_plugins, "Exclude NPTv6 plugin tests")
 class TestNPT66(VppTestCase):
     """NPTv6 Test Case"""
 

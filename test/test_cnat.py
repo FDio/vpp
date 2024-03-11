@@ -6,6 +6,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_ip import INVALID_INDEX
 from itertools import product
+from config import config
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -335,6 +336,7 @@ class CnatTestContext(object):
 # -------------------------------------------------------------------
 
 
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatTranslation(CnatCommonTestCase):
     """CNat Translation"""
 
@@ -679,6 +681,7 @@ class TestCNatTranslation(CnatCommonTestCase):
         self.cnat_fhc_translation()
 
 
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatSourceNAT(CnatCommonTestCase):
     """CNat Source NAT"""
 
@@ -818,6 +821,7 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         self.vapi.cnat_session_purge()
 
 
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatDHCP(CnatCommonTestCase):
     """CNat Translation"""
 

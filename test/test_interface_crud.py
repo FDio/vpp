@@ -18,6 +18,7 @@ from scapy.layers.l2 import Ether
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from config import config
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):
@@ -81,6 +82,9 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             info = (i.local_ip4, request_src_if.remote_ip4, 0, i.sw_if_index)
             self.assertIn(info, rcvd_icmp_pkts)
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_crud(self):
         # create
         loopbacks = self.create_loopback_interfaces(20)

@@ -10,12 +10,14 @@ from asfframework import VppTestRunner
 from vpp_memif import VppSocketFilename, VppMemif
 from vpp_bond_interface import VppBondInterface
 from vpp_papi import VppEnum
+from config import config
 
 bond_mac = "02:02:02:02:02:02"
 lacp_dst_mac = "01:80:c2:00:00:02"
 LACP_COLLECTION_AND_DISTRIBUTION_STATE = 63
 
 
+@unittest.skipIf("lacp" in config.excluded_plugins, "Exclude LACP plugin tests")
 class TestMarker(VppTestCase):
     """LACP Marker Protocol Test Case"""
 
@@ -147,6 +149,7 @@ class TestMarker(VppTestCase):
         bond1.remove_vpp_config()
 
 
+@unittest.skipIf("lacp" in config.excluded_plugins, "Exclude LACP plugin tests")
 class TestLACP(VppTestCase):
     """LACP Test Case"""
 

@@ -25,6 +25,7 @@ from vpp_ip_route import (
 )
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 from vpp_papi import VppEnum
+from config import config
 
 import scapy.compat
 from scapy.packet import Raw
@@ -1520,6 +1521,9 @@ class TestMPLS(VppTestCase):
         rx = self.send_and_expect(self.pg1, tx, self.pg1)
         self.verify_capture_ip6(self.pg0, rx, tx)
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_deag(self):
         """MPLS Deagg"""
 

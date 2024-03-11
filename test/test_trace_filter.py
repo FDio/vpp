@@ -8,6 +8,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_papi import VppEnum
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdItfBinding, VppIpsecSpdEntry
+from config import config
 
 from scapy.contrib.geneve import GENEVE
 from scapy.packet import Raw
@@ -291,6 +292,9 @@ class TestTracefilter(TemplateTraceFilter):
         self.assertEqual(len(pcap), 17)
 
 
+@unittest.skipIf(
+    "tracenode" in config.excluded_plugins, "Exclude tests requiring tracenode plugin"
+)
 class TestTraceFilterInner(TemplateTraceFilter):
     """Packet Tracer Filter Inner Test"""
 

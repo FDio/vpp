@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from vpp_object import VppObject
+from config import config
 
 NUM_PKTS = 67
 
@@ -56,6 +57,7 @@ class VppL3xc(VppObject):
         return "l3xc-%d" % self.intf.sw_if_index
 
 
+@unittest.skipIf("l3xc" in config.excluded_plugins, "Exclude L3XC plugin tests")
 class TestL3xc(VppTestCase):
     """L3XC Test Case"""
 

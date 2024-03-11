@@ -34,6 +34,7 @@ from vpp_papi import vpp_papi, VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
 from vpp_policer import VppPolicer, PolicerAction
+from config import config
 
 NUM_PKTS = 67
 
@@ -502,6 +503,9 @@ class TestIPv4IfAddrRoute(VppTestCase):
             )
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class TestICMPEcho(VppTestCase):
     """ICMP Echo Test Case"""
 

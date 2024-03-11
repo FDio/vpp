@@ -32,6 +32,7 @@ from vpp_papi import mac_pton, VppEnum
 from vpp_sub_interface import VppDot1QSubint
 from vpp_qos import VppQosEgressMap, VppQosMark
 from vpp_dhcp import VppDHCPClient, VppDHCPProxy
+from config import config
 
 
 DHCP4_CLIENT_PORT = 68
@@ -41,6 +42,7 @@ DHCP6_SERVER_PORT = 546
 
 
 @tag_run_solo
+@unittest.skipIf("dhcp" in config.excluded_plugins, "Exclude DHCP plugin tests")
 class TestDHCP(VppTestCase):
     """DHCP Test Case"""
 

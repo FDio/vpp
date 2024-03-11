@@ -13,10 +13,12 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 from socket import AF_INET
 from ipaddress import IPv4Network
+from config import config
 
 NUM_PKTS = 67
 
 
+@unittest.skipIf("acl" in config.excluded_plugins, "Exclude tests requiring ACL plugin")
 class TestDVR(VppTestCase):
     """Distributed Virtual Router"""
 

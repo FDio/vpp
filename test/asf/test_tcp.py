@@ -4,8 +4,12 @@ import unittest
 
 from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from config import config
 
 
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
 class TestTCP(VppAsfTestCase):
     """TCP Test Case"""
 
