@@ -33,6 +33,7 @@ typedef enum urpf_mode_t_
 #define URPF_N_MODES (URPF_MODE_STRICT+1)
 
 extern u8 *format_urpf_mode (u8 * s, va_list * a);
+extern uword unformat_urpf_mode (unformat_input_t *input, va_list *args);
 
 typedef struct
 {
