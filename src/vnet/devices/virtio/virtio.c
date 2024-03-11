@@ -353,7 +353,10 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 #undef _
     {.str = NULL}
   };
-
+if (mm->interfaces == NULL) {
+     vlib_cli_output(vm, "Error: Not a valid interface.");
+}
+else {
   if (!hw_if_indices)
     return;
 
@@ -637,7 +640,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
     }
 
 }
-
+}
 static clib_error_t *
 virtio_init (vlib_main_t * vm)
 {
