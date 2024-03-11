@@ -78,8 +78,8 @@ format_urpf_mode (u8 * s, va_list * a)
   return (format (s, "unknown"));
 }
 
-static uword
-unformat_urpf_mode (unformat_input_t * input, va_list * args)
+uword
+unformat_urpf_mode (unformat_input_t *input, va_list *args)
 {
   urpf_mode_t *mode = va_arg (*args, urpf_mode_t *);
 
