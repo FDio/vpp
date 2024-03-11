@@ -53,21 +53,6 @@
  *
  * This file contains the interface unicast source check.
  */
-typedef struct
-{
-  index_t urpf;
-  u32 fib_index;
-} urpf_trace_t;
-
-static u8 *
-format_urpf_trace (u8 * s, va_list * va)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  urpf_trace_t *t = va_arg (*va, urpf_trace_t *);
-
-  return format (s, "uRPF:%d fib:%d", t->urpf, t->fib_index);
-}
 
 #define foreach_urpf_error                 \
   _(DROP, "uRPF Drop")                     \
