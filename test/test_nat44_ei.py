@@ -36,6 +36,7 @@ from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
+from config import config
 
 
 # NAT HA protocol event data
@@ -913,6 +914,7 @@ def get_nat44_ei_in2out_worker_index(ip, vpp_worker_count):
 
 
 @tag_fixme_debian11
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EI(MethodHolder):
     """NAT44EI Test Cases"""
 
@@ -4122,6 +4124,7 @@ class TestNAT44EI(MethodHolder):
             i.remove_vpp_config()
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44Out2InDPO(MethodHolder):
     """NAT44EI Test Cases using out2in DPO"""
 
@@ -4263,6 +4266,7 @@ class TestNAT44Out2InDPO(MethodHolder):
         self.verify_capture_in(capture, self.pg0)
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EIMW(MethodHolder):
     """NAT44EI Test Cases (multiple workers)"""
 

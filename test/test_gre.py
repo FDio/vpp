@@ -24,9 +24,11 @@ from vpp_ip_route import (
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 from util import ppp, ppc
 from vpp_papi import VppEnum
+from config import config
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf("gre" in config.excluded_plugins, "Exclude GRE plugin tests")
 class TestGREInputNodes(VppTestCase):
     """GRE Input Nodes Test Case"""
 
@@ -73,6 +75,7 @@ class TestGREInputNodes(VppTestCase):
         self.assertEqual(err, err_count)
 
 
+@unittest.skipIf("gre" in config.excluded_plugins, "Exclude GRE plugin tests")
 class TestGRE(VppTestCase):
     """GRE Test Case"""
 

@@ -41,6 +41,7 @@ from vpp_papi import VppEnum
 from vpp_papi_provider import CliFailedCommandError
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_policer import PolicerAction, VppPolicer, Dir
+from config import config
 
 
 def config_tun_params(p, encryption_type, tun_if, src=None, dst=None):
@@ -1309,6 +1310,9 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec6TunProtect, TemplateIpsec, IpsecTun6
             self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreTebIfEsp(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE TEB ESP - TUN tests"""
 
@@ -1433,6 +1437,9 @@ class TestIpsecGreTebIfEsp(TemplateIpsec, IpsecTun4Tests):
         super(TestIpsecGreTebIfEsp, self).tearDown()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreTebVlanIfEsp(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE TEB ESP - TUN tests"""
 
@@ -1568,6 +1575,9 @@ class TestIpsecGreTebVlanIfEsp(TemplateIpsec, IpsecTun4Tests):
         self.pg1_11.remove_vpp_config()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreTebIfEspTra(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE TEB ESP - Tra tests"""
 
@@ -1686,6 +1696,9 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec, IpsecTun4Tests):
         super(TestIpsecGreTebIfEspTra, self).tearDown()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreTebUdpIfEspTra(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE TEB UDP ESP - Tra tests"""
 
@@ -1819,6 +1832,9 @@ class TestIpsecGreTebUdpIfEspTra(TemplateIpsec, IpsecTun4Tests):
         super(TestIpsecGreTebUdpIfEspTra, self).tearDown()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreIfEsp(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE ESP - TUN tests"""
 
@@ -1931,6 +1947,9 @@ class TestIpsecGreIfEsp(TemplateIpsec, IpsecTun4Tests):
         super(TestIpsecGreIfEsp, self).tearDown()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
     """Ipsec GRE ESP - TRA tests"""
 
@@ -2060,6 +2079,9 @@ class TestIpsecGreIfEspTra(TemplateIpsec, IpsecTun4Tests):
         self.assertEqual(err, 1)
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):
     """Ipsec GRE ESP - TRA tests"""
 
@@ -2174,6 +2196,9 @@ class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):
         super(TestIpsecGre6IfEspTra, self).tearDown()
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
     """Ipsec mGRE ESP v4 TRA tests"""
 
@@ -2329,6 +2354,9 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
             self.verify_tun_44(p, count=N_PKTS)
 
 
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
 class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
     """Ipsec mGRE ESP v6 TRA tests"""
 
@@ -2591,6 +2619,9 @@ class TestIpsec4TunProtectUdpTfc(TemplateIpsec4TunTfc, TestIpsec4TunProtectUdp):
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf(
+    "acl" in config.excluded_plugins, "Exclude tests depending on ACL plugin"
+)
 class TestIpsec4TunProtectTun(TemplateIpsec, TemplateIpsec4TunProtect, IpsecTun4):
     """IPsec IPv4 Tunnel protect - tunnel mode"""
 
@@ -3607,6 +3638,9 @@ class TestIpsecItf6Tfc(TemplateIpsec6TunTfc, TestIpsecItf6):
     """IPsec Interface IPv6 with TFC"""
 
 
+@unittest.skipIf(
+    "acl" in config.excluded_plugins, "Exclude tests depending on ACL plugin"
+)
 class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
     """Ipsec P2MP ESP v4 tests"""
 

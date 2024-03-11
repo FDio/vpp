@@ -8,6 +8,7 @@ from template_ipsec import IPSecIPv4Fwd
 from template_ipsec import IPSecIPv6Fwd
 from test_ipsec_esp import TemplateIpsecEsp
 from template_ipsec import SpdFastPathTemplate
+from config import config
 
 
 def debug_signal_handler(signal, frame):
@@ -242,6 +243,9 @@ class IPSec4SpdTestCaseDiscard(SpdFastPathInbound):
         self.verify_policy_match(0, policy_1)
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class IPSec4SpdTestCaseProtect(SpdFastPathInboundProtect):
     """ IPSec/IPv4 inbound: Policy mode test case with fast path \
     (add protect)"""
@@ -830,6 +834,9 @@ class IPSec4SpdTestCaseMultiple(SpdFastPathInbound):
         self.verify_policy_match(0, policy_22)
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class IPSec6SpdTestCaseProtect(SpdFastPathIPv6InboundProtect):
     """ IPSec/IPv6 inbound: Policy mode test case with fast path \
     (add protect)"""

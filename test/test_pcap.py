@@ -9,8 +9,12 @@ from scapy.packet import Raw
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from config import config
 
 
+@unittest.skipIf(
+    "dispatch-trace" in config.excluded_plugins, "Exclude dispatch trace plugin tests"
+)
 class TestPcap(VppTestCase):
     """Pcap Unit Test Cases"""
 

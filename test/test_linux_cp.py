@@ -20,6 +20,7 @@ from template_ipsec import (
     IpsecTun4,
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
+from config import config
 
 
 class VppLcpPair(VppObject):
@@ -51,6 +52,7 @@ class VppLcpPair(VppObject):
         return False
 
 
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
 class TestLinuxCP(VppTestCase):
     """Linux Control Plane"""
 
@@ -294,6 +296,7 @@ class TestLinuxCP(VppTestCase):
         tun6.unconfig_ip6()
 
 
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
 class TestLinuxCPIpsec(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
     """IPsec Interface IPv4"""
 

@@ -11,6 +11,7 @@ from asfframework import VppTestRunner
 from vpp_interface import VppInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from vpp_acl import AclRule, VppAcl, VppAclInterface
+from config import config
 
 NUM_PKTS = 67
 
@@ -63,6 +64,7 @@ class VppPipe(VppInterface):
             )
 
 
+@unittest.skipIf("acl" in config.excluded_plugins, "Exclude tests requiring ACL plugin")
 class TestPipe(VppTestCase):
     """Pipes"""
 

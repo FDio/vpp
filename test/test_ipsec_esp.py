@@ -1,4 +1,5 @@
 import socket
+import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import IP, ICMP, UDP
 from scapy.layers.inet6 import IPv6
@@ -27,6 +28,7 @@ from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA, VppIpsecSpdItfB
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
+from config import config
 
 NUM_PKTS = 67
 engines_supporting_chain_bufs = ["openssl", "async"]
@@ -1075,6 +1077,9 @@ class MyParameters:
         }
 
 
+@unittest.skipIf(
+    "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+)
 class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecTun6):
     """Ipsec ESP all Algos"""
 

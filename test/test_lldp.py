@@ -96,6 +96,7 @@ class TestLldpCli(VppTestCase):
         self.assertNotIn("pg0", reply)
 
 
+@unittest.skipIf("lldp" in config.excluded_plugins, "Exclude lldp plugin tests")
 class TestLldpVapi(VppTestCase):
     """LLDP plugin test [VAPI]"""
 

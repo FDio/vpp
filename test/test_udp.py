@@ -17,6 +17,7 @@ from vpp_ip_route import (
 )
 from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
+from config import config
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -679,6 +680,9 @@ class TestUdpEncap(VppTestCase):
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
 class TestUDP(VppTestCase):
     """UDP Test Case"""
 

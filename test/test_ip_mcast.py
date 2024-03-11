@@ -14,6 +14,7 @@ from vpp_ip_route import (
 )
 from vpp_gre_interface import VppGreInterface
 from vpp_papi import VppEnum
+from config import config
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
@@ -884,6 +885,9 @@ class TestIPMcast(VppTestCase):
         signals = self.vapi.mfib_signal_dump()
         self.assertEqual(0, len(signals))
 
+    @unittest.skipIf(
+        "ping" in config.excluded_plugins, "Exclude tests requiring Ping plugin"
+    )
     def test_ip_mcast_vrf(self):
         """IP Multicast Replication in non-default table"""
 
@@ -976,6 +980,9 @@ class TestIPMcast(VppTestCase):
 
         self.send_and_expect(self.pg8, tx, self.pg8)
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_ip_mcast_gre(self):
         """IP Multicast Replication over GRE"""
 
@@ -1056,6 +1063,9 @@ class TestIPMcast(VppTestCase):
             self.assertEqual(rx[IP].dst, gre_if_3.t_dst)
             self.assert_packet_checksums_valid(rx)
 
+    @unittest.skipIf(
+        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+    )
     def test_ip6_mcast_gre(self):
         """IP6 Multicast Replication over GRE"""
 

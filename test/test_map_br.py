@@ -5,6 +5,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from config import config
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP, IPerror, UDPerror
@@ -12,6 +13,7 @@ from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded, ICMPv6PacketTooBig
 from scapy.layers.inet6 import ICMPv6EchoRequest, ICMPv6EchoReply, IPerror6
 
 
+@unittest.skipIf("map" in config.excluded_plugins, "Exclude MAP plugin tests")
 class TestMAPBR(VppTestCase):
     """MAP-T Test Cases"""
 
