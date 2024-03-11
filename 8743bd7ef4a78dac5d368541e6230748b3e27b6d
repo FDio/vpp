@@ -52,6 +52,24 @@
       "parentUuid": "27b93355_c4a34b26",
       "revId": "8743bd7ef4a78dac5d368541e6230748b3e27b6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77cd03c1_fded9ff2",
+        "filename": "extras/hs-test/address_allocator.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-03-11T16:03:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1496627c_11b13c93",
+      "revId": "8743bd7ef4a78dac5d368541e6230748b3e27b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
