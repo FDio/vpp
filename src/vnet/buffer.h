@@ -455,19 +455,28 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
 /* 56 bytes of additional space */
 typedef struct
 {
-  /**
-   * QoS marking data that needs to persist from the recording nodes
-   * (nominally in the ingress path) to the marking node (in the
-   * egress path)
-   */
-  struct
+  union
   {
-    u8 bits;
-    u8 source;
-  } qos;
+    /* cnat session */
+    struct
+    {
+      u64 generic_flow_id : 24; /* unique identifier for the flow */
+      u64 rrw_next_index : 24; /* next adj-index to be used for reverse flow */
+      u64 rrw_next_node : 8;   /* next-node to be used for reverse flow */
+      u64 state : 4;	       /* new flow / return / etc... */
+      u64 flags : 4;	       /* session flags to set */
+    } session;
 
-  u8 loop_counter;
-  u8 pad[5]; /* unused */
+    struct
+    {
+      u32 arc_next;
+      union
+      {
+	u32 cached_session_index;
+	u32 cached_dst_nat_session_index;
+      };
+    } nat;
+  };
 
   /**
    * The L4 payload size set on input on GSO enabled interfaces
@@ -485,27 +494,21 @@ typedef struct
     i16 outer_l4_hdr_offset;
   };
 
+  /**
+   * QoS marking data that needs to persist from the recording nodes
+   * (nominally in the ingress path) to the marking node (in the
+   * egress path)
+   */
   struct
   {
-    u32 arc_next;
-    union
-    {
-      u32 cached_session_index;
-      u32 cached_dst_nat_session_index;
-    };
-  } nat;
+    u8 bits;
+    u8 source;
+  } qos;
 
-  /* cnat session */
-  struct
-  {
-      u64 generic_flow_id : 24; /* unique identifier for the flow */
-      u64 rrw_next_index : 24; /* next adj-index to be used for reverse flow */
-      u64 rrw_next_node : 8;   /* next-node to be used for reverse flow */
-      u64 state : 4;	       /* new flow / return / etc... */
-      u64 flags : 4;	       /* session flags to set */
-  } session;
+  u8 loop_counter;
 
-  u32 unused[6];
+  u8 pad; /* unused */
+  u32 unused[9];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
