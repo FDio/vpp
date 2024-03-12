@@ -16,6 +16,24 @@
       "message": "Thanks for the patch.\n\nCan you please use following diff to fix this issue:\ngit diff\ndiff --git a/src/vnet/devices/virtio/virtio.c b/src/vnet/devices/virtio/virtio.c\nindex 33af8b8c4..522891a1b 100644\n--- a/src/vnet/devices/virtio/virtio.c\n+++ b/src/vnet/devices/virtio/virtio.c\n@@ -355,7 +355,7 @@ virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,\n     {.str \u003d NULL}\n   };\n \n-  if (!hw_if_indices)\n+  if (vec_len (hw_if_indices) \u003d\u003d 0)\n     return;\n \n   for (hw_if_index \u003d 0; hw_if_index \u003c vec_len (hw_if_indices); hw_if_index++)",
       "revId": "e84ea9d86eab53d4a0af57cb3d729b7a161e2718",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e71750e4_55c9f41a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-03-12T10:49:41Z",
+      "side": 1,
+      "message": "Please replace \"if (!hw_if_indices)\" with \"if (vec_len (hw_if_indices) \u003d\u003d 0)\".",
+      "parentUuid": "17a304b3_6c41e8b6",
+      "revId": "e84ea9d86eab53d4a0af57cb3d729b7a161e2718",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
