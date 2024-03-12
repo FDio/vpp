@@ -387,7 +387,6 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
       vec_add1 (filter, 0);	/* Ensure it's a C string for strcasecmp() */
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (swif, im->sw_interfaces)
    {
     if (!vnet_swif_is_api_visible (swif))
@@ -401,7 +400,6 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 
     send_sw_interface_details (am, rp, swif, name, mp->context);
   }
-  /* *INDENT-ON* */
 
   vec_free (name);
   vec_free (filter);
@@ -810,14 +808,12 @@ link_state_process (vlib_main_t * vm,
 	  if (event_by_sw_if_index[i] == 0)
 	    continue;
 
-          /* *INDENT-OFF* */
           pool_foreach (reg, vam->interface_events_registrations)
            {
             vl_reg = vl_api_client_index_to_registration (reg->client_index);
             if (vl_reg)
 	      send_sw_interface_event (vam, reg, vl_reg, i, event_by_sw_if_index[i]);
           }
-          /* *INDENT-ON* */
 	}
       vec_reset_length (event_by_sw_if_index);
     }
@@ -833,13 +829,11 @@ static clib_error_t *sw_interface_add_del_function (vnet_main_t * vm,
 						    u32 sw_if_index,
 						    u32 flags);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (link_state_process_node,static) = {
   .function = link_state_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "vpe-link-state-process",
 };
-/* *INDENT-ON* */
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (admin_up_down_function);
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (link_up_down_function);
@@ -1477,12 +1471,10 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_SUBIF_REPLY,
   ({
     rmp->sw_if_index = ntohl(sub_sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1524,12 +1516,10 @@ vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
   mac_address_decode (mp->mac_address, &mac);
   rv = vnet_create_loopback_interface (&sw_if_index, (u8 *) & mac, 0, 0);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void vl_api_create_loopback_instance_t_handler
@@ -1546,12 +1536,10 @@ static void vl_api_create_loopback_instance_t_handler
   rv = vnet_create_loopback_interface (&sw_if_index, (u8 *) & mac,
 				       is_specified, user_instance);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_INSTANCE_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

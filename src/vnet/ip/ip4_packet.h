@@ -129,19 +129,15 @@ typedef union
 
   /* For checksumming we'll want to access IP header in word sized chunks. */
   /* For 64 bit machines. */
-  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     u64 checksum_data_64[2];
     u32 checksum_data_64_32[1];
   });
-  /* *INDENT-ON* */
 
   /* For 32 bit machines. */
-  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     u32 checksum_data_32[5];
   });
-  /* *INDENT-ON* */
 } ip4_header_t;
 
 /* Value of ip_version_and_header_length for packets w/o options. */
@@ -200,9 +196,7 @@ ip4_next_header (ip4_header_t * i)
 /* Turn off array bounds check due to ip4_header_t
    option field operations. */
 
-/* *INDENT-OFF* */
 WARN_OFF(array-bounds)
-/* *INDENT-ON* */
 
 static_always_inline u16
 ip4_header_checksum_inline (ip4_header_t * i, int with_checksum)
@@ -305,9 +299,7 @@ ip4_header_checksum_inline (ip4_header_t * i, int with_checksum)
   return ~((u16) sum);
 }
 
-/* *INDENT-OFF* */
 WARN_ON(array-bounds)
-/* *INDENT-ON* */
 
 always_inline u16
 ip4_header_checksum (ip4_header_t * i)

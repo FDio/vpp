@@ -149,7 +149,6 @@ dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 	    .ip4 = c->learned.router_address,
 	  };
 
-          /* *INDENT-OFF* */
           fib_table_entry_path_add (
               fib_table_get_index_for_sw_if_index (
                   FIB_PROTOCOL_IP4,
@@ -161,7 +160,6 @@ dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
               &nh, c->sw_if_index,
               ~0, 1, NULL,	// no label stack
               FIB_ROUTE_PATH_FLAG_NONE);
-          /* *INDENT-ON* */
 	}
     }
   clib_memcpy (&c->installed, &c->learned, sizeof (c->installed));
@@ -870,7 +868,6 @@ dhcp_client_process (vlib_main_t * vm,
 	case ~0:
 	  if (pool_elts (dcm->clients))
 	    {
-              /* *INDENT-OFF* */
               next_expire_time = 1e70;
               pool_foreach (c, dcm->clients)
                {
@@ -886,7 +883,6 @@ dhcp_client_process (vlib_main_t * vm,
                   clib_warning ("BUG");
                   timeout = 1.13;
                 }
-              /* *INDENT-ON* */
 	    }
 	  else
 	    timeout = 1000.0;
@@ -900,7 +896,6 @@ dhcp_client_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_client_process_node,static) = {
     .function = dhcp_client_process,
     .type = VLIB_NODE_TYPE_PROCESS,
@@ -909,7 +904,6 @@ VLIB_REGISTER_NODE (dhcp_client_process_node,static) = {
     .n_errors = ARRAY_LEN(dhcp_client_process_stat_strings),
     .error_strings = dhcp_client_process_stat_strings,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_dhcp_client_command_fn (vlib_main_t * vm,
@@ -943,25 +937,21 @@ show_dhcp_client_command_fn (vlib_main_t * vm,
       return 0;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (c, dcm->clients)
    {
     vlib_cli_output (vm, "%U",
                      format_dhcp_client, dcm,
                      c, verbose);
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_dhcp_client_command, static) = {
   .path = "show dhcp client",
   .short_help = "show dhcp client [intfc <intfc>][verbose]",
   .function = show_dhcp_client_command_fn,
 };
-/* *INDENT-ON* */
 
 
 int
@@ -1118,13 +1108,11 @@ dhcp_client_walk (dhcp_client_walk_cb_t cb, void *ctx)
   dhcp_client_main_t *dcm = &dhcp_client_main;
   dhcp_client_t *c;
 
-  /* *INDENT-OFF* */
   pool_foreach (c, dcm->clients)
    {
     if (!cb(c, ctx))
       break;
   }
-  /* *INDENT-ON* */
 
 }
 
@@ -1229,13 +1217,11 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_client_set_command, static) = {
   .path = "set dhcp client",
   .short_help = "set dhcp client [del] intfc <interface> [hostname <name>]",
   .function = dhcp_client_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcp_client_init (vlib_main_t * vm)

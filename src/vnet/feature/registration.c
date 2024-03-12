@@ -351,12 +351,10 @@ again:
   *in_feature_nodes = feature_nodes;
 
   /* Finally, clean up all the shit we allocated */
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, index_by_name,
   ({
     vec_add1 (keys_to_delete, (u8 *)hp->key);
   }));
-  /* *INDENT-ON* */
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);

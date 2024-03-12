@@ -461,7 +461,6 @@ VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_efp_filter_node) = {
   .name = "l2-efp-filter",
   .vector_size = sizeof (u32),
@@ -478,7 +477,6 @@ VLIB_REGISTER_NODE (l2_efp_filter_node) = {
        [L2_EFP_FILTER_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
@@ -559,13 +557,11 @@ done:
  * Example of how to disable a Layer 2 efp-filter on a sub-interface:
  * @cliexcmd{set interface l2 efp-filter GigabitEthernet0/8/0.200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_efp_filter_cli, static) = {
   .path = "set interface l2 efp-filter",
   .short_help = "set interface l2 efp-filter <interface> [disable]",
   .function = int_l2_efp_filter,
 };
-/* *INDENT-ON* */
 
 #endif /* CLIB_MARCH_VARIANT */
 

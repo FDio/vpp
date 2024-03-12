@@ -275,7 +275,6 @@ ip6_icmp_echo_reply_node_fn (vlib_main_t * vm,
 					     1 /* is_ip6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_echo_reply_node, static) =
 {
   .function = ip6_icmp_echo_reply_node_fn,
@@ -301,7 +300,6 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
     [ICMP46_ECHO_REPLY_NEXT_PUNT] = "ip4-punt",
   },
 };
-/* *INDENT-ON* */
 
 static uword
 ip4_icmp_echo_request (vlib_main_t * vm,
@@ -496,7 +494,6 @@ format_icmp_input_trace (u8 * s, va_list * va)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_icmp_echo_request_node,static) = {
   .function = ip4_icmp_echo_request,
   .name = "ip4-icmp-echo-request",
@@ -510,7 +507,6 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_request_node,static) = {
     [0] = "ip4-load-balance",
   },
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -1580,7 +1576,6 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ping_command, static) =
 {
   .path = "ping",
@@ -1591,7 +1586,6 @@ VLIB_CLI_COMMAND (ping_command, static) =
   " [burst <count:1>] [verbose]",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ping_cli_init (vlib_main_t * vm)
@@ -1619,12 +1613,10 @@ ping_cli_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ping_cli_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Ping (ping)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

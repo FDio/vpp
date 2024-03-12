@@ -541,14 +541,12 @@ test_bihash_command_fn (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_bihash_command, static) =
 {
   .path = "test bihash",
   .short_help = "test bihash",
   .function = test_bihash_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bihash_test_init (vlib_main_t * vm)

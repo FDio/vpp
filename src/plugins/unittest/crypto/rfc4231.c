@@ -61,7 +61,6 @@ static u8 tc1_digest_sha512[] = {
   0x2e, 0x69, 0x6c, 0x20, 0x3a, 0x12, 0x68, 0x54
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha224) = {
   .name = "RFC4231 TC1",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -93,7 +92,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc1_sha512) = {
   .plaintext = TEST_DATA (tc1_data),
   .digest = TEST_DATA (tc1_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static char tc2_key[4] = "Jefe";
 
@@ -133,7 +131,6 @@ static u8 tc2_digest_sha512[] = {
   0x63, 0x6e, 0x07, 0x0a, 0x38, 0xbc, 0xe7, 0x37,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha224) = {
   .name = "RFC4231 TC2",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -165,7 +162,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc2_sha512) = {
   .plaintext = TEST_DATA (tc2_data),
   .digest = TEST_DATA (tc2_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static u8 tc3_key[20] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -217,7 +213,6 @@ static u8 tc3_digest_sha512[] = {
   0x74, 0x27, 0x88, 0x59, 0xe1, 0x32, 0x92, 0xfb
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha224) = {
   .name = "RFC4231 TC3",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -249,7 +244,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc3_sha512) = {
   .plaintext = TEST_DATA (tc3_data),
   .digest = TEST_DATA (tc3_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static u8 tc4_key[25] = {
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -302,7 +296,6 @@ static u8 tc4_digest_sha512[] = {
   0xe2, 0xad, 0xeb, 0xeb, 0x10, 0xa2, 0x98, 0xdd
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha224) = {
   .name = "RFC4231 TC4",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -334,7 +327,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc4_sha512) = {
   .plaintext = TEST_DATA (tc4_data),
   .digest = TEST_DATA (tc4_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static u8 tc5_key[20] = {
   0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
@@ -368,7 +360,6 @@ static u8 tc5_digest_sha512[16] = {
   0x1d, 0x41, 0x79, 0xbc, 0x89, 0x1d, 0x87, 0xa6
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha224) = {
   .name = "RFC4231 TC5",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -400,7 +391,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc5_sha512) = {
   .plaintext = TEST_DATA (tc5_data),
   .digest = TEST_DATA (tc5_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static u8 tc6_key[131] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -459,7 +449,6 @@ static u8 tc6_digest_sha512[] = {
   0x8b, 0x91, 0x5a, 0x98, 0x5d, 0x78, 0x65, 0x98
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha224) = {
   .name = "RFC4231 TC6",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -491,7 +480,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc6_sha512) = {
   .plaintext = TEST_DATA (tc6_data),
   .digest = TEST_DATA (tc6_digest_sha512),
 };
-/* *INDENT-ON* */
 
 static u8 tc7_key[131] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -552,7 +540,6 @@ static u8 tc7_digest_sha512[] = {
   0x65, 0xc9, 0x74, 0x40, 0xfa, 0x8c, 0x6a, 0x58
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha224) = {
   .name = "RFC4231 TC7",
   .alg = VNET_CRYPTO_ALG_HMAC_SHA224,
@@ -598,7 +585,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc4231_tc7_sha512_chain) = {
     TEST_DATA_CHUNK (tc7_data, 150, 2),
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -319,7 +319,6 @@ VLIB_NODE_FN (l2_invtr_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_invtr_node) = {
   .name = "l2-input-vtr",
   .vector_size = sizeof (u32),
@@ -336,7 +335,6 @@ VLIB_REGISTER_NODE (l2_invtr_node) = {
        [L2_INVTR_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *

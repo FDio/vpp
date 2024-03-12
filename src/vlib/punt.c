@@ -254,12 +254,10 @@ punt_reg_mk_dp (vlib_punt_reason_t reason)
 
   old = punt_dp_db[reason];
 
-  /* *INDENT-OFF* */
   hash_foreach (key, pri, punt_reg_db,
     ({
       vec_add1(pris, pri);
     }));
-  /* *INDENT-ON* */
 
   /*
    * A check for an empty vector is done in the DP, so the a zero
@@ -594,26 +592,22 @@ punt_client_show (vlib_main_t * vm,
     {
       u8 *name;
 
-      /* *INDENT-OFF* */
       hash_foreach(name, pci, punt_client_db,
         ({
           vlib_cli_output (vm, "%U", format_punt_client, pci,
                            PUNT_FORMAT_FLAG_NONE);
         }));
-      /* *INDENT-ON* */
     }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_client_show_command, static) =
 {
   .path = "show punt client",
   .short_help = "show client[s] registered with the punt infra",
   .function = punt_client_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_reason_show (vlib_main_t * vm,
@@ -629,14 +623,12 @@ punt_reason_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_reason_show_command, static) =
 {
   .path = "show punt reasons",
   .short_help = "show all punt reasons",
   .function = punt_reason_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_db_show (vlib_main_t * vm,
@@ -645,12 +637,10 @@ punt_db_show (vlib_main_t * vm,
   u32 pri, ii, jj;
   u64 key;
 
-  /* *INDENT-OFF* */
   hash_foreach (key, pri, punt_reg_db,
     ({
       vlib_cli_output (vm, " %U", format_punt_reg, pri);
     }));
-  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "\nDerived data-plane data-base:");
   vlib_cli_output (vm,
@@ -672,14 +662,12 @@ punt_db_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_db_show_command, static) =
 {
   .path = "show punt db",
   .short_help = "show the punt DB",
   .function = punt_db_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_stats_show (vlib_main_t * vm,
@@ -699,14 +687,12 @@ punt_stats_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_stats_show_command, static) =
 {
   .path = "show punt stats",
   .short_help = "show the punt stats",
   .function = punt_stats_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_init (vlib_main_t * vm)

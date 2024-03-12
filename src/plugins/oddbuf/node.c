@@ -183,7 +183,6 @@ VLIB_NODE_FN (oddbuf_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  0 /* is_trace */ );
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (oddbuf_node) =
 {
@@ -203,7 +202,6 @@ VLIB_REGISTER_NODE (oddbuf_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

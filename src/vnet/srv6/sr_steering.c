@@ -456,7 +456,6 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_steer_policy_command, static) = {
   .path = "sr steer",
   .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <sf_if>] "
@@ -471,7 +470,6 @@ VLIB_CLI_COMMAND (sr_steer_policy_command, static) = {
     "\t\tsr steer del l3 2001::/64 via sr_policy index 5\n",
   .function = sr_steer_policy_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_sr_steering_policies_command_fn (vlib_main_t * vm,
@@ -488,9 +486,7 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
   int i;
 
   vlib_cli_output (vm, "SR steering policies:");
-  /* *INDENT-OFF* */
   pool_foreach (steer_pl, sm->steer_policies) {vec_add1(steer_policies, steer_pl);}
-  /* *INDENT-ON* */
   vlib_cli_output (vm, "Traffic\t\tSR policy BSID");
   for (i = 0; i < vec_len (steer_policies); i++)
     {
@@ -523,13 +519,11 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_steering_policies_command, static) = {
   .path = "show sr steering-policies",
   .short_help = "show sr steering-policies",
   .function = show_sr_steering_policies_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 sr_steering_init (vlib_main_t * vm)
@@ -547,18 +541,14 @@ sr_steering_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (sr_steering_init);
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) =
 {
   .arc_name = "device-input",
   .node_name = "sr-pl-rewrite-encaps-l2",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON

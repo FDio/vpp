@@ -71,12 +71,10 @@ ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_command, static) = {
   .path = "set interface ip",
   .short_help = "IP4/IP6 commands",
 };
-/* *INDENT-ON* */
 
 void
 ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index)
@@ -90,7 +88,6 @@ ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index)
   ip_interface_address_t *ia;
   int i;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (&im4->lookup_main, ia, sw_if_index,
                                 0 /* honor unnumbered */,
   ({
@@ -99,9 +96,7 @@ ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index)
     vec_add1 (ip4_addrs, x[0]);
     vec_add1 (ip4_masks, ia->address_length);
   }));
-  /* *INDENT-ON* */
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (&im6->lookup_main, ia, sw_if_index,
                                 0 /* honor unnumbered */,
   ({
@@ -110,7 +105,6 @@ ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index)
     vec_add1 (ip6_addrs, x[0]);
     vec_add1 (ip6_masks, ia->address_length);
   }));
-  /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (ip4_addrs); i++)
     ip4_add_del_interface_address (vm, sw_if_index, &ip4_addrs[i],
@@ -212,13 +206,11 @@ done:
  * @cliexcmd{set interface ip address del GigabitEthernet2/0/0 all}
  * @endparblock
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
   .function = add_del_ip_address,
   .short_help = "set interface ip address [del] <interface> <ip-addr>/<mask> | [all]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_reassembly_command_fn (vlib_main_t * vm,
@@ -294,13 +286,11 @@ set_reassembly_command_fn (vlib_main_t * vm,
   return NULL;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_reassembly_command, static) = {
     .path = "set interface reassembly",
     .short_help = "set interface reassembly <interface-name> [on|off|ip4|ip6]",
     .function = set_reassembly_command_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy init function to get us linked in. */
 static clib_error_t *

@@ -66,7 +66,6 @@ typedef struct transport_send_params_
 /*
  * Transport protocol virtual function table
  */
-/* *INDENT-OFF* */
 typedef struct _transport_proto_vft
 {
   /*
@@ -125,7 +124,6 @@ typedef struct _transport_proto_vft
    */
   transport_options_t transport_options;
 } transport_proto_vft_t;
-/* *INDENT-ON* */
 
 extern transport_proto_vft_t *tp_vfts;
 

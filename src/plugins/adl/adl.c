@@ -150,21 +150,17 @@ adl_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (adl_init) =
 {
   .runs_after = VLIB_INITS ("ip4_allowlist_init", "ip6_allowlist_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (adl, static) =
 {
   .arc_name = "device-input",
   .node_name = "adl-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
 int adl_interface_enable_disable (u32 sw_if_index, int enable_disable)
 {
@@ -389,7 +385,6 @@ adl_allowlist_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (adl_allowlist_command, static) =
 {
    .path = "adl allowlist",
@@ -397,15 +392,12 @@ VLIB_CLI_COMMAND (adl_allowlist_command, static) =
    "adl allowlist <interface-name> [ip4][ip6][default][fib-id <NN>][disable]",
    .function = adl_allowlist_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Allow/deny list plugin",
 };
-/* *INDENT-ON* */
 
 
 /*

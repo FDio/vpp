@@ -145,7 +145,6 @@ static char *vmxnet3_tx_func_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vmxnet3_device_class,) =
 {
   .name = "VMXNET3 interface",
@@ -158,7 +157,6 @@ VNET_DEVICE_CLASS (vmxnet3_device_class,) =
   .tx_function_n_errors = VMXNET3_TX_N_ERROR,
   .tx_function_error_strings = vmxnet3_tx_func_error_strings,
 };
-/* *INDENT-ON* */
 
 static u32
 vmxnet3_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
@@ -675,7 +673,6 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
       return;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (vd, vmxm->devices)  {
     if (vd->pci_addr.as_u32 == args->addr.as_u32)
       {
@@ -688,7 +685,6 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 	return;
       }
   }
-  /* *INDENT-ON* */
 
   if (args->bind)
     {
@@ -907,7 +903,6 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 
   vlib_pci_device_close (vm, vd->pci_dev_handle);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, vd->rxqs)
     {
       vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, i);
@@ -934,11 +929,9 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 	}
       vlib_physmem_free (vm, rxq->rx_comp);
     }
-  /* *INDENT-ON* */
   vec_free (vd->rxqs);
   vec_free (vd->rx_stats);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, vd->txqs)
     {
       vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, i);
@@ -959,7 +952,6 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
       vlib_physmem_free (vm, txq->tx_desc);
       vlib_physmem_free (vm, txq->tx_comp);
     }
-  /* *INDENT-ON* */
   vec_free (vd->txqs);
   vec_free (vd->tx_stats);
 

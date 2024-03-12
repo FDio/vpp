@@ -926,14 +926,12 @@ nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_worker_node) = {
   .function = nat_ha_worker_fn,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .name = "nat44-ei-ha-worker",
 };
-/* *INDENT-ON* */
 
 /* periodically send interrupt to each thread */
 static uword
@@ -969,13 +967,11 @@ nat_ha_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_process_node) = {
   .function = nat_ha_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "nat44-ei-ha-process",
 };
-/* *INDENT-ON* */
 
 void
 nat_ha_get_resync_status (u8 * in_resync, u32 * resync_ack_missed)
@@ -1166,7 +1162,6 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_node) = {
   .function = nat_ha_node_fn,
   .name = "nat44-ei-ha",
@@ -1181,7 +1176,6 @@ VLIB_REGISTER_NODE (nat_ha_node) = {
      [NAT_HA_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -1286,7 +1280,6 @@ nat_ha_resync (u32 client_index, u32 pid,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_handoff_node) = {
   .function = nat_ha_handoff_node_fn,
   .name = "nat44-ei-ha-handoff",
@@ -1300,7 +1293,6 @@ VLIB_REGISTER_NODE (nat_ha_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

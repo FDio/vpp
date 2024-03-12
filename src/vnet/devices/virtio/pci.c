@@ -1340,7 +1340,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   clib_error_t *error = 0;
   u32 interrupt_count = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (vif, vim->interfaces)  {
     if (vif->pci_addr.as_u32 == args->addr)
       {
@@ -1353,7 +1352,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	return;
       }
   }
-  /* *INDENT-ON* */
 
   if (args->bind)
     {

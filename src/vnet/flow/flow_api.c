@@ -299,12 +299,10 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
   rv = vnet_flow_add (vnm, &flow, &flow_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_FLOW_ADD_REPLY,
   ({
     rmp->flow_index = ntohl (flow_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

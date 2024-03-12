@@ -205,9 +205,7 @@ ioam_e2e_init (vlib_main_t * vm)
  * Init function for the E2E lib.
  * ip6_hop_by_hop_ioam_e2e_init gets called during init.
  */
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ioam_e2e_init) =
 {
     .runs_after = VLIB_INITS("ip6_hop_by_hop_ioam_init"),
 };
-/* *INDENT-ON* */

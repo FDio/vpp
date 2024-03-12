@@ -56,18 +56,14 @@ vnet_local_interface_tx (vlib_main_t * vm,
   return f->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vnet_local_interface_device_class) = {
   .name = "local",
   .tx_function = vnet_local_interface_tx,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (vnet_local_interface_hw_class,static) = {
   .name = "local",
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 vnet_main_init (vlib_main_t * vm)
@@ -92,7 +88,6 @@ vnet_main_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (vnet_main_init)=
 {
   .init_order = VLIB_INITS("vnet_interface_init",
@@ -105,7 +100,6 @@ VLIB_INIT_FUNCTION (vnet_main_init)=
                            "mpls_init",
                            "vnet_main_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

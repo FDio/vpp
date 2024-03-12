@@ -36,22 +36,18 @@
 #include <vppinfra/bihash_template.h>
 
 /** IP4-UDP-LISP encap header */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;             /* 20 bytes */
   udp_header_t udp;             /* 8 bytes */
   lisp_gpe_header_t lisp;       /* 8 bytes */
 }) ip4_udp_lisp_gpe_header_t;
-/* *INDENT-ON* */
 
 /** IP6-UDP-LISP encap header */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;             /* 40 bytes */
   udp_header_t udp;             /* 8 bytes */
   lisp_gpe_header_t lisp;       /* 8 bytes */
 }) ip6_udp_lisp_gpe_header_t;
-/* *INDENT-ON* */
 
 #define foreach_lisp_gpe_ip_input_next          \
 _(DROP, "error-drop")                           \

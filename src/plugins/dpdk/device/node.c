@@ -560,7 +560,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "dpdk-input",
@@ -576,7 +575,6 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .n_errors = DPDK_N_ERROR,
   .error_strings = dpdk_error_strings,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

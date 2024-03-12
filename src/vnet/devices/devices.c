@@ -29,7 +29,6 @@ device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (device_input_node) = {
   .function = device_input_fn,
   .name = "device-input",
@@ -77,7 +76,6 @@ VNET_FEATURE_INIT (ethernet_input, static) = {
   .node_name = "ethernet-input",
   .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON* */
 
 static void
 input_rate_collector_fn (vlib_stats_collector_data_t *d)

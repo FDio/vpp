@@ -1432,13 +1432,11 @@ session_open_app (session_endpoint_cfg_t *rmt, session_handle_t *rsh)
 typedef int (*session_open_service_fn) (session_endpoint_cfg_t *,
 					session_handle_t *);
 
-/* *INDENT-OFF* */
 static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
   session_open_vc,
   session_open_cl,
   session_open_app,
 };
-/* *INDENT-ON* */
 
 /**
  * Ask transport to open connection to remote transport endpoint.
@@ -1771,14 +1769,12 @@ session_get_original_dst (transport_endpoint_t *i2o_src,
 			    original_dst_port);
 }
 
-/* *INDENT-OFF* */
 static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
     session_tx_fifo_peek_and_snd,
     session_tx_fifo_dequeue_and_snd,
     session_tx_fifo_dequeue_internal,
     session_tx_fifo_dequeue_and_snd
 };
-/* *INDENT-ON* */
 
 void
 session_register_transport (transport_proto_t transport_proto,

@@ -105,7 +105,6 @@ ip6_interface_first_global_or_site_address (ip6_main_t * im, u32 sw_if_index)
   ip_interface_address_t *ia = 0;
   ip6_address_t *result = 0;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
@@ -116,7 +115,6 @@ ip6_interface_first_global_or_site_address (ip6_main_t * im, u32 sw_if_index)
         break;
     }
   }));
-  /* *INDENT-ON* */
   return result;
 }
 
@@ -532,7 +530,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcpv6_proxy_to_server_node, static) = {
   .function = dhcpv6_proxy_to_server_input,
   .name = "dhcpv6-proxy-to-server",
@@ -555,7 +552,6 @@ VLIB_REGISTER_NODE (dhcpv6_proxy_to_server_node, static) = {
   .unformat_buffer = unformat_dhcpv6_proxy_header,
 #endif
 };
-/* *INDENT-ON* */
 
 static uword
 dhcpv6_proxy_to_client_input (vlib_main_t * vm,
@@ -826,7 +822,6 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
 
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcpv6_proxy_to_client_node, static) = {
   .function = dhcpv6_proxy_to_client_input,
   .name = "dhcpv6-proxy-to-client",
@@ -841,7 +836,6 @@ VLIB_REGISTER_NODE (dhcpv6_proxy_to_client_node, static) = {
   .unformat_buffer = unformat_dhcpv6_proxy_header,
 #endif
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcp6_proxy_init (vlib_main_t * vm)
@@ -1016,14 +1010,12 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
 			      format_unformat_error, input);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcpv6_proxy_set_command, static) = {
   .path = "set dhcpv6 proxy",
   .short_help = "set dhcpv6 proxy [del] server <ipv6-addr> src-address <ipv6-addr> "
 		  "[server-fib-id <fib-id>] [rx-fib-id <fib-id>] ",
   .function = dhcpv6_proxy_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_dhcp6_proxy_server (u8 * s, va_list * args)
@@ -1080,13 +1072,11 @@ dhcpv6_proxy_show_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcpv6_proxy_show_command, static) = {
   .path = "show dhcpv6 proxy",
   .short_help = "Display dhcpv6 proxy info",
   .function = dhcpv6_proxy_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcpv6_vss_command_fn (vlib_main_t * vm,
@@ -1129,13 +1119,11 @@ dhcpv6_vss_command_fn (vlib_main_t * vm,
     }
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcpv6_proxy_vss_command, static) = {
   .path = "set dhcpv6 vss",
   .short_help = "set dhcpv6 vss table <table-id> [oui <n> vpn-id <n> | vpn-ascii-id <text>]",
   .function = dhcpv6_vss_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcpv6_vss_show_command_fn (vlib_main_t * vm,
@@ -1147,13 +1135,11 @@ dhcpv6_vss_show_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcpv6_proxy_vss_show_command, static) = {
   .path = "show dhcpv6 vss",
   .short_help = "show dhcpv6 VSS",
   .function = dhcpv6_vss_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcpv6_link_address_show_command_fn (vlib_main_t * vm,
@@ -1195,13 +1181,11 @@ dhcpv6_link_address_show_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcpv6_proxy_address_show_command, static) = {
   .path = "show dhcpv6 link-address interface",
   .short_help = "show dhcpv6 link-address interface <interface>",
   .function = dhcpv6_link_address_show_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

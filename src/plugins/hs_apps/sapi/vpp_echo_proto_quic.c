@@ -239,7 +239,6 @@ quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
   /* Close Quic session without streams */
   echo_session_t *s;
 
-  /* *INDENT-OFF* */
   pool_foreach (s, em->sessions)
    {
     if (s->session_type == ECHO_SESSION_TYPE_QUIC)
@@ -261,7 +260,6 @@ quic_echo_initiate_qsession_close_no_stream (echo_main_t * em)
           ECHO_LOG (2,"%U: PASSIVE close", echo_format_session, s);
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void

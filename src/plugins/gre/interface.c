@@ -752,7 +752,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> [instance <n>] "
@@ -760,7 +759,6 @@ VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
 		"[multipoint]",
   .function = create_gre_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_gre_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -783,12 +781,10 @@ show_gre_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (~0 == ti)
     {
-      /* *INDENT-OFF* */
       pool_foreach (t, gm->tunnels)
 	{
 	  vlib_cli_output (vm, "%U", format_gre_tunnel, t);
 	}
-      /* *INDENT-ON* */
     }
   else
     {
@@ -800,12 +796,10 @@ show_gre_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gre_tunnel_command, static) = {
   .path = "show gre tunnel",
   .function = show_gre_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 const static teib_vft_t gre_teib_vft = {
   .nv_added = gre_teib_entry_added,

@@ -38,12 +38,10 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       if (!spd)
 	return VNET_API_ERROR_INVALID_VALUE;
 
-      /* *INDENT-OFF* */
       hash_foreach (k, v, im->spd_index_by_sw_if_index, ({
         if (v == spd_index)
           ipsec_set_interface_spd(vm, k, spd_id, 0);
       }));
-      /* *INDENT-ON* */
       hash_unset (im->spd_index_by_spd_id, spd_id);
 #define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
       foreach_ipsec_spd_policy_type

@@ -334,7 +334,6 @@ ethernet_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
     "underlying driver doesn't support changing Max Frame Size");
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .name = "Ethernet",
   .tx_hash_fn_type = VNET_HASH_FN_TYPE_ETHERNET,
@@ -347,7 +346,6 @@ VNET_HW_INTERFACE_CLASS (ethernet_hw_interface_class) = {
   .mac_addr_change_function = ethernet_mac_change,
   .set_max_frame_size = ethernet_set_max_frame_size,
 };
-/* *INDENT-ON* */
 
 uword
 unformat_ethernet_interface (unformat_input_t * input, va_list * args)
@@ -760,7 +758,6 @@ simulated_ethernet_mac_change (vnet_hw_interface_t * hi,
 }
 
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .name = "Loopback",
   .format_device_name = format_simulated_ethernet_name,
@@ -768,7 +765,6 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .admin_up_down_function = simulated_ethernet_admin_up_down,
   .mac_addr_change_function = simulated_ethernet_mac_change,
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated loopback instance numbers.
@@ -957,13 +953,11 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
  * Example of how to create a loopback interface:
  * @cliexcmd{loopback create-interface}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .path = "loopback create-interface",
   .short_help = "loopback create-interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
-/* *INDENT-ON* */
 
 /*?
  * Create a loopback interface. Optionally, a MAC Address can be
@@ -976,13 +970,11 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
  * Example of how to create a loopback interface:
  * @cliexcmd{create loopback interface}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
   .path = "create loopback interface",
   .short_help = "create loopback interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
-/* *INDENT-ON* */
 
 ethernet_interface_t *
 ethernet_get_interface (ethernet_main_t * em, u32 hw_if_index)
@@ -1193,13 +1185,11 @@ delete_sub_interface (vlib_main_t * vm,
  * Example of how to delete a loopback interface:
  * @cliexcmd{loopback delete-interface intfc loop0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
   .path = "loopback delete-interface",
   .short_help = "loopback delete-interface intfc <interface>",
   .function = delete_simulated_ethernet_interfaces,
 };
-/* *INDENT-ON* */
 
 /*?
  * Delete a loopback interface.
@@ -1211,13 +1201,11 @@ VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
  * Example of how to delete a loopback interface:
  * @cliexcmd{delete loopback interface intfc loop0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
   .path = "delete loopback interface",
   .short_help = "delete loopback interface intfc <interface>",
   .function = delete_simulated_ethernet_interfaces,
 };
-/* *INDENT-ON* */
 
 /*?
  * Delete a sub-interface.
@@ -1226,13 +1214,11 @@ VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
  * Example of how to delete a sub-interface:
  * @cliexcmd{delete sub-interface GigabitEthernet0/8/0.200}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
   .path = "delete sub-interface",
   .short_help = "delete sub-interface <interface>",
   .function = delete_sub_interface,
 };
-/* *INDENT-ON* */
 
 /* ethernet { ... } configuration. */
 /*?

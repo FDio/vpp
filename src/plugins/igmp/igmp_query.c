@@ -155,14 +155,12 @@ igmp_send_general_report_v3 (u32 obj, void *data)
 
   igmp_pkt_build_report_init (&br, config->sw_if_index);
 
-  /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
     ({
       igmp_pkt_report_v3_add_group
         (&br, group,
          igmp_filter_mode_to_report_type(group->router_filter_mode));
     }));
-  /* *INDENT-ON* */
 
   igmp_pkt_report_v3_send (&br);
 }

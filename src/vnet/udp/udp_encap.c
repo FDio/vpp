@@ -518,13 +518,11 @@ udp_encap_walk (udp_encap_walk_cb_t cb, void *ctx)
 {
   index_t uei;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (uei, udp_encap_pool)
    {
     if (WALK_STOP == cb(uei, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 clib_error_t *
@@ -547,12 +545,10 @@ udp_encap_show (vlib_main_t * vm,
 
   if (INDEX_INVALID == uei)
     {
-      /* *INDENT-OFF* */
       pool_foreach_index (uei, udp_encap_pool)
        {
         vlib_cli_output(vm, "%U", format_udp_encap, uei, 0);
       }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -562,7 +558,6 @@ udp_encap_show (vlib_main_t * vm,
   return NULL;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (udp_encap_add_command, static) = {
   .path = "udp encap",
   .short_help = "udp encap [add|del] <id ID> <src-ip> <dst-ip> [<src-port>] "
@@ -577,7 +572,6 @@ VLIB_CLI_COMMAND (udp_encap_show_command, static) = {
   .function = udp_encap_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

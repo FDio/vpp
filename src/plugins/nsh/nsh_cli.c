@@ -140,7 +140,6 @@ nsh_get_adj_by_sw_if_index (u32 sw_if_index)
 {
   adj_index_t ai = ~0;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (ai, adj_pool)
    {
       if (sw_if_index == adj_get_sw_if_index(ai))
@@ -148,7 +147,6 @@ nsh_get_adj_by_sw_if_index (u32 sw_if_index)
         return ai;
       }
   }
-  /* *INDENT-ON* */
 
   return ~0;
 }
@@ -290,7 +288,6 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_nsh_map_command, static) = {
   .path = "create nsh map",
   .short_help =
@@ -299,7 +296,6 @@ VLIB_CLI_COMMAND (create_nsh_map_command, static) = {
     " encap-vxlan4-intf <nn> | encap-vxlan6-intf <nn>| encap-eth-intf <nn> | encap-none]\n",
   .function = nsh_add_del_map_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * CLI command for showing the mapping between NSH entries
@@ -322,12 +318,10 @@ show_nsh_map_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_nsh_map_command, static) = {
   .path = "show nsh map",
   .function = show_nsh_map_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * CLI command for adding NSH entry
@@ -494,7 +488,6 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_nsh_entry_command, static) = {
   .path = "create nsh entry",
   .short_help =
@@ -502,7 +495,6 @@ VLIB_CLI_COMMAND (create_nsh_entry_command, static) = {
     "  [c1 <nn> c2 <nn> c3 <nn> c4 <nn>] [tlv-ioam-trace] [del]\n",
   .function = nsh_add_del_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /* format from network order */
 u8 *
@@ -621,12 +613,10 @@ show_nsh_entry_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_nsh_entry_command, static) = {
   .path = "show nsh entry",
   .function = show_nsh_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

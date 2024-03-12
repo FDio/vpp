@@ -45,7 +45,6 @@ typedef struct
   u8 action;
 } acl_fa_trace_t;
 
-/* *INDENT-OFF* */
 #define foreach_acl_fa_error \
 _(ACL_DROP, "ACL deny packets")  \
 _(ACL_PERMIT, "ACL permit packets")  \
@@ -64,7 +63,6 @@ typedef enum
     ACL_FA_N_ERROR,
 } acl_fa_error_t;
 
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -109,7 +107,6 @@ _(DROP, "dropped outbound non-whitelisted non-ip packets") \
 _(PERMIT, "permitted outbound whitelisted non-ip packets") \
 
 
-/* *INDENT-OFF* */
 
 typedef enum
 {
@@ -138,7 +135,6 @@ static char *fa_out_nonip_error_strings[] = {
   foreach_nonip_out_error
 #undef _
 };
-/* *INDENT-ON* */
 
 
 always_inline int
@@ -237,7 +233,6 @@ VLIB_NODE_FN (acl_out_nonip_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 
 VLIB_REGISTER_NODE (acl_in_nonip_node) =
 {
@@ -283,7 +278,6 @@ VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) =
   .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

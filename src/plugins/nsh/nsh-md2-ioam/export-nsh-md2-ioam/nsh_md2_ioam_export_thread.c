@@ -33,14 +33,12 @@ nsh_md2_ioam_export_process (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nsh_md2_ioam_export_process_node, static) =
 {
  .function = nsh_md2_ioam_export_process,
  .type = VLIB_NODE_TYPE_PROCESS,
  .name = "nsh-md2-ioam-export-process",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

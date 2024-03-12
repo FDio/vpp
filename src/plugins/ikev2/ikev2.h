@@ -32,7 +32,6 @@
 
 typedef u8 v8;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u64 ispi;
   u64 rspi;
@@ -42,14 +41,12 @@ typedef CLIB_PACKED (struct {
   u8 flags;
   u32 msgid; u32 length; u8 payload[0];
 }) ike_header_t;
-/* *INDENT-ON* */
 
 #define ike_hdr_is_response(_h) ((_h)->flags & IKEV2_HDR_FLAG_RESPONSE)
 #define ike_hdr_is_request(_h) (!ike_hdr_is_response(_h))
 #define ike_hdr_is_initiator(_h) ((_h)->flags & IKEV2_HDR_FLAG_INITIATOR)
 #define ike_hdr_is_responder(_h) (!(ike_hdr_is_initiator(_h)))
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -58,17 +55,13 @@ typedef CLIB_PACKED (struct {
   u8 reserved[2];
   u8 payload[0];
 }) ike_ke_payload_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
   u16 length; u8 payload[0];
 }) ike_payload_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -77,9 +70,7 @@ typedef CLIB_PACKED (struct {
   u8 reserved[3];
   u8 payload[0];
 }) ike_auth_payload_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -87,7 +78,6 @@ typedef CLIB_PACKED (struct {
   u8 id_type;
   u8 reserved[3]; u8 payload[0];
 }) ike_id_payload_header_t;
-/* *INDENT-ON* */
 
 #define IKE_VERSION_2                    0x20
 

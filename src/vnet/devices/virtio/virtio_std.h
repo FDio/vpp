@@ -122,7 +122,6 @@ typedef struct
   /* u16 avail_event; */
 } vnet_virtio_vring_used_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u64 addr;  // packet data buffer address
   u32 len;   // packet data buffer size
@@ -170,7 +169,6 @@ typedef CLIB_PACKED (struct {
   u16 num_buffers;
 }) vnet_virtio_net_hdr_mrg_rxbuf_t;
 
-/* *INDENT-ON* */
 #endif
 
 /*

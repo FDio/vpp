@@ -98,14 +98,12 @@ clear_trace_profiles (void)
   clear_trace_profile_command_fn (0, 0, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(clear_trace_profile_command) =
 {
 .path = "clear ioam-trace profile",
 .short_help = "clear ioam-trace profile [<index>|all]",
 .function = clear_trace_profile_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_trace_profile_command_fn (vlib_main_t * vm,
@@ -137,7 +135,6 @@ set_trace_profile_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_trace_profile_command, static) =
 {
 .path = "set ioam-trace profile",
@@ -146,7 +143,6 @@ VLIB_CLI_COMMAND (set_trace_profile_command, static) =
              node-id <node id in hex> app-data <app_data in hex>",
 .function = set_trace_profile_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_trace_profile_command_fn (vlib_main_t * vm,
@@ -189,14 +185,12 @@ show_trace_profile_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_trace_profile_command, static) =
 {
 .path = "show ioam-trace profile",
 .short_help = "show ioam-trace profile",
 .function = show_trace_profile_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

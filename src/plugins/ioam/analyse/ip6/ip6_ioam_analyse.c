@@ -94,13 +94,11 @@ set_ioam_analyse_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return (ioam_analyse_enable_disable (vm, is_add, is_export, remote_listen));
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ioam_analyse_command, static) = {
   .path = "set ioam analyse",
   .short_help = "set ioam analyse [export-ipfix-collector] [disable] [listen-ipfix]",
   .function = set_ioam_analyse_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_ioam_analyse_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -130,13 +128,11 @@ show_ioam_analyse_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_ioam_ipfix_cmd, static) = {
   .path = "show ioam analyse ",
   .short_help = "show ioam analyser information",
   .function = show_ioam_analyse_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ioam_analyse_init (vlib_main_t * vm)

@@ -165,14 +165,12 @@ test_ip_checksum_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_checksum, static) =
 {
   .path = "test ip checksum",
   .short_help = "test ip checksum",
   .function = test_ip_checksum_fn,
 };
-/* *INDENT-ON* */
 
 #endif /* CLIB_DEBUG */
 

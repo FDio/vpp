@@ -102,7 +102,6 @@ lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 /*
  * lldp input graph node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(lldp_input_node, static) = {
   .function = lldp_node_fn,
   .name = "lldp-input",
@@ -120,7 +119,6 @@ VLIB_REGISTER_NODE(lldp_input_node, static) = {
               [LLDP_INPUT_NEXT_NORMAL] = "error-drop",
       },
 };
-/* *INDENT-ON* */
 
 /*
  * lldp process node function
@@ -230,13 +228,11 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 /*
  * lldp process node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(lldp_process_node, static) = {
   .function = lldp_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "lldp-process",
 };
-/* *INDENT-ON* */
 
 void
 lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n)

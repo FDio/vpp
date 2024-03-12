@@ -125,13 +125,11 @@ wg_peer_adj_stack (wg_peer_t *peer, adj_index_t ai)
     }
   else
     {
-      /* *INDENT-OFF* */
       fib_prefix_t dst = {
 	.fp_len = is_ip4 ? 32 : 128,
 	.fp_proto = fib_proto,
 	.fp_addr = peer->dst.addr,
       };
-      /* *INDENT-ON* */
       u32 fib_index;
 
       fib_index = fib_table_find (fib_proto, peer->table_id);
@@ -457,7 +455,6 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
   if (!wg_if)
     return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
 
-  /* *INDENT-OFF* */
   pool_foreach (peer, wg_peer_pool)
    {
     if (!memcmp (peer->remote.r_public, public_key, NOISE_PUBLIC_KEY_LEN))
@@ -465,7 +462,6 @@ wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
       return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
     }
   }
-  /* *INDENT-ON* */
 
   if (pool_elts (wg_peer_pool) > MAX_PEERS)
     return (VNET_API_ERROR_LIMIT_EXCEEDED);
@@ -526,13 +522,11 @@ wg_peer_walk (wg_peer_walk_cb_t fn, void *data)
 {
   index_t peeri;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (peeri, wg_peer_pool)
   {
     if (WALK_STOP == fn(peeri, data))
       return peeri;
   }
-  /* *INDENT-ON* */
   return INDEX_INVALID;
 }
 

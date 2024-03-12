@@ -671,7 +671,6 @@ vl_api_show_one_pitr_reply_t_handler (vl_api_show_one_pitr_reply_t * mp)
   vam->result_ready = 1;
 }
 
-/* *INDENT-OFF* */
 /** Used for parsing LISP eids */
 typedef CLIB_PACKED(struct{
   union {
@@ -682,7 +681,6 @@ typedef CLIB_PACKED(struct{
   u32 len;       /**< prefix length if IP */
   u8 type;      /**< type of eid */
 }) lisp_eid_vat_t;
-/* *INDENT-ON* */
 
 static uword
 unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)

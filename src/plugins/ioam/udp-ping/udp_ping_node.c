@@ -93,14 +93,12 @@ format_udp_ping_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp_ping_node, static) =
 {
   .function = udp_ping_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "udp-ping-process",
 };
-/* *INDENT-ON* */
 
 void
 udp_ping_calculate_timer_interval (void)
@@ -301,7 +299,6 @@ set_udp_ping_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_udp_ping_command, static) =
 {
   .path = "set udp-ping",
@@ -312,7 +309,6 @@ VLIB_CLI_COMMAND (set_udp_ping_command, static) =
       [disable]",
   .function = set_udp_ping_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
@@ -374,14 +370,12 @@ show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_udp_ping_cmd, static) =
 {
   .path = "show udp-ping summary",
   .short_help = "Summary of udp-ping",
   .function = show_udp_ping_summary_cmd_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief UDP-Ping Process node.
@@ -790,7 +784,6 @@ udp_ping_local_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 /*
  * Node for udp-ping-local
  */
@@ -814,7 +807,6 @@ VLIB_REGISTER_NODE (udp_ping_local, static) =
       [UDP_PING_NEXT_IP6_DROP] = "ip6-drop",
     },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 udp_ping_init (vlib_main_t * vm)
@@ -828,12 +820,10 @@ udp_ping_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (udp_ping_init) =
 {
   .runs_after = VLIB_INITS("ip_main_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

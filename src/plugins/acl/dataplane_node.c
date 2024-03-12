@@ -44,7 +44,6 @@ typedef struct
   u8 action;
 } acl_fa_trace_t;
 
-/* *INDENT-OFF* */
 #define foreach_acl_fa_error \
 _(ACL_DROP, "ACL deny packets")  \
 _(ACL_PERMIT, "ACL permit packets")  \
@@ -63,7 +62,6 @@ typedef enum
     ACL_FA_N_ERROR,
 } acl_fa_error_t;
 
-/* *INDENT-ON* */
 
 always_inline u16
 get_current_policy_epoch (acl_main_t * am, int is_input, u32 sw_if_index0)
@@ -728,7 +726,6 @@ format_acl_plugin_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 
 static char *acl_fa_error_strings[] = {
 #define _(sym,string) string,
@@ -973,7 +970,6 @@ VNET_FEATURE_INIT (acl_out_ip4_fa_feature, static) = {
   .runs_before = VNET_FEATURES ("ip4-dvr-reinject", "interface-output"),
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

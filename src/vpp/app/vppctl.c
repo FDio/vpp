@@ -467,7 +467,6 @@ done:
   return 0;
 }
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

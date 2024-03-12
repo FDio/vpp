@@ -18,7 +18,6 @@
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police_inlines.h>
 
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (ip4_punt) =
 {
   .arc_name  = "ip4-punt",
@@ -30,7 +29,6 @@ VNET_FEATURE_ARC_INIT (ip4_drop) =
   .arc_name  = "ip4-drop",
   .start_nodes = VNET_FEATURES ("ip4-drop", "ip4-not-enabled"),
 };
-/* *INDENT-ON* */
 
 extern ip_punt_policer_t ip4_punt_policer_cfg;
 
@@ -89,7 +87,6 @@ VLIB_NODE_FN (ip4_punt_policer_node) (vlib_main_t * vm,
 			   ip4_punt_policer_cfg.policer_index));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_punt_policer_node) = {
   .name = "ip4-punt-policer",
   .vector_size = sizeof (u32),
@@ -109,7 +106,6 @@ VNET_FEATURE_INIT (ip4_punt_policer_node) = {
   .node_name = "ip4-punt-policer",
   .runs_before = VNET_FEATURES("ip4-punt-redirect"),
 };
-/* *INDENT-ON* */
 
 
 #define foreach_ip4_punt_redirect_error         \
@@ -138,7 +134,6 @@ VLIB_NODE_FN (ip4_punt_redirect_node) (vlib_main_t * vm,
 			    FIB_PROTOCOL_IP4));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_punt_redirect_node) = {
   .name = "ip4-punt-redirect",
   .vector_size = sizeof (u32),
@@ -160,7 +155,6 @@ VNET_FEATURE_INIT (ip4_punt_redirect_node, static) = {
   .node_name = "ip4-punt-redirect",
   .runs_before = VNET_FEATURES("error-punt"),
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip4_drop_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
@@ -194,7 +188,6 @@ ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			  vnet_feat_arc_ip4_punt.feature_arc_index);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_drop_node) =
 {
   .name = "ip4-drop",
@@ -237,7 +230,6 @@ VNET_FEATURE_INIT (ip4_drop_end_of_arc, static) = {
   .node_name = "error-drop",
   .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON */
 
 #ifndef CLIB_MARCH_VARIANT
 void
@@ -301,14 +293,12 @@ done:
  * @cliexpar
  * @cliexcmd{set ip punt policer <INDEX>}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip4_punt_policer_command, static) =
 {
   .path = "ip punt policer",
   .function = ip4_punt_police_cmd,
   .short_help = "ip punt policer [add|del] <index>",
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 
@@ -404,14 +394,12 @@ done:
  * @cliexpar
  * @cliexcmd{set ip punt policer}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip4_punt_redirect_command, static) =
 {
   .path = "ip punt redirect",
   .function = ip4_punt_redirect_cmd,
   .short_help = "ip punt redirect [add|del] rx [<interface>|all] via [<nh>] <tx_interface>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip4_punt_redirect_show_cmd (vlib_main_t * vm,
@@ -428,7 +416,6 @@ ip4_punt_redirect_show_cmd (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{set ip punt redierect}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip4_punt_redirect_command, static) =
 {
   .path = "show ip punt redirect",
@@ -436,7 +423,6 @@ VLIB_CLI_COMMAND (show_ip4_punt_redirect_command, static) =
   .short_help = "show ip punt redirect",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -278,10 +278,8 @@ static clib_error_t * mpls_input_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (mpls_input_init) =
 {
   .runs_after = VLIB_INITS("mpls_init"),
 };
-/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */

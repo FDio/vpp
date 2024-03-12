@@ -2098,7 +2098,6 @@ static char *ethernet_error_strings[] = {
 #undef ethernet_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ethernet_input_node) = {
   .name = "ethernet-input",
   /* Takes a vector of packets. */
@@ -2140,7 +2139,6 @@ VLIB_REGISTER_NODE (ethernet_input_not_l2_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

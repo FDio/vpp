@@ -250,7 +250,6 @@ sixrd_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS(sixrd_hw_interface_class) = {
     .name = "ip6ip-6rd",
     .build_rewrite = sixrd_build_rewrite,
@@ -265,7 +264,6 @@ VNET_DEVICE_CLASS(sixrd_device_class) = {
 #endif
 }
 ;
-/* *INDENT-ON* */
 
 int
 sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
@@ -341,7 +339,6 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   ip6_sw_interface_enable_disable (t->sw_if_index, true);
 
   /* Create IPv6 route/adjacency */
-  /* *INDENT-OFF* */
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
@@ -349,7 +346,6 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
       .ip6 = t->sixrd.ip6_prefix,
     },
   };
-  /* *INDENT-ON* */
 
   fib_table_lock (ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_6RD);
   fib_table_entry_update_one_path (ip6_fib_index, &pfx6, FIB_SOURCE_6RD,
@@ -386,7 +382,6 @@ sixrd_del_tunnel (u32 sw_if_index)
       return -1;
     }
 
-  /* *INDENT-OFF* */
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
@@ -394,7 +389,6 @@ sixrd_del_tunnel (u32 sw_if_index)
       .ip6 = t->sixrd.ip6_prefix,
     },
   };
-  /* *INDENT-ON* */
 
   fib_table_entry_path_remove (t->sixrd.ip6_fib_index, &pfx6,
 			       FIB_SOURCE_6RD,

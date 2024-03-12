@@ -1223,7 +1223,6 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
     }
 }
 
-/* *INDENT-OFF* */
 static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
 {
     tcp_timer_retransmit_handler,
@@ -1231,7 +1230,6 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
 };
-/* *INDENT-ON* */
 
 static void
 tcp_dispatch_pending_timers (tcp_worker_ctx_t * wrk)
@@ -1339,7 +1337,6 @@ tcp_session_app_rx_evt (transport_connection_t *conn)
   return 0;
 }
 
-/* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
   .start_listen = tcp_session_bind,
@@ -1370,7 +1367,6 @@ const static transport_proto_vft_t tcp_proto = {
     .service_type = TRANSPORT_SERVICE_VC,
   },
 };
-/* *INDENT-ON* */
 
 void
 tcp_connection_tx_pacer_update (tcp_connection_t * tc)

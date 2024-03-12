@@ -198,14 +198,12 @@ show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 
   return (error);
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
 {
   .path = "show udp punt",
   .short_help = "show udp punt [ipv4|ipv6]",
   .function = show_udp_punt_fn,
 };
-/* *INDENT-ON* */
 
 static void
 table_format_udp_port_ (vlib_main_t *vm, udp_main_t *um, table_t *t, int *c,

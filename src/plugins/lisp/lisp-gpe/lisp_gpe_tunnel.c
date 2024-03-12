@@ -253,24 +253,20 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
     }
   else
     {
-      /* *INDENT-OFF* */
       pool_foreach (lgt, lisp_gpe_tunnel_pool)
        {
 	vlib_cli_output (vm, "%U", format_lisp_gpe_tunnel, lgt);
       }
-      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
 {
   .path = "show gpe tunnel",
   .function = show_lisp_gpe_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_gpe_tunnel_module_init (vlib_main_t * vm)

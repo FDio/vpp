@@ -267,7 +267,6 @@ api_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (api_command, static) =
 {
   .path = "binary-api",
@@ -275,7 +274,6 @@ VLIB_CLI_COMMAND (api_command, static) =
   .function = api_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 void
 api_cli_output (void *notused, const char *fmt, ...)

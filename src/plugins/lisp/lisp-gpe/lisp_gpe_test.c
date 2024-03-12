@@ -256,7 +256,6 @@ end:
 }
 
 
-/* *INDENT-OFF* */
 /** Used for parsing LISP eids */
 typedef CLIB_PACKED(struct{
   union {
@@ -267,7 +266,6 @@ typedef CLIB_PACKED(struct{
   u32 len;       /**< prefix length if IP */
   u8 type;      /**< type of eid */
 }) lisp_eid_vat_t;
-/* *INDENT-ON* */
 
 static uword
 unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)

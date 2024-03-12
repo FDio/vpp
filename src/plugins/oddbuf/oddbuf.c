@@ -106,7 +106,6 @@ oddbuf_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (oddbuf_enable_disable_command, static) =
 {
   .path = "oddbuf enable-disable",
@@ -114,7 +113,6 @@ VLIB_CLI_COMMAND (oddbuf_enable_disable_command, static) =
   "oddbuf enable-disable <interface-name> [disable]",
   .function = oddbuf_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_oddbuf_enable_disable_t_handler
@@ -157,23 +155,19 @@ oddbuf_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (oddbuf_init);
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (oddbuf, static) =
 {
   .arc_name = "device-input",
   .node_name = "oddbuf",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Awkward chained buffer geometry generator",
   .default_disabled = 1,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -205,7 +199,6 @@ oddbuf_config_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (oddbuf_config_command, static) =
 {
   .path = "oddbuf configure",
@@ -213,7 +206,6 @@ VLIB_CLI_COMMAND (oddbuf_config_command, static) =
   "oddbuf configure n_to_copy <nn> offset <nn> first_offset <nn>",
   .function = oddbuf_config_command_fn,
 };
-/* *INDENT-ON* */
 
 
 

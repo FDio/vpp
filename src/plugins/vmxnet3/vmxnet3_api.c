@@ -55,10 +55,8 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   vmxnet3_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_VMXNET3_CREATE_REPLY,
 		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -172,7 +170,6 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (vd, vmxm->devices)
      {
       swif = vnet_get_sw_interface (vnm, vd->sw_if_index);
@@ -181,7 +178,6 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
       send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
       vec_set_len (if_name, 0);
     }
-  /* *INDENT-ON* */
 
   vec_free (if_name);
 }
@@ -210,7 +206,6 @@ static void vl_api_sw_vmxnet3_interface_dump_t_handler
       (vnet_sw_interface_is_api_valid (vnm, filter_sw_if_index) == 0))
     goto bad_sw_if_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (vd, vmxm->devices)
      {
       if ((filter_sw_if_index == ~0) ||
@@ -223,7 +218,6 @@ static void vl_api_sw_vmxnet3_interface_dump_t_handler
 	  vec_set_len (if_name, 0);
 	}
     }
-  /* *INDENT-ON* */
 
   BAD_SW_IF_INDEX_LABEL;
   vec_free (if_name);

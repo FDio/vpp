@@ -260,7 +260,6 @@ static char *ipip_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ipip4_input_node) = {
     .name = "ipip4-input",
     /* Takes a vector of packets. */
@@ -293,7 +292,6 @@ VLIB_REGISTER_NODE(ipip6_input_node) = {
     .format_trace = format_ipip_rx_trace,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

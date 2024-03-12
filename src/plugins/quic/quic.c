@@ -106,7 +106,6 @@ quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
 
   for (i = 0; i < num_threads; i++)
     {
-      /* *INDENT-OFF* */
       pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool)  {
 	if (crctx->ckpair_index == ckpair->cert_key_index)
 	  {
@@ -114,7 +113,6 @@ quic_app_cert_key_pair_delete_callback (app_cert_key_pair_t * ckpair)
 	    clib_bihash_add_del_24_8 (&qm->wrk_ctx[i].crypto_context_hash, &kv, 0 /* is_add */ );
 	  }
       }
-      /* *INDENT-ON* */
     }
   return 0;
 }
@@ -154,11 +152,9 @@ quic_list_crypto_context_command_fn (vlib_main_t * vm,
   int i, num_threads = 1 /* main thread */  + vtm->n_threads;
   for (i = 0; i < num_threads; i++)
     {
-      /* *INDENT-OFF* */
       pool_foreach (crctx, qm->wrk_ctx[i].crypto_ctx_pool)  {
 	vlib_cli_output (vm, "[%d][Q]%U", i, format_crypto_context, crctx);
       }
-      /* *INDENT-ON* */
     }
   return 0;
 }
@@ -2428,7 +2424,6 @@ quic_get_transport_endpoint (u32 ctx_index, u32 thread_index,
   quic_common_get_transport_endpoint (ctx, tep, is_lcl);
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t quic_app_cb_vft = {
   .session_accept_callback = quic_udp_session_accepted_callback,
   .session_disconnect_callback = quic_udp_session_disconnect_callback,
@@ -2464,7 +2459,6 @@ static const transport_proto_vft_t quic_proto = {
     .service_type = TRANSPORT_SERVICE_APP,
   },
 };
-/* *INDENT-ON* */
 
 static quicly_stream_open_t on_stream_open = { quic_on_stream_open };
 static quicly_closed_by_remote_t on_closed_by_remote = {
@@ -2704,7 +2698,6 @@ quic_show_aggregated_stats (vlib_main_t * vm)
   clib_memset (&agg_stats, 0, sizeof (agg_stats));
   for (i = 0; i < num_workers + 1; i++)
     {
-      /* *INDENT-OFF* */
       pool_foreach (ctx, qm->ctx_pool[i])
        {
 	if (quic_ctx_is_conn (ctx) && ctx->conn)
@@ -2724,7 +2717,6 @@ quic_show_aggregated_stats (vlib_main_t * vm)
 	else if (quic_ctx_is_stream (ctx))
 	  nstream++;
       }
-      /* *INDENT-ON* */
     }
   vlib_cli_output (vm, "-------- Connections --------");
   vlib_cli_output (vm, "Current:         %u", nconn);
@@ -2899,7 +2891,6 @@ quic_show_connections_command_fn (vlib_main_t * vm,
 
   for (int i = 0; i < num_workers + 1; i++)
     {
-      /* *INDENT-OFF* */
       pool_foreach (ctx, qm->ctx_pool[i])
        {
         if (quic_ctx_is_stream (ctx) && show_stream)
@@ -2909,7 +2900,6 @@ quic_show_connections_command_fn (vlib_main_t * vm,
 	else if (quic_ctx_is_conn (ctx) && show_conn)
           vlib_cli_output (vm, "%U", quic_format_connection_ctx, ctx);
       }
-      /* *INDENT-ON* */
     }
 
 done:
@@ -2917,7 +2907,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) = {
   .path = "quic set crypto api",
   .short_help = "quic set crypto api [picotls|vpp]",
@@ -2958,7 +2947,6 @@ VLIB_PLUGIN_REGISTER () =
   .description = "Quic transport protocol",
   .default_disabled = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 quic_config_fn (vlib_main_t * vm, unformat_input_t * input)
@@ -3014,7 +3002,6 @@ quic_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (quic_input_node) =
 {
   .function = quic_node_fn,
@@ -3024,7 +3011,6 @@ VLIB_REGISTER_NODE (quic_input_node) =
   .n_errors = ARRAY_LEN (quic_error_strings),
   .error_strings = quic_error_strings,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -443,7 +443,6 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node) = {
   .name = "l2-output",
   .vector_size = sizeof (u32),
@@ -461,7 +460,6 @@ VLIB_REGISTER_NODE (l2output_node) = {
         [L2OUTPUT_NEXT_BAD_INTF] = "l2-output-bad-intf",
   },
 };
-/* *INDENT-ON* */
 
 
 #define foreach_l2output_bad_intf_error	\
@@ -549,7 +547,6 @@ VLIB_NODE_FN (l2output_bad_intf_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_bad_intf_node) = {
   .name = "l2-output-bad-intf",
   .vector_size = sizeof (u32),
@@ -565,7 +562,6 @@ VLIB_REGISTER_NODE (l2output_bad_intf_node) = {
 	[0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2output_init (vlib_main_t * vm)

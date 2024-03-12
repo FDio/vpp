@@ -549,12 +549,10 @@ format_ipsec_tun_protect (u8 * s, va_list * args)
 	      IPSEC_FORMAT_BRIEF);
 
   s = format (s, "\n input-sa:");
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
   s = format (s, "\n  %U", format_ipsec_sa, sai, IPSEC_FORMAT_BRIEF);
   }));
-  /* *INDENT-ON* */
 
   return (s);
 }

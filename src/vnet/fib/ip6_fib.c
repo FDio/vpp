@@ -862,13 +862,11 @@ ip6_show_fib (vlib_main_t * vm,
  * @cliexend
  * @endparblock
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .path = "show ip6 fib",
     .short_help = "show ip6 fib [summary] [table <table-id>] [index <fib-id>] [<ip6-addr>[/<width>]] [detail]",
     .function = ip6_show_fib,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_config (vlib_main_t * vm, unformat_input_t * input)

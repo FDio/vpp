@@ -64,13 +64,11 @@ format_nsh_name (u8 * s, va_list * args)
   return format (s, "nsh_tunnel%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (nsh_device_class, static) = {
   .name = "NSH",
   .format_device_name = format_nsh_name,
   .admin_up_down_function = nsh_interface_admin_up_down,
 };
-/* *INDENT-ON* */
 
 static void send_nsh_entry_details
   (nsh_entry_t * t, vl_api_registration_t * rp, u32 context)

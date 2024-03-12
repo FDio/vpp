@@ -29,7 +29,6 @@
  * processing and go directly to the tunnel protocol handler node.
  */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct {
   union {
@@ -40,7 +39,6 @@ typedef CLIB_PACKED
     u64 as_u64;
   };
 }) vtep4_key_t;
-/* *INDENT-ON* */
 
 /**
  * @brief Tunnel endpoint key (IPv6)
@@ -51,13 +49,11 @@ typedef CLIB_PACKED
  * processing and go directly to the tunnel protocol handler node.
  */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct {
   ip6_address_t addr;
   u32 fib_index;
 }) vtep6_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

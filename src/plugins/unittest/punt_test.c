@@ -129,7 +129,6 @@ punt_test_pg1_ip6 (vlib_main_t * vm,
   return (punt_test_fwd (vm, node, frame, FIB_PROTOCOL_IP6, SW_IF_INDEX_PG1));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (punt_test_pg0_ip4_node) = {
   .function = punt_test_pg0_ip4,
   .name = "punt-test-pg0-ip4",
@@ -154,7 +153,6 @@ VLIB_REGISTER_NODE (punt_test_pg1_ip6_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_punt_trace,
 };
-/* *INDENT-ON* */
 
 typedef struct punt_feat_trace_t_
 {
@@ -242,7 +240,6 @@ punt_test_feat_ip6 (vlib_main_t * vm,
   return (punt_test_feat_inline (vm, node, frame, 0));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (punt_test_feat_ip6_node) = {
   .function = punt_test_feat_ip6,
   .name = "punt-test-feat-ip6",
@@ -273,7 +270,6 @@ VNET_FEATURE_INIT (punt_test_feat_ip4_feature, static) =
   .arc_name = "ip4-unicast",
   .node_name = "punt-test-feat-ip4",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_test (vlib_main_t * vm,
@@ -382,14 +378,12 @@ punt_test (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_fib_command, static) =
 {
   .path = "test punt",
   .short_help = "punt unit tests - DO NOT RUN ON A LIVE SYSTEM",
   .function = punt_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

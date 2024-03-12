@@ -33,7 +33,6 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;	/* 20 bytes */
   udp_header_t udp;	/* 8 bytes */
@@ -45,7 +44,6 @@ typedef CLIB_PACKED (struct {
   udp_header_t udp;	/* 8 bytes */
   vxlan_header_t vxlan;	/* 8 bytes */
 }) ip6_vxlan_header_t;
-/* *INDENT-ON* */
 
 /*
 * Key fields: remote ip, vni on incoming VXLAN packet

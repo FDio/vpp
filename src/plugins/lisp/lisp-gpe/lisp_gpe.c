@@ -169,7 +169,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
   .path = "gpe entry",
   .short_help = "gpe entry add/del vni <vni> vrf/bd <id> [leid <leid>]"
@@ -177,7 +176,6 @@ VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
       "[negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Check if LISP-GPE is enabled. */
 u8
@@ -271,13 +269,11 @@ gpe_set_encap_mode_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_set_encap_mode_command, static) = {
   .path = "gpe encap",
   .short_help = "gpe encap [lisp|vxlan]",
   .function = gpe_set_encap_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Format GPE encap mode. */
 u8 *
@@ -307,13 +303,11 @@ gpe_show_encap_mode_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_show_encap_mode_command, static) = {
   .path = "show gpe encap",
   .short_help = "show GPE encapulation mode",
   .function = gpe_show_encap_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to enable/disable LISP-GPE. */
 static clib_error_t *
@@ -352,13 +346,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
   .path = "gpe",
   .short_help = "gpe [enable|disable]",
   .function = lisp_gpe_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show LISP-GPE interfaces. */
 static clib_error_t *
@@ -371,31 +363,25 @@ lisp_show_iface_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%=10s%=12s", "vrf", "hw_if_index");
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, lgm->l3_ifaces.hw_if_index_by_dp_table, ({
     vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
   }));
-  /* *INDENT-ON* */
 
   if (0 != lgm->l2_ifaces.hw_if_index_by_dp_table)
     {
       vlib_cli_output (vm, "%=10s%=12s", "bd_id", "hw_if_index");
-      /* *INDENT-OFF* */
       hash_foreach_pair (p, lgm->l2_ifaces.hw_if_index_by_dp_table, ({
         vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
       }));
-      /* *INDENT-ON* */
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_iface_command) = {
     .path = "show gpe interface",
     .short_help = "show gpe interface",
     .function = lisp_show_iface_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show GPE fwd native route path. */
 static clib_error_t *
@@ -428,13 +414,11 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_show_native_fwd_rpath_command) = {
     .path = "show gpe native-forward",
     .short_help = "show gpe native-forward",
     .function = gpe_show_native_fwd_rpath_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 gpe_update_native_fwd_path (u8 ip_version)
@@ -578,14 +562,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_native_forward_command) = {
     .path = "gpe native-forward",
     .short_help = "gpe native-forward [del] via <nh-ip-addr> [iface] "
 	"[table <table>]",
     .function = gpe_native_forward_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Format LISP-GPE status. */
 u8 *
@@ -709,13 +691,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_test_nsh_command, static) = {
   .path = "test one nsh",
   .short_help = "test gpe nsh pcap <path-to-pcap-file>",
   .function = lisp_test_nsh_command_fn,
 };
-/* *INDENT-ON* */
 
 VLIB_INIT_FUNCTION (lisp_gpe_init);
 

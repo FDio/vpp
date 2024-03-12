@@ -620,7 +620,6 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
     }
 
 done:
-  /* *INDENT-OFF* */
   REPLY_MACRO3 (
     VL_API_APP_ATTACH_REPLY,
     ((!rv) ? vec_len (((fifo_segment_t *) a->segment)->ssvm.name) : 0), ({
@@ -643,7 +642,6 @@ done:
 	  rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
 	}
     }));
-  /* *INDENT-ON* */
 
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
@@ -708,7 +706,6 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
       n_fds += 1;
     }
 
-  /* *INDENT-OFF* */
 done:
   REPLY_MACRO3 (
     VL_API_APP_WORKER_ADD_DEL_REPLY,
@@ -729,7 +726,6 @@ done:
 	    }
 	}
     }));
-  /* *INDENT-ON* */
 
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
@@ -803,13 +799,11 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
     }
   vec_free (ns_id);
 
-  /* *INDENT-OFF* */
 done:
   REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_REPLY, ({
     if (!rv)
       rmp->appns_index = clib_host_to_net_u32 (appns_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1092,7 +1086,6 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
   if (is_local || fib_proto == FIB_PROTOCOL_IP4)
     {
       u8 *tag = 0;
-      /* *INDENT-OFF* */
       srt16 = &srt->session_rules_tables_16;
       pool_foreach (rule16, srt16->rules)  {
 	ri = mma_rules_table_rule_index_16 (srt16, rule16);
@@ -1100,12 +1093,10 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
         send_session_rule_details4 (rule16, is_local, tp, appns_index, tag,
                                     reg, context);
       }
-      /* *INDENT-ON* */
     }
   if (is_local || fib_proto == FIB_PROTOCOL_IP6)
     {
       u8 *tag = 0;
-      /* *INDENT-OFF* */
       srt40 = &srt->session_rules_tables_40;
       pool_foreach (rule40, srt40->rules)  {
 	ri = mma_rules_table_rule_index_40 (srt40, rule40);
@@ -1113,7 +1104,6 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
         send_session_rule_details6 (rule40, is_local, tp, appns_index, tag,
                                     reg, context);
       }
-      /* *INDENT-ON* */
     }
 }
 
@@ -1128,7 +1118,6 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   session_table_foreach (st, ({
     for (tp = 0; tp < TRANSPORT_N_PROTOS; tp++)
       {
@@ -1138,7 +1127,6 @@ vl_api_session_rules_dump_t_handler (vl_api_session_rules_dump_t * mp)
                                           mp->context);
       }
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1183,12 +1171,10 @@ vl_api_app_add_cert_key_pair_t_handler (vl_api_app_add_cert_key_pair_t * mp)
   rv = vnet_app_add_cert_key_pair (a);
 
 done:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APP_ADD_CERT_KEY_PAIR_REPLY, ({
     if (!rv)
       rmp->index = clib_host_to_net_u32 (a->index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

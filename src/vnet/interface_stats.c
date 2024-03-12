@@ -170,7 +170,6 @@ VLIB_NODE_FN (stats_collect_tx_node) (vlib_main_t * vm,
   return stats_collect_inline (vm, node, frame, VLIB_TX);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (stats_collect_rx_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_stats_collect_trace,
@@ -201,7 +200,6 @@ VNET_FEATURE_INIT (stats_collect_tx_node, static) = {
   .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 stats_collect_init (vlib_main_t * vm)

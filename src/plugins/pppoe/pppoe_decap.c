@@ -494,11 +494,9 @@ VLIB_REGISTER_NODE (pppoe_input_node) = {
   .format_trace = format_pppoe_rx_trace,
 };
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (pppoe_input_node, static) =
 {
   .arc_name = "device-input",
   .node_name = "pppoe-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */

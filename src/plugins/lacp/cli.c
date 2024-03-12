@@ -28,7 +28,6 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
   lacp_interface_details_t *r_lacpifs = NULL;
   lacp_interface_details_t *lacpif = NULL;
 
-  /* *INDENT-OFF* */
   pool_foreach (mif, bm->neighbors) {
     if (mif->lacp_enabled == 0)
       continue;
@@ -61,7 +60,6 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
     lacpif->ptx_state = mif->ptx_state;
     lacpif->mux_state = mif->mux_state;
   }
-  /* *INDENT-ON* */
 
   *out_lacpifs = r_lacpifs;
 
@@ -309,14 +307,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_lacp_command, static) = {
   .path = "show lacp",
   .short_help = "show lacp [<interface>] [details]",
   .function = show_lacp_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 debug_lacp_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -384,13 +380,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (debug_lacp_command, static) = {
     .path = "debug lacp",
     .short_help = "debug lacp <interface> <on | off>",
     .function = debug_lacp_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 lacp_cli_init (vlib_main_t * vm)

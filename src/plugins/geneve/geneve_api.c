@@ -97,12 +97,10 @@ static void vl_api_geneve_add_del_tunnel_t_handler
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_GENEVE_ADD_DEL_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void vl_api_geneve_add_del_tunnel2_t_handler
@@ -149,12 +147,10 @@ static void vl_api_geneve_add_del_tunnel2_t_handler
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_GENEVE_ADD_DEL_TUNNEL2_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void send_geneve_tunnel_details
@@ -201,12 +197,10 @@ static void vl_api_geneve_tunnel_dump_t_handler
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
       pool_foreach (t, vxm->tunnels)
        {
         send_geneve_tunnel_details(t, reg, mp->context);
       }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -249,12 +243,10 @@ VLIB_API_INIT_FUNCTION (geneve_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "GENEVE Tunnels",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

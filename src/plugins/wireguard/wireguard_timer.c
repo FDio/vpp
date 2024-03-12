@@ -434,14 +434,12 @@ wg_timers_stop (wg_peer_t * peer)
     }
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg_timer_mngr_node, static) = {
     .function = wg_timer_mngr_fn,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name =
     "wg-timer-manager",
 };
-/* *INDENT-ON* */
 
 void
 wg_feature_init (wg_main_t * wmp)

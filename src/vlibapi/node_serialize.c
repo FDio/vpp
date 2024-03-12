@@ -326,13 +326,11 @@ test_node_serialize_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_node_serialize_node, static) = {
     .path = "test node serialize",
     .short_help = "test node serialize [max-threads NN] nexts stats",
     .function = test_node_serialize_command_fn,
 };
-/* *INDENT-ON* */
 #endif
 
 /*

@@ -466,7 +466,6 @@ ip6_ioam_analyse_unregister_handlers ()
   ip6_ioam_analyse_unregister_hbh_handler (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE);
 }
 
-/* *INDENT-OFF* */
 
 /*
  * Node for IP6 analyse - packets
@@ -507,7 +506,6 @@ VLIB_REGISTER_NODE (analyse_node_remote) =
   },
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

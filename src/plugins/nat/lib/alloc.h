@@ -42,14 +42,12 @@ struct nat_ip4_pool_addr_s
 {
   ip4_address_t addr;
   u32 fib_index;
-/* *INDENT-OFF* */
 #define _(N, i, n, s) \
   u16 busy_##n##_ports; \
   u16 * busy_##n##_ports_per_thread; \
   uword * busy_##n##_port_bitmap;
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
 };
 
 struct nat_ip4_addr_port_s

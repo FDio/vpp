@@ -280,7 +280,6 @@ vlib_thread_init (vlib_main_t * vm)
       if (tr->coremask)
 	{
 	  uword c;
-          /* *INDENT-OFF* */
           clib_bitmap_foreach (c, tr->coremask)  {
             if (clib_bitmap_get(avail_cpu, c) == 0)
               return clib_error_return (0, "cpu %u is not available to be used"
@@ -288,7 +287,6 @@ vlib_thread_init (vlib_main_t * vm)
 
             avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
           }
-          /* *INDENT-ON* */
 	}
       else
 	{
@@ -1623,13 +1621,11 @@ vlib_worker_thread_fn (void *arg)
   vlib_worker_loop (vm);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_THREAD (worker_thread_reg, static) = {
   .name = "workers",
   .short_name = "wk",
   .function = vlib_worker_thread_fn,
 };
-/* *INDENT-ON* */
 
 extern clib_march_fn_registration
   *vlib_frame_queue_dequeue_with_aux_fn_march_fn_registrations;
@@ -1751,14 +1747,12 @@ show_clock_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (f_command, static) =
 {
   .path = "show clock",
   .short_help = "show clock",
   .function = show_clock_command_fn,
 };
-/* *INDENT-ON* */
 
 vlib_thread_main_t *
 vlib_get_thread_main_not_inline (void)

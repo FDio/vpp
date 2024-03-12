@@ -235,7 +235,6 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
   .name = "p2p-ethernet-input",
   .vector_size = sizeof (u32),
@@ -253,7 +252,6 @@ VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

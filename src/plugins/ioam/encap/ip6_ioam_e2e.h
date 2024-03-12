@@ -19,12 +19,10 @@
 #include <ioam/lib-e2e/e2e_util.h>
 #include "ip6_ioam_seqno.h"
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   ip6_hop_by_hop_option_t hdr;
   ioam_e2e_packet_t e2e_hdr;
 }) ioam_e2e_option_t;
-/* *INDENT-ON* */
 
 typedef struct ioam_e2e_data_t_ {
   u32 flow_ctx;

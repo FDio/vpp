@@ -179,7 +179,6 @@ ip6_ioam_cache_node_fn (vlib_main_t * vm,
 /*
  * Node for IP6 iOAM header cache
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ioam_cache_node) =
 {
   .function = ip6_ioam_cache_node_fn,
@@ -196,7 +195,6 @@ VLIB_REGISTER_NODE (ioam_cache_node) =
     [IOAM_CACHE_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop"
   },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -386,7 +384,6 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 			       processed);
   return frame->n_vectors;
 }
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 {
   .name = "ip6-add-from-cache-hop-by-hop",
@@ -404,7 +401,6 @@ VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

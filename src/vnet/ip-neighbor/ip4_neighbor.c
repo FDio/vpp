@@ -274,7 +274,6 @@ VLIB_NODE_FN (ip4_glean_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return (ip4_arp_inline (vm, node, frame, 1));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_arp_node) =
 {
   .name = "ip4-arp",
@@ -300,7 +299,6 @@ VLIB_REGISTER_NODE (ip4_glean_node) =
     [IP4_ARP_NEXT_DROP] = "ip4-drop",
   },
 };
-/* *INDENT-ON* */
 
 #define foreach_notrace_ip4_arp_error           \
 _(THROTTLED)                                    \

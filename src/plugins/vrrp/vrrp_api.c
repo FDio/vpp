@@ -318,7 +318,6 @@ vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
 
   sw_if_index = htonl (mp->sw_if_index);
 
-  /* *INDENT-OFF* */
   pool_foreach (vr, vmp->vrs)  {
 
     if (sw_if_index && (sw_if_index != ~0) &&
@@ -327,7 +326,6 @@ vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
 
     send_vrrp_vr_details (vr, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -466,7 +464,6 @@ vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
       return;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (vr, vmp->vrs)  {
 
     if (!vec_len (vr->config.peer_addrs))
@@ -475,7 +472,6 @@ vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
     send_vrrp_vr_details (vr, reg, mp->context);
 
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -570,7 +566,6 @@ vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
       return;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (vr, vmp->vrs)  {
 
     if (!vec_len (vr->tracking.interfaces))
@@ -579,7 +574,6 @@ vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
     send_vrrp_vr_track_if_details (vr, reg, mp->context);
 
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -613,14 +607,12 @@ vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
   vpe_client_registration_t *reg;
   vl_api_registration_t *vl_reg;
 
-  /* *INDENT-OFF* */
   pool_foreach (reg, vam->vrrp_vr_events_registrations)
    {
     vl_reg = vl_api_client_index_to_registration (reg->client_index);
     if (vl_reg)
       send_vrrp_vr_event (reg, vl_reg, vr, new_state);
   }
-  /* *INDENT-ON* */
 }
 
 pub_sub_handler (vrrp_vr_events, VRRP_VR_EVENTS);
@@ -638,7 +630,6 @@ vrrp_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

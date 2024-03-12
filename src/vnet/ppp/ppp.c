@@ -197,7 +197,6 @@ ppp_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (ppp_hw_interface_class) = {
   .name = "PPP",
   .format_header = format_ppp_header_with_length,
@@ -205,7 +204,6 @@ VNET_HW_INTERFACE_CLASS (ppp_hw_interface_class) = {
   .build_rewrite = ppp_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 static void
 add_protocol (ppp_main_t * pm, ppp_protocol_t protocol, char *protocol_name)

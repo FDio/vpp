@@ -151,7 +151,6 @@ vrrp_vr_add_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return vrrp_vr_add_del_command_fn (vm, input, cmd, 1 /* is_add */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_vr_add_command, static) =
 {
   .path = "vrrp vr add",
@@ -159,7 +158,6 @@ VLIB_CLI_COMMAND (vrrp_vr_add_command, static) =
   "vrrp vr add <interface> [vr_id <n>] [ipv6] [priority <value>] [interval <value>] [no_preempt] [accept_mode] [unicast] [<ip_addr> ...]",
   .function = vrrp_vr_add_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vrrp_vr_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -168,14 +166,12 @@ vrrp_vr_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return vrrp_vr_add_del_command_fn (vm, input, cmd, 0 /* is_add */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_vr_del_command, static) =
 {
   .path = "vrrp vr del",
   .short_help = "vrrp vr del <interface> [vr_id <n>] [ipv6]",
   .function = vrrp_vr_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vrrp_show_vr_command_fn (vlib_main_t * vm,
@@ -208,7 +204,6 @@ vrrp_show_vr_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_show_vr_command, static) =
 {
   .path = "show vrrp vr",
@@ -216,7 +211,6 @@ VLIB_CLI_COMMAND (vrrp_show_vr_command, static) =
   "show vrrp vr [(<intf_name>|sw_if_index <n>)]",
   .function = vrrp_show_vr_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vrrp_proto_start_stop_command_fn (vlib_main_t * vm,
@@ -377,7 +371,6 @@ done:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_proto_start_stop_command, static) =
 {
   .path = "vrrp proto",
@@ -385,9 +378,7 @@ VLIB_CLI_COMMAND (vrrp_proto_start_stop_command, static) =
   "vrrp proto (start|stop) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6]",
   .function = vrrp_proto_start_stop_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_peers_command, static) =
 {
   .path = "vrrp peers",
@@ -395,7 +386,6 @@ VLIB_CLI_COMMAND (vrrp_peers_command, static) =
   "vrrp peers (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] <peer1_addr> [<peer2_addr> ...]",
   .function = vrrp_peers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vrrp_vr_track_if_command_fn (vlib_main_t * vm,
@@ -493,7 +483,6 @@ done:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) =
 {
   .path = "vrrp vr track-if",
@@ -501,7 +490,6 @@ VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) =
   "vrrp vr track-if (add|del) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] track-index <n> priority <n> [ track-index <n> priority <n> ...]",
   .function = vrrp_vr_track_if_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

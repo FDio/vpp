@@ -151,7 +151,6 @@ typedef enum
     VNET_CRYPTO_OP_N_STATUS,
 } vnet_crypto_op_status_t;
 
-/* *INDENT-OFF* */
 typedef enum
 {
   VNET_CRYPTO_ALG_NONE = 0,
@@ -240,7 +239,6 @@ typedef enum
 #undef _
 	VNET_CRYPTO_N_OP_IDS,
 } vnet_crypto_op_id_t;
-/* *INDENT-ON* */
 
 typedef enum
 {

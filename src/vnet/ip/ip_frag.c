@@ -500,7 +500,6 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   return IP_FRAG_ERROR_NONE;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_frag_node) = {
   .function = ip4_frag,
   .name = IP4_FRAG_NODE_NAME,
@@ -519,9 +518,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
 		  [IP_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
 		  [IP_FRAG_NEXT_DROP] = "ip4-drop" },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_frag_node) = {
   .function = ip6_frag,
   .name = IP6_FRAG_NODE_NAME,
@@ -540,7 +537,6 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
 		  [IP_FRAG_NEXT_ICMP_ERROR] = "error-drop",
 		  [IP_FRAG_NEXT_DROP] = "ip6-drop" },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

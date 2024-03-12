@@ -68,7 +68,6 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach_index (sw_if_index, l2im->configs)
     {
       config = vec_elt_at_index (l2im->configs, sw_if_index);
@@ -76,7 +75,6 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
 	send_l2_xconnect_details (reg, mp->context, sw_if_index,
 				  config->output_sw_if_index);
     }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -414,12 +412,10 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_L2_FLAGS_REPLY,
   ({
     rmp->resulting_feature_bitmap = ntohl(rbm);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -683,12 +679,10 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
   bitmap = bd_set_flags (vm, bd_index, flags, mp->is_set);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BRIDGE_FLAGS_REPLY,
   ({
     rmp->resulting_feature_bitmap = ntohl(bitmap);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -950,7 +944,6 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
 	  u64 mac64;
 	  bd_id = bd_config->bd_id;
 
-         /* *INDENT-OFF* */
          hash_foreach (ip4_addr.as_u32, mac64, bd_config->mac_by_ip4,
          ({
            ip46_address_t ip = {
@@ -972,7 +965,6 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
            send_bd_ip_mac_entry (am, reg, bd_id, &ip, IP46_TYPE_IP6,
                                  &mac, mp->context);
          }));
-         /* *INDENT-ON* */
 	}
     }
 }
@@ -1126,12 +1118,10 @@ vl_api_bvi_create_t_handler (vl_api_bvi_create_t * mp)
 
   rv = l2_bvi_create (ntohl (mp->user_instance), &mac, &sw_if_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BVI_CREATE_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1225,13 +1215,11 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_arp_term_process_node) = {
   .function = l2_arp_term_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "l2-arp-term-publisher",
 };
-/* *INDENT-ON* */
 
 static void
 vl_api_want_l2_arp_term_events_t_handler (vl_api_want_l2_arp_term_events_t *

@@ -499,11 +499,9 @@ segment_manager_free (segment_manager_t * sm)
    * the manager is explicitly deleted/detached by the app. */
   clib_rwlock_writer_lock (&sm->segments_rwlock);
 
-  /* *INDENT-OFF* */
   pool_foreach (fifo_segment, sm->segments)  {
     segment_manager_del_segment (sm, fifo_segment);
   }
-  /* *INDENT-ON* */
 
   pool_free (sm->segments);
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
@@ -582,7 +580,6 @@ segment_manager_has_fifos (segment_manager_t * sm)
   fifo_segment_t *seg;
   u8 first = 1;
 
-  /* *INDENT-OFF* */
   segment_manager_foreach_segment_w_lock (seg, sm, ({
     if (CLIB_DEBUG && !first && !fifo_segment_has_fifos (seg)
 	&& !(fifo_segment_flags (seg) & FIFO_SEGMENT_F_IS_PREALLOCATED))
@@ -597,7 +594,6 @@ segment_manager_has_fifos (segment_manager_t * sm)
 	return 1;
       }
   }));
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -617,7 +613,6 @@ segment_manager_del_sessions (segment_manager_t * sm)
   ASSERT (pool_elts (sm->segments) != 0);
 
   /* Across all fifo segments used by the server */
-  /* *INDENT-OFF* */
   segment_manager_foreach_segment_w_lock (fs, sm, ({
     for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
@@ -642,7 +637,6 @@ segment_manager_del_sessions (segment_manager_t * sm)
      * sessions if the segment can be removed.
      */
   }));
-  /* *INDENT-ON* */
 
   vec_foreach (handle, handles)
   {
@@ -961,12 +955,10 @@ segment_manager_alloc_queue (fifo_segment_t * segment,
 
   fifo_evt_size = sizeof (session_event_t);
   notif_q_size = clib_max (16, props->evt_q_size >> 4);
-  /* *INDENT-OFF* */
   svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
     {props->evt_q_size, fifo_evt_size, 0},
     {notif_q_size, session_evt_size, 0}
   };
-  /* *INDENT-ON* */
   cfg->consumer_pid = 0;
   cfg->n_rings = 2;
   cfg->q_nitems = props->evt_q_size;
@@ -1125,13 +1117,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (segment_manager_show_command, static) = {
   .path = "show segment-manager",
   .short_help = "show segment-manager [segments][verbose][index <nn>]",
   .function = segment_manager_show_fn,
 };
-/* *INDENT-ON* */
 
 void
 segment_manager_format_sessions (segment_manager_t * sm, int verbose)
@@ -1160,7 +1150,6 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
 
   clib_rwlock_reader_lock (&sm->segments_rwlock);
 
-  /* *INDENT-OFF* */
   pool_foreach (fs, sm->segments)  {
     for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
       {
@@ -1192,7 +1181,6 @@ segment_manager_format_sessions (segment_manager_t * sm, int verbose)
 	vec_free (s);
       }
   }
-  /* *INDENT-ON* */
 
   clib_rwlock_reader_unlock (&sm->segments_rwlock);
 }

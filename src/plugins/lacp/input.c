@@ -239,12 +239,10 @@ lacp_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (lacp_init) =
 {
   .runs_after = VLIB_INITS("lacp_periodic_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * packet trace format function, very similar to

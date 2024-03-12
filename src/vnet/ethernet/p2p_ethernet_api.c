@@ -58,14 +58,12 @@ vl_api_p2p_ethernet_add_t_handler (vl_api_p2p_ethernet_add_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_P2P_ETHERNET_ADD_REPLY,
   ({
     rmp->sw_if_index = htonl(p2pe_if_index);
   }));
 
 
-  /* *INDENT-ON* */
 }
 
 void

@@ -135,13 +135,11 @@ vhost_map_guest_mem_done:
 	}
     }
 #endif
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (el) =
   {
     .format = "failed to map guest mem addr %lx",
     .format_args = "i8",
   };
-  /* *INDENT-ON* */
   struct
   {
     uword addr;

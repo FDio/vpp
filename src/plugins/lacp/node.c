@@ -112,7 +112,6 @@ lacp_node_fn (vlib_main_t * vm,
 /*
  * lacp input graph node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lacp_input_node, static) = {
   .function = lacp_node_fn,
   .name = "lacp-input",
@@ -129,19 +128,16 @@ VLIB_REGISTER_NODE (lacp_input_node, static) = {
     [LACP_INPUT_NEXT_NORMAL] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static void
 lacp_elog_start_event (void)
 {
   lacp_main_t *lm = &lacp_main;
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (e) =
     {
       .format = "Starting LACP process, interface count = %d",
       .format_args = "i4",
     };
-  /* *INDENT-ON* */
   struct
   {
     u32 count;
@@ -155,13 +151,11 @@ static void
 lacp_elog_stop_event (void)
 {
   lacp_main_t *lm = &lacp_main;
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (e) =
     {
       .format = "Stopping LACP process, interface count = %d",
       .format_args = "i4",
     };
-  /* *INDENT-ON* */
   struct
   {
     u32 count;

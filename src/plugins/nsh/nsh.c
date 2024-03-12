@@ -164,14 +164,12 @@ format_nsh_tunnel_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (nsh_hw_class) = {
   .name = "NSH",
   .format_header = format_nsh_tunnel_with_length,
   .build_rewrite = default_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 void
 nsh_md2_set_next_ioam_export_override (uword next)
@@ -284,12 +282,10 @@ nsh_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (nsh_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Network Service Header (NSH)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

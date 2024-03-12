@@ -46,14 +46,11 @@ typedef enum
 u32 bfd_max_key_len_for_auth_type (bfd_auth_type_e auth_type);
 const char *bfd_auth_type_str (bfd_auth_type_e auth_type);
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 type;
   u8 len;
 }) bfd_auth_common_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
    * 4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format
@@ -88,9 +85,7 @@ typedef CLIB_PACKED (struct {
    */
   u8 hash[20];
 }) bfd_auth_sha1_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
    *  The Mandatory Section of a BFD Control packet has the following
@@ -125,21 +120,16 @@ typedef CLIB_PACKED (struct {
   u32 req_min_rx;
   u32 req_min_echo_rx;
 }) bfd_pkt_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   bfd_pkt_t pkt;
   bfd_auth_common_t common_auth;
 }) bfd_pkt_with_common_auth_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   bfd_pkt_t pkt;
   bfd_auth_sha1_t sha1_auth;
 }) bfd_pkt_with_sha1_auth_t;
-/* *INDENT-ON* */
 
 u8 bfd_pkt_get_version (const bfd_pkt_t * pkt);
 void bfd_pkt_set_version (bfd_pkt_t * pkt, int version);

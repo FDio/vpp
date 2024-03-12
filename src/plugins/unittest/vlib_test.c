@@ -129,14 +129,12 @@ test_vlib_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_vlib_command, static) =
 {
   .path = "test vlib",
   .short_help = "vlib code coverage unit test",
   .function = test_vlib_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_format_vlib_command_fn (vlib_main_t * vm,
@@ -180,14 +178,12 @@ test_format_vlib_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_format_vlib_command, static) =
 {
   .path = "test format-vlib",
   .short_help = "vlib format code coverate unit test",
   .function = test_format_vlib_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_vlib2_command_fn (vlib_main_t * vm,
@@ -215,14 +211,12 @@ test_vlib2_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_vlib2_command, static) =
 {
   .path = "test vlib2",
   .short_help = "vlib code coverage unit test #2",
   .function = test_vlib2_command_fn,
 };
-/* *INDENT-ON* */
 
 
 

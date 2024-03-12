@@ -1630,11 +1630,9 @@ ipfix_flush_process (vlib_main_t *vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ipfix_flush_node) = {
   .function = ipfix_flush_process,
   .name = "nat-ipfix-flush",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };
-/* *INDENT-ON* */

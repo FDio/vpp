@@ -217,7 +217,6 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
   vpe_api_main_t *vam = &vpe_api_main;
   vpe_client_registration_t *reg;
   vl_api_registration_t *vl_reg;
-  /* *INDENT-OFF* */
   pool_foreach (reg, vam->bfd_events_registrations)  {
     vl_reg = vl_api_client_index_to_registration (reg->client_index);
     if (vl_reg)
@@ -231,7 +230,6 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 	  }
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -244,13 +242,11 @@ vl_api_bfd_udp_session_dump_t_handler (vl_api_bfd_udp_session_dump_t * mp)
     return;
 
   bfd_session_t *bs = NULL;
-  /* *INDENT-OFF* */
   pool_foreach (bs, bfd_main.sessions)  {
     if (bs->transport == BFD_TRANSPORT_UDP4 ||
 	bs->transport == BFD_TRANSPORT_UDP6)
       send_bfd_udp_session_details (reg, mp->context, bs);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -301,7 +297,6 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
   bfd_auth_key_t *key = NULL;
   vl_api_bfd_auth_keys_details_t *rmp = NULL;
 
-  /* *INDENT-OFF* */
   pool_foreach (key, bfd_main.auth_keys)  {
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     clib_memset (rmp, 0, sizeof (*rmp));
@@ -312,7 +307,6 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
     rmp->use_count = clib_host_to_net_u32 (key->use_count);
     vl_api_send_msg (reg, (u8 *)rmp);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -394,7 +388,6 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
   bfd_udp_get_echo_source (&is_set, &sw_if_index, &have_usable_ip4, &ip4,
 			   &have_usable_ip6, &ip6);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_BFD_UDP_GET_ECHO_SOURCE_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
@@ -428,7 +421,6 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
         rmp->have_usable_ip6 = false;
       }
   }))
-  /* *INDENT-ON* */
 }
 
 #include <vnet/bfd/bfd.api.c>

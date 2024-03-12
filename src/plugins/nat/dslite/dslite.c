@@ -101,7 +101,6 @@ dslite_init_datastructures (void)
   u32 b4_buckets = 128;
   u32 b4_memory_size = 64 << 20;
 
-  /* *INDENT-OFF* */
   vec_foreach (td, dm->per_thread_data)
     {
       clib_bihash_init_24_8 (&td->in2out, "dslite in2out", translation_buckets,
@@ -112,7 +111,6 @@ dslite_init_datastructures (void)
 
       clib_bihash_init_16_8 (&td->b4_hash, "dslite b4s", b4_buckets, b4_memory_size);
     }
-  /* *INDENT-ON* */
   dm->is_enabled = 1;
 }
 
@@ -281,13 +279,11 @@ format_dslite_ce_trace (u8 * s, va_list * args)
 
 VLIB_INIT_FUNCTION (dslite_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Dual-Stack Lite",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -442,7 +442,6 @@ VLIB_NODE_FN (ah4_encrypt_node) (vlib_main_t * vm,
   return ah_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah4_encrypt_node) = {
   .name = "ah4-encrypt",
   .vector_size = sizeof (u32),
@@ -459,7 +458,6 @@ VLIB_REGISTER_NODE (ah4_encrypt_node) = {
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ah6_encrypt_node) (vlib_main_t * vm,
 				 vlib_node_runtime_t * node,
@@ -468,7 +466,6 @@ VLIB_NODE_FN (ah6_encrypt_node) (vlib_main_t * vm,
   return ah_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah6_encrypt_node) = {
   .name = "ah6-encrypt",
   .vector_size = sizeof (u32),
@@ -485,7 +482,6 @@ VLIB_REGISTER_NODE (ah6_encrypt_node) = {
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 

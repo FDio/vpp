@@ -136,14 +136,12 @@ set_nsh_md2_ioam_export_ipfix_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_nsh_md2_ioam_ipfix_command, static) =
 {
 .path = "set nsh-md2-ioam export ipfix",
 .short_help = "set nsh-md2-ioam export ipfix collector <ip4-address> src <ip4-address>",
 .function = set_nsh_md2_ioam_export_ipfix_command_fn,
 };
-/* *INDENT-ON* */
 
 
 #define IPFIX_NSH_MD2_IOAM_EXPORT_ID 274	// TODO: Move this to ioam/ioam_export.h

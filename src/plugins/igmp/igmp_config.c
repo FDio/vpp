@@ -28,12 +28,10 @@ igmp_clear_config (igmp_config_t * config)
 	    format_vnet_sw_if_index_name,
 	    vnet_get_main (), config->sw_if_index);
 
-  /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
     ({
       igmp_group_clear (&group);
     }));
-  /* *INDENT-ON* */
 
   for (ii = 0; ii < IGMP_CONFIG_N_TIMERS; ii++)
     {
@@ -125,12 +123,10 @@ format_igmp_config (u8 * s, va_list * args)
 		  format_igmp_timer_id, config->timers[ii]);
     }
 
-  /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
     ({
       s = format (s, "\n%U", format_igmp_group, group, 4);
     }));
-  /* *INDENT-ON* */
 
   return (s);
 }

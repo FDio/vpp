@@ -144,7 +144,6 @@ vxlan_gpe_export_node_fn (vlib_main_t * vm,
 /*
  * Node for VXLAN-GPE export
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_export_node) =
 {
   .function = vxlan_gpe_export_node_fn,
@@ -159,7 +158,6 @@ VLIB_REGISTER_NODE (vxlan_export_node) =
     .next_nodes =
   {[EXPORT_NEXT_VXLAN_GPE_INPUT] = "vxlan-gpe-pop-ioam-v4"},
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

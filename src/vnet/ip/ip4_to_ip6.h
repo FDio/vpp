@@ -28,14 +28,12 @@
 typedef int (*ip4_to_ip6_set_fn_t) (vlib_buffer_t * b, ip4_header_t * ip4,
 				    ip6_header_t * ip6, void *ctx);
 
-/* *INDENT-OFF* */
 static u8 icmp_to_icmp6_updater_pointer_table[] =
   { 0, 1, 4, 4, ~0,
     ~0, ~0, ~0, 7, 6,
     ~0, ~0, 8, 8, 8,
     8, 24, 24, 24, 24
   };
-/* *INDENT-ON* */
 
 #define frag_id_4to6(id) (id)
 

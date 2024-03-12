@@ -245,7 +245,6 @@ format_session_table (u8 *s, va_list *args)
   return s;
 }
 
-/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *

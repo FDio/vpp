@@ -190,7 +190,6 @@ VLIB_REGISTER_NODE (adj_nsh_midchain_node) = {
 };
 
 /* Built-in ip4 tx feature path definition */
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (nsh_output, static) =
 {
   .arc_name  = "nsh-output",
@@ -204,4 +203,3 @@ VNET_FEATURE_INIT (nsh_tx_drop, static) =
   .node_name = "error-drop",
   .runs_before = 0,     /* not before any other features */
 };
-/* *INDENT-ON* */

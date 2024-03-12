@@ -99,7 +99,6 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_bucket), sizeof (u64));
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
    * Backing store allocation. Since bihash manages its own
@@ -118,7 +117,6 @@ typedef CLIB_PACKED (struct {
   volatile u32 ready;
   u64 pad[1];
 }) BVT (clib_bihash_shared_header);
-/* *INDENT-ON* */
 
 STATIC_ASSERT_SIZEOF (BVT (clib_bihash_shared_header), 8 * sizeof (u64));
 
@@ -282,9 +280,7 @@ static inline void BV (clib_bihash_alloc_unlock) (BVT (clib_bihash) * h)
 
 static inline void BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
 {
-  /* *INDENT-OFF* */
   BVT (clib_bihash_bucket) mask = { .lock = 1 };
-  /* *INDENT-ON* */
   u64 old;
 
 try_again:
@@ -415,12 +411,10 @@ static inline int BV (clib_bihash_search_inline_with_hash)
   BVT (clib_bihash_bucket) * b;
   int i, limit;
 
-  /* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-  /* *INDENT-ON* */
 
 #if BIHASH_LAZY_INSTANTIATE
   if (PREDICT_FALSE (h->instantiated == 0))
@@ -518,12 +512,10 @@ static inline int BV (clib_bihash_search_inline_2_with_hash)
   BVT (clib_bihash_bucket) * b;
   int i, limit;
 
-/* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-/* *INDENT-ON* */
 
   ASSERT (valuep);
 
