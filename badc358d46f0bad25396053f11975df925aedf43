@@ -22,6 +22,80 @@
       },
       "revId": "badc358d46f0bad25396053f11975df925aedf43",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a144962b_13935e08",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-12T14:29:32Z",
+      "side": 1,
+      "message": "Thanks for moving this. Few comments about what worked differently when I tried.",
+      "revId": "badc358d46f0bad25396053f11975df925aedf43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31a637de_25e7bf32",
+        "filename": "docs/interfacing/binapi/vpp_api_tracing.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-12T14:29:32Z",
+      "side": 1,
+      "message": "The 24.02 deb release installs it under /usr/bin.\n\nThe test plugins are also not at this location:\nvpp_api_test ... plugin_path /usr/lib/x86_64-linux-gnu/vpp_api_test_plugins/\n\nIt may be worth mentioning the socket-name parameter:\nvpp_api_test socket-name /var/run/vpp/api.sock",
+      "range": {
+        "startLine": 54,
+        "startChar": 36,
+        "endLine": 54,
+        "endChar": 65
+      },
+      "revId": "badc358d46f0bad25396053f11975df925aedf43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b05eacf5_45fc80be",
+        "filename": "docs/interfacing/binapi/vpp_api_tracing.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-12T14:29:32Z",
+      "side": 1,
+      "message": "I found some hints this may not be true anymore:\nhttps://lists.fd.io/g/vpp-dev/topic/78362835\n\nMaybe it is worth mentioning at least the existence of vat2.",
+      "revId": "badc358d46f0bad25396053f11975df925aedf43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d0d7c565_b4c1d6d7",
+        "filename": "docs/interfacing/binapi/vpp_api_tracing.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-12T14:29:32Z",
+      "side": 1,
+      "message": "For me all acl related commands are killing vat, I don\u0027t know why:\n\n \\# vpp_api_test socket-name /var/run/vpp/api.sock\n [snip]\n load_one_plugin:68: Loaded plugin: /usr/lib/x86_64-linux-gnu/pp_api_test_plugins/acl_test_plugin.so\n [snip]\n vat# acl_plugin_get_version\n [vat exits]\n \\# echo $?\n 1\n\nThe same happens with acl_dump and so on...",
+      "revId": "badc358d46f0bad25396053f11975df925aedf43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
