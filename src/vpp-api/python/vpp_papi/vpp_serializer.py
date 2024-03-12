@@ -135,7 +135,7 @@ class String(Packer):
     def __init__(self, name, num, options):
         self.name = name
         self.num = num
-        self.size = 1
+        self.size = num if num else 1
         self.length_field_packer = BaseTypes("u32")
         self.limit = options["limit"] if "limit" in options else num
         self.fixed = True if num else False
