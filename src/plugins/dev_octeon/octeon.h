@@ -12,6 +12,12 @@
 #include <vnet/flow/flow.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/esp.h>
+#include <vnet/ethernet/packet.h>
+#include <vnet/ip/ip_packet.h>
+#include <vnet/ip/icmp46_packet.h>
+#include <vnet/ip/igmp_packet.h>
+#include <vnet/gre/packet.h>
+#include <vxlan/vxlan.h>
 #include <base/roc_api.h>
 #include <dev_octeon/hw_defs.h>
 
