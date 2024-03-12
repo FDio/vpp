@@ -321,7 +321,6 @@ vxlan_gpe_pop_ioam_v4 (vlib_main_t * vm,
   return vxlan_gpe_pop_ioam (vm, node, from_frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_gpe_pop_ioam_v4_node) = {
   .function = vxlan_gpe_pop_ioam_v4,
   .name = "vxlan-gpe-pop-ioam-v4",
@@ -340,7 +339,6 @@ VLIB_REGISTER_NODE (vxlan_gpe_pop_ioam_v4_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 
 

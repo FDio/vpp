@@ -352,13 +352,11 @@ send_dhcp6_pd_client_message_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (send_dhcp6_pd_client_message_process_node, static) = {
     .function = send_dhcp6_pd_client_message_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "send-dhcp6-pd-client-message-process",
 };
-/* *INDENT-ON* */
 
 void
 dhcp6_pd_send_client_message (vlib_main_t * vm, u32 sw_if_index, u8 stop,

@@ -268,7 +268,6 @@ fib_memory_show (vlib_main_t * vm,
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 /*?
  * The '<em>sh fib memory </em>' command displays the memory usage for each
  * FIB object type.
@@ -301,4 +300,3 @@ VLIB_CLI_COMMAND (show_fib_memory, static) = {
     .function = fib_memory_show,
     .short_help = "show fib memory",
 };
-/* *INDENT-ON* */

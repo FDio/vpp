@@ -330,7 +330,6 @@ vl_api_lb_as_dump_t_handler
 
   dump_all = (prefix.ip6.as_u64[0] == 0) && (prefix.ip6.as_u64[1] == 0);
 
-  /* *INDENT-OFF* */
   pool_foreach (vip, lbm->vips)
    {
     if ( dump_all
@@ -342,7 +341,6 @@ vl_api_lb_as_dump_t_handler
         send_lb_as_details(reg, mp->context, vip);
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void

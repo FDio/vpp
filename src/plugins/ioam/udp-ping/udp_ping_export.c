@@ -275,13 +275,11 @@ set_udp_ping_export_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_udp_ping_export_command, static) = {
     .path = "set udp-ping export-ipfix",
     .short_help = "set udp-ping export-ipfix [disable]",
     .function = set_udp_ping_export_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 udp_ping_flow_report_init (vlib_main_t * vm)
@@ -289,12 +287,10 @@ udp_ping_flow_report_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (udp_ping_flow_report_init) =
 {
   .runs_after = VLIB_INITS ("flow_report_init"),
 };
-/* *INDENT-ON* */
 
 
 /*

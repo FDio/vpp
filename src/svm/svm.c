@@ -1300,12 +1300,10 @@ svm_client_scan (const char *root_path)
    * Snapshoot names, can't hold root rp mutex across
    * find_or_create.
    */
-  /* *INDENT-OFF* */
   pool_foreach (subp, mp->subregions)  {
         name = vec_dup (subp->subregion_name);
         vec_add1(svm_names, name);
       }
-  /* *INDENT-ON* */
 
   pthread_mutex_unlock (&root_rp->mutex);
 

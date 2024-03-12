@@ -80,13 +80,11 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
   return err;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_socket_filename_create_command, static) = {
   .path = "create memif socket",
   .short_help = "create memif socket [id <id>] [filename <path>]",
   .function = memif_socket_filename_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 memif_socket_filename_delete_command_fn (vlib_main_t * vm,
@@ -124,13 +122,11 @@ memif_socket_filename_delete_command_fn (vlib_main_t * vm,
   return memif_socket_filename_add_del (0, socket_id, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_socket_filename_delete_command, static) = {
   .path = "delete memif socket",
   .short_help = "delete memif socket [id <id>]",
   .function = memif_socket_filename_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -211,7 +207,6 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return err;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create interface memif",
   .short_help = "create interface memif [id <id>] [socket-id <socket-id>] "
@@ -221,7 +216,6 @@ VLIB_CLI_COMMAND (memif_create_command, static) = {
 		"[mode ip] [secret <string>]",
   .function = memif_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -268,13 +262,11 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_delete_command, static) = {
   .path = "delete interface memif",
   .short_help = "delete interface memif {<interface> | sw_if_index <sw_idx>}",
   .function = memif_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_memif_if_flags (u8 * s, va_list * args)
@@ -396,7 +388,6 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "sockets\n");
   vlib_cli_output (vm, "  %-3s %-11s %s\n", "id", "listener", "filename");
 
-  /* *INDENT-OFF* */
   hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
     ({
       memif_socket_file_t *msf;
@@ -412,17 +403,14 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output(vm, "  %-3u %-11v %s\n", sock_id, s, filename);
       vec_reset_length (s);
     }));
-  /* *INDENT-ON* */
   vec_free (s);
 
   vlib_cli_output (vm, "\n");
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
       pool_foreach (mif, mm->interfaces)
 	  vec_add1 (hw_if_indices, mif->hw_if_index);
-      /* *INDENT-ON* */
     }
 
   for (hw_if_index = 0; hw_if_index < vec_len (hw_if_indices); hw_if_index++)
@@ -457,7 +445,6 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, "  remote-disc-reason \"%s\"",
 			 mif->remote_disc_string);
 
-      /* *INDENT-OFF* */
       vec_foreach_index (i, mif->regions)
 	{
 	  mr = vec_elt_at_index (mif->regions, i);
@@ -478,20 +465,17 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
 	}
-      /* *INDENT-ON* */
     }
 done:
   vec_free (hw_if_indices);
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_show_command, static) = {
   .path = "show memif",
   .short_help = "show memif [<interface>] [descriptors]",
   .function = memif_show_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 memif_cli_init (vlib_main_t * vm)

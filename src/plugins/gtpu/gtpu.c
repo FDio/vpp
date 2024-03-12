@@ -35,7 +35,6 @@
 
 gtpu_main_t gtpu_main;
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_gtpu_bypass, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-gtpu-bypass",
@@ -154,14 +153,12 @@ gtpu_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gtpu_device_class,static) = {
   .name = "GTPU",
   .format_device_name = format_gtpu_name,
   .format_tx_trace = format_gtpu_encap_trace,
   .admin_up_down_function = gtpu_interface_admin_up_down,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_gtpu_header_with_length (u8 * s, va_list * args)
@@ -171,7 +168,6 @@ format_gtpu_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (gtpu_hw_class) =
 {
   .name = "GTPU",
@@ -179,7 +175,6 @@ VNET_HW_INTERFACE_CLASS (gtpu_hw_class) =
   .build_rewrite = default_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 static void
 gtpu_tunnel_restack_dpo (gtpu_tunnel_t * t)
@@ -1106,7 +1101,6 @@ done:
  * @cliexcmd{create gtpu tunnel src 10.0.3.1 dst 10.0.3.3 encap-vrf-id 7
  * upd-tteid 55}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
   .path = "create gtpu tunnel",
   .short_help =
@@ -1116,7 +1110,6 @@ VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
     " [decap-next [l2|ip4|ip6|node <name>]] [qfi <nn>] [del | upd-tteid <nn>]",
   .function = gtpu_add_del_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_gtpu_tunnel_command_fn (vlib_main_t * vm,
@@ -1147,13 +1140,11 @@ show_gtpu_tunnel_command_fn (vlib_main_t * vm,
  sw_if_index 5 decap_next l2 pdu-disabled
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gtpu_tunnel_command, static) = {
     .path = "show gtpu tunnel",
     .short_help = "show gtpu tunnel",
     .function = show_gtpu_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 vnet_int_gtpu_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
@@ -1259,13 +1250,11 @@ set_ip4_gtpu_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip gtpu-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_gtpu_bypass_command, static) = {
   .path = "set interface ip gtpu-bypass",
   .function = set_ip4_gtpu_bypass,
   .short_help = "set interface ip gtpu-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip6_gtpu_bypass (vlib_main_t * vm,
@@ -1316,13 +1305,11 @@ set_ip6_gtpu_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip6 gtpu-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_gtpu_bypass_command, static) = {
   .path = "set interface ip6 gtpu-bypass",
   .function = set_ip6_gtpu_bypass,
   .short_help = "set interface ip6 gtpu-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 int
 vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
@@ -1445,14 +1432,12 @@ gtpu_offload_command_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gtpu_offload_command, static) = {
     .path = "set flow-offload gtpu",
     .short_help =
     "set flow-offload gtpu hw <inerface-name> rx <tunnel-name> [del]",
     .function = gtpu_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 gtpu_forward_command_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -1622,12 +1607,10 @@ gtpu_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (gtpu_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "GPRS Tunnelling Protocol, User Data (GTPv1-U)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

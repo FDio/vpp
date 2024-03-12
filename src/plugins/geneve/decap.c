@@ -812,7 +812,6 @@ static char *geneve_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (geneve4_input_node) = {
   .name = "geneve4-input",
   /* Takes a vector of packets. */
@@ -847,7 +846,6 @@ VLIB_REGISTER_NODE (geneve6_input_node) = {
   .format_trace = format_geneve_rx_trace,
   // $$$$ .unformat_buffer = unformat_geneve_header,
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -1252,7 +1250,6 @@ VLIB_NODE_FN (ip4_geneve_bypass_node) (vlib_main_t * vm,
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
 {
   .name = "ip4-geneve-bypass",
@@ -1265,7 +1262,6 @@ VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_forward_next_trace,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_geneve_bypass_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
@@ -1274,7 +1270,6 @@ VLIB_NODE_FN (ip6_geneve_bypass_node) (vlib_main_t * vm,
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
 {
   .name = "ip6-geneve-bypass",
@@ -1288,7 +1283,6 @@ VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
   .format_buffer = format_ip6_header,
   .format_trace = format_ip6_forward_next_trace,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

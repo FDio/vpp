@@ -192,7 +192,6 @@ VLIB_NODE_FN (l2t_encap_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_encap_node) = {
   .name = "l2tp-encap",
   .vector_size = sizeof (u32),
@@ -211,7 +210,6 @@ VLIB_REGISTER_NODE (l2t_encap_node) = {
     [L2T_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

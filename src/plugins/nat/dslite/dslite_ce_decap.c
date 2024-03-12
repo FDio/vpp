@@ -114,7 +114,6 @@ VLIB_NODE_FN (dslite_ce_decap_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_ce_decap_node) = {
   .name = "dslite-ce-decap",
   .vector_size = sizeof (u32),
@@ -130,7 +129,6 @@ VLIB_REGISTER_NODE (dslite_ce_decap_node) = {
     [DSLITE_IN2OUT_NEXT_IP6_ICMP] = "ip6-icmp-input",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

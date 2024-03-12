@@ -199,12 +199,10 @@ vl_api_mpls_route_add_del_t_handler (vl_api_mpls_route_add_del_t * mp)
 
   rv = mpls_route_add_del_t_handler (vnm, mp, &stats_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_MPLS_ROUTE_ADD_DEL_REPLY,
   ({
     rmp->stats_index = htonl (stats_index);
   }));
-  /* *INDENT-ON* */
 }
 
 void
@@ -270,13 +268,11 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   vec_free (rpaths);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MPLS_TUNNEL_ADD_DEL_REPLY,
   ({
     rmp->sw_if_index = ntohl(tunnel_sw_if_index);
     rmp->tunnel_index = ntohl(tunnel_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -401,12 +397,10 @@ vl_api_mpls_table_dump_t_handler (vl_api_mpls_table_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (fib_table, mm->fibs)
    {
     send_mpls_table_details(am, reg, mp->context, fib_table);
   }
-  /* *INDENT-ON* */
 }
 
 static void

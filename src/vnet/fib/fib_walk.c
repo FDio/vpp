@@ -611,13 +611,11 @@ fib_walk_process (vlib_main_t * vm,
     return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (fib_walk_process_node,static) = {
     .function = fib_walk_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "fib-walk",
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Allocate a new walk object

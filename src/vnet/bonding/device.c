@@ -608,16 +608,13 @@ bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_process_node) = {
   .function = bond_process,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bond-process",
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bond_dev_class) = {
   .name = "bond",
   .tx_function_n_errors = BOND_TX_N_ERROR,
@@ -629,7 +626,6 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .mac_addr_add_del_function = bond_add_del_mac_address,
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 bond_member_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)

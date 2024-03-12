@@ -106,7 +106,6 @@ vl_api_ip_table_dump_t_handler (vl_api_ip_table_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (fib_table, ip4_main.fibs)
    {
     send_ip_table_details(am, reg, mp->context, fib_table);
@@ -118,7 +117,6 @@ vl_api_ip_table_dump_t_handler (vl_api_ip_table_dump_t * mp)
       continue;
     send_ip_table_details(am, reg, mp->context, fib_table);
   }
-  /* *INDENT-ON* */
 }
 
 typedef struct vl_api_ip_fib_dump_walk_ctx_t_
@@ -326,7 +324,6 @@ vl_api_ip_mtable_dump_t_handler (vl_api_ip_mtable_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (mfib_table, ip4_main.mfibs)
    {
       send_ip_mtable_details (reg, mp->context, mfib_table);
@@ -335,7 +332,6 @@ vl_api_ip_mtable_dump_t_handler (vl_api_ip_mtable_dump_t * mp)
    {
       send_ip_mtable_details (reg, mp->context, mfib_table);
   }
-  /* *INDENT-ON* */
 }
 
 typedef struct vl_api_ip_mfib_dump_ctx_t_
@@ -782,12 +778,10 @@ vl_api_ip_route_add_del_t_handler (vl_api_ip_route_add_del_t * mp)
 
   rv = ip_route_add_del_t_handler (mp, &stats_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IP_ROUTE_ADD_DEL_REPLY,
   ({
     rmp->stats_index = htonl (stats_index);
   }))
-  /* *INDENT-ON* */
 }
 
 void
@@ -839,7 +833,6 @@ vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
 	}
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO3_ZERO(VL_API_IP_ROUTE_LOOKUP_REPLY,
                     npaths * sizeof (*fp),
   ({
@@ -859,7 +852,6 @@ vl_api_ip_route_lookup_t_handler (vl_api_ip_route_lookup_t * mp)
           }
       }
   }));
-  /* *INDENT-ON* */
   vec_free (rpaths);
 }
 
@@ -1049,12 +1041,10 @@ vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 
   rv = api_mroute_add_del_t_handler (mp, &stats_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IP_MROUTE_ADD_DEL_REPLY,
   ({
     rmp->stats_index = htonl (stats_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1117,7 +1107,6 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
 
   if (mp->is_ipv6)
     {
-      /* *INDENT-OFF* */
       /* Do not send subnet details of the IP-interface for
        * unnumbered interfaces. otherwise listening clients
        * will be confused that the subnet is applied on more
@@ -1131,11 +1120,9 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
         };
         send_ip_address_details(am, reg, &pfx, sw_if_index, mp->context);
       }));
-      /* *INDENT-ON* */
     }
   else
     {
-      /* *INDENT-OFF* */
       foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
       ({
         fib_prefix_t pfx = {
@@ -1146,7 +1133,6 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
 
         send_ip_address_details(am, reg, &pfx, sw_if_index, mp->context);
       }));
-      /* *INDENT-ON* */
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -1203,7 +1189,6 @@ vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
     }
   else
     {
-      /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces)
        {
         if ((si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
@@ -1214,7 +1199,6 @@ vl_api_ip_unnumbered_dump_t_handler (vl_api_ip_unnumbered_dump_t * mp)
                                        mp->context);
           }
       }
-      /* *INDENT-ON* */
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -1238,12 +1222,10 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
   /* Gather interfaces. */
   sorted_sis = vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
   vec_set_len (sorted_sis, 0);
-  /* *INDENT-OFF* */
   pool_foreach (si, im->sw_interfaces)
    {
     vec_add1 (sorted_sis, si[0]);
   }
-  /* *INDENT-ON* */
 
   vec_foreach (si, sorted_sis)
   {
@@ -1723,7 +1705,6 @@ vl_api_ip_table_flush_t_handler (vl_api_ip_table_flush_t * mp)
       vnet_sw_interface_t *si;
 
       /* Shut down interfaces in this FIB / clean out intfc routes */
-      /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces)
        {
         if (fib_index == fib_table_get_index_for_sw_if_index (fproto,
@@ -1734,7 +1715,6 @@ vl_api_ip_table_flush_t_handler (vl_api_ip_table_flush_t * mp)
             vnet_sw_interface_set_flags (vnm, si->sw_if_index, flags);
           }
       }
-      /* *INDENT-ON* */
 
       fib_table_flush (fib_index, fproto, FIB_SOURCE_API);
       mfib_table_flush (mfib_table_find (fproto, ntohl (mp->table.table_id)),

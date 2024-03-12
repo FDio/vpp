@@ -786,18 +786,14 @@ tls_picotls_init (vlib_main_t * vm)
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tls_picotls_init) = {
   .runs_after = VLIB_INITS ("tls_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Transport Layer Security (TLS) Engine, Picotls Based",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

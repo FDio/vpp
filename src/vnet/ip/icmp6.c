@@ -235,7 +235,6 @@ ip6_icmp_input (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_input_node) = {
   .function = ip6_icmp_input,
   .name = "ip6-icmp-input",
@@ -252,7 +251,6 @@ VLIB_REGISTER_NODE (ip6_icmp_input_node) = {
     [ICMP_INPUT_NEXT_PUNT] = "ip6-punt",
   },
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -426,7 +424,6 @@ ip6_icmp_error (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
   .function = ip6_icmp_error,
   .name = "ip6-icmp-error",
@@ -443,7 +440,6 @@ VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
 
   .format_trace = format_icmp6_input_trace,
 };
-/* *INDENT-ON* */
 
 
 static uword

@@ -40,12 +40,10 @@ vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
 			     ntohl (mp->gso_size), 0, PG_MODE_ETHERNET);
   pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_PG_CREATE_INTERFACE_REPLY,
   ({
     rmp->sw_if_index = ntohl(pi->sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

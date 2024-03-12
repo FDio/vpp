@@ -143,11 +143,9 @@ format_vnet_hw_interface_rss_queues (u8 * s, va_list * args)
 
   if (bitmap)
     {
-    /* *INDENT-OFF* */
     clib_bitmap_foreach (i, bitmap)  {
       s = format (s, "%u ", i);
     }
-    /* *INDENT-ON* */
     }
 
   return s;

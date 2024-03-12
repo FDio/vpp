@@ -366,7 +366,6 @@ VNET_FEATURE_INIT (nsh_interface_output, static) = {
 };
 
 /* Built-in ip4 tx feature path definition */
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (nsh_eth_output, static) =
 {
   .arc_name  = "nsh-eth-output",
@@ -379,7 +378,6 @@ VNET_FEATURE_INIT (nsh_eth_tx_drop, static) =
   .node_name = "error-drop",
   .runs_before = 0,     /* not before any other features */
 };
-/* *INDENT-ON* */
 /**
  * @brief Next index values from the NSH incomplete adj node
  */

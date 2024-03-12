@@ -132,13 +132,11 @@ graph_node_show_cmd (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (graph_node_show_command, static) = {
   .path = "show graph",
   .short_help = "show graph [node <index>|<name>] [want_arcs] [input|trace_supported] [drop] [output] [punt] [handoff] [no_free] [polling] [interrupt]",
   .function = graph_node_show_cmd,
 };
-/* *INDENT-ON* */
 
 
 /*

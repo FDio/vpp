@@ -217,7 +217,6 @@ pkt_push_ecm_hdr (vlib_buffer_t * b)
   return h;
 }
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -3317,21 +3317,17 @@ unix_cli_quit (vlib_main_t * vm,
  * If VPP is running in @em interactive mode and this is the console session
  * (that is, the session on @c stdin) then this will also terminate VPP.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
   .path = "quit",
   .short_help = "Exit CLI",
   .function = unix_cli_quit,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
   .path = "q",
   .short_help = "Exit CLI",
   .function = unix_cli_quit,
 };
-/* *INDENT-ON* */
 
 /** CLI command to execute a VPP command script. */
 static clib_error_t *
@@ -3466,14 +3462,12 @@ done:
  * Example of how to execute a set of CLI commands from a file:
  * @cliexcmd{exec /usr/share/vpp/scripts/gigup.txt}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_exec, static) = {
   .path = "exec",
   .short_help = "exec <filename>",
   .function = unix_cli_exec,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show various unix error statistics. */
 static clib_error_t *
@@ -3542,13 +3536,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
   .path = "show unix errors",
   .short_help = "Show Unix system call error history",
   .function = unix_show_errors,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show various unix error statistics. */
 static clib_error_t *
@@ -3564,7 +3556,6 @@ unix_show_files (vlib_main_t * vm,
   vlib_cli_output (vm, "%3s %6s %12s %12s %12s %-32s %s", "FD", "Thread",
 		   "Read", "Write", "Error", "File Name", "Description");
 
-  /* *INDENT-OFF* */
   pool_foreach (f, fm->file_pool)
    {
       int rv;
@@ -3579,19 +3570,16 @@ unix_show_files (vlib_main_t * vm,
 		       path, f->description);
       vec_reset_length (s);
     }
-  /* *INDENT-ON* */
   vec_free (s);
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_show_files, static) = {
   .path = "show unix files",
   .short_help = "Show Unix files in use",
   .function = unix_show_files,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show session command history. */
 static clib_error_t *
@@ -3622,13 +3610,11 @@ unix_cli_show_history (vlib_main_t * vm,
 /*?
  * Displays the command history for the current session, if any.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
   .path = "history",
   .short_help = "Show current session command history",
   .function = unix_cli_show_history,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show terminal status. */
 static clib_error_t *
@@ -3695,13 +3681,11 @@ unix_cli_show_terminal (vlib_main_t * vm,
  * CRLF mode:       LF
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
   .path = "show terminal",
   .short_help = "Show current session terminal settings",
   .function = unix_cli_show_terminal,
 };
-/* *INDENT-ON* */
 
 /** CLI command to display a list of CLI sessions. */
 static clib_error_t *
@@ -3778,13 +3762,11 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
  * - @em P EPIPE detected on connection; it will close soon.
  * - @em A ANSI-capable terminal.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_show_cli_sessions, static) = {
   .path = "show cli-sessions",
   .short_help = "Show current CLI sessions",
   .function = unix_cli_show_cli_sessions,
 };
-/* *INDENT-ON* */
 
 /** CLI command to set terminal pager settings. */
 static clib_error_t *
@@ -3835,13 +3817,11 @@ done:
  * Additionally allows the pager buffer size to be set; though note that
  * this value is set globally and not per session.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
   .path = "set terminal pager",
   .short_help = "set terminal pager [on|off] [limit <lines>]",
   .function = unix_cli_set_terminal_pager,
 };
-/* *INDENT-ON* */
 
 /** CLI command to set terminal history settings. */
 static clib_error_t *
@@ -3906,13 +3886,11 @@ done:
  * This command also allows the maximum size of the history buffer for
  * this session to be altered.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
   .path = "set terminal history",
   .short_help = "set terminal history [on|off] [limit <lines>]",
   .function = unix_cli_set_terminal_history,
 };
-/* *INDENT-ON* */
 
 /** CLI command to set terminal ANSI settings. */
 static clib_error_t *
@@ -3945,13 +3923,11 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
  * ANSI control sequences are used in a small number of places to provide,
  * for example, color text output and to control the cursor in the pager.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
   .path = "set terminal ansi",
   .short_help = "set terminal ansi [on|off]",
   .function = unix_cli_set_terminal_ansi,
 };
-/* *INDENT-ON* */
 
 
 #define MAX_CLI_WAIT 86400
@@ -3985,13 +3961,11 @@ unix_wait_cmd (vlib_main_t * vm,
   unformat_free (line_input);
   return 0;
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_wait_cmd, static) = {
   .path = "wait",
   .short_help = "wait <sec>",
   .function = unix_wait_cmd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 echo_cmd (vlib_main_t * vm,
@@ -4012,13 +3986,11 @@ echo_cmd (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_echo_cmd, static) = {
   .path = "echo",
   .short_help = "echo <rest-of-line>",
   .function = echo_cmd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 define_cmd_fn (vlib_main_t * vm,
@@ -4050,14 +4022,12 @@ define_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (define_cmd, static) = {
   .path = "define",
   .short_help = "define <variable-name> <value>",
   .function = define_cmd_fn,
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 undefine_cmd_fn (vlib_main_t * vm,
@@ -4076,13 +4046,11 @@ undefine_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (undefine_cmd, static) = {
   .path = "undefine",
   .short_help = "undefine <variable-name>",
   .function = undefine_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_macro_cmd_fn (vlib_main_t * vm,
@@ -4100,13 +4068,11 @@ show_macro_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_macro, static) = {
   .path = "show macro",
   .short_help = "show macro [noevaluate]",
   .function = show_macro_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 unix_cli_init (vlib_main_t * vm)

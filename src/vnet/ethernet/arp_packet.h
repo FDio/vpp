@@ -110,12 +110,10 @@ typedef enum
   IP4_ARP_N_NEXT,
 } ip4_arp_next_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   mac_address_t mac;
   ip4_address_t ip4;
 }) ethernet_arp_ip4_over_ethernet_address_t;
-/* *INDENT-ON* */
 
 STATIC_ASSERT (sizeof (ethernet_arp_ip4_over_ethernet_address_t) == 10,
 	       "Packet ethernet address and IP4 address too big");

@@ -72,7 +72,6 @@ extern ping_main_t ping_main;
 
 #define PING_CLI_UNKNOWN_NODE (~0)
 
-/* *INDENT-OFF* */
 
 typedef CLIB_PACKED (struct {
   u16 id;
@@ -81,7 +80,6 @@ typedef CLIB_PACKED (struct {
   u8 data[0];
 }) icmp46_echo_request_t;
 
-/* *INDENT-ON* */
 
 
 typedef enum

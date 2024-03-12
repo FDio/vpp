@@ -392,9 +392,7 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
 				   ethernet_buffer_get_header (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
   i16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
-  /* *INDENT-OFF* */
   flowprobe_key_t k = {};
-  /* *INDENT-ON* */
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
   udp_header_t *udp = 0;
@@ -1130,7 +1128,6 @@ flowprobe_flush_l2 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (flowprobe_input_ip4_node) = {
   .function = flowprobe_input_ip4_node_fn,
   .name = "flowprobe-input-ip4",
@@ -1221,7 +1218,6 @@ VLIB_REGISTER_NODE (flowprobe_flush_l2_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -19,7 +19,6 @@
 #include <vppinfra/clib.h>
 #include <x86intrin.h>
 
-/* *INDENT-OFF* */
 #define foreach_avx2_vec256i \
   _(i,8,32,epi8) _(i,16,16,epi16) _(i,32,8,epi32)  _(i,64,4,epi64)
 #define foreach_avx2_vec256u \
@@ -67,7 +66,6 @@ t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
 
 foreach_avx2_vec256i foreach_avx2_vec256u
 #undef _
-/* *INDENT-ON* */
 
 always_inline u32x8
 u32x8_permute (u32x8 v, u32x8 idx)
@@ -80,7 +78,6 @@ u32x8_permute (u32x8 v, u32x8 idx)
     (__m256i) v, ((m0) | (m1) << 2 | (m2) << 4 | (m3) << 6))
 
 /* _extract_lo, _extract_hi */
-/* *INDENT-OFF* */
 #define _(t1,t2) \
 always_inline t1							\
 t2##_extract_lo (t2 v)							\
@@ -103,7 +100,6 @@ _(u16x8, u16x16)
 _(u32x4, u32x8)
 _(u64x2, u64x4)
 #undef _
-/* *INDENT-ON* */
 
 /* 256 bit packs. */
 #define _(f, t, fn)                                                           \
@@ -132,7 +128,6 @@ i8x32_msb_mask (i8x32 v)
 }
 
 /* _from_ */
-/* *INDENT-OFF* */
 #define _(f,t,i) \
 static_always_inline t							\
 t##_from_##f (f x)							\
@@ -151,7 +146,6 @@ _ (i8x16, i16x16, epi8_epi16)
 _(i8x16, i32x8, epi8_epi32)
 _(i8x16, i64x4, epi8_epi64)
 #undef _
-/* *INDENT-ON* */
 
 static_always_inline u64x4
 u64x4_byte_swap (u64x4 v)

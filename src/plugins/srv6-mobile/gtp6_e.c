@@ -168,7 +168,6 @@ srv6_end_m_gtp6_e_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (srv6_end_m_gtp6_e, static) =
 {
   .arc_name = "ip6-unicast",
@@ -177,7 +176,6 @@ VNET_FEATURE_INIT (srv6_end_m_gtp6_e, static) =
 };
 
 VLIB_INIT_FUNCTION (srv6_end_m_gtp6_e_init);
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

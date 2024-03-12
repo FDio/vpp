@@ -913,7 +913,6 @@ VLIB_NODE_FN (wg6_output_tun_node)
 			       wg_encrypt_async_next.wg6_post_next);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg4_output_tun_node) =
 {
   .name = "wg4-output-tun",
@@ -945,7 +944,6 @@ VLIB_REGISTER_NODE (wg6_output_tun_node) =
         [WG_OUTPUT_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

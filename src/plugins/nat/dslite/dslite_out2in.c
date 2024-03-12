@@ -266,7 +266,6 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_out2in_node) = {
   .name = "dslite-out2in",
   .vector_size = sizeof (u32),
@@ -282,7 +281,6 @@ VLIB_REGISTER_NODE (dslite_out2in_node) = {
     [DSLITE_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

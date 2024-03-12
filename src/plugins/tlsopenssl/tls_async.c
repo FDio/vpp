@@ -510,7 +510,6 @@ tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 VLIB_INIT_FUNCTION (tls_async_init);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tls_async_process_node,static) = {
     .function = tls_async_process,
     .type = VLIB_NODE_TYPE_INPUT,
@@ -518,7 +517,6 @@ VLIB_REGISTER_NODE (tls_async_process_node,static) = {
     .state = VLIB_NODE_STATE_DISABLED,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

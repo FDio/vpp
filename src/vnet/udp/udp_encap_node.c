@@ -308,7 +308,6 @@ VLIB_NODE_FN (udp6_encap_node)
   return udp_encap_inline (vm, node, frame, AF_IP6, N_AF);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4o4_encap_node) = {
   .name = "udp4o4-encap",
   .vector_size = sizeof (u32),
@@ -354,7 +353,6 @@ VLIB_REGISTER_NODE (udp6_encap_node) = {
   .n_next_nodes = 0,
   .sibling_of = "udp6o6-encap",
 };
-/* *INDENT-ON* */
 
 
 /*

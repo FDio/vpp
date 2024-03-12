@@ -85,13 +85,11 @@ show_node_graph (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_graph_command, static) = {
   .path = "show vlib graph",
   .short_help = "Show packet processing node graph",
   .function = show_node_graph,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_node_graphviz (vlib_main_t * vm,
@@ -324,14 +322,12 @@ show_node_graphviz (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{show vlib graphviz [filter][calls][vectors][file <filename>]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
   .path = "show vlib graphviz",
   .short_help = "Dump packet processing node graph as a graphviz dotfile",
   .function = show_node_graphviz,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_vlib_node_state (u8 * s, va_list * va)
@@ -630,14 +626,12 @@ show_node_runtime (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
   .path = "show runtime",
   .short_help = "Show packet processing runtime",
   .function = show_node_runtime,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_node_runtime (vlib_main_t * vm,
@@ -685,13 +679,11 @@ clear_node_runtime (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_node_runtime_command, static) = {
   .path = "clear runtime",
   .short_help = "Clear packet processing runtime statistics",
   .function = clear_node_runtime,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_node (vlib_main_t * vm, unformat_input_t * input,
@@ -811,7 +803,6 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   if (n->type == VLIB_NODE_TYPE_INTERNAL)
     {
       int j = 0;
-      /* *INDENT-OFF* */
       clib_bitmap_foreach (i, n->prev_node_bitmap)  {
 	    vlib_node_t *pn = vlib_get_node (vm, i);
 	    if (j++ % 3 == 0)
@@ -820,7 +811,6 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	    s = format (s, "%-35v", s2);
 	    vec_reset_length (s2);
 	  }
-      /* *INDENT-ON* */
 
       if (vec_len (s) == 0)
 	s = format (s, "\n    none");
@@ -855,7 +845,6 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_command, static) = {
   .path = "show node",
   .short_help = "show node [index] <node-name | node-index>",
@@ -908,13 +897,11 @@ done:
   return err;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_node_fn_command, static) = {
   .path = "set node function",
   .short_help = "set node function <node-name> <variant-name>",
   .function = set_node_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
 void

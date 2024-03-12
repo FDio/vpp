@@ -204,7 +204,6 @@ ip4_icmp_input (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
   .function = ip4_icmp_input,
   .name = "ip4-icmp-input",
@@ -221,7 +220,6 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
     [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
   },
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -388,7 +386,6 @@ ip4_icmp_error (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
   .function = ip4_icmp_error,
   .name = "ip4-icmp-error",
@@ -405,7 +402,6 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
 
   .format_trace = format_icmp_input_trace,
 };
-/* *INDENT-ON* */
 
 
 static uword

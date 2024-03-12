@@ -43,7 +43,6 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci_config.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (union
 {
   struct
@@ -55,7 +54,6 @@ typedef CLIB_PACKED (union
     };
   u32 as_u32;
 }) vlib_pci_addr_t;
-/* *INDENT-ON* */
 
 typedef struct vlib_pci_device_info
 {

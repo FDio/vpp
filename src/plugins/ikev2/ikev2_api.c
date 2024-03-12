@@ -188,12 +188,10 @@ vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (profile, im->profiles)
    {
     send_profile (profile, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -240,7 +238,6 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
   int rv = 0;
   ikev2_sa_transform_t *tr;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_DETAILS,
   {
     vl_api_ikev2_sa_t *rsa = &rmp->sa;
@@ -296,7 +293,6 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
 
     vl_api_ikev2_sa_t_endian(rsa);
   });
-  /* *INDENT-ON* */
 }
 
 static void
@@ -308,14 +304,12 @@ vl_api_ikev2_sa_dump_t_handler (vl_api_ikev2_sa_dump_t * mp)
 
   vec_foreach (tkm, km->per_thread_data)
   {
-    /* *INDENT-OFF* */
     pool_foreach (sa, tkm->sas)
      {
       u32 api_sa_index = ikev2_encode_sa_index (sa - tkm->sas,
                                               tkm - km->per_thread_data);
       send_sa (sa, mp, api_sa_index);
     }
-    /* *INDENT-ON* */
   }
 }
 
@@ -419,7 +413,6 @@ send_child_sa (ikev2_child_sa_t * child,
   int rv = 0;
   ikev2_sa_transform_t *tr;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_DETAILS,
   {
     vl_api_ikev2_keys_t *k = &rmp->child_sa.keys;
@@ -464,7 +457,6 @@ send_child_sa (ikev2_child_sa_t * child,
 
     vl_api_ikev2_child_sa_t_endian (&rmp->child_sa);
   });
-  /* *INDENT-ON* */
 }
 
 static void
@@ -530,7 +522,6 @@ static void
     vl_api_ikev2_traffic_selector_details_t *rmp = 0;
     int rv = 0;
 
-    /* *INDENT-OFF* */
     REPLY_MACRO2_ZERO (VL_API_IKEV2_TRAFFIC_SELECTOR_DETAILS,
     {
       rmp->ts.sa_index = api_sa_index;
@@ -538,7 +529,6 @@ static void
       cp_ts (&rmp->ts, ts, mp->is_initiator);
       vl_api_ikev2_ts_t_endian (&rmp->ts);
     });
-    /* *INDENT-ON* */
   }
 }
 
@@ -567,13 +557,11 @@ vl_api_ikev2_nonce_get_t_handler (vl_api_ikev2_nonce_get_t * mp)
   int data_len = vec_len (nonce);
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO3_ZERO (VL_API_IKEV2_NONCE_GET_REPLY, data_len,
   {
     rmp->data_len = clib_host_to_net_u32 (data_len);
     clib_memcpy (rmp->nonce, nonce, data_len);
   });
-  /* *INDENT-ON* */
 }
 
 static void

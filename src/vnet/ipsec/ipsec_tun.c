@@ -236,7 +236,6 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
   if (ip46_address_is_zero (&itp->itp_crypto.dst))
     return;
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
       sa = ipsec_sa_get (sai);
@@ -291,7 +290,6 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
 	  ipsec_tun_register_nodes (AF_IP6);
 	}
   }))
-  /* *INDENT-ON* */
 }
 
 static adj_walk_rc_t
@@ -371,7 +369,6 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
 {
   const ipsec_sa_t *sa;
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
@@ -405,7 +402,6 @@ ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
           }
       }
   }));
-  /* *INDENT-ON* */
 }
 
 static adj_walk_rc_t
@@ -464,7 +460,6 @@ ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
 {
   ipsec_sa_t *sa;
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     if (ipsec_sa_is_set_IS_TUNNEL (sa))
@@ -484,7 +479,6 @@ ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
         itp->itp_flags &= ~IPSEC_PROTECT_ENCAPED;
       }
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -504,13 +498,11 @@ ipsec_tun_protect_config (ipsec_main_t * im,
   if (itp->itp_flags & IPSEC_PROTECT_ITF)
     ipsec_sa_set_NO_ALGO_NO_DROP (ipsec_sa_get (itp->itp_out_sa));
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
   ({
     ipsec_sa_lock(sai);
   }));
   ipsec_tun_protect_set_crypto_addr(itp);
-  /* *INDENT-ON* */
 
   /*
    * add to the DB against each SA
@@ -527,7 +519,6 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ipsec_sa_t *sa;
   index_t sai;
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     ipsec_sa_unset_IS_PROTECT (sa);
@@ -543,7 +534,6 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ({
     ipsec_sa_unlock(sai);
   }));
-  /* *INDENT-ON* */
   ITP_DBG (itp, "unconfigured");
 }
 
@@ -751,12 +741,10 @@ ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn, void *ctx)
 {
   index_t itpi;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (itpi, ipsec_tun_protect_pool)
    {
     fn (itpi, ctx);
   }
-  /* *INDENT-ON* */
 }
 
 void
@@ -772,12 +760,10 @@ ipsec_tun_protect_walk_itf (u32 sw_if_index,
 
   idi = &itp_db.id_itf[sw_if_index];
 
-  /* *INDENT-OFF* */
   hash_foreach(key, itpi, idi->id_hash,
   ({
     fn (itpi, ctx);
   }));
-  /* *INDENT-ON* */
   if (INDEX_INVALID != idi->id_itp)
     fn (idi->id_itp, ctx);
 }

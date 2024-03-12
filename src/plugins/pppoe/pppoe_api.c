@@ -64,12 +64,10 @@ static void vl_api_pppoe_add_del_session_t_handler
   rv = vnet_pppoe_add_del_session (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_PPPOE_ADD_DEL_SESSION_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void send_pppoe_session_details
@@ -120,12 +118,10 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
       pool_foreach (t, pem->sessions)
        {
         send_pppoe_session_details(t, reg, mp->context);
       }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -148,9 +144,7 @@ vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t * mp)
 
   rv = pppoe_add_del_cp (ntohl (mp->sw_if_index), mp->is_add);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO(VL_API_PPPOE_ADD_DEL_CP_REPLY);
-  /* *INDENT-ON* */
 }
 
 #include <pppoe/pppoe.api.c>

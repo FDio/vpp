@@ -33,7 +33,6 @@ typedef struct vrrp_vr_key
   u8 is_ipv6;
 } vrrp_vr_key_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct vrrp4_arp_key {
   union {
@@ -44,15 +43,12 @@ typedef CLIB_PACKED
     u64 as_u64;
   };
 }) vrrp4_arp_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct vrrp6_nd_key {
   u32 sw_if_index;
   ip6_address_t addr;
 }) vrrp6_nd_key_t;
-/* *INDENT-ON* */
 
 typedef struct vrrp_vr_tracking_if
 {

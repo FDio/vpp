@@ -142,7 +142,6 @@ lacp_periodic (vlib_main_t * vm)
   bond_if_t *bif;
   u8 actor_state, partner_state;
 
-  /* *INDENT-OFF* */
   pool_foreach (mif, bm->neighbors)
    {
     if (mif->port_enabled == 0)
@@ -185,7 +184,6 @@ lacp_periodic (vlib_main_t * vm)
 	  mif->partner.state);
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -216,12 +214,10 @@ lacp_interface_enable_disable (vlib_main_t * vm, bond_if_t * bif,
       ASSERT (lm->lacp_int >= 1);
       if (lm->lacp_int == 0)
 	{
-	  /* *INDENT-OFF* */
 	  ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "lacp-int-en-dis: BUG lacp_int == 0",
 	    };
-	  /* *INDENT-ON* */
 	  ELOG_DATA (&vlib_global_main.elog_main, e);
 	}
       else
@@ -453,12 +449,10 @@ lacp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lacp_hw_interface_up_down);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Link Aggregation Control Protocol (LACP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

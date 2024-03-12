@@ -194,12 +194,10 @@ urpf_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (urpf_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Unicast Reverse Path Forwarding (uRPF)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

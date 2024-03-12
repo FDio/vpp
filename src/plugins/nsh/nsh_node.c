@@ -906,7 +906,6 @@ static char *nsh_node_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 
 /* register nsh-input node */
 VLIB_REGISTER_NODE (nsh_input_node) = {
@@ -978,7 +977,6 @@ VLIB_REGISTER_NODE (nsh_aware_vnf_proxy_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

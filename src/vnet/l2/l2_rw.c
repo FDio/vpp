@@ -407,14 +407,12 @@ mask,
  * @cliexcmd{l2 rewrite entry mask ffffffffffff00000000000000000000 value
 008a000d0e0200000000000000000000}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_entry_cli, static) = {
   .path = "l2 rewrite entry",
   .short_help =
   "l2 rewrite entry [index <index>] [mask <hex-mask>] [value <hex-value>] [skip <n_bytes>] [del]",
   .function = l2_rw_entry_cli_fn,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int
@@ -498,14 +496,12 @@ that matches
 index 0):
  * @cliexcmd{set interface l2 rewrite YusurK2Eth6/0/1/3 table 0 miss-index 0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_interface_cli, static) = {
   .path = "set interface l2 rewrite",
   .short_help =
   "set interface l2 rewrite <interface> [table <table index>] [miss-index <entry-index>]",
   .function = l2_rw_interface_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
@@ -517,11 +513,9 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No interface is currently using l2 rewrite\n");
 
   uword i;
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, rw->configs_bitmap) {
       vlib_cli_output (vm, "sw_if_index:%d %U\n", i, format_l2_rw_config, &rw->configs[i]);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -534,14 +528,12 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
  * sw_if_index:4 table-index:0 miss-index:0
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_interfaces_cli, static) = {
   .path = "show l2 rewrite interfaces",
   .short_help =
   "show l2 rewrite interfaces",
   .function = l2_rw_show_interfaces_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2_rw_show_entries_cli_fn (vlib_main_t * vm,
@@ -552,11 +544,9 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
   if (pool_elts (rw->entries) == 0)
     vlib_cli_output (vm, "No entries\n");
 
-  /* *INDENT-OFF* */
   pool_foreach (e, rw->entries) {
     vlib_cli_output (vm, "%U\n", format_l2_rw_entry, e);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -571,14 +561,12 @@ value:aabbccddeeff00000000000000000000
  *    hits:0 skip_bytes:0
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_show_entries_cli, static) = {
   .path = "show l2 rewrite entries",
   .short_help =
   "show l2 rewrite entries",
   .function = l2_rw_show_entries_cli_fn,
 };
-/* *INDENT-ON* */
 
 static int
 l2_rw_enable_disable (u32 bridge_domain, u8 disable)
@@ -624,14 +612,12 @@ bridge-domain.
  * Example of how to disable rewrite (where 100 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain rewrite 100 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_rw_set_cli, static) = {
   .path = "set bridge-domain rewrite",
   .short_help =
   "set bridge-domain rewrite <bridge-domain> [disable]",
   .function = l2_rw_set_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2_rw_init (vlib_main_t * vm)
@@ -673,7 +659,6 @@ static char *l2_rw_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_rw_node) = {
   .name = "l2-rw",
   .vector_size = sizeof (u32),
@@ -685,7 +670,6 @@ VLIB_REGISTER_NODE (l2_rw_node) = {
   .n_next_nodes = L2_RW_N_NEXT,
   .next_nodes = { [L2_RW_NEXT_DROP]  = "error-drop"},
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

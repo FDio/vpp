@@ -127,7 +127,6 @@ format_ip4_options_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_options_node) = {
   .name = "ip4-options",
   .vector_size = sizeof (u32),
@@ -140,7 +139,6 @@ VLIB_REGISTER_NODE (ip4_options_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_options_trace,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

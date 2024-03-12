@@ -639,7 +639,6 @@ VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_node) = {
   .name = "nat64-out2in",
   .vector_size = sizeof (u32),
@@ -655,7 +654,6 @@ VLIB_REGISTER_NODE (nat64_out2in_node) = {
     [NAT64_OUT2IN_NEXT_IP4_LOOKUP] = "ip4-lookup",
   },
 };
-/* *INDENT-ON* */
 
 typedef struct nat64_out2in_frag_set_ctx_t_
 {
@@ -769,7 +767,6 @@ VLIB_NODE_FN (nat64_out2in_handoff_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
   .name = "nat64-out2in-handoff",
   .vector_size = sizeof (u32),
@@ -784,7 +781,6 @@ VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -56,13 +56,11 @@
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
-/* *INDENT-OFF* */
 typedef struct
 {
   ip6_header_t ip;
   ip6_sr_header_t sr;
 } __attribute__ ((packed)) ip6srv_combo_header_t;
-/* *INDENT-ON* */
 
 /**
  * @brief SR Segment List (SID list)

@@ -75,7 +75,6 @@ typedef enum
 
 typedef union
 {
-  /* *INDENT-OFF* */
   CLIB_PACKED (struct {
     /* OUI: organization unique identifier. */
     u8 oui[3];
@@ -83,7 +82,6 @@ typedef union
     /* Per-OUI protocol. */
     u16 protocol;
   });
-  /* *INDENT-ON* */
 
   u8 as_u8[5];
 } snap_header_t;

@@ -29,7 +29,6 @@
 
 det44_main_t det44_main;
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_det44_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "det44-in2out",
@@ -47,7 +46,6 @@ VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Deterministic NAT (CGN)",
 };
-/* *INDENT-ON* */
 
 void
 det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
@@ -150,14 +148,12 @@ snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
     }
 
   /* Add/del external address range to FIB */
-  /* *INDENT-OFF* */
   pool_foreach (i, dm->interfaces)  {
     if (det44_interface_is_inside(i))
       continue;
     det44_add_del_addr_to_fib(out_addr, out_plen, i->sw_if_index, is_add);
     goto out;
   }
-  /* *INDENT-ON* */
 out:
   return 0;
 }
@@ -203,7 +199,6 @@ det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   // rather make a structure and when enable call is used
   // then register nodes
 
-  /* *INDENT-OFF* */
   pool_foreach (tmp, dm->interfaces)  {
     if (tmp->sw_if_index == sw_if_index)
       {
@@ -211,7 +206,6 @@ det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
         goto out;
       }
   }
-  /* *INDENT-ON* */
 out:
 
   feature_name = is_inside ? "det44-in2out" : "det44-out2in";
@@ -270,7 +264,6 @@ out:
       // add/del outside interface fib to registry
       u8 found = 0;
       det44_fib_t *outside_fib;
-      /* *INDENT-OFF* */
       vec_foreach (outside_fib, dm->outside_fibs)
         {
           if (outside_fib->fib_index == fib_index)
@@ -292,7 +285,6 @@ out:
               break;
             }
         }
-      /* *INDENT-ON* */
       if (!is_del && !found)
 	{
 	  vec_add2 (dm->outside_fibs, outside_fib, 1);
@@ -301,12 +293,10 @@ out:
 	}
       // add/del outside address to FIB
       snat_det_map_t *mp;
-      /* *INDENT-OFF* */
       pool_foreach (mp, dm->det_maps)  {
         det44_add_del_addr_to_fib(&mp->out_addr,
                                   mp->out_plen, sw_if_index, !is_del);
       }
-      /* *INDENT-ON* */
     }
   return 0;
 }
@@ -441,12 +431,10 @@ det44_plugin_disable ()
   }
   vec_free (interfaces);
 
-  /* *INDENT-OFF* */
   pool_foreach (mp, dm->det_maps)
    {
     vec_free (mp->sessions);
   }
-  /* *INDENT-ON* */
 
   det44_reset_timeouts ();
 
@@ -479,7 +467,6 @@ det44_update_outside_fib (ip4_main_t * im,
   if (!vec_len (dm->outside_fibs))
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, dm->interfaces)
      {
       if (i->sw_if_index == sw_if_index)
@@ -489,7 +476,6 @@ det44_update_outside_fib (ip4_main_t * im,
           match = 1;
         }
     }
-  /* *INDENT-ON* */
 
   if (!match)
     return;

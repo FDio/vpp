@@ -565,7 +565,6 @@ format_dpdk_device (u8 * s, va_list * args)
 
   if (ret >= 0 && ret <= len)
     {
-      /* *INDENT-OFF* */
       vec_foreach_index(i, xd->xstats)
         {
           xstat = vec_elt_at_index(xd->xstats, i);
@@ -577,7 +576,6 @@ format_dpdk_device (u8 * s, va_list * args)
                           xstat->value);
             }
         }
-      /* *INDENT-ON* */
 
       vec_free (xstat_names);
     }

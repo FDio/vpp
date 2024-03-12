@@ -581,7 +581,6 @@ vnet_lisp_adjacencies_get_by_vni (u32 vni)
   fwd_entry_t *fwd;
   lisp_adjacency_t *adjs = 0, adj;
 
-  /* *INDENT-OFF* */
   pool_foreach (fwd, lcm->fwd_entry_pool)
    {
     if (gid_address_vni (&fwd->reid) != vni)
@@ -591,7 +590,6 @@ vnet_lisp_adjacencies_get_by_vni (u32 vni)
     gid_address_copy (&adj.leid, &fwd->leid);
     vec_add1 (adjs, adj);
   }
-  /* *INDENT-ON* */
 
   return adjs;
 }
@@ -804,7 +802,6 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 	  /* Remove remote (if present) from the vectors of lcl-to-rmts
 	   * TODO: Address this in a more efficient way.
 	   */
-	  /* *INDENT-OFF* */
 	  pool_foreach (rmts, lcm->lcl_to_rmt_adjacencies)
 	   {
 	    vec_foreach_index (rmts_itr, rmts[0])
@@ -817,7 +814,6 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 		}
 	    }
 	  }
-	  /* *INDENT-ON* */
 	}
 
       /* remove mapping from dictionary */
@@ -1389,12 +1385,10 @@ vnet_lisp_clear_all_remote_adjacencies (void)
   vnet_lisp_add_del_mapping_args_t _dm_args, *dm_args = &_dm_args;
   vnet_lisp_add_del_locator_set_args_t _ls, *ls = &_ls;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (mi, lcm->mapping_pool)
    {
     vec_add1 (map_indices, mi);
   }
-  /* *INDENT-ON* */
 
   vec_foreach (map_indexp, map_indices)
   {
@@ -2167,7 +2161,6 @@ lisp_cp_enable_l2_l3_ifaces (lisp_cp_main_t * lcm, u8 with_default_route)
 {
   u32 vni, dp_table;
 
-  /* *INDENT-OFF* */
   hash_foreach(vni, dp_table, lcm->table_id_by_vni, ({
     dp_add_del_iface(lcm, vni, /* is_l2 */ 0, /* is_add */1,
                      with_default_route);
@@ -2176,7 +2169,6 @@ lisp_cp_enable_l2_l3_ifaces (lisp_cp_main_t * lcm, u8 with_default_route)
     dp_add_del_iface(lcm, vni, /* is_l2 */ 1, 1,
                      with_default_route);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -2188,12 +2180,10 @@ lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t * lcm)
   hash_free (lcm->fwd_entry_by_mapping_index);
   pool_free (lcm->fwd_entry_pool);
   /* Clear state tracking rmt-lcl fwd entries */
-  /* *INDENT-OFF* */
   pool_foreach (rmts, lcm->lcl_to_rmt_adjacencies)
   {
     vec_free(rmts[0]);
   }
-  /* *INDENT-ON* */
   hash_free (lcm->lcl_to_rmt_adjs_by_lcl_idx);
   pool_free (lcm->lcl_to_rmt_adjacencies);
 }
@@ -2465,7 +2455,6 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
 
       /* Add ipv4 locators first TODO sort them */
 
-      /* *INDENT-OFF* */
       foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
 				    loc->sw_if_index, 1 /* unnumbered */,
       ({
@@ -2486,7 +2475,6 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
         ip_prefix_normalize (ippref);
         vec_add1 (rlocs, gid[0]);
       }));
-      /* *INDENT-ON* */
 
     }
   return rlocs;
@@ -2638,7 +2626,6 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
     new = loc[0];
     if (loc->local)
       {
-          /* *INDENT-OFF* */
           foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
                                         loc->sw_if_index, 1 /* unnumbered */,
           ({
@@ -2655,7 +2642,6 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
                                                      ia);
             ip_address_set (new_ip, addr, AF_IP6);
           }));
-          /* *INDENT-ON* */
 
 	if (probed_loc && ip_address_cmp (probed_loc, new_ip) == 0)
 	  new.probed = 1;
@@ -2669,7 +2655,6 @@ build_map_register_record_list (lisp_cp_main_t * lcm)
 {
   mapping_t *recs = 0, rec, *m;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, lcm->mapping_pool)
   {
     /* for now build only local mappings */
@@ -2680,7 +2665,6 @@ build_map_register_record_list (lisp_cp_main_t * lcm)
     add_locators (lcm, &rec, m->locator_set_index, NULL);
     vec_add1 (recs, rec);
   }
-  /* *INDENT-ON* */
 
   return recs;
 }
@@ -2834,7 +2818,6 @@ lisp_cp_output (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 /* placeholder node used only for statistics */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_output_node) = {
   .function = lisp_cp_output,
   .name = "lisp-cp-output",
@@ -2851,7 +2834,6 @@ VLIB_REGISTER_NODE (lisp_cp_output_node) = {
       [LISP_CP_INPUT_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static int
 send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
@@ -2899,7 +2881,6 @@ send_rloc_probes (lisp_cp_main_t * lcm)
   locator_pair_t *lp;
   u32 si, rloc_probes_sent = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (e, lcm->fwd_entry_pool)
   {
     if (vec_len (e->locator_pairs) == 0)
@@ -2929,7 +2910,6 @@ send_rloc_probes (lisp_cp_main_t * lcm)
         rloc_probes_sent++;
       }
   }
-  /* *INDENT-ON* */
 
   vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
 			       LISP_CP_OUTPUT_ERROR_RLOC_PROBES_SENT,
@@ -3038,7 +3018,6 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 
   /* if there is already a pending request remember it */
 
-  /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_requests_pool)
    {
     if (!gid_address_cmp (&pmr->src, seid)
@@ -3048,7 +3027,6 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
         break;
       }
   }
-  /* *INDENT-ON* */
 
   if (!is_resend && duplicate_pmr)
     {
@@ -3597,7 +3575,6 @@ lisp_cp_lookup_nsh (vlib_main_t * vm,
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_LCAF));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
   .function = lisp_cp_lookup_ip4,
   .name = "lisp-cp-lookup-ip4",
@@ -3615,9 +3592,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
       [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
   .function = lisp_cp_lookup_ip6,
   .name = "lisp-cp-lookup-ip6",
@@ -3635,9 +3610,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
       [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
   .function = lisp_cp_lookup_l2,
   .name = "lisp-cp-lookup-l2",
@@ -3655,9 +3628,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
       [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_nsh_node) = {
   .function = lisp_cp_lookup_nsh,
   .name = "lisp-cp-lookup-nsh",
@@ -3675,7 +3646,6 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_nsh_node) = {
       [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 /* lisp_cp_input statistics */
 #define foreach_lisp_cp_input_error                               \
@@ -3890,11 +3860,9 @@ process_map_reply (map_records_arg_t * a)
 
   /* remove pending map request entry */
 
-  /* *INDENT-OFF* */
   clib_fifo_foreach (noncep, pmr->nonces, ({
     hash_unset(lcm->pending_map_requests_by_nonce, noncep[0]);
   }));
-  /* *INDENT-ON* */
 
   clib_fifo_free (pmr->nonces);
   pool_put (lcm->pending_map_requests_pool, pmr);
@@ -4063,12 +4031,10 @@ map_record_args_get ()
   map_records_arg_t *rec;
 
   /* Cleanup first */
-  /* *INDENT-OFF* */
   pool_foreach (rec, lcm->map_records_args_pool[vlib_get_thread_index()])  {
     if (rec->is_free)
       map_records_arg_free (rec);
   }
-  /* *INDENT-ON* */
 
   pool_get (lcm->map_records_args_pool[vlib_get_thread_index ()], rec);
   return rec;
@@ -4448,7 +4414,6 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_input_node) = {
   .function = lisp_cp_input,
   .name = "lisp-cp-input",
@@ -4465,7 +4430,6 @@ VLIB_REGISTER_NODE (lisp_cp_input_node) = {
       [LISP_CP_INPUT_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 lisp_cp_init (vlib_main_t * vm)
@@ -4553,13 +4517,11 @@ vnet_lisp_get_stats (void)
   lisp_stats_key_t *key;
   u32 index;
 
-  /* *INDENT-OFF* */
   hash_foreach_mem (key, index, lgm->lisp_stats_index_by_key,
   {
     if (lisp_stats_api_fill (lcm, lgm, &stat, key, index))
       vec_add1 (stats, stat);
   });
-  /* *INDENT-ON* */
 
   return stats;
 }
@@ -4655,7 +4617,6 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
   pending_map_request_t *pmr;
   u32 *to_be_removed = 0, *pmr_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_requests_pool)
    {
     if (pmr->to_be_removed)
@@ -4667,7 +4628,6 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
         vec_add1 (to_be_removed, pmr - lcm->pending_map_requests_pool);
       }
   }
-  /* *INDENT-ON* */
 
   vec_foreach (pmr_index, to_be_removed)
     pool_put_index (lcm->pending_map_requests_pool, pmr_index[0]);
@@ -4753,7 +4713,6 @@ update_map_register (lisp_cp_main_t * lcm, f64 dt)
   if (!lcm->is_enabled || !lcm->map_registering)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_registers_pool)
    {
     if (!update_pending_map_register (pmr, dt, &del_all))
@@ -4763,7 +4722,6 @@ update_map_register (lisp_cp_main_t * lcm, f64 dt)
       vec_add1 (to_be_removed, pmr - lcm->pending_map_registers_pool);
     }
   }
-  /* *INDENT-ON* */
 
   if (del_all)
     {
@@ -4813,13 +4771,11 @@ send_map_resolver_service (vlib_main_t * vm,
       /* currently no signals are expected - just wait for clock */
       (void) vlib_process_get_events (vm, 0);
 
-      /* *INDENT-OFF* */
       pool_foreach (pmr, lcm->pending_map_requests_pool)
        {
         if (!pmr->to_be_removed)
           update_pending_request (pmr, period);
       }
-      /* *INDENT-ON* */
 
       remove_dead_pending_map_requests (lcm);
 

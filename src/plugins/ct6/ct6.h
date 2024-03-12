@@ -26,7 +26,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
   union
@@ -43,7 +42,6 @@ typedef CLIB_PACKED (struct
     u64 as_u64[6];
   };
 }) ct6_session_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

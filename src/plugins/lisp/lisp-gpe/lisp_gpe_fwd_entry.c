@@ -1356,7 +1356,6 @@ vnet_lisp_gpe_fwd_entry_flush (void)
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   lisp_gpe_fwd_entry_t *lfe;
 
-  /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
    {
     switch (fid_addr_type(&lfe->key->rmt))
@@ -1372,7 +1371,6 @@ vnet_lisp_gpe_fwd_entry_flush (void)
         break;
       }
   }
-  /* *INDENT-ON* */
 }
 
 static u8 *
@@ -1476,7 +1474,6 @@ lisp_gpe_fwd_entry_show (vlib_main_t * vm,
       return (NULL);
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
    {
     if ((vni == ~0) ||
@@ -1484,18 +1481,15 @@ lisp_gpe_fwd_entry_show (vlib_main_t * vm,
       vlib_cli_output (vm, "%U", format_lisp_gpe_fwd_entry, lfe,
 		       LISP_GPE_FWD_ENTRY_FORMAT_NONE);
   }
-  /* *INDENT-ON* */
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_fwd_entry_show_command, static) = {
   .path = "show gpe entry",
   .short_help = "show gpe entry vni <vni> vrf <vrf> [leid <leid>] reid <reid>",
   .function = lisp_gpe_fwd_entry_show,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 lisp_gpe_fwd_entry_init (vlib_main_t * vm)
@@ -1521,12 +1515,10 @@ vnet_lisp_gpe_get_fwd_entry_vnis (void)
   lisp_gpe_fwd_entry_t *lfe;
   u32 *vnis = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
    {
     hash_set (vnis, lfe->key->vni, 0);
   }
-  /* *INDENT-ON* */
 
   return vnis;
 }
@@ -1538,7 +1530,6 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
   lisp_gpe_fwd_entry_t *lfe;
   lisp_api_gpe_fwd_entry_t *entries = 0, e;
 
-  /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
    {
     if (lfe->key->vni == vni)
@@ -1554,7 +1545,6 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
         vec_add1 (entries, e);
       }
   }
-  /* *INDENT-ON* */
 
   return entries;
 }

@@ -165,14 +165,12 @@ test_time_range_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_time_range_command, static) =
 {
   .path = "test time-range",
   .short_help = "test time-range",
   .function = test_time_range_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

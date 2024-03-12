@@ -818,7 +818,6 @@ VLIB_NODE_FN (det44_out2in_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (det44_out2in_node) = {
   .name = "det44-out2in",
   .vector_size = sizeof (u32),
@@ -835,7 +834,6 @@ VLIB_REGISTER_NODE (det44_out2in_node) = {
     [DET44_OUT2IN_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

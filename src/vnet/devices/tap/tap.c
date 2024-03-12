@@ -97,14 +97,12 @@ tap_free (vlib_main_t * vm, virtio_if_t * vif)
 
   virtio_pre_input_node_disable (vm, vif);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, vif->vhost_fds) if (vif->vhost_fds[i] != -1)
     close (vif->vhost_fds[i]);
   vec_foreach_index (i, vif->rxq_vrings)
     virtio_vring_free_rx (vm, vif, RX_QUEUE (i));
   vec_foreach_index (i, vif->txq_vrings)
     virtio_vring_free_tx (vm, vif, TX_QUEUE (i));
-  /* *INDENT-ON* */
 
   if (vif->tap_fds)
     {
@@ -885,7 +883,6 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   tap_interface_details_t *r_tapids = NULL;
   tap_interface_details_t *tapid = NULL;
 
-  /* *INDENT-OFF* */
   pool_foreach (vif, mm->interfaces) {
     if ((vif->type != VIRTIO_IF_TYPE_TAP)
       && (vif->type != VIRTIO_IF_TYPE_TUN))
@@ -929,7 +926,6 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
     tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
     tapid->host_mtu_size = vif->host_mtu_size;
   }
-  /* *INDENT-ON* */
 
   *out_tapids = r_tapids;
 

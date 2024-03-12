@@ -557,7 +557,6 @@ lisp_gpe_adjacency_show (vlib_main_t * vm,
     }
   else
     {
-      /* *INDENT-OFF* */
       pool_foreach (ladj, lisp_adj_pool)
        {
 	vlib_cli_output (vm, "[%d] %U\n",
@@ -565,19 +564,16 @@ lisp_gpe_adjacency_show (vlib_main_t * vm,
 			 format_lisp_gpe_adjacency, ladj,
 			 LISP_GPE_ADJ_FORMAT_FLAG_NONE);
       }
-      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
 {
   .path = "show gpe adjacency",
   .function = lisp_gpe_adjacency_show,
 };
-/* *INDENT-ON* */
 
 #define LISP_ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS (256)
 #define LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE (1<<20)

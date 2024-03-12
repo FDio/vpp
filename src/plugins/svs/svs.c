@@ -363,7 +363,6 @@ format_svs_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (svs_ip4_node) =
 {
   .function = svs_input_ip4,
@@ -402,7 +401,6 @@ VNET_FEATURE_INIT (svs_ip6_feat, static) =
   .arc_name = "ip6-unicast",
   .node_name = "svs-ip6",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 svs_table_cli (vlib_main_t * vm,
@@ -443,13 +441,11 @@ svs_table_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_table_cmd_cli, static) = {
     .path = "svs table",
     .short_help = "Source VRF select table [add|delete] [ip4|ip6] table-id X",
     .function = svs_table_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 svs_enable_cli (vlib_main_t * vm,
@@ -497,13 +493,11 @@ svs_enable_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_enable_cli_cmd, static) = {
     .path = "svs enable",
     .short_help = "Source VRF select [enable|disable] [ip4|ip6] <table-id> X <interface>",
     .function = svs_enable_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 svs_route_cli (vlib_main_t * vm,
@@ -559,13 +553,11 @@ svs_route_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_route_cmd_cli, static) = {
     .path = "svs route",
     .short_help = "Source VRF select route [add|delete] <table-id> <prefix> <src-table-id>",
     .function = svs_route_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 svs_show_cli (vlib_main_t * vm,
@@ -588,13 +580,11 @@ svs_show_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_show_cli_cmd, static) = {
   .path = "show svs",
   .short_help = "Source VRF select show",
   .function = svs_show_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 svs_init (vlib_main_t * vm)

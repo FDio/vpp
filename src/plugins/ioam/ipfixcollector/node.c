@@ -271,7 +271,6 @@ ipfix_collector_node_fn (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipfix_collector_node) = {
   .function = ipfix_collector_node_fn,
   .name = "ipfix-collector",
@@ -289,7 +288,6 @@ VLIB_REGISTER_NODE (ipfix_collector_node) = {
     [IPFIX_COLLECTOR_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

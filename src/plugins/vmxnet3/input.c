@@ -480,7 +480,6 @@ VLIB_NODE_FN (vmxnet3_input_node) (vlib_main_t * vm,
 }
 
 #ifndef CLIB_MARCH_VARIANT
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vmxnet3_input_node) = {
   .name = "vmxnet3-input",
   .sibling_of = "device-input",
@@ -493,7 +492,6 @@ VLIB_REGISTER_NODE (vmxnet3_input_node) = {
 };
 #endif
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

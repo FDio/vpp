@@ -41,11 +41,9 @@ typedef struct
 {
   u32 action_index;
   u32 *next_indices;
-  /* *INDENT-OFF* */
   RTT (mma_mask_or_match) mask;
   RTT (mma_mask_or_match) match;
   RTT (mma_mask_or_match) max_match;
-  /* *INDENT-ON* */
 } RTT (mma_rule);
 
 typedef int (*RTT (rule_cmp_fn)) (RTT (mma_rule) * rule1,

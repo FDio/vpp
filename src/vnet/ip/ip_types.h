@@ -75,13 +75,11 @@ typedef enum ip_feature_location_t_
 
 #define N_IP_FEATURE_LOCATIONS (IP_FEATURE_DROP+1)
 
-/* *INDENT-OFF* */
 typedef struct ip_address
 {
   ip46_address_t ip;
   ip_address_family_t version;
 } __clib_packed ip_address_t;
-/* *INDENT-ON* */
 
 #define IP_ADDRESS_V4_ALL_0S {.ip.ip4.as_u32 = 0, .version = AF_IP4}
 #define IP_ADDRESS_V6_ALL_0S {.ip.ip6.as_u64 = {0, 0}, .version = AF_IP6}
@@ -112,13 +110,11 @@ extern void ip_address_from_46 (const ip46_address_t * a,
 extern void ip_address_increment (ip_address_t * ip);
 extern void ip_address_reset (ip_address_t * ip);
 
-/* *INDENT-OFF* */
 typedef struct ip_prefix
 {
   ip_address_t addr;
   u8 len;
 } __clib_packed ip_prefix_t;
-/* *INDENT-ON* */
 
 #define ip_prefix_addr(_a) (_a)->addr
 #define ip_prefix_version(_a) ip_addr_version(&ip_prefix_addr(_a))

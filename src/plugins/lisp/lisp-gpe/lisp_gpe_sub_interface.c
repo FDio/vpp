@@ -243,23 +243,19 @@ lisp_gpe_sub_interface_show (vlib_main_t * vm,
   vlib_cli_output (vm, "%-16s%=8s%=15s%s", "Name", "VNI", "sw_if_index",
 		   "local RLOC");
 
-  /* *INDENT-OFF* */
   pool_foreach (l3s, lisp_gpe_sub_interface_pool)
    {
     vlib_cli_output (vm, "%U", format_lisp_gpe_sub_interface, l3s);
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_sub_interface_command) = {
   .path = "show gpe sub-interface",
   .short_help = "show gpe sub-interface",
   .function = lisp_gpe_sub_interface_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_gpe_sub_interface_module_init (vlib_main_t * vm)

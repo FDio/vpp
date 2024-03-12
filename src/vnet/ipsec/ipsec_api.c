@@ -150,12 +150,10 @@ send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
   sa = ipsec_sa_get (itp->itp_out_sa);
   mp->tun.sa_out = htonl (sa->id);
   mp->tun.n_sa_in = itp->itp_n_sa_in;
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     mp->tun.sa_in[ii++] = htonl (sa->id);
   }));
-  /* *INDENT-ON* */
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -264,12 +262,10 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
     goto out;
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY,
   ({
     rmp->stat_index = ntohl(stat_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -388,12 +384,10 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
     htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY,
   {
     rmp->stat_index = htonl (sa_index);
   });
-  /* *INDENT-ON* */
 }
 
 static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
@@ -462,12 +456,10 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
     htons (mp->entry.udp_dst_port), 0, &tun, &sa_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V2_REPLY,
   {
     rmp->stat_index = htonl (sa_index);
   });
-  /* *INDENT-ON* */
 }
 
 static int
@@ -839,12 +831,10 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
   if (mp->spd_index_valid)
     {
       spd_index = ntohl (mp->spd_index);
-      /* *INDENT-OFF* */
       hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
         if (v == spd_index)
           send_ipsec_spd_interface_details(reg, v, k, mp->context);
       }));
-      /* *INDENT-ON* */
     }
   else
     {
@@ -867,12 +857,10 @@ vl_api_ipsec_itf_create_t_handler (vl_api_ipsec_itf_create_t * mp)
   if (!rv)
     rv = ipsec_itf_create (ntohl (mp->itf.user_instance), mode, &sw_if_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_ITF_CREATE_REPLY,
   ({
     rmp->sw_if_index = htonl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1406,7 +1394,6 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t *mp)
 
   ipsec_ah_backend_t *ab;
   ipsec_esp_backend_t *eb;
-  /* *INDENT-OFF* */
   pool_foreach (ab, im->ah_backends) {
     vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
     clib_memset (mp, 0, sizeof (*mp));
@@ -1431,7 +1418,6 @@ vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t *mp)
     mp->active = mp->index == im->esp_current_backend ? 1 : 0;
     vl_api_send_msg (rp, (u8 *)mp);
   }
-  /* *INDENT-ON* */
 }
 
 static void

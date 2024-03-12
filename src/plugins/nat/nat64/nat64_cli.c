@@ -484,10 +484,8 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   else
     vlib_cli_output (vm, "NAT64 %U BIB entries:", format_nat_protocol, proto);
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     nat64_db_bib_walk (db, p, nat64_cli_bib_walk, vm);
-  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -586,13 +584,11 @@ nat64_show_st_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "NAT64 sessions:");
   else
     vlib_cli_output (vm, "NAT64 %U sessions:", format_nat_protocol, proto);
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
       ctx.db = db;
       nat64_db_st_walk (db, p, nat64_cli_st_walk, &ctx);
     }
-  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -775,7 +771,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
  * @cliexpar
  * @cliexstart{nat64 plugin}
@@ -983,7 +978,6 @@ VLIB_CLI_COMMAND (nat64_add_interface_address_command, static) = {
     .short_help = "nat64 add interface address <interface> [del]",
     .function = nat64_add_interface_address_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

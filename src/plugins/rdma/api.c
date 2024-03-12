@@ -162,10 +162,8 @@ vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
   rdma_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_RDMA_CREATE_V2_REPLY,
 		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -192,10 +190,8 @@ vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
   rdma_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_RDMA_CREATE_REPLY,
 		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
-  /* *INDENT-ON* */
 }
 
 static void

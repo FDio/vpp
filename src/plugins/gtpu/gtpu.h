@@ -142,7 +142,6 @@ typedef CLIB_PACKED (struct {
   {                                                                           \
     .as_u64[0] = 0xffffffffb80d0120ull, .as_u64[1] = 0xffffffffffffffffull    \
   }
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   ip4_header_t ip4;            /* 20 bytes */
@@ -150,9 +149,7 @@ typedef CLIB_PACKED(struct
   gtpu_header_t gtpu;	       /* 12 bytes */
   gtpu_ext_with_pdu_session_header_t gtpu_ext; /* 4 bytes */
 }) ip4_gtpu_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   ip6_header_t ip6;            /* 40 bytes */
@@ -160,9 +157,7 @@ typedef CLIB_PACKED(struct
   gtpu_header_t gtpu;	       /* 12 bytes */
   gtpu_ext_with_pdu_session_header_t gtpu_ext; /* 4 bytes */
 }) ip6_gtpu_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct {
   /*
@@ -177,9 +172,7 @@ typedef CLIB_PACKED
     u64 as_u64;
   };
 }) gtpu4_tunnel_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED
 (struct {
   /*
@@ -189,7 +182,6 @@ typedef CLIB_PACKED
   ip6_address_t src;
   u32 teid;
 }) gtpu6_tunnel_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

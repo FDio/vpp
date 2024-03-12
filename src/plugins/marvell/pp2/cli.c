@@ -59,13 +59,11 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mrvl_pp2_create_command, static) = {
   .path = "create interface marvell pp2",
   .short_help = "create interface marvell pp2 [name <ifname>] [rx-queue-size slots] [tx-queue-size slots]",
   .function = mrvl_pp2_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -110,14 +108,12 @@ mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mrvl_pp2_delete_command, static) = {
   .path = "delete interface marvell pp2",
   .short_help = "delete interface marvell pp2 "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = mrvl_pp2_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 mrvl_pp2_cli_init (vlib_main_t * vm)

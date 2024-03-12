@@ -43,7 +43,6 @@ connect_to_vpe (char *name)
   return 0;
 }
 
-/* *INDENT-OFF* */
 
 vlib_global_main_t vlib_global_main;
 

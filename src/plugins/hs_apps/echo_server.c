@@ -765,7 +765,6 @@ cleanup:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (echo_server_create_command, static) = {
   .path = "test echo server",
   .short_help =
@@ -775,7 +774,6 @@ VLIB_CLI_COMMAND (echo_server_create_command, static) = {
     "[uri <tcp://ip/port>]",
   .function = echo_server_create_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 echo_server_main_init (vlib_main_t * vm)

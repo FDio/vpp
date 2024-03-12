@@ -104,7 +104,6 @@ do {						\
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip_main_init) = {
   .init_order = VLIB_INITS ("vnet_main_init", "ip4_init", "ip6_init",
 			    "icmp4_init", "icmp6_init", "ip6_hop_by_hop_init",
@@ -112,7 +111,6 @@ VLIB_INIT_FUNCTION (ip_main_init) = {
 			    "in_out_acl_init", "policer_classify_init",
 			    "flow_classify_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

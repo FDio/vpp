@@ -211,7 +211,6 @@ ip4_interface_address_matching_destination (ip4_main_t * im,
   ip_interface_address_t *ia;
   ip4_address_t *result = 0;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
@@ -222,7 +221,6 @@ ip4_interface_address_matching_destination (ip4_main_t * im,
 	break;
       }
   }));
-  /* *INDENT-ON* */
   if (result_ia)
     *result_ia = result ? ia : 0;
   return result;

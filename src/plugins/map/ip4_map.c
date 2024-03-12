@@ -326,7 +326,6 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_map_feature, static) =
 {
   .arc_name = "ip4-unicast",
@@ -355,7 +354,6 @@ VLIB_REGISTER_NODE(ip4_map_node) = {
     [IP4_MAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

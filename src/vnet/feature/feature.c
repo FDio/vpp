@@ -533,13 +533,11 @@ show_features_command_fn (vlib_main_t * vm,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_features_command, static) = {
   .path = "show features",
   .short_help = "show features [verbose]",
   .function = show_features_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Display the set of driver features configured on a specific interface
   * Called by "show interface" handler
@@ -700,14 +698,12 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
   .path = "set interface feature",
   .short_help = "set interface feature <intfc> <feature_name> arc <arc_name> "
       "[disable]",
   .function = set_interface_features_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,

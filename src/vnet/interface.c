@@ -45,11 +45,9 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
   .class_name = "interface",
 };
-/* *INDENT-ON* */
 
 #define log_debug(fmt,...) vlib_log_debug(if_default_log.class, fmt, __VA_ARGS__)
 #define log_err(fmt,...) vlib_log_err(if_default_log.class, fmt, __VA_ARGS__)
@@ -141,15 +139,12 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 
   /* Serialize hardware interface classes since they may have changed.
      Must do this before sending up/down flags. */
-  /* *INDENT-OFF* */
   pool_foreach (hif, im->hw_interfaces)  {
     vnet_hw_interface_class_t * hw_class = vnet_get_hw_interface_class (vnm, hif->hw_class_index);
     serialize_cstring (m, hw_class->name);
   }
-  /* *INDENT-ON* */
 
   /* Send sw/hw interface state when non-zero. */
-  /* *INDENT-OFF* */
   pool_foreach (sif, im->sw_interfaces)  {
     if (sif->flags != 0)
       {
@@ -158,14 +153,12 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 	st->flags = sif->flags;
       }
   }
-  /* *INDENT-ON* */
 
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
 
   if (sts)
     vec_set_len (sts, 0);
 
-  /* *INDENT-OFF* */
   pool_foreach (hif, im->hw_interfaces)  {
     if (hif->flags != 0)
       {
@@ -174,7 +167,6 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 	st->flags = vnet_hw_interface_flags_to_sw(hif->flags);
       }
   }
-  /* *INDENT-ON* */
 
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
 
@@ -206,7 +198,6 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
     uword *p;
     clib_error_t *error;
 
-    /* *INDENT-OFF* */
     pool_foreach (hif, im->hw_interfaces)  {
       unserialize_cstring (m, &class_name);
       p = hash_get_mem (im->hw_interface_class_by_name, class_name);
@@ -222,7 +213,6 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 	clib_error_report (error);
       vec_free (class_name);
     }
-    /* *INDENT-ON* */
   }
 
   vec_unserialize (m, &sts, unserialize_vec_vnet_sw_hw_interface_state);
@@ -1116,7 +1106,6 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Delete any sub-interfaces. */
   {
     u32 id, sw_if_index;
-    /* *INDENT-OFF* */
     hash_foreach (id, sw_if_index, hw->sub_interface_sw_if_index_by_id,
     ({
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
@@ -1126,7 +1115,6 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
       vnet_delete_sw_interface (vnm, sw_if_index);
     }));
     hash_free (hw->sub_interface_sw_if_index_by_id);
-    /* *INDENT-ON* */
   }
 
   /* Delete software interface corresponding to hardware interface. */
@@ -1177,14 +1165,12 @@ vnet_hw_interface_walk_sw (vnet_main_t * vnm,
   if (WALK_STOP == fn (vnm, hi->sw_if_index, ctx))
     return;
 
-  /* *INDENT-OFF* */
   hash_foreach (id, sw_if_index,
                 hi->sub_interface_sw_if_index_by_id,
   ({
     if (WALK_STOP == fn (vnm, sw_if_index, ctx))
       break;
   }));
-  /* *INDENT-ON* */
 }
 
 void
@@ -1196,13 +1182,11 @@ vnet_hw_interface_walk (vnet_main_t * vnm,
 
   im = &vnm->interface_main;
 
-  /* *INDENT-OFF* */
   pool_foreach (hi, im->hw_interfaces)
    {
     if (WALK_STOP == fn(vnm, hi->hw_if_index, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 void
@@ -1214,13 +1198,11 @@ vnet_sw_interface_walk (vnet_main_t * vnm,
 
   im = &vnm->interface_main;
 
-  /* *INDENT-OFF* */
   pool_foreach (si, im->sw_interfaces)
   {
     if (WALK_STOP == fn (vnm, si, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 void
@@ -1945,13 +1927,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
   .path = "interface collect detailed-stats",
   .short_help = "interface collect detailed-stats <enable|disable>",
   .function = collect_detailed_interface_stats_cli,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

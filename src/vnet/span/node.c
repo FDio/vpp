@@ -84,7 +84,6 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
   if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_SPAN_CLONE))
     return;
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, sm0->mirror_ports)
     {
       if (mirror_frames[i] == 0)
@@ -122,7 +121,6 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
 	    }
 	}
     }
-  /* *INDENT-ON* */
 }
 
 static_always_inline uword
@@ -304,7 +302,6 @@ VLIB_NODE_FN (span_l2_output_node) (vlib_main_t * vm,
     [0] = "error-drop"                           \
   }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (span_input_node) = {
   span_node_defs,
   .name = "span-input",
@@ -349,7 +346,6 @@ clib_error_t *span_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (span_init);
-/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */
 
 #undef span_node_defs

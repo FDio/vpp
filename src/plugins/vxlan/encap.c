@@ -503,7 +503,6 @@ VLIB_NODE_FN (vxlan6_encap_node) (vlib_main_t * vm,
   return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_encap_node) = {
   .name = "vxlan4-encap",
   .vector_size = sizeof (u32),
@@ -529,7 +528,6 @@ VLIB_REGISTER_NODE (vxlan6_encap_node) = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -116,7 +116,6 @@ format_lisp_eid_vat (u8 * s, va_list * args)
 
 
 
-/* *INDENT-OFF* */
 /** Used for parsing LISP eids */
 typedef struct lisp_eid_vat_t_
 {
@@ -130,7 +129,6 @@ typedef struct lisp_eid_vat_t_
   /**< type of eid */
   u8 type;
 } __clib_packed lisp_eid_vat_t;
-/* *INDENT-ON* */
 
 static uword
 unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)

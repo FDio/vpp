@@ -95,13 +95,11 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (fib_index, im6->fibs)
     {
       fib_table_walk (fib_index, FIB_PROTOCOL_IP6,
 		      api_ip6nd_proxy_fib_table_walk, &ctx);
     }
-  /* *INDENT-ON* */
 
   vec_sort_with_function (ctx.indices, fib_entry_cmp_for_sort);
 
@@ -419,7 +417,6 @@ static void
 static void
 ip6_ra_handle_report (const ip6_ra_report_t * rap)
 {
-  /* *INDENT-OFF* */
   vpe_client_registration_t *rp;
 
   pool_foreach (rp, vpe_api_main.ip6_ra_events_registrations)
@@ -473,7 +470,6 @@ ip6_ra_handle_report (const ip6_ra_report_t * rap)
         vl_api_send_msg (vl_reg, (u8 *) event);
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void

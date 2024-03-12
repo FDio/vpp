@@ -121,7 +121,6 @@ VLIB_NODE_FN (ip6_qos_store_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_store_node) = {
   .name = "ip4-qos-store",
   .vector_size = sizeof (u32),
@@ -168,7 +167,6 @@ VNET_FEATURE_INIT (ip6m_qos_store_node, static) = {
     .node_name = "ip6-qos-store",
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

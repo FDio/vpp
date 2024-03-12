@@ -365,7 +365,6 @@ VLIB_NODE_FN (l2input_node) (vlib_main_t * vm,
   return l2input_node_inline (vm, node, frame, 0 /* do_trace */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2input_node) = {
   .name = "l2-input",
   .vector_size = sizeof (u32),
@@ -385,7 +384,6 @@ VLIB_REGISTER_NODE (l2input_node) = {
        [L2INPUT_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

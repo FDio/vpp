@@ -613,12 +613,10 @@ dpo_module_init (vlib_main_t * vm)
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION(dpo_module_init) =
 {
     .runs_before = VLIB_INITS ("ip_main_init"),
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dpo_memory_show (vlib_main_t * vm,
@@ -640,7 +638,6 @@ dpo_memory_show (vlib_main_t * vm,
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 /*?
  * The '<em>sh dpo memory </em>' command displays the memory usage for each
  * data-plane object type.
@@ -662,6 +659,5 @@ VLIB_CLI_COMMAND (show_fib_memory, static) = {
     .function = dpo_memory_show,
     .short_help = "show dpo memory",
 };
-/* *INDENT-ON* */
 
 // clang-format on

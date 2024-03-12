@@ -288,7 +288,6 @@ dns4_request_node_fn (vlib_main_t * vm,
   return dns46_request_inline (vm, node, frame, 0 /* is_ip6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns4_request_node) =
 {
   .function = dns4_request_node_fn,
@@ -305,7 +304,6 @@ VLIB_REGISTER_NODE (dns4_request_node) =
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip4-lookup",
   },
 };
-/* *INDENT-ON* */
 
 static uword
 dns6_request_node_fn (vlib_main_t * vm,
@@ -315,7 +313,6 @@ dns6_request_node_fn (vlib_main_t * vm,
   return dns46_request_inline (vm, node, frame, 1 /* is_ip6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns6_request_node) =
 {
   .function = dns6_request_node_fn,
@@ -332,7 +329,6 @@ VLIB_REGISTER_NODE (dns6_request_node) =
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -53,13 +53,11 @@ typedef enum
 } nsh_md2_ioam_encap_transit_next_t;
 
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (nsh_md2_ioam_encap_transit, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "nsh-md2-ioam-encap-transit",
 };
-/* *INDENT-ON* */
 
 
 static uword
@@ -162,7 +160,6 @@ nsh_md2_ioam_encap_transit (vlib_main_t * vm,
 }
 
 extern u8 *format_nsh_node_map_trace (u8 * s, va_list * args);
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nsh_md2_ioam_encap_transit_node) = {
   .function = nsh_md2_ioam_encap_transit,
   .name = "nsh-md2-ioam-encap-transit",
@@ -181,7 +178,6 @@ VLIB_REGISTER_NODE (nsh_md2_ioam_encap_transit_node) = {
   },
 
 };
-/* *INDENT-ON* */
 
 
 /*

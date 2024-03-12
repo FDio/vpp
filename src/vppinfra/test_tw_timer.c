@@ -316,7 +316,6 @@ test2_single (tw_timer_test_main_t * tm)
 
       j = 0;
       vec_reset_length (deleted_indices);
-      /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
        {
         tw_timer_stop_2t_1w_2048sl (&tm->single_wheel, e->stop_timer_handle);
@@ -324,7 +323,6 @@ test2_single (tw_timer_test_main_t * tm)
         if (++j >= tm->ntimers / 4)
           goto del_and_re_add;
       }
-      /* *INDENT-ON* */
 
     del_and_re_add:
       for (j = 0; j < vec_len (deleted_indices); j++)
@@ -374,14 +372,12 @@ test2_single (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_2t_1w_2048sl (&tm->single_wheel);
@@ -455,7 +451,6 @@ test2_double (tw_timer_test_main_t * tm)
 
       j = 0;
       vec_reset_length (deleted_indices);
-      /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
        {
         tw_timer_stop_16t_2w_512sl (&tm->double_wheel, e->stop_timer_handle);
@@ -463,7 +458,6 @@ test2_double (tw_timer_test_main_t * tm)
         if (++j >= tm->ntimers / 4)
           goto del_and_re_add;
       }
-      /* *INDENT-ON* */
 
     del_and_re_add:
       for (j = 0; j < vec_len (deleted_indices); j++)
@@ -512,14 +506,12 @@ test2_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_16t_2w_512sl (&tm->double_wheel);
@@ -590,7 +582,6 @@ test2_double_updates (tw_timer_test_main_t * tm)
 
       j = 0;
 
-      /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
        {
         expiration_time = get_expiration_time (tm);
@@ -602,7 +593,6 @@ test2_double_updates (tw_timer_test_main_t * tm)
         if (++j >= tm->ntimers / 4)
           goto done;
       }
-      /* *INDENT-ON* */
 
     done:
       updates += j;
@@ -623,14 +613,12 @@ test2_double_updates (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_16t_2w_512sl (&tm->double_wheel);
@@ -706,7 +694,6 @@ test2_triple (tw_timer_test_main_t * tm)
 
       j = 0;
       vec_reset_length (deleted_indices);
-      /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
        {
         tw_timer_stop_4t_3w_256sl (&tm->triple_wheel, e->stop_timer_handle);
@@ -714,7 +701,6 @@ test2_triple (tw_timer_test_main_t * tm)
         if (++j >= tm->ntimers / 4)
           goto del_and_re_add;
       }
-      /* *INDENT-ON* */
 
     del_and_re_add:
       for (j = 0; j < vec_len (deleted_indices); j++)
@@ -763,14 +749,12 @@ test2_triple (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_4t_3w_256sl (&tm->triple_wheel);
@@ -846,7 +830,6 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
       j = 0;
       vec_reset_length (deleted_indices);
-      /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
        {
         tw_timer_stop_1t_3w_1024sl_ov (&tm->triple_ov_wheel,
@@ -855,7 +838,6 @@ test2_triple_ov (tw_timer_test_main_t * tm)
         if (++j >= tm->ntimers / 4)
           goto del_and_re_add;
       }
-      /* *INDENT-ON* */
 
     del_and_re_add:
       for (j = 0; j < vec_len (deleted_indices); j++)
@@ -904,7 +886,6 @@ test2_triple_ov (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     TWT (tw_timer) * t;
@@ -915,7 +896,6 @@ test2_triple_ov (tw_timer_test_main_t * tm)
     t = pool_elt_at_index (tm->triple_ov_wheel.timers, e->stop_timer_handle);
     fformat (stdout, "  expiration_time %lld\n", t->expiration_time);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_1t_3w_1024sl_ov (&tm->triple_ov_wheel);
@@ -972,14 +952,12 @@ test1_single (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat(stdout, "[%d] expected to expire %d\n",
                      e - tm->test_elts,
                      e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   fformat (stdout,
 	   "final wheel time %d, fast index %d\n",
@@ -1030,14 +1008,12 @@ test1_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat(stdout, "[%d] expected to expire %d\n",
                      e - tm->test_elts,
                      e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   fformat (stdout,
 	   "final wheel time %d, fast index %d\n",
@@ -1088,14 +1064,12 @@ test1_two_timer_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat(stdout, "[%d] expected to expire %d\n",
                      e - tm->test_elts,
                      e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   fformat (stdout,
 	   "final wheel time %d, fast index %d\n",
@@ -1168,14 +1142,12 @@ test3_triple_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_4t_3w_256sl (&tm->triple_wheel);
@@ -1252,14 +1224,12 @@ test4_double_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_16t_2w_512sl (&tm->double_wheel);
@@ -1336,14 +1306,12 @@ test5_double (tw_timer_test_main_t * tm)
     fformat (stdout, "Note: %d elements remain in pool\n",
 	     pool_elts (tm->test_elts));
 
-  /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
    {
     fformat (stdout, "[%d] expected to expire %d\n",
              e - tm->test_elts,
              e->expected_to_expire);
   }
-  /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
   tw_timer_wheel_free_16t_2w_512sl (&tm->double_wheel);

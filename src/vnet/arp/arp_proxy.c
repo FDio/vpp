@@ -223,7 +223,6 @@ set_arp_proxy (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /*?
  * Enable proxy-arp on an interface. The vpp stack will answer ARP
  * requests for the indicated address range. Multiple proxy-arp
@@ -249,15 +248,12 @@ VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   "set interface proxy-arp <intfc> [enable|disable]",
   .function = set_int_proxy_arp_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_arp_proxy_command, static) = {
   .path = "set arp proxy",
   .short_help = "set arp proxy [del] table-ID <table-ID> start <start-address> end <end-addres>",
   .function = set_arp_proxy,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -435,13 +431,11 @@ show_ip4_arp (vlib_main_t * vm,
  * Fib_index 0   6.0.0.1 - 6.0.0.11
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
   .path = "show arp proxy",
   .function = show_ip4_arp,
   .short_help = "show ip arp",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

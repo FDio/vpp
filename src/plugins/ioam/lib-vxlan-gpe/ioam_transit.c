@@ -51,14 +51,12 @@ typedef enum
 } vxlan_gpe_transit_ioam_next_t;
 
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (vxlan_gpe_transit_ioam, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "vxlan-gpe-transit-ioam",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
-/* *INDENT-ON* */
 
 static uword
 vxlan_gpe_transit_ioam (vlib_main_t * vm,
@@ -156,7 +154,6 @@ vxlan_gpe_transit_ioam (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_gpe_transit_ioam_node) = {
   .function = vxlan_gpe_transit_ioam,
   .name = "vxlan-gpe-transit-ioam",
@@ -175,7 +172,6 @@ VLIB_REGISTER_NODE (vxlan_gpe_transit_ioam_node) = {
   },
 
 };
-/* *INDENT-ON* */
 
 
 /*

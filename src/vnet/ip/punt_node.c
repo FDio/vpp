@@ -183,7 +183,6 @@ VLIB_NODE_FN (udp6_punt_node) (vlib_main_t * vm,
   return udp46_punt_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_punt_node) = {
   .name = "ip4-udp-punt",
   /* Takes a vector of packets. */
@@ -215,7 +214,6 @@ VLIB_REGISTER_NODE (udp6_punt_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -460,7 +458,6 @@ exception_punt_socket (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
   .function = udp4_punt_socket,
   .name = "ip4-udp-punt-socket",
@@ -518,7 +515,6 @@ VLIB_REGISTER_NODE (icmp6_punt_socket_node) = {
   .error_strings = punt_error_strings,
 };
 
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -649,7 +645,6 @@ punt_socket_rx (vlib_main_t * vm,
   return total_count;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (punt_socket_rx_node) =
 {
  .function = punt_socket_rx,
@@ -668,7 +663,6 @@ VLIB_REGISTER_NODE (punt_socket_rx_node) =
   },
  .format_trace = format_punt_trace,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

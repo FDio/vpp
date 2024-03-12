@@ -102,12 +102,10 @@ bd_free_ip_mac_tables (l2_bridge_domain_t * bd)
   ip6_address_t *ip6_addr_key;
 
   hash_free (bd->mac_by_ip4);
-  /* *INDENT-OFF* */
   hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6,
   ({
     clib_mem_free (ip6_addr_key); /* free memory used for ip6 addr key */
   }));
-  /* *INDENT-ON* */
   hash_free (bd->mac_by_ip6);
 }
 
@@ -454,13 +452,11 @@ done:
  * Example of how to disable learning (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain learn 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_learn_cli, static) = {
   .path = "set bridge-domain learn",
   .short_help = "set bridge-domain learn <bridge-domain-id> [disable]",
   .function = bd_learn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bd_default_learn_limit (vlib_main_t *vm, unformat_input_t *input,
@@ -547,13 +543,11 @@ done:
  * Example of how to disable forwarding (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain forward 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_fwd_cli, static) = {
   .path = "set bridge-domain forward",
   .short_help = "set bridge-domain forward <bridge-domain-id> [disable]",
   .function = bd_fwd,
 };
-/* *INDENT-ON* */
 
 /**
     Set bridge-domain flood enable/disable.
@@ -612,13 +606,11 @@ done:
  * Example of how to disable flooding (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain flood 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_flood_cli, static) = {
   .path = "set bridge-domain flood",
   .short_help = "set bridge-domain flood <bridge-domain-id> [disable]",
   .function = bd_flood,
 };
-/* *INDENT-ON* */
 
 /**
     Set bridge-domain unknown-unicast flood enable/disable.
@@ -677,13 +669,11 @@ done:
  * Example of how to disable unknown-unicast flooding (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain uu-flood 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_uu_flood_cli, static) = {
   .path = "set bridge-domain uu-flood",
   .short_help = "set bridge-domain uu-flood <bridge-domain-id> [disable]",
   .function = bd_uu_flood,
 };
-/* *INDENT-ON* */
 
 /**
     Set bridge-domain arp-unicast forward enable/disable.
@@ -742,13 +732,11 @@ done:
  * Example of how to disable arp-unicast forwarding (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain arp-ufwd 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_ufwd_cli, static) = {
   .path = "set bridge-domain arp-ufwd",
   .short_help = "set bridge-domain arp-ufwd <bridge-domain-id> [disable]",
   .function = bd_arp_ufwd,
 };
-/* *INDENT-ON* */
 
 /**
     Set bridge-domain arp term enable/disable.
@@ -854,13 +842,11 @@ done:
  * Example of how to disable mac aging (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain flood 200 0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_mac_age_cli, static) = {
   .path = "set bridge-domain mac-age",
   .short_help = "set bridge-domain mac-age <bridge-domain-id> <mins>",
   .function = bd_mac_age,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bd_learn_limit (vlib_main_t *vm, unformat_input_t *input,
@@ -921,13 +907,11 @@ VLIB_CLI_COMMAND (bd_learn_limit_cli, static) = {
  * Example of how to disable ARP termination (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain arp term 200 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
   .path = "set bridge-domain arp term",
   .short_help = "set bridge-domain arp term <bridge-domain-id> [disable]",
   .function = bd_arp_term,
 };
-/* *INDENT-ON* */
 
 
 /**
@@ -1119,13 +1103,11 @@ done:
  * Example of how to delete an ARP entry (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a del}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
   .path = "set bridge-domain arp entry",
   .short_help = "set bridge-domain arp entry <bridge-domain-id> [<ip-addr> <mac-addr> [del] | del-all]",
   .function = bd_arp_entry,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_uu_cfg (u8 * s, va_list * args)
@@ -1289,7 +1271,6 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	      vlib_cli_output (vm,
 			       "\n  IP4/IP6 to MAC table for ARP Termination");
 
-              /* *INDENT-OFF* */
               hash_foreach (ip4_addr, mac_addr, bd_config->mac_by_ip4,
               ({
                 vlib_cli_output (vm, "%=40U => %=20U",
@@ -1303,7 +1284,6 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 				 format_ip6_address, ip6_addr,
 				 format_ethernet_address, &mac_addr);
               }));
-              /* *INDENT-ON* */
 	    }
 
 	  if ((detail || bd_tag) && (bd_config->bd_tag))
@@ -1349,13 +1329,11 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_show_cli, static) = {
   .path = "show bridge-domain",
   .short_help = "show bridge-domain [bridge-domain-id [detail|int|arp|bd-tag]]",
   .function = bd_show,
 };
-/* *INDENT-ON* */
 
 int
 bd_add_del (l2_bridge_domain_add_del_args_t * a)
@@ -1594,7 +1572,6 @@ done:
  * @endparblock
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_create_cli, static) = {
   .path = "create bridge-domain",
   .short_help = "create bridge-domain <bridge-domain-id>"
@@ -1602,7 +1579,6 @@ VLIB_CLI_COMMAND (bd_create_cli, static) = {
                 " [arp-ufwd <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]",
   .function = bd_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * Returns an unused bridge domain id, and ~0 if it can't find one.

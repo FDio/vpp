@@ -613,14 +613,12 @@ tcp_src_address_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_src_address_command, static) =
 {
   .path = "tcp src-address",
   .short_help = "tcp src-address <ip-addr> [- <ip-addr>] add src address range",
   .function = tcp_src_address_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
@@ -676,14 +674,12 @@ tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_show_scoreboard_trace_command, static) =
 {
   .path = "show tcp scoreboard trace",
   .short_help = "show tcp scoreboard trace <connection>",
   .function = tcp_show_scoreboard_trace_fn,
 };
-/* *INDENT-ON* */
 
 u8 *
 tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
@@ -801,14 +797,12 @@ tcp_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
 {
   .path = "tcp replay scoreboard",
   .short_help = "tcp replay scoreboard <connection>",
   .function = tcp_scoreboard_trace_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -824,14 +818,12 @@ show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 		   tm->punt_unknown6 ? "enabled" : "disabled");
   return 0;
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
 {
   .path = "show tcp punt",
   .short_help = "show tcp punt",
   .function = show_tcp_punt_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -863,14 +855,12 @@ show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_tcp_stats_command, static) =
 {
   .path = "show tcp stats",
   .short_help = "show tcp stats",
   .function = show_tcp_stats_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -893,14 +883,12 @@ clear_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
 {
   .path = "clear tcp stats",
   .short_help = "clear tcp stats",
   .function = clear_tcp_stats_fn,
 };
-/* *INDENT-ON* */
 
 uword
 unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)

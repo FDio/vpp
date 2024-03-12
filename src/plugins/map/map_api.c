@@ -50,13 +50,11 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
 		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
 		       mp->psid_length, &index, mp->mtu, flags, mp->tag);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2_END(VL_API_MAP_ADD_DOMAIN_REPLY,
   ({
     rmp->index = index;
   }));
 
-  /* *INDENT-ON* */
 }
 
 static void
@@ -98,7 +96,6 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
     vec_elt_at_index (mm->domain_extras, map_domain_index);
   int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO_DETAILS4(VL_API_MAP_DOMAIN_DETAILS, rp, context,
   ({
     rmp->domain_index = htonl (map_domain_index);
@@ -119,7 +116,6 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
     memcpy (rmp->tag, de->tag, tag_len - 1);
     rmp->tag[tag_len - 1] = '\0';
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -136,12 +132,10 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (i, mm->domains)
    {
     send_domain_details(i, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -152,12 +146,10 @@ vl_api_map_domains_get_t_handler (vl_api_map_domains_get_t * mp)
 
   i32 rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_AND_DETAILS_MACRO (VL_API_MAP_DOMAINS_GET_REPLY, mm->domains,
   ({
     send_domain_details (cursor, rp, mp->context);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

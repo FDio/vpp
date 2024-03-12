@@ -144,14 +144,12 @@ vxlan_gpe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vxlan_gpe_device_class,static) = {
   .name = "VXLAN_GPE",
   .format_device_name = format_vxlan_gpe_name,
   .format_tx_trace = format_vxlan_gpe_encap_trace,
   .admin_up_down_function = vxlan_gpe_interface_admin_up_down,
 };
-/* *INDENT-ON* */
 
 
 /**
@@ -171,13 +169,11 @@ format_vxlan_gpe_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (vxlan_gpe_hw_class) = {
   .name = "VXLAN_GPE",
   .format_header = format_vxlan_gpe_header_with_length,
   .build_rewrite = default_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static void
 vxlan_gpe_tunnel_restack_dpo (vxlan_gpe_tunnel_t * t)
@@ -388,7 +384,6 @@ vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
   return (0);
 }
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(union {
   struct {
     fib_node_index_t mfib_entry_index;
@@ -396,7 +391,6 @@ typedef CLIB_PACKED(union {
   };
   u64 as_u64;
 }) mcast_shared_t;
-/* *INDENT-ON* */
 
 static inline mcast_shared_t
 mcast_shared_get (ip46_address_t * ip)
@@ -496,7 +490,6 @@ int vnet_vxlan_gpe_add_del_tunnel
       clib_memset (t, 0, sizeof (*t));
 
       /* copy from arg structure */
-/* *INDENT-OFF* */
 #define _(x) t->x = a->x;
       foreach_gpe_copy_field;
       if (!a->is_ip6)
@@ -504,7 +497,6 @@ int vnet_vxlan_gpe_add_del_tunnel
       else
 	foreach_copy_ipv6
 #undef _
-/* *INDENT-ON* */
 
       if (!a->is_ip6)
 	t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
@@ -918,7 +910,6 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;
 
-/* *INDENT-OFF* */
 #define _(x) a->x = x;
   foreach_gpe_copy_field;
   if (ipv4_set)
@@ -926,7 +917,6 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   else
     foreach_copy_ipv6
 #undef _
-/* *INDENT-ON* */
 
   rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
 
@@ -979,7 +969,6 @@ done:
  * Example of how to delete a VXLAN-GPE Tunnel:
  * @cliexcmd{create vxlan-gpe tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 del}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
   .path = "create vxlan-gpe tunnel",
   .short_help =
@@ -989,7 +978,6 @@ VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
   " [encap-vrf-id <nn>] [decap-vrf-id <nn>] [del]\n",
   .function = vxlan_gpe_add_del_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief CLI function for showing VXLAN GPE tunnels
@@ -1012,12 +1000,10 @@ show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
   if (pool_elts (ngm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan-gpe tunnels configured.");
 
-  /* *INDENT-OFF* */
   pool_foreach (t, ngm->tunnels)
    {
     vlib_cli_output (vm, "%U", format_vxlan_gpe_tunnel, t);
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -1031,12 +1017,10 @@ show_vxlan_gpe_tunnel_command_fn (vlib_main_t * vm,
  * [0] local 10.0.3.1 remote 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vxlan_gpe_tunnel_command, static) = {
     .path = "show vxlan-gpe",
     .function = show_vxlan_gpe_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
@@ -1144,13 +1128,11 @@ set_ip4_vxlan_gpe_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip vxlan-gpe-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_vxlan_gpe_bypass_command, static) = {
   .path = "set interface ip vxlan-gpe-bypass",
   .function = set_ip4_vxlan_gpe_bypass,
   .short_help = "set interface ip vxlan-gpe-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip6_vxlan_gpe_bypass (vlib_main_t * vm,
@@ -1202,15 +1184,12 @@ set_ip6_vxlan_gpe_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip6 vxlan-gpe-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_vxlan_gpe_bypass_command, static) = {
   .path = "set interface ip6 vxlan-gpe-bypass",
   .function = set_ip6_vxlan_gpe_bypass,
   .short_help = "set interface ip6 vxlan-gpe-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_vxlan_gpe_bypass, static) =
 {
   .arc_name = "ip4-unicast",
@@ -1224,7 +1203,6 @@ VNET_FEATURE_INIT (ip6_vxlan_gpe_bypass, static) =
   .node_name = "ip6-vxlan-gpe-bypass",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Feature init function for VXLAN GPE

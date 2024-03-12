@@ -126,7 +126,6 @@ VLIB_NODE_FN (nsim_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (nsim_input_node) =
 {
@@ -142,7 +141,6 @@ VLIB_REGISTER_NODE (nsim_input_node) =
   .error_strings = nsim_tx_error_strings,
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

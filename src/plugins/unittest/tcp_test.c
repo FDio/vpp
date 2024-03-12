@@ -35,9 +35,7 @@
     }								\
 }
 
-/* *INDENT-OFF* */
 scoreboard_trace_elt_t sb_trace[] = {};
-/* *INDENT-ON* */
 
 static int
 tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
@@ -1596,14 +1594,12 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
   .path = "test tcp",
   .short_help = "internal tcp unit tests",
   .function = tcp_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

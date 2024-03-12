@@ -741,7 +741,6 @@ memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",
   .format_device_name = format_memif_device_name,
@@ -755,7 +754,6 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .rx_mode_change_function = memif_interface_rx_mode_change,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

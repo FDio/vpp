@@ -280,7 +280,6 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (punt_dispatch_node) = {
   .name = "punt-dispatch",
   .vector_size = sizeof (u32),
@@ -293,7 +292,6 @@ VLIB_REGISTER_NODE (punt_dispatch_node) = {
   },
 };
 
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *

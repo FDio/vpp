@@ -129,7 +129,6 @@ nsh_md2_ioam_export_node_fn (vlib_main_t * vm,
 /*
  * Node for iOAM export
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
 {
   .function = nsh_md2_ioam_export_node_fn,
@@ -144,7 +143,6 @@ VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
     .next_nodes =
   {[EXPORT_NEXT_NSH_MD2_IOAM_INPUT] = "nsh-pop"},
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -56,12 +56,10 @@ struct lldp_tlv_head
   u8 byte2;			/* contains the lower bits of length */
 };
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   struct lldp_tlv_head head;
   u8 v[0];
 }) lldp_tlv_t;
-/* *INDENT-ON* */
 
 lldp_tlv_code_t lldp_tlv_get_code (const lldp_tlv_t * tlv);
 void lldp_tlv_set_code (lldp_tlv_t * tlv, lldp_tlv_code_t code);
@@ -89,13 +87,11 @@ typedef enum
 #undef F
 } lldp_chassis_id_subtype_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   struct lldp_tlv_head head;
   u8 subtype;
   u8 id[0];
 }) lldp_chassis_id_tlv_t;
-/* *INDENT-ON* */
 
 #define foreach_port_id_subtype(F)            \
   F (0, reserved, "Reserved")                 \
@@ -118,7 +114,6 @@ typedef enum
 #undef F
 } lldp_port_id_subtype_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   struct lldp_tlv_head head;
   u8 subtype;
@@ -129,7 +124,6 @@ typedef CLIB_PACKED (struct {
   struct lldp_tlv_head head;
   u16 ttl;
 }) lldp_ttl_tlv_t;
-/* *INDENT-ON* */
 
 #endif /* __included_lldp_protocol_h__ */
 

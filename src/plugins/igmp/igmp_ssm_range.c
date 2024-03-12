@@ -127,13 +127,11 @@ igmp_ssm_range_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_show_timers_command, static) = {
   .path = "show igmp ssm-ranges",
   .short_help = "show igmp ssm-ranges",
   .function = igmp_ssm_range_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_ssm_range_init (vlib_main_t * vm)
@@ -145,12 +143,10 @@ igmp_ssm_range_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (igmp_ssm_range_init) =
 {
   .runs_after = VLIB_INITS("igmp_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
