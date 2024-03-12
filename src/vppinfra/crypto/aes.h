@@ -199,9 +199,7 @@ aes192_key_expand (u8x16 * rk, u8x16u const *k)
   u8x16 r1, r2;
 
   rk[0] = r1 = k[0];
-  /* *INDENT-OFF* */
   rk[1] = r2 = (u8x16) (u64x2) { *(u64 *) (k + 1), 0 };
-  /* *INDENT-ON* */
 
   aes192_key_assist (&r1, &r2, aes_keygen_assist (r2, 0x1));
   rk[1] = (u8x16) _mm_shuffle_pd ((__m128d) rk[1], (__m128d) r1, 0);

@@ -374,7 +374,6 @@ VLIB_NODE_FN (ip4_input_no_checksum_node) (vlib_main_t * vm,
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_node) = {
   .name = "ip4-input",
   .vector_size = sizeof (u32),
@@ -405,7 +404,6 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_input_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip4_init (vlib_main_t * vm)

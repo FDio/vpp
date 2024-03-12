@@ -751,7 +751,6 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_input_node) = {
   .name = "ipsec4-input-feature",
   .vector_size = sizeof (u32),
@@ -766,7 +765,6 @@ VLIB_REGISTER_NODE (ipsec4_input_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 extern vlib_node_registration_t ipsec6_input_node;
 
@@ -948,7 +946,6 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_input_node) = {
   .name = "ipsec6-input-feature",
   .vector_size = sizeof (u32),
@@ -963,7 +960,6 @@ VLIB_REGISTER_NODE (ipsec6_input_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

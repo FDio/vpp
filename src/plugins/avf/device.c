@@ -1131,7 +1131,6 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
   if (is_irq == 0)
     avf_op_get_stats (vm, ad, &ad->eth_stats);
 
-  /* *INDENT-OFF* */
   vec_foreach (e, ad->events)
     {
       avf_log_debug (ad, "event: %s (%u) sev %d",
@@ -1227,7 +1226,6 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	    }
 	}
     }
-  /* *INDENT-ON* */
   vec_reset_length (ad->events);
 
   return;
@@ -1403,7 +1401,6 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       /* create local list of device pointers as device pool may grow
        * during suspend */
       vec_reset_length (dev_pointers);
-      /* *INDENT-OFF* */
       pool_foreach_index (i, am->devices)
         {
 	  vec_add1 (dev_pointers, avf_get_device (i));
@@ -1413,19 +1410,16 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
         {
 	  avf_process_one_device (vm, dev_pointers[i], irq);
         };
-      /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_periodic_time;
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (avf_process_node)  = {
   .function = avf_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "avf-process",
 };
-/* *INDENT-ON* */
 
 static void
 avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
@@ -1438,13 +1432,11 @@ avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
-      /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (el) =
 	{
 	  .format = "avf[%d] irq 0: icr0 0x%x",
 	  .format_args = "i4i4",
 	};
-      /* *INDENT-ON* */
       struct
       {
 	u32 dev_instance;
@@ -1474,13 +1466,11 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
-      /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (el) =
 	{
 	  .format = "avf[%d] irq %d: received",
 	  .format_args = "i4i2",
 	};
-      /* *INDENT-ON* */
       struct
       {
 	u32 dev_instance;
@@ -1526,7 +1516,6 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
   vlib_physmem_free (vm, ad->atq_bufs);
   vlib_physmem_free (vm, ad->arq_bufs);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, ad->rxqs)
     {
       avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
@@ -1536,10 +1525,8 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 				    rxq->n_enqueued);
       vec_free (rxq->bufs);
     }
-  /* *INDENT-ON* */
   vec_free (ad->rxqs);
 
-  /* *INDENT-OFF* */
   vec_foreach_index (i, ad->txqs)
     {
       avf_txq_t *txq = vec_elt_at_index (ad->txqs, i);
@@ -1559,7 +1546,6 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
       vec_free (txq->tmp_descs);
       clib_spinlock_free (&txq->lock);
     }
-  /* *INDENT-ON* */
   vec_free (ad->txqs);
   vec_free (ad->name);
 
@@ -1622,7 +1608,6 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (avf_validate_queue_size (args) != 0)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (adp, am->devices)  {
 	if ((*adp)->pci_addr.as_u32 == args->addr.as_u32)
       {
@@ -1633,7 +1618,6 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 	return;
       }
   }
-  /* *INDENT-ON* */
 
   pool_get (am->devices, adp);
   adp[0] = ad = clib_mem_alloc_aligned (sizeof (avf_device_t),
@@ -1927,7 +1911,6 @@ avf_program_flow (u32 dev_instance, int is_add, enum virthnl_adv_ops vc_op,
   return avf_process_request (vm, &req);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (avf_device_class, ) = {
   .name = "Adaptive Virtual Function (AVF) interface",
   .clear_counters = avf_clear_hw_interface_counters,
@@ -1941,7 +1924,6 @@ VNET_DEVICE_CLASS (avf_device_class, ) = {
   .tx_function_error_strings = avf_tx_func_error_strings,
   .flow_ops_function = avf_flow_ops_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 avf_init (vlib_main_t * vm)

@@ -318,13 +318,11 @@ show_gdb_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .path = "show gdb",
   .short_help = "Describe functions which can be called from gdb",
   .function = show_gdb_command_fn,
 };
-/* *INDENT-ON* */
 
 vlib_buffer_t *
 vgb (u32 bi)

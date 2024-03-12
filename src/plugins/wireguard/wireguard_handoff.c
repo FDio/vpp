@@ -183,7 +183,6 @@ VLIB_NODE_FN (wg6_output_tun_handoff)
 		     WG_HANDOFF_OUT_TUN);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg4_handshake_handoff) =
 {
   .name = "wg4-handshake-handoff",
@@ -267,7 +266,6 @@ VLIB_REGISTER_NODE (wg6_output_tun_handoff) =
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

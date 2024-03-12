@@ -61,7 +61,6 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
     return;
 
   span_feat_t sf = mp->is_l2 ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE;
-  /* *INDENT-OFF* */
   vec_foreach (si, sm->interfaces)
   {
     span_mirror_t * rxm = &si->mirror_rxtx[sf][VLIB_RX];
@@ -90,7 +89,6 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
       clib_bitmap_free (b);
     }
     }
-  /* *INDENT-ON* */
 }
 
 #include <vnet/span/span.api.c>

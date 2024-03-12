@@ -678,9 +678,7 @@ app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
   hdr.gso_size = gso_size;
-  /* *INDENT-OFF* */
   svm_fifo_seg_t segs[2] = {{ (u8 *) &hdr, sizeof (hdr) }, { data, len }};
-  /* *INDENT-ON* */
 
   rv = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */ );
   if (PREDICT_FALSE (rv < 0))
@@ -805,13 +803,11 @@ app_recv (app_session_t * s, u8 * data, u32 len)
   return app_recv_stream (s, data, len);
 }
 
-/* *INDENT-OFF* */
 static char *session_error_str[] = {
 #define _(sym, str) str,
     foreach_session_error
 #undef _
 };
-/* *INDENT-ON* */
 
 static inline u8 *
 format_session_error (u8 * s, va_list * args)

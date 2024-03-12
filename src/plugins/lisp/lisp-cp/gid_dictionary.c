@@ -488,13 +488,11 @@ ip4_compute_prefix_lengths_in_search_order (gid_ip4_table_t * db)
   vec_reset_length (db->ip4_prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, db->ip4_non_empty_dst_address_length_bitmap)
    {
     int dst_address_length = 32 - i;
     vec_add1 (db->ip4_prefix_lengths_in_search_order, dst_address_length);
   }
-  /* *INDENT-ON* */
 
 }
 
@@ -671,13 +669,11 @@ ip6_compute_prefix_lengths_in_search_order (gid_ip6_table_t * db)
   vec_reset_length (db->ip6_prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, db->ip6_non_empty_dst_address_length_bitmap)
    {
     int dst_address_length = 128 - i;
     vec_add1 (db->ip6_prefix_lengths_in_search_order, dst_address_length);
   }
-  /* *INDENT-ON* */
 }
 
 static u32

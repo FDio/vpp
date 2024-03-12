@@ -45,7 +45,6 @@ uword flowprobe_walker_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 #include <vlibapi/api_helper_macros.h>
 
 /* Define the per-interface configurable features */
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (flowprobe_input_ip4_unicast, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "flowprobe-input-ip4",
@@ -88,7 +87,6 @@ VNET_FEATURE_INIT (flowprobe_output_l2, static) = {
   .node_name = "flowprobe-output-l2",
   .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
-/* *INDENT-ON* */
 
 #define FINISH                                                                \
   vec_add1 (s, 0);                                                            \
@@ -1026,12 +1024,10 @@ vl_api_flowprobe_get_params_t_handler (vl_api_flowprobe_get_params_t *mp)
   // clang-format on
 }
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Flow per Packet",
 };
-/* *INDENT-ON* */
 
 u8 *
 format_flowprobe_direction (u8 *s, va_list *args)
@@ -1115,14 +1111,12 @@ flowprobe_show_table_fn (vlib_main_t * vm,
 
   for (i = 0; i < vec_len (fm->pool_per_worker); i++)
     {
-      /* *INDENT-OFF* */
       pool_foreach (e, fm->pool_per_worker[i])
 	{
 	  vlib_cli_output (vm, "%U",
 			   format_flowprobe_entry,
 			   e);
 	}
-      /* *INDENT-ON* */
 
     }
   return 0;
@@ -1324,7 +1318,6 @@ flowprobe_show_params_command_fn (vlib_main_t * vm,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (flowprobe_enable_disable_command, static) = {
   .path = "flowprobe feature add-del",
   .short_help = "flowprobe feature add-del <interface-name> [(l2|ip4|ip6)] "
@@ -1360,7 +1353,6 @@ VLIB_CLI_COMMAND (flowprobe_show_stats_command, static) = {
     .short_help = "show flowprobe statistics",
     .function = flowprobe_show_stats_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * Main-core process, sending an interrupt to the per worker input
@@ -1414,13 +1406,11 @@ timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;			/* or not */
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (flowprobe_timer_node,static) = {
   .function = timer_process,
   .name = "flowprobe-timer-process",
   .type = VLIB_NODE_TYPE_PROCESS,
 };
-/* *INDENT-ON* */
 
 #include <flowprobe/flowprobe.api.c>
 

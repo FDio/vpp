@@ -92,7 +92,6 @@ wg_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (wg_init);
 
-/* *INDENT-OFF* */
 
 VNET_FEATURE_INIT (wg4_output_tun, static) = {
   .arc_name = "ip4-output",
@@ -111,7 +110,6 @@ VLIB_PLUGIN_REGISTER () =
   .version = VPP_BUILD_VER,
   .description = "Wireguard Protocol",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

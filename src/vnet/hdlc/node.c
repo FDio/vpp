@@ -279,7 +279,6 @@ static char *hdlc_error_strings[] = {
 #undef hdlc_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (hdlc_input_node) = {
   .function = hdlc_input,
   .name = "hdlc-input",
@@ -302,7 +301,6 @@ VLIB_REGISTER_NODE (hdlc_input_node) = {
   .format_trace = format_hdlc_input_trace,
   .unformat_buffer = unformat_hdlc_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 hdlc_input_runtime_init (vlib_main_t * vm)

@@ -399,20 +399,16 @@ ip6_show_ioam_trace_cmd_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_ioam_trace_cmd, static) = {
   .path = "show ioam trace",
   .short_help = "iOAM trace statistics",
   .function = ip6_show_ioam_trace_cmd_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Inbound Operations, Administration, and Maintenance (OAM)",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
@@ -443,13 +439,11 @@ ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_trace_init) =
 {
   .runs_after = VLIB_INITS ("ip_main_init", "ip6_lookup_init",
                             "ip6_hop_by_hop_ioam_init"),
 };
-/* *INDENT-ON* */
 
 int
 ip6_trace_profile_cleanup (void)

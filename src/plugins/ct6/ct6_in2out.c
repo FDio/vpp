@@ -344,7 +344,6 @@ VLIB_NODE_FN (ct6_in2out_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
     return ct6_in2out_inline (vm, node, frame, 0 /* is_trace */ );
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (ct6_in2out_node) =
 {
@@ -365,7 +364,6 @@ VLIB_REGISTER_NODE (ct6_in2out_node) =
   .unformat_buffer = unformat_ethernet_header,
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

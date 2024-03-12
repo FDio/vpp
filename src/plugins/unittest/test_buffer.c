@@ -262,14 +262,12 @@ test_linearize_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_linearize_command, static) =
 {
   .path = "test chained-buffer-linearization",
   .short_help = "test chained-buffer-linearization",
   .function = test_linearize_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_linearize_speed_fn (vlib_main_t *vm, unformat_input_t *input,

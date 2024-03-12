@@ -480,13 +480,11 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ipfix_classify_table_add_del_command, static) = {
   .path = "ipfix classify table",
   .short_help = "ipfix classify table add|del <table-index>",
   .function = ipfix_classify_table_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ipfix_classify_stream_command_fn (vlib_main_t * vm,
@@ -523,14 +521,12 @@ set_ipfix_classify_stream_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ipfix_classify_stream_command, static) = {
   .path = "set ipfix classify stream",
   .short_help = "set ipfix classify stream"
                 "[domain <domain-id>] [src-port <src-port>]",
   .function = set_ipfix_classify_stream_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 flow_report_classify_init (vlib_main_t * vm)

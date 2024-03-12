@@ -219,7 +219,6 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_input_node) = {
   .name = "ip6-input",
   .vector_size = sizeof (u32),
@@ -238,7 +237,6 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .format_buffer = format_ip6_header,
   .format_trace = format_ip6_input_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_init (vlib_main_t * vm)

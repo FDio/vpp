@@ -1816,17 +1816,14 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   if (vlib_num_workers ())
     worker_index = vlib_get_current_worker_index ();
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, pg->enabled_streams[worker_index])  {
     pg_stream_t *s = vec_elt_at_index (pg->streams, i);
     n_packets += pg_input_stream (node, pg, s);
   }
-  /* *INDENT-ON* */
 
   return n_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pg_input_node) = {
   .function = pg_input,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -1839,7 +1836,6 @@ VLIB_REGISTER_NODE (pg_input_node) = {
   /* Input node will be left disabled until a stream is active. */
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (pg_input_mac_filter) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
@@ -1898,7 +1894,6 @@ VLIB_NODE_FN (pg_input_mac_filter) (vlib_main_t * vm,
   return (frame->n_vectors);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pg_input_mac_filter) = {
   .name = "pg-input-mac-filter",
   .vector_size = sizeof (u32),
@@ -1912,7 +1907,6 @@ VNET_FEATURE_INIT (pg_input_mac_filter_feat, static) = {
   .arc_name = "device-input",
   .node_name = "pg-input-mac-filter",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 pg_input_mac_filter_cfg (vlib_main_t * vm,
@@ -1950,13 +1944,11 @@ pg_input_mac_filter_cfg (vlib_main_t * vm,
   return NULL;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_streams_cli, static) = {
   .path = "packet-generator mac-filter",
   .short_help = "packet-generator mac-filter <INTERFACE> <on|off>",
   .function = pg_input_mac_filter_cfg,
 };
-/* *INDENT-ON* */
 
 
 /*

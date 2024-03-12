@@ -688,20 +688,16 @@ crypto_openssl_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (crypto_openssl_init) =
 {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
-/* *INDENT-ON* */
 
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "OpenSSL Crypto Engine",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

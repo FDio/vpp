@@ -389,7 +389,6 @@ typedef struct _tcp_connection
 #define rst_state snd_wl1
 } tcp_connection_t;
 
-/* *INDENT-OFF* */
 struct _tcp_cc_algorithm
 {
   const char *name;
@@ -406,7 +405,6 @@ struct _tcp_cc_algorithm
   void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
   u64 (*get_pacing_rate) (tcp_connection_t *tc);
 };
-/* *INDENT-ON* */
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
 #define tcp_fastrecovery_off(tc) (tc)->flags &= ~TCP_CONN_FAST_RECOVERY

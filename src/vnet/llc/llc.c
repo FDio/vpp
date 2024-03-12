@@ -181,14 +181,12 @@ llc_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (llc_hw_interface_class) = {
   .name = "LLC",
   .format_header = format_llc_header_with_length,
   .unformat_header = unformat_llc_header,
   .build_rewrite = llc_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static void
 add_protocol (llc_main_t * pm, llc_protocol_t protocol, char *protocol_name)

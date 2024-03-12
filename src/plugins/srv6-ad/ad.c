@@ -447,7 +447,6 @@ srv6_ad_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (srv6_ad2_rewrite, static) =
 {
   .arc_name = "device-input",
@@ -475,7 +474,6 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Dynamic Segment Routing for IPv6 (SRv6) Proxy",
 };
-/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON

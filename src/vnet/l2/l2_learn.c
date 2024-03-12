@@ -439,7 +439,6 @@ VLIB_NODE_FN (l2learn_node) (vlib_main_t * vm,
   return l2learn_node_inline (vm, node, frame, 0 /* do_trace */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2learn_node) = {
   .name = "l2-learn",
   .vector_size = sizeof (u32),
@@ -457,7 +456,6 @@ VLIB_REGISTER_NODE (l2learn_node) = {
         [L2LEARN_NEXT_L2FWD] = "l2-fwd",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
@@ -540,13 +538,11 @@ done:
  * Example of how to disable learning:
  * @cliexcmd{set interface l2 learn GigabitEthernet0/8/0 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_learn_cli, static) = {
   .path = "set interface l2 learn",
   .short_help = "set interface l2 learn <interface> [disable]",
   .function = int_learn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *

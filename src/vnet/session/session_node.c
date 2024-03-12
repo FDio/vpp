@@ -1823,14 +1823,12 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
     clib_llist_put (wrk->event_elts, elt);
 }
 
-/* *INDENT-OFF* */
 static const u32 session_evt_msg_sizes[] = {
 #define _(symc, sym) 							\
   [SESSION_CTRL_EVT_ ## symc] = sizeof (session_ ## sym ##_msg_t),
   foreach_session_ctrl_evt
 #undef _
 };
-/* *INDENT-ON* */
 
 always_inline void
 session_update_time_subscribers (session_main_t *smm, clib_time_type_t now,
@@ -2068,7 +2066,6 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_tx_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (session_queue_node) = {
   .function = session_queue_node_fn,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -2079,7 +2076,6 @@ VLIB_REGISTER_NODE (session_queue_node) = {
   .error_counters = session_error_counters,
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 session_wrk_tfd_read_ready (clib_file_t *cf)
@@ -2183,7 +2179,6 @@ session_queue_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (session_queue_process_node) =
 {
   .function = session_queue_process,
@@ -2191,7 +2186,6 @@ VLIB_REGISTER_NODE (session_queue_process_node) =
   .name = "session-queue-process",
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 static_always_inline uword
 session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -2204,7 +2198,6 @@ session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return session_queue_node_fn (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (session_queue_pre_input_node) =
 {
   .function = session_queue_pre_input_inline,
@@ -2212,7 +2205,6 @@ VLIB_REGISTER_NODE (session_queue_pre_input_node) =
   .name = "session-queue-main",
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

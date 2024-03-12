@@ -1231,12 +1231,10 @@ tls_openssl_init (vlib_main_t * vm)
 
   return error;
 }
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tls_openssl_init) =
 {
   .runs_after = VLIB_INITS("tls_init"),
 };
-/* *INDENT-ON* */
 
 #ifdef HAVE_OPENSSL_ASYNC
 static clib_error_t *
@@ -1307,22 +1305,18 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tls_openssl_set_command, static) =
 {
   .path = "tls openssl set",
   .short_help = "tls openssl set [engine <engine name>] [alg [algorithm] [async]",
   .function = tls_openssl_set_command_fn,
 };
-/* *INDENT-ON* */
 #endif
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

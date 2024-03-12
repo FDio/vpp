@@ -312,14 +312,12 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
   .short_help = "set interface handoff <interface-name> workers <workers-list>"
 		" [symmetrical|asymmetrical]",
   .function = set_interface_handoff_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 handoff_init (vlib_main_t * vm)

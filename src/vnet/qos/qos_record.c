@@ -203,14 +203,12 @@ qos_record_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos record ip GigEthernet0/1/0}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_record_command, static) = {
   .path = "qos record",
   .short_help = "qos record <record-source> <INTERFACE> [disable]",
   .function = qos_record_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
 qos_record_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
@@ -285,14 +283,12 @@ qos_record_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_record_show_command, static) = {
   .path = "show qos record",
   .short_help = "show qos record [interface]",
   .function = qos_record_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

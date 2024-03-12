@@ -631,7 +631,6 @@ format_pmalloc (u8 * s, va_list * va)
 		format_clib_error, pm->error);
 
 
-  /* *INDENT-OFF* */
   pool_foreach (a, pm->arenas)
     {
       u32 *page_index;
@@ -649,7 +648,6 @@ format_pmalloc (u8 * s, va_list * va)
 			format_pmalloc_page, pp, verbose);
 	  }
     }
-  /* *INDENT-ON* */
 
   return s;
 }

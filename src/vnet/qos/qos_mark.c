@@ -187,14 +187,12 @@ qos_mark_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos egress interface GigEthernet0/9/0 id 0 output ip}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_egress_map_interface_command, static) = {
   .path = "qos mark",
   .short_help = "qos mark <SOURCE> <INTERFACE> id <MAP>",
   .function = qos_mark_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
 qos_mark_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
@@ -271,14 +269,12 @@ qos_mark_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_mark_show_command, static) = {
   .path = "show qos mark",
   .short_help = "show qos mark [interface]",
   .function = qos_mark_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

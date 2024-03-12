@@ -260,7 +260,6 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
     {
       router_lifetime_in_sec = r->router_lifetime_in_sec;
       u8 route_already_present = 0;
-      /* *INDENT-OFF* */
       pool_foreach (default_route, rm->default_route_pool)
        {
         if (default_route->sw_if_index != sw_if_index)
@@ -274,7 +273,6 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
             goto default_route_pool_foreach_out;
           }
       }
-      /* *INDENT-ON* */
     default_route_pool_foreach_out:
 
       if (!route_already_present)
@@ -331,7 +329,6 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
 	continue;
 
       u8 address_already_present = 0;
-      /* *INDENT-OFF* */
       pool_foreach (slaac_address, rm->slaac_address_pool)
        {
         if (slaac_address->sw_if_index != sw_if_index)
@@ -347,7 +344,6 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
             goto slaac_address_pool_foreach_out;
           }
       }
-      /* *INDENT-ON* */
     slaac_address_pool_foreach_out:
 
       if (address_already_present)
@@ -412,7 +408,6 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * we do not use pool_foreach() to iterate over pool elements here
 	   * as we are removing elements inside the loop body
 	   */
-          /* *INDENT-OFF* */
           pool_foreach_index (index, rm->slaac_address_pool)
            {
             slaac_address = pool_elt_at_index(rm->slaac_address_pool, index);
@@ -440,7 +435,6 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
             else
               remove_default_route (vm, default_route);
           }
-          /* *INDENT-ON* */
 	  current_time = vlib_time_now (vm);
 	}
       while (due_time < current_time);
@@ -451,13 +445,11 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (rd_cp_process_node) = {
     .function = rd_cp_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "rd-cp-process",
 };
-/* *INDENT-ON* */
 
 static void
 interrupt_process (void)
@@ -512,21 +504,17 @@ rd_cp_set_address_autoconfig (u32 sw_if_index,
 
   if (if_config->enabled && !enable)
     {
-      /* *INDENT-OFF* */
       pool_foreach (slaac_address, rm->slaac_address_pool)
        {
           remove_slaac_address (vm, slaac_address);
       }
-      /* *INDENT-ON* */
     }
   if (if_config->install_default_routes && !install_default_routes)
     {
-      /* *INDENT-OFF* */
       pool_foreach (default_route, rm->default_route_pool)
        {
           remove_default_route (vm, default_route);
       }
-      /* *INDENT-ON* */
     }
 
   if_config->enabled = enable;
@@ -586,13 +574,11 @@ ip6_nd_address_autoconfig (vlib_main_t * vm,
  * @cliexcmd{ip6 nd address autoconfig GigabitEthernet2/0/0 disable}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_nd_address_autoconfig_command, static) = {
   .path = "ip6 nd address autoconfig",
   .short_help = "ip6 nd address autoconfig <interface> [default-route|disable]",
   .function = ip6_nd_address_autoconfig,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 rd_cp_init (vlib_main_t * vm)

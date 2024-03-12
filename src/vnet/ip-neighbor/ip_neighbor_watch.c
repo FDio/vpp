@@ -66,13 +66,11 @@ ip_neighbor_event_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip_neighbor_event_process_node) = {
   .function = ip_neighbor_event_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "ip-neighbor-event",
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -84,7 +82,6 @@ want_ip_neighbor_events_reaper (u32 client_index)
   i32 pos;
 
   /* walk the entire IP neighbour DB and removes the client's registrations */
-  /* *INDENT-OFF* */
   mhash_foreach(key, v, &ipnw_db.ipnwdb_hash,
   ({
     watchers = (ip_neighbor_watcher_t*) *v;
@@ -97,7 +94,6 @@ want_ip_neighbor_events_reaper (u32 client_index)
     if (vec_len(watchers) == 0)
       vec_add1 (empty_keys, *key);
   }));
-  /* *INDENT-OFF* */
 
   vec_foreach (key, empty_keys)
     mhash_unset (&ipnw_db.ipnwdb_hash, key, NULL);
@@ -236,7 +232,6 @@ ip_neighbor_watchers_show (vlib_main_t * vm,
   ip_neighbor_key_t *key;
   uword *v;
 
-  /* *INDENT-OFF* */
   mhash_foreach(key, v, &ipnw_db.ipnwdb_hash,
   ({
     watchers = (ip_neighbor_watcher_t*) *v;
@@ -247,17 +242,14 @@ ip_neighbor_watchers_show (vlib_main_t * vm,
     vec_foreach (watcher, watchers)
       vlib_cli_output (vm, "  %U", format_ip_neighbor_watcher, watcher);
   }));
-  /* *INDENT-ON* */
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_neighbor_watchers_cmd_node, static) = {
   .path = "show ip neighbor-watcher",
   .function = ip_neighbor_watchers_show,
   .short_help = "show ip neighbors-watcher",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip_neighbor_watch_init (vlib_main_t * vm)
@@ -267,12 +259,10 @@ ip_neighbor_watch_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip_neighbor_watch_init) =
 {
   .runs_after = VLIB_INITS("ip_neighbor_init"),
 };
-/* *INDENT-ON* */
 
 
 /*

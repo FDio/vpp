@@ -43,7 +43,6 @@ typedef struct
   u32 len;
 } test_pattern_t;
 
-/* *INDENT-OFF* */
 test_pattern_t test_pattern[] = {
   {380, 8}, {768, 8}, {1156, 8}, {1544, 8}, {1932, 8}, {2320, 8}, {2708, 8},
   {2992, 8}, {372, 8}, {760, 8}, {1148, 8}, {1536, 8}, {1924, 8}, {2312, 8},
@@ -102,7 +101,6 @@ test_pattern_t test_pattern[] = {
   /* missing from original data set */
   {388, 4}, {776, 4}, {1164, 4}, {1552, 4}, {1940, 4}, {2328, 4},
 };
-/* *INDENT-ON* */
 
 int
 pattern_cmp (const void *arg1, const void *arg2)
@@ -1993,9 +1991,7 @@ sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-/* *INDENT-OFF* */
 svm_fifo_trace_elem_t fifo_trace[] = {};
-/* *INDENT-ON* */
 
 static int
 sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
@@ -2863,14 +2859,12 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svm_fifo_test_command, static) =
 {
   .path = "test svm fifo",
   .short_help = "internal svm fifo unit tests",
   .function = svm_fifo_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -250,7 +250,6 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
 
   vec_foreach (tkm, km->per_thread_data)
   {
-    /* *INDENT-OFF* */
     pool_foreach (sa, tkm->sas)  {
       if (show_one)
         {
@@ -263,7 +262,6 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
       else
         s = format (s, "%U\n", format_ikev2_sa, sa, details);
     }
-    /* *INDENT-ON* */
   }
 
   vlib_cli_output (vm, "%v", s);
@@ -271,13 +269,11 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
     .path = "show ikev2 sa",
     .short_help = "show ikev2 sa [rspi <rspi>] [details]",
     .function = show_ikev2_sa_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ikev2_disable_dpd_command_fn (vlib_main_t * vm,
@@ -288,13 +284,11 @@ ikev2_disable_dpd_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_cli_disable_dpd_command, static) = {
   .path = "ikev2 dpd disable",
   .short_help = "ikev2 dpd disable",
   .function = ikev2_disable_dpd_command_fn,
 };
-/* *INDENT-ON* */
 
 static uword
 unformat_ikev2_token (unformat_input_t * input, va_list * va)
@@ -571,7 +565,6 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     .path = "ikev2 profile",
     .short_help =
@@ -592,7 +585,6 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "ikev2 profile set <id> disable natt\n",
     .function = ikev2_profile_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_ikev2_profile_command_fn (vlib_main_t * vm,
@@ -602,7 +594,6 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
 
-  /* *INDENT-OFF* */
   pool_foreach (p, km->profiles)  {
     vlib_cli_output(vm, "profile %v", p->name);
 
@@ -669,18 +660,15 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     vlib_cli_output(vm, "  lifetime %d jitter %d handover %d maxdata %d",
                     p->lifetime, p->lifetime_jitter, p->handover, p->lifetime_maxdata);
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_profile_command, static) = {
     .path = "show ikev2 profile",
     .short_help = "show ikev2 profile",
     .function = show_ikev2_profile_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ikev2_liveness_period_fn (vlib_main_t * vm,
@@ -713,13 +701,11 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ikev2_liveness_command, static) = {
   .path = "ikev2 set liveness",
   .short_help = "ikev2 set liveness <period> <max-retires>",
   .function = set_ikev2_liveness_period_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ikev2_local_key_command_fn (vlib_main_t * vm,
@@ -753,14 +739,12 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ikev2_local_key_command, static) = {
     .path = "set ikev2 local key",
     .short_help =
     "set ikev2 local key <file>",
     .function = set_ikev2_local_key_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -811,7 +795,6 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
     .path = "ikev2 initiate",
     .short_help =
@@ -821,7 +804,6 @@ VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
         "ikev2 initiate rekey-child-sa <child sa ispi>\n",
     .function = ikev2_initiate_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ikev2_set_log_level_command_fn (vlib_main_t * vm,
@@ -851,13 +833,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_set_log_level_command, static) = {
   .path = "ikev2 set logging level",
   .function = ikev2_set_log_level_command_fn,
   .short_help = "ikev2 set logging level <0-5>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

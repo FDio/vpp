@@ -212,7 +212,6 @@ VLIB_NODE_FN (vlan_ip6_qos_mark_node) (vlib_main_t * vm,
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_mark_node) = {
   .name = "ip4-qos-mark",
   .vector_size = sizeof (u32),
@@ -330,7 +329,6 @@ VNET_FEATURE_INIT (vlan_mpls_qos_mark_node, static) = {
     .runs_after = VNET_FEATURES ("mpls-qos-mark"),
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

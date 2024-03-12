@@ -93,24 +93,19 @@ typedef enum mobile_localsid_function_list
   SRV6_MOBILE_LOCALSID_END_M_GTP6_D_DT46,
 } mobile_localsid_function_list_t;
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u8 type;
   u8 restart_counter;
 } __attribute__ ((packed)) gtpu_recovery_ie;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u16 seq;
   u8 npdu_num;
   u8 nextexthdr;
 } __attribute__ ((packed)) gtpu_exthdr_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u8 ver_flags;
@@ -119,7 +114,6 @@ typedef struct
   u32 teid;
   gtpu_exthdr_t ext[0];
 } __attribute__ ((packed)) gtpu_header_t;
-/* *INDENT-ON* */
 
 #define GTPU_TYPE_ECHO_REQUEST          1
 #define GTPU_TYPE_ECHO_REPLY            2
@@ -127,7 +121,6 @@ typedef struct
 #define GTPU_TYPE_END_MARKER            254
 #define GTPU_TYPE_GTPU                  255
 
-/* *INDENT-OFF* */
 typedef struct
 {
   BITALIGN2 (u8 ppi:3,
@@ -135,9 +128,7 @@ typedef struct
 
   u8 padding[3];
 } __attribute__ ((packed)) gtpu_paging_policy_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u8 exthdrlen;
@@ -155,7 +146,6 @@ typedef struct
   gtpu_paging_policy_t  paging[0];
   u8 nextexthdr;
 } __attribute__ ((packed)) gtpu_pdu_session_t;
-/* *INDENT-ON* */
 
 #define GTPU_PDU_SESSION_P_BIT_MASK     0x80
 #define GTPU_PDU_SESSION_R_BIT_MASK     0x40
@@ -165,36 +155,30 @@ typedef struct
 #define SRV6_PDU_SESSION_R_BIT_MASK     0x02
 #define SRV6_PDU_SESSION_QFI_MASK       0xfC
 
-/* *INDENT-OFF* */
 typedef struct
 {
   ip4_header_t ip4;            /* 20 bytes */
   udp_header_t udp;            /* 8 bytes */
   gtpu_header_t gtpu;        /* 8 bytes */
 } __attribute__ ((packed)) ip4_gtpu_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef struct
 {
   ip6_header_t ip6;          /* 40 bytes */
   udp_header_t udp;          /* 8 bytes */
   gtpu_header_t gtpu;        /* 8 bytes */
 } __attribute__ ((packed)) ip6_gtpu_header_t;
-/* *INDENT-ON* */
 
 #define GTPU_V1_VER   (1<<5)
 
 #define GTPU_PT_GTP   (1<<4)
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u8 type;
   u8 length;
   u8 value[0];
 } __attribute__ ((packed)) user_plane_sub_tlv_t;
-/* *INDENT-ON* */
 
 #define USER_PLANE_SUB_TLV_IE	0x01
 

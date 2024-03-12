@@ -416,12 +416,10 @@ cdp_input_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (cdp_input_init) =
 {
   .runs_after = VLIB_INITS("cdp_periodic_init"),
 };
-/* *INDENT-ON* */
 
 
 static u8 *
@@ -437,7 +435,6 @@ format_cdp_neighbors (u8 * s, va_list * va)
 	      "%=25s %=25s %=25s %=10s\n",
 	      "Our Port", "Peer System", "Peer Port", "Last Heard");
 
-  /* *INDENT-OFF* */
   pool_foreach (n, cm->neighbors)
    {
     hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
@@ -447,7 +444,6 @@ format_cdp_neighbors (u8 * s, va_list * va)
                   hw->name, n->device_name, n->port_id,
                   n->last_heard);
   }
-  /* *INDENT-ON* */
   return s;
 }
 
@@ -465,13 +461,11 @@ show_cdp (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_cdp_command, static) = {
   .path = "show cdp",
   .short_help = "Show cdp command",
   .function = show_cdp,
 };
-/* *INDENT-ON* */
 
 
 /*

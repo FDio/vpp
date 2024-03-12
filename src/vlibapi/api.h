@@ -28,13 +28,11 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api_common.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED ( struct {
    u32 nitems;
    u32 msgtbl_size;
    u8 wrapped;
 }) vl_api_trace_file_header_t;
-/* *INDENT-ON* */
 
 int vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which,
 			   FILE *fp, u8 is_json);

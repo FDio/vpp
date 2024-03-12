@@ -61,13 +61,11 @@ dns_cache_clear (dns_main_t * dm)
 
   dns_cache_lock (dm, 1);
 
-  /* *INDENT-OFF* */
   pool_foreach (ep, dm->entries)
    {
     vec_free (ep->name);
     vec_free (ep->pending_requests);
   }
-  /* *INDENT-ON* */
 
   pool_free (dm->entries);
   hash_free (dm->cache_entry_by_name);
@@ -1403,7 +1401,6 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   if (ep == 0)
     return;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DNS_RESOLVE_NAME_REPLY, ({
 		  ip_address_copy_addr (rmp->ip4_address, &rn.address);
 		  if (ip_addr_version (&rn.address) == AF_IP4)
@@ -1411,7 +1408,6 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 		  else
 		    rmp->ip6_set = 1;
 		}));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1480,13 +1476,11 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
   if (ep == 0)
     return;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_DNS_RESOLVE_IP_REPLY,
   ({
     rv = vnet_dns_response_to_name (ep->dns_response, rmp, 0 /* ttl-ptr */);
     rmp->retval = clib_host_to_net_u32 (rv);
   }));
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -2096,7 +2090,6 @@ format_dns_cache (u8 * s, va_list * args)
 
   if (verbose > 0)
     {
-      /* *INDENT-OFF* */
       pool_foreach (ep, dm->entries)
        {
         if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
@@ -2135,7 +2128,6 @@ format_dns_cache (u8 * s, va_list * args)
           }
         vec_add1 (s, '\n');
       }
-      /* *INDENT-ON* */
     }
 
   dns_cache_unlock (dm);
@@ -2170,14 +2162,12 @@ show_dns_cache_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_dns_cache_command) =
 {
   .path = "show dns cache",
   .short_help = "show dns cache [verbose [nn]]",
   .function = show_dns_cache_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_dns_servers_command_fn (vlib_main_t * vm,
@@ -2207,14 +2197,12 @@ show_dns_servers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_dns_server_command) =
 {
   .path = "show dns servers",
   .short_help = "show dns servers",
   .function = show_dns_servers_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -2309,14 +2297,12 @@ dns_cache_add_del_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dns_cache_add_del_command) =
 {
   .path = "dns cache",
   .short_help = "dns cache [add|del|clear] <name> [ip4][ip6]",
   .function = dns_cache_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 #define DNS_FORMAT_TEST 1
 
@@ -2557,14 +2543,12 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_dns_fmt_command) =
 {
   .path = "test dns format",
   .short_help = "test dns format",
   .function = test_dns_fmt_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_dns_unfmt_command_fn (vlib_main_t * vm,
@@ -2597,14 +2581,12 @@ test_dns_unfmt_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_dns_unfmt_command) =
 {
   .path = "test dns unformat",
   .short_help = "test dns unformat <name> [ip4][ip6]",
   .function = test_dns_unfmt_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_dns_expire_command_fn (vlib_main_t * vm,
@@ -2640,14 +2622,12 @@ test_dns_expire_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_dns_expire_command) =
 {
   .path = "test dns expire",
   .short_help = "test dns expire <name>",
   .function = test_dns_expire_command_fn,
 };
-/* *INDENT-ON* */
 #endif
 
 void
@@ -2889,7 +2869,6 @@ dns_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (dns_init) = {
   .init_order = VLIB_INITS ("flow_classify_init", "dns_init"),
 };
@@ -2899,7 +2878,6 @@ VLIB_PLUGIN_REGISTER () =
   .version = VPP_BUILD_VER,
   .description = "Simple DNS name resolver",
 };
-/* *INDENT-ON* */
 
 
 /*

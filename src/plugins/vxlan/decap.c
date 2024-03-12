@@ -412,7 +412,6 @@ static char *vxlan_error_strings[] = {
 #undef vxlan_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_input_node) =
 {
   .name = "vxlan4-input",
@@ -442,7 +441,6 @@ VLIB_REGISTER_NODE (vxlan6_input_node) =
   },
   .format_trace = format_vxlan_rx_trace,
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -875,7 +873,6 @@ VLIB_NODE_FN (ip4_vxlan_bypass_node) (vlib_main_t * vm,
   return ip_vxlan_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_vxlan_bypass_node) =
 {
   .name = "ip4-vxlan-bypass",
@@ -889,7 +886,6 @@ VLIB_REGISTER_NODE (ip4_vxlan_bypass_node) =
   .format_trace = format_ip4_forward_next_trace,
 };
 
-/* *INDENT-ON* */
 
 /* Dummy init function to get us linked in. */
 static clib_error_t *
@@ -907,7 +903,6 @@ VLIB_NODE_FN (ip6_vxlan_bypass_node) (vlib_main_t * vm,
   return ip_vxlan_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_vxlan_bypass_node) =
 {
   .name = "ip6-vxlan-bypass",
@@ -921,7 +916,6 @@ VLIB_REGISTER_NODE (ip6_vxlan_bypass_node) =
   .format_trace = format_ip6_forward_next_trace,
 };
 
-/* *INDENT-ON* */
 
 /* Dummy init function to get us linked in. */
 static clib_error_t *
@@ -1299,7 +1293,6 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
   return f->n_vectors;
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MULTIARCH_VARIANT
 VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
   .name = "vxlan-flow-input",
@@ -1319,7 +1312,6 @@ VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
   },
 };
 #endif
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

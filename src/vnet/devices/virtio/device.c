@@ -1202,7 +1202,6 @@ virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (virtio_device_class) = {
   .name = "virtio",
   .format_device_name = format_virtio_device_name,
@@ -1216,7 +1215,6 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .rx_mode_change_function = virtio_interface_rx_mode_change,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

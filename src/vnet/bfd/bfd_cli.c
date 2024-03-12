@@ -134,12 +134,10 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       bfd_auth_key_t *key = NULL;
       u8 *s = format (NULL, "%=10s %=25s %=10s\n", "Configuration Key ID",
 		      "Type", "Use Count");
-      /* *INDENT-OFF* */
       pool_foreach (key, bm->auth_keys) {
         s = format (s, "%10u %-25s %10u\n", key->conf_key_id,
                     bfd_auth_type_str (key->auth_type), key->use_count);
       }
-      /* *INDENT-ON* */
       vlib_cli_output (vm, "%v\n", s);
       vec_free (s);
       vlib_cli_output (vm, "Number of configured BFD keys: %lu\n",
@@ -149,11 +147,9 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
     {
       u8 *s = format (NULL, "%=10s %=32s %=20s %=20s\n", "Index", "Property",
 		      "Local value", "Remote value");
-      /* *INDENT-OFF* */
       pool_foreach (bs, bm->sessions) {
         s = format (s, "%U", format_bfd_session_cli, vm, bs);
       }
-      /* *INDENT-ON* */
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
       vlib_cli_output (vm, "Number of configured BFD sessions: %lu\n",
@@ -212,13 +208,11 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_bfd_command, static) = {
   .path = "show bfd",
   .short_help = "show bfd [keys|sessions|echo-source]",
   .function = show_bfd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
@@ -310,7 +304,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_key_add_command, static) = {
   .path = "bfd key set",
   .short_help = "bfd key set"
@@ -319,7 +312,6 @@ VLIB_CLI_COMMAND (bfd_cli_key_add_command, static) = {
                 " secret <secret>",
   .function = bfd_cli_key_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_key_del (vlib_main_t * vm, unformat_input_t * input,
@@ -355,13 +347,11 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_key_del_command, static) = {
   .path = "bfd key del",
   .short_help = "bfd key del conf-key-id <id>",
   .function = bfd_cli_key_del,
 };
-/* *INDENT-ON* */
 
 #define INTERFACE_STR "interface"
 #define LOCAL_ADDR_STR "local-addr"
@@ -484,7 +474,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_add_command, static) = {
   .path = "bfd udp session add",
   .short_help = "bfd udp session add"
@@ -500,7 +489,6 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_add_command, static) = {
                 "]",
   .function = bfd_cli_udp_session_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
@@ -563,7 +551,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_mod_command, static) = {
   .path = "bfd udp session mod",
   .short_help = "bfd udp session mod interface"
@@ -575,7 +562,6 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_mod_command, static) = {
                 " <detect multiplier> ",
   .function = bfd_cli_udp_session_mod,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
@@ -627,7 +613,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_del_command, static) = {
   .path = "bfd udp session del",
   .short_help = "bfd udp session del interface"
@@ -636,7 +621,6 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_del_command, static) = {
                 "<peer-address> ",
   .function = bfd_cli_udp_session_del,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
@@ -709,7 +693,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_set_flags_command, static) = {
   .path = "bfd udp session set-flags",
   .short_help = "bfd udp session set-flags"
@@ -719,7 +702,6 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_set_flags_command, static) = {
                 " admin <up|down>",
   .function = bfd_cli_udp_session_set_flags,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
@@ -806,7 +788,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_activate_command, static) = {
   .path = "bfd udp session auth activate",
   .short_help = "bfd udp session auth activate"
@@ -891,7 +872,6 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_deactivate_command, static) = {
   .path = "bfd udp session auth deactivate",
   .short_help = "bfd udp session auth deactivate"
@@ -901,7 +881,6 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_deactivate_command, static) = {
                 "[ delayed <yes|no> ]",
   .function = bfd_cli_udp_session_auth_deactivate,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_set_echo_source (vlib_main_t * vm, unformat_input_t * input,
@@ -948,13 +927,11 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_set_echo_source_cmd, static) = {
   .path = "bfd udp echo-source set",
   .short_help = "bfd udp echo-source set interface <interface>",
   .function = bfd_cli_udp_set_echo_source,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_cli_udp_del_echo_source (vlib_main_t * vm, unformat_input_t * input,
@@ -971,13 +948,11 @@ bfd_cli_udp_del_echo_source (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .path = "bfd udp echo-source del",
   .short_help = "bfd udp echo-source del",
   .function = bfd_cli_udp_del_echo_source,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

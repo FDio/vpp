@@ -118,7 +118,6 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
-/* *INDENT-OFF* */
 static const char *ip_arc_names[N_IP_FEATURE_LOCATIONS][N_AF][N_SAFI] = {
   [IP_FEATURE_INPUT] = {
     [AF_IP4] = {
@@ -171,7 +170,6 @@ static const char *ip_arc_names[N_IP_FEATURE_LOCATIONS][N_AF][N_SAFI] = {
     },
   },
 };
-/* *INDENT-ON* */
 
 void
 ip_feature_enable_disable (ip_address_family_t af,

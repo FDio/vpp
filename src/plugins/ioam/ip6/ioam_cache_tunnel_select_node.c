@@ -235,7 +235,6 @@ ip6_ioam_cache_ts_node_fn (vlib_main_t * vm,
 /*
  * Node for IP6 iOAM header cache
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ioam_cache_ts_node) =
 {
   .function = ip6_ioam_cache_ts_node_fn,
@@ -253,7 +252,6 @@ VLIB_REGISTER_NODE (ioam_cache_ts_node) =
     [IOAM_CACHE_TS_ERROR_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -623,7 +621,6 @@ VLIB_NODE_FN (ip6_reset_ts_hbh_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_reset_ts_hbh_node) =
 {
   .name = "ip6-add-syn-hop-by-hop",
@@ -642,7 +639,6 @@ VLIB_REGISTER_NODE (ip6_reset_ts_hbh_node) =
   },
 };
 
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 vlib_node_registration_t ioam_cache_ts_timer_tick_node;
@@ -738,7 +734,6 @@ ioam_cache_ts_timer_tick_node_fn (vlib_main_t * vm,
 
   return 0;
 }
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ioam_cache_ts_timer_tick_node) = {
   .function = ioam_cache_ts_timer_tick_node_fn,
   .name = "ioam-cache-ts-timer-tick",
@@ -757,7 +752,6 @@ VLIB_REGISTER_NODE (ioam_cache_ts_timer_tick_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

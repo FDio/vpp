@@ -624,7 +624,6 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
   clib_memset (reta, 0, dev_info.reta_size * sizeof (*reta));
 
   valid_queue_count = 0;
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, bitmap)  {
     if (i >= dev_info.nb_rx_queues)
       {
@@ -633,7 +632,6 @@ dpdk_interface_set_rss_queues (struct vnet_main_t *vnm,
       }
     reta[valid_queue_count++] = i;
   }
-  /* *INDENT-ON* */
 
   /* check valid_queue_count not zero, make coverity happy */
   if (valid_queue_count == 0)
@@ -723,7 +721,6 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
   .tx_function_n_errors = DPDK_TX_FUNC_N_ERROR,
@@ -742,7 +739,6 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
   .rx_mode_change_function = dpdk_interface_rx_mode_change,
 };
-/* *INDENT-ON* */
 
 #define UP_DOWN_FLAG_EVENT 1
 
@@ -789,14 +785,12 @@ admin_up_down_process (vlib_main_t * vm,
   return 0;			/* or not */
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (admin_up_down_process_node) = {
     .function = admin_up_down_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "admin-up-down-process",
     .process_log2_n_stack_bytes = 17,  // 256KB
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

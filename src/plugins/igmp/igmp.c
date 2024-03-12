@@ -35,7 +35,6 @@
 
 igmp_main_t igmp_main;
 
-/* *INDENT-OFF* */
 /* General Query address */
 const static mfib_prefix_t mpfx_general_query = {
   .fp_proto = FIB_PROTOCOL_IP4,
@@ -57,7 +56,6 @@ const static mfib_prefix_t mpfx_report = {
     },
   },
 };
-/* *INDENT-ON* */
 
 /**
  * @brief igmp send query (igmp_timer_function_t)
@@ -345,7 +343,6 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
   IGMP_DBG ("%s:  %U", (enable ? "Enabled" : "Disabled"),
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
 
-  /* *INDENT-OFF* */
   fib_route_path_t via_itf_path =
     {
       .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
@@ -365,7 +362,6 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
     .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
   };
 
-  /* *INDENT-ON* */
   /* find configuration, if it doesn't exist, create new */
   config = igmp_config_lookup (sw_if_index);
   mfib_index = mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
@@ -488,7 +484,6 @@ igmp_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (igmp_init) =
 {
   .runs_after = VLIB_INITS("ip4_lookup_init"),
@@ -498,7 +493,6 @@ VLIB_PLUGIN_REGISTER () =
   .version = VPP_BUILD_VER,
   .description = "Internet Group Management Protocol (IGMP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

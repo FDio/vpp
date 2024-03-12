@@ -628,11 +628,9 @@ hash_resize_internal (void *old, uword new_size, uword free_old)
     {
       hash_t *h = old ? hash_header (old) : 0;
       new = _hash_create (new_size, h);
-      /* *INDENT-OFF* */
       hash_foreach_pair (p, old, {
 	new = _hash_set3 (new, p->key, &p->value[0], 0);
       });
-      /* *INDENT-ON* */
     }
 
   if (free_old)
@@ -884,11 +882,9 @@ format_hash (u8 *s, va_list *va)
 
   if (verbose)
     {
-      /* *INDENT-OFF* */
       hash_foreach_pair (p, v, {
 	s = format (s, "  %U\n", h->format_pair, h->format_pair_arg, v, p);
       });
-      /* *INDENT-ON* */
     }
 
   return s;

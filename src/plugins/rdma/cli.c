@@ -44,7 +44,6 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .path = "create interface rdma",
   .short_help = "create interface rdma <host-if ifname> [name <name>]"
@@ -54,7 +53,6 @@ VLIB_CLI_COMMAND (rdma_create_command, static) = {
 		" [max-pktlen <size>]",
   .function = rdma_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -99,14 +97,12 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_delete_command, static) = {
   .path = "delete interface rdma",
   .short_help = "delete interface rdma "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = rdma_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -162,13 +158,11 @@ test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_rdma_mlx5dv_dump_command, static) = {
   .path = "test rdma dump",
   .short_help = "test rdma dump {<interface> | sw_if_index <sw_idx>}",
   .function = test_rdma_dump_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 rdma_cli_init (vlib_main_t * vm)

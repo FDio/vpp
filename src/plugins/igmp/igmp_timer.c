@@ -181,7 +181,6 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (igmp_timer_process_node) =
 {
   .function = igmp_timer_process,
@@ -189,7 +188,6 @@ VLIB_REGISTER_NODE (igmp_timer_process_node) =
   .name = "igmp-timer-process",
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 igmp_timer_id_t
 igmp_timer_schedule (f64 when, u32 obj, igmp_timer_function_t fn, void *data)

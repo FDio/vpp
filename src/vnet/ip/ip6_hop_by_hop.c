@@ -438,8 +438,7 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =
 {
   .name = "ip6-add-hop-by-hop",
   .vector_size = sizeof (u32),
@@ -455,7 +454,6 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /* The main h-b-h tracer was already invoked, no need to do much here */
 typedef struct
@@ -778,7 +776,6 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 {
   .name = "ip6-pop-hop-by-hop",
@@ -791,7 +788,6 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
   /* See ip/lookup.h */
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -1006,7 +1002,6 @@ VLIB_NODE_FN (ip6_local_hop_by_hop_node) (vlib_main_t * vm,
 }
 
 #ifndef CLIB_MARCH_VARIANT
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_local_hop_by_hop_node) =
 {
   .name = "ip6-local-hop-by-hop",
@@ -1025,7 +1020,6 @@ VLIB_REGISTER_NODE (ip6_local_hop_by_hop_node) =
     [IP6_LOCAL_HOP_BY_HOP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 show_ip6_hbh_command_fn (vlib_main_t * vm,
@@ -1059,13 +1053,11 @@ show_ip6_hbh_command_fn (vlib_main_t * vm,
  * Display ip6 local hop-by-hop next protocol handler nodes
  * @cliexcmd{show ip6 hbh}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip6_hbh, static) = {
   .path = "show ip6 hbh",
   .short_help = "show ip6 hbh",
   .function = show_ip6_hbh_command_fn,
 };
-/* *INDENT-ON* */
 
 
 #endif /* CLIB_MARCH_VARIANT */
@@ -1105,12 +1097,10 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init) =
 {
   .runs_after = VLIB_INITS("ip_main_init", "ip6_lookup_init"),
 };
-/* *INDENT-ON* */
 
 void
 ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
@@ -1264,13 +1254,11 @@ clear_ioam_rewrite_command_fn (vlib_main_t * vm,
  * Example of how to clear iOAM features:
  * @cliexcmd{clear ioam rewrite}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_clear_ioam_rewrite_cmd, static) = {
   .path = "clear ioam rewrite",
   .short_help = "clear ioam rewrite",
   .function = clear_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 ip6_ioam_enable (int has_trace_option, int has_pot_option,
@@ -1371,13 +1359,11 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
  * Example of how to enable trace and pot with ppc set to encap:
  * @cliexcmd{set ioam rewrite trace pot ppc encap}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) = {
   .path = "set ioam rewrite",
   .short_help = "set ioam [trace] [pot] [seqno] [analyse]",
   .function = ip6_set_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_show_ioam_summary_cmd_fn (vlib_main_t * vm,
@@ -1455,13 +1441,11 @@ ip6_show_ioam_summary_cmd_fn (vlib_main_t * vm,
  *          EDGE TO EDGE - PPC OPTION - 1 (Encap)
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) = {
   .path = "show ioam summary",
   .short_help = "show ioam summary",
   .function = ip6_show_ioam_summary_cmd_fn,
 };
-/* *INDENT-ON* */
 
 void
 vnet_register_ioam_end_of_path_callback (void *cb)

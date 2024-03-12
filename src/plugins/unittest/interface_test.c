@@ -57,14 +57,12 @@ test_interface_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_interface_command, static) =
 {
   .path = "test interface link-state",
   .short_help = "test interface link-state <interface> [up] [down]",
   .function = test_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

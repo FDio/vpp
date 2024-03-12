@@ -1548,7 +1548,6 @@ VLIB_NODE_FN (esp6_decrypt_tun_post_node) (vlib_main_t * vm,
   return esp_decrypt_post_inline (vm, node, from_frame, 1, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_decrypt_node) = {
   .name = "esp4-decrypt",
   .vector_size = sizeof (u32),
@@ -1672,7 +1671,6 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_post_node) = {
 
   .sibling_of = "esp6-decrypt-tun",
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 

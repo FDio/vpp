@@ -249,7 +249,6 @@ VLIB_NODE_FN (l2t_decap_node) (vlib_main_t * vm,
  * while l2tp-decap-local drops it.
  */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_node) = {
   .name = "l2tp-decap",
   .vector_size = sizeof (u32),
@@ -267,11 +266,9 @@ VLIB_REGISTER_NODE (l2t_decap_node) = {
         [L2T_DECAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 extern vlib_node_function_t l2t_decap_node_fn;
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_local_node) = {
   .function = l2t_decap_node_fn,
   .name = "l2tp-decap-local",
@@ -290,7 +287,6 @@ VLIB_REGISTER_NODE (l2t_decap_local_node) = {
     [L2T_DECAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -242,12 +242,10 @@ ip6_link_delegate_flush (ip6_link_t * il)
 {
   ip6_link_delegate_t *ild;
 
-  /* *INDENT-OFF* */
   FOREACH_IP6_LINK_DELEGATE (ild, il,
   ({
     il_delegate_vfts[ild->ild_type].ildv_disable(ild->ild_index);
   }));
-  /* *INDENT-ON* */
 
   vec_free (il->il_delegates);
   il->il_delegates = NULL;
@@ -357,14 +355,12 @@ ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
   ip6_address_copy (&ilp.ilp_addr, address);
   ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
 
-  /* *INDENT-OFF* */
   FOREACH_IP6_LINK_DELEGATE (ild, il,
   ({
     if (NULL != il_delegate_vfts[ild->ild_type].ildv_ll_change)
       il_delegate_vfts[ild->ild_type].ildv_ll_change(ild->ild_index,
                                                      &il->il_ll_addr);
   }));
-  /* *INDENT-ON* */
 
   return (0);
 }
@@ -465,7 +461,6 @@ ip6_link_add_del_address (ip6_main_t * im,
   if (NULL == il)
     return;
 
-  /* *INDENT-OFF* */
   FOREACH_IP6_LINK_DELEGATE (ild, il,
   ({
       if (is_delete)
@@ -481,7 +476,6 @@ ip6_link_add_del_address (ip6_main_t * im,
                                                           address, address_length);
         }
   }));
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -555,14 +549,12 @@ test_ip6_link_command_fn (vlib_main_t * vm,
  * Original MAC address: 16:d9:e0:91:79:86
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_link_command, static) =
 {
   .path = "test ip6 link",
   .function = test_ip6_link_command_fn,
   .short_help = "test ip6 link <mac-address>",
 };
-/* *INDENT-ON* */
 
 static u8 *
 ip6_print_addrs (u8 * s, u32 * addrs)
@@ -659,13 +651,11 @@ format_ip6_link (u8 * s, va_list * arg)
   s = format (s, "%U%U\n",
 	      format_white_space, 4, format_ip6_address, &il->il_ll_addr);
 
-  /* *INDENT-OFF* */
   FOREACH_IP6_LINK_DELEGATE(ild, il,
   ({
     s = format (s, "%U", il_delegate_vfts[ild->ild_type].ildv_format,
                      ild->ild_index, 2);
   }));
-  /* *INDENT-ON* */
 
   return (s);
 }
@@ -738,14 +728,12 @@ ip6_link_show (vlib_main_t * vm,
  * show ip6 interface: IPv6 not enabled on interface
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_link_show_command, static) =
 {
   .path = "show ip6 interface",
   .function = ip6_link_show,
   .short_help = "show ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 enable_ip6_interface_cmd (vlib_main_t * vm,
@@ -778,14 +766,12 @@ enable_ip6_interface_cmd (vlib_main_t * vm,
  * Example of how enable IPv6 on a given interface:
  * @cliexcmd{enable ip6 interface GigabitEthernet2/0/0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_ip6_interface_command, static) =
 {
   .path = "enable ip6 interface",
   .function = enable_ip6_interface_cmd,
   .short_help = "enable ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 disable_ip6_interface_cmd (vlib_main_t * vm,
@@ -818,14 +804,12 @@ disable_ip6_interface_cmd (vlib_main_t * vm,
  * Example of how disable IPv6 on a given interface:
  * @cliexcmd{disable ip6 interface GigabitEthernet2/0/0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (disable_ip6_interface_command, static) =
 {
   .path = "disable ip6 interface",
   .function = disable_ip6_interface_cmd,
   .short_help = "disable ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

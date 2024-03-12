@@ -857,7 +857,6 @@ af_xdp_clear (u32 dev_instance)
   clib_error_free (ad->error);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .name = "AF_XDP interface",
   .format_device = format_af_xdp_device,
@@ -870,7 +869,6 @@ VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .mac_addr_change_function = af_xdp_mac_change,
   .clear_counters = af_xdp_clear,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 af_xdp_init (vlib_main_t * vm)

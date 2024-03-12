@@ -92,14 +92,12 @@ set_li_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_li_command, static) = {
     .path = "set li",
     .short_help =
     "set li src <ip4-address> collector <ip4-address> udp-port <nnnn>",
     .function = set_li_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 li_init (vlib_main_t * vm)

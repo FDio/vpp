@@ -670,13 +670,11 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
   .path = "set interface l2 tag-rewrite",
   .short_help = "set interface l2 tag-rewrite <interface> [disable | pop {1|2} | push {dot1q|dot1ad} <tag> <tag>]",
   .function = int_l2_vtr,
 };
-/* *INDENT-ON* */
 
 /**
  * Get pbb tag rewrite on the given interface.
@@ -816,13 +814,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_pbb_vtr_cli, static) = {
   .path = "set interface l2 pbb-tag-rewrite",
   .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]",
   .function = int_l2_pbb_vtr,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

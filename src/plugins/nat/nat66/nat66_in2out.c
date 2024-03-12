@@ -94,14 +94,12 @@ nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
       sw_if_index = fib_entry_get_resolving_interface (fei);
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
    {
     /* NAT packet aimed at outside interface */
     if (nat66_interface_is_outside (i) && sw_if_index == i->sw_if_index)
       return 0;
   }
-  /* *INDENT-ON* */
 
   return 1;
 }
@@ -235,7 +233,6 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat66_in2out_node) = {
   .name = "nat66-in2out",
   .vector_size = sizeof (u32),
@@ -250,7 +247,6 @@ VLIB_REGISTER_NODE (nat66_in2out_node) = {
     [NAT66_IN2OUT_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

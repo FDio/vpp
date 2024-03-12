@@ -270,12 +270,10 @@ again:
     }
 
   /* Finally, clean up all the fine data we allocated */
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, index_by_name,
   ({
     vec_add1 (keys_to_delete, (u8 *)hp->key);
   }));
-  /* *INDENT-ON* */
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);
@@ -657,12 +655,10 @@ show_init_function_command_fn (vlib_main_t * vm,
 	  }
       }
     }
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, index_by_name,
   ({
     vec_add1 (keys_to_delete, (u8 *)hp->key);
   }));
-  /* *INDENT-ON* */
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);
@@ -679,13 +675,11 @@ show_init_function_command_fn (vlib_main_t * vm,
  * @cliexstart{show init-function [init | enter | exit] [verbose [nn]]}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_init_function, static) = {
   .path = "show init-function",
   .short_help = "show init-function [init | enter | exit][verbose [nn]]",
   .function = show_init_function_command_fn,
 };
-/* *INDENT-ON* */
 
 
 /*

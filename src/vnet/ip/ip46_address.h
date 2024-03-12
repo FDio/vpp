@@ -34,7 +34,6 @@ typedef enum
 
 extern u8 *format_ip46_type (u8 * s, va_list * args);
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (union ip46_address_t_ {
   struct {
     u32 pad[3];
@@ -44,7 +43,6 @@ typedef CLIB_PACKED (union ip46_address_t_ {
   u8 as_u8[16];
   u64 as_u64[2];
 }) ip46_address_t;
-/* *INDENT-ON* */
 
 
 format_function_t format_ip46_address;

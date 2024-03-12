@@ -42,9 +42,7 @@
 #include <vppinfra/random_isaac.h>
 #include <vppinfra/warnings.h>
 
-/* *INDENT-OFF* */
 WARN_OFF(array-bounds)
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -120,9 +118,7 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
     return b->buffer + i;
 }
 
-/* *INDENT-OFF* */
 WARN_ON(array-bounds)
-/* *INDENT-ON* */
 
 #endif /* included_clib_random_buffer_h */
 

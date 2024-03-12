@@ -122,7 +122,6 @@ int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
-/* *INDENT-OFF* */
 typedef struct vhost_user_memory_region
 {
   u64 guest_phys_addr;
@@ -175,7 +174,6 @@ typedef struct vhost_user_msg {
       vhost_user_log_t log;
     };
 } __attribute ((packed)) vhost_user_msg_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

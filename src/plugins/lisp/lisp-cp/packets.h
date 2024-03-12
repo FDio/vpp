@@ -27,7 +27,6 @@ void *pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp,
 
 void *pkt_push_ecm_hdr (vlib_buffer_t * b);
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

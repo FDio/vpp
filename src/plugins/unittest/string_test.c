@@ -1403,7 +1403,6 @@ string_test_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (string_test_command, static) = {
   .path = "test string",
   .short_help =
@@ -1414,7 +1413,6 @@ VLIB_CLI_COMMAND (string_test_command, static) = {
     "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s ]",
   .function = string_test_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

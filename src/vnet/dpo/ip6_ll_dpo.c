@@ -191,7 +191,6 @@ static char *ip6_ll_dpo_error_strings[] = {
 /**
  * @brief
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
 {
   .function = ip6_ll_dpo_switch,
@@ -206,7 +205,6 @@ VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
     [IP6_LL_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 void
 ip6_ll_dpo_module_init (void)

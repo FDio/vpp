@@ -193,7 +193,6 @@ vxlan_gpe_decap_ioam_v4 (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_gpe_decap_ioam_v4_node) = {
   .function = vxlan_gpe_decap_ioam_v4,
   .name = "vxlan-gpe-decap-ioam-v4",
@@ -211,7 +210,6 @@ VLIB_REGISTER_NODE (vxlan_gpe_decap_ioam_v4_node) = {
     [VXLAN_GPE_DECAP_IOAM_V4_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 
 /*

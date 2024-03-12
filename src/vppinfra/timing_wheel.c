@@ -302,23 +302,19 @@ timing_wheel_insert (timing_wheel_t * w, u64 insert_cpu_time, u32 user_data)
       /* Delete elts with given user data so that stale events don't expire. */
       vec_foreach (l, w->levels)
       {
-	  /* *INDENT-OFF* */
 	  clib_bitmap_foreach (wi, l->occupancy_bitmap)  {
 	    l->elts[wi] = delete_user_data (l->elts[wi], user_data);
 	    if (vec_len (l->elts[wi]) == 0)
 	      l->occupancy_bitmap = clib_bitmap_andnoti (l->occupancy_bitmap, wi);
 	  }
-	  /* *INDENT-ON* */
       }
 
       {
 	timing_wheel_overflow_elt_t *oe;
-	/* *INDENT-OFF* */
 	pool_foreach (oe, w->overflow_pool)  {
 	  if (oe->user_data == user_data)
 	    pool_put (w->overflow_pool, oe);
 	}
-	/* *INDENT-ON* */
       }
 
       hash_unset (w->deleted_user_data_hash, user_data);
@@ -397,10 +393,8 @@ timing_wheel_next_expiring_elt_time (timing_wheel_t * w)
     if (min_dt != ~0)
       min_t = w->cpu_time_base + min_dt;
 
-    /* *INDENT-OFF* */
     pool_foreach (oe, w->overflow_pool)
 		   { min_t = clib_min (min_t, oe->cpu_time); }
-    /* *INDENT-ON* */
 
   done:
     return min_t;
@@ -485,7 +479,6 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
   vec_foreach (l, w->levels)
   {
     uword wi;
-      /* *INDENT-OFF* */
       clib_bitmap_foreach (wi, l->occupancy_bitmap)  {
 	vec_foreach (e, l->elts[wi])
 	  {
@@ -496,13 +489,11 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 	    e->cpu_time_relative_to_base -= delta;
 	  }
       }
-      /* *INDENT-ON* */
   }
 
   /* See which overflow elements fit now. */
   {
     timing_wheel_overflow_elt_t *oe;
-    /* *INDENT-OFF* */
     pool_foreach (oe, w->overflow_pool)  {
       /* It fits now into 32 bits. */
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
@@ -521,7 +512,6 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 	  pool_put (w->overflow_pool, oe);
 	}
     }
-    /* *INDENT-ON* */
   }
   return expired_user_data;
 }
@@ -647,12 +637,10 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
 	break;
 
       level = vec_elt_at_index (w->levels, level_index);
-      /* *INDENT-OFF* */
       clib_bitmap_foreach (wi, level->occupancy_bitmap)  {
         expired_user_data = expire_bin (w, level_index, wi, advance_cpu_time,
 					expired_user_data);
       }
-      /* *INDENT-ON* */
     }
 
   if (PREDICT_TRUE (level_index < vec_len (w->levels)))

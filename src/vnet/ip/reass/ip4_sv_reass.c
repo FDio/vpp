@@ -998,7 +998,6 @@ VLIB_NODE_FN (ip4_sv_reass_node) (vlib_main_t * vm,
     false /* is_custom */, false /* with_custom_context */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_node) = {
     .name = "ip4-sv-reassembly",
     .vector_size = sizeof (u32),
@@ -1014,7 +1013,6 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node) = {
 
         },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip4_sv_reass_node_feature) (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
@@ -1025,7 +1023,6 @@ VLIB_NODE_FN (ip4_sv_reass_node_feature) (vlib_main_t * vm,
     false /* is_custom */, false /* with_custom_context */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_node_feature) = {
     .name = "ip4-sv-reassembly-feature",
     .vector_size = sizeof (u32),
@@ -1040,16 +1037,13 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_feature) = {
                 [IP4_SV_REASSEMBLY_NEXT_HANDOFF] = "ip4-sv-reass-feature-hoff",
         },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_sv_reass_feature) = {
     .arc_name = "ip4-unicast",
     .node_name = "ip4-sv-reassembly-feature",
     .runs_before = VNET_FEATURES ("ip4-lookup"),
     .runs_after = 0,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip4_sv_reass_node_output_feature) (vlib_main_t * vm,
 						 vlib_node_runtime_t * node,
@@ -1061,7 +1055,6 @@ VLIB_NODE_FN (ip4_sv_reass_node_output_feature) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
     .name = "ip4-sv-reassembly-output-feature",
     .vector_size = sizeof (u32),
@@ -1076,16 +1069,13 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
                 [IP4_SV_REASSEMBLY_NEXT_HANDOFF] = "ip4-sv-reass-feature-hoff",
         },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_sv_reass_output_feature) = {
     .arc_name = "ip4-output",
     .node_name = "ip4-sv-reassembly-output-feature",
     .runs_before = 0,
     .runs_after = 0,
 };
-/* *INDENT-ON* */
 
 VLIB_REGISTER_NODE (ip4_sv_reass_custom_node) = {
     .name = "ip4-sv-reassembly-custom-next",
@@ -1333,7 +1323,6 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
 	  clib_spinlock_lock (&rt->lock);
 
 	  vec_reset_length (pool_indexes_to_free);
-          /* *INDENT-OFF* */
           pool_foreach_index (index, rt->pool)  {
                                 reass = pool_elt_at_index (rt->pool, index);
                                 if (now > reass->last_heard + rm->timeout)
@@ -1341,15 +1330,12 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
                                     vec_add1 (pool_indexes_to_free, index);
                                   }
                               }
-          /* *INDENT-ON* */
 	  int *i;
-          /* *INDENT-OFF* */
           vec_foreach (i, pool_indexes_to_free)
           {
             ip4_sv_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
             ip4_sv_reass_free (vm, rm, rt, reass);
           }
-          /* *INDENT-ON* */
 
 	  clib_spinlock_unlock (&rt->lock);
 	}
@@ -1364,7 +1350,6 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_expire_node) = {
   .function = ip4_sv_reass_walk_expired,
   .type = VLIB_NODE_TYPE_PROCESS,
@@ -1373,7 +1358,6 @@ VLIB_REGISTER_NODE (ip4_sv_reass_expire_node) = {
   .n_errors = IP4_N_ERROR,
   .error_counters = ip4_error_counters,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_ip4_sv_reass_key (u8 * s, va_list * args)
@@ -1440,11 +1424,9 @@ show_ip4_reass (vlib_main_t * vm,
       clib_spinlock_lock (&rt->lock);
       if (details)
 	{
-          /* *INDENT-OFF* */
           pool_foreach (reass, rt->pool) {
             vlib_cli_output (vm, "%U", format_ip4_sv_reass, vm, reass);
           }
-          /* *INDENT-ON* */
 	}
       sum_reass_n += rt->reass_n;
       clib_spinlock_unlock (&rt->lock);
@@ -1468,13 +1450,11 @@ show_ip4_reass (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip4_sv_reass_cmd, static) = {
     .path = "show ip4-sv-reassembly",
     .short_help = "show ip4-sv-reassembly [details]",
     .function = show_ip4_reass,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
@@ -1590,7 +1570,6 @@ VLIB_NODE_FN (ip4_sv_reass_handoff_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_handoff_node) = {
   .name = "ip4-sv-reassembly-handoff",
   .vector_size = sizeof (u32),
@@ -1604,7 +1583,6 @@ VLIB_REGISTER_NODE (ip4_sv_reass_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip4_sv_reass_custom_context_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -1628,7 +1606,6 @@ VLIB_REGISTER_NODE (ip4_sv_reass_custom_context_handoff_node) = {
   },
 };
 
-/* *INDENT-OFF* */
 VLIB_NODE_FN (ip4_sv_reass_feature_handoff_node) (vlib_main_t * vm,
 						    vlib_node_runtime_t *
 						    node,
@@ -1637,10 +1614,8 @@ VLIB_NODE_FN (ip4_sv_reass_feature_handoff_node) (vlib_main_t * vm,
   return ip4_sv_reass_handoff_node_inline (
     vm, node, frame, true /* is_feature */, false /* is_custom_context */);
 }
-/* *INDENT-ON* */
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_sv_reass_feature_handoff_node) = {
   .name = "ip4-sv-reass-feature-hoff",
   .vector_size = sizeof (u32),
@@ -1654,7 +1629,6 @@ VLIB_REGISTER_NODE (ip4_sv_reass_feature_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int

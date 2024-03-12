@@ -154,7 +154,6 @@ igmp_config_dump (igmp_main_t * im,
   igmp_group_t *group;
   igmp_src_t *src;
 
-  /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
     ({
       FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
@@ -162,7 +161,6 @@ igmp_config_dump (igmp_main_t * im,
           send_igmp_details (rp, im, config, group, src, context);
         }));
     }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -180,12 +178,10 @@ vl_api_igmp_dump_t_handler (vl_api_igmp_dump_t * mp)
   sw_if_index = ntohl (mp->sw_if_index);
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
       pool_foreach (config, im->configs)
          {
           igmp_config_dump(im, rp, mp->context, config);
         }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -401,14 +397,12 @@ igmp_event (igmp_filter_mode_t filter,
 	    vnet_get_main (), sw_if_index, format_igmp_filter_mode, filter);
 
 
-  /* *INDENT-OFF* */
   pool_foreach (api_client, im->api_clients)
      {
       rp = vl_api_client_index_to_registration (api_client->client_index);
       if (rp)
         send_igmp_event (rp, filter, sw_if_index, saddr, gaddr);
     }
-  /* *INDENT-ON* */
 }
 
 /* Set up the API message handling tables */

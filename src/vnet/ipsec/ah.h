@@ -30,19 +30,15 @@ typedef struct
 } ah_header_t;
 
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   ah_header_t ah;
 }) ip4_and_ah_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   ah_header_t ah;
 }) ip6_and_ah_header_t;
-/* *INDENT-ON* */
 
 always_inline u32
 ah_encrypt_err_to_sa_err (u32 err)

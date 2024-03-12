@@ -255,9 +255,7 @@ ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_pot_init) =
 {
   .runs_after = VLIB_INITS("ip6_hop_by_hop_ioam_init"),
 };
-/* *INDENT-OFF* */

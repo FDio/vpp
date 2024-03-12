@@ -134,14 +134,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_debug_command, static) =
 {
   .path = "tcp debug",
   .short_help = "tcp [show] [debug group <N> level <N>]",
   .function = tcp_debug_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

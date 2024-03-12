@@ -362,21 +362,17 @@ show_errors (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_errors) = {
   .path = "show errors",
   .short_help = "Show error counts",
   .function = show_errors,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_node_counters, static) = {
   .path = "show node counters",
   .short_help = "Show node counters",
   .function = show_errors,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_error_counters (vlib_main_t * vm,
@@ -395,21 +391,17 @@ clear_error_counters (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_clear_error_counters, static) = {
   .path = "clear errors",
   .short_help = "Clear error counters",
   .function = clear_error_counters,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_clear_node_counters, static) = {
   .path = "clear node counters",
   .short_help = "Clear node counters",
   .function = clear_error_counters,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

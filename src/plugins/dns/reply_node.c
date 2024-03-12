@@ -200,7 +200,6 @@ dns46_reply_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns46_reply_node) =
 {
   .function = dns46_reply_node_fn,
@@ -216,7 +215,6 @@ VLIB_REGISTER_NODE (dns46_reply_node) =
     [DNS46_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -46,7 +46,6 @@ af_xdp_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .path = "create interface af_xdp",
   .short_help =
@@ -55,7 +54,6 @@ VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
     "[prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock]",
   .function = af_xdp_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -100,14 +98,12 @@ af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_xdp_delete_command, static) = {
   .path = "delete interface af_xdp",
   .short_help = "delete interface af_xdp "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = af_xdp_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 af_xdp_cli_init (vlib_main_t * vm)

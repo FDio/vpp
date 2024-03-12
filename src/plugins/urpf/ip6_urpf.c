@@ -74,7 +74,6 @@ VLIB_NODE_FN (ip6_tx_urpf_strict) (vlib_main_t * vm,
   return (urpf_inline (vm, node, frame, AF_IP6, VLIB_TX, URPF_MODE_STRICT));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_rx_urpf_loose) = {
   .name = "ip6-rx-urpf-loose",
   .vector_size = sizeof (u32),
@@ -160,7 +159,6 @@ VNET_FEATURE_INIT (ip6_tx_urpf_strict_feat, static) =
   .arc_name = "ip6-output",
   .node_name = "ip6-tx-urpf-strict",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

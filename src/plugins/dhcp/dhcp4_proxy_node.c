@@ -463,7 +463,6 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_proxy_to_server_node, static) = {
   .function = dhcp_proxy_to_server_input,
   .name = "dhcp-proxy-to-server",
@@ -486,7 +485,6 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_server_node, static) = {
   .unformat_buffer = unformat_dhcp_proxy_header,
 #endif
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -783,7 +781,6 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_proxy_to_client_node, static) = {
   .function = dhcp_proxy_to_client_input,
   .name = "dhcp-proxy-to-client",
@@ -803,7 +800,6 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_client_node, static) = {
     [DHCP4_PROXY_NEXT_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 void
 dhcp_maybe_register_udp_ports (dhcp_port_reg_flags_t ports)
@@ -956,13 +952,11 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
 			      format_unformat_error, input);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_proxy_set_command, static) = {
   .path = "set dhcp proxy",
   .short_help = "set dhcp proxy [del] server <ip-addr> src-address <ip-addr> [server-fib-id <n>] [rx-fib-id <n>]",
   .function = dhcp4_proxy_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_dhcp4_proxy_server (u8 * s, va_list * args)
@@ -1015,13 +1009,11 @@ dhcp4_proxy_show_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_proxy_show_command, static) = {
   .path = "show dhcp proxy",
   .short_help = "Display dhcp proxy server info",
   .function = dhcp4_proxy_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcp_option_82_vss_fn (vlib_main_t * vm,
@@ -1066,13 +1058,11 @@ dhcp_option_82_vss_fn (vlib_main_t * vm,
     }
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_proxy_vss_command,static) = {
   .path = "set dhcp option-82 vss",
   .short_help = "set dhcp option-82 vss [del] table <table id> [oui <n> vpn-id <n> | vpn-ascii-id <text>]",
   .function = dhcp_option_82_vss_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcp_vss_show_command_fn (vlib_main_t * vm,
@@ -1083,13 +1073,11 @@ dhcp_vss_show_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_proxy_vss_show_command, static) = {
   .path = "show dhcp vss",
   .short_help = "show dhcp VSS",
   .function = dhcp_vss_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dhcp_option_82_address_show_command_fn (vlib_main_t * vm,
@@ -1132,13 +1120,11 @@ dhcp_option_82_address_show_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp_proxy_address_show_command,static) = {
   .path = "show dhcp option-82-address interface",
   .short_help = "show dhcp option-82-address interface <interface>",
   .function = dhcp_option_82_address_show_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

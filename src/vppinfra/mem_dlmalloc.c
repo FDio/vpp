@@ -117,14 +117,12 @@ mheap_get_trace_internal (const clib_mem_heap_t *heap, uword offset,
 	    {
 	      hash_pair_t *p;
 	      mheap_trace_t *q;
-            /* *INDENT-OFF* */
 	    hash_foreach_pair (p, tm->trace_by_callers,
             ({
               q = uword_to_pointer (p->key, mheap_trace_t *);
               ASSERT (q >= old_start && q < old_end);
 	      p->key = pointer_to_uword (tm->traces + (q - old_start));
 	    }));
-            /* *INDENT-ON* */
 	    }
 	  trace_index = t - tm->traces;
 	}

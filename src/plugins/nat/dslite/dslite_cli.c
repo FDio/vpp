@@ -95,12 +95,10 @@ dslite_show_pool_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "DS-Lite pool:");
 
-  /* *INDENT-OFF* */
   vec_foreach (a, dm->pool.pool_addr)
     {
       vlib_cli_output (vm, "%U", format_ip4_address, &a->addr);
     }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -267,7 +265,6 @@ dslite_show_sessions_command_fn (vlib_main_t * vm,
   dslite_per_thread_data_t *td;
   dslite_b4_t *b4;
 
-  /* *INDENT-OFF* */
   vec_foreach (td, dm->per_thread_data)
     {
       pool_foreach (b4, td->b4s)
@@ -275,12 +272,10 @@ dslite_show_sessions_command_fn (vlib_main_t * vm,
         vlib_cli_output (vm, "%U", format_dslite_b4, td, b4);
       }
     }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 
 /*?
  * @cliexpar
@@ -394,7 +389,6 @@ VLIB_CLI_COMMAND (dslite_show_sessions, static) = {
   .function = dslite_show_sessions_command_fn,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

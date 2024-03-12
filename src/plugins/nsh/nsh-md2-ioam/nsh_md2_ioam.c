@@ -449,7 +449,6 @@ static clib_error_t *nsh_md2_ioam_set_transit_rewrite_command_fn
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsh_md2_ioam_set_transit_rewrite_cmd, static) = {
   .path = "set nsh-md2-ioam-transit",
   .short_help = "set nsh-ioam-lisp-gpe-transit dst-ip <dst_ip> [outer-fib-index <outer_fib_index>] [disable]",

@@ -220,13 +220,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_bitmap_command, static) = {
   .path = "test bitmap",
   .short_help = "Coverage test for bitmap.h",
   .function = test_bitmap_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

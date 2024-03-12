@@ -288,7 +288,6 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef COUNTERS
       em->counters[node_counter_base_index + L2FWD_ERROR_L2FWD] += 4;
 #endif
-      /* *INDENT-OFF* */
       l2fib_lookup_4 (msm->mac_table, &cached_key, &cached_result,
                       h0->dst_address, h1->dst_address,
                       h2->dst_address, h3->dst_address,
@@ -304,7 +303,6 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
                       &result1,
                       &result2,
                       &result3);
-      /* *INDENT-ON* */
       l2fwd_process (vm, node, msm, em, b[0], sw_if_index0, &result0, next);
       l2fwd_process (vm, node, msm, em, b[1], sw_if_index1, &result1,
 		     next + 1);
@@ -414,7 +412,6 @@ VLIB_NODE_FN (l2fwd_node) (vlib_main_t * vm,
   return l2fwd_node_inline (vm, node, frame, 0 /* do_trace */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2fwd_node) = {
   .name = "l2-fwd",
   .vector_size = sizeof (u32),
@@ -432,7 +429,6 @@ VLIB_REGISTER_NODE (l2fwd_node) = {
     [L2FWD_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
@@ -527,13 +523,11 @@ done:
  * Example of how to disable forwarding:
  * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_fwd_cli, static) = {
   .path = "set interface l2 forward",
   .short_help = "set interface l2 forward <interface> [disable]",
   .function = int_fwd,
 };
-/* *INDENT-ON* */
 
 #endif
 

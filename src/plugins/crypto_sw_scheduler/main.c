@@ -625,14 +625,12 @@ sw_scheduler_set_worker_crypto (vlib_main_t * vm, unformat_input_t * input,
  * @cliexstart{set sw_scheduler worker 0 crypto off}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_sw_scheduler_worker_crypto, static) = {
   .path = "set sw_scheduler",
   .short_help = "set sw_scheduler worker <idx> crypto <on|off>",
   .function = sw_scheduler_set_worker_crypto,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
@@ -661,14 +659,12 @@ sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
  * @cliexstart{show sw_scheduler workers}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_sw_scheduler_workers, static) = {
   .path = "show sw_scheduler workers",
   .short_help = "show sw_scheduler workers",
   .function = sw_scheduler_show_workers,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 sw_scheduler_cli_init (vlib_main_t * vm)
@@ -723,7 +719,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
 
   crypto_sw_scheduler_api_init (vm);
 
-  /* *INDENT-OFF* */
 #define _(n, s, k, t, a)                                                      \
   vnet_crypto_register_enqueue_handler (                                      \
     vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,  \
@@ -743,7 +738,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
     crypto_sw_scheduler_frame_enqueue_decrypt);
     foreach_crypto_link_async_alg
 #undef _
-      /* *INDENT-ON* */
 
       vnet_crypto_register_dequeue_handler (vm, cm->crypto_engine_index,
 					    crypto_sw_scheduler_dequeue);
@@ -754,7 +748,6 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (crypto_sw_scheduler_init) = {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
@@ -763,7 +756,6 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SW Scheduler Crypto Async Engine plugin",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

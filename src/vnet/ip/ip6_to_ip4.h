@@ -31,7 +31,6 @@ typedef int (*ip6_to_ip4_tcp_udp_set_fn_t) (vlib_buffer_t * b,
 					    ip6_header_t * ip6,
 					    ip4_header_t * ip4, void *ctx);
 
-/* *INDENT-OFF* */
 static u8 icmp6_to_icmp_updater_pointer_table[] =
   { 0, 1, ~0, ~0,
     2, 2, 9, 8,
@@ -44,7 +43,6 @@ static u8 icmp6_to_icmp_updater_pointer_table[] =
     24, 24, 24, 24,
     24, 24, 24, 24
   };
-/* *INDENT-ON* */
 
 #define frag_id_6to4(id) ((id) ^ ((id) >> 16))
 

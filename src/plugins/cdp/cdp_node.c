@@ -100,7 +100,6 @@ cdp_node_fn (vlib_main_t * vm,
 /*
  * cdp input graph node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cdp_input_node, static) = {
   .function = cdp_node_fn,
   .name = "cdp-input",
@@ -117,7 +116,6 @@ VLIB_REGISTER_NODE (cdp_input_node, static) = {
     [CDP_INPUT_NEXT_NORMAL] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * cdp periodic function

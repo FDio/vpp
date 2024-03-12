@@ -2372,7 +2372,6 @@ VLIB_NODE_FN (gtpu4_flow_input_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MULTIARCH_VARIANT
 VLIB_REGISTER_NODE (gtpu4_flow_input_node) = {
   .name = "gtpu4-flow-input",
@@ -2393,6 +2392,5 @@ VLIB_REGISTER_NODE (gtpu4_flow_input_node) = {
   },
 };
 #endif
-/* *INDENT-ON* */
 
 #endif /* CLIB_MARCH_VARIANT */

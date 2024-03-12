@@ -17,7 +17,6 @@
 
 #include <vnet/fib/fib_table.h>
 
-/* *INDENT-OFF* */
 static const char *urpf_feat_arcs[N_AF][VLIB_N_DIR] =
 {
   [AF_IP4] = {
@@ -53,7 +52,6 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
     },
   },
 };
-/* *INDENT-ON* */
 
 /**
  * Per-af, per-direction, per-interface uRPF configs
@@ -311,14 +309,12 @@ done:
  * @cliexcmd{set urpf ip4 off GigabitEthernet2/0/0}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set urpf",
   .function = urpf_cli_update,
   .short_help = "set urpf [ip4|ip6] [rx|tx] [off|strict|loose] "
 		"<INTERFACE> [table <table>]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 urpf_cli_accept (vlib_main_t * vm,
@@ -389,13 +385,11 @@ done:
  * loose RPF tests:
  * @cliexcmd{set urpf-accept table 7 10.0.0.0/8 add}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (urpf_accept_command, static) = {
   .path = "set urpf-accept",
   .function = urpf_cli_accept,
   .short_help = "urpf-accept [table <table-id>] [add|del] <PREFIX>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

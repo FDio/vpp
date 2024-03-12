@@ -308,12 +308,10 @@ teib_walk (teib_walk_cb_t fn, void *ctx)
 {
   index_t tei;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (tei, teib_pool)
    {
     fn(tei, ctx);
   }
-  /* *INDENT-ON* */
 }
 
 void
@@ -321,13 +319,11 @@ teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx)
 {
   index_t tei;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (tei, teib_pool)
    {
     if (sw_if_index == teib_entry_get_sw_if_index(teib_entry_get(tei)))
       fn(tei, ctx);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -336,14 +332,12 @@ teib_walk_itf_proto (u32 sw_if_index,
 {
   index_t tei;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (tei, teib_pool)
    {
     if (sw_if_index == teib_entry_get_sw_if_index(teib_entry_get(tei)) &&
         af == teib_entry_get_af(teib_entry_get(tei)))
       fn(tei, ctx);
   }
-  /* *INDENT-ON* */
 }
 
 typedef struct teib_table_bind_ctx_t_

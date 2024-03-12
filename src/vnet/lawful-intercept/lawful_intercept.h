@@ -36,12 +36,10 @@ typedef struct
 
 extern li_main_t li_main;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   ip4_header_t ip4;
   udp_header_t udp;
 }) ip4_udp_header_t;
-/* *INDENT-ON* */
 
 extern vlib_node_registration_t li_hit_node;
 
