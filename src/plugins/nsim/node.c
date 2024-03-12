@@ -299,7 +299,6 @@ VLIB_NODE_FN (nsim_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			0 /* is_trace */ , 1 /* is_cross_connect */ );
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (nsim_node) =
 {
@@ -319,7 +318,6 @@ VLIB_REGISTER_NODE (nsim_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (nsim_feature_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -333,7 +331,6 @@ VLIB_NODE_FN (nsim_feature_node) (vlib_main_t * vm,
 			0 /* is_trace */ , 0 /* is_cross_connect */ );
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (nsim_feature_node) =
 {
@@ -353,7 +350,6 @@ VLIB_REGISTER_NODE (nsim_feature_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

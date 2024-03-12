@@ -251,13 +251,11 @@ clib_macro_free (clib_macro_main_t * mm)
 
   hash_free (mm->the_builtin_eval_hash);
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, mm->the_value_table_hash,
   ({
     vec_add1 (strings_to_free, (u8 *) (p->key));
     vec_add1 (strings_to_free, (u8 *) (p->value[0]));
   }));
-  /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (strings_to_free); i++)
     vec_free (strings_to_free[i]);
@@ -290,14 +288,12 @@ format_clib_macro_main (u8 * s, va_list * args)
   name_sort_t *nses = 0, *ns;
   int i;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, mm->the_value_table_hash,
   ({
     vec_add2 (nses, ns, 1);
     ns->name = (u8 *)(p->key);
     ns->value = (u8 *)(p->value[0]);
   }));
-  /* *INDENT-ON* */
 
   if (vec_len (nses) == 0)
     return s;

@@ -31,7 +31,6 @@ static u8 md5_tc1_digest[] = {
   0x13, 0xf4, 0x8e, 0xf8, 0x15, 0x8b, 0xfc, 0x9d
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc1) = {
   .name = "RFC2202 HMAC-MD5 TC1",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -39,7 +38,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc1) = {
   .plaintext = TEST_DATA (md5_tc1_data),
   .digest = TEST_DATA (md5_tc1_digest),
 };
-/* *INDENT-ON* */
 
 static char md5_tc2_key[4] = "Jefe";
 
@@ -50,7 +48,6 @@ static u8 md5_tc2_digest[] = {
   0xea, 0xa8, 0x6e, 0x31, 0x0a, 0x5d, 0xb7, 0x38,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc2) = {
   .name = "RFC2202 HMAC-MD5 TC2",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -58,7 +55,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc2) = {
   .plaintext = TEST_DATA (md5_tc2_data),
   .digest = TEST_DATA (md5_tc2_digest),
 };
-/* *INDENT-ON* */
 
 static char md5_tc3_key[16] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -80,7 +76,6 @@ static u8 md5_tc3_digest[] = {
   0xdb, 0xb8, 0xc7, 0x33, 0xf0, 0xe8, 0xb3, 0xf6,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc3) = {
   .name = "RFC2202 HMAC-MD5 TC3",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -88,7 +83,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc3) = {
   .plaintext = TEST_DATA (md5_tc3_data),
   .digest = TEST_DATA (md5_tc3_digest),
 };
-/* *INDENT-ON* */
 
 static u8 md5_tc4_key[25] = {
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -112,7 +106,6 @@ static u8 md5_tc4_digest[] = {
   0x3a, 0x75, 0x16, 0x47, 0x46, 0xff, 0xaa, 0x79,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc4) = {
   .name = "RFC2202 HMAC-MD5 TC4",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -120,7 +113,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc4) = {
   .plaintext = TEST_DATA (md5_tc4_data),
   .digest = TEST_DATA (md5_tc4_digest),
 };
-/* *INDENT-ON* */
 
 static u8 md5_tc5_key[16] = {
   0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
@@ -134,7 +126,6 @@ static u8 md5_tc5_digest[] = {
   0xf9, 0xba, 0xb9, 0x95, 0x69, 0x0e, 0xfd, 0x4c,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc5) = {
   .name = "RFC2202 HMAC-MD5 TC5",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -142,7 +133,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc5) = {
   .plaintext = TEST_DATA (md5_tc5_data),
   .digest = TEST_DATA (md5_tc5_digest),
 };
-/* *INDENT-ON* */
 
 static u8 md5_tc6_key[80] = {
   0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -165,7 +155,6 @@ static u8 md5_tc6_digest[] = {
   0x0b, 0x62, 0xe6, 0xce, 0x61, 0xb9, 0xd0, 0xcd,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc6) = {
   .name = "RFC2202 HMAC-MD5 TC6",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -173,7 +162,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc6) = {
   .plaintext = TEST_DATA (md5_tc6_data),
   .digest = TEST_DATA (md5_tc6_digest),
 };
-/* *INDENT-ON* */
 
 static char md5_tc7_data[73] =
   "Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data";
@@ -183,7 +171,6 @@ static u8 md5_tc7_digest[] = {
   0x1f, 0xb1, 0xf5, 0x62, 0xdb, 0x3a, 0xa5, 0x3e,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7) = {
   .name = "RFC2202 HMAC-MD5 TC7",
   .alg = VNET_CRYPTO_ALG_HMAC_MD5,
@@ -203,7 +190,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_md5_tc7_chained) = {
     TEST_DATA_CHUNK (md5_tc7_data, 40, 33)
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

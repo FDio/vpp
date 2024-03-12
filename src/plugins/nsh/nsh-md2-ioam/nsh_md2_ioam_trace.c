@@ -38,7 +38,6 @@ typedef union
 } time_u64_t;
 
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   u16 class;
   u8 type;
@@ -48,7 +47,6 @@ typedef CLIB_PACKED(struct {
   u8 reserve;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) nsh_md2_ioam_trace_option_t;
-/* *INDENT-ON* */
 
 
 #define foreach_nsh_md2_ioam_trace_stats				\
@@ -333,13 +331,11 @@ nsh_md2_ioam_show_ioam_trace_cmd_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsh_md2_ioam_show_ioam_trace_cmd, static) = {
   .path = "show ioam nsh-lisp-gpe trace",
   .short_help = "iOAM trace statistics",
   .function = nsh_md2_ioam_show_ioam_trace_cmd_fn,
 };
-/* *INDENT-ON* */
 
 
 int
@@ -376,12 +372,10 @@ nsh_md2_ioam_trace_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (nsh_md2_ioam_trace_init) =
 {
   .runs_after = VLIB_INITS ("nsh_init", "nsh_md2_ioam_init"),
 };
-/* *INDENT-ON* */
 
 int
 nsh_md2_ioam_trace_profile_cleanup (void)

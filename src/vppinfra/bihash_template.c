@@ -700,12 +700,10 @@ static_always_inline int BV (clib_bihash_add_del_inline_with_hash) (
   int mark_bucket_linear;
   int resplit_once;
 
-  /* *INDENT-OFF* */
   static const BVT (clib_bihash_bucket) mask = {
     .linear_search = 1,
     .log2_pages = -1
   };
-  /* *INDENT-ON* */
 
 #if BIHASH_LAZY_INSTANTIATE
   /*

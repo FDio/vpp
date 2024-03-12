@@ -385,7 +385,6 @@ ila_ila2sir (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/** *INDENT-OFF* */
 VLIB_REGISTER_NODE (ila_ila2sir_node, static) =
 {
   .function = ila_ila2sir,
@@ -400,7 +399,6 @@ VLIB_REGISTER_NODE (ila_ila2sir_node, static) =
       [ILA_ILA2SIR_NEXT_DROP] = "error-drop"
   },
 };
-/** *INDENT-ON* */
 
 typedef enum
 {
@@ -585,7 +583,6 @@ ila_sir2ila (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/** *INDENT-OFF* */
 VLIB_REGISTER_NODE (ila_sir2ila_node, static) =
 {
   .function = ila_sir2ila,.name = "sir-to-ila",
@@ -599,16 +596,13 @@ VLIB_REGISTER_NODE (ila_sir2ila_node, static) =
       [ILA_SIR2ILA_NEXT_DROP] = "error-drop"
   },
 };
-/** *INDENT-ON* */
 
-/** *INDENT-OFF* */
 VNET_FEATURE_INIT (ila_sir2ila, static) =
 {
   .arc_name = "ip6-unicast",
   .node_name = "sir-to-ila",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
-/** *INDENT-ON* */
 
 static void
 ila_entry_stack (ila_entry_t *ie)
@@ -826,12 +820,10 @@ ila_interface (u32 sw_if_index, u8 disable)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Identifier Locator Addressing (ILA) for IPv6",
 };
-/* *INDENT-ON* */
 
 u8 *format_ila_dpo (u8 * s, va_list * va)
 {

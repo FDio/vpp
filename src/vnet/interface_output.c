@@ -1221,7 +1221,6 @@ VLIB_NODE_FN (interface_punt) (vlib_main_t * vm,
   return interface_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_PUNT);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (interface_drop) = {
   .name = "error-drop",
   .vector_size = sizeof (u32),
@@ -1232,9 +1231,7 @@ VLIB_REGISTER_NODE (interface_drop) = {
     [0] = "drop",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (interface_punt) = {
   .name = "error-punt",
   .vector_size = sizeof (u32),
@@ -1245,7 +1242,6 @@ VLIB_REGISTER_NODE (interface_punt) = {
     [0] = "punt",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node) = {
   .name = "interface-output",

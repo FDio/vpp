@@ -39,14 +39,12 @@ typedef union
 } time_u64_t;
 
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   vxlan_gpe_ioam_option_t hdr;
   u8 ioam_trace_type;
   u8 data_list_elts_left;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) vxlan_gpe_ioam_trace_option_t;
-/* *INDENT-ON* */
 
 
 #define foreach_vxlan_gpe_ioam_trace_stats				\
@@ -422,13 +420,11 @@ vxlan_gpe_show_ioam_trace_cmd_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_show_ioam_trace_cmd, static) = {
   .path = "show ioam vxlan-gpe trace",
   .short_help = "iOAM trace statistics",
   .function = vxlan_gpe_show_ioam_trace_cmd_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -459,13 +455,11 @@ vxlan_gpe_ioam_trace_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (vxlan_gpe_ioam_trace_init) =
 {
   .runs_after = VLIB_INITS("ip_main_init", "ip6_lookup_init",
                            "vxlan_gpe_init"),
 };
-/* *INDENT-ON* */
 
 
 int

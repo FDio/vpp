@@ -86,12 +86,10 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t *mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (ue, udp_encap_pool)
    {
     send_udp_encap_details(ue, reg, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -129,12 +127,10 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp)
 				ntohs (mp->udp_encap.dst_port), flags);
 
 done:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_UDP_ENCAP_ADD_REPLY,
   ({
     rmp->id = ntohl (uei);
   }));
-  /* *INDENT-ON* */
 
 }
 

@@ -171,7 +171,6 @@ pg_add_del_mac_address (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
   .tx_function = pg_output,
@@ -180,7 +179,6 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
   .admin_up_down_function = pg_interface_admin_up_down,
   .mac_addr_add_del_function = pg_add_del_mac_address,
 };
-/* *INDENT-ON* */
 
 static u8 *
 pg_build_rewrite (vnet_main_t * vnm,
@@ -197,12 +195,10 @@ pg_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pg_interface_class,static) = {
   .name = "Packet generator",
   .build_rewrite = pg_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static u32
 pg_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)

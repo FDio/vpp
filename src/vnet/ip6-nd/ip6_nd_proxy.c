@@ -23,7 +23,6 @@
 static int
 ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
 {
-  /* *INDENT-OFF* */
   u32 fib_index;
   fib_prefix_t pfx = {
     .fp_len = 128,
@@ -35,7 +34,6 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
   ip46_address_t nh = {
     .ip6 = *addr,
   };
-  /* *INDENT-ON* */
 
   fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
 
@@ -117,14 +115,12 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
 {
   .path = "set ip6 nd proxy",
   .short_help = "set ip6 nd proxy <interface> [del] <host-ip>",
   .function = set_ip6_nd_proxy_cmd,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

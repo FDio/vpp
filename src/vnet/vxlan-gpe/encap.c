@@ -404,7 +404,6 @@ vxlan_gpe_encap (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
   .function = vxlan_gpe_encap,
   .name = "vxlan-gpe-encap",
@@ -423,7 +422,6 @@ VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
     [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 
 /*

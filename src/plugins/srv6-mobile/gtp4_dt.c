@@ -193,7 +193,6 @@ srv6_t_m_gtp4_dt_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (srv6_t_m_gtp4_dt, static) =
 {
   .arc_name = "ip4-unicast",
@@ -202,7 +201,6 @@ VNET_FEATURE_INIT (srv6_t_m_gtp4_dt, static) =
 };
 
 VLIB_INIT_FUNCTION (srv6_t_m_gtp4_dt_init);
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

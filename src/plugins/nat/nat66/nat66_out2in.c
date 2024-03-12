@@ -193,7 +193,6 @@ VLIB_NODE_FN (nat66_out2in_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat66_out2in_node) = {
   .name = "nat66-out2in",
   .vector_size = sizeof (u32),
@@ -208,7 +207,6 @@ VLIB_REGISTER_NODE (nat66_out2in_node) = {
     [NAT66_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

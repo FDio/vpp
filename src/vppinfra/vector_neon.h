@@ -43,7 +43,6 @@ u8x16_compare_byte_mask (u8x16 v)
   return (u32) (vgetq_lane_u64 (x64, 0) + (vgetq_lane_u64 (x64, 1) << 8));
 }
 
-/* *INDENT-OFF* */
 #define foreach_neon_vec128i \
   _(i,8,16,s8) _(i,16,8,s16) _(i,32,4,s32)  _(i,64,2,s64)
 #define foreach_neon_vec128u \
@@ -109,7 +108,6 @@ u8x16_compare_byte_mask (u8x16 v)
 foreach_neon_vec128i foreach_neon_vec128u
 
 #undef _
-/* *INDENT-ON* */
 
 static_always_inline u16x8
 u16x8_byte_swap (u16x8 v)

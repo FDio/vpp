@@ -126,14 +126,12 @@ test_api_fuzz_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_api_fuzz, static) = {
    .path = "test api fuzz",
    .short_help = "test api fuzz [disable][seed nnn]\n"
    "           [fuzz-first nn][fuzz-cli-first nn][fuzz-cli-last nn]",
    .function = test_api_fuzz_command_fn,
   };
-/* *INDENT-ON* */
 
 static u8 main_loop_enter_enable_api_fuzz;
 

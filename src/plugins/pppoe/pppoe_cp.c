@@ -97,14 +97,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) =
 {
     .path = "create pppoe cp",
     .short_help = "create pppoe cp-if-index <intfc> [del]",
     .function = pppoe_add_del_cp_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

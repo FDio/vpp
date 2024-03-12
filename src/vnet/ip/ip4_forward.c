@@ -103,7 +103,6 @@ VLIB_NODE_FN (ip4_lookup_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static u8 *format_ip4_lookup_trace (u8 * s, va_list * args);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_lookup_node) =
 {
   .name = "ip4-lookup",
@@ -112,7 +111,6 @@ VLIB_REGISTER_NODE (ip4_lookup_node) =
   .n_next_nodes = IP_LOOKUP_N_NEXT,
   .next_nodes = IP4_LOOKUP_NEXT_NODES,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
@@ -268,7 +266,6 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_load_balance_node) =
 {
   .name = "ip4-load-balance",
@@ -276,7 +273,6 @@ VLIB_REGISTER_NODE (ip4_load_balance_node) =
   .sibling_of = "ip4-lookup",
   .format_trace = format_ip4_lookup_trace,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 /* get first interface address */
@@ -288,7 +284,6 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
   ip_interface_address_t *ia = 0;
   ip4_address_t *result = 0;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address
     (lm, ia, sw_if_index,
      1 /* honor unnumbered */ ,
@@ -298,7 +293,6 @@ ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
        result = a;
        break;
      }));
-  /* *INDENT-OFF* */
   if (result_ia)
     *result_ia = result ? ia : 0;
   return result;
@@ -671,7 +665,6 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
    * subnets on interfaces. Easy fix - disallow overlapping subnets, like
    * most routers do.
    */
-  /* *INDENT-OFF* */
   if (!is_del)
     {
       /* When adding an address check that it does not conflict
@@ -732,7 +725,6 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
             }
       }
     }
-  /* *INDENT-ON* */
 
   if_address_index = ip_interface_address_find (lm, addr_fib, address_length);
 
@@ -853,7 +845,6 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
    * when directed broadcast is enabled, the subnet braodcast route will forward
    * packets using an adjacency with a broadcast MAC. otherwise it drops
    */
-  /* *INDENT-OFF* */
   foreach_ip_interface_address(&im->lookup_main, ia,
                                sw_if_index, 0,
      ({
@@ -877,7 +868,6 @@ ip4_directed_broadcast (u32 sw_if_index, u8 enable)
               &pfx, sw_if_index);
          }
      }));
-  /* *INDENT-ON* */
 }
 #endif
 
@@ -897,7 +887,6 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 
   fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index,
                                 0 /* honor unnumbered */,
   ({
@@ -911,7 +900,6 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 				im, fib_index,
 				a, ia->address_length);
   }));
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -919,7 +907,6 @@ ip4_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip4_sw_interface_admin_up_down);
 
 /* Built-in ip4 unicast rx feature path definition */
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (ip4_unicast, static) =
 {
   .arc_name = "ip4-unicast",
@@ -1058,7 +1045,6 @@ VNET_FEATURE_INIT (ip4_interface_output, static) =
   .node_name = "interface-output",
   .runs_before = 0,	/* not before any other features */
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
@@ -1083,13 +1069,11 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       vlib_main_t *vm = vlib_get_main ();
 
       vnet_sw_interface_update_unnumbered (sw_if_index, ~0, 0);
-      /* *INDENT-OFF* */
       foreach_ip_interface_address (lm4, ia, sw_if_index, 0,
       ({
         address = ip_interface_address_get_address (lm4, ia);
         ip4_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
       }));
-      /* *INDENT-ON* */
       ip4_mfib_interface_enable_disable (sw_if_index, 0);
 
       if (0 != im4->fib_index_by_sw_if_index[sw_if_index])
@@ -1397,13 +1381,11 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 }
 #endif
 
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (ip4_local) = {
   .arc_name = "ip4-local",
   .start_nodes = VNET_FEATURES ("ip4-local", "ip4-receive"),
   .last_in_arc = "ip4-local-end-of-arc",
 };
-/* *INDENT-ON* */
 
 static inline void
 ip4_local_l4_csum_validate (vlib_main_t * vm, vlib_buffer_t * p,
@@ -1989,14 +1971,12 @@ show_ip_local_command_fn (vlib_main_t * vm,
  * 47
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_local, static) =
 {
   .path = "show ip local",
   .function = show_ip_local_command_fn,
   .short_help = "show ip local",
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -2656,7 +2636,6 @@ VLIB_NODE_FN (ip4_mcast_midchain_node) (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 1, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .name = "ip4-rewrite",
   .vector_size = sizeof (u32),
@@ -2701,7 +2680,6 @@ VLIB_REGISTER_NODE (ip4_midchain_node) = {
   .format_trace = format_ip4_rewrite_trace,
   .sibling_of = "ip4-rewrite",
 };
-/* *INDENT-ON */
 
 static clib_error_t *
 set_ip_flow_hash_command_fn (vlib_main_t * vm,
@@ -2833,14 +2811,12 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
  *     [0] [@0]: dpo-drop ip6
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) = {
   .path = "set ip flow-hash",
   .short_help = "set ip flow-hash table <table-id> [src] [dst] [sport] "
 		"[dport] [proto] [reverse] [gtpv1teid]",
   .function = set_ip_flow_hash_command_fn,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int
@@ -2957,7 +2933,6 @@ set_ip_classify_command_fn (vlib_main_t * vm,
  * Example of how to assign a classification table to an interface:
  * @cliexcmd{set ip classify intfc GigabitEthernet2/0/0 table-index 1}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip_classify_command, static) =
 {
     .path = "set ip classify",
@@ -2965,7 +2940,6 @@ VLIB_CLI_COMMAND (set_ip_classify_command, static) =
     "set ip classify intfc <interface> table-index <classify-idx>",
     .function = set_ip_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -265,7 +265,6 @@ static char *ppp_error_strings[] = {
 #undef ppp_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ppp_input_node) = {
   .function = ppp_input,
   .name = "ppp-input",
@@ -288,7 +287,6 @@ VLIB_REGISTER_NODE (ppp_input_node) = {
   .format_trace = format_ppp_input_trace,
   .unformat_buffer = unformat_ppp_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ppp_input_runtime_init (vlib_main_t * vm)

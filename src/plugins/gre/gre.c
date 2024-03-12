@@ -666,7 +666,6 @@ VLIB_NODE_FN (gre_erspan_encap_node)
   return (gre_encap_inline (vm, node, frame, GRE_TUNNEL_TYPE_ERSPAN));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gre_teb_encap_node) =
 {
   .name = "gre-teb-encap",
@@ -693,7 +692,6 @@ VLIB_REGISTER_NODE (gre_erspan_encap_node) =
     [GRE_ENCAP_NEXT_L2_MIDCHAIN] = "adj-l2-midchain",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 static u8 *
@@ -743,7 +741,6 @@ gre_tunnel_desc (u32 sw_if_index, ip46_address_t *src, ip46_address_t *dst,
   return (0);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gre_device_class) = {
   .name = "GRE tunnel device",
   .format_device_name = format_gre_tunnel_name,
@@ -774,7 +771,6 @@ VNET_HW_INTERFACE_CLASS (mgre_hw_interface_class) = {
   .update_adjacency = mgre_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
-/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */
 
 static void

@@ -127,24 +127,20 @@ show_l2tp_command_fn (vlib_main_t * vm,
 
       vlib_cli_output (vm, "L2tp session lookup on %s", keystr);
 
-      /* *INDENT-OFF* */
       pool_foreach (session, lm->sessions)
        {
         vlib_cli_output (vm, "%U", format_l2t_session, session);
       }
-      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_session_detail_command, static) = {
   .path = "show l2tpv3",
   .short_help = "show l2tpv3 [verbose]",
   .function = show_l2tp_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_counters_command_fn (vlib_main_t * vm,
@@ -157,7 +153,6 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 nincr = 0;
   u32 thread_index = vm->thread_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions)
    {
     session_index = session - lm->sessions;
@@ -175,19 +170,16 @@ test_counters_command_fn (vlib_main_t * vm,
     nincr++;
 
   }
-  /* *INDENT-ON* */
   vlib_cli_output (vm, "Incremented %d active counters\n", nincr);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_counters_command, static) = {
     .path = "test lt2p counters",
     .short_help = "increment all active counters",
     .function = test_counters_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_counters_command_fn (vlib_main_t * vm,
@@ -199,7 +191,6 @@ clear_counters_command_fn (vlib_main_t * vm,
   u32 counter_index;
   u32 nincr = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions)
    {
     session_index = session - lm->sessions;
@@ -210,19 +201,16 @@ clear_counters_command_fn (vlib_main_t * vm,
     vlib_zero_combined_counter (&lm->counter_main, counter_index+1);
     nincr++;
   }
-  /* *INDENT-ON* */
   vlib_cli_output (vm, "Cleared %d active counters\n", nincr);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_counters_command, static) = {
   .path = "clear l2tp counters",
   .short_help = "clear all active counters",
   .function = clear_counters_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_l2tpv3_name (u8 * s, va_list * args)
@@ -252,13 +240,11 @@ l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
   .name = "L2TPv3",
   .format_device_name = format_l2tpv3_name,
   .name_renumber = l2tpv3_name_renumber,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_l2tp_header_with_length (u8 * s, va_list * args)
@@ -268,14 +254,12 @@ format_l2tp_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (l2tpv3_hw_class) = {
   .name = "L2TPV3",
   .format_header = format_l2tp_header_with_length,
   .build_rewrite = default_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 int
 create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
@@ -515,7 +499,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) =
 {
   .path = "create l2tpv3 tunnel",
@@ -523,7 +506,6 @@ VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) =
   "create l2tpv3 tunnel client <ip6> our <ip6> local-cookie <hex> remote-cookie <hex> local-session <dec> remote-session <dec>",
   .function = create_l2tpv3_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 int
 l2tpv3_set_tunnel_cookies (l2t_main_t * lm,
@@ -598,7 +580,6 @@ set_l2tp_tunnel_cookie_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) =
 {
   .path = "set l2tpv3 tunnel cookie",
@@ -606,7 +587,6 @@ VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) =
   "set l2tpv3 tunnel cookie <intfc> local <hex> remote <hex>",
   .function = set_l2tp_tunnel_cookie_command_fn,
 };
-/* *INDENT-ON* */
 
 int
 l2tpv3_interface_enable_disable (vnet_main_t * vnm,
@@ -663,14 +643,12 @@ set_ip6_l2tpv3 (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_l2tpv3, static) =
 {
   .path = "set interface ip6 l2tpv3",
   .function = set_ip6_l2tpv3,
   .short_help = "set interface ip6 l2tpv3 <intfc> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2tp_config (vlib_main_t * vm, unformat_input_t * input)

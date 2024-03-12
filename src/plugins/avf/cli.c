@@ -63,7 +63,6 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_create_command, static) = {
   .path = "create interface avf",
   .short_help = "create interface avf <pci-address> "
@@ -71,7 +70,6 @@ VLIB_CLI_COMMAND (avf_create_command, static) = {
 		"[num-rx-queues <size>]",
   .function = avf_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -107,7 +105,6 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_delete_command, static) = {
   .path = "delete interface avf",
   .short_help = "delete interface avf "
@@ -115,7 +112,6 @@ VLIB_CLI_COMMAND (avf_delete_command, static) = {
   .function = avf_delete_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -167,14 +163,12 @@ avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_test_command, static) = {
   .path = "test avf",
   .short_help = "test avf [<interface> | sw_if_index <sw_idx>] [irq] "
     "[elog-on] [elog-off]",
   .function = avf_test_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 avf_cli_init (vlib_main_t * vm)

@@ -79,7 +79,6 @@ placeholder_server_rx_callback (session_t * s)
   return -1;
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t placeholder_session_cbs = {
   .session_reset_callback = placeholder_session_reset_callback,
   .session_connected_callback = placeholder_session_connected_callback,
@@ -89,7 +88,6 @@ static session_cb_vft_t placeholder_session_cbs = {
   .add_segment_callback = placeholder_add_segment_callback,
   .del_segment_callback = placeholder_del_segment_callback,
 };
-/* *INDENT-ON* */
 
 static char *states_str[] = {
 #define _(sym,str) str,
@@ -776,7 +774,6 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
   .path = "test segment-manager",

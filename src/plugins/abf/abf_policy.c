@@ -315,7 +315,6 @@ out:
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /**
  * Create an ABF policy.
  */
@@ -325,7 +324,6 @@ VLIB_CLI_COMMAND (abf_policy_cmd_node, static) = {
   .short_help = "abf policy [add|del] id <index> acl <index> via ...",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_abf (u8 * s, va_list * args)
@@ -352,13 +350,11 @@ abf_policy_walk (abf_policy_walk_cb_t cb, void *ctx)
 {
   u32 api;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (api, abf_policy_pool)
    {
     if (!cb(api, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -381,12 +377,10 @@ abf_show_policy_cmd (vlib_main_t * vm,
 
   if (INDEX_INVALID == policy_id)
     {
-      /* *INDENT-OFF* */
       pool_foreach (ap, abf_policy_pool)
        {
         vlib_cli_output(vm, "%U", format_abf, ap);
       }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -401,14 +395,12 @@ abf_show_policy_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (abf_policy_show_policy_cmd_node, static) = {
   .path = "show abf policy",
   .function = abf_show_policy_cmd,
   .short_help = "show abf policy <value>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 abf_policy_get_node (fib_node_index_t index)

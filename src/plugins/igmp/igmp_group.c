@@ -23,12 +23,10 @@ igmp_group_free_all_srcs (igmp_group_t * group)
 {
   igmp_src_t *src;
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
     ({
       igmp_src_free(src);
     }));
-  /* *INDENT-ON* */
 
   hash_free (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE]);
   hash_free (group->igmp_src_by_key[IGMP_FILTER_MODE_EXCLUDE]);
@@ -152,7 +150,6 @@ igmp_group_present_minus_new (igmp_group_t * group,
 
   pmn = NULL;
 
-  /* *INDENT-OFF* */
   if (0 == vec_len(saddrs))
     {
       FOR_EACH_SRC(src, group, mode,
@@ -178,7 +175,6 @@ igmp_group_present_minus_new (igmp_group_t * group,
             vec_add1(pmn, *src->key);
         }));
     }
-  /* *INDENT-ON* */
 
   return (pmn);
 }
@@ -198,7 +194,6 @@ igmp_group_new_minus_present (igmp_group_t * group,
 
   npm = NULL;
 
-  /* *INDENT-OFF* */
   vec_foreach(s1, saddrs)
     {
       found = 0;
@@ -214,7 +209,6 @@ igmp_group_new_minus_present (igmp_group_t * group,
       if (!found)
         vec_add1(npm, *s1);
     }
-  /* *INDENT-ON* */
 
   return (npm);
 }
@@ -230,7 +224,6 @@ igmp_group_new_intersect_present (igmp_group_t * group,
 
   intersect = NULL;
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC(src, group, mode,
     ({
       vec_foreach(s1, saddrs)
@@ -242,7 +235,6 @@ igmp_group_new_intersect_present (igmp_group_t * group,
             }
         }
     }));
-  /* *INDENT-ON* */
 
   return (intersect);
 }
@@ -311,12 +303,10 @@ format_igmp_group (u8 * s, va_list * args)
 		format_igmp_group_timer_type, ii,
 		format_igmp_timer_id, group->timers[ii]);
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
   ({
     s = format (s, "\n%U", format_igmp_src, src, indent+4);
   }));
-  /* *INDENT-ON* */
 
   return (s);
 }

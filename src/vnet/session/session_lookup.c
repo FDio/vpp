@@ -37,7 +37,6 @@ static session_lookup_main_t sl_main;
  */
 static u32 *fib_index_to_table_index[2];
 
-/* *INDENT-OFF* */
 /* 16 octets */
 typedef CLIB_PACKED (struct {
   union
@@ -74,7 +73,6 @@ typedef CLIB_PACKED (struct {
       u64 as_u64[6];
     };
 }) v6_connection_key_t;
-/* *INDENT-ON* */
 
 typedef clib_bihash_kv_16_8_t session_kv4_t;
 typedef clib_bihash_kv_48_8_t session_kv6_t;
@@ -1597,7 +1595,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (session_rule_command, static) =
 {
   .path = "session rule",
@@ -1605,7 +1602,6 @@ VLIB_CLI_COMMAND (session_rule_command, static) =
       "<lcl-ip/plen> <lcl-port> <rmt-ip/plen> <rmt-port> action <action>",
   .function = session_rule_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 session_lookup_dump_rules_table (u32 fib_index, u8 fib_proto,
@@ -1728,7 +1724,6 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_session_rules_command, static) =
 {
   .path = "show session rules",
@@ -1736,7 +1731,6 @@ VLIB_CLI_COMMAND (show_session_rules_command, static) =
       "<lcl-port> <rmt-ip/plen> <rmt-port> scope <scope>]",
   .function = show_session_rules_command_fn,
 };
-/* *INDENT-ON* */
 
 u8 *
 format_session_lookup_tables (u8 *s, va_list *args)

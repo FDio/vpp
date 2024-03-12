@@ -803,7 +803,6 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip6_map_feature, static) =
 {
   .arc_name = "ip6-unicast",
@@ -836,9 +835,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
     [IP6_MAP_NEXT_ICMP] = "ip6-icmp-error",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip6_map_post_ip4_reass_node) = {
   .function = ip6_map_post_ip4_reass,
   .name = "ip6-map-post-ip4-reass",
@@ -854,9 +851,7 @@ VLIB_REGISTER_NODE(ip6_map_post_ip4_reass_node) = {
     [IP6_MAP_POST_IP4_REASS_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
   .function = ip6_map_icmp_relay,
   .name = "ip6-map-icmp-relay",
@@ -871,7 +866,6 @@ VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
     [IP6_ICMP_RELAY_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 ip6_map_init (vlib_main_t * vm)

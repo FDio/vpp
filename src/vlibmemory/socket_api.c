@@ -87,7 +87,6 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 
   vlib_cli_output (vm, "Socket clients");
   vlib_cli_output (vm, "%20s %8s", "Name", "Fildesc");
-    /* *INDENT-OFF* */
     pool_foreach (reg, sm->registration_pool)
      {
         if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
@@ -95,7 +94,6 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
             vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
         }
     }
-/* *INDENT-ON* */
 }
 
 vl_api_registration_t *
@@ -527,7 +525,6 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   rp->response = htonl (rv);
   rp->count = htons (nmsg);
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
   ({
     rp->message_table[i].index = htons(hp->value[0]);
@@ -537,7 +534,6 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
                      64-1 /* chars to copy, without zero byte. */);
     i++;
   }));
-  /* *INDENT-ON* */
   vl_api_send_msg (regp, (u8 *) rp);
 }
 
@@ -855,13 +851,11 @@ socket_exit (vlib_main_t * vm)
   if (sm->registration_pool)
     {
       u32 index;
-        /* *INDENT-OFF* */
         pool_foreach (rp, sm->registration_pool)  {
           vl_api_registration_del_file (rp);
           index = rp->vl_api_registration_pool_index;
           vl_socket_free_registration_index (index);
         }
-/* *INDENT-ON* */
     }
 
   return 0;

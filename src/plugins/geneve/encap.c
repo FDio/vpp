@@ -544,7 +544,6 @@ VLIB_NODE_FN (geneve6_encap_node) (vlib_main_t * vm,
   return geneve_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (geneve4_encap_node) = {
   .name = "geneve4-encap",
   .vector_size = sizeof (u32),
@@ -570,7 +569,6 @@ VLIB_REGISTER_NODE (geneve6_encap_node) = {
         [GENEVE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

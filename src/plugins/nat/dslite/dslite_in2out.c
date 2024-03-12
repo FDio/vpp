@@ -460,7 +460,6 @@ VLIB_NODE_FN (dslite_in2out_node) (vlib_main_t * vm,
   return dslite_in2out_node_fn_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_node) = {
   .name = "dslite-in2out",
   .vector_size = sizeof (u32),
@@ -477,7 +476,6 @@ VLIB_REGISTER_NODE (dslite_in2out_node) = {
     [DSLITE_IN2OUT_NEXT_SLOWPATH] = "dslite-in2out-slowpath",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (dslite_in2out_slowpath_node) (vlib_main_t * vm,
 					    vlib_node_runtime_t * node,
@@ -486,7 +484,6 @@ VLIB_NODE_FN (dslite_in2out_slowpath_node) (vlib_main_t * vm,
   return dslite_in2out_node_fn_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
   .name = "dslite-in2out-slowpath",
   .vector_size = sizeof (u32),
@@ -503,7 +500,6 @@ VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
     [DSLITE_IN2OUT_NEXT_SLOWPATH] = "dslite-in2out-slowpath",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

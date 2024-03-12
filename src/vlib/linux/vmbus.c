@@ -455,12 +455,10 @@ linux_vmbus_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (linux_vmbus_init) =
 {
   .runs_before = VLIB_INITS("unix_input_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

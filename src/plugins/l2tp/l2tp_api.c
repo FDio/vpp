@@ -89,12 +89,10 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions)
    {
     send_sw_if_l2tpv3_tunnel_details (am, reg, session, lm, mp->context);
   }
-  /* *INDENT-ON* */
 }
 
 static void vl_api_l2tpv3_create_tunnel_t_handler
@@ -146,12 +144,10 @@ static void vl_api_l2tpv3_create_tunnel_t_handler
 				  encap_fib_index, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_L2TPV3_CREATE_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void vl_api_l2tpv3_set_tunnel_cookies_t_handler
@@ -234,12 +230,10 @@ VLIB_API_INIT_FUNCTION (l2tp_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Layer 2 Tunneling Protocol v3 (L2TP)",
 };
-/* *INDENT-ON* */
 
 
 /*

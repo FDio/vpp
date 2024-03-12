@@ -20,7 +20,6 @@
  * DNS packet header format
  */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u16 id;                       /**< transaction ID */
   u16 flags;                    /**< flags  */
@@ -29,7 +28,6 @@ typedef CLIB_PACKED (struct {
   u16 nscount;                  /**< number of name servers */
   u16 arcount;                  /**< number of additional records */
 }) dns_header_t;
-/* *INDENT-ON* */
 
 #define DNS_RCODE_MASK (0xf)
 #define DNS_RCODE_NO_ERROR 0
@@ -99,17 +97,14 @@ typedef CLIB_PACKED (struct {
 /**
  * DNS "question" fixed header.
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u16 type;	/**< record type requested */
   u16 class;	/**< class, 1 = internet */
 }) dns_query_t;
-/* *INDENT-ON* */
 
 /**
  * DNS RR fixed header.
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u16 type;	/**< record type */
   u16 class;	/**< class, 1 = internet */
@@ -118,7 +113,6 @@ typedef CLIB_PACKED (struct {
   /**< length of r */
   u8 rdata[0];
 }) dns_rr_t;
-/* *INDENT-ON* */
 
 /*
  * There are quite a number of DNS record types

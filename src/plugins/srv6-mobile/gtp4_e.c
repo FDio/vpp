@@ -203,7 +203,6 @@ srv6_end_m_gtp4_e_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) =
 {
   .arc_name = "ip6-unicast",
@@ -217,7 +216,6 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SRv6 GTP Endpoint Functions",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -114,7 +114,6 @@ geneve_mac_change (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .name = "GENEVE",
   .format_device_name = format_geneve_name,
@@ -122,7 +121,6 @@ VNET_DEVICE_CLASS (geneve_device_class, static) = {
   .admin_up_down_function = geneve_interface_admin_up_down,
   .mac_addr_change_function = geneve_mac_change,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_geneve_header_with_length (u8 * s, va_list * args)
@@ -132,13 +130,11 @@ format_geneve_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (geneve_hw_class) = {
   .name = "GENEVE",
   .format_header = format_geneve_header_with_length,
   .build_rewrite = default_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static void
 geneve_tunnel_restack_dpo (geneve_tunnel_t * t)
@@ -878,7 +874,6 @@ done:
  * Example of how to delete a GENEVE Tunnel:
  * @cliexcmd{create geneve tunnel local 10.0.3.1 remote 10.0.3.3 vni 13 del}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_geneve_tunnel_command, static) = {
   .path = "create geneve tunnel",
   .short_help =
@@ -887,7 +882,6 @@ VLIB_CLI_COMMAND (create_geneve_tunnel_command, static) = {
   " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [l3-mode] [del]",
   .function = geneve_add_del_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_geneve_tunnel_command_fn (vlib_main_t * vm,
@@ -917,13 +911,11 @@ show_geneve_tunnel_command_fn (vlib_main_t * vm,
  * [0] local 10.0.3.1 remote 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_geneve_tunnel_command, static) = {
     .path = "show geneve tunnel",
     .short_help = "show geneve tunnel",
     .function = show_geneve_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 
 void
@@ -1031,13 +1023,11 @@ set_ip4_geneve_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip geneve-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_geneve_bypass_command, static) = {
   .path = "set interface ip geneve-bypass",
   .function = set_ip4_geneve_bypass,
   .short_help = "set interface ip geneve-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip6_geneve_bypass (vlib_main_t * vm,
@@ -1088,13 +1078,11 @@ set_ip6_geneve_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip6 geneve-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_geneve_bypass_command, static) = {
   .path = "set interface ip6 geneve-bypass",
   .function = set_ip6_geneve_bypass,
   .short_help = "set interface ip6 geneve-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 geneve_init (vlib_main_t * vm)

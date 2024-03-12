@@ -128,7 +128,6 @@ vl_api_syslog_get_sender_t_handler (vl_api_syslog_get_sender_t * mp)
   syslog_main_t *sm = &syslog_main;
   u32 vrf_id;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SYSLOG_GET_SENDER_REPLY,
   ({
     clib_memcpy (&rmp->collector_address, &(sm->collector),
@@ -143,7 +142,6 @@ vl_api_syslog_get_sender_t_handler (vl_api_syslog_get_sender_t * mp)
     rmp->vrf_id = vrf_id;
     rmp->max_msg_size = htonl (sm->max_msg_size);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -171,12 +169,10 @@ vl_api_syslog_get_filter_t_handler (vl_api_syslog_get_filter_t * mp)
   vl_api_syslog_get_filter_reply_t *rmp;
   syslog_main_t *sm = &syslog_main;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SYSLOG_GET_FILTER_REPLY,
   ({
      rv = syslog_severity_encode (sm->severity_filter, &rmp->severity);
   }))
-  /* *INDENT-ON* */
 }
 
 #include <vnet/syslog/syslog.api.c>

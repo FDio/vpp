@@ -399,7 +399,6 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (syn_filter4_node) =
 {
   .name = "syn-filter-4",
@@ -418,16 +417,13 @@ VLIB_REGISTER_NODE (syn_filter4_node) =
     [SYN_FILTER_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (syn_filter_4, static) =
 {
   .arc_name = "ip4-local",
   .node_name = "syn-filter-4",
   .runs_before = VNET_FEATURES("ip4-local-end-of-arc"),
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int
@@ -525,14 +521,12 @@ syn_filter_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_content_command, static) =
 {
   .path = "ip syn filter",
   .short_help = "ip syn filter <interface-name> [disable]",
   .function = syn_filter_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 #endif /* CLIB_MARCH_VARIANT */
 
 /*

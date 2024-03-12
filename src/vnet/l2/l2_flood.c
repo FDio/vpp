@@ -362,7 +362,6 @@ VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2flood_node) = {
   .name = "l2-flood",
   .vector_size = sizeof (u32),
@@ -380,7 +379,6 @@ VLIB_REGISTER_NODE (l2flood_node) = {
         [L2FLOOD_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
@@ -468,13 +466,11 @@ done:
  * Example of how to disable flooding:
  * @cliexcmd{set interface l2 flood GigabitEthernet0/8/0 disable}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_flood_cli, static) = {
   .path = "set interface l2 flood",
   .short_help = "set interface l2 flood <interface> [disable]",
   .function = int_flood,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

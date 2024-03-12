@@ -546,12 +546,10 @@ always_inline uword *clib_bitmap_xor (uword * ai, uword * bi);
   }
 
 /* ALU functions: */
-/* *INDENT-OFF* */
 _(and, a = a & b, 1)
 _(andnot, a = a & ~b, 1)
 _(or, a = a | b, 0)
 _(xor, a = a ^ b, 1)
-/* *INDENT-ON* */
 #undef _
 /** Logical operator across two bitmaps which duplicates the first bitmap
 
@@ -590,12 +588,10 @@ always_inline uword *clib_bitmap_dup_xor (uword * ai, uword * bi);
   clib_bitmap_dup_##name (uword * ai, uword * bi)	\
 { return clib_bitmap_##name (clib_bitmap_dup (ai), bi); }
 
-/* *INDENT-OFF* */
 _(and);
 _(andnot);
 _(or);
 _(xor);
-/* *INDENT-ON* */
 #undef _
 
 /* ALU function definition macro for functions taking one bitmap and an
@@ -618,12 +614,10 @@ clib_bitmap_##name (uword * ai, uword i)		\
 }
 
 /* ALU functions immediate: */
-/* *INDENT-OFF* */
 _(andi, a = a & b, 1)
 _(andnoti, a = a & ~b, 1)
 _(ori, a = a | b, 0)
 _(xori, a = a ^ b, 1)
-/* *INDENT-ON* */
 #undef _
 
 /* ALU function definition macro for functions taking one bitmap and an
@@ -644,13 +638,11 @@ clib_bitmap_##name##_notrim (uword * ai, uword i)	\
 }
 
 /* ALU functions immediate: */
-/* *INDENT-OFF* */
 _(andi, a = a & b)
 _(andnoti, a = a & ~b)
 _(ori, a = a | b)
 _(xori, a = a ^ b)
 #undef _
-/* *INDENT-ON* */
 
 /** Return a random bitmap of the requested length
     @param ai - pointer to the destination bitmap

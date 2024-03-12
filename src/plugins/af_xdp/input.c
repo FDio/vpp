@@ -352,7 +352,6 @@ af_xdp_device_input_refill (af_xdp_device_t *ad)
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_xdp_input_node) = {
   .name = "af_xdp-input",
   .sibling_of = "device-input",
@@ -363,7 +362,6 @@ VLIB_REGISTER_NODE (af_xdp_input_node) = {
   .error_strings = af_xdp_input_error_strings,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

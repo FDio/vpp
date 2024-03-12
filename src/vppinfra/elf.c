@@ -1702,7 +1702,6 @@ layout_sections (elf_main_t * em)
 	continue;
 
       s_lo = s_hi = 0;
-	/* *INDENT-OFF* */
 	clib_bitmap_foreach (si, g->section_index_bitmap)  {
 	  u64 lo, hi;
 
@@ -1727,7 +1726,6 @@ layout_sections (elf_main_t * em)
 		s_hi = hi;
 	    }
 	}
-	/* *INDENT-ON* */
 
       if (n_sections == 0)
 	continue;

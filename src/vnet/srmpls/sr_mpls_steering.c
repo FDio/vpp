@@ -770,7 +770,6 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(sr_mpls_steer_policy_command, static)=
 {
   .path = "sr mpls steer",
@@ -785,7 +784,6 @@ VLIB_CLI_COMMAND(sr_mpls_steer_policy_command, static)=
     "\t\tsr steer l3 2001::/64 via next-hop 2001::1 color 1234 co 2 vpn-label 500\n",
     .function = sr_mpls_steer_policy_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
@@ -799,11 +797,9 @@ show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
   int i;
 
   vlib_cli_output (vm, "SR MPLS steering policies:");
-  /* *INDENT-OFF* */
   pool_foreach (steer_pl, sm->steer_policies)  {
     vec_add1(steer_policies, steer_pl);
   }
-  /* *INDENT-ON* */
   for (i = 0; i < vec_len (steer_policies); i++)
     {
       vlib_cli_output (vm, "==========================");
@@ -871,14 +867,12 @@ show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(show_sr_mpls_steering_policies_command, static)=
 {
   .path = "show sr mpls steering policies",
     .short_help = "show sr mpls steering policies",
     .function = show_sr_mpls_steering_policies_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 sr_mpls_steering_init (vlib_main_t * vm)
@@ -894,9 +888,7 @@ sr_mpls_steering_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION(sr_mpls_steering_init);
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

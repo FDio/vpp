@@ -887,12 +887,10 @@ application_free (application_t * app)
    * Free workers
    */
 
-  /* *INDENT-OFF* */
   pool_flush (wrk_map, app->worker_maps, ({
     app_wrk = app_worker_get (wrk_map->wrk_index);
     app_worker_free (app_wrk);
   }));
-  /* *INDENT-ON* */
   pool_free (app->worker_maps);
 
   /*
@@ -935,13 +933,11 @@ application_detach_process (application_t * app, u32 api_client_index)
   APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
 	   app->app_index, api_client_index);
 
-  /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     if (app_wrk->api_client_index == api_client_index)
       vec_add1 (wrks, app_wrk->wrk_index);
   }
-  /* *INDENT-ON* */
 
   if (!vec_len (wrks))
     {
@@ -1750,7 +1746,6 @@ application_format_listeners (application_t * app, int verbose)
       return;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     if (hash_elts (app_wrk->listeners_table) == 0)
@@ -1760,7 +1755,6 @@ application_format_listeners (application_t * app, int verbose)
                        handle, sm_index, verbose);
     }));
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1775,12 +1769,10 @@ application_format_connects (application_t * app, int verbose)
       return;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps)  {
     app_wrk = app_worker_get (wrk_map->wrk_index);
     app_worker_format_connects (app_wrk, verbose);
   }
-  /* *INDENT-ON* */
 }
 
 u8 *
@@ -1881,12 +1873,10 @@ format_application (u8 * s, va_list * args)
 	      format_memory_size, props->rx_fifo_size,
 	      format_memory_size, props->tx_fifo_size);
 
-  /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
       s = format (s, "%U", format_app_worker, app_wrk);
   }
-  /* *INDENT-ON* */
 
   return s;
 }
@@ -1904,11 +1894,9 @@ application_format_all_listeners (vlib_main_t * vm, int verbose)
 
   application_format_listeners (0, verbose);
 
-  /* *INDENT-OFF* */
   pool_foreach (app, app_main.app_pool)  {
     application_format_listeners (app, verbose);
   }
-  /* *INDENT-ON* */
 }
 
 void
@@ -1924,11 +1912,9 @@ application_format_all_clients (vlib_main_t * vm, int verbose)
 
   application_format_connects (0, verbose);
 
-  /* *INDENT-OFF* */
   pool_foreach (app, app_main.app_pool)  {
     application_format_connects (app, verbose);
   }
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -1938,11 +1924,9 @@ show_certificate_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_cert_key_pair_t *ckpair;
   session_cli_return_if_not_enabled ();
 
-  /* *INDENT-OFF* */
   pool_foreach (ckpair, app_main.cert_key_pair_store)  {
     vlib_cli_output (vm, "%U", format_cert_key_pair, ckpair);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
@@ -1953,14 +1937,12 @@ appliction_format_app_mq (vlib_main_t * vm, application_t * app)
   app_worker_t *wrk;
   int i;
 
-  /* *INDENT-OFF* */
   pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
     vlib_cli_output (vm, "[A%d][%d]%U", app->app_index,
 		     map->wrk_index, format_svm_msg_q,
 		     wrk->event_queue);
   }
-  /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
     vlib_cli_output (vm, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
@@ -1981,11 +1963,9 @@ appliction_format_all_app_mq (vlib_main_t * vm)
 		       session_main_get_vpp_event_queue (i));
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (app, app_main.app_pool)  {
       appliction_format_app_mq (vm, app);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 

@@ -71,12 +71,10 @@ unix_main_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (unix_main_init) =
 {
   .runs_before = VLIB_INITS ("unix_input_init"),
 };
-/* *INDENT-ON* */
 
 static int
 unsetup_signal_handlers (int sig)
@@ -284,14 +282,12 @@ startup_config_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (startup_config_node,static) = {
     .function = startup_config_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "startup-config-process",
     .process_log2_n_stack_bytes = 18,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 unix_config (vlib_main_t * vm, unformat_input_t * input)

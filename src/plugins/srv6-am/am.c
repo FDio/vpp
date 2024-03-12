@@ -226,7 +226,6 @@ srv6_am_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (srv6_am_rewrite, static) =
 {
   .arc_name = "ip6-unicast",
@@ -240,7 +239,6 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Masquerading Segment Routing for IPv6 (SRv6) Proxy",
 };
-/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON

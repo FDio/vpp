@@ -159,7 +159,6 @@ ipsec_sa_set_integ_alg (ipsec_sa_t * sa, ipsec_integ_alg_t integ_alg)
 void
 ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
 {
-  /* *INDENT-OFF* */
   if (ipsec_sa_is_set_USE_ESN (sa))
     {
 #define _(n, s, k)                                                            \
@@ -190,7 +189,6 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
     sa->crypto_async_dec_op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC;
   foreach_crypto_link_async_alg
 #undef _
-  /* *INDENT-ON* */
 }
 
 int
@@ -646,13 +644,11 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
 {
   ipsec_sa_t *sa;
 
-  /* *INDENT-OFF* */
   pool_foreach (sa, ipsec_sa_pool)
     {
       if (WALK_CONTINUE != cb (sa, ctx))
 	break;
     }
-  /* *INDENT-ON* */
 }
 
 /**

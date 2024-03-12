@@ -224,12 +224,10 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
 
   char *p = vnet_punt_get_server_pathname ();
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_PUNT_SOCKET_REGISTER_REPLY,
   ({
     memcpy ((char *) rmp->pathname, p, sizeof (rmp->pathname));
   }));
-  /* *INDENT-ON* */
 }
 
 typedef struct punt_socket_send_ctx_t_

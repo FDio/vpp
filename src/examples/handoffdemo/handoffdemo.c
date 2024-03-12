@@ -22,13 +22,11 @@
 
 handoffdemo_main_t handoffdemo_main;
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "handoff demo plugin",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

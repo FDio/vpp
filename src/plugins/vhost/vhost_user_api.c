@@ -90,12 +90,10 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 	}
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
   ({
     rmp->sw_if_index = ntohl (args.sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -190,12 +188,10 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
 	}
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_V2_REPLY,
   ({
     rmp->sw_if_index = ntohl (args.sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

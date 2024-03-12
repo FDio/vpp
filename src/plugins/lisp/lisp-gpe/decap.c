@@ -456,7 +456,6 @@ static char *lisp_gpe_ip4_input_error_strings[] = {
 #undef lisp_gpe_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .function = lisp_gpe_ip4_input,
   .name = "lisp-gpe-ip4-input",
@@ -476,9 +475,7 @@ VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .format_trace = format_lisp_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .function = lisp_gpe_ip6_input,
   .name = "lisp-gpe-ip6-input",
@@ -498,7 +495,6 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .format_trace = format_lisp_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
 };
-/* *INDENT-ON* */
 
 /**
  * Adds arc from lisp-gpe-input to nsh-input if nsh-input is available
@@ -556,7 +552,6 @@ static char *lisp_gpe_nsh_placeholder_error_strings[] = {
   "lisp gpe placeholder nsh decap",
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_nsh_placeholder_input_node) = {
   .function = lisp_gpe_nsh_placeholder_input,
   .name = "lisp-gpe-nsh-placeholder-input",
@@ -571,7 +566,6 @@ VLIB_REGISTER_NODE (lisp_gpe_nsh_placeholder_input_node) = {
       [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_add_placeholder_nsh_node_command_fn (vlib_main_t * vm,
@@ -586,12 +580,10 @@ lisp_add_placeholder_nsh_node_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_placeholder_nsh_node_command, static) = {
   .path = "test one nsh add-placeholder-decap-node",
   .function = lisp_add_placeholder_nsh_node_command_fn,
 };
-/* *INDENT-ON* */
 
 VLIB_INIT_FUNCTION (gpe_decap_init);
 

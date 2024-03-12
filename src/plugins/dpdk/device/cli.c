@@ -77,14 +77,12 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * name="mbuf_pool_socket0"  available =   15104 allocated =    1280 total =   16384
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_buffer,static) = {
     .path = "show dpdk buffer",
     .short_help = "show dpdk buffer",
     .function = show_dpdk_buffer,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
@@ -162,14 +160,12 @@ error:
  * @cliexstart{show dpdk physmem}
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_physmem,static) = {
     .path = "show dpdk physmem",
     .short_help = "show dpdk physmem",
     .function = show_dpdk_physmem,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
@@ -250,14 +246,12 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
     .path = "test dpdk buffer",
     .short_help = "test dpdk buffer [allocate <nn>] [free <nn>]",
     .function = test_dpdk_buffer,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
@@ -336,13 +330,11 @@ done:
  * Example of how to set the DPDK interface descriptors:
  * @cliexcmd{set dpdk interface descriptors GigabitEthernet0/8/0 rx 512 tx 512}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
     .path = "set dpdk interface descriptors",
     .short_help = "set dpdk interface descriptors <interface> [rx <nn>] [tx <nn>]",
     .function = set_dpdk_if_desc,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_dpdk_version_command_fn (vlib_main_t * vm,
@@ -368,13 +360,11 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
  *  -w 0000:00:08.0 -w 0000:00:09.0
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show dpdk version",
   .short_help = "show dpdk version",
   .function = show_dpdk_version_command_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
 void

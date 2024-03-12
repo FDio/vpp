@@ -238,7 +238,6 @@ void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
   _(nsh)                          \
   _(sd)
 
-/* *INDENT-OFF* */
 #define _(_n)                                 \
 u16    _n ## _size_to_write (void * pref);    \
 u16    _n ## _write (u8 * p, void * pref);    \
@@ -248,7 +247,6 @@ void   _n ## _copy (void * dst , void * src);
 
 foreach_gid_address_type_fcns
 #undef _
-/* *INDENT-ON* */
 
 always_inline u64
 mac_to_u64 (u8 * m)

@@ -261,7 +261,6 @@ static char *snap_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snap_input_node) = {
   .function = snap_input,
   .name = "snap-input",
@@ -282,7 +281,6 @@ VLIB_REGISTER_NODE (snap_input_node) = {
   .format_trace = format_snap_input_trace,
   .unformat_buffer = unformat_snap_header,
 };
-/* *INDENT-ON* */
 
 static void
 snap_setup_node (vlib_main_t *vm, u32 node_index)

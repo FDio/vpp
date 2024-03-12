@@ -259,7 +259,6 @@ VLIB_NODE_FN (ah6_decrypt_handoff) (vlib_main_t * vm,
   return ipsec_handoff (vm, node, from_frame, im->ah6_dec_fq_index);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_handoff) = {
   .name = "esp4-encrypt-handoff",
   .vector_size = sizeof (u32),
@@ -416,7 +415,6 @@ VLIB_REGISTER_NODE (ah6_decrypt_handoff) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

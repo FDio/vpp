@@ -101,12 +101,10 @@ vl_api_name_and_crc_free (void)
   if (!am->msg_index_by_name_and_crc)
     return;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
       ({
         vec_add1 (keys, (u8 *) hp->key);
       }));
-  /* *INDENT-ON* */
   for (i = 0; i < vec_len (keys); i++)
     vec_free (keys[i]);
   vec_free (keys);

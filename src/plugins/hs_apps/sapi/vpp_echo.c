@@ -290,13 +290,11 @@ echo_free_sessions (echo_main_t * em)
   echo_session_t *s;
   u32 *session_indexes = 0, *session_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (s, em->sessions)
    {
     if (s->session_state == ECHO_SESSION_STATE_CLOSED)
       vec_add1 (session_indexes, s->session_index);
    }
-  /* *INDENT-ON* */
   vec_foreach (session_index, session_indexes)
   {
     /* Free session */
@@ -1431,11 +1429,9 @@ main (int argc, char **argv)
   for (i = 0; i < em->tx_buf_size; i++)
     em->connect_test_data[i] = i & 0xff;
 
-  /* *INDENT-OFF* */
   svm_msg_q_ring_cfg_t rc[1] = {
     {rpc_queue_size, sizeof (echo_rpc_msg_t), 0},
   };
-  /* *INDENT-ON* */
   cfg->consumer_pid = getpid ();
   cfg->n_rings = 1;
   cfg->q_nitems = rpc_queue_size;

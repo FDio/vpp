@@ -486,7 +486,6 @@ VLIB_NODE_FN (vrrp4_arp_input_node) (vlib_main_t * vm,
   return vrrp_arp_nd_input_inline (vm, node, frame, 0 /* is_ipv6 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp4_arp_input_node) =
 {
   .name = "vrrp4-arp-input",
@@ -519,7 +518,6 @@ VLIB_NODE_FN (vrrp6_nd_input_node) (vlib_main_t * vm,
   return vrrp_arp_nd_input_inline (vm, node, frame, 1 /* is_ipv6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp6_nd_input_node) =
 {
   .name = "vrrp6-nd-input",
@@ -699,7 +697,6 @@ VLIB_NODE_FN (vrrp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return vrrp_input_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp4_input_node) =
 {
   .name = "vrrp4-input",
@@ -1104,7 +1101,6 @@ vrrp_input_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION (vrrp_input_init);
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -155,7 +155,6 @@ feat_bitmap_drop_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (feat_bitmap_drop_init);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (feat_bitmap_drop_node,static) = {
   .function = feat_bitmap_drop_node_fn,
   .name = "feature-bitmap-drop",
@@ -173,7 +172,6 @@ VLIB_REGISTER_NODE (feat_bitmap_drop_node,static) = {
     [FEAT_BITMAP_DROP_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

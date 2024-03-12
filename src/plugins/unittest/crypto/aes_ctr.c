@@ -41,7 +41,6 @@ static u8 tc1_ciphertext[] = {
   0x1b, 0xef, 0x68, 0x64, 0x99, 0x0d, 0xb6, 0xce,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_tc1) = {
   .name = "CTR-AES128 TC1",
   .alg = VNET_CRYPTO_ALG_AES_128_CTR,
@@ -50,7 +49,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes128_ctr_tc1) = {
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_ciphertext),
 };
-/* *INDENT-ON* */
 
 static u8 tc1_192_key[] = {
   0x8e, 0x73, 0xb0, 0xf7, 0xda, 0x0e, 0x64, 0x52,
@@ -68,7 +66,6 @@ static u8 tc1_192_ciphertext[] = {
   0x4f, 0x2b, 0x04, 0x59, 0xfe, 0x7e, 0x6e, 0x0b,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_ctr_tc1) = {
   .name = "CTR-AES192 TC1",
   .alg = VNET_CRYPTO_ALG_AES_192_CTR,
@@ -77,7 +74,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes192_ctr_tc1) = {
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_192_ciphertext),
 };
-/* *INDENT-ON* */
 
 static u8 tc1_256_key[] = {
   0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
@@ -96,7 +92,6 @@ static u8 tc1_256_ciphertext[] = {
   0xb7, 0xa7, 0xf5, 0x04, 0xbb, 0xf3, 0xd2, 0x28,
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_ctr_tc1) = {
   .name = "CTR-AES256 TC1",
   .alg = VNET_CRYPTO_ALG_AES_256_CTR,
@@ -105,7 +100,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (nist_aes256_ctr_tc1) = {
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_256_ciphertext),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

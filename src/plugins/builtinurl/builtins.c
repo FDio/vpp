@@ -97,12 +97,10 @@ handle_get_interface_stats (hss_url_handler_args_t *args)
     }
   else				/* default, HTTP_BUILTIN_METHOD_GET */
     {
-      /* *INDENT-OFF* */
       pool_foreach (hi, im->hw_interfaces)
        {
         vec_add1 (sw_if_indices, hi->sw_if_index);
       }
-      /* *INDENT-ON* */
     }
 
   s = format (s, "{%sinterface_stats%s: [\n", q, q);
@@ -150,14 +148,12 @@ handle_get_interface_list (hss_url_handler_args_t *args)
   int need_comma = 0;
 
   /* Construct vector of active hw_if_indexes ... */
-  /* *INDENT-OFF* */
   pool_foreach (hi, im->hw_interfaces)
    {
     /* No point in mentioning "local0"... */
     if (hi - im->hw_interfaces)
       vec_add1 (hw_if_indices, hi - im->hw_interfaces);
   }
-  /* *INDENT-ON* */
 
   /* Build answer */
   s = format (s, "{\"interface_list\": [\n");

@@ -83,13 +83,11 @@ pipe_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pipe_hw_interface_class) = {
   .name = "Pipe",
   .build_rewrite = pipe_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 pipe_t *
 pipe_get (u32 sw_if_index)
@@ -185,25 +183,21 @@ pipe_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 		  VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
-  /* *INDENT-OFF* */
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
   ({
     vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
   }));
-  /* *INDENT-ON* */
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pipe_device_class) = {
   .name = "Pipe",
   .format_device_name = format_pipe_name,
   .tx_function = pipe_tx,
   .admin_up_down_function = pipe_admin_up_down,
 };
-/* *INDENT-ON* */
 
 #define foreach_pipe_rx_next                    \
   _ (DROP, "error-drop")
@@ -432,7 +426,6 @@ pipe_rx (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pipe_rx_node) = {
   .function = pipe_rx,
   .name = "pipe-rx",
@@ -442,7 +435,6 @@ VLIB_REGISTER_NODE (pipe_rx_node) = {
 
   .sibling_of = "ethernet-input",
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated pipe instance numbers.
@@ -625,13 +617,11 @@ pipe_hw_walk (vnet_main_t * vnm, u32 hw_if_index, void *args)
     {
       u32 pipe_sw_if_index[2], id, sw_if_index;
 
-      /* *INDENT-OFF* */
       hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
       ({
         ASSERT(id < 2);
         pipe_sw_if_index[id] = sw_if_index;
       }));
-      /* *INDENT-ON* */
 
       ctx->cb (hi->sw_if_index, pipe_sw_if_index, hi->dev_instance, ctx->ctx);
     }
@@ -690,13 +680,11 @@ create_pipe_interfaces (vlib_main_t * vm,
  * Example of how to create a pipe interface:
  * @cliexcmd{pipe create}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (pipe_create_interface_command, static) = {
   .path = "pipe create",
   .short_help = "pipe create [instance <instance>]",
   .function = create_pipe_interfaces,
 };
-/* *INDENT-ON* */
 
 int
 vnet_delete_pipe_interface (u32 sw_if_index)
@@ -720,13 +708,11 @@ vnet_delete_pipe_interface (u32 sw_if_index)
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
 
-  /* *INDENT-OFF* */
   hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
   ({
     vnet_delete_sub_interface(sw_if_index);
     pipe_main.pipes[sw_if_index] = PIPE_INVALID;
   }));
-  /* *INDENT-ON* */
 
   ethernet_delete_interface (vnm, hw_if_index);
 
@@ -770,13 +756,11 @@ delete_pipe_interfaces (vlib_main_t * vm,
  * Example of how to delete a pipe interface:
  * @cliexcmd{pipe delete-interface intfc loop0}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (pipe_delete_interface_command, static) = {
   .path = "pipe delete",
   .short_help = "pipe delete <interface>",
   .function = delete_pipe_interfaces,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

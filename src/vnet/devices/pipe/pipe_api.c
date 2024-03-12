@@ -42,14 +42,12 @@ vl_api_pipe_create_t_handler (vl_api_pipe_create_t * mp)
   rv = vnet_create_pipe_interface (is_specified, user_instance,
 				   &parent_sw_if_index, pipe_sw_if_index);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_PIPE_CREATE_REPLY,
   ({
     rmp->sw_if_index = ntohl (parent_sw_if_index);
     rmp->pipe_sw_if_index[0] = ntohl (pipe_sw_if_index[0]);
     rmp->pipe_sw_if_index[1] = ntohl (pipe_sw_if_index[1]);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

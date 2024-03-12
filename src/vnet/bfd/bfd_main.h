@@ -366,7 +366,6 @@ typedef enum
   BFD_EVENT_CONFIG_CHANGED,
 } bfd_process_event_e;
 
-/* *INDENT-OFF* */
 /** echo packet structure */
 typedef CLIB_PACKED (struct {
   /** local discriminator */
@@ -376,7 +375,6 @@ typedef CLIB_PACKED (struct {
   /** checksum - based on discriminator, local secret and expire time */
   u64 checksum;
 }) bfd_echo_pkt_t;
-/* *INDENT-ON* */
 
 static inline void
 bfd_lock (bfd_main_t * bm)

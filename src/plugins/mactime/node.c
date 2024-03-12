@@ -349,7 +349,6 @@ mactime_node_fn (vlib_main_t * vm,
   return mactime_node_inline (vm, node, frame, 0 /* is_tx */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mactime_node) =
 {
   .function = mactime_node_fn,
@@ -370,7 +369,6 @@ VLIB_REGISTER_NODE (mactime_node) =
     [MACTIME_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static uword
 mactime_tx_node_fn (vlib_main_t * vm,
@@ -379,7 +377,6 @@ mactime_tx_node_fn (vlib_main_t * vm,
   return mactime_node_inline (vm, node, frame, 1 /* is_tx */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mactime_tx_node) =
 {
   .function = mactime_tx_node_fn,
@@ -400,7 +397,6 @@ VLIB_REGISTER_NODE (mactime_tx_node) =
     [MACTIME_NEXT_ETHERNET_INPUT] = "ethernet-input", /* notused */
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

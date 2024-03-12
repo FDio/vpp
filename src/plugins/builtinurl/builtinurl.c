@@ -85,14 +85,12 @@ builtinurl_enable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (builtinurl_enable_command, static) =
 {
   .path = "builtinurl enable",
   .short_help = "Turn on builtin http/https GET and POST urls",
   .function = builtinurl_enable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_builtinurl_enable_t_handler
@@ -124,13 +122,11 @@ builtinurl_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (builtinurl_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "vpp built-in URL support",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -75,12 +75,10 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   int rv = ap->rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BOND_CREATE_REPLY,
   ({
     rmp->sw_if_index = ntohl (ap->sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -108,12 +106,10 @@ vl_api_bond_create2_t_handler (vl_api_bond_create2_t * mp)
 
   int rv = ap->rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BOND_CREATE2_REPLY,
   ({
     rmp->sw_if_index = ntohl (ap->sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

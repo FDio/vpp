@@ -397,7 +397,6 @@ bond_input_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_input_node) = {
   .name = "bond-input",
   .vector_size = sizeof (u32),
@@ -421,7 +420,6 @@ VNET_FEATURE_INIT (bond_input, static) =
   .node_name = "bond-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)

@@ -210,7 +210,6 @@ srv6_am_localsid_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_am_localsid_node) = {
   .function = srv6_am_localsid_fn,
   .name = "srv6-am-localsid",
@@ -223,7 +222,6 @@ VLIB_REGISTER_NODE (srv6_am_localsid_node) = {
     [SRV6_AM_LOCALSID_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 
 /******************************* Rewriting node *******************************/
@@ -326,7 +324,6 @@ srv6_am_rewrite_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_am_rewrite_node) = {
   .function = srv6_am_rewrite_fn,
   .name = "srv6-am-rewrite",
@@ -341,7 +338,6 @@ VLIB_REGISTER_NODE (srv6_am_rewrite_node) = {
       [SRV6_AM_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON

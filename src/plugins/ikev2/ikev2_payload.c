@@ -24,7 +24,6 @@
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -34,9 +33,7 @@ typedef CLIB_PACKED (struct {
   u16 msg_type;
   u8 payload[0];
 }) ike_notify_payload_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_address_t start_addr;
   ip4_address_t end_addr;
@@ -55,9 +52,7 @@ typedef CLIB_PACKED (struct {
   u16 end_port;
   u8 addr_pair[0];
 }) ikev2_ts_payload_entry_t;
-/* *INDENT-OFF* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -66,9 +61,7 @@ typedef CLIB_PACKED (struct {
   u8 reserved[3];
   ikev2_ts_payload_entry_t ts[0];
 }) ike_ts_payload_header_t;
-/* *INDENT-OFF* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 last_or_more;
   u8 reserved;
@@ -78,9 +71,7 @@ typedef CLIB_PACKED (struct {
   u8 spi_size;
   u8 num_transforms; u32 spi[0];
 }) ike_sa_proposal_data_t;
-/* *INDENT-OFF* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 last_or_more;
   u8 reserved;
@@ -90,9 +81,7 @@ typedef CLIB_PACKED (struct {
   u16 transform_id;
   u8 attributes[0];
 }) ike_sa_transform_data_t;
-/* *INDENT-OFF* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 nextpayload;
   u8 flags;
@@ -102,7 +91,6 @@ typedef CLIB_PACKED (struct {
   u16 num_of_spi;
   u32 spi[0];
 }) ike_delete_payload_header_t;
-/* *INDENT-OFF* */
 
 static ike_payload_header_t *
 ikev2_payload_add_hdr (ikev2_payload_chain_t * c, u8 payload_type, int len)

@@ -154,13 +154,11 @@ typedef struct
  * and an ack/status response in the last entry.  Data for the
  * command goes in between.
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
   u8 class;
   u8 cmd;
 }) virtio_net_ctrl_hdr_t;
-/* *INDENT-ON* */
 
 typedef u8 virtio_net_ctrl_ack_t;
 

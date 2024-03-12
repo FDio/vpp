@@ -898,10 +898,8 @@ vlib_pci_register_msix_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
     return clib_error_return (0, "vfio driver is needed for MSI-X interrupt "
 			      "support");
 
-  /* *INDENT-OFF* */
   vec_validate_init_empty (p->msix_irqs, start + count - 1, (linux_pci_irq_t)
 			   { .fd = -1});
-  /* *INDENT-ON* */
 
   for (i = start; i < start + count; i++)
     {
@@ -1079,7 +1077,6 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
   if (p->supports_va_dma)
     {
       vlib_buffer_pool_t *bp;
-      /* *INDENT-OFF* */
       vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  u32 i;
@@ -1088,7 +1085,6 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
 	  for (i = 0; i < pm->n_pages; i++)
 	    vfio_map_physmem_page (vm, pm->base + (i << pm->log2_page_size));
 	}
-      /* *INDENT-ON* */
     }
 
   if (r && r->init_function)
@@ -1241,10 +1237,8 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
       return error;
     }
 
-  /* *INDENT-OFF* */
   vec_validate_init_empty (p->regions, bar,
 			   (linux_pci_region_t) { .fd = -1});
-  /* *INDENT-ON* */
   if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
     p->regions[bar].fd = fd;
   p->regions[bar].addr = *result;
@@ -1425,7 +1419,6 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 	  err = vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, 0, 0,
 			       VFIO_IRQ_SET_ACTION_TRIGGER, 0);
 	  clib_error_free (err);
-          /* *INDENT-OFF* */
 	  vec_foreach (irq, p->msix_irqs)
 	    {
 	      if (irq->fd == -1)
@@ -1433,12 +1426,10 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 	      clib_file_del_by_index (&file_main, irq->clib_file_index);
 	      close (irq->fd);
 	    }
-          /* *INDENT-ON* */
 	  vec_free (p->msix_irqs);
 	}
     }
 
-  /* *INDENT-OFF* */
   vec_foreach (res, p->regions)
     {
       if (res->size == 0)
@@ -1447,7 +1438,6 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
       if (res->fd != -1)
         close (res->fd);
     }
-  /* *INDENT-ON* */
   vec_free (p->regions);
 
   close (p->fd);
@@ -1571,7 +1561,6 @@ linux_pci_init (vlib_main_t * vm)
   ASSERT (sizeof (vlib_pci_addr_t) == sizeof (u32));
 
   addrs = vlib_pci_get_all_dev_addrs ();
-  /* *INDENT-OFF* */
   vec_foreach (addr, addrs)
     {
       vlib_pci_device_info_t *d;
@@ -1581,17 +1570,14 @@ linux_pci_init (vlib_main_t * vm)
 	  vlib_pci_free_device_info (d);
 	}
     }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (linux_pci_init) =
 {
   .runs_after = VLIB_INITS("unix_input_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

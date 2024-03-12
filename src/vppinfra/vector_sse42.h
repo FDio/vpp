@@ -41,7 +41,6 @@
 #include <vppinfra/error_bootstrap.h>	/* for ASSERT */
 #include <x86intrin.h>
 
-/* *INDENT-OFF* */
 #define foreach_sse42_vec128i \
   _(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64x)
 #define foreach_sse42_vec128u \
@@ -92,7 +91,6 @@ t##s##x##c##_max (t##s##x##c a, t##s##x##c b)				\
 _(i,8,16,epi8) _(i,16,8,epi16) _(i,32,4,epi32)  _(i,64,2,epi64)
 _(u,8,16,epu8) _(u,16,8,epu16) _(u,32,4,epu32)  _(u,64,2,epu64)
 #undef _
-/* *INDENT-ON* */
 
 #define CLIB_VEC128_SPLAT_DEFINED
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
@@ -412,7 +410,6 @@ u32x4_sum_elts (u32x4 sum4)
 }
 
 /* _from_ */
-/* *INDENT-OFF* */
 #define _(f,t,i) \
 static_always_inline t							\
 t##_from_##f (f x)							\
@@ -432,7 +429,6 @@ _(i16x8, i32x4, epi16_epi32)
 _(i16x8, i64x2, epi16_epi64)
 _(i32x4, i64x2, epi32_epi64)
 #undef _
-/* *INDENT-ON* */
 
 static_always_inline u64x2
 u64x2_gather (void *p0, void *p1)

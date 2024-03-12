@@ -246,7 +246,6 @@ static char *llc_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (llc_input_node) = {
   .function = llc_input,
   .name = "llc-input",
@@ -267,7 +266,6 @@ VLIB_REGISTER_NODE (llc_input_node) = {
   .format_trace = format_llc_input_trace,
   .unformat_buffer = unformat_llc_header,
 };
-/* *INDENT-ON* */
 
 static void
 llc_setup_node (vlib_main_t *vm, u32 node_index)

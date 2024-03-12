@@ -286,7 +286,6 @@ format_dhcp_client_detect_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
   .name = "ip4-dhcp-client-detect",
   .vector_size = sizeof (u32),
@@ -313,7 +312,6 @@ VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
   .runs_before = VNET_FEATURES ("ip4-not-enabled"),
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

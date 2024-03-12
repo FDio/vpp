@@ -767,13 +767,11 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
     {
       if (PREDICT_FALSE (am->elog_trace_api_messages))
 	{
-          /* *INDENT-OFF* */
           ELOG_TYPE_DECLARE (e) =
             {
               .format = "api-client-queue-stuffed: %x%x",
               .format_args = "i4i4",
             };
-          /* *INDENT-ON* */
 	  struct
 	  {
 	    u32 hi, low;

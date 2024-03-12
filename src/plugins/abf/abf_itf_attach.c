@@ -399,7 +399,6 @@ abf_itf_attach_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /**
  * Attach an ABF policy to an interface.
  */
@@ -409,7 +408,6 @@ VLIB_CLI_COMMAND (abf_itf_attach_cmd_node, static) = {
   .short_help = "abf attach <ip4|ip6> [del] policy <value> <interface>",
   // this is not MP safe
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 abf_show_attach_cmd (vlib_main_t * vm,
@@ -438,7 +436,6 @@ abf_show_attach_cmd (vlib_main_t * vm,
       vlib_cli_output (vm, "specify an interface");
     }
 
-  /* *INDENT-OFF* */
   FOR_EACH_FIB_IP_PROTOCOL(fproto)
   {
     if (sw_if_index < vec_len(abf_per_itf[fproto]))
@@ -453,31 +450,26 @@ abf_show_attach_cmd (vlib_main_t * vm,
           }
       }
   }
-  /* *INDENT-ON* */
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (abf_show_attach_cmd_node, static) = {
   .path = "show abf attach",
   .function = abf_show_attach_cmd,
   .short_help = "show abf attach <interface>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 void
 abf_itf_attach_walk (abf_itf_attach_walk_cb_t cb, void *ctx)
 {
   u32 aii;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (aii, abf_itf_attach_pool)
    {
     if (!cb(aii, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 typedef enum abf_next_t_
@@ -657,7 +649,6 @@ static char *abf_error_strings[] = {
 #undef abf_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (abf_ip4_node) =
 {
   .function = abf_input_ip4,
@@ -703,7 +694,6 @@ VNET_FEATURE_INIT (abf_ip6_feat, static) =
   .node_name = "abf-input-ip6",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 abf_itf_attach_get_node (fib_node_index_t index)
@@ -772,12 +762,10 @@ abf_itf_bond_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (abf_itf_bond_init) =
 {
   .runs_after = VLIB_INITS("acl_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

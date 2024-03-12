@@ -86,12 +86,10 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
     }
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_IPIP_ADD_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = ntohl(sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -132,7 +130,6 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
   ft = fib_table_get (t->fib_index,
 		      (is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4));
 
-  /* *INDENT-OFF* */
   REPLY_MACRO_DETAILS2(VL_API_IPIP_TUNNEL_DETAILS,
   ({
     ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
@@ -144,7 +141,6 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
     rmp->tunnel.flags = tunnel_encap_decap_flags_encode(t->flags);
     rmp->tunnel.mode = ipip_tunnel_mode_encode (t->mode);
   }));
-    /* *INDENT-ON* */
 }
 
 static void
@@ -158,12 +154,10 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
 
   if (sw_if_index == ~0)
     {
-    /* *INDENT-OFF* */
     pool_foreach (t, im->tunnels)
      {
       send_ipip_tunnel_details(t, mp);
     }
-    /* *INDENT-ON* */
     }
   else
     {
@@ -202,12 +196,10 @@ vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
 			     &sixrd_tunnel_index);
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPIP_6RD_ADD_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = htonl (sixrd_tunnel_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

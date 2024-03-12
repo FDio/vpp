@@ -158,12 +158,10 @@ format_lisp_gpe_name (u8 * s, va_list * args)
   return format (s, "lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .name = "LISP_GPE",
   .format_device_name = format_lisp_gpe_name,
 };
-/* *INDENT-ON* */
 
 u8 *
 format_lisp_gpe_header_with_length (u8 * s, va_list * args)
@@ -188,14 +186,12 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
   .name = "LISP_GPE",
   .format_header = format_lisp_gpe_header_with_length,
   .build_rewrite = lisp_gpe_build_rewrite,
   .update_adjacency = lisp_gpe_update_adjacency,
 };
-/* *INDENT-ON* */
 
 
 typedef struct
@@ -300,14 +296,12 @@ format_l2_lisp_gpe_name (u8 * s, va_list * args)
   return format (s, "l2_lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (l2_lisp_gpe_device_class,static) = {
   .name = "L2_LISP_GPE",
   .format_device_name = format_l2_lisp_gpe_name,
   .format_tx_trace = format_l2_lisp_gpe_tx_trace,
   .tx_function = l2_lisp_gpe_interface_tx,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -404,14 +398,12 @@ format_nsh_lisp_gpe_name (u8 * s, va_list * args)
   return format (s, "nsh_lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (nsh_lisp_gpe_device_class,static) = {
   .name = "NSH_LISP_GPE",
   .format_device_name = format_nsh_lisp_gpe_name,
   .format_tx_trace = format_nsh_lisp_gpe_tx_trace,
   .tx_function = nsh_lisp_gpe_interface_tx,
 };
-/* *INDENT-ON* */
 
 static vnet_hw_interface_t *
 lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
@@ -924,13 +916,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
   .path = "gpe iface",
   .short_help = "gpe iface add/del vni <vni> vrf <vrf>",
   .function = lisp_gpe_add_del_iface_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

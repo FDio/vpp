@@ -454,7 +454,6 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
 
   current_op = ops;
   current_chained_op = chained_ops;
-  /* *INDENT-OFF* */
   vec_foreach_index (i, rv)
     {
       r = rv[i];
@@ -644,7 +643,6 @@ test_crypto_static (vlib_main_t * vm, crypto_test_main_t * tm,
 	  op->user_data = i;
 	}
     }
-  /* *INDENT-ON* */
 
   vnet_crypto_process_ops (vm, ops, vec_len (ops));
   vnet_crypto_process_chained_ops (vm, chained_ops, chunks,
@@ -670,10 +668,8 @@ test_crypto_get_key_sz (vnet_crypto_alg_t alg)
 #define _(n, s, l) \
   case VNET_CRYPTO_ALG_##n: \
     return l;
-  /* *INDENT-OFF* */
   foreach_crypto_cipher_alg
   foreach_crypto_aead_alg
-  /* *INDENT-ON* */
 #undef _
     case VNET_CRYPTO_ALG_HMAC_MD5:
     case VNET_CRYPTO_ALG_HMAC_SHA1:
@@ -1060,14 +1056,12 @@ test_crypto_command_fn (vlib_main_t * vm,
     return test_crypto (vm, tm);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_crypto_command, static) =
 {
   .path = "test crypto",
   .short_help = "test crypto",
   .function = test_crypto_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 crypto_test_init (vlib_main_t * vm)

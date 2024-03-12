@@ -370,13 +370,11 @@ linux_epoll_input (vlib_main_t * vm,
     return linux_epoll_input_inline (vm, node, frame, thread_index);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (linux_epoll_input_node,static) = {
   .function = linux_epoll_input,
   .type = VLIB_NODE_TYPE_PRE_INPUT,
   .name = "unix-epoll-input",
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 linux_epoll_input_init (vlib_main_t * vm)
@@ -419,12 +417,10 @@ unix_input_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (unix_input_init) =
 {
   .runs_before = VLIB_INITS ("linux_epoll_input_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

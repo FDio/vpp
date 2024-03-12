@@ -52,14 +52,12 @@ show_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_session_dbg_clock_cycles_command, static) =
 {
   .path = "show session dbg clock_cycles",
   .short_help = "show session dbg clock_cycles",
   .function = show_session_dbg_clock_cycles_fn,
 };
-/* *INDENT-ON* */
 
 static_always_inline f64
 session_dbg_time_now (u32 thread)
@@ -92,14 +90,12 @@ clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_session_clock_cycles_command, static) =
 {
   .path = "clear session dbg clock_cycles",
   .short_help = "clear session dbg clock_cycles",
   .function = clear_session_dbg_clock_cycles_fn,
 };
-/* *INDENT-ON* */
 
 void
 session_debug_init (void)
@@ -328,7 +324,6 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
    * Search pending events vector
    */
 
-  /* *INDENT-OFF* */
   clib_llist_foreach (wrk->event_elts, evt_list,
                       pool_elt_at_index (wrk->event_elts, wrk->new_head),
                       elt, ({
@@ -339,9 +334,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 	goto done;
       }
   }));
-  /* *INDENT-ON* */
 
-  /* *INDENT-OFF* */
   clib_llist_foreach (wrk->event_elts, evt_list,
                       pool_elt_at_index (wrk->event_elts, wrk->old_head),
                       elt, ({
@@ -352,7 +345,6 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 	goto done;
       }
   }));
-  /* *INDENT-ON* */
 
 done:
   return found;

@@ -61,14 +61,12 @@ vl_api_show_histogram_command (vlib_main_t * vm,
 /*?
  * Display the binary api sleep-time histogram
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) =
 {
   .path = "show api histogram",
   .short_help = "show api histogram",
   .function = vl_api_show_histogram_command,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vl_api_clear_histogram_command (vlib_main_t * vm,
@@ -85,14 +83,12 @@ vl_api_clear_histogram_command (vlib_main_t * vm,
 /*?
  * Clear the binary api sleep-time histogram
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) =
 {
   .path = "clear api histogram",
   .short_help = "clear api histogram",
   .function = vl_api_clear_histogram_command,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vl_api_client_command (vlib_main_t * vm,
@@ -110,7 +106,6 @@ vl_api_client_command (vlib_main_t * vm,
   vlib_cli_output (vm, "%20s %8s %14s %18s %s",
 		   "Name", "PID", "Queue Length", "Queue VA", "Health");
 
-  /* *INDENT-OFF* */
   pool_foreach (regpp, am->vl_clients)
    {
     regp = *regpp;
@@ -135,7 +130,6 @@ vl_api_client_command (vlib_main_t * vm,
         vec_add1 (confused_indices, regpp - am->vl_clients);
       }
   }
-  /* *INDENT-ON* */
 
   /* This should "never happen," but if it does, fix it... */
   if (PREDICT_FALSE (vec_len (confused_indices) > 0))
@@ -191,37 +185,31 @@ vl_api_status_command (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_command, static) =
 {
   .path = "show api",
   .short_help = "Show API information",
 };
-/* *INDENT-ON* */
 
 /*?
  * Display current api client connections
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_clients_command, static) =
 {
   .path = "show api clients",
   .short_help = "Client information",
   .function = vl_api_client_command,
 };
-/* *INDENT-ON* */
 
 /*?
  * Display the current api message tracing status
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_status_command, static) =
 {
   .path = "show api trace-status",
   .short_help = "Display API trace status",
   .function = vl_api_status_command,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vl_api_message_table_command (vlib_main_t * vm,
@@ -264,14 +252,12 @@ vl_api_message_table_command (vlib_main_t * vm,
 /*?
  * Display the current api message decode tables
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) =
 {
   .path = "show api message-table",
   .short_help = "Message Table",
   .function = vl_api_message_table_command,
 };
-/* *INDENT-ON* */
 
 static int
 range_compare (vl_api_msg_range_t * a0, vl_api_msg_range_t * a1)
@@ -331,14 +317,12 @@ vl_api_show_plugin_command (vlib_main_t * vm,
 /*?
  * Display the plugin binary API message range table
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
 {
   .path = "show api plugin",
   .short_help = "show api plugin",
   .function = vl_api_show_plugin_command,
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -1149,7 +1133,6 @@ out:
  * Display, replay, or save a binary API trace
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (api_trace_command, static) = {
   .path = "api trace",
   .short_help = "api trace [tx][on|off][first <n>][last <n>][status][free]"
@@ -1159,7 +1142,6 @@ VLIB_CLI_COMMAND (api_trace_command, static) = {
   .function = api_trace_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
@@ -1489,7 +1471,6 @@ cleanup:
  * decode table with the current image, to establish API differences.
  *
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dump_api_table_file, static) =
 {
   .path = "show api dump",
@@ -1497,7 +1478,6 @@ VLIB_CLI_COMMAND (dump_api_table_file, static) =
   .function = dump_api_table_file_command_fn,
 };
 
-/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *

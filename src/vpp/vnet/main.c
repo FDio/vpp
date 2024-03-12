@@ -512,14 +512,12 @@ show_bihash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_bihash_command, static) =
 {
   .path = "show bihash",
   .short_help = "show bihash",
   .function = show_bihash_command_fn,
 };
-/* *INDENT-ON* */
 
 #ifdef CLIB_SANITIZE_ADDR
 /* default options for Address Sanitizer */

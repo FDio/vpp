@@ -75,7 +75,6 @@ typedef enum
   HANDOFF_TRACE_N_NEXT,
 } tplaceholder_next_t;
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (handoff_trace_node, static) =
 {
   .name = "handoff_trace",
@@ -94,7 +93,6 @@ VLIB_REGISTER_NODE (handoff_trace_node, static) =
   .n_errors = ARRAY_LEN(handoff_trace_error_strings),
   .error_strings = handoff_trace_error_strings,
 };
-/* *INDENT-ON* */
 
 int
 vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
@@ -117,7 +115,6 @@ vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b)
 }
 
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

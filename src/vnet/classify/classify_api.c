@@ -379,7 +379,6 @@ static void vl_api_classify_add_del_table_t_handler
      current_data_flag, current_data_offset, mp->is_add, mp->del_chain);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CLASSIFY_ADD_DEL_TABLE_REPLY,
   ({
     if (rv == 0 && mp->is_add)
@@ -396,7 +395,6 @@ out:
         rmp->new_table_index = ~0;
       }
   }));
-  /* *INDENT-ON* */
 }
 
 static void vl_api_classify_add_del_session_t_handler
@@ -533,12 +531,10 @@ vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t * mp)
   u32 *table_ids = 0;
   u32 count;
 
-   /* *INDENT-OFF* */
    pool_foreach (t, cm->tables)
     {
      vec_add1 (table_ids, ntohl(t - cm->tables));
    }
-   /* *INDENT-ON* */
   count = vec_len (table_ids);
 
   vl_api_classify_table_ids_reply_t *rmp;
@@ -595,7 +591,6 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
 
-   /* *INDENT-OFF* */
    REPLY_MACRO2(VL_API_CLASSIFY_TABLE_BY_INTERFACE_REPLY,
    ({
      rmp->sw_if_index = ntohl(sw_if_index);
@@ -603,7 +598,6 @@ static void
      rmp->ip4_table_id = ntohl(acl[IN_OUT_ACL_TABLE_IP4]);
      rmp->ip6_table_id = ntohl(acl[IN_OUT_ACL_TABLE_IP6]);
    }));
-   /* *INDENT-ON* */
   vec_free (acl);
 }
 
@@ -694,7 +688,6 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (t, cm->tables)
    {
     if (table_id == t - cm->tables)
@@ -728,7 +721,6 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
         break;
       }
   }
-  /* *INDENT-ON* */
 }
 
 static void

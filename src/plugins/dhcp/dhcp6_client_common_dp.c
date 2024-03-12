@@ -61,14 +61,12 @@ generate_client_duid (void)
   vnet_hw_interface_t *hi;
   ethernet_interface_t *eth_if = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (hi, im->hw_interfaces)
    {
     eth_if = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
     if (eth_if)
       break;
   }
-  /* *INDENT-ON* */
 
   if (eth_if)
     clib_memcpy (client_duid.lla, &eth_if->address, 6);
@@ -425,7 +423,6 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcpv6_client_node, static) = {
     .function = dhcpv6_client_node_fn,
     .name = "dhcpv6-client",
@@ -442,7 +439,6 @@ VLIB_REGISTER_NODE (dhcpv6_client_node, static) = {
 
     .format_trace = format_dhcpv6_client_trace,
 };
-/* *INDENT-ON* */
 
 void
 dhcp6_clients_enable_disable (u8 enable)

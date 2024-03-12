@@ -255,7 +255,6 @@ set_output_acl_command_fn (vlib_main_t * vm,
  * Note: Only one table index per API call is allowed.
  *
  */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_input_acl_command, static) = {
   .path = "set interface input acl",
   .short_help =
@@ -271,7 +270,6 @@ VLIB_CLI_COMMAND (set_output_acl_command, static) = {
     "  [ip6-table <index>] [l2-table <index>] [del]",
     .function = set_output_acl_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 in_out_acl_init (vlib_main_t * vm)
@@ -284,12 +282,10 @@ in_out_acl_init (vlib_main_t * vm)
 
   return 0;
 }
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (in_out_acl_init) =
 {
   .runs_after = VLIB_INITS("ip_in_out_acl_init"),
 };
-/* *INDENT-ON* */
 
 uword
 unformat_acl_type (unformat_input_t * input, va_list * args)
@@ -392,7 +388,6 @@ show_outacl_command_fn (vlib_main_t * vm,
 				     IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_inacl_command, static) = {
     .path = "show inacl",
     .short_help = "show inacl type [ip4|ip6|l2]",
@@ -403,7 +398,6 @@ VLIB_CLI_COMMAND (show_outacl_command, static) = {
     .short_help = "show outacl type [ip4|ip6|l2]",
     .function = show_outacl_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

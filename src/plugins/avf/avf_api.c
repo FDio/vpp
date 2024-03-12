@@ -52,10 +52,8 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   avf_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY,
 		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
-  /* *INDENT-ON* */
 }
 
 static void

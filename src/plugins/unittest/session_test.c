@@ -107,7 +107,6 @@ placeholder_server_rx_callback (session_t * s)
   return -1;
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t placeholder_session_cbs = {
   .session_reset_callback = placeholder_session_reset_callback,
   .session_connected_callback = placeholder_session_connected_callback,
@@ -117,7 +116,6 @@ static session_cb_vft_t placeholder_session_cbs = {
   .add_segment_callback = placeholder_add_segment_callback,
   .del_segment_callback = placeholder_del_segment_callback,
 };
-/* *INDENT-ON* */
 
 static int
 session_create_lookpback (u32 table_id, u32 * sw_if_index,
@@ -2130,14 +2128,12 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
   .path = "test session",
   .short_help = "internal session unit tests",
   .function = session_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

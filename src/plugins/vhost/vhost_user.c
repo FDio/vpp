@@ -52,7 +52,6 @@
 
 vlib_node_registration_t vhost_user_send_interrupt_node;
 
-/* *INDENT-OFF* */
 vhost_user_main_t vhost_user_main = {
   .mtu_bytes = 1518,
 };
@@ -60,7 +59,6 @@ vhost_user_main_t vhost_user_main = {
 VNET_HW_INTERFACE_CLASS (vhost_interface_class, static) = {
   .name = "vhost-user",
 };
-/* *INDENT-ON* */
 
 static long
 get_huge_page_size (int fd)
@@ -1193,12 +1191,10 @@ vhost_user_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (vhost_user_init) =
 {
   .runs_after = VLIB_INITS("ip4_init"),
 };
-/* *INDENT-ON* */
 
 static uword
 vhost_user_send_interrupt_process (vlib_main_t * vm,
@@ -1244,7 +1240,6 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  /* fall through */
 
 	case ~0:
-	  /* *INDENT-OFF* */
 	  pool_foreach (vui, vum->vhost_user_interfaces) {
 	      next_timeout = timeout;
 	      FOR_ALL_VHOST_RX_TXQ (qid, vui)
@@ -1265,7 +1260,6 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 		  timeout = next_timeout;
 	      }
 	  }
-          /* *INDENT-ON* */
 	  break;
 
 	default:
@@ -1281,13 +1275,11 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_send_interrupt_node) = {
     .function = vhost_user_send_interrupt_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "vhost-user-send-interrupt-process",
 };
-/* *INDENT-ON* */
 
 static uword
 vhost_user_process (vlib_main_t * vm,
@@ -1314,7 +1306,6 @@ vhost_user_process (vlib_main_t * vm,
 
       timeout = 3.0;
 
-      /* *INDENT-OFF* */
       pool_foreach (vui, vum->vhost_user_interfaces) {
 
 	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
@@ -1386,18 +1377,15 @@ vhost_user_process (vlib_main_t * vm,
 		}
 	  }
       }
-      /* *INDENT-ON* */
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
     .function = vhost_user_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "vhost-user-process",
 };
-/* *INDENT-ON* */
 
 /**
  * Disables and reset interface structure.
@@ -1507,11 +1495,9 @@ vhost_user_exit (vlib_main_t * vm)
   vhost_user_intf_t *vui;
 
   vlib_worker_thread_barrier_sync (vlib_get_main ());
-  /* *INDENT-OFF* */
   pool_foreach (vui, vum->vhost_user_interfaces) {
       vhost_user_delete_if (vnm, vm, vui->sw_if_index);
   }
-  /* *INDENT-ON* */
   vlib_worker_thread_barrier_release (vlib_get_main ());
   return 0;
 }
@@ -2393,7 +2379,6 @@ done:
  * Once the vHost interface is created, enable the interface using:
  * @cliexcmd{set interface state VirtualEthernet0/0/0 up}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
@@ -2402,7 +2387,6 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .function = vhost_user_connect_command_fn,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*?
  * Delete a vHost User interface using the interface name or the
@@ -2416,7 +2400,6 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
  * Example of how to delete a vhost interface by software interface index:
  * @cliexcmd{delete vhost-user sw_if_index 1}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
     .path = "delete vhost-user",
     .short_help = "delete vhost-user {<interface> | sw_if_index <sw_idx>}",
@@ -2557,14 +2540,12 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .path = "show vhost-user",
     .short_help = "show vhost-user [<interface> [<interface> [..]]] "
     "[[descriptors] [verbose]]",
     .function = show_vhost_user_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *

@@ -208,13 +208,11 @@ lacp_mux_debug_func (member_if_t * mif, int event, int state,
 		     lacp_fsm_state_t * transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (e) =
     {
       .format = "%s",
       .format_args = "T4",
     };
-  /* *INDENT-ON* */
   struct
   {
     u32 event;

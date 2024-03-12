@@ -258,7 +258,6 @@ VLIB_NODE_FN (error_punt_node) (vlib_main_t * vm,
   return process_drop_punt (vm, node, frame, ERROR_DISPOSITION_PUNT);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (error_drop_node) = {
   .name = "drop",
   .flags = VLIB_NODE_FLAG_IS_DROP,
@@ -266,9 +265,7 @@ VLIB_REGISTER_NODE (error_drop_node) = {
   .format_trace = format_error_trace,
   .validate_frame = validate_error_frame,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (error_punt_node) = {
   .name = "punt",
   .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
@@ -277,7 +274,6 @@ VLIB_REGISTER_NODE (error_punt_node) = {
   .format_trace = format_error_trace,
   .validate_frame = validate_error_frame,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

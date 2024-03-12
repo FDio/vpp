@@ -474,7 +474,6 @@ punt_cli (vlib_main_t * vm,
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
   bool is_add = true;
-  /* *INDENT-OFF* */
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -486,7 +485,6 @@ punt_cli (vlib_main_t * vm,
     .type = PUNT_TYPE_L4,
   };
   u32 port;
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -552,13 +550,11 @@ done:
  * @cliexcmd{set punt udp del all}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_command, static) = {
   .path = "set punt",
   .short_help = "set punt [IPV4|ip6|ipv6] [UDP|tcp] [del] [ALL|<port-num>]",
   .function = punt_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_socket_register_cmd (vlib_main_t * vm,
@@ -568,7 +564,6 @@ punt_socket_register_cmd (vlib_main_t * vm,
   unformat_input_t line_input, *input = &line_input;
   u8 *socket_name = 0;
   clib_error_t *error = NULL;
-  /* *INDENT-OFF* */
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -579,7 +574,6 @@ punt_socket_register_cmd (vlib_main_t * vm,
     },
     .type = PUNT_TYPE_L4,
   };
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -627,7 +621,6 @@ done:
  * @cliexcmd{punt socket register socket punt_l4_foo.sock}
 
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_socket_register_command, static) =
 {
   .path = "punt socket register",
@@ -635,7 +628,6 @@ VLIB_CLI_COMMAND (punt_socket_register_command, static) =
   .short_help = "punt socket register [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>] socket <socket>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 punt_socket_deregister_cmd (vlib_main_t * vm,
@@ -644,7 +636,6 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
 {
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
-  /* *INDENT-OFF* */
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -655,7 +646,6 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
     },
     .type = PUNT_TYPE_L4,
   };
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -696,7 +686,6 @@ done:
  * @cliexpar
  * @cliexcmd{punt socket register}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
 {
   .path = "punt socket deregister",
@@ -704,7 +693,6 @@ VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
   .short_help = "punt socket deregister [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>]",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 void
 punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
@@ -717,24 +705,20 @@ punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
       {
 	u32 pci, key;
 
-        /* *INDENT-OFF* */
         hash_foreach(key, pci, pm->db.clients_by_l4_port,
         ({
           cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
         }));
-        /* *INDENT-ON* */
 	break;
       }
     case PUNT_TYPE_IP_PROTO:
       {
 	u32 pci, key;
 
-        /* *INDENT-OFF* */
         hash_foreach(key, pci, pm->db.clients_by_ip_proto,
         ({
           cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
         }));
-        /* *INDENT-ON* */
 	break;
       }
     case PUNT_TYPE_EXCEPTION:
@@ -832,7 +816,6 @@ done:
  * @cliexpar
  * @cliexcmd{show punt socket ipv4}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
 {
   .path = "show punt socket registrations",
@@ -840,7 +823,6 @@ VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
   .short_help = "show punt socket registrations [l4|exception]",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 ip_punt_init (vlib_main_t * vm)

@@ -74,12 +74,10 @@ vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
   if (f == 0)
     return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
 
-  /* *INDENT-OFF* */
   hash_foreach (hw_if_index, private_data, f->private_data,
     ({
      vnet_flow_disable (vnm, flow_index, hw_if_index);
     }));
-  /* *INDENT-ON* */
 
   hash_free (f->private_data);
   clib_memset (f, 0, sizeof (*f));

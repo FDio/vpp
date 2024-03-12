@@ -661,7 +661,6 @@ active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
   proxy_try_delete_session (s, 1 /* is_active_open */ );
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t active_open_clients = {
   .session_reset_callback = active_open_reset_callback,
   .session_connected_callback = active_open_connected_callback,
@@ -673,7 +672,6 @@ static session_cb_vft_t active_open_clients = {
   .fifo_tuning_callback = common_fifo_tuning_callback,
   .proxy_alloc_session_fifos = active_open_alloc_session_fifos,
 };
-/* *INDENT-ON* */
 
 static int
 proxy_server_attach ()

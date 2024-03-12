@@ -1222,7 +1222,6 @@ VLIB_NODE_FN (esp4_encrypt_node) (vlib_main_t * vm,
 			     esp_encrypt_async_next.esp4_post_next);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_node) = {
   .name = "esp4-encrypt",
   .vector_size = sizeof (u32),
@@ -1241,7 +1240,6 @@ VLIB_REGISTER_NODE (esp4_encrypt_node) = {
 		  [ESP_ENCRYPT_NEXT_HANDOFF_MPLS] = "error-drop",
 		  [ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output" },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
@@ -1250,7 +1248,6 @@ VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
   return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
   .name = "esp4-encrypt-post",
   .vector_size = sizeof (u32),
@@ -1261,7 +1258,6 @@ VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp6_encrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -1271,7 +1267,6 @@ VLIB_NODE_FN (esp6_encrypt_node) (vlib_main_t * vm,
 			     esp_encrypt_async_next.esp6_post_next);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_encrypt_node) = {
   .name = "esp6-encrypt",
   .vector_size = sizeof (u32),
@@ -1282,7 +1277,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
@@ -1291,7 +1285,6 @@ VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
   return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
   .name = "esp6-encrypt-post",
   .vector_size = sizeof (u32),
@@ -1302,7 +1295,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp4_encrypt_tun_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
@@ -1312,7 +1304,6 @@ VLIB_NODE_FN (esp4_encrypt_tun_node) (vlib_main_t * vm,
 			     esp_encrypt_async_next.esp4_tun_post_next);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_tun_node) = {
   .name = "esp4-encrypt-tun",
   .vector_size = sizeof (u32),
@@ -1341,7 +1332,6 @@ VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
   return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
   .name = "esp4-encrypt-tun-post",
   .vector_size = sizeof (u32),
@@ -1352,7 +1342,6 @@ VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp6_encrypt_tun_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
@@ -1362,7 +1351,6 @@ VLIB_NODE_FN (esp6_encrypt_tun_node) (vlib_main_t * vm,
 			     esp_encrypt_async_next.esp6_tun_post_next);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
   .name = "esp6-encrypt-tun",
   .vector_size = sizeof (u32),
@@ -1384,7 +1372,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_node) = {
   },
 };
 
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
@@ -1393,7 +1380,6 @@ VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
   return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
   .name = "esp6-encrypt-tun-post",
   .vector_size = sizeof (u32),
@@ -1404,7 +1390,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
   .n_errors = ESP_ENCRYPT_N_ERROR,
   .error_counters = esp_encrypt_error_counters,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (esp_mpls_encrypt_tun_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)

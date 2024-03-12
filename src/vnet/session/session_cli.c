@@ -342,7 +342,6 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 
       n_closed = 0;
 
-      /* *INDENT-OFF* */
       pool_foreach (s, pool)  {
         if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
           {
@@ -351,7 +350,6 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
           }
         vlib_cli_output (vm, "%U", format_session, s, verbose);
       }
-      /* *INDENT-ON* */
 
       if (!n_closed)
 	vlib_cli_output (vm, "Thread %d: active sessions %u", thread_index,
@@ -618,7 +616,6 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-24s", "Listener",
 		       "App");
 
-      /* *INDENT-OFF* */
       pool_foreach (s, smm->wrk[0].sessions)  {
 	if (s->session_state != SESSION_STATE_LISTENING
 	    || s->session_type != sst)
@@ -628,7 +625,6 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, "%U%-25v%", format_session, s, 0,
 			 app_name);
       }
-      /* *INDENT-ON* */
       goto done;
     }
 
@@ -658,7 +654,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 {
   .path = "show session",
@@ -668,7 +663,6 @@ VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 		"[protos] [states] ",
   .function = show_session_command_fn,
 };
-/* *INDENT-ON* */
 
 static int
 clear_session (session_t * s)
@@ -720,27 +714,23 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (clear_all)
     {
-      /* *INDENT-OFF* */
       vec_foreach (wrk, smm->wrk)
 	{
 	  pool_foreach (session, wrk->sessions)  {
 	    clear_session (session);
 	  }
 	};
-      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_session_command, static) =
 {
   .path = "clear session",
   .short_help = "clear session thread <thread> session <index>",
   .function = clear_session_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_session_fifo_trace_command_fn (vlib_main_t * vm,
@@ -783,14 +773,12 @@ show_session_fifo_trace_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_session_fifo_trace_command, static) =
 {
   .path = "show session fifo trace",
   .short_help = "show session fifo trace <session>",
   .function = show_session_fifo_trace_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -830,14 +818,12 @@ session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (session_replay_fifo_trace_command, static) =
 {
   .path = "session replay fifo",
   .short_help = "session replay fifo <session>",
   .function = session_replay_fifo_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -862,14 +848,12 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
   return vnet_session_enable_disable (vm, is_en);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (session_enable_disable_command, static) =
 {
   .path = "session",
   .short_help = "session [enable|disable]",
   .function = session_enable_disable_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_session_stats_fn (vlib_main_t *vm, unformat_input_t *input,

@@ -211,7 +211,6 @@ VLIB_NODE_FN (l2_uu_fwd_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
   .name = "l2-uu-fwd",
   .vector_size = sizeof (u32),
@@ -228,7 +227,6 @@ VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
         [L2_UU_FWD_NEXT_L2_OUTPUT] = "l2-output",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

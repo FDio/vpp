@@ -393,7 +393,6 @@ VLIB_NODE_FN (udp6_local_node) (vlib_main_t * vm,
   return udp46_local_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_local_node) = {
   .name = "ip4-udp-lookup",
   /* Takes a vector of packets. */
@@ -413,9 +412,7 @@ VLIB_REGISTER_NODE (udp4_local_node) = {
   .format_trace = format_udp_rx_trace,
   .unformat_buffer = unformat_udp_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp6_local_node) = {
   .name = "ip6-udp-lookup",
   /* Takes a vector of packets. */
@@ -435,7 +432,6 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
   .format_trace = format_udp_rx_trace,
   .unformat_buffer = unformat_udp_header,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

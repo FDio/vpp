@@ -352,13 +352,11 @@ show_l2fib (vlib_main_t * vm,
  * 3 l2fib entries
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
   .path = "show l2fib",
   .short_help = "show l2fib [all] | [bd_id <nn> | bd_index <nn>] [learn | add] | [raw]",
   .function = show_l2fib,
 };
-/* *INDENT-ON* */
 
 void
 l2fib_table_init (void)
@@ -415,13 +413,11 @@ clear_l2fib (vlib_main_t * vm,
  * no l2fib entries
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
   .path = "clear l2fib",
   .short_help = "clear l2fib",
   .function = clear_l2fib,
 };
-/* *INDENT-ON* */
 
 static l2fib_seq_num_t
 l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
@@ -592,13 +588,11 @@ done:
  * 3 l2fib entries
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_add_cli, static) = {
   .path = "l2fib add",
   .short_help = "l2fib add <mac> <bridge-domain-id> filter | <intf> [static | bvi]",
   .function = l2fib_add,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -723,13 +717,11 @@ l2fib_test_command_fn (vlib_main_t * vm,
  * @cliexcmd{test l2fib del mac 52:54:00:53:00:00 count 4}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_test_command, static) = {
   .path = "test l2fib",
   .short_help = "test l2fib [add|del|check] mac <base-addr> count <nn>",
   .function = l2fib_test_command_fn,
 };
-/* *INDENT-ON* */
 
 
 /**
@@ -832,13 +824,11 @@ done:
  * Example of how to delete a MAC Address entry from the L2 FIB table of a bridge-domain (where 200 is the bridge-domain-id):
  * @cliexcmd{l2fib del 52:54:00:53:18:33 200}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_del_cli, static) = {
   .path = "l2fib del",
   .short_help = "l2fib del <mac> <bridge-domain-id> []",
   .function = l2fib_del,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2fib_set_scan_delay (vlib_main_t *vm, unformat_input_t *input,
@@ -976,13 +966,11 @@ l2fib_flush_mac_all (vlib_main_t * vm,
  * Example of how to flush MAC Address entries learned on an interface from the L2 FIB table:
  * @cliexcmd{l2fib flush-mac interface GigabitEthernet2/1/0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_flush_mac_all_cli, static) = {
   .path = "l2fib flush-mac all",
   .short_help = "l2fib flush-mac all",
   .function = l2fib_flush_mac_all,
 };
-/* *INDENT-ON* */
 
 /*?
  * This command kick off ager to delete all existing MAC Address entries,
@@ -992,13 +980,11 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_all_cli, static) = {
  * Example of how to flush MAC Address entries learned on an interface from the L2 FIB table:
  * @cliexcmd{l2fib flush-mac interface GigabitEthernet2/1/0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_flush_mac_int_cli, static) = {
   .path = "l2fib flush-mac interface",
   .short_help = "l2fib flush-mac interface <if-name>",
   .function = l2fib_flush_mac_int,
 };
-/* *INDENT-ON* */
 
 /**
     Flush bridge-domain MACs except static ones.
@@ -1041,13 +1027,11 @@ done:
  * Example of how to flush MAC Address entries learned in a bridge domain from the L2 FIB table:
  * @cliexcmd{l2fib flush-mac bridge-domain 1000}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_flush_mac_bd_cli, static) = {
   .path = "l2fib flush-mac bridge-domain",
   .short_help = "l2fib flush-mac bridge-domain <bd-id>",
   .function = l2fib_flush_mac_bd,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 l2fib_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
@@ -1365,13 +1349,11 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2fib_mac_age_scanner_process_node) = {
     .function = l2fib_mac_age_scanner_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "l2fib-mac-age-scanner-process",
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 l2fib_init (vlib_main_t * vm)

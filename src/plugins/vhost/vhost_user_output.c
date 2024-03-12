@@ -1122,7 +1122,6 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   return /* no error */ 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .name = "vhost-user",
   .tx_function_n_errors = VHOST_USER_TX_FUNC_N_ERROR,
@@ -1134,7 +1133,6 @@ VNET_DEVICE_CLASS (vhost_user_device_class) = {
   .format_tx_trace = format_vhost_trace,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -61,7 +61,6 @@ typedef struct
   };
 } dslite_session_key_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
   nat_session_key_t out2in;
@@ -72,7 +71,6 @@ typedef CLIB_PACKED (struct
   u64 total_bytes;
   u32 total_pkts;
 }) dslite_session_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

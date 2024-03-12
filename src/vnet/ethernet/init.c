@@ -62,7 +62,6 @@ add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
 }
 
 /* Built-in ip4 tx feature path definition */
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (ethernet_output, static) =
 {
   .arc_name  = "ethernet-output",
@@ -77,7 +76,6 @@ VNET_FEATURE_INIT (ethernet_tx_drop, static) =
   .node_name = "error-drop",
   .runs_before = 0,	/* not before any other features */
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ethernet_init (vlib_main_t * vm)
@@ -107,7 +105,6 @@ ethernet_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ethernet_init) =
 {
   /*
@@ -119,7 +116,6 @@ VLIB_INIT_FUNCTION (ethernet_init) =
                            "llc_init",
                            "vnet_feature_init"),
 };
-/* *INDENT-ON* */
 
 ethernet_main_t *
 ethernet_get_main (vlib_main_t * vm)

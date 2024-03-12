@@ -61,7 +61,6 @@ static u8 tc1_ciphertext[] = {
     0x61, 0x16
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc1) = {
   .name = "CHACHA20-POLY1305 TC1",
   .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305,
@@ -72,7 +71,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc1) = {
   .plaintext = TEST_DATA (tc1_plaintext),
   .ciphertext = TEST_DATA (tc1_ciphertext),
 };
-/* *INDENT-ON* */
 
 static u8 tc2_key[] = {
     0x2d, 0xb0, 0x5d, 0x40, 0xc8, 0xed, 0x44, 0x88,
@@ -100,7 +98,6 @@ static u8 tc2_plaintext[] = { };
 static u8 tc2_ciphertext[] = { };
 
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc2) = {
   .name = "CHACHA20-POLY1305 TC2",
   .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305,
@@ -111,7 +108,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc2) = {
   .plaintext = TEST_DATA (tc2_plaintext),
   .ciphertext = TEST_DATA (tc2_ciphertext),
 };
-/* *INDENT-ON* */
 
 static u8 tc3_key[] = {
     0x4c, 0xf5, 0x96, 0x83, 0x38, 0xe6, 0xae, 0x7f,
@@ -137,7 +133,6 @@ static u8 tc3_plaintext[] = { };
 static u8 tc3_ciphertext[] = { };
 
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc3) = {
   .name = "CHACHA20-POLY1305 TC3",
   .alg = VNET_CRYPTO_ALG_CHACHA20_POLY1305,
@@ -148,5 +143,4 @@ UNITTEST_REGISTER_CRYPTO_TEST (chacha20_poly1305_tc3) = {
   .plaintext = TEST_DATA (tc3_plaintext),
   .ciphertext = TEST_DATA (tc3_ciphertext),
 };
-/* *INDENT-ON* */
 

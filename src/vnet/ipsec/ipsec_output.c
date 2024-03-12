@@ -335,7 +335,6 @@ VLIB_NODE_FN (ipsec4_output_node) (vlib_main_t * vm,
   return ipsec_output_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_output_node) = {
   .name = "ipsec4-output-feature",
   .vector_size = sizeof (u32),
@@ -352,7 +351,6 @@ VLIB_REGISTER_NODE (ipsec4_output_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ipsec6_output_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,

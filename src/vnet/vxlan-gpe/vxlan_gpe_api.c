@@ -114,12 +114,10 @@ static void
   rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_VXLAN_GPE_ADD_DEL_TUNNEL_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -242,12 +240,10 @@ static void vl_api_vxlan_gpe_tunnel_dump_t_handler
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
       pool_foreach (t, vgm->tunnels)
 	{
 	  send_vxlan_gpe_tunnel_details (t, reg, mp->context);
 	}
-      /* *INDENT-ON* */
     }
   else
     {

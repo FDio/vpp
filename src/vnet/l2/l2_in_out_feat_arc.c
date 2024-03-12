@@ -396,7 +396,6 @@ vnet_l2_in_out_feat_arc_enable_disable (u32 sw_if_index, int is_output,
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_ARC_INIT (l2_in_ip4_arc, static) =
 {
   .arc_name  = "l2-input-ip4",
@@ -438,10 +437,8 @@ VNET_FEATURE_ARC_INIT (l2_in_nonip_arc, static) =
 };
 
 
-/* *INDENT-ON* */
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_in_feat_arc_node) = {
   .name = "l2-input-feat-arc",
   .vector_size = sizeof (u32),
@@ -521,7 +518,6 @@ VNET_FEATURE_INIT (l2_out_nonip_arc_end, static) =
   .node_name = "l2-output-feat-arc-end",
   .runs_before = 0,     /* not before any other features */
 };
-/* *INDENT-ON* */
 
 
 #ifndef CLIB_MARCH_VARIANT
