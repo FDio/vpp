@@ -187,7 +187,6 @@ typedef enum
 #undef _
 } icmp6_code_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
     u8 type;
@@ -195,7 +194,6 @@ typedef CLIB_PACKED (struct
     /* IP checksum of icmp header plus data which follows. */
     u16 checksum;
 }) icmp46_header_t;
-/* *INDENT-ON* */
 
 /* ip6 neighbor discovery */
 #define foreach_icmp6_neighbor_discovery_option	\
@@ -238,7 +236,6 @@ typedef enum icmp6_neighbor_discovery_option_type
 #undef _
 } icmp6_neighbor_discovery_option_type_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
     /* Option type. */
@@ -357,6 +354,5 @@ typedef CLIB_PACKED (struct
     icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
     link_layer_option;
 }) icmp6_neighbor_solicitation_header_t;
-/* *INDENT-ON* */
 
 #endif /* included_vnet_icmp46_packet_h */

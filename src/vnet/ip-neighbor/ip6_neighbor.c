@@ -264,7 +264,6 @@ ip6_glean (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return (ip6_discover_neighbor_inline (vm, node, frame, 1));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_glean_node) =
 {
   .function = ip6_glean,
@@ -295,7 +294,6 @@ VLIB_REGISTER_NODE (ip6_discover_neighbor_node) =
     [IP6_NBR_NEXT_REPLY_TX] = "ip6-rewrite-mcast",
   },
 };
-/* *INDENT-ON* */
 
 /* Template used to generate IP6 neighbor solicitation packets. */
 vlib_packet_template_t ip6_neighbor_packet_template;

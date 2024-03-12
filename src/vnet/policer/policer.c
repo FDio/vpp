@@ -1008,13 +1008,11 @@ done:
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_command, static) = {
   .path = "show policer",
   .short_help = "show policer [name <name> | index <index>]",
   .function = show_policer_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_policer_pools_command_fn (vlib_main_t * vm,
@@ -1027,13 +1025,11 @@ show_policer_pools_command_fn (vlib_main_t * vm,
 		   pool_elts (pm->configs), pool_elts (pm->policers));
   return 0;
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_pools_command, static) = {
     .path = "show policer pools",
     .short_help = "show policer pools",
     .function = show_policer_pools_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 policer_init (vlib_main_t * vm)

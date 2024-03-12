@@ -464,7 +464,6 @@ VLIB_NODE_FN (l2_outacl_node) (vlib_main_t * vm,
 				IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_inacl_node) = {
   .name = "l2-input-acl",
   .vector_size = sizeof (u32),
@@ -498,7 +497,6 @@ VLIB_REGISTER_NODE (l2_outacl_node) = {
        [ACL_NEXT_INDEX_DENY]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 
 #ifndef CLIB_MARCH_VARIANT

@@ -27,7 +27,6 @@
 
 #include <vnet/l2/l2_input.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct _l2_rw_entry {
   u16 skip_n_vectors;
   u16 rewrite_n_vectors;
@@ -35,15 +34,12 @@ typedef CLIB_PACKED(struct _l2_rw_entry {
   u32x4 *mask;
   u32x4 *value;
 }) l2_rw_entry_t;
-/* *INDENT-ON* */
 
 /* l2_rw configuration for one interface */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct _l2_rw_config {
   u32 table_index; /* Which classify table to use */
   u32 miss_index;  /* Rewrite entry to use if table does not match */
 }) l2_rw_config_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

@@ -140,7 +140,6 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mactime_enable_disable_command, static) =
 {
   .path = "mactime enable-disable",
@@ -148,7 +147,6 @@ VLIB_CLI_COMMAND (mactime_enable_disable_command, static) =
   "mactime enable-disable <interface-name> [disable]",
   .function = mactime_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 
 /** Enable / disable time-base src mac filtration on an interface
@@ -193,7 +191,6 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
       goto send_reply;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (dev, mm->devices)
    {
     message_size = sizeof(*ep) + vec_len(dev->device_name) +
@@ -230,15 +227,12 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
     ep->device_name [ARRAY_LEN(ep->device_name) -1] = 0;
     vl_api_send_msg (rp, (u8 *)ep);
   }
-  /* *INDENT-OFF* */
 
  send_reply:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_MACTIME_DUMP_REPLY,
   ({
     rmp->table_epoch = clib_host_to_net_u32 (mm->device_table_epoch);
   }));
-  /* *INDENT-ON* */
 }
 
 /** Create a lookup table entry for the indicated mac address
@@ -428,12 +422,10 @@ mactime_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (mactime_init) =
 {
   .runs_after = VLIB_INITS("ip_neighbor_init"),
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 mactime_config (vlib_main_t * vm, unformat_input_t * input)
@@ -461,30 +453,24 @@ mactime_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (mactime_config, "mactime");
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (mactime, static) =
 {
   .arc_name = "device-input",
   .node_name = "mactime",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (mactime_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "mactime-tx",
   .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Time-based MAC Source Address Filter",
 };
-/* *INDENT-ON* */
 
 u8 *
 format_bytes_with_width (u8 * s, va_list * va)
@@ -575,12 +561,10 @@ show_mactime_command_fn (vlib_main_t * vm,
   if (verbose)
     vlib_cli_output (vm, "Time now: %U", format_clib_timebase_time, now);
 
-  /* *INDENT-OFF* */
   pool_foreach (dp, mm->devices)
    {
     vec_add1 (pool_indices, dp - mm->devices);
   }
-  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s",
 		   "Device Name", "Addresses", "Status",
@@ -692,14 +676,12 @@ show_mactime_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_mactime_command, static) =
 {
   .path = "show mactime",
   .short_help = "show mactime [verbose]",
   .function = show_mactime_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_mactime_command_fn (vlib_main_t * vm,
@@ -718,14 +700,12 @@ clear_mactime_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_mactime_command, static) =
 {
   .path = "clear mactime",
   .short_help = "clear mactime counters",
   .function = clear_mactime_command_fn,
 };
-/* *INDENT-ON* */
 
 
 

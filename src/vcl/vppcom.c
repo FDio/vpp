@@ -1440,12 +1440,10 @@ vppcom_app_destroy (void)
 
   current_wrk = vcl_worker_get_current ();
 
-  /* *INDENT-OFF* */
   pool_foreach (wrk, vcm->workers)  {
     if (current_wrk != wrk)
       vcl_worker_cleanup (wrk, 0 /* notify vpp */ );
   }
-  /* *INDENT-ON* */
 
   vcl_api_detach (current_wrk);
   vcl_worker_cleanup (current_wrk, 0 /* notify vpp */ );

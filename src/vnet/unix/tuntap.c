@@ -217,14 +217,12 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return n_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tuntap_tx_node,static) = {
   .function = tuntap_tx,
   .name = "tuntap-tx",
   .type = VLIB_NODE_TYPE_INTERNAL,
   .vector_size = 4,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief TUNTAP receive node
@@ -385,7 +383,6 @@ static char *tuntap_rx_error_strings[] = {
   "unknown packet type",
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .function = tuntap_rx,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -397,7 +394,6 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .n_errors = 1,
   .error_strings = tuntap_rx_error_strings,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Gets called when file descriptor is ready from epoll.
@@ -933,12 +929,10 @@ tuntap_nopunt_frame (vlib_main_t * vm,
   vlib_frame_free (vm, frame);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (tuntap_interface_class,static) = {
   .name = "tuntap",
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Format tun/tap interface name
@@ -984,13 +978,11 @@ tuntap_intfc_tx (vlib_main_t * vm,
   return n_buffers;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
   .name = "tuntap",
   .tx_function = tuntap_intfc_tx,
   .format_device_name = format_tuntap_interface_name,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief tun/tap node init
@@ -1025,12 +1017,10 @@ tuntap_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tuntap_init) =
 {
   .runs_after = VLIB_INITS("ip4_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

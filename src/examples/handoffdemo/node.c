@@ -164,7 +164,6 @@ handoffdemo_node_1_fn (vlib_main_t * vm,
 			       0 /* is_trace */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (handoffdemo_node_1) =
 {
   .name = "handoffdemo-1",
@@ -183,7 +182,6 @@ VLIB_REGISTER_NODE (handoffdemo_node_1) =
         [HANDOFFDEMO_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 uword
 handoffdemo_node_2_fn (vlib_main_t * vm,
@@ -197,7 +195,6 @@ handoffdemo_node_2_fn (vlib_main_t * vm,
 			       0 /* is_trace */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (handoffdemo_node_2) =
 {
   .name = "handoffdemo-2",
@@ -216,7 +213,6 @@ VLIB_REGISTER_NODE (handoffdemo_node_2) =
         [HANDOFFDEMO_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 handoffdemo_node_init (vlib_main_t * vm)

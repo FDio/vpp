@@ -434,7 +434,6 @@ static char *gre_error_strings[] = {
 #undef gre_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gre4_input_node) = {
   .name = "gre4-input",
   /* Takes a vector of packets. */
@@ -476,7 +475,6 @@ VLIB_REGISTER_NODE (gre6_input_node) = {
   .format_trace = format_gre_rx_trace,
   .unformat_buffer = unformat_gre_header,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

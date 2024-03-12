@@ -260,7 +260,6 @@ VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (li_hit_node) = {
   .name = "li-hit",
   .vector_size = sizeof (u32),
@@ -277,7 +276,6 @@ VLIB_REGISTER_NODE (li_hit_node) = {
         [LI_HIT_NEXT_ETHERNET] = "ethernet-input-not-l2",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

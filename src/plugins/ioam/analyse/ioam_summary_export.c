@@ -426,12 +426,10 @@ ioam_flow_report_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ioam_flow_report_init) =
 {
   .runs_after = VLIB_INITS("flow_report_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

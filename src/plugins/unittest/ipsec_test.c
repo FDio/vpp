@@ -373,13 +373,11 @@ VLIB_CLI_COMMAND (test_ipsec_spd_perf_command, static) = {
   .function = test_ipsec_spd_outbound_perf_command_fn,
 };
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_ipsec_command, static) = {
   .path = "test ipsec",
   .short_help = "test ipsec sa <ID> seq-num <VALUE>",
   .function = test_ipsec_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

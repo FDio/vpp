@@ -670,7 +670,6 @@ VLIB_NODE_FN (ip4_policer_classify_node) (vlib_main_t * vm,
 				  POLICER_CLASSIFY_TABLE_IP4);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
   .name = "ip4-policer-classify",
   .vector_size = sizeof (u32),
@@ -682,7 +681,6 @@ VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_policer_classify_node) (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
@@ -692,7 +690,6 @@ VLIB_NODE_FN (ip6_policer_classify_node) (vlib_main_t * vm,
 				  POLICER_CLASSIFY_TABLE_IP6);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
   .name = "ip6-policer-classify",
   .vector_size = sizeof (u32),
@@ -704,7 +701,6 @@ VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (l2_policer_classify_node) (vlib_main_t * vm,
 					 vlib_node_runtime_t * node,
@@ -713,7 +709,6 @@ VLIB_NODE_FN (l2_policer_classify_node) (vlib_main_t * vm,
   return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_policer_classify_node) = {
   .name = "l2-policer-classify",
   .vector_size = sizeof (u32),
@@ -725,7 +720,6 @@ VLIB_REGISTER_NODE (l2_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *

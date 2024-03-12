@@ -42,7 +42,6 @@ typedef enum
   FLOW_N_RECORDS = 1 << 5,
 } flowprobe_record_t;
 
-/* *INDENT-OFF* */
 typedef enum __attribute__ ((__packed__))
 {
   FLOW_VARIANT_IP4 = 0,
@@ -59,7 +58,6 @@ typedef enum __attribute__ ((__packed__))
   FLOW_DIRECTION_TX,
   FLOW_DIRECTION_BOTH,
 } flowprobe_direction_t;
-/* *INDENT-ON* */
 
 STATIC_ASSERT (sizeof (flowprobe_variant_t) == 1,
 	       "flowprobe_variant_t is expected to be 1 byte, "
@@ -79,7 +77,6 @@ typedef struct
   u16 *next_record_offset_per_worker;
 } flowprobe_protocol_context_t;
 
-/* *INDENT-OFF* */
 typedef struct __attribute__ ((aligned (8))) {
   u32 rx_sw_if_index;
   u32 tx_sw_if_index;
@@ -94,7 +91,6 @@ typedef struct __attribute__ ((aligned (8))) {
   flowprobe_variant_t which;
   flowprobe_direction_t direction;
 } flowprobe_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -142,9 +138,7 @@ typedef struct
   u8 ht_log2len;		/* Hash table size is 2^log2len */
   u32 **hash_per_worker;
   flowprobe_entry_t **pool_per_worker;
-  /* *INDENT-OFF* */
   TWT (tw_timer_wheel) ** timers_per_worker;
-  /* *INDENT-ON* */
   u32 **expired_passive_per_worker;
 
   flowprobe_record_t record;

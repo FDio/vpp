@@ -109,7 +109,6 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
   ({
     strncpy ((char *) rmp->program, "vpe", ARRAY_LEN(rmp->program)-1);
@@ -120,7 +119,6 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
     strncpy ((char *) rmp->build_date, vpe_api_get_build_date(),
              ARRAY_LEN(rmp->build_date)-1);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -128,11 +126,9 @@ vl_api_show_vpe_system_time_t_handler (vl_api_show_vpe_system_time_t *mp)
 {
   int rv = 0;
   vl_api_show_vpe_system_time_reply_t *rmp;
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (
     VL_API_SHOW_VPE_SYSTEM_TIME_REPLY,
     ({ rmp->vpe_system_time = clib_host_to_net_f64 (unix_time_now ()); }));
-  /* *INDENT-ON* */
 }
 
 static void

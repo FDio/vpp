@@ -56,7 +56,6 @@ ip_get_interface_prefix (ip_lookup_main_t * lm, ip_interface_prefix_key_t * k)
   return p ? pool_elt_at_index (lm->if_prefix_pool, p[0]) : 0;
 }
 
-/* *INDENT-OFF* */
 #define foreach_ip_interface_address(lm,a,sw_if_index,loop,body)        \
 do {                                                                    \
     vnet_main_t *_vnm = vnet_get_main();                                \
@@ -90,7 +89,6 @@ do {                                                                    \
         body;                                                           \
     }                                                                   \
 } while (0)
-/* *INDENT-ON* */
 
 #endif /* included_ip_interface_h */
 

@@ -191,7 +191,6 @@ always_inline u32
 arp_learn (u32 sw_if_index,
 	   const ethernet_arp_ip4_over_ethernet_address_t * addr)
 {
-  /* *INDENT-OFF* */
   ip_neighbor_learn_t l = {
     .ip = {
       .ip.ip4 = addr->ip4,
@@ -200,7 +199,6 @@ arp_learn (u32 sw_if_index,
     .mac = addr->mac,
     .sw_if_index = sw_if_index,
   };
-  /* *INDENT-ON* */
 
   ip_neighbor_learn_dp (&l);
 
@@ -354,7 +352,6 @@ arp_dst_fib_check (const fib_node_index_t fei, fib_entry_flag_t * flags)
   const fib_entry_t *entry = fib_entry_get (fei);
   const fib_entry_src_t *entry_src;
   fib_source_t src;
-  /* *INDENT-OFF* */
   FOR_EACH_SRC_ADDED(entry, entry_src, src,
   ({
     *flags = fib_entry_get_flags_for_source (fei, src);
@@ -363,7 +360,6 @@ arp_dst_fib_check (const fib_node_index_t fei, fib_entry_flag_t * flags)
       else if (FIB_ENTRY_FLAG_CONNECTED & *flags)
         return ARP_DST_FIB_CONN;
   }))
-  /* *INDENT-ON* */
 
   return ARP_DST_FIB_NONE;
 }
@@ -459,7 +455,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		 * flags we need, or the flags we must not have,
 		 * is not the best source, so check then all.
 		 */
-                /* *INDENT-OFF* */
                 FOR_EACH_SRC_ADDED(src_fib_entry, src, source,
                 ({
                   src_flags = fib_entry_get_flags_for_source (src_fei, source);
@@ -497,7 +492,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		   *  nor is it a already learned host resp.
 		   */
                 }));
-                /* *INDENT-ON* */
 
 		/*
 		 * shorter mask lookup for the next iteration.
@@ -677,7 +671,6 @@ arp_reply (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 
-/* *INDENT-OFF* */
 
 VLIB_REGISTER_NODE (arp_input_node, static) =
 {
@@ -764,7 +757,6 @@ VNET_FEATURE_INIT (arp_drop_feat_node, static) =
   .runs_before = 0,	/* last feature */
 };
 
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -936,13 +928,11 @@ ethernet_arp_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ethernet_arp_init) =
 {
   .runs_after = VLIB_INITS("ethernet_init",
                            "ip_neighbor_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

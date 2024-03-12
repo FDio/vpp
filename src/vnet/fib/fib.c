@@ -32,9 +32,7 @@ fib_module_init (vlib_main_t * vm)
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (fib_module_init) =
 {
     .runs_after = VLIB_INITS("dpo_module_init", "adj_module_init"),
 };
-/* *INDENT-ON* */

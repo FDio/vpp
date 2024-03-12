@@ -173,12 +173,10 @@ format_vlib_trace (u8 * s, va_list * va)
 }
 
 /* Root of all trace cli commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (trace_cli_command,static) = {
   .path = "trace",
   .short_help = "Packet tracer commands",
 };
-/* *INDENT-ON* */
 
 int
 trace_time_cmp (void *a1, void *a2)
@@ -256,7 +254,6 @@ trace_apply_filter (vlib_main_t * vm)
    * of any N traces.
    */
   n_accepted = 0;
-  /* *INDENT-OFF* */
   pool_foreach (h, tm->trace_buffer_pool)
     {
       accept = filter_accept(tm, h[0]);
@@ -266,7 +263,6 @@ trace_apply_filter (vlib_main_t * vm)
       else
           n_accepted++;
   }
-  /* *INDENT-ON* */
 
   /* remove all traces that we don't want to keep */
   for (index = 0; index < vec_len (traces_to_remove); index++)
@@ -357,13 +353,11 @@ cli_show_trace_buffer (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .path = "show trace",
   .short_help = "Show trace buffer [max COUNT]",
   .function = cli_show_trace_buffer,
 };
-/* *INDENT-ON* */
 
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
 
@@ -471,13 +465,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_trace_cli,static) = {
   .path = "trace add",
   .short_help = "trace add <input-graph-node> <add'l-pkts-for-node-> [filter] [verbose]",
   .function = cli_add_trace_buffer,
 };
-/* *INDENT-ON* */
 
 /*
  * Configure a filter for packet traces.
@@ -575,13 +567,11 @@ cli_filter_trace (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (filter_trace_cli,static) = {
   .path = "trace filter",
   .short_help = "trace filter none | [include|exclude] NODE COUNT",
   .function = cli_filter_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cli_clear_trace_buffer (vlib_main_t * vm,
@@ -591,13 +581,11 @@ cli_clear_trace_buffer (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_trace_cli,static) = {
   .path = "clear trace",
   .short_help = "Clear trace buffer and free memory",
   .function = cli_clear_trace_buffer,
 };
-/* *INDENT-ON* */
 
 /* Placeholder function to get us linked in. */
 void

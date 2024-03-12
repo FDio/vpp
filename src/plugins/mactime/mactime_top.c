@@ -191,12 +191,10 @@ scrape_stats_segment (mt_main_t * mm)
   int i, j;
 
   vec_reset_length (pool_indices);
-  /* *INDENT-OFF* */
   pool_foreach (dev, mm->devices)
    {
     vec_add1 (pool_indices, dev->pool_index);
   }
-  /* *INDENT-ON* */
 
   /* Nothing to do... */
   if (vec_len (pool_indices) == 0)
@@ -440,12 +438,10 @@ print_device_table (mt_main_t * mm)
   mactime_device_t *dev;
 
   fformat (stdout, "%U", format_device, NULL /* header */, 0 /* verbose */);
-  /* *INDENT-OFF* */
   pool_foreach (dev, mm->devices)
    {
     fformat (stdout, "%U", format_device, dev, 0 /* verbose */);
   }
-  /* *INDENT-ON* */
 }
 
 int

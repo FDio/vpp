@@ -128,14 +128,12 @@ vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vxlan_device_class, static) = {
   .name = "VXLAN",
   .format_device_name = format_vxlan_name,
   .format_tx_trace = format_vxlan_encap_trace,
   .admin_up_down_function = vxlan_interface_admin_up_down,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_vxlan_header_with_length (u8 * s, va_list * args)
@@ -145,13 +143,11 @@ format_vxlan_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
   .name = "VXLAN",
   .format_header = format_vxlan_header_with_length,
   .build_rewrite = default_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static void
 vxlan_tunnel_restack_dpo (vxlan_tunnel_t * t)
@@ -318,7 +314,6 @@ vxlan_decap_next_is_valid (vxlan_main_t * vxm, u32 is_ip6,
   return decap_next_index < r->n_next_nodes;
 }
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(union
 {
   struct
@@ -328,7 +323,6 @@ typedef CLIB_PACKED(union
   };
   u64 as_u64;
 }) mcast_shared_t;
-/* *INDENT-ON* */
 
 static inline mcast_shared_t
 mcast_shared_get (ip46_address_t * ip)
@@ -915,7 +909,6 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
   .short_help =
@@ -926,7 +919,6 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
     " [src_port <local-vtep-udp-port>] [dst_port <remote-vtep-udp-port>]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_vxlan_tunnel_command_fn (vlib_main_t * vm,
@@ -949,12 +941,10 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
   if (pool_elts (vxm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan tunnels configured...");
 
-/* *INDENT-OFF* */
   pool_foreach (t, vxm->tunnels)
    {
     vlib_cli_output (vm, "%U", format_vxlan_tunnel, t);
   }
-/* *INDENT-ON* */
 
   if (raw)
     {
@@ -979,13 +969,11 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
  encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
     .path = "show vxlan tunnel",
     .short_help = "show vxlan tunnel [raw]",
     .function = show_vxlan_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 
 void
@@ -1119,13 +1107,11 @@ set_ip4_vxlan_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip vxlan-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_vxlan_bypass_command, static) = {
   .path = "set interface ip vxlan-bypass",
   .function = set_ip4_vxlan_bypass,
   .short_help = "set interface ip vxlan-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip6_vxlan_bypass (vlib_main_t * vm,
@@ -1176,13 +1162,11 @@ set_ip6_vxlan_bypass (vlib_main_t * vm,
  * @cliexcmd{set interface ip6 vxlan-bypass GigabitEthernet2/0/0 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip6_vxlan_bypass_command, static) = {
   .path = "set interface ip6 vxlan-bypass",
   .function = set_ip6_vxlan_bypass,
   .short_help = "set interface ip6 vxlan-bypass <interface> [del]",
 };
-/* *INDENT-ON* */
 
 int
 vnet_vxlan_add_del_rx_flow (u32 hw_if_index, u32 t_index, int is_add)
@@ -1297,14 +1281,12 @@ vxlan_offload_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_offload_command, static) = {
     .path = "set flow-offload vxlan",
     .short_help =
     "set flow-offload vxlan hw <interface-name> rx <tunnel-name> [del]",
     .function = vxlan_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 #define VXLAN_HASH_NUM_BUCKETS (2 * 1024)
 #define VXLAN_HASH_MEMORY_SIZE (1 << 20)

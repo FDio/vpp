@@ -460,11 +460,9 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
   ops.dequeue = dpdk_ops_vpp_dequeue_no_cache;
   rte_mempool_register_ops (&ops);
 
-  /* *INDENT-OFF* */
   vec_foreach (bp, vm->buffer_main->buffer_pools)
     if (bp->start && (err = dpdk_buffer_pool_init (vm, bp)))
       return err;
-  /* *INDENT-ON* */
   return 0;
 }
 

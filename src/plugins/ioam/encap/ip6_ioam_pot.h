@@ -18,7 +18,6 @@
 
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_hop_by_hop_option_t hdr;
   u8 pot_type;
@@ -27,7 +26,6 @@ typedef CLIB_PACKED (struct {
   u64 random;
   u64 cumulative;
 }) ioam_pot_option_t;
-/* *INDENT-ON* */
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_POT_H_ */
 

@@ -369,7 +369,6 @@ mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mrvl_pp2_input_node) = {
   .function = mrvl_pp2_input_fn,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -382,7 +381,6 @@ VLIB_REGISTER_NODE (mrvl_pp2_input_node) = {
   .error_strings = mrvl_pp2_input_error_strings,
 };
 
-/* *INDENT-ON* */
 
 
 /*

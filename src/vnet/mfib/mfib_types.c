@@ -253,7 +253,6 @@ mfib_show_route_flags (vlib_main_t * vm,
 /*?
  * This command displays the set of supported flags applicable to an MFIB route
  */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_route_flags_command, static) =
 {
   .path = "show mfib route flags",
@@ -261,7 +260,6 @@ VLIB_CLI_COMMAND (mfib_route_flags_command, static) =
   .function = mfib_show_route_flags,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 mfib_show_itf_flags (vlib_main_t * vm,
@@ -282,7 +280,6 @@ mfib_show_itf_flags (vlib_main_t * vm,
 /*?
  * This command displays the set of supported flags applicable to an MFIB interface
  */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_itf_flags_command, static) =
 {
   .path = "show mfib itf flags",
@@ -290,4 +287,3 @@ VLIB_CLI_COMMAND (mfib_itf_flags_command, static) =
   .function = mfib_show_itf_flags,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */

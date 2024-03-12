@@ -55,36 +55,28 @@ int vl_api_get_elog_trace_api_messages (void);
 static void *current_traced_heap;
 
 /* Root of all show commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_show_command, static) = {
   .path = "show",
   .short_help = "Show commands",
 };
-/* *INDENT-ON* */
 
 /* Root of all clear commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_clear_command, static) = {
   .path = "clear",
   .short_help = "Clear commands",
 };
-/* *INDENT-ON* */
 
 /* Root of all set commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_set_command, static) = {
   .path = "set",
   .short_help = "Set commands",
 };
-/* *INDENT-ON* */
 
 /* Root of all test commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_test_command, static) = {
   .path = "test",
   .short_help = "Test commands",
 };
-/* *INDENT-ON* */
 
 /* Returns bitmap of commands which match key. */
 static uword *
@@ -363,7 +355,6 @@ vlib_cli_get_possible_completions (u8 * str)
   /* if we have a space at the end of input, and a unique match,
    * autocomplete the next level of subcommands */
   help_next_level = (vec_len (str) == 0) || isspace (str[vec_len (str) - 1]);
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (index, match_bitmap) {
     if (help_next_level && is_unique) {
 	c = get_sub_command (vcm, c, index);
@@ -375,7 +366,6 @@ vlib_cli_get_possible_completions (u8 * str)
     sc = &c->sub_commands[index];
     vec_add1(result, (u8*) sc->name);
   }
-  /* *INDENT-ON* */
 
 done:
   clib_bitmap_free (match_bitmap);
@@ -625,13 +615,11 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{
-                  /* *INDENT-OFF* */
                   ELOG_TYPE_DECLARE (e) =
                     {
                       .format = "cli-cmd: %s",
                       .format_args = "T4",
                     };
-                  /* *INDENT-ON* */
 		  struct
 		  {
 		    u32 c;
@@ -657,13 +645,11 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{
-                  /* *INDENT-OFF* */
                   ELOG_TYPE_DECLARE (e) =
                     {
                       .format = "cli-cmd: %s %s",
                       .format_args = "T4T4",
                     };
-                  /* *INDENT-ON* */
 		  struct
 		  {
 		    u32 c, err;
@@ -977,14 +963,12 @@ show_memory_usage (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
 		"            [numa-heaps][map][main-heap]",
   .function = show_memory_usage,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_cpu (vlib_main_t * vm, unformat_input_t * input,
@@ -1011,13 +995,11 @@ show_cpu (vlib_main_t * vm, unformat_input_t * input,
  * Base Frequency:           3.20 GHz
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_cpu_command, static) = {
   .path = "show cpu",
   .short_help = "Show cpu information",
   .function = show_cpu,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 enable_disable_memory_trace (vlib_main_t * vm,
@@ -1125,14 +1107,12 @@ enable_disable_memory_trace (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
   .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
   "                   [numa-heap <numa-id>]\n",
   .function = enable_disable_memory_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -1146,13 +1126,11 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   extern char **environ;
 
   /* Close all known open files */
-  /* *INDENT-OFF* */
   pool_foreach (f, fm->file_pool)
      {
       if (f->file_descriptor > 2)
         close(f->file_descriptor);
     }
-  /* *INDENT-ON* */
 
   /* Exec ourself */
   execve (vgm->name, (char **) vgm->argv, environ);
@@ -1160,13 +1138,11 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (restart_cmd,static) = {
     .path = "restart",
     .short_help = "restart process",
     .function = restart_cmd_fn,
 };
-/* *INDENT-ON* */
 
 #ifdef TEST_CODE
 /*
@@ -1192,13 +1168,11 @@ sleep_ten_seconds (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ping_command, static) = {
   .path = "test sleep",
   .function = sleep_ten_seconds,
   .short_help = "Sleep for 10 seconds",
 };
-/* *INDENT-ON* */
 #endif /* ifdef TEST_CODE */
 
 static uword
@@ -1649,7 +1623,6 @@ print_status:
  * @cliend
  * @cliexcmd{event-logger trace [api][cli][barrier][disable]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (event_logger_trace_command, static) =
 {
   .path = "event-logger trace",
@@ -1657,7 +1630,6 @@ VLIB_CLI_COMMAND (event_logger_trace_command, static) =
   "[circuit-node <name> e.g. ethernet-input][disable]",
   .function = event_logger_trace_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 suspend_command_fn (vlib_main_t * vm,
@@ -1667,7 +1639,6 @@ suspend_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (suspend_command, static) =
 {
   .path = "suspend",
@@ -1675,7 +1646,6 @@ VLIB_CLI_COMMAND (suspend_command, static) =
   .function = suspend_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 
 static int
@@ -1866,7 +1836,6 @@ show_cli_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_cli_command, static) =
 {
   .path = "show cli",
@@ -1874,7 +1843,6 @@ VLIB_CLI_COMMAND (show_cli_command, static) =
   .function = show_cli_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vlib_cli_init (vlib_main_t * vm)

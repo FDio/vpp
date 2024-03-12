@@ -1207,7 +1207,6 @@ VLIB_NODE_FN (wg6_input_post_node)
   return wg_input_post (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg4_input_node) =
 {
   .name = "wg4-input",
@@ -1270,7 +1269,6 @@ VLIB_REGISTER_NODE (wg6_input_post_node) = {
   .error_strings = wg_input_error_strings,
 };
 
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

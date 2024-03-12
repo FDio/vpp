@@ -839,7 +839,6 @@ VLIB_NODE_FN (gso_ip6_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  1 /* ip6 */ );
 }
 
-/* *INDENT-OFF* */
 
 VLIB_REGISTER_NODE (gso_l2_ip4_node) = {
   .vector_size = sizeof (u32),

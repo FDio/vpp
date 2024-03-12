@@ -197,7 +197,6 @@ hdlc_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (hdlc_hw_interface_class) = {
   .name = "HDLC",
   .format_header = format_hdlc_header_with_length,
@@ -205,7 +204,6 @@ VNET_HW_INTERFACE_CLASS (hdlc_hw_interface_class) = {
   .build_rewrite = hdlc_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 static void
 add_protocol (hdlc_main_t * pm, hdlc_protocol_t protocol, char *protocol_name)

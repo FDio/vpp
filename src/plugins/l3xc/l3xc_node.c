@@ -199,7 +199,6 @@ static char *l3xc_error_strings[] = {
 #undef l3xc_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l3xc_ip4_node) =
 {
   .function = l3xc_input_ip4,
@@ -245,7 +244,6 @@ VNET_FEATURE_INIT (l3xc_ip6_feat, static) =
   .node_name = "l3xc-input-ip6",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

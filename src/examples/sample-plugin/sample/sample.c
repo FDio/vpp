@@ -30,12 +30,10 @@
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = SAMPLE_PLUGIN_BUILD_VER,
     .description = "Sample of VPP Plugin",
 };
-/* *INDENT-ON* */
 
 sample_main_t sample_main;
 

@@ -184,7 +184,6 @@ typedef struct
 #define ETHERNET_N_PBB (1 << 24)
 } ethernet_pbb_header_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
   /* Backbone source/destination address. */
@@ -201,7 +200,6 @@ typedef CLIB_PACKED (struct
   /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service identifier) */
   u32 priority_dei_uca_res_sid;
 }) ethernet_pbb_header_packed_t;
-/* *INDENT-ON* */
 
 #endif /* included_ethernet_packet_h */
 

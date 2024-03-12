@@ -167,7 +167,6 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
       n_cache = crypto_dequeue_frame (
 	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
     }
-  /* *INDENT-ON* */
   if (n_cache)
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
 				     n_cache);
@@ -186,7 +185,6 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   return n_dispatched;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   .name = "crypto-dispatch",
   .type = VLIB_NODE_TYPE_INPUT,
@@ -205,7 +203,6 @@ VLIB_REGISTER_NODE (crypto_dispatch_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

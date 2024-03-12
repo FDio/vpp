@@ -863,7 +863,6 @@ vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
 {
   vcl_locked_session_t *vls, *parent_vls;
 
-  /* *INDENT-OFF* */
   pool_foreach (vls, vls_wrk->vls_pool)  {
     /* Initialize sharing on parent session */
     if (vls->shared_data_index == ~0)
@@ -874,7 +873,6 @@ vls_share_sessions (vls_worker_t * vls_parent_wrk, vls_worker_t * vls_wrk)
       }
     vls_share_session (vls_wrk, vls);
   }
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1399,13 +1397,11 @@ vls_mt_session_cleanup (vcl_locked_session_t * vls)
 
   current_vcl_wrk = vcl_get_worker_index ();
 
-  /* *INDENT-OFF* */
   hash_foreach (wrk_index, session_index, vls->vcl_wrk_index_to_session_index,
     ({
       if (current_vcl_wrk != wrk_index)
 	vls_send_session_cleanup_rpc (wrk, wrk_index, session_index);
     }));
-  /* *INDENT-ON* */
   hash_free (vls->vcl_wrk_index_to_session_index);
 }
 
@@ -1580,7 +1576,6 @@ vls_select_mp_checks (vcl_si_set * read_map)
   vlsl->select_mp_check = 1;
   wrk = vcl_worker_get_current ();
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (si, read_map)  {
     s = vcl_session_get (wrk, si);
     if (s->session_state == VCL_STATE_LISTEN)
@@ -1589,7 +1584,6 @@ vls_select_mp_checks (vcl_si_set * read_map)
 	vls_mp_checks (vls, 1 /* is_add */);
       }
   }
-  /* *INDENT-ON* */
 }
 
 int
@@ -1622,13 +1616,11 @@ vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
   current_wrk = vcl_get_worker_index ();
   is_current = current_wrk == wrk->wrk_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (s, wrk->sessions)  {
     vls = vls_get (vls_si_wi_to_vlsh (s->session_index, wrk->wrk_index));
     if (vls && (is_current || vls_is_shared_by_wrk (vls, current_wrk)))
       vls_unshare_session (vls, wrk);
   }
-  /* *INDENT-ON* */
 }
 
 static void

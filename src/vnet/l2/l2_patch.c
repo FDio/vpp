@@ -206,7 +206,6 @@ VLIB_NODE_FN (l2_patch_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_patch_node) = {
   .name = "l2-patch",
   .vector_size = sizeof (u32),
@@ -223,7 +222,6 @@ VLIB_REGISTER_NODE (l2_patch_node) = {
         [L2_PATCH_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 extern int
 vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add);
@@ -373,13 +371,11 @@ done:
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_patch_command, static) = {
     .path = "test l2patch",
     .short_help = "test l2patch rx <intfc> tx <intfc> [del]",
     .function = test_patch_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Display the contents of the l2patch table. */
 static clib_error_t *
@@ -425,13 +421,11 @@ show_l2patch (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2patch_cli, static) = {
   .path = "show l2patch",
   .short_help = "Show l2 interface cross-connect entries",
   .function = show_l2patch,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2_patch_init (vlib_main_t * vm)

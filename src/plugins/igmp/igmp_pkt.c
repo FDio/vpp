@@ -329,7 +329,6 @@ igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t * br,
   if (NULL == igmp_group)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach(s, srcs)
     {
       igmp_group = igmp_pkt_report_v3_append_src(br, igmp_group,
@@ -337,7 +336,6 @@ igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t * br,
       if (NULL == igmp_group)
         return;
     };
-  /* *INDENT-ON* */
 
   igmp_group->n_src_addresses = clib_host_to_net_u16 (br->n_srcs);
 
@@ -378,7 +376,6 @@ igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t * br,
 
   igmp_group = igmp_pkt_report_v3_append_group (br, group->key, type);
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
     ({
       igmp_group = igmp_pkt_report_v3_append_src(br, igmp_group,
@@ -387,7 +384,6 @@ igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t * br,
       if (NULL == igmp_group)
         return;
     }));
-  /* *INDENT-ON* */
   igmp_group->n_src_addresses = clib_host_to_net_u16 (br->n_srcs);
 
   IGMP_DBG ("  ..add-group: %U srcs:%d",

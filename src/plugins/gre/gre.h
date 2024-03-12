@@ -293,22 +293,18 @@ typedef struct
 /**
  * @brief IPv4 and GRE header.
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   gre_header_t gre;
 }) ip4_and_gre_header_t;
-/* *INDENT-ON* */
 
 /**
  * @brief IPv6 and GRE header.
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   gre_header_t gre;
 }) ip6_and_gre_header_t;
-/* *INDENT-ON* */
 
 always_inline gre_protocol_info_t *
 gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)

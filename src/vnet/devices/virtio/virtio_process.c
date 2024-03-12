@@ -70,13 +70,11 @@ virtio_send_interrupt_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (virtio_send_interrupt_node) = {
     .function = virtio_send_interrupt_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "virtio-send-interrupt-process",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

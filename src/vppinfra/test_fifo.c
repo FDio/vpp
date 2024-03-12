@@ -105,12 +105,10 @@ test_fifo_main (unformat_input_t * input)
       ASSERT (clib_fifo_elts (as) == n_added - n_removed);
 
       j = 0;
-      /* *INDENT-OFF* */
       clib_fifo_foreach (a, as, {
 	ASSERT (A_is_valid (a, n_removed + j));
 	j++;
       });
-      /* *INDENT-ON* */
 
       ASSERT (j == clib_fifo_elts (as));
     }

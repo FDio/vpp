@@ -357,12 +357,10 @@ cdp_periodic (vlib_main_t * vm)
   int i;
   static cdp_neighbor_t **n_list = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (n, cm->neighbors)
    {
     vec_add1 (n_list, n);
   }
-  /* *INDENT-ON* */
 
   /* Across all cdp neighbors known to the system */
   for (i = 0; i < vec_len (n_list); i++)

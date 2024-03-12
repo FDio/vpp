@@ -86,14 +86,12 @@ hash_next_test (word * h)
   hash_pair_t *p0, *p1;
   clib_error_t *error = 0;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p0, h, {
     p1 = hash_next (h, &hn);
     error = CLIB_ERROR_ASSERT (p0 == p1);
     if (error)
       break;
   });
-  /* *INDENT-ON* */
 
   if (!error)
     error = CLIB_ERROR_ASSERT (!hash_next (h, &hn));
@@ -176,12 +174,10 @@ test_word_key (hash_test_t * ht)
 	hash_pair_t *p;
 	uword ki;
 
-	  /* *INDENT-OFF* */
 	  hash_foreach_pair (p, h, {
 	      ki = p->value[0];
 	      ASSERT (keys[ki] == p->key);
 	  });
-	  /* *INDENT-ON* */
       }
 
       if ((error = hash_validate (h)))

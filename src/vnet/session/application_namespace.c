@@ -338,14 +338,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (app_ns_command, static) = {
   .path = "app ns",
   .short_help = "app ns [add|del] id <namespace-id> secret <secret> "
 		"sw_if_index <sw_if_index> if <interface>",
   .function = app_ns_fn,
 };
-/* *INDENT-ON* */
 
 u8 *
 format_app_namespace (u8 * s, va_list * args)
@@ -386,7 +384,6 @@ app_namespace_show_api (vlib_main_t * vm, app_namespace_t * app_ns)
   vlib_cli_output (vm, "%12s%12s%5s", "app index", "wrk index", "fd");
 
 
-  /* *INDENT-OFF* */
   pool_foreach (cs, app_ns->app_sockets)  {
     handle = (app_ns_api_handle_t *) &cs->private_data;
     cf = clib_file_get (&file_main, handle->aah_file_index);
@@ -399,7 +396,6 @@ app_namespace_show_api (vlib_main_t * vm, app_namespace_t * app_ns)
     vlib_cli_output (vm, "%12d%12d%5u", app_wrk->app_index,
                      app_wrk->wrk_map_index, cf->file_descriptor);
   }
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -493,13 +489,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_app_ns_command, static) = {
   .path = "show app ns",
   .short_help = "show app ns [id <id> [api-clients]]",
   .function = show_app_ns_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

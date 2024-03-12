@@ -76,12 +76,10 @@ vl_api_dhcp_plugin_control_ping_t_handler (vl_api_dhcp_plugin_control_ping_t *
   vl_api_dhcp_plugin_control_ping_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DHCP_PLUGIN_CONTROL_PING_REPLY,
   ({
     rmp->vpe_pid = ntohl (getpid ());
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -726,7 +724,6 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      call_dhcp6_reply_event_callbacks (event, dcpm->functions);
 
 	      vpe_client_registration_t *reg;
-              /* *INDENT-OFF* */
               pool_foreach (reg, vpe_api_main.dhcp6_reply_events_registrations)
                {
                 vl_api_registration_t *vl_reg;
@@ -743,7 +740,6 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                     vl_api_send_msg (vl_reg, (u8 *) msg);
                   }
               }
-              /* *INDENT-ON* */
 
 	      clib_mem_free (event);
 	    }
@@ -754,13 +750,11 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp6_reply_process_node) = {
   .function = dhcp6_reply_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "dhcp6-reply-publisher-process",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 call_dhcp6_pd_reply_event_callbacks (void *data,
@@ -838,7 +832,6 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      call_dhcp6_pd_reply_event_callbacks (event, dpcpm->functions);
 
 	      vpe_client_registration_t *reg;
-              /* *INDENT-OFF* */
               pool_foreach (reg, vpe_api_main.dhcp6_pd_reply_events_registrations)
                {
                 vl_api_registration_t *vl_reg;
@@ -855,7 +848,6 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                     vl_api_send_msg (vl_reg, (u8 *) msg);
                   }
               }
-              /* *INDENT-ON* */
 
 	      clib_mem_free (event);
 	    }
@@ -866,13 +858,11 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp6_pd_reply_process_node) = {
   .function = dhcp6_pd_reply_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "dhcp6-pd-reply-publisher-process",
 };
-/* *INDENT-ON* */
 
 /*
  * dhcp_api_hookup
@@ -904,12 +894,10 @@ VLIB_API_INIT_FUNCTION (dhcp_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Dynamic Host Configuration Protocol (DHCP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

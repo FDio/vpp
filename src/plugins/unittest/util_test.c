@@ -22,13 +22,11 @@ test_crash_command_fn (vlib_main_t * vm,
 {
   u64 *p = (u64 *) 0xdefec8ed;
 
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (e) =
     {
       .format = "deliberate crash: touching %x",
       .format_args = "i4",
     };
-  /* *INDENT-ON* */
   elog (&vlib_global_main.elog_main, &e, 0xdefec8ed);
 
   *p = 0xdeadbeef;
@@ -37,14 +35,12 @@ test_crash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_crash_command, static) =
 {
   .path = "test crash",
   .short_help = "crash the bus!",
   .function = test_crash_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_hash_command_fn (vlib_main_t * vm,
@@ -98,14 +94,12 @@ test_hash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_hash_command, static) =
 {
   .path = "test hash_memory",
   .short_help = "page boundary crossing test",
   .function = test_hash_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

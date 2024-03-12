@@ -149,14 +149,12 @@ skip_unformat:
 	      vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm,
 			       hi, verbose);
 
-              /* *INDENT-OFF* */
 	      clib_bitmap_foreach (hw_idx, hi->bond_info)
                {
                 shi = vnet_get_hw_interface(vnm, hw_idx);
                 vlib_cli_output (vm, "%U\n",
                                  format_vnet_hw_interface, vnm, shi, verbose);
               }
-              /* *INDENT-ON* */
 	    }
 	}
     }
@@ -250,14 +248,12 @@ clear_hw_interfaces (vlib_main_t * vm,
  *     cpu socket 0
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
   .path = "show hardware-interfaces",
   .short_help = "show hardware-interfaces [brief|verbose|detail] [bond] "
     "[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
   .function = show_hw_interfaces,
 };
-/* *INDENT-ON* */
 
 
 /*?
@@ -271,14 +267,12 @@ VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
  * name and software index (where 2 is the software index):
  * @cliexcmd{clear hardware-interfaces GigabitEthernet7/0/0 2}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_hw_interface_counters_command, static) = {
   .path = "clear hardware-interfaces",
   .short_help = "clear hardware-interfaces "
     "[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
   .function = clear_hw_interfaces,
 };
-/* *INDENT-ON* */
 
 static int
 sw_interface_name_compare (void *a1, void *a2)
@@ -420,14 +414,12 @@ show_sw_interfaces (vlib_main_t * vm,
       sorted_sis =
 	vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
       vec_set_len (sorted_sis, 0);
-      /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces)
        {
         int visible = vnet_swif_is_api_visible (si);
         if (visible)
           vec_add1 (sorted_sis, si[0]);
         }
-      /* *INDENT-ON* */
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
     }
@@ -469,7 +461,6 @@ show_sw_interfaces (vlib_main_t * vm,
 	/* Display any L2 info */
 	vlib_cli_output (vm, "%U", format_l2_input, si->sw_if_index);
 
-	/* *INDENT-OFF* */
 	/* Display any IP4 addressing info */
 	foreach_ip_interface_address (lm4, ia, si->sw_if_index,
 				      1 /* honor unnumbered */,
@@ -484,9 +475,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	    vlib_cli_output (vm, "  L3 %U/%d",
 			     format_ip4_address, r4, ia->address_length);
         }));
-	/* *INDENT-ON* */
 
-	/* *INDENT-OFF* */
 	/* Display any IP6 addressing info */
 	foreach_ip_interface_address (lm6, ia, si->sw_if_index,
 				      1 /* honor unnumbered */,
@@ -501,7 +490,6 @@ show_sw_interfaces (vlib_main_t * vm,
 	    vlib_cli_output (vm, "  L3 %U/%d",
 			     format_ip6_address, r6, ia->address_length);
         }));
-	/* *INDENT-ON* */
       }
     }
   else
@@ -517,7 +505,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
   .short_help = "show interface [address|addr|features|feat|vtr|tag] "
@@ -525,22 +512,17 @@ VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .function = show_sw_interfaces,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /* Root of all interface commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vnet_cli_interface_command, static) = {
   .path = "interface",
   .short_help = "Interface commands",
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vnet_cli_set_interface_command, static) = {
   .path = "set interface",
   .short_help = "Interface commands",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_interface_counters (vlib_main_t * vm,
@@ -581,13 +563,11 @@ clear_interface_counters (vlib_main_t * vm,
  * Example of how to clear the statistics for all interfaces:
  * @cliexcmd{clear interfaces}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_interface_counters_command, static) = {
   .path = "clear interfaces",
   .short_help = "clear interfaces",
   .function = clear_interface_counters,
 };
-/* *INDENT-ON* */
 
 /**
  * Parse subinterface names.
@@ -912,7 +892,6 @@ done:
  * @cliexcmd{set interface GigabitEthernet2/0/0.7 up}
  * @endparblock
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
   .path = "create sub-interfaces",
   .short_help = "create sub-interfaces <interface> "
@@ -921,7 +900,6 @@ VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
     "{<subId> dot1q|dot1ad <vlanId>|any [inner-dot1q <vlanId>|any] [exact-match]}",
   .function = create_sub_interfaces,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_state (vlib_main_t * vm,
@@ -970,13 +948,11 @@ done:
  '<em>down</em>':
  * @cliexcmd{set interface state GigabitEthernet2/0/0 down}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_state_command, static) = {
   .path = "set interface state",
   .short_help = "set interface state <interface> [up|down|punt|enable]",
   .function = set_state,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_unnumbered (vlib_main_t * vm,
@@ -1026,13 +1002,11 @@ set_unnumbered (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_unnumbered_command, static) = {
   .path = "set interface unnumbered",
   .short_help = "set interface unnumbered [<interface> use <interface> | del <interface>]",
   .function = set_unnumbered,
 };
-/* *INDENT-ON* */
 
 
 
@@ -1069,13 +1043,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_hw_class_command, static) = {
   .path = "set interface hw-class",
   .short_help = "Set interface hardware class",
   .function = set_hw_class,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vnet_interface_cli_init (vlib_main_t * vm)
@@ -1119,13 +1091,11 @@ renumber_interface_command_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (renumber_interface_command, static) = {
   .path = "renumber interface",
   .short_help = "renumber interface <interface> <new-dev-instance>",
   .function = renumber_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 promiscuous_cmd (vlib_main_t * vm,
@@ -1155,13 +1125,11 @@ promiscuous_cmd (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_promiscuous_cmd, static) = {
   .path = "set interface promiscuous",
   .short_help = "set interface promiscuous [on|off] <interface>",
   .function = promiscuous_cmd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1212,13 +1180,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
   .path = "set interface mtu",
   .short_help = "set interface mtu [packet|ip4|ip6|mpls] <value> <interface>",
   .function = mtu_cmd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_interface_sec_mac_addr_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -1242,14 +1208,12 @@ show_interface_sec_mac_addr_fn (vlib_main_t * vm, unformat_input_t * input,
       sorted_sis =
 	vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
       vec_set_len (sorted_sis, 0);
-      /* *INDENT-OFF* */
       pool_foreach (si, im->sw_interfaces)
        {
         int visible = vnet_swif_is_api_visible (si);
         if (visible)
           vec_add1 (sorted_sis, si[0]);
         }
-      /* *INDENT-ON* */
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
     }
@@ -1290,13 +1254,11 @@ show_interface_sec_mac_addr_fn (vlib_main_t * vm, unformat_input_t * input,
  * @cliexstart{show interface secondary-mac-address}
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_interface_sec_mac_addr, static) = {
   .path = "show interface secondary-mac-address",
   .short_help = "show interface secondary-mac-address [<interface>]",
   .function = show_interface_sec_mac_addr_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 interface_add_del_mac_address (vlib_main_t * vm, unformat_input_t * input,
@@ -1364,13 +1326,11 @@ done:
  * @cliexcmd{set interface secondary-mac-address GigabitEthernet0/8/0 aa:bb:cc:dd:ee:01 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (interface_add_del_mac_address_cmd, static) = {
   .path = "set interface secondary-mac-address",
   .short_help = "set interface secondary-mac-address <interface> <mac-address> [(add|del)]",
   .function = interface_add_del_mac_address,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
@@ -1414,13 +1374,11 @@ done:
  * @cliexcmd{set interface mac address pg0 aa:bb:cc:dd:ee:04}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_mac_address_cmd, static) = {
   .path = "set interface mac address",
   .short_help = "set interface mac address <interface> <mac-address>",
   .function = set_interface_mac_address,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_tag (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1439,13 +1397,11 @@ set_tag (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_tag_command, static) = {
   .path = "set interface tag",
   .short_help = "set interface tag <interface> <tag>",
   .function = set_tag,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_tag (vlib_main_t * vm, unformat_input_t * input,
@@ -1463,13 +1419,11 @@ clear_tag (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_tag_command, static) = {
   .path = "clear interface tag",
   .short_help = "clear interface tag <interface>",
   .function = clear_tag,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_ip_directed_broadcast (vlib_main_t * vm,
@@ -1503,13 +1457,11 @@ set_ip_directed_broadcast (vlib_main_t * vm,
  * subnet broadcast address will be sent L2 broadcast on the interface,
  * otherwise it is dropped.
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip_directed_broadcast_command, static) = {
   .path = "set interface ip directed-broadcast",
   .short_help = "set interface enable <interface> <enable|disable>",
   .function = set_ip_directed_broadcast,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
@@ -1665,13 +1617,11 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
  *     VirtualEthernet0/0/13 queue 3 (polling)
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
     .path = "set interface rx-mode",
     .short_help = "set interface rx-mode <interface> [queue <n>] [polling | interrupt | adaptive]",
     .function = set_interface_rx_mode,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -1737,13 +1687,11 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
  *     VirtualEthernet0/0/13 queue 3 (polling)
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
   .path = "show interface rx-placement",
   .short_help = "show interface rx-placement",
   .function = show_interface_rx_placement_fn,
 };
-/* *INDENT-ON* */
 clib_error_t *
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 			       u32 thread_index, u8 is_main)
@@ -1868,7 +1816,6 @@ set_interface_rx_placement (vlib_main_t *vm, unformat_input_t *input,
  *     VirtualEthernet0/0/13 queue 3 (polling)
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .path = "set interface rx-placement",
     .short_help = "set interface rx-placement <interface> [queue <n>] "
@@ -1876,7 +1823,6 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .function = set_interface_rx_placement,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 int
 set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap)
@@ -2061,13 +2007,11 @@ done:
  * @cliexstart{set interface rss queues VirtualFunctionEthernet18/1/0 list 0,2-5,7}
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_interface_rss_queues,static) = {
     .path = "set interface rss queues",
     .short_help = "set interface rss queues <interface> <list <queue-list>>",
     .function = set_interface_rss_queues_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_vnet_pcap (u8 * s, va_list * args)
@@ -2457,7 +2401,6 @@ pcap_trace_command_fn (vlib_main_t * vm,
  * saved to /tmp/vppTest.pcap...
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
 
 VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
     .path = "pcap trace",
@@ -2467,7 +2410,6 @@ VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
     "           [preallocate-data][free-data]",
     .function = pcap_trace_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_pcap_filter_function (vlib_main_t *vm, unformat_input_t *input,

@@ -211,14 +211,12 @@ qos_store_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos store ip GigEthernet0/1/0}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_store_command, static) = {
   .path = "qos store",
   .short_help = "qos store <store-source> <INTERFACE> [disable]",
   .function = qos_store_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
 qos_store_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
@@ -295,14 +293,12 @@ qos_store_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (qos_store_show_command, static) = {
   .path = "show qos store",
   .short_help = "show qos store [interface]",
   .function = qos_store_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -449,7 +449,6 @@ arp_term_l2bd (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (arp_term_l2bd_node, static) = {
   .function = arp_term_l2bd,
   .name = "arp-term-l2bd",
@@ -464,7 +463,6 @@ VLIB_REGISTER_NODE (arp_term_l2bd_node, static) = {
   .format_buffer = format_ethernet_arp_header,
   .format_trace = format_arp_term_input_trace,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 arp_term_init (vlib_main_t * vm)

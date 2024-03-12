@@ -76,7 +76,6 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help =
@@ -86,7 +85,6 @@ VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
     " [gso]",
   .function = vmxnet3_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vmxnet3_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -131,14 +129,12 @@ vmxnet3_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vmxnet3_delete_command, static) = {
   .path = "delete interface vmxnet3",
   .short_help = "delete interface vmxnet3 "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = vmxnet3_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 vmxnet3_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -192,14 +188,12 @@ vmxnet3_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vmxnet3_test_command, static) = {
   .path = "test vmxnet3",
   .short_help = "test vmxnet3 <interface> | sw_if_index <sw_idx> [irq] "
     "[elog-on] [elog-off]",
   .function = vmxnet3_test_command_fn,
 };
-/* *INDENT-ON* */
 
 static void
 show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
@@ -582,14 +576,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vmxnet3_command, static) = {
   .path = "show vmxnet3",
   .short_help = "show vmxnet3 [[<interface>] ([desc] | ([rx-comp] | "
   "[rx-desc-0] | [rx-desc-1] | [tx-comp] | [tx-desc]) [<slot>])]",
   .function = show_vmxnet3_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 vmxnet3_cli_init (vlib_main_t * vm)

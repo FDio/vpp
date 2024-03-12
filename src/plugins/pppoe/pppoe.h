@@ -106,7 +106,6 @@ extern char *pppoe_error_strings[];
 #define PPPOE_NUM_BUCKETS (64 * 1024)
 #define PPPOE_MEMORY_SIZE (8<<20)
 
-/* *INDENT-OFF* */
 /*
  * The PPPoE key is the mac address and session ID
  */
@@ -127,9 +126,7 @@ typedef struct
     u64 raw;
   };
 } pppoe_entry_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 /*
  * The PPPoE entry results
  */
@@ -147,7 +144,6 @@ typedef struct
     u64 raw;
   };
 }  pppoe_entry_result_t;
-/* *INDENT-ON* */
 
 typedef struct
 {

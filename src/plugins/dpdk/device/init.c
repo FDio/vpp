@@ -548,7 +548,6 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
   int i;
 
   addrs = vlib_pci_get_all_dev_addrs ();
-  /* *INDENT-OFF* */
   vec_foreach (addr, addrs)
     {
     dpdk_device_config_t * devconf = 0;
@@ -734,7 +733,6 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 	clib_error_report (error);
       }
   }
-  /* *INDENT-ON* */
   vec_free (pci_addr);
   vlib_pci_free_device_info (d);
 }
@@ -749,7 +747,6 @@ dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
 
   addrs = vlib_vmbus_get_all_dev_addrs ();
 
-  /* *INDENT-OFF* */
   vec_foreach (addr, addrs)
     {
       dpdk_device_config_t *devconf = 0;
@@ -814,7 +811,6 @@ dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
 	  clib_error_report (error);
 	}
     }
-  /* *INDENT-ON* */
 }
 
 uword
@@ -1254,7 +1250,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       default_hugepage_sz = clib_mem_get_default_hugepage_size ();
 
-      /* *INDENT-OFF* */
       clib_bitmap_foreach (x, tm->cpu_socket_bitmap)
 	{
 	  clib_error_t *e;
@@ -1267,7 +1262,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
 	    clib_error_report (e);
         }
-      /* *INDENT-ON* */
     }
 
   /* on/off dpdk's telemetry thread */
@@ -1569,14 +1563,12 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_process_node,static) = {
     .function = dpdk_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "dpdk-process",
     .process_log2_n_stack_bytes = 17,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 dpdk_init (vlib_main_t * vm)

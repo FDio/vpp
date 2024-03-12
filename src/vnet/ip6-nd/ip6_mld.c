@@ -33,7 +33,6 @@
  * adjacency tables and neighbor discovery logic.
  */
 
-/* *INDENT-OFF*/
 /* multicast listener report packet format for ethernet. */
 typedef CLIB_PACKED (struct
 {
@@ -51,7 +50,6 @@ typedef CLIB_PACKED (struct
   ip6_header_t ip;
   icmp6_multicast_listener_report_header_t report_hdr;
 }) icmp6_multicast_listener_report_packet_t;
-/* *INDENT-ON*/
 
 typedef struct
 {
@@ -224,12 +222,10 @@ ip6_mld_delegate_disable (index_t imdi)
   imd = pool_elt_at_index (ip6_mld_pool, imdi);
 
   /* clean MLD pools */
-  /* *INDENT-OFF* */
   pool_flush (m, imd->mldp_group_pool,
   ({
     mhash_unset (&imd->address_to_mldp_index, &m->mcast_address, 0);
   }));
-  /* *INDENT-ON* */
 
   pool_free (imd->mldp_group_pool);
 
@@ -326,7 +322,6 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
   rh0->icmp.checksum = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, imd->mldp_group_pool)
    {
     rr.type = m->type;
@@ -345,7 +340,6 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
     payload_length += sizeof( icmp6_multicast_address_record_t);
   }
-  /* *INDENT-ON* */
 
   rh0->rsvd = 0;
   rh0->num_addr_records = clib_host_to_net_u16 (num_addr_records);
@@ -388,7 +382,6 @@ ip6_mld_timer_event (vlib_main_t * vm,
   ip6_mld_t *imd;
 
   /* Interface ip6 radv info list */
-  /* *INDENT-OFF* */
   pool_foreach (imd, ip6_mld_pool)
    {
     if (!vnet_sw_interface_is_admin_up (vnm, imd->sw_if_index))
@@ -405,7 +398,6 @@ ip6_mld_timer_event (vlib_main_t * vm,
         imd->all_routers_mcast = 1;
       }
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -433,13 +425,11 @@ ip6_mld_event_process (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_mld_event_process_node) = {
   .function = ip6_mld_event_process,
   .name = "ip6-mld-process",
   .type = VLIB_NODE_TYPE_PROCESS,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_ip6_mld (u8 * s, va_list * args)
@@ -453,7 +443,6 @@ format_ip6_mld (u8 * s, va_list * args)
 
   s = format (s, "%UJoined group address(es):\n", format_white_space, indent);
 
-  /* *INDENT-OFF* */
   pool_foreach (m, imd->mldp_group_pool)
    {
     s = format (s, "%U%U\n",
@@ -461,7 +450,6 @@ format_ip6_mld (u8 * s, va_list * args)
                 format_ip6_address,
                 &m->mcast_address);
   }
-  /* *INDENT-ON* */
 
   return (s);
 }
@@ -526,12 +514,10 @@ ip6_mld_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (ip6_mld_init) =
 {
   .runs_after = VLIB_INITS("icmp6_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

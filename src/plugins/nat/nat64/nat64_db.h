@@ -47,7 +47,6 @@ typedef struct
   };
 } nat64_db_bib_entry_key_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   ip6_address_t in_addr;
@@ -59,17 +58,14 @@ typedef CLIB_PACKED(struct
   u8 proto;
   u8 is_static;
 }) nat64_db_bib_entry_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
   /* BIBs */
-/* *INDENT-OFF* */
 #define _(N, i, n, s) \
   nat64_db_bib_entry_t *_##n##_bib;
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
   nat64_db_bib_entry_t *_unk_proto_bib;
 
   /* BIB lookup */
@@ -98,7 +94,6 @@ typedef struct
   };
 } nat64_db_st_entry_key_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   ip6_address_t in_r_addr;
@@ -109,17 +104,14 @@ typedef CLIB_PACKED(struct
   u8 proto;
   u8 tcp_state;
 }) nat64_db_st_entry_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
   /* session tables */
-/* *INDENT-OFF* */
 #define _(N, i, n, s) \
   nat64_db_st_entry_t *_##n##_st;
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
   nat64_db_st_entry_t *_unk_proto_st;
 
   /* session lookup */

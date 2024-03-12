@@ -245,12 +245,10 @@ mc_test_process (vlib_main_t * vm,
     }
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mc_test_process_node, static) =
 {
 .function = mc_test_process,.type = VLIB_NODE_TYPE_PROCESS,.name =
     "mc-test-process",};
-/* *INDENT-ON* */
 
 static clib_error_t *
 mc_test_command (vlib_main_t * vm,
@@ -277,12 +275,10 @@ mc_test_command (vlib_main_t * vm,
     return unformat_parse_error (input);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_mc_command, static) =
 {
 .path = "test mc",.short_help = "Test mc command",.function =
     mc_test_command,};
-/* *INDENT-ON* */
 
 static clib_error_t *
 mc_show_command (vlib_main_t * vm,
@@ -293,12 +289,10 @@ mc_show_command (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_mc_command, static) =
 {
 .path = "show mc",.short_help = "Show mc command",.function =
     mc_show_command,};
-/* *INDENT-ON* */
 
 static clib_error_t *
 mc_clear_command (vlib_main_t * vm,
@@ -309,12 +303,10 @@ mc_clear_command (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_mc_command, static) =
 {
 .path = "clear mc",.short_help = "Clear mc command",.function =
     mc_clear_command,};
-/* *INDENT-ON* */
 
 static clib_error_t *
 mc_config (vlib_main_t * vm, unformat_input_t * input)

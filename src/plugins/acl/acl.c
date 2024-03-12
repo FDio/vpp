@@ -52,12 +52,10 @@ acl_main_t acl_main;
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "Access Control Lists (ACL)",
 };
-/* *INDENT-ON* */
 
 /* methods exported from ACL-as-a-service */
 static acl_plugin_methods_t acl_plugin;
@@ -109,12 +107,10 @@ vl_api_acl_plugin_control_ping_t_handler (vl_api_acl_plugin_control_ping_t *
   acl_main_t *am = &acl_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ACL_PLUGIN_CONTROL_PING_REPLY,
   ({
     rmp->vpe_pid = ntohl (getpid ());
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -687,7 +683,6 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
 		  format_bitmap_hex, old_seen_acl_bitmap, format_bitmap_hex,
 		  seen_acl_bitmap, format_bitmap_hex, change_acl_bitmap);
 
-/* *INDENT-OFF* */
   clib_bitmap_foreach (acln, change_acl_bitmap)  {
     if (clib_bitmap_get(old_seen_acl_bitmap, acln)) {
       /* ACL is being removed. */
@@ -701,7 +696,6 @@ acl_interface_set_inout_acl_list (acl_main_t * am, u32 sw_if_index,
       vec_add1((*pinout_sw_if_index_vec_by_acl)[acln], sw_if_index);
     }
   }
-/* *INDENT-ON* */
 
   vec_free ((*pinout_acl_vec_by_sw_if_index)[sw_if_index]);
   (*pinout_acl_vec_by_sw_if_index)[sw_if_index] =
@@ -1810,12 +1804,10 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
       rv = VNET_API_ERROR_INVALID_VALUE;
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_ACL_ADD_REPLACE_REPLY,
   ({
     rmp->acl_index = htonl(acl_list_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -1977,13 +1969,11 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
 
   if (mp->acl_index == ~0)
     {
-    /* *INDENT-OFF* */
     /* Just dump all ACLs */
     pool_foreach (acl, am->acls)
      {
       send_acl_details(am, reg, acl, mp->context);
     }
-    /* *INDENT-ON* */
     }
   else
     {
@@ -2063,12 +2053,10 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
 
   if (mp->sw_if_index == ~0)
     {
-    /* *INDENT-OFF* */
     pool_foreach (swif, im->sw_interfaces)
      {
       send_acl_interface_list_details(am, reg, swif->sw_if_index, mp->context);
     }
-    /* *INDENT-ON* */
     }
   else
     {
@@ -2099,12 +2087,10 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
       rv = VNET_API_ERROR_INVALID_VALUE;
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MACIP_ACL_ADD_REPLY,
   ({
     rmp->acl_index = htonl(acl_list_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -2126,12 +2112,10 @@ vl_api_macip_acl_add_replace_t_handler (vl_api_macip_acl_add_replace_t * mp)
       rv = VNET_API_ERROR_INVALID_VALUE;
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MACIP_ACL_ADD_REPLACE_REPLY,
   ({
     rmp->acl_index = htonl(acl_list_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -2228,12 +2212,10 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
   if (mp->acl_index == ~0)
     {
       /* Just dump all ACLs for now, with sw_if_index = ~0 */
-      /* *INDENT-OFF* */
       pool_foreach (acl, am->macip_acls)
          {
           send_macip_acl_details (am, reg, acl, mp->context);
         }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -2437,12 +2419,10 @@ static void
 
   if (mp->sw_if_index == ~0)
     {
-    /* *INDENT-OFF* */
     pool_foreach (swif, im->sw_interfaces)
      {
       send_acl_interface_etype_whitelist_details(am, reg, swif->sw_if_index, mp->context);
     }
-    /* *INDENT-ON* */
     }
   else
     {
@@ -3350,7 +3330,6 @@ acl_plugin_show_sessions (acl_main_t * am,
 	  vlib_cli_output (vm, "    link list id: %u", sess->link_list_id);
 	}
       vlib_cli_output (vm, "  connection add/del stats:", wk);
-      /* *INDENT-OFF* */
       pool_foreach (swif, im->sw_interfaces)
          {
           u32 sw_if_index = swif->sw_if_index;
@@ -3375,7 +3354,6 @@ acl_plugin_show_sessions (acl_main_t * am,
                            n_dels,
                            n_epoch_changes);
         }
-      /* *INDENT-ON* */
 
       vlib_cli_output (vm, "  connection timeout type lists:", wk);
       u8 tt = 0;
@@ -3537,7 +3515,6 @@ acl_clear_aclplugin_fn (vlib_main_t * vm,
   return error;
 }
 
- /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
     .path = "set acl-plugin",
     .short_help = "set acl-plugin session timeout {{udp idle}|tcp {idle|transient}} <seconds>",
@@ -3653,7 +3630,6 @@ VLIB_CLI_COMMAND (aclplugin_set_acl_command, static) = {
     "rules}",
   .function = acl_set_aclplugin_acl_fn,
 };
-/* *INDENT-ON* */
 
 /*?
  * Delete an Access Control List (ACL)

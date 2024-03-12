@@ -269,7 +269,6 @@ ipip_tunnel_stack (adj_index_t ai)
     }
   else
     {
-      /* *INDENT-OFF* */
       fib_prefix_t dst = {
         .fp_len = t->transport == IPIP_TRANSPORT_IP6 ? 128 : 32,
         .fp_proto = (t->transport == IPIP_TRANSPORT_IP6 ?
@@ -277,7 +276,6 @@ ipip_tunnel_stack (adj_index_t ai)
                      FIB_PROTOCOL_IP4),
         .fp_addr = t->tunnel_dst
       };
-      /* *INDENT-ON* */
 
       adj_midchain_delegate_stack (ai, t->fib_index, &dst);
     }
@@ -512,7 +510,6 @@ ipip_tunnel_desc (u32 sw_if_index,
   return (0);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS(ipip_device_class) = {
     .name = "IPIP tunnel device",
     .format_device_name = format_ipip_tunnel_name,
@@ -542,7 +539,6 @@ VNET_HW_INTERFACE_CLASS(mipip_hw_interface_class) = {
     .update_adjacency = mipip_update_adj,
     .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
-/* *INDENT-ON* */
 
 ipip_tunnel_t *
 ipip_tunnel_db_find (const ipip_tunnel_key_t * key)

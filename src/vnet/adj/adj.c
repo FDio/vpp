@@ -704,7 +704,6 @@ adj_show (vlib_main_t * vm,
         }
         else
         {
-            /* *INDENT-OFF* */
             pool_foreach_index (ai, adj_pool)
              {
                 if (~0 != sw_if_index &&
@@ -719,7 +718,6 @@ adj_show (vlib_main_t * vm,
                                      FORMAT_IP_ADJACENCY_NONE);
                 }
             }
-            /* *INDENT-ON* */
         }
     }
     return 0;

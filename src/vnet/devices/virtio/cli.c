@@ -73,7 +73,6 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
@@ -82,7 +81,6 @@ VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
 		"[buffering [size <buffering-szie>]] [packed] [bind [force]]",
   .function = virtio_pci_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -128,14 +126,12 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_delete_command, static) = {
   .path = "delete interface virtio",
   .short_help = "delete interface virtio "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = virtio_pci_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -190,14 +186,12 @@ virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_enable_command, static) = {
   .path = "set virtio pci",
   .short_help = "set virtio pci {<interface> | sw_if_index <sw_idx>}"
                 " [gso-enabled | csum-offload-enabled | offloads-disabled]",
   .function = virtio_pci_enable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -256,13 +250,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_virtio_pci_command, static) = {
   .path = "show virtio pci",
   .short_help = "show virtio pci [<interface>] [descriptors | desc] [debug-device]",
   .function = show_virtio_pci_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 virtio_pci_cli_init (vlib_main_t * vm)

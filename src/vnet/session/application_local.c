@@ -1361,7 +1361,6 @@ ct_enable_disable (vlib_main_t * vm, u8 is_en)
   return 0;
 }
 
-/* *INDENT-OFF* */
 static const transport_proto_vft_t cut_thru_proto = {
   .enable = ct_enable_disable,
   .start_listen = ct_start_listen,
@@ -1386,7 +1385,6 @@ static const transport_proto_vft_t cut_thru_proto = {
     .service_type = TRANSPORT_SERVICE_VC,
   },
 };
-/* *INDENT-ON* */
 
 static inline int
 ct_session_can_tx (session_t *s)

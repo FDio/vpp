@@ -131,7 +131,6 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
 	{
 	  ip4_main_t *im = &ip4_main;
 	  ip_interface_address_t *ia = NULL;
-          /* *INDENT-OFF* */
           foreach_ip_interface_address (&im->lookup_main, ia,
                                         bfd_udp_main.echo_source_sw_if_index,
                                         0 /* honor unnumbered */, ({
@@ -140,13 +139,11 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
                                               return 1;
                                             }
                                         }));
-          /* *INDENT-ON* */
 	}
       else if (BFD_TRANSPORT_UDP6 == transport)
 	{
 	  ip6_main_t *im = &ip6_main;
 	  ip_interface_address_t *ia = NULL;
-          /* *INDENT-OFF* */
           foreach_ip_interface_address (&im->lookup_main, ia,
                                         bfd_udp_main.echo_source_sw_if_index,
                                         0 /* honor unnumbered */, ({
@@ -155,7 +152,6 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
                                               return 1;
                                             }
                                         }));
-          /* *INDENT-ON* */
 	}
     }
   BFD_DBG ("No usable IP address for UDP echo - echo not available");
@@ -187,7 +183,6 @@ bfd_udp_get_echo_src_ip4 (ip4_address_t * addr)
   ip_interface_address_t *ia = NULL;
   ip4_main_t *im = &ip4_main;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (
       &im->lookup_main, ia, bfd_udp_main.echo_source_sw_if_index,
       0 /* honor unnumbered */, ({
@@ -205,7 +200,6 @@ bfd_udp_get_echo_src_ip4 (ip4_address_t * addr)
             return 1;
           }
       }));
-  /* *INDENT-ON* */
   BFD_ERR ("cannot find ip4 address, no usable address found");
   return 0;
 }
@@ -221,7 +215,6 @@ bfd_udp_get_echo_src_ip6 (ip6_address_t * addr)
   ip_interface_address_t *ia = NULL;
   ip6_main_t *im = &ip6_main;
 
-  /* *INDENT-OFF* */
   foreach_ip_interface_address (
       &im->lookup_main, ia, bfd_udp_main.echo_source_sw_if_index,
       0 /* honor unnumbered */, ({
@@ -234,7 +227,6 @@ bfd_udp_get_echo_src_ip6 (ip6_address_t * addr)
             return 1;
           }
       }));
-  /* *INDENT-ON* */
   BFD_ERR ("cannot find ip6 address, no usable address found");
   return 0;
 }
@@ -1357,7 +1349,6 @@ bfd_udp4_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 /*
  * bfd input graph node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bfd_udp4_input_node, static) = {
   .function = bfd_udp4_input,
   .name = "bfd-udp4-input",
@@ -1378,7 +1369,6 @@ VLIB_REGISTER_NODE (bfd_udp4_input_node, static) = {
               [BFD_UDP_INPUT_NEXT_REPLY_MIDCHAIN] = "ip4-midchain",
       },
 };
-/* *INDENT-ON* */
 
 static uword
 bfd_udp6_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -1386,7 +1376,6 @@ bfd_udp6_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return bfd_udp_input (vm, rt, f, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bfd_udp6_input_node, static) = {
   .function = bfd_udp6_input,
   .name = "bfd-udp6-input",
@@ -1407,7 +1396,6 @@ VLIB_REGISTER_NODE (bfd_udp6_input_node, static) = {
               [BFD_UDP_INPUT_NEXT_REPLY_MIDCHAIN] = "ip6-midchain",
       },
 };
-/* *INDENT-ON* */
 
 /*
  * Process a frame of bfd echo packets
@@ -1512,7 +1500,6 @@ bfd_echo_input_format_trace (u8 * s, va_list * args)
 /*
  * bfd input graph node declaration
  */
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bfd_udp_echo4_input_node, static) = {
   .function = bfd_udp_echo4_input,
   .name = "bfd-udp-echo4-input",
@@ -1532,7 +1519,6 @@ VLIB_REGISTER_NODE (bfd_udp_echo4_input_node, static) = {
               [BFD_UDP_ECHO_INPUT_NEXT_REPLY_REWRITE] = "ip4-lookup",
       },
 };
-/* *INDENT-ON* */
 
 static uword
 bfd_udp_echo6_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
@@ -1541,7 +1527,6 @@ bfd_udp_echo6_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return bfd_udp_echo_input (vm, rt, f, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
   .function = bfd_udp_echo6_input,
   .name = "bfd-udp-echo6-input",
@@ -1562,7 +1547,6 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
       },
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 bfd_udp_sw_if_add_del (CLIB_UNUSED (vnet_main_t *vnm), u32 sw_if_index,

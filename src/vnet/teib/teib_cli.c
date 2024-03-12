@@ -85,13 +85,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_create_command, static) = {
   .path = "create teib",
   .short_help = "create teib <interface> peer <addr> nh <addr> [nh-table-id <ID>]",
   .function = teib_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 teib_del (vlib_main_t * vm,
@@ -150,13 +148,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_delete_command, static) = {
   .path = "delete teib",
   .short_help = "delete teib <interface> peer <addr>",
   .function = teib_del,
 };
-/* *INDENT-ON* */
 
 static walk_rc_t
 teib_show_one (index_t nei, void *ctx)
@@ -175,13 +171,11 @@ teib_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_show_command, static) = {
   .path = "show teib",
   .short_help = "show teib",
   .function = teib_show,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

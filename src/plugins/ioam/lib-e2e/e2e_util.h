@@ -18,13 +18,11 @@
 
 #include <ioam/lib-e2e/ioam_seqno_lib.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   u8 e2e_type;
   u8 reserved;
   u32 e2e_data;
 }) ioam_e2e_packet_t;
-/* *INDENT-ON* */
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_ */
 

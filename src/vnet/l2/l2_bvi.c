@@ -58,14 +58,12 @@ bvi_mac_change (vnet_hw_interface_t * hi,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bvi_device_class) = {
   .name = "BVI",
   .format_device_name = format_bvi_name,
   .admin_up_down_function = bvi_admin_up_down,
   .mac_addr_change_function = bvi_mac_change,
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated bvi instance numbers.
@@ -273,13 +271,11 @@ l2_bvi_create_cli (vlib_main_t * vm,
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi create}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_bvi_create_command, static) = {
   .path = "bvi create",
   .short_help = "bvi create [mac <mac-addr>] [instance <instance>]",
   .function = l2_bvi_create_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 l2_bvi_delete_cli (vlib_main_t * vm,
@@ -324,13 +320,11 @@ l2_bvi_delete_cli (vlib_main_t * vm,
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi delete bvi0}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2_bvi_delete_command, static) = {
   .path = "bvi delete",
   .short_help = "bvi delete <interface>",
   .function = l2_bvi_delete_cli,
 };
-/* *INDENT-ON* */
 
 
 /*

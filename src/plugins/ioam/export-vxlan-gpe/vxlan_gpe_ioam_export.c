@@ -158,14 +158,12 @@ set_vxlan_gpe_ioam_export_ipfix_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_vxlan_gpe_ioam_ipfix_command, static) =
 {
 .path = "set vxlan-gpe-ioam export ipfix",
 .short_help = "set vxlan-gpe-ioam export ipfix collector <ip4-address> src <ip4-address>",
 .function = set_vxlan_gpe_ioam_export_ipfix_command_fn,
 };
-/* *INDENT-ON* */
 
 #include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.c>
 static clib_error_t *

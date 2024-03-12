@@ -524,7 +524,6 @@ VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (virtio_input_node) = {
   .name = "virtio-input",
   .sibling_of = "device-input",
@@ -535,7 +534,6 @@ VLIB_REGISTER_NODE (virtio_input_node) = {
   .n_errors = VIRTIO_INPUT_N_ERROR,
   .error_strings = virtio_input_error_strings,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

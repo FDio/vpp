@@ -164,7 +164,6 @@ set_policer_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_policer_classify_command, static) = {
     .path = "set policer classify",
     .short_help =
@@ -172,7 +171,6 @@ VLIB_CLI_COMMAND (set_policer_classify_command, static) = {
     "  [ip6-table <index>] [l2-table <index>] [del]",
     .function = set_policer_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 static uword
 unformat_table_type (unformat_input_t * input, va_list * va)
@@ -231,13 +229,11 @@ show_policer_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_classify_command, static) = {
     .path = "show classify policer",
     .short_help = "show classify policer type [ip4|ip6|l2]",
     .function = show_policer_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

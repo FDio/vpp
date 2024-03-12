@@ -228,7 +228,6 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 	     about what RDMA core does (CYCLIC_RQ or LINKED_LIST_RQ). In cyclic
 	     mode, the SRQ header is ignored anyways... */
 
-/* *INDENT-OFF* */
 	  if (is_striding && !(current_data_seg & (wqe_sz - 1)))
 	    *(mlx5dv_wqe_srq_next_t *) wqe = (mlx5dv_wqe_srq_next_t)
 	    {
@@ -237,7 +236,6 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
               .signature = 0,
               .rsvd1 = {0}
 	    };
-/* *INDENT-ON* */
 
 	  /* TODO: when log_skip_wqe > 2, hw_prefetcher doesn't work, lots of LLC store
 	     misses occur for wqes, to be fixed... */
@@ -1073,7 +1071,6 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (rdma_input_node) = {
   .name = "rdma-input",
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -1085,7 +1082,6 @@ VLIB_REGISTER_NODE (rdma_input_node) = {
   .error_strings = rdma_input_error_strings,
 };
 
-/* *INDENT-ON* */
 
 
 /*

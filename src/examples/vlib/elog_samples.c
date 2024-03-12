@@ -105,13 +105,11 @@ test_elog_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_elog_command, static) = {
   .path = "test elog sample",
   .short_help = "test elog sample",
   .function = test_elog_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

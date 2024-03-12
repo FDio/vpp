@@ -371,12 +371,10 @@ dhcp6_pd_reply_event_handler (vl_api_dhcp6_pd_reply_event_t * mp)
    * We're going to loop through the pool multiple times,
    * so collect active indices.
    */
-  /* *INDENT-OFF* */
   pool_foreach (prefix_info, pm->prefix_pool)
    {
     vec_add1 (pm->indices, prefix_info - pm->prefix_pool);
   }
-  /* *INDENT-ON* */
 
   for (i = 0; i < n_prefixes; i++)
     {
@@ -480,7 +478,6 @@ create_prefix_list (u32 sw_if_index)
   ip6_prefix_main_t *pm = &ip6_prefix_main;
   prefix_info_t *prefix_info, *prefix_list = 0;;
 
-  /* *INDENT-OFF* */
   pool_foreach (prefix_info, pm->prefix_pool)
    {
     if (is_dhcpv6_pd_prefix (prefix_info) &&
@@ -491,7 +488,6 @@ create_prefix_list (u32 sw_if_index)
         clib_memcpy (&prefix_list[pos], prefix_info, sizeof (*prefix_info));
       }
   }
-  /* *INDENT-ON* */
 
   return prefix_list;
 }
@@ -530,7 +526,6 @@ dhcp6_pd_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       do
 	{
 	  due_time = current_time + 1e9;
-          /* *INDENT-OFF* */
           pool_foreach (prefix_info, pm->prefix_pool)
            {
             if (is_dhcpv6_pd_prefix (prefix_info))
@@ -559,7 +554,6 @@ dhcp6_pd_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
                   }
               }
 	  }
-	  /* *INDENT-ON* */
 	  for (i = 0; i < vec_len (rm->client_state_by_sw_if_index); i++)
 	    {
 	      client_state_t *cs = &rm->client_state_by_sw_if_index[i];
@@ -608,13 +602,11 @@ dhcp6_pd_client_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp6_pd_client_cp_process_node) = {
     .function = dhcp6_pd_client_cp_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "dhcp6-pd-client-cp-process",
 };
-/* *INDENT-ON* */
 
 static void
 interrupt_process (void)
@@ -787,14 +779,12 @@ cp_ip6_address_find_new_active_prefix (u32 prefix_group_index,
   ip6_prefix_main_t *pm = &ip6_prefix_main;
   prefix_info_t *prefix_info;
 
-  /* *INDENT-OFF* */
   pool_foreach (prefix_info, pm->prefix_pool)
    {
     if (prefix_info->prefix_group_index == prefix_group_index &&
         prefix_info - pm->prefix_pool != ignore_prefix_index)
         return prefix_info - pm->prefix_pool;
   }
-  /* *INDENT-ON* */
   return ~0;
 }
 
@@ -1080,14 +1070,12 @@ done:
  *           prefix group my-prefix-group ::7/64 del}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_address_add_del_command, static) = {
   .path = "set ip6 address",
   .short_help = "set ip6 address <interface> [prefix group <string>] "
                 "<address> [del]",
   .function = cp_ip6_address_add_del_command_function,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cp_ip6_addresses_show_command_function (vlib_main_t * vm,
@@ -1119,13 +1107,11 @@ cp_ip6_addresses_show_command_function (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_addresses_show_command, static) = {
   .path = "show ip6 addresses",
   .short_help = "show ip6 addresses",
   .function = cp_ip6_addresses_show_command_function,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cp_ip6_prefixes_show_command_function (vlib_main_t * vm,
@@ -1138,7 +1124,6 @@ cp_ip6_prefixes_show_command_function (vlib_main_t * vm,
   const u8 *prefix_group;
   f64 current_time = vlib_time_now (vm);
 
-  /* *INDENT-OFF* */
   pool_foreach (prefix_info, pm->prefix_pool)
    {
     prefix_group =
@@ -1152,18 +1137,15 @@ cp_ip6_prefixes_show_command_function (vlib_main_t * vm,
                      prefix_info->preferred_lt, prefix_info->valid_lt,
                      prefix_info->due_time - current_time);
   }
-  /* *INDENT-ON* */
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_prefixes_show_command, static) = {
   .path = "show ip6 prefixes",
   .short_help = "show ip6 prefixes",
   .function = cp_ip6_prefixes_show_command_function,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 ip6_pd_clients_show_command_function (vlib_main_t * vm,
@@ -1224,13 +1206,11 @@ ip6_pd_clients_show_command_function (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_pd_clients_show_command, static) = {
   .path = "show ip6 pd clients",
   .short_help = "show ip6 pd clients",
   .function = ip6_pd_clients_show_command_function,
 };
-/* *INDENT-ON* */
 
 
 
@@ -1304,7 +1284,6 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
 
       vec_validate (prefix_list, 0);
 
-      /* *INDENT-OFF* */
       pool_foreach (prefix_info, pm->prefix_pool)
        {
         if (is_dhcpv6_pd_prefix (prefix_info) &&
@@ -1325,7 +1304,6 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index,
             pool_put (pm->prefix_pool, prefix_info);
           }
       }
-      /* *INDENT-ON* */
 
       vec_free (prefix_list);
 
@@ -1398,13 +1376,11 @@ done:
  * @cliexcmd{dhcp6 pd client GigabitEthernet2/0/0 disable}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dhcp6_pd_client_enable_disable_command, static) = {
   .path = "dhcp6 pd client",
   .short_help = "dhcp6 pd client <interface> (prefix group <string> | disable)",
   .function = dhcp6_pd_client_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 #include <vlib/unix/plugin.h>
 

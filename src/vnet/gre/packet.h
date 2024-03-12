@@ -138,7 +138,6 @@ typedef struct
                                       This field is platform dependent.
 */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u32 seq_num;
   union
@@ -158,7 +157,6 @@ typedef CLIB_PACKED (struct {
   erspan_t2_t erspan;
 }) erspan_t2_header_t;
 
-/* *INDENT-ON* */
 
 /* u64 template for ERSPAN type 2 header with both EN bits set */
 #define ERSPAN_HDR2 0x1000180000000000ul

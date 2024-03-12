@@ -343,7 +343,6 @@ lacp_port_is_moved (vlib_main_t * vm, member_if_t * mif)
   member_if_t *mif2;
   lacp_pdu_t *lacpdu = (lacp_pdu_t *) mif->last_rx_pkt;
 
-  /* *INDENT-OFF* */
   pool_foreach (mif2, bm->neighbors) {
       {
 	if ((mif != mif2) && (mif2->rx_state == LACP_RX_STATE_PORT_DISABLED) &&
@@ -353,7 +352,6 @@ lacp_port_is_moved (vlib_main_t * vm, member_if_t * mif)
 	  return 1;
       }
   }
-  /* *INDENT-ON* */
 
   return 0;
 }
@@ -400,13 +398,11 @@ lacp_rx_debug_func (member_if_t * mif, int event, int state,
 		    lacp_fsm_state_t * transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
-  /* *INDENT-OFF* */
   ELOG_TYPE_DECLARE (e) =
     {
       .format = "%s",
       .format_args = "T4",
     };
-  /* *INDENT-ON* */
   struct
   {
     u32 event;

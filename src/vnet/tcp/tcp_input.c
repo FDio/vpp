@@ -1466,7 +1466,6 @@ VLIB_NODE_FN (tcp6_established_node) (vlib_main_t * vm,
   return tcp46_established_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_established_node) = {
   .name = "tcp4-established",
   /* Takes a vector of packets. */
@@ -1475,9 +1474,7 @@ VLIB_REGISTER_NODE (tcp4_established_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_established_node) = {
   .name = "tcp6-established",
   /* Takes a vector of packets. */
@@ -1486,7 +1483,6 @@ VLIB_REGISTER_NODE (tcp6_established_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
 
 static u8
@@ -1985,7 +1981,6 @@ VLIB_NODE_FN (tcp6_syn_sent_node) (vlib_main_t * vm,
   return tcp46_syn_sent_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
 {
   .name = "tcp4-syn-sent",
@@ -1995,9 +1990,7 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
 {
   .name = "tcp6-syn-sent",
@@ -2007,7 +2000,6 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
 static void
 tcp46_rcv_process_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -2429,7 +2421,6 @@ VLIB_NODE_FN (tcp6_rcv_process_node) (vlib_main_t * vm,
   return tcp46_rcv_process_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_rcv_process_node) = {
   .name = "tcp4-rcv-process",
   /* Takes a vector of packets. */
@@ -2438,9 +2429,7 @@ VLIB_REGISTER_NODE (tcp4_rcv_process_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_rcv_process_node) = {
   .name = "tcp6-rcv-process",
   /* Takes a vector of packets. */
@@ -2449,7 +2438,6 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
 static void
 tcp46_listen_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -2672,7 +2660,6 @@ VLIB_NODE_FN (tcp6_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return tcp46_listen_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_listen_node) = {
   .name = "tcp4-listen",
   /* Takes a vector of packets. */
@@ -2681,9 +2668,7 @@ VLIB_REGISTER_NODE (tcp4_listen_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_listen_node) = {
   .name = "tcp6-listen",
   /* Takes a vector of packets. */
@@ -2692,7 +2677,6 @@ VLIB_REGISTER_NODE (tcp6_listen_node) = {
   .error_counters = tcp_input_error_counters,
   .format_trace = format_tcp_rx_trace_short,
 };
-/* *INDENT-ON* */
 
 always_inline uword
 tcp46_drop_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -2941,7 +2925,6 @@ VLIB_NODE_FN (tcp6_input_nolookup_node) (vlib_main_t * vm,
 			     1 /* is_nolookup */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_input_nolookup_node) =
 {
   .name = "tcp4-input-nolookup",
@@ -2959,9 +2942,7 @@ VLIB_REGISTER_NODE (tcp4_input_nolookup_node) =
   .format_buffer = format_tcp_header,
   .format_trace = format_tcp_rx_trace,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_input_nolookup_node) =
 {
   .name = "tcp6-input-nolookup",
@@ -2979,7 +2960,6 @@ VLIB_REGISTER_NODE (tcp6_input_nolookup_node) =
   .format_buffer = format_tcp_header,
   .format_trace = format_tcp_rx_trace,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (tcp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
@@ -2995,7 +2975,6 @@ VLIB_NODE_FN (tcp6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     0 /* is_nolookup */ );
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_input_node) =
 {
   .name = "tcp4-input",
@@ -3013,9 +2992,7 @@ VLIB_REGISTER_NODE (tcp4_input_node) =
   .format_buffer = format_tcp_header,
   .format_trace = format_tcp_rx_trace,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_input_node) =
 {
   .name = "tcp6-input",
@@ -3033,7 +3010,6 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
   .format_buffer = format_tcp_header,
   .format_trace = format_tcp_rx_trace,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void

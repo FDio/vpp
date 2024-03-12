@@ -579,13 +579,11 @@ flow_report_process (vlib_main_t * vm,
   return 0;			/* not so much */
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (flow_report_process_node) = {
     .function = flow_report_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "flow-report-process",
 };
-/* *INDENT-ON* */
 
 int
 vnet_flow_report_add_del (ipfix_exporter_t *exp,
@@ -862,7 +860,6 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ipfix_exporter_command, static) = {
     .path = "set ipfix exporter",
     .short_help = "set ipfix exporter "
@@ -873,7 +870,6 @@ VLIB_CLI_COMMAND (set_ipfix_exporter_command, static) = {
                   "[udp-checksum]",
     .function = set_ipfix_exporter_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -885,13 +881,11 @@ ipfix_flush_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ipfix_flush_command, static) = {
     .path = "ipfix flush",
     .short_help = "flush the current ipfix data [for make test]",
     .function = ipfix_flush_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 flow_report_init (vlib_main_t * vm)

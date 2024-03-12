@@ -53,13 +53,11 @@ vl_api_dslite_get_aftr_addr_t_handler (vl_api_dslite_get_aftr_addr_t * mp)
   dslite_main_t *dm = &dslite_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY,
   ({
     memcpy (rmp->ip4_addr, &dm->aftr_ip4_addr.as_u8, 4);
     memcpy (rmp->ip6_addr, &dm->aftr_ip6_addr.as_u8, 16);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -88,13 +86,11 @@ vl_api_dslite_get_b4_addr_t_handler (vl_api_dslite_get_b4_addr_t * mp)
   dslite_main_t *dm = &dslite_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DSLITE_GET_B4_ADDR_REPLY,
   ({
     memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
     memcpy (rmp->ip6_addr, &dm->b4_ip6_addr.as_u8, 16);
   }))
-  /* *INDENT-ON* */
 }
 
 static void
@@ -154,12 +150,10 @@ vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (a, dm->pool.pool_addr)
     {
       send_dslite_address_details (a, reg, mp->context);
     }
-  /* *INDENT-ON* */
 }
 
 /* API definitions */

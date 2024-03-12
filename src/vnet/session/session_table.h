@@ -79,7 +79,6 @@ session_table_t *_get_session_tables ();
   pool_foreach (VAR, _get_session_tables ()) BODY
 
 #endif /* SRC_VNET_SESSION_SESSION_TABLE_H_ */
-/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *

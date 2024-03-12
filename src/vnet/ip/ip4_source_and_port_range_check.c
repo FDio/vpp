@@ -563,7 +563,6 @@ ip4_source_and_port_range_check_tx (vlib_main_t * vm,
    if this changes can easily make new function
 */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_source_port_and_range_check_rx) = {
   .function = ip4_source_and_port_range_check_rx,
   .name = "ip4-source-and-port-range-check-rx",
@@ -580,9 +579,7 @@ VLIB_REGISTER_NODE (ip4_source_port_and_range_check_rx) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_source_and_port_range_check_trace,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_source_port_and_range_check_tx) = {
   .function = ip4_source_and_port_range_check_tx,
   .name = "ip4-source-and-port-range-check-tx",
@@ -599,7 +596,6 @@ VLIB_REGISTER_NODE (ip4_source_port_and_range_check_tx) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_source_and_port_range_check_trace,
 };
-/* *INDENT-ON* */
 
 int
 set_ip_source_and_port_range_check (vlib_main_t * vm,
@@ -797,13 +793,11 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_ip_source_and_port_range_check_command, static) = {
   .path = "set interface ip source-and-port-range-check",
   .function = set_ip_source_and_port_range_check_fn,
   .short_help = "set interface ip source-and-port-range-check <interface> [tcp-out-vrf <table-id>] [udp-out-vrf <table-id>] [tcp-in-vrf <table-id>] [udp-in-vrf <table-id>] [del]",
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_ppr_dpo (u8 * s, va_list * args)
@@ -1264,14 +1258,12 @@ ip_source_and_port_range_check_command_fn (vlib_main_t * vm,
  * Example of how to delete an IPv4 subnet and range of ports from an IPv4 FIB table:
  * @cliexcmd{set ip source-and-port-range-check vrf 7 172.16.1.0/24 range 23 - 100 del}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_source_and_port_range_check_command, static) = {
   .path = "set ip source-and-port-range-check",
   .function = ip_source_and_port_range_check_command_fn,
   .short_help =
   "set ip source-and-port-range-check vrf <table-id> <ip-addr>/<mask> {port nn | range <nn> - <nn>} [del]",
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -1390,14 +1382,12 @@ show_source_and_port_range_check_fn (vlib_main_t * vm,
  * 172.16.2.2 port 250 FAIL
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_source_and_port_range_check, static) = {
   .path = "show ip source-and-port-range-check",
   .function = show_source_and_port_range_check_fn,
   .short_help =
   "show ip source-and-port-range-check vrf <table-id> <ip-addr> [port <n>]",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

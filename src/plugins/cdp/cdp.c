@@ -86,14 +86,12 @@ cdp_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cdp_command, static) =
 {
   .path = "cdp",
   .short_help = "cdp enable | disable",
   .function = cdp_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_cdp_enable_disable_t_handler
@@ -124,13 +122,11 @@ cdp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (cdp_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Cisco Discovery Protocol (CDP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

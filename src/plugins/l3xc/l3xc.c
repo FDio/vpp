@@ -264,7 +264,6 @@ out:
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /**
  * Create an L3XC policy.
  */
@@ -274,7 +273,6 @@ VLIB_CLI_COMMAND (l3xc_cmd_node, static) = {
   .short_help = "l3xc [add|del] <INTERFACE> via ...",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_l3xc (u8 * s, va_list * args)
@@ -305,13 +303,11 @@ l3xc_walk (l3xc_walk_cb_t cb, void *ctx)
 {
   u32 l3xci;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (l3xci, l3xc_pool)
    {
     if (!cb(l3xci, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 static clib_error_t *
@@ -320,24 +316,20 @@ l3xc_show_cmd (vlib_main_t * vm,
 {
   l3xc_t *l3xc;
 
-  /* *INDENT-OFF* */
   pool_foreach (l3xc, l3xc_pool)
    {
     vlib_cli_output(vm, "%U", format_l3xc, l3xc);
   }
-  /* *INDENT-ON* */
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l3xc_show_cmd_node, static) = {
   .path = "show l3xc",
   .function = l3xc_show_cmd,
   .short_help = "show l3xc",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 l3xc_get_node (fib_node_index_t index)

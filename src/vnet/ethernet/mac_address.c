@@ -15,13 +15,11 @@
 
 #include <vnet/ethernet/mac_address.h>
 
-/* *INDENT-OFF* */
 const mac_address_t ZERO_MAC_ADDRESS = {
   .bytes = {
     0, 0, 0, 0, 0, 0,
   },
 };
-/* *INDENT-ON* */
 
 u8 *
 format_mac_address_t (u8 * s, va_list * args)

@@ -816,7 +816,6 @@ VLIB_NODE_FN (ip4_outacl_node)
     VLIB_TX, 1 /* is_output */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_inacl_node) = {
   .name = "ip4-inacl",
   .vector_size = sizeof (u32),
@@ -855,7 +854,6 @@ VLIB_REGISTER_NODE (ip4_outacl_node) = {
     [ACL_NEXT_INDEX_DENY] = "ip4-drop",
   },
 };
-/* *INDENT-ON* */
 
 VNET_FEATURE_INIT (ip4_punt_acl_feature) = {
   .arc_name = "ip4-punt",
@@ -891,7 +889,6 @@ VLIB_NODE_FN (ip6_outacl_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
     VLIB_TX, 1 /* is_output */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_inacl_node) = {
   .name = "ip6-inacl",
   .vector_size = sizeof (u32),
@@ -930,7 +927,6 @@ VLIB_REGISTER_NODE (ip6_outacl_node) = {
     [ACL_NEXT_INDEX_DENY] = "ip6-drop",
   },
 };
-/* *INDENT-ON* */
 
 VNET_FEATURE_INIT (ip6_punt_acl_feature) = {
   .arc_name = "ip6-punt",

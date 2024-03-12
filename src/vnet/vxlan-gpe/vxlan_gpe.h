@@ -40,7 +40,6 @@
  * @brief VXLAN GPE header struct
  *
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /** 20 bytes */
   ip4_header_t ip4;
@@ -49,9 +48,7 @@ typedef CLIB_PACKED (struct {
   /** 8 bytes */
   vxlan_gpe_header_t vxlan;
 }) ip4_vxlan_gpe_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /** 40 bytes */
   ip6_header_t ip6;
@@ -60,7 +57,6 @@ typedef CLIB_PACKED (struct {
   /** 8 bytes */
   vxlan_gpe_header_t vxlan;
 }) ip6_vxlan_gpe_header_t;
-/* *INDENT-ON* */
 
 /**
  * @brief Key struct for IPv4 VXLAN GPE tunnel.
@@ -68,7 +64,6 @@ typedef CLIB_PACKED (struct {
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   union {
     struct {
@@ -81,7 +76,6 @@ typedef CLIB_PACKED(struct {
     u64 as_u64[2];
   };
 }) vxlan4_gpe_tunnel_key_t;
-/* *INDENT-ON* */
 
 /**
  * @brief Key struct for IPv6 VXLAN GPE tunnel.
@@ -89,14 +83,12 @@ typedef CLIB_PACKED(struct {
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   ip6_address_t local;
   ip6_address_t remote;
   u32 vni;
   u32 port;
 }) vxlan6_gpe_tunnel_key_t;
-/* *INDENT-ON* */
 
 typedef union
 {

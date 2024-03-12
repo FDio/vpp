@@ -804,7 +804,6 @@ VLIB_NODE_FN (ip6_sv_reass_node) (vlib_main_t * vm,
 				   false /* custom context */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reass_node) = {
     .name = "ip6-sv-reassembly",
     .vector_size = sizeof (u32),
@@ -820,7 +819,6 @@ VLIB_REGISTER_NODE (ip6_sv_reass_node) = {
                 [IP6_SV_REASSEMBLY_NEXT_HANDOFF] = "ip6-sv-reassembly-handoff",
         },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_sv_reass_node_feature) (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
@@ -831,7 +829,6 @@ VLIB_NODE_FN (ip6_sv_reass_node_feature) (vlib_main_t * vm,
 				   false /* custom context */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reass_node_feature) = {
     .name = "ip6-sv-reassembly-feature",
     .vector_size = sizeof (u32),
@@ -847,16 +844,13 @@ VLIB_REGISTER_NODE (ip6_sv_reass_node_feature) = {
                 [IP6_SV_REASSEMBLY_NEXT_HANDOFF] = "ip6-sv-reass-feature-hoff",
         },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip6_sv_reassembly_feature) = {
     .arc_name = "ip6-unicast",
     .node_name = "ip6-sv-reassembly-feature",
     .runs_before = VNET_FEATURES ("ip6-lookup"),
     .runs_after = 0,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_sv_reass_custom_context_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -1084,7 +1078,6 @@ ip6_sv_reass_walk_expired (vlib_main_t *vm,
 	  clib_spinlock_lock (&rt->lock);
 
 	  vec_reset_length (pool_indexes_to_free);
-          /* *INDENT-OFF* */
           pool_foreach_index (index, rt->pool)  {
                                 reass = pool_elt_at_index (rt->pool, index);
                                 if (now > reass->last_heard + rm->timeout)
@@ -1092,15 +1085,12 @@ ip6_sv_reass_walk_expired (vlib_main_t *vm,
                                     vec_add1 (pool_indexes_to_free, index);
                                   }
                               }
-          /* *INDENT-ON* */
 	  int *i;
-          /* *INDENT-OFF* */
           vec_foreach (i, pool_indexes_to_free)
           {
             ip6_sv_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
             ip6_sv_reass_free (vm, rm, rt, reass);
           }
-          /* *INDENT-ON* */
 
 	  clib_spinlock_unlock (&rt->lock);
 	}
@@ -1115,7 +1105,6 @@ ip6_sv_reass_walk_expired (vlib_main_t *vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reass_expire_node) = {
   .function = ip6_sv_reass_walk_expired,
   .format_trace = format_ip6_sv_reass_trace,
@@ -1125,7 +1114,6 @@ VLIB_REGISTER_NODE (ip6_sv_reass_expire_node) = {
   .n_errors = IP6_N_ERROR,
   .error_counters = ip6_error_counters,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_ip6_sv_reass_key (u8 * s, va_list * args)
@@ -1191,11 +1179,9 @@ show_ip6_sv_reass (vlib_main_t * vm, unformat_input_t * input,
       clib_spinlock_lock (&rt->lock);
       if (details)
 	{
-          /* *INDENT-OFF* */
           pool_foreach (reass, rt->pool) {
             vlib_cli_output (vm, "%U", format_ip6_sv_reass, vm, reass);
           }
-          /* *INDENT-ON* */
 	}
       sum_reass_n += rt->reass_n;
       clib_spinlock_unlock (&rt->lock);
@@ -1221,13 +1207,11 @@ show_ip6_sv_reass (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip6_sv_reassembly_cmd, static) = {
     .path = "show ip6-sv-reassembly",
     .short_help = "show ip6-sv-reassembly [details]",
     .function = show_ip6_sv_reass,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
@@ -1340,7 +1324,6 @@ VLIB_NODE_FN (ip6_sv_reassembly_handoff_node) (vlib_main_t * vm,
     vm, node, frame, false /* is_feature */, false /* custom_context */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reassembly_handoff_node) = {
   .name = "ip6-sv-reassembly-handoff",
   .vector_size = sizeof (u32),
@@ -1364,7 +1347,6 @@ VLIB_NODE_FN (ip6_sv_reassembly_feature_handoff_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_sv_reassembly_feature_handoff_node) = {
   .name = "ip6-sv-reass-feature-hoff",
   .vector_size = sizeof (u32),
@@ -1378,7 +1360,6 @@ VLIB_REGISTER_NODE (ip6_sv_reassembly_feature_handoff_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_sv_reassembly_custom_context_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)

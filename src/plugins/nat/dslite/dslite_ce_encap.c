@@ -107,7 +107,6 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
   .name = "dslite-ce-encap",
   .vector_size = sizeof (u32),
@@ -122,7 +121,6 @@ VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
     [DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

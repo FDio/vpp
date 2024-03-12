@@ -85,13 +85,11 @@ show_threads_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_threads_command, static) = {
   .path = "show threads",
   .short_help = "Show threads",
   .function = show_threads_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * Trigger threads to grab frame queue trace data
@@ -181,14 +179,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_trace_frame_queue,static) = {
     .path = "trace frame-queue",
     .short_help = "trace frame-queue (on|off)",
     .function = trace_frame_queue,
     .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 
 /*
@@ -363,21 +359,17 @@ show_frame_queue_histogram (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_frame_queue_trace,static) = {
     .path = "show frame-queue",
     .short_help = "show frame-queue trace",
     .function = show_frame_queue_trace,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_frame_queue_histogram,static) = {
     .path = "show frame-queue histogram",
     .short_help = "show frame-queue histogram",
     .function = show_frame_queue_histogram,
 };
-/* *INDENT-ON* */
 
 
 /*
@@ -446,13 +438,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_test_frame_queue_nelts,static) = {
     .path = "test frame-queue nelts",
     .short_help = "test frame-queue nelts (4,8,16,32)",
     .function = test_frame_queue_nelts,
 };
-/* *INDENT-ON* */
 
 
 /*
@@ -525,13 +515,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold,static) = {
     .path = "test frame-queue threshold",
     .short_help = "test frame-queue threshold N (0=no limit)",
     .function = test_frame_queue_threshold,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

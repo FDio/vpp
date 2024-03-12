@@ -396,12 +396,10 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      sr_localsid_fn_registration_t **plugin_it = 0;
 
 	      /* Create a vector out of the plugin pool as recommended */
-              /* *INDENT-OFF* */
               pool_foreach (plugin, sm->plugin_functions)
                 {
                   vec_add1 (vec_plugins, plugin);
                 }
-              /* *INDENT-ON* */
 
 	      vec_foreach (plugin_it, vec_plugins)
 	      {
@@ -506,7 +504,6 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_localsid_command, static) = {
   .path = "sr localsid",
   .short_help = "sr localsid (del) address XX:XX::YY:YY"
@@ -534,7 +531,6 @@ VLIB_CLI_COMMAND (sr_localsid_command, static) = {
     "\t\tParameters: '<ip4_fib_table>'\n",
   .function = sr_cli_localsid_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief CLI function to 'show' all SR LocalSIDs on console.
@@ -551,9 +547,7 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "SRv6 - My LocalSID Table:");
   vlib_cli_output (vm, "=========================");
-  /* *INDENT-OFF* */
   pool_foreach (ls, sm->localsids)  { vec_add1 (localsid_list, ls); }
-  /* *INDENT-ON* */
   for (i = 0; i < vec_len (localsid_list); i++)
     {
       ls = localsid_list[i];
@@ -676,13 +670,11 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_localsid_command, static) = {
   .path = "show sr localsids",
   .short_help = "show sr localsids",
   .function = show_sr_localsid_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Function to 'clear' ALL SR localsid counters
@@ -700,13 +692,11 @@ clear_sr_localsid_counters_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_sr_localsid_counters_command, static) = {
   .path = "clear sr localsid-counters",
   .short_help = "clear sr localsid-counters",
   .function = clear_sr_localsid_counters_command_fn,
 };
-/* *INDENT-ON* */
 
 /************************ SR LocalSID graphs node ****************************/
 /**
@@ -1438,7 +1428,6 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sr_localsid_d_node) = {
   .function = sr_localsid_d_fn,
   .name = "sr-localsid-d",
@@ -1454,7 +1443,6 @@ VLIB_REGISTER_NODE (sr_localsid_d_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /**
  * @brief SR LocalSID graph node. Supports all default SR Endpoint without decaps
@@ -1748,7 +1736,6 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sr_localsid_node) = {
   .function = sr_localsid_fn,
   .name = "sr-localsid",
@@ -1764,7 +1751,6 @@ VLIB_REGISTER_NODE (sr_localsid_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /**
  * @brief SR LocalSID uN graph node. Supports all default SR Endpoint without decaps
@@ -2058,7 +2044,6 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sr_localsid_un_node) = {
   .function = sr_localsid_un_fn,
   .name = "sr-localsid-un",
@@ -2074,7 +2059,6 @@ VLIB_REGISTER_NODE (sr_localsid_un_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 static uword
 sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -2270,7 +2254,6 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sr_localsid_un_perf_node) = {
   .function = sr_localsid_un_perf_fn,
   .name = "sr-localsid-un-perf",
@@ -2286,7 +2269,6 @@ VLIB_REGISTER_NODE (sr_localsid_un_perf_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_sr_dpo (u8 * s, va_list * args)
@@ -2406,10 +2388,8 @@ show_sr_localsid_behaviors_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm,
 		   "SR LocalSIDs behaviors:\n-----------------------\n\n");
 
-  /* *INDENT-OFF* */
   pool_foreach (plugin, sm->plugin_functions)
     { vec_add1 (plugins_vec, plugin); }
-  /* *INDENT-ON* */
 
   /* Print static behaviors */
   vlib_cli_output (vm, "Default behaviors:\n"
@@ -2439,13 +2419,11 @@ show_sr_localsid_behaviors_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_localsid_behaviors_command, static) = {
   .path = "show sr localsids behaviors",
   .short_help = "show sr localsids behaviors",
   .function = show_sr_localsid_behaviors_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief SR LocalSID initialization

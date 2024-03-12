@@ -309,7 +309,6 @@ VLIB_NODE_FN (ip4_classify_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_classify_node) = {
   .name = "ip4-classify",
   .vector_size = sizeof (u32),
@@ -320,7 +319,6 @@ VLIB_REGISTER_NODE (ip4_classify_node) = {
 
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ip6_classify_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
@@ -330,7 +328,6 @@ VLIB_NODE_FN (ip6_classify_node) (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_classify_node) = {
   .name = "ip6-classify",
   .vector_size = sizeof (u32),
@@ -341,7 +338,6 @@ VLIB_REGISTER_NODE (ip6_classify_node) = {
 
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *

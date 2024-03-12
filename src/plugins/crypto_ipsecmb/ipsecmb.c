@@ -864,7 +864,6 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   vec_validate_aligned (imbm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach (ptd, imbm->per_thread_data)
     {
 	ptd->mgr = alloc_mb_mgr (0);
@@ -882,7 +881,6 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 	if (ptd == imbm->per_thread_data)
 	  m = ptd->mgr;
     }
-  /* *INDENT-ON* */
 
 #define _(a, b, c, d, e, f)                                              \
   vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
@@ -945,20 +943,16 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (crypto_ipsecmb_init) =
 {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Intel IPSEC Multi-buffer Crypto Engine",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

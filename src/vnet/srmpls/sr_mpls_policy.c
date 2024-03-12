@@ -108,7 +108,6 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
     fib_route_path_t *paths = NULL;
     vec_add1 (paths, path);
 
-    /* *INDENT-OFF* */
     fib_prefix_t pfx = {
         .fp_len = 21,
         .fp_proto = FIB_PROTOCOL_MPLS,
@@ -116,7 +115,6 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
         .fp_eos = eos,
         .fp_payload_proto = DPO_PROTO_MPLS,
     };
-    /* *INDENT-ON* */
 
     fib_table_entry_path_add2 (0,
 			       &pfx,
@@ -245,7 +243,6 @@ sr_mpls_policy_del (mpls_label_t bsid)
     /* remove each of the MPLS routes */
     FOR_EACH_MPLS_EOS_BIT (eos)
     {
-			/* *INDENT-OFF* */
 			fib_prefix_t	pfx = {
 				.fp_len = 21,
 				.fp_proto = FIB_PROTOCOL_MPLS,
@@ -253,7 +250,6 @@ sr_mpls_policy_del (mpls_label_t bsid)
 				.fp_eos = eos,
 				.fp_payload_proto = DPO_PROTO_MPLS,
 			};
-			/* *INDENT-ON* */
 
       fib_table_entry_path_remove2 (0, &pfx, FIB_SOURCE_SR, paths);
     }
@@ -359,7 +355,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 
       FOR_EACH_MPLS_EOS_BIT (eos)
       {
-			/* *INDENT-OFF* */
 			fib_prefix_t	pfx = {
 				.fp_len = 21,
 				.fp_proto = FIB_PROTOCOL_MPLS,
@@ -367,7 +362,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 				.fp_eos = eos,
 				.fp_payload_proto = DPO_PROTO_MPLS,
 			};
-			/* *INDENT-ON* */
 
 	fib_table_entry_path_remove2 (0, &pfx, FIB_SOURCE_SR, paths);
       }
@@ -411,7 +405,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 
       FOR_EACH_MPLS_EOS_BIT (eos)
       {
-			/* *INDENT-OFF* */
 			fib_prefix_t	pfx = {
 				.fp_len = 21,
 				.fp_proto = FIB_PROTOCOL_MPLS,
@@ -419,7 +412,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 				.fp_eos = eos,
 				.fp_payload_proto = DPO_PROTO_MPLS,
 			};
-			/* *INDENT-ON* */
 
 	fib_table_entry_path_remove2 (0, &pfx, FIB_SOURCE_SR, paths);
       }
@@ -434,7 +426,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 
       FOR_EACH_MPLS_EOS_BIT (eos)
       {
-			/* *INDENT-OFF* */
 			fib_prefix_t	pfx = {
 				.fp_len = 21,
 				.fp_proto = FIB_PROTOCOL_MPLS,
@@ -442,7 +433,6 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 				.fp_eos = eos,
 				.fp_payload_proto = DPO_PROTO_MPLS,
 			};
-			/* *INDENT-ON* */
 
 	fib_table_entry_path_add2 (0,
 				   &pfx,
@@ -568,7 +558,6 @@ sr_mpls_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(sr_mpls_policy_command, static)=
 {
 	.path = "sr mpls policy",
@@ -577,7 +566,6 @@ VLIB_CLI_COMMAND(sr_mpls_policy_command, static)=
 		.long_help = "TBD.\n",
 		.function = sr_mpls_policy_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief CLI to display onscreen all the SR MPLS policies
@@ -597,11 +585,9 @@ show_sr_mpls_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "SR MPLS policies:");
 
-	/* *INDENT-OFF* */
 	pool_foreach (sr_policy, sm->sr_policies) {
 		vec_add1(vec_policies, sr_policy);
 	}
-	/* *INDENT-ON* */
 
   vec_foreach_index (i, vec_policies)
   {
@@ -647,14 +633,12 @@ show_sr_mpls_policies_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(show_sr_mpls_policies_command, static)=
 {
 	.path = "show sr mpls policies",
 		.short_help = "show sr mpls policies",
 		.function = show_sr_mpls_policies_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Update the Endpoint,Color tuple of an SR policy
@@ -888,14 +872,12 @@ cli_sr_mpls_policy_ec_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND(cli_sr_mpls_policy_ec_command, static)=
 {
 	.path = "sr mpls policy te",
 		.short_help = "sr mpls policy te bsid xxxxx endpoint x.x.x.x color 12341234",
 		.function = cli_sr_mpls_policy_ec_command_fn,
 };
-/* *INDENT-ON* */
 
 /********************* SR MPLS Policy initialization ***********************/
 /**

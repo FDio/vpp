@@ -449,11 +449,9 @@ vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg, u8 * data,
   key->alg = alg;
   vec_validate_aligned (key->data, length - 1, CLIB_CACHE_LINE_BYTES);
   clib_memcpy (key->data, data, length);
-  /* *INDENT-OFF* */
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
-  /* *INDENT-ON* */
   return index;
 }
 
@@ -464,11 +462,9 @@ vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index)
   vnet_crypto_engine_t *engine;
   vnet_crypto_key_t *key = pool_elt_at_index (cm->keys, index);
 
-  /* *INDENT-OFF* */
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_DEL, index);
-  /* *INDENT-ON* */
 
   if (key->type == VNET_CRYPTO_KEY_TYPE_DATA)
     {
@@ -532,11 +528,9 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   key->index_integ = index_integ;
   key->async_alg = linked_alg;
 
-  /* *INDENT-OFF* */
   vec_foreach (engine, cm->engines)
     if (engine->key_op_handler)
       engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, index);
-  /* *INDENT-ON* */
 
   return index;
 }
@@ -601,13 +595,11 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
   if (!pn)
     return ~0;
 
-  /* *INDENT-OFF* */
   vec_foreach (nn, cm->next_nodes)
     {
       if (nn->node_idx == pn->index)
 	return nn->next_idx;
     }
-  /* *INDENT-ON* */
 
   vec_validate (cm->next_nodes, index);
   nn = vec_elt_at_index (cm->next_nodes, index);

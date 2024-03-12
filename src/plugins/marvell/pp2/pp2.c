@@ -129,7 +129,6 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
       pp2_ppio_deinit (ppif->ppio);
     }
 
-  /* *INDENT-OFF* */
   /* free buffers hanging in the tx ring */
   vec_foreach (outq, ppif->outqs)
     {
@@ -162,7 +161,6 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
 	pp2_bpool_deinit (inq->bpool);
       }
   vec_free (ppif->inqs);
-  /* *INDENT-ON* */
 
 
   pool_put (ppm->interfaces, ppif);
@@ -375,7 +373,6 @@ static char *mrvl_pp2_tx_func_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
 {
   .name = "Marvell PPv2 interface",
@@ -388,7 +385,6 @@ VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
   .clear_counters = mrvl_pp2_clear_interface_counters,
   .rx_redirect_to_node = mrvl_pp2_set_interface_next_node,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 mrvl_pp2_init (vlib_main_t * vm)

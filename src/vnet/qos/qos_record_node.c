@@ -222,7 +222,6 @@ VLIB_NODE_FN (l2_ip_qos_record_node) (vlib_main_t * vm,
   return (qos_record_inline (vm, node, frame, QOS_SOURCE_VLAN, 0, 1));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_record_node) = {
   .name = "ip4-qos-record",
   .vector_size = sizeof (u32),
@@ -372,7 +371,6 @@ VLIB_REGISTER_NODE (l2_ip_qos_record_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

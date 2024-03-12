@@ -506,7 +506,6 @@ show_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 /*?
  * Set syslog sender configuration.
  *
@@ -599,7 +598,6 @@ VLIB_CLI_COMMAND (show_syslog_filter_command, static) = {
     .short_help = "show syslog filter",
     .function = show_syslog_filter_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 syslog_init (vlib_main_t * vm)

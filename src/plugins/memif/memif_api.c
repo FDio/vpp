@@ -195,12 +195,10 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   vec_free (args.secret);
 
 reply:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_MEMIF_CREATE_REPLY,
     ({
       rmp->sw_if_index = htonl (args.sw_if_index);
     }));
-  /* *INDENT-ON* */
 }
 
 /**
@@ -397,7 +395,6 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (mif, mm->interfaces)
      {
       swif = vnet_get_sw_interface (vnm, mif->sw_if_index);
@@ -409,7 +406,6 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
       send_memif_details (reg, mif, swif, if_name, mp->context);
       vec_set_len (if_name, 0);
     }
-  /* *INDENT-ON* */
 
   vec_free (if_name);
 }
@@ -453,7 +449,6 @@ void
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
     ({
       memif_socket_file_t *msf;
@@ -463,7 +458,6 @@ void
       filename = msf->filename;
       send_memif_socket_filename_details(reg, sock_id, filename, mp->context);
     }));
-  /* *INDENT-ON* */
 }
 
 /* Set up the API message handling tables */

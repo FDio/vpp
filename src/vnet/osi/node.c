@@ -239,7 +239,6 @@ static char *osi_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (osi_input_node) = {
   .function = osi_input,
   .name = "osi-input",
@@ -260,7 +259,6 @@ VLIB_REGISTER_NODE (osi_input_node) = {
   .format_trace = format_osi_input_trace,
   .unformat_buffer = unformat_osi_header,
 };
-/* *INDENT-ON* */
 
 static void
 osi_setup_node (vlib_main_t *vm, u32 node_index)

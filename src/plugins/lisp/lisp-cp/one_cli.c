@@ -62,13 +62,11 @@ lisp_show_adjacencies_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_adjacencies_command) = {
     .path = "show one adjacencies",
     .short_help = "show one adjacencies",
     .function = lisp_show_adjacencies_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_add_del_map_server_command_fn (vlib_main_t * vm,
@@ -116,13 +114,11 @@ lisp_add_del_map_server_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_map_server_command) = {
     .path = "one map-server",
     .short_help = "one map-server add|del <ip>",
     .function = lisp_add_del_map_server_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -224,14 +220,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_local_eid_command) = {
     .path = "one eid-table",
     .short_help = "one eid-table add/del [vni <vni>] eid <eid> "
       "locator-set <locator-set> [key <secret-key> key-id sha1|sha256 ]",
     .function = lisp_add_del_local_eid_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_eid_table_map_command_fn (vlib_main_t * vm,
@@ -271,13 +265,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_eid_table_map_command) = {
     .path = "one eid-table map",
     .short_help = "one eid-table map [del] vni <vni> vrf <vrf> | bd <bdi>",
     .function = lisp_eid_table_map_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_add_del_ndp_entry_command_fn (vlib_main_t * vm,
@@ -335,13 +327,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_ndp_entry_command) = {
     .path = "one ndp",
     .short_help = "one ndp [del] bd <bd> mac <mac> ip <ipv6>",
     .function = lisp_add_del_ndp_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_add_del_l2_arp_entry_command_fn (vlib_main_t * vm,
@@ -399,13 +389,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_l2_arp_entry_command) = {
     .path = "one l2 arp",
     .short_help = "one l2 arp [del] bd <bd> mac <mac> ip <ipv4>",
     .function = lisp_add_del_l2_arp_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_l2_arp_entries_command_fn (vlib_main_t * vm,
@@ -416,7 +404,6 @@ lisp_show_l2_arp_entries_command_fn (vlib_main_t * vm,
   lisp_api_l2_arp_entry_t *entries, *e;
   hash_pair_t *p;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, ht,
   ({
     entries = vnet_lisp_l2_arp_entries_get_by_bd (p->key);
@@ -429,19 +416,16 @@ lisp_show_l2_arp_entries_command_fn (vlib_main_t * vm,
       }
     vec_free (entries);
   }));
-  /* *INDENT-ON* */
 
   hash_free (ht);
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_l2_arp_entries_command) = {
     .path = "show one l2 arp entries",
     .short_help = "Show ONE L2 ARP entries",
     .function = lisp_show_l2_arp_entries_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_ndp_entries_command_fn (vlib_main_t * vm,
@@ -452,7 +436,6 @@ lisp_show_ndp_entries_command_fn (vlib_main_t * vm,
   lisp_api_ndp_entry_t *entries, *e;
   hash_pair_t *p;
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, ht,
   ({
     entries = vnet_lisp_ndp_entries_get_by_bd (p->key);
@@ -465,19 +448,16 @@ lisp_show_ndp_entries_command_fn (vlib_main_t * vm,
       }
     vec_free (entries);
   }));
-  /* *INDENT-ON* */
 
   hash_free (ht);
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_ndp_entries_command) = {
     .path = "show one ndp entries",
     .short_help = "Show ONE NDP entries",
     .function = lisp_show_ndp_entries_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * Handler for add/del remote mapping CLI.
@@ -613,7 +593,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_remote_mapping_command) = {
   .path = "one remote-mapping",
   .short_help =
@@ -623,7 +602,6 @@ VLIB_CLI_COMMAND (one_add_del_remote_mapping_command) = {
     "[rloc <dst-locator> ... ]",
   .function = lisp_add_del_remote_mapping_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * Handler for add/del adjacency CLI.
@@ -721,14 +699,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_adjacency_command) = {
     .path = "one adjacency",
     .short_help = "one adjacency add|del vni <vni> reid <remote-eid> "
       "leid <local-eid>",
     .function = lisp_add_del_adjacency_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -770,13 +746,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_request_mode_command) = {
     .path = "one map-request mode",
     .short_help = "one map-request mode dst-only|src-dst",
     .function = lisp_map_request_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static u8 *
@@ -804,13 +778,11 @@ lisp_show_map_request_mode_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_map_request_mode_command) = {
     .path = "show one map-request mode",
     .short_help = "show one map-request mode",
     .function = lisp_show_map_request_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_map_resolvers_command_fn (vlib_main_t * vm,
@@ -827,13 +799,11 @@ lisp_show_map_resolvers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_map_resolvers_command) = {
     .path = "show one map-resolvers",
     .short_help = "show one map-resolvers",
     .function = lisp_show_map_resolvers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_nsh_set_locator_set_command_fn (vlib_main_t * vm,
@@ -884,13 +854,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_nsh_set_locator_set_command) = {
     .path = "one nsh-mapping",
     .short_help = "one nsh-mapping [del] ls <locator-set-name>",
     .function = lisp_nsh_set_locator_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_map_register_fallback_threshold_show_command_fn (vlib_main_t * vm,
@@ -904,14 +872,12 @@ lisp_map_register_fallback_threshold_show_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_register_fallback_threshold_show_command) = {
     .path = "show one map-register fallback-threshold",
     .short_help = "show one map-register fallback-threshold",
     .function = lisp_map_register_fallback_threshold_show_command_fn,
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_map_register_fallback_threshold_command_fn (vlib_main_t * vm,
@@ -949,13 +915,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_register_fallback_threshold_command) = {
     .path = "one map-register fallback-threshold",
     .short_help = "one map-register fallback-threshold <count>",
     .function = lisp_map_register_fallback_threshold_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
@@ -1006,13 +970,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_pitr_set_locator_set_command) = {
     .path = "one pitr",
     .short_help = "one pitr [disable] ls <locator-set-name>",
     .function = lisp_pitr_set_locator_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_pitr_command_fn (vlib_main_t * vm,
@@ -1059,13 +1021,11 @@ lisp_show_pitr_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_pitr_command) = {
     .path = "show one pitr",
     .short_help = "Show pitr",
     .function = lisp_show_pitr_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_eid_entry (u8 * s, va_list * args)
@@ -1156,7 +1116,6 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
 
   if (print_all)
     {
-      /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool)
        {
         if (mapit->pitr_set || mapit->nsh_set)
@@ -1172,7 +1131,6 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
         vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
                          lcm, mapit, ls);
       }
-      /* *INDENT-ON* */
     }
   else
     {
@@ -1200,13 +1158,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_show_eid_table_command) = {
     .path = "show one eid-table",
     .short_help = "show one eid-table [local|remote|eid <eid>]",
     .function = lisp_show_eid_table_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_enable_disable_pitr_mode_command_fn (vlib_main_t * vm,
@@ -1253,13 +1209,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_enable_disable_pitr_mode_command) = {
     .path = "one pitr mode",
     .short_help = "one pitr mode [enable|disable]",
     .function = lisp_enable_disable_pitr_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -1307,13 +1261,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_enable_disable_petr_mode_command) = {
     .path = "one petr mode",
     .short_help = "one petr mode [enable|disable]",
     .function = lisp_enable_disable_petr_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_enable_disable_xtr_mode_command_fn (vlib_main_t * vm,
@@ -1360,13 +1312,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_enable_disable_xtr_mode_command) = {
     .path = "one xtr mode",
     .short_help = "one xtr mode [enable|disable]",
     .function = lisp_enable_disable_xtr_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 one_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -1381,13 +1331,11 @@ one_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_enable_command) = {
     .path = "one enable",
     .short_help = "one enable",
     .function = one_enable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 one_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -1402,13 +1350,11 @@ one_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_disable_command) = {
     .path = "one disable",
     .short_help = "one disable",
     .function = one_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_map_register_set_ttl_command_fn (vlib_main_t * vm,
@@ -1449,13 +1395,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_register_set_ttl_command) = {
     .path = "one map-register ttl",
     .short_help = "one map-register ttl",
     .function = lisp_map_register_set_ttl_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_map_register_show_ttl_command_fn (vlib_main_t * vm,
@@ -1468,14 +1412,12 @@ lisp_map_register_show_ttl_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_register_show_ttl_command) = {
     .path = "show one map-register ttl",
     .short_help = "show one map-register ttl",
     .function = lisp_map_register_show_ttl_command_fn,
 };
 
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
@@ -1522,13 +1464,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_map_register_enable_disable_command) = {
     .path = "one map-register",
     .short_help = "one map-register [enable|disable]",
     .function = lisp_map_register_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
@@ -1575,13 +1515,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_rloc_probe_enable_disable_command) = {
     .path = "one rloc-probe",
     .short_help = "one rloc-probe [enable|disable]",
     .function = lisp_rloc_probe_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_lisp_status (u8 * s, va_list * args)
@@ -1602,13 +1540,11 @@ lisp_show_status_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_status_command) = {
     .path = "show one status",
     .short_help = "show one status",
     .function = lisp_show_status_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
@@ -1654,12 +1590,10 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%=10s%=10s", "VNI", is_l2 ? "BD" : "VRF");
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, vni_table,
   ({
     vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
   }));
-  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -1667,13 +1601,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_eid_table_map_command) = {
     .path = "show one eid-table map",
     .short_help = "show one eid-table map l2|l3",
     .function = lisp_show_eid_table_map_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -1742,14 +1674,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_add_del_locator_set_command) = {
     .path = "one locator-set",
     .short_help = "one locator-set add/del <name> [iface <iface-name> "
         "p <priority> w <weight>]",
     .function = lisp_add_del_locator_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
@@ -1818,14 +1748,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_add_del_locator_in_set_command) = {
     .path = "one locator",
     .short_help = "one locator add/del locator-set <name> iface <iface-name> "
                   "p <priority> w <weight>",
     .function = lisp_add_del_locator_in_set_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
@@ -1840,7 +1768,6 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%s%=16s%=16s%=16s", "Locator-set", "Locator",
 		   "Priority", "Weight");
 
-  /* *INDENT-OFF* */
   pool_foreach (lsit, lcm->locator_set_pool)
    {
     u8 * msg = 0;
@@ -1872,17 +1799,14 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "%v", msg);
     vec_free (msg);
   }
-  /* *INDENT-ON* */
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_show_locator_sets_command) = {
     .path = "show one locator-set",
     .short_help = "Shows locator-sets",
     .function = lisp_cp_show_locator_sets_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -1936,13 +1860,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_map_resolver_command) = {
     .path = "one map-resolver",
     .short_help = "one map-resolver add/del <ip_address>",
     .function = lisp_add_del_map_resolver_command_fn,
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -1991,13 +1913,11 @@ done:
 
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_add_del_map_request_command) = {
     .path = "one map-request itr-rlocs",
     .short_help = "one map-request itr-rlocs add/del <locator_set_name>",
     .function = lisp_add_del_mreq_itr_rlocs_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
@@ -2021,13 +1941,11 @@ lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_map_request_command) = {
     .path = "show one map-request itr-rlocs",
     .short_help = "Shows map-request itr-rlocs",
     .function = lisp_show_mreq_itr_rlocs_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
@@ -2073,7 +1991,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_use_petr_set_locator_set_command) = {
     .path = "one use-petr",
     .short_help = "one use-petr [disable] <petr-ip>",
@@ -2125,13 +2042,11 @@ lisp_show_petr_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_petr_command) = {
     .path = "show one petr",
     .short_help = "Show petr",
     .function = lisp_show_petr_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_map_servers_command_fn (vlib_main_t * vm,
@@ -2148,13 +2063,11 @@ lisp_show_map_servers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_map_servers_command) = {
     .path = "show one map-servers",
     .short_help = "show one map servers",
     .function = lisp_show_map_servers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_map_register_state_command_fn (vlib_main_t * vm,
@@ -2170,13 +2083,11 @@ lisp_show_map_register_state_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_map_register_state_command) = {
     .path = "show one map-register state",
     .short_help = "show one map-register state",
     .function = lisp_show_map_register_state_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_rloc_probe_state_command_fn (vlib_main_t * vm,
@@ -2192,13 +2103,11 @@ lisp_show_rloc_probe_state_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_rloc_probe_state_command) = {
     .path = "show one rloc state",
     .short_help = "show one RLOC state",
     .function = lisp_show_rloc_probe_state_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_stats_command_fn (vlib_main_t * vm,
@@ -2210,13 +2119,11 @@ lisp_show_stats_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_stats_command) = {
     .path = "show one statistics status",
     .short_help = "show ONE statistics enable/disable status",
     .function = lisp_show_stats_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_stats_details_command_fn (vlib_main_t * vm,
@@ -2244,13 +2151,11 @@ lisp_show_stats_details_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_stats_details_command) = {
     .path = "show one statistics details",
     .short_help = "show ONE statistics",
     .function = lisp_show_stats_details_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_stats_enable_disable_command_fn (vlib_main_t * vm,
@@ -2282,13 +2187,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_stats_enable_disable_command) = {
     .path = "one statistics",
     .short_help = "enable/disable ONE statistics collecting",
     .function = lisp_stats_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_stats_flush_command_fn (vlib_main_t * vm,
@@ -2299,13 +2202,11 @@ lisp_stats_flush_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_stats_flush_command) = {
     .path = "one statistics flush",
     .short_help = "Flush ONE statistics",
     .function = lisp_stats_flush_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_show_one_modes_command_fn (vlib_main_t * vm,
@@ -2323,13 +2224,11 @@ lisp_show_one_modes_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_cp_show_one_modes_modes_command) = {
     .path = "show one modes",
     .short_help = "show one modes",
     .function = lisp_show_one_modes_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

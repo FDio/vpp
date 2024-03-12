@@ -348,7 +348,6 @@ udp4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return udp46_input_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_input_node) =
 {
   .function = udp4_input,
@@ -365,7 +364,6 @@ VLIB_REGISTER_NODE (udp4_input_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 static uword
 udp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -374,7 +372,6 @@ udp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return udp46_input_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp6_input_node) =
 {
   .function = udp6_input,
@@ -391,7 +388,6 @@ VLIB_REGISTER_NODE (udp6_input_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

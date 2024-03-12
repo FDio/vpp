@@ -29,11 +29,9 @@ vlib_log_main_t log_main = {
   .default_rate_limit = 50,
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (log_log, static) = {
   .class_name = "log",
 };
-/* *INDENT-ON* */
 
 static const int colors[] = {
   [VLIB_LOG_LEVEL_EMERG] = 1,	/* red */
@@ -90,7 +88,6 @@ format_indent (u8 * s, va_list * args)
   u32 indent = va_arg (*args, u32);
   u8 *c;
 
-  /* *INDENT-OFF* */
   vec_foreach (c, v)
     {
       vec_add (s, c, 1);
@@ -98,7 +95,6 @@ format_indent (u8 * s, va_list * args)
 	for (u32 i = 0; i < indent; i++)
 	  vec_add1 (s, (u8) ' ');
     }
-  /* *INDENT-ON* */
   return s;
 }
 
@@ -408,13 +404,11 @@ show_log (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_log, static) = {
   .path = "show logging",
   .short_help = "show logging",
   .function = show_log,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_log_config (vlib_main_t * vm,
@@ -456,13 +450,11 @@ show_log_config (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_log_config, static) = {
   .path = "show logging configuration",
   .short_help = "show logging configuration",
   .function = show_log_config,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 clear_log (vlib_main_t * vm,
@@ -487,13 +479,11 @@ clear_log (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_clear_log, static) = {
   .path = "clear logging",
   .short_help = "clear logging",
   .function = clear_log,
 };
-/* *INDENT-ON* */
 
 static uword
 unformat_vlib_log_level (unformat_input_t * input, va_list * args)
@@ -621,14 +611,12 @@ set_log_class (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log, static) = {
   .path = "set logging class",
   .short_help = "set logging class <class> [rate-limit <int>] "
     "[level <level>] [syslog-level <level>]",
   .function = set_log_class,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_log_unth_time (vlib_main_t * vm,
@@ -655,13 +643,11 @@ set_log_unth_time (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log_params, static) = {
   .path = "set logging unthrottle-time",
   .short_help = "set logging unthrottle-time <int>",
   .function = set_log_unth_time,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 set_log_size (vlib_main_t * vm,
@@ -691,13 +677,11 @@ set_log_size (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log_size, static) = {
   .path = "set logging size",
   .short_help = "set logging size <int>",
   .function = set_log_size,
 };
-/* *INDENT-ON* */
 
 static uword
 unformat_vlib_log_subclass (unformat_input_t * input, va_list * args)
@@ -770,13 +754,11 @@ test_log_class_subclass (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_test_log, static) = {
   .path = "test log",
   .short_help = "test log <level> <class> <subclass> <message>",
   .function = test_log_class_subclass,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 log_config_class (vlib_main_t * vm, char *name, unformat_input_t * input)

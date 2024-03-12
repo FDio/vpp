@@ -214,14 +214,12 @@ mdata_enable_disable_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mdata_enable_disable_command, static) =
 {
   .path = "buffer metadata tracking",
   .short_help = "buffer metadata tracking [on][off]",
   .function = mdata_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_mdata_enable_disable_t_handler
@@ -256,13 +254,11 @@ mdata_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (mdata_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Buffer metadata change tracker."
 };
-/* *INDENT-ON* */
 
 
 #define foreach_primary_metadata_field          \
@@ -478,14 +474,12 @@ show_metadata_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_metadata_command, static) =
 {
   .path = "show buffer metadata",
   .short_help = "show buffer metadata",
   .function = show_metadata_command_fn,
 };
-/* *INDENT-OFF* */
 
 /*
  * fd.io coding-style-patch-verification: ON

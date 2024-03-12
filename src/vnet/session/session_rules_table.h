@@ -23,7 +23,6 @@
 #include <vnet/session/mma_16.h>
 #include <vnet/session/mma_40.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 {
   union
@@ -53,7 +52,6 @@ typedef CLIB_PACKED (struct
       u64 as_u64[5];
     };
 }) session_mask_or_match_6_t;
-/* *INDENT-ON* */
 
 #define SESSION_RULE_TAG_MAX_LEN 64
 #define SESSION_RULES_TABLE_INVALID_INDEX MMA_TABLE_INVALID_INDEX

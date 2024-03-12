@@ -47,12 +47,10 @@
 
 
 /* Root of all packet generator cli commands. */
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_pg_command, static) = {
   .path = "packet-generator",
   .short_help = "Packet generator commands",
 };
-/* *INDENT-ON* */
 
 void
 pg_enable_disable (u32 stream_index, int is_enable)
@@ -63,11 +61,9 @@ pg_enable_disable (u32 stream_index, int is_enable)
   if (stream_index == ~0)
     {
       /* No stream specified: enable/disable all streams. */
-      /* *INDENT-OFF* */
         pool_foreach (s, pg->streams)  {
             pg_stream_enable_disable (pg, s, is_enable);
         }
-	/* *INDENT-ON* */
     }
   else
     {
@@ -138,23 +134,19 @@ doit:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_streams_cli, static) = {
   .path = "packet-generator enable-stream",
   .short_help = "Enable packet generator streams",
   .function = enable_disable_stream,
   .function_arg = 1,		/* is_enable */
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (disable_streams_cli, static) = {
   .path = "packet-generator disable-stream",
   .short_help = "Disable packet generator streams",
   .function = enable_disable_stream,
   .function_arg = 0,		/* is_enable */
 };
-/* *INDENT-ON* */
 
 static u8 *
 format_pg_edit_group (u8 * s, va_list * va)
@@ -210,12 +202,10 @@ format_pg_stream (u8 * s, va_list * va)
   if (verbose)
     {
       pg_edit_group_t *g;
-  /* *INDENT-OFF* */
   vec_foreach (g, t->edit_groups)
     {
       s = format (s, "\n%U%U", format_white_space, indent, format_pg_edit_group, g);
     }
-  /* *INDENT-ON* */
     }
 
   return s;
@@ -244,23 +234,19 @@ show_streams (vlib_main_t * vm,
     }
 
   vlib_cli_output (vm, "%U", format_pg_stream, 0, 0);
-  /* *INDENT-OFF* */
   pool_foreach (s, pg->streams)  {
       vlib_cli_output (vm, "%U", format_pg_stream, s, verbose);
     }
-  /* *INDENT-ON* */
 
 done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_streams_cli, static) = {
   .path = "show packet-generator ",
   .short_help = "show packet-generator [verbose]",
   .function = show_streams,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 pg_pcap_read (pg_stream_t * s, char *file_name)
@@ -505,7 +491,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (new_stream_cli, static) = {
   .path = "packet-generator new",
   .function = new_stream,
@@ -523,7 +508,6 @@ VLIB_CLI_COMMAND (new_stream_cli, static) = {
   "rate PPS             rate to transfer packet data\n"
   "maxframe NPKTS       maximum number of packets per frame\n",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 del_stream (vlib_main_t * vm,
@@ -541,13 +525,11 @@ del_stream (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (del_stream_cli, static) = {
   .path = "packet-generator delete",
   .function = del_stream,
   .short_help = "Delete stream with given name",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 change_stream_parameters (vlib_main_t * vm,
@@ -588,13 +570,11 @@ change_stream_parameters (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (change_stream_parameters_cli, static) = {
   .path = "packet-generator configure",
   .short_help = "Change packet generator stream parameters",
   .function = change_stream_parameters,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 pg_capture_cmd_fn (vlib_main_t * vm,
@@ -671,13 +651,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (pg_capture_cmd, static) = {
   .path = "packet-generator capture",
   .short_help = "packet-generator capture <interface name> pcap <filename> [count <n>]",
   .function = pg_capture_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 create_pg_if_cmd_fn (vlib_main_t * vm,
@@ -730,7 +708,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .path = "create packet-generator",
   .short_help = "create packet-generator interface <interface name>"
@@ -738,7 +715,6 @@ VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
 		" [mode <ethernet | ip4 | ip6>]",
   .function = create_pg_if_cmd_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy init function so that we can be linked in. */
 static clib_error_t *

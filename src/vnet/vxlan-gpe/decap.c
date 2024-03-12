@@ -622,7 +622,6 @@ static char *vxlan_gpe_error_strings[] = {
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_gpe_input_node) = {
   .name = "vxlan4-gpe-input",
   /* Takes a vector of packets. */
@@ -642,9 +641,7 @@ VLIB_REGISTER_NODE (vxlan4_gpe_input_node) = {
   .format_trace = format_vxlan_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_vxlan_gpe_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
   .name = "vxlan6-gpe-input",
   /* Takes a vector of packets. */
@@ -664,7 +661,6 @@ VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
   .format_trace = format_vxlan_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_vxlan_gpe_header,
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -1105,7 +1101,6 @@ VLIB_NODE_FN (ip4_vxlan_gpe_bypass_node) (vlib_main_t * vm,
   return ip_vxlan_gpe_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_vxlan_gpe_bypass_node) = {
   .name = "ip4-vxlan-gpe-bypass",
   .vector_size = sizeof (u32),
@@ -1119,7 +1114,6 @@ VLIB_REGISTER_NODE (ip4_vxlan_gpe_bypass_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_forward_next_trace,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
@@ -1139,7 +1133,6 @@ VLIB_NODE_FN (ip6_vxlan_gpe_bypass_node) (vlib_main_t * vm,
   return ip_vxlan_gpe_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_vxlan_gpe_bypass_node) = {
   .name = "ip6-vxlan-gpe-bypass",
   .vector_size = sizeof (u32),
@@ -1153,7 +1146,6 @@ VLIB_REGISTER_NODE (ip6_vxlan_gpe_bypass_node) = {
   .format_buffer = format_ip6_header,
   .format_trace = format_ip6_forward_next_trace,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */

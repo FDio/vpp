@@ -118,10 +118,8 @@ vl_api_gre_tunnel_add_del_t_handler (vl_api_gre_tunnel_add_del_t *mp)
   rv = vnet_gre_tunnel_add_del (a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_GRE_TUNNEL_ADD_DEL_REPLY,
 		({ rmp->sw_if_index = ntohl (sw_if_index); }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -129,7 +127,6 @@ send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
 {
   vl_api_gre_tunnel_details_t *rmp;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO_DETAILS2 (
     VL_API_GRE_TUNNEL_DETAILS, ({
       ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
@@ -146,7 +143,6 @@ send_gre_tunnel_details (gre_tunnel_t *t, vl_api_gre_tunnel_dump_t *mp)
       rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
       rmp->tunnel.session_id = htons (t->session_id);
     }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -165,12 +161,10 @@ vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t *mp)
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
       pool_foreach (t, gm->tunnels)
 	{
 	  send_gre_tunnel_details (t, mp);
 	}
-      /* *INDENT-ON* */
     }
 
   else

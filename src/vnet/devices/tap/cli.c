@@ -136,7 +136,6 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
   .short_help =
@@ -150,7 +149,6 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[persist] [attach] [tun] [packed] [in-order]",
   .function = tap_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -191,14 +189,12 @@ tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_delete__command, static) =
 {
   .path = "delete tap",
   .short_help = "delete tap {<interface> | sw_if_index <sw_idx>}",
   .function = tap_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -261,7 +257,6 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_offload_command, static) =
 {
   .path = "set tap offload",
@@ -270,7 +265,6 @@ VLIB_CLI_COMMAND (tap_offload_command, static) =
     "csum-offload-disable>",
   .function = tap_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -300,10 +294,8 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
       pool_foreach (vif, mm->interfaces)
 	  vec_add1 (hw_if_indices, vif->hw_if_index);
-      /* *INDENT-ON* */
     }
 
   virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
@@ -313,13 +305,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_show_command, static) = {
   .path = "show tap",
   .short_help = "show tap {<interface>] [descriptors]",
   .function = tap_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -349,10 +339,8 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
       pool_foreach (vif, mm->interfaces)
           vec_add1 (hw_if_indices, vif->hw_if_index);
-      /* *INDENT-ON* */
     }
 
   virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
@@ -362,13 +350,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tun_show_command, static) = {
   .path = "show tun",
   .short_help = "show tun {<interface>] [descriptors]",
   .function = tun_show_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 tap_cli_init (vlib_main_t * vm)

@@ -510,13 +510,11 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_rewrite_cmd, static) = {
   .path = "set vxlan-gpe-ioam",
   .short_help = "set vxlan-gpe-ioam vxlan <src-ip> <dst_ip> <vnid> [disable]",
   .function = vxlan_gpe_set_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
 
 
@@ -592,13 +590,11 @@ vxlan_gpe_set_ioam_flags_command_fn (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_flags_cmd, static) =
 {
 .path = "set vxlan-gpe-ioam rewrite",
 .short_help = "set vxlan-gpe-ioam [trace] [pot] [ppc <encap|decap>]",
 .function = vxlan_gpe_set_ioam_flags_command_fn,};
-/* *INDENT-ON* */
 
 
 int vxlan_gpe_ioam_disable_for_dest
@@ -683,13 +679,11 @@ static clib_error_t *vxlan_gpe_set_ioam_transit_rewrite_command_fn
   return rv;
 }
 
-       /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_transit_rewrite_cmd, static) = {
   .path = "set vxlan-gpe-ioam-transit",
   .short_help = "set vxlan-gpe-ioam-transit dst-ip <dst_ip> [outer-fib-index <outer_fib_index>] [disable]",
   .function = vxlan_gpe_set_ioam_transit_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *clear_vxlan_gpe_ioam_rewrite_command_fn
   (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -697,14 +691,12 @@ clib_error_t *clear_vxlan_gpe_ioam_rewrite_command_fn
   return (vxlan_gpe_ioam_disable (0, 0, 0));
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_clear_ioam_flags_cmd, static) =
 {
 .path = "clear vxlan-gpe-ioam rewrite",
 .short_help = "clear vxlan-gpe-ioam rewrite",
 .function = clear_vxlan_gpe_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
 
 /**

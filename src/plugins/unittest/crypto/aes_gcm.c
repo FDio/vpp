@@ -166,7 +166,6 @@ static u8 tc4_tag256[] = {
   0xcd, 0xdf, 0x88, 0x53, 0xbb, 0x2d, 0x55, 0x1b
 };
 
-/* *INDENT-OFF* */
 UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm128_tc1) = {
   .name = "128-GCM Spec. TC1",
   .alg = VNET_CRYPTO_ALG_AES_128_GCM,
@@ -318,7 +317,6 @@ UNITTEST_REGISTER_CRYPTO_TEST (aes_gcm256_inc5) = {
   .aad.length = 20,
   .tag.length = 16,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

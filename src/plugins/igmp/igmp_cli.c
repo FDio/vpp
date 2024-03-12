@@ -69,13 +69,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_clear_interface_command, static) = {
   .path = "clear igmp",
   .short_help = "clear igmp int <interface>",
   .function = igmp_clear_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -150,14 +148,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_listen_command, static) = {
   .path = "igmp listen",
   .short_help = "igmp listen [<enable|disable>] "
                 "int <interface> saddr <ip4-address> gaddr <ip4-address>",
   .function = igmp_listen_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_enable_cli (vlib_main_t * vm,
@@ -211,13 +207,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_enable_command, static) = {
   .path = "igmp",
   .short_help = "igmp <enable|disable> <host|router> <interface>",
   .function = igmp_enable_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_proxy_device_add_del_command_fn (vlib_main_t * vm,
@@ -275,13 +269,11 @@ done:
   unformat_free (line_input);
   return error;
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_proxy_device_add_del_command, static) = {
   .path = "igmp proxy-dev",
   .short_help = "igmp proxy-dev <add|del> vrf-id <table-id> <interface>",
   .function = igmp_proxy_device_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_proxy_device_add_del_interface_command_fn (vlib_main_t * vm,
@@ -339,13 +331,11 @@ done:
   unformat_free (line_input);
   return error;
 }
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_proxy_device_add_del_interface_command, static) = {
   .path = "igmp proxy-dev itf",
   .short_help = "igmp proxy-dev itf <add|del> vrf-id <table-id> <interface>",
   .function = igmp_proxy_device_add_del_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -355,23 +345,19 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
 
-  /* *INDENT-OFF* */
   pool_foreach (config, im->configs)
      {
       vlib_cli_output (vm, "%U", format_igmp_config, config);
     }
-  /* *INDENT-ON* */
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_show_command, static) = {
   .path = "show igmp config",
   .short_help = "show igmp config",
   .function = igmp_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 igmp_show_timers_command_fn (vlib_main_t * vm,
@@ -384,13 +370,11 @@ igmp_show_timers_command_fn (vlib_main_t * vm,
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_show_timers_command, static) = {
   .path = "show igmp timers",
   .short_help = "show igmp timers",
   .function = igmp_show_timers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 test_igmp_command_fn (vlib_main_t * vm,
@@ -414,13 +398,11 @@ test_igmp_command_fn (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_igmp_command, static) = {
   .path = "test igmp timers",
   .short_help = "Change the default values for IGMP timers - only sensible during unit tests",
   .function = test_igmp_command_fn,
 };
-/* *INDENT-ON* */
 
 
 clib_error_t *

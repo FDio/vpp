@@ -605,11 +605,9 @@ session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
       srt4 = &srt->session_rules_tables_16;
       vlib_cli_output (vm, "IP4 rules");
 
-      /* *INDENT-OFF* */
       pool_foreach (sr4, srt4->rules)  {
 	vlib_cli_output (vm, "%U", format_session_rule4, srt, sr4);
       }
-      /* *INDENT-ON* */
 
     }
   else if (fib_proto == FIB_PROTOCOL_IP6)
@@ -619,11 +617,9 @@ session_rules_table_cli_dump (vlib_main_t * vm, session_rules_table_t * srt,
       srt6 = &srt->session_rules_tables_40;
       vlib_cli_output (vm, "IP6 rules");
 
-      /* *INDENT-OFF* */
       pool_foreach (sr6, srt6->rules)  {
         vlib_cli_output (vm, "%U", format_session_rule6, srt, sr6);
       }
-      /* *INDENT-ON* */
 
     }
 }

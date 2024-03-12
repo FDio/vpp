@@ -234,12 +234,10 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY,
   ({
     rmp->stats_index = htonl (stats_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void

@@ -334,7 +334,6 @@ VLIB_CONFIG_FUNCTION (nsim_config, "nsim");
  * @cliend
  * @cliexcmd{nsim enable-disable <intfc> <intfc> [disable]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsim_enable_disable_command, static) =
 {
   .path = "nsim cross-connect enable-disable",
@@ -343,7 +342,6 @@ VLIB_CLI_COMMAND (nsim_enable_disable_command, static) =
   "<interface-name-2> [disable]",
   .function = nsim_cross_connect_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_nsim_cross_connect_enable_disable_t_handler
@@ -523,7 +521,6 @@ nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{nsim output-feature enable-disable <intfc> [disable]}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsim_output_feature_enable_disable_command, static) =
 {
   .path = "nsim output-feature enable-disable",
@@ -531,7 +528,6 @@ VLIB_CLI_COMMAND (nsim_output_feature_enable_disable_command, static) =
   "nsim output-feature enable-disable <interface-name> [disable]",
   .function = nsim_output_feature_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 #include <nsim/nsim.api.c>
 static clib_error_t *
@@ -550,30 +546,24 @@ nsim_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (nsim_init);
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (nsim, static) =
 {
   .arc_name = "device-input",
   .node_name = "nsim",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (nsim_feature, static) = {
   .arc_name = "interface-output",
   .node_name = "nsim-output-feature",
   .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = "Network Delay Simulator",
 };
-/* *INDENT-ON* */
 
 static uword
 unformat_delay (unformat_input_t * input, va_list * args)
@@ -797,7 +787,6 @@ set_nsim_command_fn (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{set nsim delay <nn> bandwidth <bb> packet-size <nn>}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_nsim_command, static) =
 {
   .path = "set nsim",
@@ -805,7 +794,6 @@ VLIB_CLI_COMMAND (set_nsim_command, static) =
   "    [packets-per-drop <nn>][drop-fraction <f64: 0.0 - 1.0>]",
   .function = set_nsim_command_fn,
 };
-/* *INDENT-ON*/
 
 
 static clib_error_t *
@@ -842,14 +830,12 @@ show_nsim_command_fn (vlib_main_t * vm,
  * @cliexcmd{show nsim}
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_nsim_command, static) =
 {
   .path = "show nsim",
   .short_help = "Display network delay simulator configuration",
   .function = show_nsim_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -138,7 +138,6 @@ ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
   };
   u32 fib_index;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (fib_index, ip4_main.fibs)
     {
       fib_table_walk (fib_index, FIB_PROTOCOL_IP4,
@@ -149,7 +148,6 @@ ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
       fib_table_walk (fib_index, FIB_PROTOCOL_IP6,
 		      ip_container_proxy_fib_table_walk, &wctx);
     }
-  /* *INDENT-ON* */
 }
 
 clib_error_t *
@@ -216,14 +214,12 @@ ip_container_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_container_command_node, static) = {
   .path = "ip container",
   .function = ip_container_cmd,
   .short_help = "ip container <address> <interface>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
 show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
@@ -275,14 +271,12 @@ show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_container_command, static) = {
   .path = "show ip container",
   .function = show_ip_container_cmd_fn,
   .short_help = "show ip container <address> <interface>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
