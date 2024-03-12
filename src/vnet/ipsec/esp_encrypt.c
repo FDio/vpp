@@ -94,8 +94,7 @@ format_esp_post_encrypt_trace (u8 * s, va_list * args)
 /* pad packet in input buffer */
 static_always_inline u8 *
 esp_add_footer_and_icv (vlib_main_t *vm, vlib_buffer_t **last, u8 esp_align,
-			u8 icv_sz, vlib_node_runtime_t *node,
-			u16 buffer_data_size, uword total_len)
+			u8 icv_sz, u16 buffer_data_size, uword total_len)
 {
   static const u8 pad_data[ESP_MAX_BLOCK_SIZE] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -769,7 +768,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  payload = vlib_buffer_get_current (b[0]);
 	  next_hdr_ptr = esp_add_footer_and_icv (
-	    vm, &lb, esp_align, icv_sz, node, buffer_data_size,
+	    vm, &lb, esp_align, icv_sz, buffer_data_size,
 	    vlib_buffer_length_in_chain (vm, b[0]));
 	  if (!next_hdr_ptr)
 	    {
@@ -906,7 +905,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vlib_buffer_advance (b[0], ip_len);
 	  payload = vlib_buffer_get_current (b[0]);
 	  next_hdr_ptr = esp_add_footer_and_icv (
-	    vm, &lb, esp_align, icv_sz, node, buffer_data_size,
+	    vm, &lb, esp_align, icv_sz, buffer_data_size,
 	    vlib_buffer_length_in_chain (vm, b[0]));
 	  if (!next_hdr_ptr)
 	    {
