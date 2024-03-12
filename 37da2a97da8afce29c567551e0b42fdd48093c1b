@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc662611_bb47560b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-12T16:34:39Z",
+      "side": 1,
+      "message": "hope you don\u0027t mind that i refactured it a bit, so it simply returns vector... LMK if ok and I will merge it....",
+      "revId": "37da2a97da8afce29c567551e0b42fdd48093c1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
