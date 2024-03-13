@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8c59b49_c69f5672",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-13T19:51:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "19e54393_f0df563d",
+      "revId": "883053bcea39430638bc1d2516b9ed651db8591e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2dc6f284_28339783",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-03-13T15:58:40Z",
       "side": 1,
       "message": "please make sure you don\u0027t introduce whitespace changes where there is no real change. I\u0027m guessing the automated formatter here is the culprit.",
+      "revId": "883053bcea39430638bc1d2516b9ed651db8591e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05300938_ac80e293",
+        "filename": "src/vpp-api/vapi/vapi_common.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-13T19:51:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2dc6f284_28339783",
       "revId": "883053bcea39430638bc1d2516b9ed651db8591e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
