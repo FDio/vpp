@@ -102,6 +102,8 @@ add_vpp_executable(vppctl
   LINK_LIBRARIES vppinfra ${EPOLL_LIB}
 )
 
+target_compile_definitions(vppctl PRIVATE VPPCTL_USE_CONFIG)
+
 ##############################################################################
 # vpp_get_metrics binary
 ##############################################################################

@@ -34,7 +34,10 @@
 
 #include <vppinfra/clib.h>
 #include <arpa/telnet.h>
+
+#ifdef VPPCTL_USE_CONFIG
 #include <vpp/vnet/config.h>
+#endif /* VPPCTL_USE_CONFIG */
 
 #define SOCKET_FILE "/run/vpp/cli.sock"
 
