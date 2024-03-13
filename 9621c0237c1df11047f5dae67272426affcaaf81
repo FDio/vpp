@@ -51,6 +51,23 @@
       "parentUuid": "a86e2d4d_d58a49ae",
       "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad099691_da0168b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-13T15:57:29Z",
+      "side": 1,
+      "message": "Let\u0027s agree on the logic and I will adjust the patch correspondingly. I can keep the desired behaviour for me in my local repo :)",
+      "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
