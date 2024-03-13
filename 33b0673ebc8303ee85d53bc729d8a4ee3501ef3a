@@ -16,6 +16,23 @@
       "message": "We probably should have added this script in misc into CI... But catching it early is the next best thing I guess :-)",
       "revId": "33b0673ebc8303ee85d53bc729d8a4ee3501ef3a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "22b92f9f_868eba3a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2558
+      },
+      "writtenOn": "2024-03-13T13:09:32Z",
+      "side": 1,
+      "message": "I\u0027ve missed it being build like that outside the main cmake.\n\nWhile I\u0027ve been replying, you\u0027ve made almost exactly what I\u0027ve thought of (https://gerrit.fd.io/r/c/vpp/+/40509).",
+      "revId": "33b0673ebc8303ee85d53bc729d8a4ee3501ef3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
