@@ -84,6 +84,23 @@
       "message": "perftest-3n-icx mrrANDnic_*ANDdrv_mlx5_coreAND4cAND78bANDethip6srhip6-ip6base-srv6enc2sids mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cAND64bANDethip4udpwireguard1tnlsw-ip4base mrrANDnic_intel-e810cqANDdrv_vfio_pciAND1cAND64bANDethip4ipsec4tnlsw-ip4base-int-aes256gcm mrrANDnic_intel-xxv710ANDdrv_vfio_pciAND1cAND64bANDethip4ipsec4tnlsw-ip4base-int-aes256gcm",
       "revId": "736c17067c86edeb5fd853dfa85698b60f656207",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc6a0a07_c245277f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-03-13T09:13:31Z",
+      "side": 1,
+      "message": "I am getting different queue assignment on the same test (different NIC). Investigating.",
+      "revId": "736c17067c86edeb5fd853dfa85698b60f656207",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
