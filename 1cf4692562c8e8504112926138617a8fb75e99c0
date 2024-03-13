@@ -70,6 +70,24 @@
       "parentUuid": "12b9f56a_bfe2a255",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1129384_4cacc52d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-03-13T14:15:06Z",
+      "side": 1,
+      "message": "Hi @Vratko, were you able to check the performance for this change?",
+      "parentUuid": "95bc1fe9_51b8464d",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
