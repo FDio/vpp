@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db3dcf7a_16164bae",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-03-13T13:27:32Z",
+      "side": 1,
+      "message": "sorry for late reply, I have to adjust my gerrit settings",
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ed90cf68_3d891b5c",
@@ -48,6 +65,30 @@
       "writtenOn": "2024-03-06T12:26:03Z",
       "side": 1,
       "message": "Honestly I don\u0027t know why we would enumerate the APIs in this file, and the list is incomplete / outdated.\n\nMaybe it\u0027s easier to just remove it alltogether, or make a reference to `find src/ -name \\*.api` instead.",
+      "range": {
+        "startLine": 28,
+        "startChar": 3,
+        "endLine": 28,
+        "endChar": 24
+      },
+      "revId": "2788a43b1ae5fc9743aa711e49498b9bb6a47803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00e3116b_9af6d858",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-03-13T13:27:32Z",
+      "side": 1,
+      "message": "The same thing come to me also, What do you think to add to add this to docs/interfacing/binapi/vpp_api_language.rst?",
+      "parentUuid": "da03d5b5_44508df3",
       "range": {
         "startLine": 28,
         "startChar": 3,
