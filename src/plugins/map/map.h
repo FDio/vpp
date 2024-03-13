@@ -335,7 +335,11 @@ ip6_map_get_domain (ip6_address_t * addr, u32 * map_domain_index, u8 * error)
 {
   map_main_t *mm = &map_main;
   u32 mdi =
-    mm->ip6_src_prefix_tbl->lookup (mm->ip6_src_prefix_tbl, addr, 128);
+    /* This is the old src (ip6 destination) hash lookup [dgeist]
+     *
+     * mm->ip6_src_prefix_tbl->lookup (mm->ip6_src_prefix_tbl, addr, 128);
+     */
+    mm->ip6_prefix_tbl->lookup (mm->ip6_prefix_tbl, addr, 128);
   if (mdi == ~0)
     {
       *error = MAP_ERROR_NO_DOMAIN;
