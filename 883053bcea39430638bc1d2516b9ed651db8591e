@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19e54393_f0df563d",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-13T15:58:40Z",
+      "side": 1,
+      "message": "I would not use a global variable but explicitly pass it as an argument\n\nstatic vapi_error_e vapi_sock_errno_to_vapi_error(int errno)\n\nThere might be cases (maybe in the future) where there is a syscall in between the one producing errno and using this function.\n\nHaving a parameter makes it possible to store errno (and maybe rectify situation) instead of having to remember it and then set a global variable before calling this function.",
+      "revId": "883053bcea39430638bc1d2516b9ed651db8591e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2dc6f284_28339783",
+        "filename": "src/vpp-api/vapi/vapi_common.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-13T15:58:40Z",
+      "side": 1,
+      "message": "please make sure you don\u0027t introduce whitespace changes where there is no real change. I\u0027m guessing the automated formatter here is the culprit.",
+      "revId": "883053bcea39430638bc1d2516b9ed651db8591e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

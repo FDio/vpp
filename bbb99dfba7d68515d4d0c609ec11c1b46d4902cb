@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de3a8641_17d5b5dc",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-13T15:58:40Z",
+      "side": 1,
+      "message": "same here and other places in this file.",
+      "revId": "bbb99dfba7d68515d4d0c609ec11c1b46d4902cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
