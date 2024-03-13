@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9096ca5_5b42966d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2024-03-13T13:53:25Z",
+      "side": 1,
+      "message": "@Dave - https://gerrit.fd.io/r/c/ci-management/+/34493 - added you as a reviewer. Mea culpa for having it drop off the plate back in the day. \n\n@Dmitry: no worries, it\u0027s entirely not obvious that vppctl is ever being built outside the expected process.",
+      "revId": "e574736322733ec5a126ca01efb958570e5355eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
