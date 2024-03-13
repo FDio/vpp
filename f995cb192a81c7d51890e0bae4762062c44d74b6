@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9558e84b_b989e089",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-13T16:58:31Z",
+      "side": 1,
+      "message": "any suggestion how to overcome checkstyle error on vapi_common.h? it seems like it wants to add this additional indent.",
+      "revId": "f995cb192a81c7d51890e0bae4762062c44d74b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
