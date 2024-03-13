@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f928474_9461b17e",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-03-13T14:47:34Z",
+      "side": 1,
+      "message": "Please submit these changes as a separate patch.",
+      "revId": "9a453d072ee75e743e8a60f919ec8849cbc8f5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5392500b_89fdd6af",
+        "filename": "src/vnet/devices/virtio/virtio.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-03-13T14:47:34Z",
+      "side": 1,
+      "message": "Please remove the above code. The following \"if (vec_len (hw_if_indices) \u003d\u003d 0)\" should be enough to fix the problem.",
+      "revId": "9a453d072ee75e743e8a60f919ec8849cbc8f5d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
