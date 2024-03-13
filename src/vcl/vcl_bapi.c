@@ -309,7 +309,7 @@ vcl_bapi_hookup (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = 1,                                                              \
+    .traced = (u32) 1,                                                        \
     .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
