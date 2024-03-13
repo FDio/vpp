@@ -16,6 +16,24 @@
       "message": "any suggestion how to overcome checkstyle error on vapi_common.h? it seems like it wants to add this additional indent.",
       "revId": "f995cb192a81c7d51890e0bae4762062c44d74b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e33ebd03_c0b04714",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-13T18:10:14Z",
+      "side": 1,
+      "message": "ah, if it\u0027s \u0027make checkstyle\u0027 which insists on whitespace change then that\u0027s okay. That code was probably committed before make checkstyle was introduced. Feel free to reformat it then and apologies for any confusion.",
+      "parentUuid": "9558e84b_b989e089",
+      "revId": "f995cb192a81c7d51890e0bae4762062c44d74b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
