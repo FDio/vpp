@@ -34,7 +34,9 @@
 
 #include <vppinfra/clib.h>
 #include <arpa/telnet.h>
+#ifndef STATIC_VPPCTL
 #include <vpp/vnet/config.h>
+#endif
 
 #define SOCKET_FILE "/run/vpp/cli.sock"
 
@@ -162,7 +164,7 @@ process_input (int sock_fd, unsigned char *rx_buf, int rx_buf_len,
   return j;
 }
 
-#ifdef CLIB_SANITIZE_ADDR
+#if !defined(STATIC_VPPCTL) && defined(CLIB_SANITIZE_ADDR)
 /* default options for Address Sanitizer */
 const char *
 __asan_default_options (void)
