@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4a829297_9c6a55d6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-13T19:27:47Z",
+      "side": 1,
+      "message": "This gerrit change is for testing CI, DO NOT MERGE!",
+      "revId": "b8426a2473232628ee3b1f5ad42dbfa3426fd842",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
