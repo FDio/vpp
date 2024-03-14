@@ -140,6 +140,30 @@
       },
       "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "872da269_0f0307cb",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T19:14:03Z",
+      "side": 1,
+      "message": "Ah, didn\u0027t realise that with this change we\u0027re pushing vec_* to client binary.",
+      "parentUuid": "969e4c60_144b5dd8",
+      "range": {
+        "startLine": 971,
+        "startChar": 2,
+        "endLine": 971,
+        "endChar": 76
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

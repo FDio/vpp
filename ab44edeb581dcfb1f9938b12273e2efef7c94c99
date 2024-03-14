@@ -229,6 +229,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "951e4a03_c0b6f6eb",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T19:14:03Z",
+      "side": 1,
+      "message": "I use neovim + clangd LSP. \u0027make compdb\u0027 to generate compilation database.",
+      "parentUuid": "3edebfb0_8caacc8c",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9669db88_f074831e",
