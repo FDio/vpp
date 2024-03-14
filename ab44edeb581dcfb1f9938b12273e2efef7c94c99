@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b900f617_d2423937",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c999a55f_4d5a735e",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "16da9553_cbe018cb",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-03-14T12:45:14Z",
       "side": 1,
       "message": "this could vapi_error_e",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea256923_7b79c091",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "16da9553_cbe018cb",
       "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4abcabed_576b7f97",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "223cbe5a_70dff88c",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a2f4bf28_d28de38c",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a02ef8e3_80dd004e",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a2f4bf28_d28de38c",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8329e251_85ec6e03",
@@ -99,6 +171,24 @@
       "writtenOn": "2024-03-14T12:45:14Z",
       "side": 1,
       "message": "Then this suffix \u0027_int\u0027 no longer makes sense ?",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "743cbf81_c7c23202",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "`_int` means internal here; it is also used in connect/disconnect and has a bit different argument list.\ndo you think we should squash those 2 into 1?",
+      "parentUuid": "8329e251_85ec6e03",
       "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -126,6 +216,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a8f4e6c_2197823b",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1562,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9669db88_f074831e",
+      "range": {
+        "startLine": 1557,
+        "startChar": 0,
+        "endLine": 1562,
+        "endChar": 5
+      },
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7d3cf1ac_c1173a35",
@@ -139,6 +253,24 @@
       "writtenOn": "2024-03-14T12:45:14Z",
       "side": 1,
       "message": "there is no chroot_prefix passed to vapi_connect_ex.",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6dfeebe6_8e997834",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T16:28:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7d3cf1ac_c1173a35",
       "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
