@@ -8,6 +8,8 @@ persist_set=0
 unconfigure_set=0
 debug_set=0
 vppsrc=
+ginkgo_args=
+parallel=
 
 for i in "$@"
 do
@@ -49,8 +51,14 @@ case "${i}" in
         tc_name="${i#*=}"
         if [ $tc_name != "all" ]; then
             single_test=1
-            args="$args -run $tc_name -verbose"
+            ginkgo_args="$ginkgo_args --focus $tc_name -vv"
+            args="$args -verbose"
+        else
+            ginkgo_args="$ginkgo_args -v"
         fi
+        ;;
+    --parallel=*)
+        ginkgo_args="$ginkgo_args -procs=${i#*=}"
 esac
 done
 
@@ -74,4 +82,4 @@ if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     exit 1
 fi
 
-sudo -E go test -timeout=20m -buildvcs=false -v $args
+sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --trace $ginkgo_args -- $args

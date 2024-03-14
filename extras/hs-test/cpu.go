@@ -36,7 +36,7 @@ func (c *CpuAllocatorT) Allocate(nCpus int) (*CpuContext, error) {
 	return &cpuCtx, nil
 }
 
-func (c *CpuAllocatorT) readCpus(fname string) error {
+func (c *CpuAllocatorT) readCpus() error {
 	var first, last int
 	file, err := os.Open(CPU_PATH)
 	if err != nil {
@@ -60,7 +60,7 @@ func (c *CpuAllocatorT) readCpus(fname string) error {
 func CpuAllocator() (*CpuAllocatorT, error) {
 	if cpuAllocator == nil {
 		cpuAllocator = new(CpuAllocatorT)
-		err := cpuAllocator.readCpus(CPU_PATH)
+		err := cpuAllocator.readCpus()
 		if err != nil {
 			return nil, err
 		}

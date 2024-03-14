@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+func init() {
+	registerVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest,
+		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclRetryAttachTest)
+}
+
 func getVclConfig(c *Container, ns_id_optional ...string) string {
 	var s Stanza
 	ns_id := "default"
@@ -23,11 +28,11 @@ func getVclConfig(c *Container, ns_id_optional ...string) string {
 	return s.close().toString()
 }
 
-func (s *VethsSuite) TestXEchoVclClientUdp() {
+func XEchoVclClientUdpTest(s *VethsSuite) {
 	s.testXEchoVclClient("udp")
 }
 
-func (s *VethsSuite) TestXEchoVclClientTcp() {
+func XEchoVclClientTcpTest(s *VethsSuite) {
 	s.testXEchoVclClient("tcp")
 }
 
@@ -49,11 +54,11 @@ func (s *VethsSuite) testXEchoVclClient(proto string) {
 	s.assertContains(o, "CLIENT RESULTS")
 }
 
-func (s *VethsSuite) TestXEchoVclServerUdp() {
+func XEchoVclServerUdpTest(s *VethsSuite) {
 	s.testXEchoVclServer("udp")
 }
 
-func (s *VethsSuite) TestXEchoVclServerTcp() {
+func XEchoVclServerTcpTest(s *VethsSuite) {
 	s.testXEchoVclServer("tcp")
 }
 
@@ -97,16 +102,15 @@ func (s *VethsSuite) testVclEcho(proto string) {
 	s.log(o)
 }
 
-func (s *VethsSuite) TestVclEchoTcp() {
+func VclEchoTcpTest(s *VethsSuite) {
 	s.testVclEcho("tcp")
 }
 
-func (s *VethsSuite) TestVclEchoUdp() {
+func VclEchoUdpTest(s *VethsSuite) {
 	s.testVclEcho("udp")
 }
 
-// this test takes too long, for now it's being skipped
-func (s *VethsSuite) SkipTestVclRetryAttach() {
+func VclRetryAttachTest(s *VethsSuite) {
 	s.testRetryAttach("tcp")
 }
 
