@@ -1,0 +1,26 @@
+* NsSuite/HttpTpsTest
+* NsSuite/VppProxyHttpTcpTest
+* NsSuite/VppProxyHttpTlsTest
+* NsSuite/EnvoyProxyHttpTcpTest
+* NginxSuite/MirroringTest
+* VethsSuiteSolo TcpWithLossTest [SOLO]
+* NoTopoSuiteSolo HttpStaticPromTest [SOLO]
+* TapSuite/LinuxIperfTest
+* NoTopoSuite/NginxHttp3Test
+* NoTopoSuite/NginxAsServerTest
+* NoTopoSuite/NginxPerfCpsTest
+* NoTopoSuite/NginxPerfRpsTest
+* NoTopoSuite/NginxPerfWrkTest
+* VethsSuite/EchoBuiltinTest
+* VethsSuite/HttpCliTest
+* VethsSuite/LDPreloadIperfVppTest
+* VethsSuite/VppEchoQuicTest
+* VethsSuite/VppEchoTcpTest
+* VethsSuite/VppEchoUdpTest
+* VethsSuite/XEchoVclClientUdpTest
+* VethsSuite/XEchoVclClientTcpTest
+* VethsSuite/XEchoVclServerUdpTest
+* VethsSuite/XEchoVclServerTcpTest
+* VethsSuite/VclEchoTcpTest
+* VethsSuite/VclEchoUdpTest
+* VethsSuite/VclRetryAttachTest
