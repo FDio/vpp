@@ -157,9 +157,9 @@ static void vl_api_acl_plugin_get_conn_table_max_entries_reply_t_handler
     (vl_api_acl_plugin_get_conn_table_max_entries_reply_t * mp)
     {
         vat_main_t * vam = acl_test_main.vat_main;
-        clib_warning("\nConn table max entries: %d",
-                    __bswap_64(mp->conn_table_max_entries) );
-        vam->result_ready = 1;
+	clib_warning ("\nConn table max entries: %d",
+		      clib_net_to_host_u64 (mp->conn_table_max_entries));
+	vam->result_ready = 1;
     }
 
 static inline u8 *
