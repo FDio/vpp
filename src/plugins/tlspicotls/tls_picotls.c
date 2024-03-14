@@ -453,6 +453,7 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 	    }
 	}
 
+      ctx->flags |= TLS_CONN_F_HS_DONE;
       if (!svm_fifo_max_dequeue (tcp_session->rx_fifo))
 	return 0;
     }
