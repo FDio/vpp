@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 
 	"go.fd.io/govpp"
 	"go.fd.io/govpp/api"
@@ -133,7 +134,7 @@ func (vpp *VppInstance) start() error {
 
 	if *isVppDebug {
 		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT)
+		signal.Notify(sig, syscall.SIGQUIT)
 		cont := make(chan bool, 1)
 		go func() {
 			<-sig
@@ -143,7 +144,7 @@ func (vpp *VppInstance) start() error {
 		vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 		fmt.Println("run following command in different terminal:")
 		fmt.Println("docker exec -it " + vpp.container.name + " gdb -ex \"attach $(docker exec " + vpp.container.name + " pidof vpp)\"")
-		fmt.Println("Afterwards press CTRL+C to continue")
+		fmt.Println("Afterwards press CTRL+\\ to continue")
 		<-cont
 		fmt.Println("continuing...")
 	} else {
@@ -207,7 +208,7 @@ func (vpp *VppInstance) GetSessionStat(stat string) int {
 			tokens := strings.Split(strings.TrimSpace(line), " ")
 			val, err := strconv.Atoi(tokens[0])
 			if err != nil {
-				vpp.getSuite().FailNow("failed to parse stat value %s", err)
+				Fail("failed to parse stat value %s" + fmt.Sprint(err))
 				return 0
 			}
 			return val
@@ -360,7 +361,6 @@ func (vpp *VppInstance) saveLogs() {
 	logTarget := vpp.container.getLogDirPath() + "vppinstance-" + vpp.container.name + ".log"
 	logSource := vpp.container.getHostWorkDir() + defaultLogFilePath
 	cmd := exec.Command("cp", logSource, logTarget)
-	vpp.getSuite().T().Helper()
 	vpp.getSuite().log(cmd.String())
 	cmd.Run()
 }

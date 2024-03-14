@@ -23,6 +23,10 @@ ifeq ($(CPUS),)
 CPUS=1
 endif
 
+ifeq ($(PARALLEL),)
+PARALLEL=1
+endif
+
 ifeq ($(VPPSRC),)
 VPPSRC=$(shell pwd)/../..
 endif
@@ -35,8 +39,8 @@ ifeq ($(ARCH),)
 ARCH=$(shell dpkg --print-architecture)
 endif
 
-list_tests = @(grep -r ') Test' *_test.go | cut -d '*' -f2 | cut -d '(' -f1 | \
-		tr -d ' ' | tr ')' '/' | sed 's/Suite//')
+list_tests = @go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'Test' | \
+		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
 .PHONY: help
 help:
@@ -60,6 +64,7 @@ help:
 	@echo " TEST=[test-name]         - specific test to run"
 	@echo " CPUS=[n-cpus]            - number of cpus to run with vpp"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
+	@echo " PARALLEL=[n-cpus]"		 - number of test processes to spawn to run in parallel
 	@echo
 	@echo "List of all tests:"
 	$(call list_tests)
@@ -78,7 +83,7 @@ build-vpp-debug:
 test: .deps.ok .build.vpp
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC)
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL)
 
 build-go:
 	go build ./tools/http_server
