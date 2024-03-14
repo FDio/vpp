@@ -16,6 +16,131 @@
       "message": "Hi Klement,\nWhat in your opinion we should also cover in this patch? Or it\u0027s good to go for a final round of code review.",
       "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c999a55f_4d5a735e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "I think it\u0027s quite good now.\n\nJust a couple of minor comments below and one serious - logic below.",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16da9553_cbe018cb",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "this could vapi_error_e",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "223cbe5a_70dff88c",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2f4bf28_d28de38c",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8329e251_85ec6e03",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "Then this suffix \u0027_int\u0027 no longer makes sense ?",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9669db88_f074831e",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1562,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "is it possible to get a VAPI_ECONNRESET here? If so, then that should be passed upstream and not converted to VAPI_EAGAIN. Otherwise the client might want to repeat sending messages on a closed socket without realising so.",
+      "range": {
+        "startLine": 1557,
+        "startChar": 0,
+        "endLine": 1562,
+        "endChar": 5
+      },
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d3cf1ac_c1173a35",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T12:45:14Z",
+      "side": 1,
+      "message": "there is no chroot_prefix passed to vapi_connect_ex.",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
