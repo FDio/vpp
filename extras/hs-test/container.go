@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
@@ -76,7 +77,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig, pid string) (*Cont
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + container.suite.T().Name() + pid + volumeDir
+		workingVolumeDir := logDir + CurrentSpecReport().LeafNodeText + pid + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -273,7 +274,7 @@ func (c *Container) execServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + serverCommand
-	c.suite.T().Helper()
+	GinkgoHelper()
 	c.suite.log(containerExecCommand)
 	c.suite.assertNil(exechelper.Run(containerExecCommand))
 }
@@ -282,7 +283,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
 		" " + c.name + " " + cliCommand
-	c.suite.T().Helper()
+	GinkgoHelper()
 	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
 	c.suite.assertNil(err, err)
@@ -291,12 +292,12 @@ func (c *Container) exec(command string, arguments ...any) string {
 
 func (c *Container) getLogDirPath() string {
 	testId := c.suite.getTestId()
-	testName := c.suite.T().Name()
+	testName := CurrentSpecReport().LeafNodeText
 	logDirPath := logDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
 	if err := cmd.Run(); err != nil {
-		c.suite.T().Fatalf("mkdir error: %v", err)
+		Fail("mkdir error: " + fmt.Sprint(err))
 	}
 
 	return logDirPath
@@ -313,12 +314,12 @@ func (c *Container) saveLogs() {
 	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		c.suite.T().Fatalf("fetching logs error: %v", err)
+		Fail("fetching logs error: " + fmt.Sprint(err))
 	}
 
 	f, err := os.Create(testLogFilePath)
 	if err != nil {
-		c.suite.T().Fatalf("file create error: %v", err)
+		Fail("file create error: " + fmt.Sprint(err))
 	}
 	fmt.Fprint(f, string(output))
 	f.Close()
