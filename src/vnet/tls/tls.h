@@ -61,7 +61,8 @@ STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
   _ (APP_CLOSED, "app-closed")                                                \
   _ (MIGRATED, "migrated")                                                    \
   _ (NO_APP_SESSION, "no-app-session")                                        \
-  _ (RESUME, "resume")
+  _ (RESUME, "resume")                                                        \
+  _ (HS_DONE, "handshake-done")
 
 typedef enum tls_conn_flags_bit_
 {
