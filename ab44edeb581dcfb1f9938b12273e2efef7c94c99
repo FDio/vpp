@@ -195,6 +195,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "eefc5553_2bb092c9",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T17:08:26Z",
+      "side": 1,
+      "message": "ah, okay, then I would name it _internal\n\nI don\u0027t see a particular reason the functions should be merged. \n\nBut I took a look and I see some warnings...\n\nint timeout makes little sense - timeout can\u0027t be negative, right? I\u0027d prefer if it\u0027s the same u32 everywhere\n\nAlso I see a warning about ssize_t being narrowed to int. (n \u003d recv (sock-\u003efd ...) I don\u0027t think this could ever be an issue, but still I\u0027d prefer a warning-free code.",
+      "parentUuid": "743cbf81_c7c23202",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9669db88_f074831e",
         "filename": "src/vpp-api/vapi/vapi.c",
         "patchSetId": 17

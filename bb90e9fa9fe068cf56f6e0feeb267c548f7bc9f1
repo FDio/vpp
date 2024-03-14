@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "657eff1a_84c18254",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T17:08:26Z",
+      "side": 1,
+      "message": "I\u0027m getting a warning that this is unused.",
+      "range": {
+        "startLine": 729,
+        "startChar": 5,
+        "endLine": 729,
+        "endChar": 18
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5da12712_1c23d5d2",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T17:08:26Z",
+      "side": 1,
+      "message": "same here.",
+      "range": {
+        "startLine": 729,
+        "startChar": 20,
+        "endLine": 729,
+        "endChar": 40
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ae0bc87_f6aae5f0",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T17:08:26Z",
+      "side": 1,
+      "message": "There is also a widening warning here. Probably need something like 1024L.\n\nWhy is this code required?",
+      "range": {
+        "startLine": 971,
+        "startChar": 2,
+        "endLine": 971,
+        "endChar": 76
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
