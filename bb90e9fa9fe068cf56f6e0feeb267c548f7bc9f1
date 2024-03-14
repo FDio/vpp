@@ -47,6 +47,54 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "82a5e5b0_bbbea925",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T18:56:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "657eff1a_84c18254",
+      "range": {
+        "startLine": 729,
+        "startChar": 5,
+        "endLine": 729,
+        "endChar": 18
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e8cd878_820c210a",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 729,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T18:56:10Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5da12712_1c23d5d2",
+      "range": {
+        "startLine": 729,
+        "startChar": 20,
+        "endLine": 729,
+        "endChar": 40
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5ae0bc87_f6aae5f0",
@@ -60,6 +108,30 @@
       "writtenOn": "2024-03-14T17:08:26Z",
       "side": 1,
       "message": "There is also a widening warning here. Probably need something like 1024L.\n\nWhy is this code required?",
+      "range": {
+        "startLine": 971,
+        "startChar": 2,
+        "endLine": 971,
+        "endChar": 76
+      },
+      "revId": "bb90e9fa9fe068cf56f6e0feeb267c548f7bc9f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "969e4c60_144b5dd8",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T18:56:10Z",
+      "side": 1,
+      "message": "IIRC all the vppinfra stuff like `vec_xxx` won\u0027t work as it relies on clib allocator.",
+      "parentUuid": "5ae0bc87_f6aae5f0",
       "range": {
         "startLine": 971,
         "startChar": 2,

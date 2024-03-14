@@ -211,6 +211,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3edebfb0_8caacc8c",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 484,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-14T18:56:10Z",
+      "side": 1,
+      "message": "Done. May I ask how did you enable warning? I have vim+lsp (clangd) but struggle to make it work fine. I don\u0027t see any warning in `vapi.c`.",
+      "parentUuid": "eefc5553_2bb092c9",
+      "revId": "ab44edeb581dcfb1f9938b12273e2efef7c94c99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9669db88_f074831e",
