@@ -24,8 +24,8 @@
 
 #include <vlib/unix/plugin.h>
 
-#include <plugins/acl/acl.h>
-#include <plugins/acl/fa_node.h>
-#include <plugins/acl/public_inlines.h>
+#include "acl.h"
+#include "fa_node.h"
+#include "public_inlines.h"
 
 #endif /* included_acl_exports_h */

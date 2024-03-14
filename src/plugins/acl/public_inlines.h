@@ -19,11 +19,11 @@
 #include <stdint.h>
 
 #include <vlib/unix/plugin.h>
-#include <plugins/acl/acl.h>
-#include <plugins/acl/fa_node.h>
-#include <plugins/acl/hash_lookup_private.h>
+#include "acl.h"
+#include "fa_node.h"
+#include "hash_lookup_private.h"
 
-#include <plugins/acl/exported_types.h>
+#include "exported_types.h"
 
 #define LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                              \
 ({                                                                        \

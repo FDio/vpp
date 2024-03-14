@@ -5,7 +5,7 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_40_8.h>
 
-#include <plugins/acl/exported_types.h>
+#include "exported_types.h"
 
 // #define FA_NODE_VERBOSE_DEBUG 3
 
