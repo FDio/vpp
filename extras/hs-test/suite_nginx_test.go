@@ -1,16 +1,35 @@
 package main
 
+import (
+	"reflect"
+	"runtime"
+	"strings"
+	"time"
+
+	. "github.com/onsi/ginkgo/v2"
+)
+
 // These correspond to names used in yaml config
 const (
-	vppProxyContainerName		 = "vpp-proxy"
-	nginxProxyContainerName 	 = "nginx-proxy"
-	nginxServerContainerName 	 = "nginx-server"
+	vppProxyContainerName        = "vpp-proxy"
+	nginxProxyContainerName      = "nginx-proxy"
+	nginxServerContainerName     = "nginx-server"
 	mirroringClientInterfaceName = "hstcln"
 	mirroringServerInterfaceName = "hstsrv"
 )
 
+var nginxTests = []func(s *NginxSuite){}
+var nginxSoloTests = []func(s *NginxSuite){}
+
 type NginxSuite struct {
 	HstSuite
+}
+
+func registerNginxTests(tests ...func(s *NginxSuite)) {
+	nginxTests = append(nginxTests, tests...)
+}
+func registerNginxSoloTests(tests ...func(s *NginxSuite)) {
+	nginxSoloTests = append(nginxSoloTests, tests...)
 }
 
 func (s *NginxSuite) SetupSuite() {
@@ -60,3 +79,51 @@ func (s *NginxSuite) SetupTest() {
 
 	proxyVpp.waitForApp("nginx-", 5)
 }
+
+var _ = Describe("NginxSuite", Ordered, ContinueOnFailure, func() {
+	var s NginxSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TearDownSuite()
+	})
+	AfterEach(func() {
+		s.TearDownTest()
+	})
+	for _, test := range nginxTests {
+		test := test
+		pc := reflect.ValueOf(test).Pointer()
+		funcValue := runtime.FuncForPC(pc)
+		It(strings.Split(funcValue.Name(), ".")[2], func(ctx SpecContext) {
+			test(&s)
+		}, SpecTimeout(time.Minute*5))
+	}
+})
+
+var _ = Describe("NginxSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+	var s NginxSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TearDownSuite()
+	})
+	AfterEach(func() {
+		s.TearDownTest()
+	})
+	for _, test := range nginxSoloTests {
+		test := test
+		pc := reflect.ValueOf(test).Pointer()
+		funcValue := runtime.FuncForPC(pc)
+		It(strings.Split(funcValue.Name(), ".")[2], Label("SOLO"), func(ctx SpecContext) {
+			test(&s)
+		}, SpecTimeout(time.Minute*5))
+	}
+})

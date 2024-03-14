@@ -5,7 +5,12 @@ import (
 	"os"
 
 	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 )
+
+func init() {
+	registerNsTests(VppProxyHttpTcpTest, VppProxyHttpTlsTest, EnvoyProxyHttpTcpTest)
+}
 
 func testProxyHttpTcp(s *NsSuite, proto string) error {
 	var outputFile string = "test" + s.pid + ".data"
@@ -19,12 +24,15 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 
 	// create test file
 	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNetns, fileSize, srcFilePid))
-	s.assertNil(err, "failed to run truncate command: " + fmt.Sprint(err))
+	s.assertNil(err, "failed to run truncate command: "+fmt.Sprint(err))
 	defer func() { os.Remove(srcFilePid) }()
 
 	s.log("test file created...")
 
-	go s.startHttpServer(serverRunning, stopServer, ":666", serverNetns)
+	go func() {
+		defer GinkgoRecover()
+		s.startHttpServer(serverRunning, stopServer, ":666", serverNetns)
+	}()
 	// TODO better error handling and recovery
 	<-serverRunning
 
@@ -64,21 +72,21 @@ func configureVppProxy(s *NsSuite, proto string) {
 		clientVeth.ip4AddressString(),
 		serverVeth.peer.ip4AddressString(),
 	)
-	s.log("proxy configured...", output)
+	s.log("proxy configured: " + output)
 }
 
-func (s *NsSuite) TestVppProxyHttpTcp() {
+func VppProxyHttpTcpTest(s *NsSuite) {
 	proto := "tcp"
 	configureVppProxy(s, proto)
 	err := testProxyHttpTcp(s, proto)
-	s.assertNil(err, err)
+	s.assertNil(err, fmt.Sprint(err))
 }
 
-func (s *NsSuite) TestVppProxyHttpTls() {
+func VppProxyHttpTlsTest(s *NsSuite) {
 	proto := "tls"
 	configureVppProxy(s, proto)
 	err := testProxyHttpTcp(s, proto)
-	s.assertNil(err, err)
+	s.assertNil(err, fmt.Sprint(err))
 }
 
 func configureEnvoyProxy(s *NsSuite) {
@@ -100,8 +108,8 @@ func configureEnvoyProxy(s *NsSuite) {
 	s.assertNil(envoyContainer.start())
 }
 
-func (s *NsSuite) TestEnvoyProxyHttpTcp() {
+func EnvoyProxyHttpTcpTest(s *NsSuite) {
 	configureEnvoyProxy(s)
 	err := testProxyHttpTcp(s, "tcp")
-	s.assertNil(err, err)
+	s.assertNil(err, fmt.Sprint(err))
 }
