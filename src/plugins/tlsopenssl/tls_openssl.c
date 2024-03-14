@@ -265,6 +265,14 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
 {
   session_t *app_session;
 
+  /* Failed to renegotiate handshake */
+  if (ctx->flags & TLS_CONN_F_HS_DONE)
+    {
+      tls_notify_app_io_error (ctx);
+      tls_disconnect_transport (ctx);
+      return;
+    }
+
   if (SSL_is_server (((openssl_ctx_t *) ctx)->ssl))
     {
       /*
@@ -334,6 +342,10 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
   if (SSL_in_init (oc->ssl))
     return -1;
 
+  /* Renegotiated handshake, app must not be notified */
+  if (PREDICT_FALSE (ctx->flags & TLS_CONN_F_HS_DONE))
+    return 0;
+
   /*
    * Handshake complete
    */
@@ -379,7 +391,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 	  return -1;
 	}
     }
-
+  ctx->flags |= TLS_CONN_F_HS_DONE;
   TLS_DBG (1, "Handshake for %u complete. TLS cipher is %s",
 	   oc->openssl_ctx_index, SSL_get_cipher (oc->ssl));
   return rv;
