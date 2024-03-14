@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1628ebc_f38440ab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-03-14T19:16:11Z",
+      "side": 1,
+      "message": "I\u0027ve changed the code a bit to avoid a few more warnings which popped up for me.\n\nAlso reduced commit message length to fit in 72 chars.",
+      "revId": "5e11531b5df1b4846641d98c146e278bcef679f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
