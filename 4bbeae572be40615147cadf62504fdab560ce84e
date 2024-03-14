@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30ddc0f7_76c0c5eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-03-14T23:08:55Z",
+      "side": 1,
+      "message": "Context: https://lists.fd.io/g/vpp-dev/message/24155\nEnabled Usecase: https://ipng.ch/s/articles/2024/03/06/vpp-babel-1.html",
+      "revId": "4bbeae572be40615147cadf62504fdab560ce84e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
