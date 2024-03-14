@@ -1,6 +1,11 @@
 package main
 
-func (s *VethsSuite) TestEchoBuiltin() {
+func init() {
+	registerVethTests(EchoBuiltinTest)
+	registerSoloVethTests(TcpWithLossTest)
+}
+
+func EchoBuiltinTest(s *VethsSuite) {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 	serverVeth := s.getInterfaceByName(serverInterfaceName)
 
@@ -16,7 +21,7 @@ func (s *VethsSuite) TestEchoBuiltin() {
 	s.assertNotContains(o, "failed:")
 }
 
-func (s *VethsSuite) TestTcpWithLoss() {
+func TcpWithLossTest(s *VethsSuite) {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 
 	serverVeth := s.getInterfaceByName(serverInterfaceName)
@@ -25,9 +30,12 @@ func (s *VethsSuite) TestTcpWithLoss() {
 
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
 
+	// TODO: investigate why this ping was here:
+	// ---------
 	// Ensure that VPP doesn't abort itself with NSIM enabled
 	// Warning: Removing this ping will make the test fail!
-	clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
+	// clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
+	// ---------
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +

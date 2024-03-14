@@ -1,15 +1,20 @@
 package main
 
-func (s *VethsSuite) TestVppEchoQuic() {
+func init() {
+	registerVethTests(VppEchoQuicTest, VppEchoTcpTest, VppEchoUdpTest)
+}
+
+func VppEchoQuicTest(s *VethsSuite) {
 	s.testVppEcho("quic")
 }
 
 // udp echo currently broken in vpp, skipping
-func (s *VethsSuite) SkipTestVppEchoUdp() {
+func VppEchoUdpTest(s *VethsSuite) {
+	s.skip("Broken")
 	s.testVppEcho("udp")
 }
 
-func (s *VethsSuite) TestVppEchoTcp() {
+func VppEchoTcpTest(s *VethsSuite) {
 	s.testVppEcho("tcp")
 }
 

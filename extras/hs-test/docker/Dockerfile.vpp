@@ -16,6 +16,7 @@ COPY \
    $DIR/unittest_plugin.so \
    $DIR/quic_plugin.so \
    $DIR/http_static_plugin.so \
+   $DIR/ping_plugin.so \
    $DIR/prom_plugin.so \
    $DIR/tlsopenssl_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/

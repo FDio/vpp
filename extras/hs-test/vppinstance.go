@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 
 	"go.fd.io/govpp"
 	"go.fd.io/govpp/api"
@@ -59,6 +60,7 @@ plugins {
   plugin http_static_plugin.so { enable }
   plugin prom_plugin.so { enable }
   plugin tlsopenssl_plugin.so { enable }
+  plugin ping_plugin.so { enable }
 }
 
 logging {
@@ -131,9 +133,10 @@ func (vpp *VppInstance) start() error {
 	vpp.container.createFile(vppcliFileName, cliContent)
 	vpp.container.exec("chmod 0755 " + vppcliFileName)
 
+	vpp.getSuite().log("starting vpp")
 	if *isVppDebug {
 		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT)
+		signal.Notify(sig, syscall.SIGQUIT)
 		cont := make(chan bool, 1)
 		go func() {
 			<-sig
@@ -143,7 +146,7 @@ func (vpp *VppInstance) start() error {
 		vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 		fmt.Println("run following command in different terminal:")
 		fmt.Println("docker exec -it " + vpp.container.name + " gdb -ex \"attach $(docker exec " + vpp.container.name + " pidof vpp)\"")
-		fmt.Println("Afterwards press CTRL+C to continue")
+		fmt.Println("Afterwards press CTRL+\\ to continue")
 		<-cont
 		fmt.Println("continuing...")
 	} else {
@@ -151,6 +154,7 @@ func (vpp *VppInstance) start() error {
 		vpp.container.execServer("su -c \"vpp -c " + startupFileName + " &> /proc/1/fd/1\"")
 	}
 
+	vpp.getSuite().log("connecting to vpp")
 	// Connect to VPP and store the connection
 	sockAddress := vpp.container.getHostWorkDir() + defaultApiSocketFilePath
 	conn, connEv, err := govpp.AsyncConnect(
@@ -207,7 +211,7 @@ func (vpp *VppInstance) GetSessionStat(stat string) int {
 			tokens := strings.Split(strings.TrimSpace(line), " ")
 			val, err := strconv.Atoi(tokens[0])
 			if err != nil {
-				vpp.getSuite().FailNow("failed to parse stat value %s", err)
+				Fail("failed to parse stat value %s" + fmt.Sprint(err))
 				return 0
 			}
 			return val
@@ -217,6 +221,7 @@ func (vpp *VppInstance) GetSessionStat(stat string) int {
 }
 
 func (vpp *VppInstance) waitForApp(appName string, timeout int) {
+	vpp.getSuite().log("waiting for app " + appName)
 	for i := 0; i < timeout; i++ {
 		o := vpp.vppctl("show app")
 		if strings.Contains(o, appName) {
@@ -240,6 +245,7 @@ func (vpp *VppInstance) createAfPacket(
 	}
 	createReply := &af_packet.AfPacketCreateV2Reply{}
 
+	vpp.getSuite().log("create af-packet interface " + veth.Name())
 	if err := vpp.apiChannel.SendRequest(createReq).ReceiveReply(createReply); err != nil {
 		return 0, err
 	}
@@ -252,6 +258,7 @@ func (vpp *VppInstance) createAfPacket(
 	}
 	upReply := &interfaces.SwInterfaceSetFlagsReply{}
 
+	vpp.getSuite().log("set af-packet interface " + veth.Name() + " up")
 	if err := vpp.apiChannel.SendRequest(upReq).ReceiveReply(upReply); err != nil {
 		return 0, err
 	}
@@ -273,6 +280,7 @@ func (vpp *VppInstance) createAfPacket(
 	}
 	addressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
+	vpp.getSuite().log("af-packet interface " + veth.Name() + " add address " + veth.ip4Address)
 	if err := vpp.apiChannel.SendRequest(addressReq).ReceiveReply(addressReply); err != nil {
 		return 0, err
 	}
@@ -292,6 +300,7 @@ func (vpp *VppInstance) addAppNamespace(
 	}
 	reply := &session.AppNamespaceAddDelV2Reply{}
 
+	vpp.getSuite().log("add app namespace " + namespaceId)
 	if err := vpp.apiChannel.SendRequest(req).ReceiveReply(reply); err != nil {
 		return err
 	}
@@ -301,6 +310,7 @@ func (vpp *VppInstance) addAppNamespace(
 	}
 	sessionReply := &session.SessionEnableDisableReply{}
 
+	vpp.getSuite().log("enable app namespace " + namespaceId)
 	if err := vpp.apiChannel.SendRequest(sessionReq).ReceiveReply(sessionReply); err != nil {
 		return err
 	}
@@ -325,6 +335,7 @@ func (vpp *VppInstance) createTap(
 	}
 	createTapReply := &tapv2.TapCreateV2Reply{}
 
+	vpp.getSuite().log("create tap interface " + tap.Name())
 	// Create tap interface
 	if err := vpp.apiChannel.SendRequest(createTapReq).ReceiveReply(createTapReply); err != nil {
 		return err
@@ -338,6 +349,7 @@ func (vpp *VppInstance) createTap(
 	}
 	addAddressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
+	vpp.getSuite().log("tap interface " + tap.Name() + " add address " + tap.peer.ip4Address)
 	if err := vpp.apiChannel.SendRequest(addAddressReq).ReceiveReply(addAddressReply); err != nil {
 		return err
 	}
@@ -349,6 +361,7 @@ func (vpp *VppInstance) createTap(
 	}
 	upReply := &interfaces.SwInterfaceSetFlagsReply{}
 
+	vpp.getSuite().log("set tap interface " + tap.Name() + " up")
 	if err := vpp.apiChannel.SendRequest(upReq).ReceiveReply(upReply); err != nil {
 		return err
 	}
@@ -360,7 +373,6 @@ func (vpp *VppInstance) saveLogs() {
 	logTarget := vpp.container.getLogDirPath() + "vppinstance-" + vpp.container.name + ".log"
 	logSource := vpp.container.getHostWorkDir() + defaultLogFilePath
 	cmd := exec.Command("cp", logSource, logTarget)
-	vpp.getSuite().T().Helper()
 	vpp.getSuite().log(cmd.String())
 	cmd.Run()
 }
