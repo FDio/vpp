@@ -30,4 +30,15 @@ add_vpp_plugin(acl
 
   API_TEST_SOURCES
   acl_test.c
+
+  INSTALL_HEADERS
+  exports.h
+  exported_types.h
+  acl.h
+  fa_node.h
+  public_inlines.h
+  types.h
+  hash_lookup_types.h
+  lookup_context.h
+  hash_lookup_private.h
 )
