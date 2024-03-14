@@ -4,7 +4,11 @@ import (
 	"github.com/edwarnicke/exechelper"
 )
 
-func (s *NginxSuite) TestMirroring() {
+func init() {
+	registerNginxTests(MirroringTest)
+}
+
+func MirroringTest(s *NginxSuite) {
 	proxyAddress := s.getInterfaceByName(mirroringClientInterfaceName).peer.ip4AddressString()
 
 	path := "/64B.json"

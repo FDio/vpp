@@ -5,14 +5,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +29,6 @@ var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var vppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 
 type HstSuite struct {
-	suite.Suite
 	containers       map[string]*Container
 	volumes          []string
 	netConfigs       []NetConfig
@@ -38,7 +38,7 @@ type HstSuite struct {
 	cpuAllocator     *CpuAllocatorT
 	cpuContexts      []*CpuContext
 	cpuPerVpp        int
-	pid				 string
+	pid              string
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -46,7 +46,7 @@ func (s *HstSuite) SetupSuite() {
 	s.pid = fmt.Sprint(os.Getpid())
 	s.cpuAllocator, err = CpuAllocator()
 	if err != nil {
-		s.FailNow("failed to init cpu allocator: %v", err)
+		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
 	s.cpuPerVpp = *nConfiguredCpus
 }
@@ -85,6 +85,10 @@ func (s *HstSuite) skipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
+	RegisterFailHandler(func(message string, callerSkip ...int) {
+		s.hstFail()
+		Fail(message, callerSkip...)
+	})
 	s.skipIfUnconfiguring()
 	s.setupVolumes()
 	s.setupContainers()
@@ -106,15 +110,15 @@ func (s *HstSuite) setupContainers() {
 	}
 }
 
-func logVppInstance(container *Container, maxLines int){
-	if container.vppInstance == nil{
+func logVppInstance(container *Container, maxLines int) {
+	if container.vppInstance == nil {
 		return
 	}
 
 	logSource := container.getHostWorkDir() + defaultLogFilePath
 	file, err := os.Open(logSource)
 
-	if err != nil{
+	if err != nil {
 		return
 	}
 	defer file.Close()
@@ -123,7 +127,7 @@ func logVppInstance(container *Container, maxLines int){
 	var lines []string
 	var counter int
 
-	for scanner.Scan(){
+	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 		counter++
 		if counter > maxLines {
@@ -133,7 +137,7 @@ func logVppInstance(container *Container, maxLines int){
 	}
 
 	fmt.Println("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
-	for _, line := range lines{
+	for _, line := range lines {
 		fmt.Println(line)
 	}
 	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
@@ -141,73 +145,56 @@ func logVppInstance(container *Container, maxLines int){
 
 func (s *HstSuite) hstFail() {
 	fmt.Println("Containers: " + fmt.Sprint(s.containers))
-	for _, container := range s.containers{
+	for _, container := range s.containers {
 		out, err := container.log(20)
-		if err != nil{
+		if err != nil {
 			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
 			break
 		}
 		fmt.Printf("\nvvvvvvvvvvvvvvv " +
-					container.name + ":\n" +
-					out +
-					"^^^^^^^^^^^^^^^\n\n")
+			container.name + ":\n" +
+			out +
+			"^^^^^^^^^^^^^^^\n\n")
 		logVppInstance(container, 20)
 	}
-	s.T().FailNow()
 }
 
 func (s *HstSuite) assertNil(object interface{}, msgAndArgs ...interface{}) {
-	if !assert.Nil(s.T(), object, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(object).To(BeNil(), msgAndArgs...)
 }
 
 func (s *HstSuite) assertNotNil(object interface{}, msgAndArgs ...interface{}) {
-	if !assert.NotNil(s.T(), object, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(object).ToNot(BeNil(), msgAndArgs...)
 }
 
 func (s *HstSuite) assertEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	if !assert.Equal(s.T(), expected, actual, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(actual).To(Equal(expected), msgAndArgs...)
 }
 
 func (s *HstSuite) assertNotEqual(expected, actual interface{}, msgAndArgs ...interface{}) {
-	if !assert.NotEqual(s.T(), expected, actual, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(actual).ToNot(Equal(expected), msgAndArgs...)
 }
 
 func (s *HstSuite) assertContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	if !assert.Contains(s.T(), testString, contains, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(testString).To(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
 func (s *HstSuite) assertNotContains(testString, contains interface{}, msgAndArgs ...interface{}) {
-	if !assert.NotContains(s.T(), testString, contains, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
 func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
-	if !assert.NotEmpty(s.T(), object, msgAndArgs...) {
-		s.hstFail()
-	}
+	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
-func (s *HstSuite) log(args ...any) {
+func (s *HstSuite) log(arg any) {
 	if *isVerbose {
-		s.T().Helper()
-		s.T().Log(args...)
+		slog.Info(fmt.Sprint(arg))
 	}
 }
 
-func (s *HstSuite) skip(args ...any) {
-	s.log(args...)
-	s.T().SkipNow()
+func (s *HstSuite) skip(args string) {
+	Skip(args)
 }
 
 func (s *HstSuite) SkipIfMultiWorker(args ...any) {
@@ -249,11 +236,11 @@ func (s *HstSuite) getNetNamespaceByName(name string) string {
 }
 
 func (s *HstSuite) getInterfaceByName(name string) *NetInterface {
-	return s.netInterfaces[name + s.pid]
+	return s.netInterfaces[name+s.pid]
 }
 
 func (s *HstSuite) getContainerByName(name string) *Container {
-	return s.containers[name + s.pid]
+	return s.containers[name+s.pid]
 }
 
 /*
@@ -261,25 +248,25 @@ func (s *HstSuite) getContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) getTransientContainerByName(name string) *Container {
-	containerCopy := *s.containers[name + s.pid]
+	containerCopy := *s.containers[name+s.pid]
 	return &containerCopy
 }
 
 func (s *HstSuite) loadContainerTopology(topologyName string) {
 	data, err := os.ReadFile(containerTopologyDir + topologyName + ".yaml")
 	if err != nil {
-		s.T().Fatalf("read error: %v", err)
+		Fail("read error: " + fmt.Sprint(err))
 	}
 	var yamlTopo YamlTopology
 	err = yaml.Unmarshal(data, &yamlTopo)
 	if err != nil {
-		s.T().Fatalf("unmarshal error: %v", err)
+		Fail("unmarshal error: " + fmt.Sprint(err))
 	}
 
 	for _, elem := range yamlTopo.Volumes {
 		volumeMap := elem["volume"].(VolumeConfig)
 		hostDir := volumeMap["host-dir"].(string)
-		workingVolumeDir := logDir + s.T().Name() + s.pid + volumeDir
+		workingVolumeDir := logDir + CurrentSpecReport().LeafNodeText + s.pid + volumeDir
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		hostDir = volDirReplacer.Replace(hostDir)
 		s.volumes = append(s.volumes, hostDir)
@@ -287,10 +274,11 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 
 	s.containers = make(map[string]*Container)
 	for _, elem := range yamlTopo.Containers {
-		newContainer, err := newContainer(s, elem, s.pid)
+		newContainer, err := newContainer(s, elem)
 		newContainer.suite = s
+		newContainer.name += newContainer.suite.pid
 		if err != nil {
-			s.T().Fatalf("container config error: %v", err)
+			Fail("container config error: " + fmt.Sprint(err))
 		}
 		s.containers[newContainer.name] = newContainer
 	}
@@ -299,12 +287,12 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 func (s *HstSuite) loadNetworkTopology(topologyName string) {
 	data, err := os.ReadFile(networkTopologyDir + topologyName + ".yaml")
 	if err != nil {
-		s.T().Fatalf("read error: %v", err)
+		Fail("read error: " + fmt.Sprint(err))
 	}
 	var yamlTopo YamlTopology
 	err = yaml.Unmarshal(data, &yamlTopo)
 	if err != nil {
-		s.T().Fatalf("unmarshal error: %v", err)
+		Fail("unmarshal error: " + fmt.Sprint(err))
 	}
 
 	s.ip4AddrAllocator = NewIp4AddressAllocator()
@@ -316,10 +304,10 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 		}
 
 		if peer, ok := elem["peer"].(NetDevConfig); ok {
-			if peer["name"].(string) != ""{
+			if peer["name"].(string) != "" {
 				peer["name"] = peer["name"].(string) + s.pid
 			}
-			if _, ok := peer["netns"]; ok{
+			if _, ok := peer["netns"]; ok {
 				peer["netns"] = peer["netns"].(string) + s.pid
 			}
 		}
@@ -341,7 +329,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 				if namespace, err := newNetNamespace(elem); err == nil {
 					s.netConfigs = append(s.netConfigs, &namespace)
 				} else {
-					s.T().Fatalf("network config error: %v", err)
+					Fail("network config error: " + fmt.Sprint(err))
 				}
 			}
 		case Veth, Tap:
@@ -350,7 +338,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 					s.netConfigs = append(s.netConfigs, netIf)
 					s.netInterfaces[netIf.Name()] = netIf
 				} else {
-					s.T().Fatalf("network config error: %v", err)
+					Fail("network config error: " + fmt.Sprint(err))
 				}
 			}
 		case Bridge:
@@ -358,7 +346,7 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 				if bridge, err := newBridge(elem); err == nil {
 					s.netConfigs = append(s.netConfigs, &bridge)
 				} else {
-					s.T().Fatalf("network config error: %v", err)
+					Fail("network config error: " + fmt.Sprint(err))
 				}
 			}
 		}
@@ -374,7 +362,7 @@ func (s *HstSuite) configureNetworkTopology(topologyName string) {
 
 	for _, nc := range s.netConfigs {
 		if err := nc.configure(); err != nil {
-			s.T().Fatalf("network config error: %v", err)
+			Fail("Network config error: " + fmt.Sprint(err))
 		}
 	}
 }
@@ -389,7 +377,7 @@ func (s *HstSuite) unconfigureNetworkTopology() {
 }
 
 func (s *HstSuite) getTestId() string {
-	testName := s.T().Name()
+	testName := CurrentSpecReport().LeafNodeText
 
 	if s.testIds == nil {
 		s.testIds = map[string]string{}

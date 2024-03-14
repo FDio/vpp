@@ -12,7 +12,7 @@ import (
 type AddressCounter = int
 
 type Ip4AddressAllocator struct {
-	networks map[int]AddressCounter
+	networks    map[int]AddressCounter
 	chosenOctet int
 	assignedIps []string
 }
@@ -47,7 +47,7 @@ func (a *Ip4AddressAllocator) NewIp4InterfaceAddress(inputNetworkNumber ...int) 
 // Creates a file every time an IP is assigned: used to keep track of addresses in use.
 // If an address is not in use, 'counter' is then copied to 'chosenOctet' and it is used for the remaining tests.
 // Also checks host IP addresses.
-func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddresses int) (string, error){
+func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddresses int) (string, error) {
 	hostIps, _ := exechelper.CombinedOutput("ip a")
 	counter := 10
 	var address string
@@ -56,7 +56,7 @@ func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddress
 		if a.chosenOctet != 0 {
 			address = fmt.Sprintf("10.%v.%v.%v", a.chosenOctet, networkNumber, numberOfAddresses)
 			file, err := os.Create(address)
-			if err != nil{
+			if err != nil {
 				return "", errors.New("unable to create file: " + fmt.Sprint(err))
 			}
 			file.Close()
@@ -68,14 +68,14 @@ func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddress
 				counter++
 			} else if os.IsNotExist(err) {
 				file, err := os.Create(address)
-					if err != nil{
+				if err != nil {
 					return "", errors.New("unable to create file: " + fmt.Sprint(err))
-					}
+				}
 				file.Close()
 				a.chosenOctet = counter
 				break
 			} else {
-				return "", errors.New("an error occured while checking if a file exists: " + fmt.Sprint(err))
+				return "", errors.New("an error occurred while checking if a file exists: " + fmt.Sprint(err))
 			}
 		}
 	}
@@ -84,8 +84,8 @@ func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddress
 	return address, nil
 }
 
-func (a *Ip4AddressAllocator) deleteIpAddresses(){
-	for ip := range a.assignedIps{
+func (a *Ip4AddressAllocator) deleteIpAddresses() {
+	for ip := range a.assignedIps {
 		os.Remove(a.assignedIps[ip])
 	}
 }
