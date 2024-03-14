@@ -1,7 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
 	"time"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 // These correspond to names used in yaml config
@@ -10,8 +16,18 @@ const (
 	clientInterfaceName = "cln"
 )
 
+var vethTests = []func(s *VethsSuite){}
+var vethSoloTests = []func(s *VethsSuite){}
+
 type VethsSuite struct {
 	HstSuite
+}
+
+func registerVethTests(tests ...func(s *VethsSuite)) {
+	vethTests = append(vethTests, tests...)
+}
+func registerSoloVethTests(tests ...func(s *VethsSuite)) {
+	vethSoloTests = append(vethSoloTests, tests...)
 }
 
 func (s *VethsSuite) SetupSuite() {
@@ -36,7 +52,7 @@ func (s *VethsSuite) SetupTest() {
 
 	cpus := s.AllocateCpus()
 	serverVpp, err := serverContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(serverVpp, err)
+	s.assertNotNil(serverVpp, fmt.Sprint(err))
 
 	s.setupServerVpp()
 
@@ -45,7 +61,7 @@ func (s *VethsSuite) SetupTest() {
 
 	cpus = s.AllocateCpus()
 	clientVpp, err := clientContainer.newVppInstance(cpus, sessionConfig)
-	s.assertNotNil(clientVpp, err)
+	s.assertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.setupClientVpp()
 }
@@ -56,7 +72,7 @@ func (s *VethsSuite) setupServerVpp() {
 
 	serverVeth := s.getInterfaceByName(serverInterfaceName)
 	idx, err := serverVpp.createAfPacket(serverVeth)
-	s.assertNil(err, err)
+	s.assertNil(err, fmt.Sprint(err))
 	s.assertNotEqual(0, idx)
 }
 
@@ -66,6 +82,60 @@ func (s *VethsSuite) setupClientVpp() {
 
 	clientVeth := s.getInterfaceByName(clientInterfaceName)
 	idx, err := clientVpp.createAfPacket(clientVeth)
-	s.assertNil(err, err)
+	s.assertNil(err, fmt.Sprint(err))
 	s.assertNotEqual(0, idx)
 }
+
+var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
+	var s VethsSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TearDownSuite()
+
+	})
+	AfterEach(func() {
+		s.TearDownTest()
+	})
+
+	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
+	for _, test := range vethTests {
+		test := test
+		pc := reflect.ValueOf(test).Pointer()
+		funcValue := runtime.FuncForPC(pc)
+		It(strings.Split(funcValue.Name(), ".")[2], func(ctx SpecContext) {
+			test(&s)
+		}, SpecTimeout(time.Minute*5))
+	}
+})
+
+var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
+	var s VethsSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	BeforeEach(func() {
+		s.SetupTest()
+	})
+	AfterAll(func() {
+		s.TearDownSuite()
+
+	})
+	AfterEach(func() {
+		s.TearDownTest()
+	})
+
+	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
+	for _, test := range vethSoloTests {
+		test := test
+		pc := reflect.ValueOf(test).Pointer()
+		funcValue := runtime.FuncForPC(pc)
+		It(strings.Split(funcValue.Name(), ".")[2], Label("SOLO"), func(ctx SpecContext) {
+			test(&s)
+		}, SpecTimeout(time.Minute*5))
+	}
+})
