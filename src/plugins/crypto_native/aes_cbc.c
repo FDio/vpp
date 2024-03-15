@@ -249,18 +249,30 @@ decrypt:
   return n_ops;
 }
 
-#define foreach_aes_cbc_handler_type _(128) _(192) _(256)
-
-#define _(x) \
-static u32 aes_ops_dec_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
-static u32 aes_ops_enc_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
-
-foreach_aes_cbc_handler_type;
-#undef _
+static int
+aes_cbc_cpu_probe ()
+{
+#if defined(__VAES__) && defined(__AVX512F__)
+  if (clib_cpu_supports_vaes () && clib_cpu_supports_avx512f ())
+    return 50;
+#elif defined(__VAES__)
+  if (clib_cpu_supports_vaes ())
+    return 40;
+#elif defined(__AVX512F__)
+  if (clib_cpu_supports_avx512f ())
+    return 30;
+#elif defined(__AVX2__)
+  if (clib_cpu_supports_avx2 ())
+    return 20;
+#elif __AES__
+  if (clib_cpu_supports_aes ())
+    return 10;
+#elif __aarch64__
+  if (clib_cpu_supports_aarch64_aes ())
+    return 10;
+#endif
+  return -1;
+}
 
 static void *
 aes_cbc_key_exp_128 (vnet_crypto_key_t *key)
@@ -289,43 +301,39 @@ aes_cbc_key_exp_256 (vnet_crypto_key_t *key)
   return kd;
 }
 
-#include <fcntl.h>
+#define foreach_aes_cbc_handler_type _ (128) _ (192) _ (256)
 
-clib_error_t *
-#if defined(__VAES__) && defined(__AVX512F__)
-crypto_native_aes_cbc_init_icl (vlib_main_t *vm)
-#elif defined(__VAES__)
-crypto_native_aes_cbc_init_adl (vlib_main_t *vm)
-#elif __AVX512F__
-crypto_native_aes_cbc_init_skx (vlib_main_t * vm)
-#elif __aarch64__
-crypto_native_aes_cbc_init_neon (vlib_main_t * vm)
-#elif __AVX2__
-crypto_native_aes_cbc_init_hsw (vlib_main_t * vm)
-#else
-crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
-#endif
-{
-  crypto_native_main_t *cm = &crypto_native_main;
+#define _(x)                                                                  \
+  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm,                        \
+				      vnet_crypto_op_t *ops[], u32 n_ops)     \
+  {                                                                           \
+    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
+  }                                                                           \
+                                                                              \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_enc) = {                            \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_ENC,                                \
+    .fn = aes_ops_enc_aes_cbc_##x,                                            \
+    .probe = aes_cbc_cpu_probe,                                               \
+  };                                                                          \
+                                                                              \
+  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm,                        \
+				      vnet_crypto_op_t *ops[], u32 n_ops)     \
+  {                                                                           \
+    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
+  }                                                                           \
+                                                                              \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##x##_cbc_dec) = {                            \
+    .op_id = VNET_CRYPTO_OP_AES_##x##_CBC_DEC,                                \
+    .fn = aes_ops_dec_aes_cbc_##x,                                            \
+    .probe = aes_cbc_cpu_probe,                                               \
+  };                                                                          \
+                                                                              \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##x##_cbc) = {                               \
+    .alg_id = VNET_CRYPTO_ALG_AES_##x##_CBC,                                  \
+    .key_fn = aes_cbc_key_exp_##x,                                            \
+    .probe = aes_cbc_cpu_probe,                                               \
+  };
 
-#define _(x) \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
-				    VNET_CRYPTO_OP_AES_##x##_CBC_ENC, \
-				    aes_ops_enc_aes_cbc_##x); \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
-				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC, \
-				    aes_ops_dec_aes_cbc_##x); \
-  cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_CBC] = aes_cbc_key_exp_##x;
-  foreach_aes_cbc_handler_type;
+foreach_aes_cbc_handler_type;
 #undef _
 
-  return 0;
-}
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
