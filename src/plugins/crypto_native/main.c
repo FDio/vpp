@@ -63,95 +63,52 @@ clib_error_t *
 crypto_native_init (vlib_main_t * vm)
 {
   crypto_native_main_t *cm = &crypto_native_main;
-  clib_error_t *error = 0;
 
-  if (clib_cpu_supports_x86_aes () == 0 &&
-      clib_cpu_supports_aarch64_aes () == 0)
+  if (cm->op_handlers == 0)
     return 0;
 
   cm->crypto_engine_index =
     vnet_crypto_register_engine (vm, "native", 100,
 				 "Native ISA Optimized Crypto");
 
-  if (0);
-#if __x86_64__
-  else if (crypto_native_aes_cbc_init_icl && clib_cpu_supports_vaes () &&
-	   clib_cpu_supports_avx512f ())
-    error = crypto_native_aes_cbc_init_icl (vm);
-  else if (crypto_native_aes_cbc_init_adl && clib_cpu_supports_vaes ())
-    error = crypto_native_aes_cbc_init_adl (vm);
-  else if (crypto_native_aes_cbc_init_skx && clib_cpu_supports_avx512f ())
-    error = crypto_native_aes_cbc_init_skx (vm);
-  else if (crypto_native_aes_cbc_init_hsw && clib_cpu_supports_avx2 ())
-    error = crypto_native_aes_cbc_init_hsw (vm);
-  else if (crypto_native_aes_cbc_init_slm)
-    error = crypto_native_aes_cbc_init_slm (vm);
-#endif
-#if __aarch64__
-  else if (crypto_native_aes_cbc_init_neon)
-    error = crypto_native_aes_cbc_init_neon (vm);
-#endif
-  else
-    error = clib_error_return (0, "No AES CBC implemenation available");
+  crypto_native_op_handler_t *oh = cm->op_handlers;
+  crypto_native_key_handler_t *kh = cm->key_handlers;
+  crypto_native_op_handler_t **best_by_op_id = 0;
+  crypto_native_key_handler_t **best_by_alg_id = 0;
 
-  if (error)
-    return error;
-
-  if (0)
-    ;
-#if __x86_64__
-  else if (crypto_native_aes_ctr_init_icl && clib_cpu_supports_vaes () &&
-	   clib_cpu_supports_avx512f ())
-    error = crypto_native_aes_ctr_init_icl (vm);
-  else if (crypto_native_aes_ctr_init_adl && clib_cpu_supports_vaes ())
-    error = crypto_native_aes_ctr_init_adl (vm);
-  else if (crypto_native_aes_ctr_init_skx && clib_cpu_supports_avx512f ())
-    error = crypto_native_aes_ctr_init_skx (vm);
-  else if (crypto_native_aes_ctr_init_hsw && clib_cpu_supports_avx2 ())
-    error = crypto_native_aes_ctr_init_hsw (vm);
-  else if (crypto_native_aes_ctr_init_slm)
-    error = crypto_native_aes_ctr_init_slm (vm);
-#endif
-#if __aarch64__
-  else if (crypto_native_aes_ctr_init_neon)
-    error = crypto_native_aes_ctr_init_neon (vm);
-#endif
-  else
-    error = clib_error_return (0, "No AES CTR implemenation available");
-
-  if (error)
-    return error;
-
-#if __x86_64__
-  if (clib_cpu_supports_pclmulqdq ())
+  while (oh)
     {
-      if (crypto_native_aes_gcm_init_icl && clib_cpu_supports_vaes () &&
-	  clib_cpu_supports_avx512f ())
-	error = crypto_native_aes_gcm_init_icl (vm);
-      else if (crypto_native_aes_gcm_init_adl && clib_cpu_supports_vaes ())
-	error = crypto_native_aes_gcm_init_adl (vm);
-      else if (crypto_native_aes_gcm_init_skx && clib_cpu_supports_avx512f ())
-	error = crypto_native_aes_gcm_init_skx (vm);
-      else if (crypto_native_aes_gcm_init_hsw && clib_cpu_supports_avx2 ())
-	error = crypto_native_aes_gcm_init_hsw (vm);
-      else if (crypto_native_aes_gcm_init_slm)
-	error = crypto_native_aes_gcm_init_slm (vm);
-      else
-	error = clib_error_return (0, "No AES GCM implemenation available");
+      vec_validate (best_by_op_id, oh->op_id);
 
-      if (error)
-	return error;
+      if (best_by_op_id[oh->op_id] == 0 ||
+	  best_by_op_id[oh->op_id]->priority < oh->priority)
+	best_by_op_id[oh->op_id] = oh;
+
+      oh = oh->next;
     }
-#endif
-#if __aarch64__
-  if (crypto_native_aes_gcm_init_neon)
-    error = crypto_native_aes_gcm_init_neon (vm);
-  else
-    error = clib_error_return (0, "No AES GCM implemenation available");
 
-  if (error)
-    return error;
-#endif
+  while (kh)
+    {
+      vec_validate (best_by_alg_id, kh->alg_id);
+
+      if (best_by_alg_id[kh->alg_id] == 0 ||
+	  best_by_alg_id[kh->alg_id]->priority < kh->priority)
+	best_by_alg_id[kh->alg_id] = kh;
+
+      kh = kh->next;
+    }
+
+  vec_foreach_pointer (oh, best_by_op_id)
+    if (oh)
+      vnet_crypto_register_ops_handlers (vm, cm->crypto_engine_index,
+					 oh->op_id, oh->fn, oh->cfn);
+
+  vec_foreach_pointer (kh, best_by_alg_id)
+    if (kh)
+      cm->key_fn[kh->alg_id] = kh->key_fn;
+
+  vec_free (best_by_op_id);
+  vec_free (best_by_alg_id);
 
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_native_key_handler);
