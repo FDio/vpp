@@ -70,4 +70,6 @@ add_vpp_plugin(af_xdp
   ${BPF_LIB}
   ${ELF_LIB}
   ${Z_LIB}
+
+  SUPPORTED_OS_LIST Linux
 )
