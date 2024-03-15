@@ -16,6 +16,23 @@
       "message": "I\u0027ve changed the code a bit to avoid a few more warnings which popped up for me.\n\nAlso reduced commit message length to fit in 72 chars.",
       "revId": "5e11531b5df1b4846641d98c146e278bcef679f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f3247c9_3eab48b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 20
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-03-15T07:55:42Z",
+      "side": 1,
+      "message": "Hello Ole,\nDo you mind reviewing this patch?",
+      "revId": "5e11531b5df1b4846641d98c146e278bcef679f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
