@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "585f1f06_d6d1a22a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-15T01:53:40Z",
+      "side": 1,
+      "message": "This patch is dependent on https://gerrit.fd.io/r/c/vpp/+/40540 which resolves a non-related issue which was causing the checkstyle job to fail.\n\nPlease do not rebase it on HEAD unless 40540 has been merged.",
+      "revId": "8030efde94691909a0933b39e53f13ab1ca04f1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
