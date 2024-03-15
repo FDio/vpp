@@ -62,4 +62,6 @@ add_vpp_plugin(perfmon
 
   COMPONENT
   vpp-plugin-devtools
+
+  SUPPORTED_OS_LIST Linux
 )

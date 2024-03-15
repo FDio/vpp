@@ -6,4 +6,6 @@ add_vpp_plugin(dma_intel
   dsa.c
   format.c
   main.c
+
+  SUPPORTED_OS_LIST Linux
 )
