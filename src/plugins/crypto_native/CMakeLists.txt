@@ -12,8 +12,8 @@
 # limitations under the License.
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  list(APPEND VARIANTS "slm\;-march=silvermont")
-  list(APPEND VARIANTS "hsw\;-march=haswell")
+  list(APPEND VARIANTS "slm\;-march=silvermont -maes")
+  list(APPEND VARIANTS "hsw\;-march=haswell -maes")
   if(compiler_flag_march_skylake_avx512 AND compiler_flag_mprefer_vector_width_256)
     list(APPEND VARIANTS "skx\;-march=skylake-avx512 -mprefer-vector-width=256")
   endif()
@@ -23,15 +23,14 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
   if(compiler_flag_march_alderlake)
     list(APPEND VARIANTS "adl\;-march=alderlake -mprefer-vector-width=256")
   endif()
-  set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c)
-  set (COMPILE_OPTS -Wall -fno-common -maes)
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   list(APPEND VARIANTS "armv8\;-march=armv8.1-a+crc+crypto")
-  set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c)
-  set (COMPILE_OPTS -Wall -fno-common)
 endif()
+
+set (COMPILE_FILES aes_cbc.c aes_gcm.c aes_ctr.c)
+set (COMPILE_OPTS -Wall -fno-common)
 
 if (NOT VARIANTS)
   return()

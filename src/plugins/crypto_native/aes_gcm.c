@@ -118,40 +118,49 @@ aes_gcm_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 foreach_aes_gcm_handler_type;
 #undef _
 
-clib_error_t *
-#if defined(__VAES__) && defined(__AVX512F__)
-crypto_native_aes_gcm_init_icl (vlib_main_t *vm)
-#elif defined(__VAES__)
-crypto_native_aes_gcm_init_adl (vlib_main_t *vm)
-#elif __AVX512F__
-crypto_native_aes_gcm_init_skx (vlib_main_t *vm)
-#elif __AVX2__
-crypto_native_aes_gcm_init_hsw (vlib_main_t *vm)
-#elif __aarch64__
-crypto_native_aes_gcm_init_neon (vlib_main_t *vm)
-#else
-crypto_native_aes_gcm_init_slm (vlib_main_t *vm)
-#endif
+static int
+probe ()
 {
-  crypto_native_main_t *cm = &crypto_native_main;
-
-#define _(x)                                                                  \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index,              \
-				    VNET_CRYPTO_OP_AES_##x##_GCM_ENC,         \
-				    aes_ops_enc_aes_gcm_##x);                 \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index,              \
-				    VNET_CRYPTO_OP_AES_##x##_GCM_DEC,         \
-				    aes_ops_dec_aes_gcm_##x);                 \
-  cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_GCM] = aes_gcm_key_exp_##x;
-  foreach_aes_gcm_handler_type;
-#undef _
-  return 0;
+#if defined(__VAES__) && defined(__AVX512F__)
+  if (clib_cpu_supports_vpclmulqdq () && clib_cpu_supports_vaes () &&
+      clib_cpu_supports_avx512f ())
+    return 50;
+#elif defined(__VAES__)
+  if (clib_cpu_supports_vpclmulqdq () && clib_cpu_supports_vaes ())
+    return 40;
+#elif defined(__AVX512F__)
+  if (clib_cpu_supports_pclmulqdq () && clib_cpu_supports_avx512f ())
+    return 30;
+#elif defined(__AVX2__)
+  if (clib_cpu_supports_pclmulqdq () && clib_cpu_supports_avx2 ())
+    return 20;
+#elif __AES__
+  if (clib_cpu_supports_pclmulqdq () && clib_cpu_supports_aes ())
+    return 10;
+#elif __aarch64__
+  if (clib_cpu_supports_aarch64_aes ())
+    return 10;
+#endif
+  return -1;
 }
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+#define _(b)                                                                  \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_enc) = {                            \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_ENC,                                \
+    .fn = aes_ops_enc_aes_gcm_##b,                                            \
+    .probe = probe,                                                           \
+  };                                                                          \
+                                                                              \
+  CRYPTO_NATIVE_OP_HANDLER (aes_##b##_gcm_dec) = {                            \
+    .op_id = VNET_CRYPTO_OP_AES_##b##_GCM_DEC,                                \
+    .fn = aes_ops_dec_aes_gcm_##b,                                            \
+    .probe = probe,                                                           \
+  };                                                                          \
+  CRYPTO_NATIVE_KEY_HANDLER (aes_##b##_gcm) = {                               \
+    .alg_id = VNET_CRYPTO_ALG_AES_##b##_GCM,                                  \
+    .key_fn = aes_gcm_key_exp_##b,                                            \
+    .probe = probe,                                                           \
+  };
+
+_ (128) _ (192) _ (256)
+#undef _
