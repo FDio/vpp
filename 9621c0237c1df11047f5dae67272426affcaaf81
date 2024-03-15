@@ -68,6 +68,23 @@
       "message": "Let\u0027s agree on the logic and I will adjust the patch correspondingly. I can keep the desired behaviour for me in my local repo :)",
       "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb479e44_9be19807",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-15T09:39:54Z",
+      "side": 1,
+      "message": "I fully agree with the goal of having a simpler ike implementation.\nWhat about always handoff to the 1st worker instead? I\u0027d feel more comfortable than main thread processing packets...",
+      "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
