@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0fecc7e5_b5cb1936",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-15T01:48:30Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/c/vpp/+/32819 was failing checkstyle job due to crcchecker.py returning false in is_uncommitted_changes(), so this check is now skipped when running the script in the Jenkins CI",
+      "revId": "b1baf63d4cc2214fd60ed053977500b9a0bdbe94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
