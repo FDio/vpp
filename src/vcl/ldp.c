@@ -613,7 +613,13 @@ ioctl (int fd, unsigned long int cmd, ...)
 	case FIONREAD:
 	  rv = vls_attr (vlsh, VPPCOM_ATTR_GET_NREAD, 0, 0);
 	  break;
-
+	case TIOCOUTQ:
+	  {
+	    u32 *buf = va_arg (ap, void *);
+	    u32 *buflen = va_arg (ap, u32 *);
+	    rv = vls_attr (vlsh, VPPCOM_ATTR_GET_NWRITEQ, buf, buflen);
+	  }
+	  break;
 	case FIONBIO:
 	  {
 	    u32 flags = *(va_arg (ap, int *)) ? O_NONBLOCK : 0;

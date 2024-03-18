@@ -3585,7 +3585,19 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       VDBG (2, "VPPCOM_ATTR_GET_NWRITE: sh %u, nwrite = %d", session_handle,
 	    rv);
       break;
-
+    case VPPCOM_ATTR_GET_NWRITEQ:
+      if (PREDICT_FALSE (!buffer || !buflen || *buflen != sizeof (int)))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      if (!session->tx_fifo || session->session_state == VCL_STATE_DETACHED)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      *(int *) buffer = svm_fifo_max_dequeue (session->tx_fifo);
+      break;
     case VPPCOM_ATTR_GET_FLAGS:
       if (PREDICT_TRUE (buffer && buflen && (*buflen >= sizeof (*flags))))
 	{
