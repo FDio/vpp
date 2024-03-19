@@ -16,6 +16,24 @@
       "message": "Can we add to vppinfra/socket.h something like if bsd, #define EBADFD 77. Or does it overlap something else?",
       "revId": "463aa898e9c5c686f3adfaa004af6ce51c3ad3f9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18dc8b9b_0c0a2d05",
+        "filename": "src/plugins/tlsopenssl/tls_bio.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-03-19T15:21:49Z",
+      "side": 1,
+      "message": "We could, but using the errors codes directly is quite brittle (on FreeBSD EBADF is 9, not 77).\n\nI can pull in errno.h or openssl/err.h in vppinfra/socket.h to make the define available, just let me know which you think is the best.",
+      "parentUuid": "719541c0_383afe54",
+      "revId": "463aa898e9c5c686f3adfaa004af6ce51c3ad3f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
