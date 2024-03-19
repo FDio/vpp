@@ -202,21 +202,20 @@ typedef struct cnat_timestamp_rewrite_t_
    */
   cnat_5tuple_t tuple;
 
-  u32 fib_index;
+  /**
+   * Persist translation->ct_lb.dpoi_next_node
+   */
+  u16 cts_dpoi_next_node;
 
   /**
    * The load balance object to use to forward
    */
   index_t cts_lbi;
 
-  /**
-   * Persist translation->ct_lb.dpoi_next_node
-   */
-  u16 cts_dpoi_next_node;
-
   cnat_cksum_diff_t cksum;
 
-  u8 cts_flags;
+  u32 fib_index : 24;
+  u32 cts_flags : 8;
 } cnat_timestamp_rewrite_t;
 
 typedef enum cnat_session_location_t_
@@ -244,23 +243,21 @@ typedef enum cnat_lookup_state_t_
 typedef struct cnat_timestamp_t_
 {
   /* Last time said session was seen */
-  f64 last_seen;
+  u32 last_seen;
+
+  u32 fib_index;
 
   /* expire after N seconds */
   u16 lifetime;
 
   /* Session refcount, can be 2 (session, rsession) */
-  u16 ts_session_refcnt;
+  u8 ts_session_refcnt;
 
-  u32 index;
-
-  u32 fib_index;
-
-  clib_bitmap_t ts_rw_bm;
-
+  u8 ts_rw_bm;
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
 
 } cnat_timestamp_t;
+STATIC_ASSERT (VLIB_N_DIR *CNAT_N_LOCATIONS <= 8, "Too many locations");
 
 /* Create the first pool with 1 << CNAT_TS_BASE_SIZE elts */
 #define CNAT_TS_BASE_SIZE (8)
