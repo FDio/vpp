@@ -92,8 +92,7 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 
   ts->fib_index = fib_index;
   ASSERT ((u64) index + (pidx << log2_pool_sz) <= CLIB_U32_MAX);
-  ts->index = index + (pidx << log2_pool_sz);
-  return ts->index;
+  return index + (pidx << log2_pool_sz);
 
 err:
   clib_rwlock_writer_unlock (&ctm->ts_lock);
@@ -122,7 +121,7 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
 }
 
 always_inline index_t
-cnat_timestamp_new (f64 t, u32 fib_index, bool is_v6)
+cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
 {
   index_t index = cnat_timestamp_alloc (fib_index, is_v6);
   if (PREDICT_FALSE (INDEX_INVALID == index))
@@ -138,18 +137,18 @@ cnat_timestamp_new (f64 t, u32 fib_index, bool is_v6)
 }
 
 always_inline cnat_timestamp_t *
-cnat_timestamp_update (u32 index, f64 t)
+cnat_timestamp_update (u32 index, u32 t)
 {
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   return ts;
 }
 
-always_inline f64
+always_inline u32
 cnat_timestamp_exp (u32 index)
 {
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
-  return ts->last_seen + (f64) ts->lifetime;
+  return ts->last_seen + ts->lifetime;
 }
 
 always_inline void
@@ -176,7 +175,7 @@ cnat_timestamp_free (u32 index, bool is_v6)
 
 static_always_inline void
 cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
-			      cnat_bihash_kv_t *bvalue, f64 now, u64 hash, bool is_v6,
+			      cnat_bihash_kv_t *bvalue, u32 now, u64 hash, bool is_v6,
 			      bool alloc_if_not_found)
 {
   vnet_buffer2 (b)->session.flags = 0;

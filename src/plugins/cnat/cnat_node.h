@@ -1033,8 +1033,10 @@ cnat_translation (vlib_buffer_t *b, ip_address_family_t af, cnat_timestamp_rewri
     {
       ip4 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b) + iph_offset);
       udp0 = (udp_header_t *) (ip4 + 1);
+      u8 cts_flags = rw->cts_flags;
       cnat_translation_ip4 (&rw->tuple, ip4, udp0, lifetime, vnet_buffer (b)->oflags, &rw->cksum,
-			    &rw->cts_flags);
+			    &cts_flags);
+      rw->cts_flags = cts_flags;
     }
   else
     {
