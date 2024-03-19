@@ -26,25 +26,11 @@ class Field(object):
 
     def __str__(self):
         if self.len is None:
-            return "Field(name: %s, type: %s)" % (self.name, self.type)
-        elif type(self.len) == dict:
-            return "Field(name: %s, type: %s, length: %s)" % (
-                self.name,
-                self.type,
-                self.len,
-            )
+            return f"Field(name: {self.name}, type: {self.type})"
         elif self.len > 0:
-            return "Field(name: %s, type: %s, length: %s)" % (
-                self.name,
-                self.type,
-                self.len,
-            )
+            return "Field(name: {self.name}, type: {self.type}, length: {self.len})"
         else:
-            return "Field(name: %s, type: %s, variable length stored in: %s)" % (
-                self.name,
-                self.type,
-                self.nelem_field,
-            )
+            return "Field(name: {self.name}, type: {self.type}, VLA length in: {self.nelem_field})"
 
     def is_vla(self):
         return self.nelem_field is not None
@@ -282,6 +268,22 @@ class StructType(Type, Struct):
                             "While parsing type `%s': array `%s' has "
                             "variable length" % (name, field[1])
                         )
+                elif type(field[2]) is dict:
+                    # the concept of default values is broken beyond repair:
+                    #
+                    # if following is allowed:
+                    # typedef feature1 { u32 table_id[default=0xffffffff]; }
+                    # typedef feature2 { u32 hash_buckets[default=1024]; }
+                    # union here_we_go { vl_api_feature1_t this; vl_api_feature2_t that; };
+                    #
+                    # what does it mean to set the defaults for instance of here_we_go?
+                    #
+                    # because of that, we parse it here, but don't do anything about it...
+                    if len(field[2]) != 1 or "default" not in field[2]:
+                        raise ParseError(
+                            f"Don't know how to parse field `{field}' of type definition for type `{t}'"
+                        )
+                    p = field_class(field_name=field[1], field_type=field_type)
                 else:
                     p = field_class(
                         field_name=field[1], field_type=field_type, array_len=field[2]
