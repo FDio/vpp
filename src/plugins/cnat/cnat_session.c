@@ -96,8 +96,8 @@ format_cnat_timestamp (u8 *s, va_list *args)
   cnat_timestamp_t *ts = va_arg (*args, cnat_timestamp_t *);
   u32 indent = va_arg (*args, u32);
 
-  s = format (s, "%U[ts %u] last_seen:%f lifetime:%u ref:%u", format_white_space, indent, ts->index,
-	      ts->last_seen, ts->lifetime, ts->ts_session_refcnt);
+  s = format (s, "%Ulast_seen:%u lifetime:%u ref:%u", format_white_space, indent, ts->last_seen,
+	      ts->lifetime, ts->ts_session_refcnt);
   for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
     if (ts->ts_rw_bm & (1 << i))
       s = format (s, "\n%U[%U] %U", format_white_space, indent + 2, format_cnat_rewrite_type, i,

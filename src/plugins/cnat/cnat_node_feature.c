@@ -355,7 +355,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = (u16) ~0;
-  rw->fib_index = (u32) ~0;
+  rw->fib_index = ~0;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
 
