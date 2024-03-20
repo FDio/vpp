@@ -17,6 +17,7 @@
 
 #define foreach_virtio_input_error                                            \
   _ (BUFFER_ALLOC, "buffer alloc error")                                      \
+  _ (FULL_RX_QUEUE, "full rx queue (driver tx drop)")                         \
   _ (UNKNOWN, "unknown")
 
 typedef enum

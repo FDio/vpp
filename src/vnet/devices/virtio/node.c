@@ -282,6 +282,16 @@ virtio_device_input_gso_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (n_left == 0)
     return 0;
 
+  if (PREDICT_FALSE (n_left == vring->queue_size))
+    {
+      /*
+       * Informational error logging when VPP is not pulling packets fast
+       * enough.
+       */
+      vlib_error_count (vm, node->node_index, VIRTIO_INPUT_ERROR_FULL_RX_QUEUE,
+			1);
+    }
+
   if (type == VIRTIO_IF_TYPE_TUN)
     {
       next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
