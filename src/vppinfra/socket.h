@@ -41,6 +41,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef __FreeBSD__
+#include <errno.h>
+#define EBADFD EBADF
+#endif /* __FreeBSD__ */
 
 #include <vppinfra/clib.h>
 #include <vppinfra/error.h>
