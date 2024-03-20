@@ -234,7 +234,7 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 }
 
 VLIB_CLI_COMMAND (show_interfaces_span_command, static) = {
-  .path = "show interface span",
+  .path = "show interfaces span",
   .short_help = "Shows SPAN mirror table",
   .function = show_interfaces_span_command_fn,
 };
