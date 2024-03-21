@@ -182,17 +182,15 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	{
 	  ip6_header_t *ip0 = (ip6_header_t *) h0;
 	  ip6_header_t *ip1 = (ip6_header_t *) h1;
+	  tcp_header_t *tcp0 =
+	    ip6_ext_header_find (vm, b[0], ip0, IP_PROTOCOL_TCP, NULL);
+	  tcp_header_t *tcp1 =
+	    ip6_ext_header_find (vm, b[1], ip1, IP_PROTOCOL_TCP, NULL);
 
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
-	    {
-	      clamped0 = mssc_mss_fixup (b[0], ip6_next_header (ip0),
-					 cm->max_mss6[sw_if_index0]);
-	    }
-	  if (IP_PROTOCOL_TCP == ip1->protocol)
-	    {
-	      clamped1 = mssc_mss_fixup (b[1], ip6_next_header (ip1),
-					 cm->max_mss6[sw_if_index1]);
-	    }
+	  if (tcp0)
+	    clamped0 = mssc_mss_fixup (b[0], tcp0, cm->max_mss6[sw_if_index0]);
+	  if (tcp1)
+	    clamped1 = mssc_mss_fixup (b[1], tcp1, cm->max_mss6[sw_if_index1]);
 	}
 
       pkts_clamped += clamped0 + clamped1;
@@ -255,12 +253,11 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
       else if (FIB_PROTOCOL_IP6 == fproto)
 	{
 	  ip6_header_t *ip0 = (ip6_header_t *) h0;
+	  tcp_header_t *tcp0 =
+	    ip6_ext_header_find (vm, b[0], ip0, IP_PROTOCOL_TCP, NULL);
 
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
-	    {
-	      clamped0 = mssc_mss_fixup (b[0], ip6_next_header (ip0),
-					 cm->max_mss6[sw_if_index0]);
-	    }
+	  if (tcp0)
+	    clamped0 = mssc_mss_fixup (b[0], tcp0, cm->max_mss6[sw_if_index0]);
 	}
 
       pkts_clamped += clamped0;
