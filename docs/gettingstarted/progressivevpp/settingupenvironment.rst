@@ -32,7 +32,7 @@ Create a file called **Vagrantfile** with the following contents:
 
     Vagrant.configure(2) do |config|
 
-      config.vm.box = "bento/ubuntu-18.04"
+      config.vm.box = "generic/ubuntu2204"
       config.vm.box_check_update = false
 
       vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
@@ -97,7 +97,7 @@ We write this file with the following contents:
 .. code-block:: console
 
    $ sudo bash
-   # echo "deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu bionic main" > /etc/apt/sources.list.d/99fd.io.list
+   # echo "deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu jammy main" > /etc/apt/sources.list.d/99fd.io.list
    #
 
 Get the key.
