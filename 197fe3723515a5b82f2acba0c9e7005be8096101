@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25b248da_7615b89a",
+        "filename": "src/plugins/ping/ping.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-21T20:40:10Z",
+      "side": 1,
+      "message": "[default\u003d0xffffffff]?",
+      "revId": "197fe3723515a5b82f2acba0c9e7005be8096101",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "69cf0096_62d7693e",
+        "filename": "src/plugins/ping/ping_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-21T20:40:10Z",
+      "side": 1,
+      "message": "The \"test/test_ping.py\" does not set this field, so its 0, which would be the loopback interface. Is it your intention to require the source interface to always be set? Or do you expect callers will set this to ~0 when not required, in which case could you likely want the default set sw_if_index [default\u003d0xffffffff]",
+      "revId": "197fe3723515a5b82f2acba0c9e7005be8096101",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
