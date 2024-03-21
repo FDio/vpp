@@ -16,6 +16,40 @@
       "message": "Dear Benoit,\n\nPlease review.\n\nThanks,\nDenys.",
       "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9da26c39_b9b2d0ed",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-21T13:38:04Z",
+      "side": 1,
+      "message": "You need to introduce a v3 (and for sa_details below too) instead, as you are modifying the API, otherwise you\u0027ll break all the controlplanes relying on it",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d977b0c8_a09fb5b5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1898,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-21T13:38:04Z",
+      "side": 1,
+      "message": "can we propagate vm from the caller instead of getting it again here?",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
