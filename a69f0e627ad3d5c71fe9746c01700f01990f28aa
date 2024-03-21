@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3fedcbaf_415ae553",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3080
+      },
+      "writtenOn": "2024-03-21T21:39:48Z",
+      "side": 1,
+      "message": "To reviewers: context is https://lists.fd.io/g/vpp-dev/topic/105030960. I know this change isn\u0027t done yet but I need comments from someone who knows the code better.\n\nAt the moment it looks like the addresses are rewritten as intended but IP header checksums are broken. I think my hack has fixed host -\u003e server but server -\u003e host is still broken.",
+      "revId": "a69f0e627ad3d5c71fe9746c01700f01990f28aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
