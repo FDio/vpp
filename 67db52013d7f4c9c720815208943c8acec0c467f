@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3ceaf694_692798ed",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-03-21T14:38:50Z",
+      "side": 1,
+      "message": "My guess is that there are no control planes yet, that leverage v2 API as far as it was introduced by myself recently.\n\nPlease check https://gerrit.fd.io/r/c/vpp/+/40257/11/src/plugins/ikev2/ikev2.api\n\nWhat do you think?",
+      "parentUuid": "9da26c39_b9b2d0ed",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d977b0c8_a09fb5b5",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2024-03-21T13:38:04Z",
       "side": 1,
       "message": "can we propagate vm from the caller instead of getting it again here?",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "68ed0483_96952fdb",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1898,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-03-21T14:38:50Z",
+      "side": 1,
+      "message": "Fixed",
+      "parentUuid": "d977b0c8_a09fb5b5",
       "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
