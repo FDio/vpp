@@ -492,6 +492,8 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 
   tx_fib_index = get_tx_fib_index (rx_fib_index, r_addr);
 
+  int is_hairpinning = 0;
+
   if (!is_sm)
     {
       s->in2out.addr = l_addr;
@@ -503,8 +505,9 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       // suggest using local port to allocation function
       outside_port = l_port;
 
-      if (PREDICT_FALSE (nat44_ed_external_sm_lookup (sm, r_addr, r_port,
-						      proto, &daddr, &dport)))
+      is_hairpinning = nat44_ed_external_sm_lookup (sm, r_addr, r_port,
+						      proto, &daddr, &dport);
+      if (PREDICT_FALSE(is_hairpinning))
 	{
 	  s->flags |= SNAT_SESSION_FLAG_HAIRPINNING;
 	}
@@ -533,6 +536,9 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  nat_ed_session_delete (sm, s, thread_index, 1);
 	  return NAT_NEXT_DROP;
 	}
+      if (is_hairpinning) {
+	      nat_6t_flow_saddr_rewrite_set (&s->o2i, outside_addr.as_u32);
+      }
       s->out2in.addr = outside_addr;
       s->out2in.port = outside_port;
     }
@@ -549,8 +555,8 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
 
       // hairpinning?
-      int is_hairpinning = nat44_ed_external_sm_lookup (sm, r_addr, r_port,
-							proto, &daddr, &dport);
+      is_hairpinning = nat44_ed_external_sm_lookup (sm, r_addr, r_port,
+       	               	                            proto, &daddr, &dport);
       s->flags |= is_hairpinning * SNAT_SESSION_FLAG_HAIRPINNING;
 
       if (IP_PROTOCOL_ICMP == proto)
@@ -565,6 +571,9 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 				sm_port, s->out2in.fib_index, proto);
 	  nat_6t_flow_dport_rewrite_set (&s->o2i, l_port);
 	}
+      if (is_hairpinning) {
+	      nat_6t_flow_saddr_rewrite_set (&s->o2i, sm_addr.as_u32);
+      }
       nat_6t_flow_daddr_rewrite_set (&s->o2i, l_addr.as_u32);
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
       if (nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))
@@ -579,7 +588,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   s->ext_host_addr = r_addr;
   s->ext_host_port = r_port;
 
-  nat_6t_i2o_flow_init (sm, thread_index, s, l_addr, l_port, r_addr, r_port,
+  nat_6t_i2o_flow_init (sm, thread_index, s, l_addr, l_port, is_hairpinning ? outside_addr : r_addr, r_port,
 			rx_fib_index, proto);
   nat_6t_flow_saddr_rewrite_set (&s->i2o, outside_addr.as_u32);
   nat_6t_flow_daddr_rewrite_set (&s->i2o, daddr.as_u32);
