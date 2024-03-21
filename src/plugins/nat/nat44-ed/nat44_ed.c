@@ -3803,7 +3803,8 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 	}
     }
 
-  if (skip_saddr_rewrite)
+  // if (skip_saddr_rewrite)
+  if (true)
     {
       ip->checksum = ip4_header_checksum (ip);
     }
