@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "301f65cc_d940a1ff",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-03-21T10:11:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "375cfa7c_f7250a4e",
+      "revId": "11127d944bbd94068c9fdd0e443fa69100b5014f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f3da3d29_11d55652",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-03-21T10:07:35Z",
       "side": 1,
       "message": "let\u0027s not do it this way.\n\nno reason why we can\u0027t have a socket timeout in general - actually that\u0027s a good idea.\n\nI would keep the note that it is there to prevent a possible race, but would not limit it to FreeBSD. I would mention FreeBSD in commit message, though. \"This patch adds a socket timeout, because on FreeBSD we observed this and that\" or some such.",
+      "revId": "11127d944bbd94068c9fdd0e443fa69100b5014f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "129d1021_cea4282e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-03-21T10:11:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f3da3d29_11d55652",
       "revId": "11127d944bbd94068c9fdd0e443fa69100b5014f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
