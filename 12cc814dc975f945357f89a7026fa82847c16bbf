@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d3cfce2_68167529",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3042
+      },
+      "writtenOn": "2024-03-21T14:45:17Z",
+      "side": 1,
+      "message": "With trusted\u003dyes the following gpg-key install is kind of moot. It won\u0027t break though.",
+      "range": {
+        "startLine": 100,
+        "startChar": 16,
+        "endLine": 100,
+        "endChar": 27
+      },
+      "revId": "12cc814dc975f945357f89a7026fa82847c16bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
