@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da7027bf_6cb53a51",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-21T16:56:45Z",
+      "side": 1,
+      "message": "Can you fix the commit message so there\u0027s a blank line after the \"title\" and that lines longer than 72 characters are split into two?\n\nvlib: fix counter_index check\n\nEnsure counter index is valid before using it to lookup\nthe counter.\n\nOtherwise this change looks good to me.",
+      "revId": "fee61b961bfe8d90124d70958db665dc48f4f93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
