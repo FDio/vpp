@@ -3,15 +3,15 @@
 Setting up your environment
 ===========================
 
-All of these exercises are designed to be performed on an Ubuntu 16.04 (Xenial) box.
+All of these exercises are designed to be performed on an Ubuntu 22.04 (Jammy) box.
 
-* If you have an Ubuntu 18.04 box on which you have sudo or root access, you can feel free to use that.
-* If you do not, a Vagrantfile is provided to setup a basic Ubuntu 18.04 box for you in the the steps below.
+* If you have an Ubuntu 22.04 box on which you have sudo or root access, you can feel free to use that.
+* If you do not, a Vagrantfile is provided to setup a basic Ubuntu 22.04 box for you in the the steps below.
 
-Install Virtual Box and Vagrant
+Install Libvirt and Vagrant
 -------------------------------
 
-You will need to install Virtual Box and Vagrant.
+You will need to install Libvirt and Vagrant.
 
 Create a Vagrant Directory
 ---------------------------
@@ -32,21 +32,16 @@ Create a file called **Vagrantfile** with the following contents:
 
     Vagrant.configure(2) do |config|
 
-      config.vm.box = "bento/ubuntu-18.04"
-      config.vm.box_check_update = false
+      config.vm.box = "generic/ubuntu2204"
 
       vmcpu=(ENV['VPP_VAGRANT_VMCPU'] || 2)
       vmram=(ENV['VPP_VAGRANT_VMRAM'] || 4096)
 
       config.ssh.forward_agent = true
 
-      config.vm.provider "virtualbox" do |vb|
-          vb.customize ["modifyvm", :id, "--ioapic", "on"]
+      config.vm.provider "libvirt" do |vb|
           vb.memory = "#{vmram}"
           vb.cpus = "#{vmcpu}"
-          #support for the SSE4.x instruction is required in some versions of VB.
-          vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.1", "1"]
-          vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.2", "1"]
       end
     end
 
@@ -97,7 +92,7 @@ We write this file with the following contents:
 .. code-block:: console
 
    $ sudo bash
-   # echo "deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu bionic main" > /etc/apt/sources.list.d/99fd.io.list
+   # echo "deb https://packagecloud.io/fdio/release/ubuntu jammy main" > /etc/apt/sources.list.d/99fd.io.list
    #
 
 Get the key.
