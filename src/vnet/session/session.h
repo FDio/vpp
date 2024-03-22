@@ -459,13 +459,14 @@ void session_transport_half_close (session_t *s);
 void session_transport_close (session_t * s);
 void session_transport_reset (session_t * s);
 void session_transport_cleanup (session_t * s);
-int session_send_io_evt_to_thread (svm_fifo_t * f,
-				   session_evt_type_t evt_type);
 int session_enqueue_notify (session_t *s);
 int session_dequeue_notify (session_t * s);
 int session_enqueue_notify_cl (session_t *s);
+int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
 int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
+int session_program_tx_io_evt (session_handle_t sh,
+			       session_evt_type_t evt_type);
 void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
 void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,

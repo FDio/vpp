@@ -97,6 +97,18 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 }
 
 int
+session_program_tx_io_evt (session_handle_t sh, session_evt_type_t evt_type)
+{
+  /* Hack to appease gcc because of session_send_evt_to_thread inlining */
+  session_t s;
+
+  ASSERT (evt_type < SESSION_IO_EVT_TX_MAIN);
+  session_parse_handle (sh, &s.session_index, (u32 *) &s.thread_index);
+  return session_send_evt_to_thread ((void *) &s.session_index, 0,
+				     (u32) s.thread_index, evt_type);
+}
+
+int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect, shutdown and reset */
