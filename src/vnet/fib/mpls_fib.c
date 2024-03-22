@@ -481,3 +481,24 @@ VLIB_CLI_COMMAND (mpls_fib_show_command, static) = {
     .short_help = "show mpls fib [summary] [table <n>]",
     .function = mpls_fib_show,
 };
+
+static clib_error_t *
+mpls_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  char *default_name = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "default-table-name %s", &default_name))
+          ;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+
+  fib_table_default_names[FIB_PROTOCOL_MPLS] = default_name;
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (mpls_config, "mpls");

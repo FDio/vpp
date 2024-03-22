@@ -122,6 +122,15 @@ typedef struct fib_table_t_
     u8* ft_desc;
 } fib_table_t;
 
+
+/**
+ * @brief
+ *  Default names for IP4, IP6, and MPLS FIB table index 0.
+ *  Nominally like "ipv4-VRF:0", but this will override that name if set
+ *  in a config section of the startup.conf file.
+ */
+extern char *fib_table_default_names[FIB_PROTOCOL_MAX];
+
 /**
  * @brief
  *  Format the description/name of the table
