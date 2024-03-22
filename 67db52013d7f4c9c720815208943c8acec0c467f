@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "75da4cea_45c4b140",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-22T20:56:08Z",
+      "side": 1,
+      "message": "Given the discussion and conclusion in 40257 as to the API status (i.e. that it is indeed a production API), the correct thing to do is to remove the \"in_progress\" status to promote the API as \"Production\" and create a _v3 variant.\n\nThe changes in 40257 should have included the removal of \"in_progress\" option status at that time, since that was the conclusion agreed upon.  Once an API has been upgraded to production, the contract shall not be broken.  Specifically, there should NEVER be any breaking changes to a \u0027_v\u003c#\u003e\u0027 (e.g. _v2, _v3, ...) api variant.",
+      "parentUuid": "3ceaf694_692798ed",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d977b0c8_a09fb5b5",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 1
