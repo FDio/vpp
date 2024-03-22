@@ -33,6 +33,23 @@
       "message": "Unfortunately I think it clashed with LFN emergency upgrade, and CI is broken :( - we have to wait for https://gerrit.fd.io/r/c/ci-management/+/40578 to be merged AFAIU",
       "revId": "412db735941e3a1b944cdaa8663de9fab6c6d8eb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce88f523_8d640b1e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-22T19:52:24Z",
+      "side": 1,
+      "message": "recheck\n\nI will merge once the CI verification has completed successfully.",
+      "revId": "412db735941e3a1b944cdaa8663de9fab6c6d8eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
