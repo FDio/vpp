@@ -1810,7 +1810,11 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  break;
 	}
 
-      max_bytes = clib_min (hole->end - sb->high_rxt, snd_space);
+      max_bytes = hole->end - sb->high_rxt;
+      /* Avoid retransmitting segment less than mss if possible */
+      if (snd_space < tc->snd_mss && max_bytes > snd_space)
+	break;
+      max_bytes = clib_min (max_bytes, snd_space);
       max_bytes = snd_limited ? clib_min (max_bytes, tc->snd_mss) : max_bytes;
       if (max_bytes == 0)
 	break;
