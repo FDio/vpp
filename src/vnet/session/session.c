@@ -97,6 +97,13 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 }
 
 int
+session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type)
+{
+  return session_send_evt_to_thread ((void *) &sh.session_index, 0,
+				     (u32) sh.thread_index, evt_type);
+}
+
+int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect, shutdown and reset */
