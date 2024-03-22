@@ -25,6 +25,13 @@
 
 const static char * fib_table_flags_strings[] = FIB_TABLE_ATTRIBUTES;
 
+/*
+ * Default names for IP4, IP6, and MPLS FIB table index 0.
+ * Nominally like "ipv6-VRF:0", but this will override that name if set
+ * in a config section of the startup.conf file.
+ */
+char *fib_table_default_names[FIB_PROTOCOL_MAX];
+
 fib_table_t *
 fib_table_get (fib_node_index_t index,
 	       fib_protocol_t proto)
@@ -1153,21 +1160,31 @@ fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
 
     fib_table = fib_table_get(fi, proto);
 
-    if (NULL == fib_table->ft_desc)
-    {
-        if (name && name[0])
-        {
-            fib_table->ft_desc = format(NULL, "%s", name);
-        }
-        else
-        {
-            fib_table->ft_desc = format(NULL, "%U-VRF:%d",
-                                        format_fib_protocol, proto,
-                                        table_id);
-        }
-    }
 
-    return (fi);
+
+    if (fib_table->ft_desc)
+	    return fi;
+
+    if (name && name[0])
+      {
+        fib_table->ft_desc = format(NULL, "%s", name);
+	return fi;
+      }
+
+    if (table_id == 0)
+      {
+	char *default_name = fib_table_default_names[proto];
+	if (default_name != 0)
+	  {
+	    fib_table->ft_desc = format(NULL, "%s", default_name);
+	    return fi;
+	  }
+      }
+
+    fib_table->ft_desc = format(NULL, "%U-VRF:%d",
+				format_fib_protocol, proto,
+				table_id);
+    return fi;
 }
 
 u32
