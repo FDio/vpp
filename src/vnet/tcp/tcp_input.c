@@ -719,6 +719,8 @@ tcp_cc_try_recover (tcp_connection_t *tc)
   if (tc->sack_sb.sacked_bytes && tcp_in_fastrecovery (tc))
     {
       tc->snd_congestion = tc->snd_nxt;
+      tc->prev_cwnd = tc->cwnd;
+      tcp_cc_congestion (tc);
       return -1;
     }
 
