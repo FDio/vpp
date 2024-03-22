@@ -16,6 +16,23 @@
       "message": "What is not working about the old code? Can you please explain the reason for this change?",
       "revId": "ca168ff7c1b9dd43b4893fc1edb9ecc6879349a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d233318a_d3d13801",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-03-22T20:05:12Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "ca168ff7c1b9dd43b4893fc1edb9ecc6879349a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
