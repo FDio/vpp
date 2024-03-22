@@ -582,13 +582,15 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
-  tls_session->session_state = SESSION_STATE_READY;
 
   if (tls_ctx_init_client (ctx))
     {
       tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
       tls_disconnect_transport (ctx);
     }
+
+  if (tls_session->session_state < SESSION_STATE_READY)
+    tls_session->session_state = SESSION_STATE_READY;
 
   return 0;
 }
