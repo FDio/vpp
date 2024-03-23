@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "950dc027d6da06e59d653b58eaeb1616dcfaff9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a76a1cb_df8a7467",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2024-03-23T09:45:35Z",
+      "side": 1,
+      "message": "production \u003d\u003e in-progress is NOK. longer comment inline.",
+      "revId": "950dc027d6da06e59d653b58eaeb1616dcfaff9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

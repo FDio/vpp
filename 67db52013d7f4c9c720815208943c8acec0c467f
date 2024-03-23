@@ -73,6 +73,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bca996a3_583cc291",
+        "filename": "src/plugins/ikev2/ikev2.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2024-03-23T09:45:35Z",
+      "side": 1,
+      "message": "So, I think i see a couple of things going on here:\n\n1) ikev2_sa_dump has the “in_progress” status when it probably shouldn’t, which was discussed during the review, yet 40257 has been merged without that change.\n\n2) ikev2_sa_v2_dump doesn’t have the “in_progress” status when it probably should (it has been merged Feb14 so is a recent change). \n\nThis combined is probably that we should be able to catch within the tooling in the future: \n\nI would slightly relax what Dave has said a little bit: there should be never any changes to a vX variant that aren’t leaving the user the room for maneuver: I.e. a user that is relying on vX that is stable, should not be forced to update to vX+1 that is marked in_progress due to deprecation of vX.\n\nThus I think it is OK to have the latest vX+1 to be marked as “in progress” to signify “we are trying out the new addition but it is a work in progress, thus subject to change”. \n\nthen a user has a choice:\n\n- if they are happy to adapt to breaking changes \nthey can use the new message\n\n- if they want stability they can ignore the new message until it is marked as stable.\n\nAt the same time, the situation where vX is marked as “in_progress” but vX+1 is marked as “production” should be caught by tooling and be an automatic -1. It would have prevented both of the issues above. So this is a potential area for improvement.\n\nHowever, the transition production \u003d\u003e in_progress is never ok within our API contract. If the 40257 were merged yesterday, I might be inclined to send a message to the list and force it back as an exception. However, in this case it’s been a month already. Thus, since we do not know what are the branching strategies of the various downstream consumers are, I would tend to agree with Dave that an “in_progress” v3 is the most appropriate course of action, *also* with removal of in-progress status for v1, such that the overall situation is rectified.",
+      "parentUuid": "75da4cea_45c4b140",
+      "revId": "67db52013d7f4c9c720815208943c8acec0c467f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d977b0c8_a09fb5b5",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 1
