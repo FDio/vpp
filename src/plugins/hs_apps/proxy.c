@@ -414,19 +414,6 @@ proxy_rx_callback (session_t * s)
   return 0;
 }
 
-static void
-proxy_force_ack (void *handlep)
-{
-  transport_connection_t *tc;
-  session_t *ao_s;
-
-  ao_s = session_get_from_handle (pointer_to_uword (handlep));
-  if (session_get_transport_proto (ao_s) != TRANSPORT_PROTO_TCP)
-    return;
-  tc = session_get_transport (ao_s);
-  tcp_send_ack ((tcp_connection_t *) tc);
-}
-
 static int
 proxy_tx_callback (session_t * proxy_s)
 {
@@ -450,9 +437,7 @@ proxy_tx_callback (session_t * proxy_s)
 
   /* Force ack on active open side to update rcv wnd. Make sure it's done on
    * the right thread */
-  void *arg = uword_to_pointer (ps->vpp_active_open_handle, void *);
-  session_send_rpc_evt_to_thread (ps->server_rx_fifo->master_thread_index,
-				  proxy_force_ack, arg);
+  session_program_tx_io_evt (ps->vpp_active_open_handle, SESSION_IO_EVT_RX);
 
 unlock:
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
@@ -619,9 +604,7 @@ static int
 active_open_tx_callback (session_t * ao_s)
 {
   proxy_main_t *pm = &proxy_main;
-  transport_connection_t *tc;
   proxy_session_t *ps;
-  session_t *proxy_s;
   u32 min_free;
 
   min_free = clib_min (svm_fifo_size (ao_s->tx_fifo) >> 3, 128 << 10);
@@ -640,11 +623,8 @@ active_open_tx_callback (session_t * ao_s)
   if (ps->vpp_server_handle == ~0)
     goto unlock;
 
-  proxy_s = session_get_from_handle (ps->vpp_server_handle);
-
   /* Force ack on proxy side to update rcv wnd */
-  tc = session_get_transport (proxy_s);
-  tcp_send_ack ((tcp_connection_t *) tc);
+  session_program_tx_io_evt (ps->vpp_active_open_handle, SESSION_IO_EVT_RX);
 
 unlock:
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
