@@ -75,7 +75,7 @@ def address_proto(ip_addr):
         return FibPathProto.FIB_PATH_NH_PROTO_IP6
 
 
-def find_route(test, addr, len, table_id=0, sw_if_index=None):
+def find_route(test, addr, len, table_id=0, default_to_drop=False, sw_if_index=None):
     prefix = mk_network(addr, len)
 
     if 4 == prefix.version:
@@ -86,7 +86,13 @@ def find_route(test, addr, len, table_id=0, sw_if_index=None):
     for e in routes:
         if table_id == e.route.table_id and str(e.route.prefix) == str(prefix):
             if not sw_if_index:
-                return True
+                # if the route is a default one of the table:
+                # 0.0.0.0/0, 0.0.0.0/32, 240.0.0.0/4, 255.255.255.255/32
+                return not (
+                    default_to_drop
+                    and e.route.n_paths == 1
+                    and e.route.paths[0].type == FibPathType.FIB_PATH_TYPE_DROP
+                )
             else:
                 # should be only one path if the user is looking
                 # for the interface the route is reachable through
@@ -601,6 +607,7 @@ class VppIpRoute(VppObject):
             self.prefix.network_address,
             self.prefix.prefixlen,
             self.table_id,
+            default_to_drop=True,
         )
 
     def object_id(self):
@@ -716,6 +723,7 @@ class VppIpRouteV2(VppObject):
             self.prefix.network_address,
             self.prefix.prefixlen,
             self.table_id,
+            default_to_drop=True,
         )
 
     def object_id(self):
