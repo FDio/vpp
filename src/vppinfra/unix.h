@@ -56,6 +56,9 @@ clib_error_t *unix_proc_file_contents (char *file, u8 ** result);
 /* Retrieve bitmap of online cpu cures */
 clib_bitmap_t *os_get_online_cpu_core_bitmap ();
 
+/* Retrieve bitmap of cpus vpp has affinity to */
+clib_bitmap_t *os_get_cpu_affinity_bitmap (int pid);
+
 /* Retrieve bitmap of online cpu nodes (sockets) */
 clib_bitmap_t *os_get_online_cpu_node_bitmap ();
 
