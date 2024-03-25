@@ -425,7 +425,8 @@ main-core
 ^^^^^^^^^
 
 Set logical CPU core where main thread runs, if main core is not set VPP will use
-core 1 if available
+core 1 if available. Can take 'auto' parameter to place VPP main thread on
+first cpu VPP has assured affinity on
 
 .. code-block:: console
 
@@ -460,7 +461,8 @@ workers number
 ^^^^^^^^^^^^^^
 
 Specify a number of workers to be created Workers are pinned to N consecutive
-CPU cores while skipping "skip-cores" CPU core(s) and main thread's CPU core
+CPU cores that the VPP process has affinity on while skipping "skip-cores"
+CPU core(s) and main thread's CPU core
 
 .. code-block:: console
 
