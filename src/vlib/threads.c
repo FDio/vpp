@@ -136,6 +136,28 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
   vlib_worker_threads[0].barrier_context = NULL;
 }
 
+clib_bitmap_t *
+pthread_get_cpu_affinity (void)
+{
+  int ret, index;
+  cpu_set_t cpuset;
+  pthread_t tr;
+  uword *affinity_cpus;
+
+  CPU_ZERO (&cpuset);
+  tr = pthread_self ();
+  ret = pthread_getaffinity_np (tr, sizeof (cpu_set_t), &cpuset);
+
+  if (ret != 0)
+    return 0;
+
+  clib_bitmap_alloc (affinity_cpus, CPU_SETSIZE);
+  for (index = 0; index < CPU_SETSIZE; index++)
+    if (CPU_ISSET (index, &cpuset))
+      clib_bitmap_set (affinity_cpus, index, 1);
+  return affinity_cpus;
+}
+
 uword
 os_get_nthreads (void)
 {
@@ -179,7 +201,8 @@ vlib_thread_init (vlib_main_t * vm)
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
-  uword *avail_cpu;
+  uword *avail_cpu, *affinity_cpu;
+  uword n_cpus;
   u32 stats_num_worker_threads_dir_index;
 
   stats_num_worker_threads_dir_index =
@@ -190,16 +213,39 @@ vlib_thread_init (vlib_main_t * vm)
   tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
   tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
 
+  /* get bitmaps of active cpu cores in environment */
+  /* host cpus == affinity cpus, unless vpp is launched with restricted */
+  /* cpu affinity */
+  tm->cpu_affinity_bitmap = pthread_get_cpu_affinity ();
+
+  if (tm->cpu_affinity_bitmap == 0)
+    return clib_error_return (0, "error fetching cpus affinity");
+
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
+  affinity_cpu = clib_bitmap_dup (tm->cpu_affinity_bitmap);
 
   /* skip cores */
+  n_cpus = clib_bitmap_count_set_bits (avail_cpu);
+  if (tm->skip_cores >= n_cpus)
+    return clib_error_return (0, "skip-core greater than available cpus");
+  n_cpus = clib_bitmap_count_set_bits (affinity_cpu);
+  if (tm->skip_cores >= n_cpus)
+    return clib_error_return (0, "skip-core greater than affinity cpus");
+
   for (i = 0; i < tm->skip_cores; i++)
     {
-      uword c = clib_bitmap_first_set (avail_cpu);
+      uword c;
+      c = clib_bitmap_first_set (avail_cpu);
       if (c == ~0)
 	return clib_error_return (0, "no available cpus to skip");
 
       avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+
+      c = clib_bitmap_first_set (affinity_cpu);
+      if (c == ~0)
+	return clib_error_return (0, "no available env cpus to skip");
+
+      affinity_cpu = clib_bitmap_set (affinity_cpu, c, 0);
     }
 
   /* grab cpu for main thread */
@@ -209,6 +255,17 @@ vlib_thread_init (vlib_main_t * vm)
 	return clib_error_return (0, "cpu %u is not available to be used"
 				  " for the main thread", tm->main_lcore);
       avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
+      affinity_cpu = clib_bitmap_set (affinity_cpu, tm->main_lcore, 0);
+    }
+  /* if auto enabled, grab first cpu vpp has affinity to for main thread */
+  else if (tm->use_main_core_auto)
+    {
+      uword c = clib_bitmap_first_set (affinity_cpu);
+      if (c != ~0)
+	tm->main_lcore = c;
+
+      avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
+      affinity_cpu = clib_bitmap_set (affinity_cpu, tm->main_lcore, 0);
     }
 
   /* assume that there is socket 0 only if there is no data from sysfs */
@@ -289,13 +346,24 @@ vlib_thread_init (vlib_main_t * vm)
 	}
       else
 	{
+	  /* for automatic pinning, use cpus vpp has affinity on */
+	  uword n_env_cpu = 0;
+	  ;
+	  n_env_cpu = clib_bitmap_count_set_bits (affinity_cpu);
+
+	  if (n_env_cpu < tr->count)
+	    return clib_error_return (0,
+				      "no available cpus to be used for"
+				      " the '%s' thread #%u",
+				      tr->name, n_env_cpu);
+
 	  for (j = 0; j < tr->count; j++)
 	    {
 	      /* Do not use CPU 0 by default - leave it to the host and IRQs */
-	      uword avail_c0 = clib_bitmap_get (avail_cpu, 0);
-	      avail_cpu = clib_bitmap_set (avail_cpu, 0, 0);
+	      uword avail_c0 = clib_bitmap_get (affinity_cpu, 0);
+	      affinity_cpu = clib_bitmap_set (affinity_cpu, 0, 0);
 
-	      uword c = clib_bitmap_first_set (avail_cpu);
+	      uword c = clib_bitmap_first_set (affinity_cpu);
 	      /* Use CPU 0 as a last resort */
 	      if (c == ~0 && avail_c0)
 		{
@@ -309,14 +377,15 @@ vlib_thread_init (vlib_main_t * vm)
 					  " the '%s' thread #%u",
 					  tr->name, tr->count);
 
-	      avail_cpu = clib_bitmap_set (avail_cpu, 0, avail_c0);
-	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	      affinity_cpu = clib_bitmap_set (affinity_cpu, 0, avail_c0);
+	      affinity_cpu = clib_bitmap_set (affinity_cpu, c, 0);
 	      tr->coremask = clib_bitmap_set (tr->coremask, c, 1);
 	    }
 	}
     }
 
   clib_bitmap_free (avail_cpu);
+  clib_bitmap_free (affinity_cpu);
 
   tm->n_vlib_mains = n_vlib_mains;
   vlib_stats_set_gauge (stats_num_worker_threads_dir_index, n_vlib_mains - 1);
@@ -1118,6 +1187,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   tm->sched_policy = ~0;
   tm->sched_priority = ~0;
   tm->main_lcore = ~0;
+  tm->use_main_core_auto = 0;
 
   tr = tm->next;
 
@@ -1133,6 +1203,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	tm->use_pthreads = 1;
       else if (unformat (input, "thread-prefix %v", &tm->thread_prefix))
 	;
+      else if (unformat (input, "main-core auto"))
+	tm->use_main_core_auto = 1;
       else if (unformat (input, "main-core %u", &tm->main_lcore))
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
@@ -1189,6 +1261,13 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else
 	break;
+    }
+
+  if (tm->main_lcore != ~0 && tm->use_main_core_auto)
+    {
+      return clib_error_return (
+	0, "cannot set both 'main-core %u' and 'main-core auto'",
+	tm->main_lcore);
     }
 
   if (tm->sched_priority != ~0)
