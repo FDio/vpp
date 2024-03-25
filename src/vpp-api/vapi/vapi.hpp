@@ -422,7 +422,7 @@ private:
   void unregister_request (Common_req *request)
   {
     std::lock_guard<std::recursive_mutex> lock (requests_mutex);
-    std::remove (requests.begin (), requests.end (), request);
+    requests.erase (std::remove (requests.begin (), requests.end (), request));
   }
 
   template <typename M> void register_event (Event_registration<M> *event)
