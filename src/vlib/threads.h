@@ -145,6 +145,9 @@ typedef struct
   uword data;
 } vlib_process_signal_event_mt_args_t;
 
+/* Get CPUs available to VPP using pthread API */
+clib_bitmap_t *os_get_environment_cpus (void);
+
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
 
@@ -255,6 +258,8 @@ typedef struct
 
   int use_pthreads;
 
+  int use_main_core_auto;
+
   /* Number of vlib_main / vnet_main clones */
   u32 n_vlib_mains;
 
@@ -281,6 +286,9 @@ typedef struct
 
   /* Bitmap of available CPU sockets (NUMA nodes) */
   uword *cpu_socket_bitmap;
+
+  /* Bitmap of environment CPU cores */
+  uword *cpu_env_bitmap;
 
   /* Worker handoff queues */
   vlib_frame_queue_main_t *frame_queue_mains;
