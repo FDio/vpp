@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6dc40690_90970331",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2024-03-25T15:18:56Z",
+      "side": 1,
+      "message": "Fixes this compilation error\n\nvapi.hpp:424:17: error: ignoring return value of ‘_FIter std::remove(_FIter, _FIter, const _Tp\u0026) [with _FIter \u003d _Deque_iterator\u003cvapi::Common_req*, vapi::Common_req*\u0026, vapi::Common_req**\u003e; _Tp \u003d vapi::Common_req*]’, declared with attribute ‘nodiscard’ [-Werror\u003dunused-result]",
+      "revId": "55be81756e0383340944f720ae11d4a8d6c8a0f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
