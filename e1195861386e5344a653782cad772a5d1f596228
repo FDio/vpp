@@ -16,6 +16,23 @@
       "message": "probably bitten by https://gerrit.fd.io/r/c/ci-management/+/40578\nI\u0027ll restart the merge check once it\u0027s merged",
       "revId": "e1195861386e5344a653782cad772a5d1f596228",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "653dfd7d_83cf0154",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-25T08:55:58Z",
+      "side": 1,
+      "message": "remerge",
+      "revId": "e1195861386e5344a653782cad772a5d1f596228",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
