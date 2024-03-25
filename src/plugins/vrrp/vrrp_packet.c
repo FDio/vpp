@@ -538,6 +538,8 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
 
   vlib_put_frame_to_node (vm, vmp->intf_output_node_idx, to_frame);
 
+  vec_free (bi);
+
   return 0;
 }
 
