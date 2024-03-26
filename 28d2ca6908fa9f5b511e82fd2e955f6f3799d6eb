@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f196057f_4e8cd747",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-26T16:15:51Z",
+      "side": 1,
+      "message": "A few comments",
+      "revId": "28d2ca6908fa9f5b511e82fd2e955f6f3799d6eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ec665d3_1b3741f1",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1255,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-26T16:15:51Z",
+      "side": 1,
+      "message": "You return here without rtnl_link_put (link) or nl_close (sk).",
+      "revId": "28d2ca6908fa9f5b511e82fd2e955f6f3799d6eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e292dfbc_988d2eab",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-26T16:15:51Z",
+      "side": 1,
+      "message": "Linux interface names are limited to 16 characters. A decimal representation of 0xffffffff is longer than 16 characters, which artificially puts a limit on the table_id.\n\nDo you want to keep this and let it fail later when trying to add the link? Most people won\u0027t have a hundred million tables so will probably be fine.",
+      "revId": "28d2ca6908fa9f5b511e82fd2e955f6f3799d6eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "304502d5_d1196a56",
+        "filename": "src/plugins/linux-cp/lcp_interface_sync.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-26T16:15:51Z",
+      "side": 1,
+      "message": "IMO it would be better (more obvious) to check the flag explicitly for the ADD_LINK, or whatever the add/del flag is.",
+      "revId": "28d2ca6908fa9f5b511e82fd2e955f6f3799d6eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5cfe14c_a7351113",
+        "filename": "src/plugins/linux-cp/lcp_vrf.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-03-26T16:15:51Z",
+      "side": 1,
+      "message": "I might be wrong, but I think coverity prefers you to ASSERT fproto \u003c FIB_PROTOCOL_MAX",
+      "revId": "28d2ca6908fa9f5b511e82fd2e955f6f3799d6eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
