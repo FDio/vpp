@@ -90,6 +90,15 @@ underlying VF is configured in trusted mode and spoof-checking is
 disabled (of course, be aware of the `security
 considerations <#Security%20considerations>`__):
 
+If you are passing a VF into a Virtual Machine, configure your SR-IOV
+settings as normal on the host machine.  This includes spoof checking
+(use ``spoofchk on`` if ``spoof on`` is considered garbage on your
+system).  Within your VM, bring the interface up inside your OS and
+note the MAC Address (or set it manually) using ``ifconfig`` or
+``ip link`` and ensure you set the MAC Address of your VPP interface
+to match this with ``vpp# set int mac address <rdma-interface> <mac-
+address>`` and bring it up as usual.
+
 ::
 
    host# ip l set dev enp94s0f0 vf 0 spoof off trust on
