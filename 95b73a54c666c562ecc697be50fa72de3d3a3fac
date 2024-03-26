@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5760257_97ec466e",
+        "filename": "src/plugins/af_packet/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-26T15:08:17Z",
+      "side": 1,
+      "message": "see \"SUPPORTED_OS_LIST Linux\" bellow",
+      "revId": "95b73a54c666c562ecc697be50fa72de3d3a3fac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
