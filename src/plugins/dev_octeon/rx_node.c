@@ -217,7 +217,8 @@ oct_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, u16 n_refill)
 
   while (n_lines >= batch_max_lines)
     {
-      n_alloc = vlib_buffer_alloc (vm, buffer_indices, batch_max_bufs);
+      n_alloc =
+	vlib_buffer_alloc_from_pool (vm, buffer_indices, batch_max_bufs, bpi);
       if (PREDICT_FALSE (n_alloc < batch_max_bufs))
 	goto alloc_fail;
       oct_rxq_refill_batch (vm, lmt_id, addr, lines, buffer_indices, w0,
