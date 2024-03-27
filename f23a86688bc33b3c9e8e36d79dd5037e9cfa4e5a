@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e957e14_1628329d",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "SPD-X",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "044fa3dc_163610b3",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "I usually put that into format.c to avoid #ifdef CLIB_MARCH_VARIANT",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a33c7fea_981e7c45",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "i usually put this on some main.c or similar, and add extern in .h",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7778e7a8_a185a20b",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "not recommended for new code, faster and simpler is to do vlib_buffer_enqueue_to_next....",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a941604_701d4a19",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "see comment for line 118",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0013c78_09e19869",
+        "filename": "src/plugins/pvti/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-03-27T14:10:28Z",
+      "side": 1,
+      "message": "not needed since we moved to clang-format",
+      "revId": "f23a86688bc33b3c9e8e36d79dd5037e9cfa4e5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
