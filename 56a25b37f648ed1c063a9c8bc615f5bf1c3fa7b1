@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "041122d2_ecb07044",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-27T09:26:41Z",
+      "side": 1,
+      "message": "Looks great, I only have 1 small nitpick",
+      "revId": "56a25b37f648ed1c063a9c8bc615f5bf1c3fa7b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b7b793f_4720455d",
+        "filename": "src/plugins/cdp/cdp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-03-27T09:26:41Z",
+      "side": 1,
+      "message": "This prevents the compiler to detect function signature changes. What you can do instead is declare it like this:\n\n  static typeof (snap_register_input_protocol) *snap_reg_input_protocol;\n\nThat way you keep the compile-time type-checking.",
+      "revId": "56a25b37f648ed1c063a9c8bc615f5bf1c3fa7b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
