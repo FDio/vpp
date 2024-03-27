@@ -486,24 +486,24 @@ tls_session_disconnect_callback (session_t * tls_session)
 }
 
 int
-tls_session_accept_callback (session_t * tls_session)
+tls_session_accept_callback (session_t *ts)
 {
   session_t *tls_listener;
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
-  tls_listener =
-    listen_session_get_from_handle (tls_session->listener_handle);
+  tls_listener = listen_session_get_from_handle (ts->listener_handle);
   lctx = tls_listener_ctx_get (tls_listener->opaque);
 
   ctx_handle = tls_ctx_alloc (lctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy (ctx, lctx, sizeof (*lctx));
-  ctx->c_thread_index = vlib_get_thread_index ();
+  ctx->c_s_index = SESSION_INVALID_INDEX;
+  ctx->c_thread_index = ts->thread_index;
   ctx->tls_ctx_handle = ctx_handle;
-  tls_session->session_state = SESSION_STATE_READY;
-  tls_session->opaque = ctx_handle;
-  ctx->tls_session_handle = session_handle (tls_session);
+  ts->session_state = SESSION_STATE_READY;
+  ts->opaque = ctx_handle;
+  ctx->tls_session_handle = session_handle (ts);
   ctx->listener_ctx_index = tls_listener->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   ctx->ckpair_index = lctx->ckpair_index;
