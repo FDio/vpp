@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c2045edc_8e98d802",
+        "filename": "src/plugins/cdp/cdp.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-03-28T14:08:19Z",
+      "side": 1,
+      "message": "This refactor should improve readability, although it still prevents the compiler from detecting function signature changes.",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 79
+      },
+      "revId": "738135580ac4cc345643e0ccd16760a2ef2896d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

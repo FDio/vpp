@@ -33,6 +33,24 @@
       "message": "This prevents the compiler to detect function signature changes. What you can do instead is declare it like this:\n\n  static typeof (snap_register_input_protocol) *snap_reg_input_protocol;\n\nThat way you keep the compile-time type-checking.",
       "revId": "56a25b37f648ed1c063a9c8bc615f5bf1c3fa7b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7536d7cf_087c8e51",
+        "filename": "src/plugins/cdp/cdp.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-03-28T14:08:19Z",
+      "side": 1,
+      "message": "Wouldn\u0027t it require us to include the header file of snap (snap.h) in cdp.h to have access to the function definition of \u0027snap_register_input_protocol\u0027 ? This would make the cdp plugin depend on our snap_llc_osi plugin.",
+      "parentUuid": "1b7b793f_4720455d",
+      "revId": "56a25b37f648ed1c063a9c8bc615f5bf1c3fa7b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
