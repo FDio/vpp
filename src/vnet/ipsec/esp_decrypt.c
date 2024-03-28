@@ -1093,7 +1093,6 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   vlib_buffer_t *sync_bufs[VLIB_FRAME_SIZE];
   u16 sync_nexts[VLIB_FRAME_SIZE], *sync_next = sync_nexts, n_sync = 0;
-  u16 async_nexts[VLIB_FRAME_SIZE], *async_next = async_nexts;
   u16 noop_nexts[VLIB_FRAME_SIZE], n_noop = 0;
   u32 sync_bi[VLIB_FRAME_SIZE];
   u32 noop_bi[VLIB_FRAME_SIZE];
@@ -1305,8 +1304,6 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pd += 1;
 	  pd2 += 1;
 	}
-      else
-	async_next++;
 
       n_left -= 1;
       b += 1;
