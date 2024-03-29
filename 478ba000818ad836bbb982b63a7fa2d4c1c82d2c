@@ -16,6 +16,24 @@
       "message": "move to vppinfra/unix.c and rename to os_get_cpu_affinity, similar oto other os_get_cpu_.... functions there...",
       "revId": "478ba000818ad836bbb982b63a7fa2d4c1c82d2c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c6ef74a_b1f25fe1",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-03-29T11:04:12Z",
+      "side": 1,
+      "message": "Moved to vppinfra/unix.c in recent patchset",
+      "parentUuid": "c3fa943d_94769c5a",
+      "revId": "478ba000818ad836bbb982b63a7fa2d4c1c82d2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
