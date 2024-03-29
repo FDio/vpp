@@ -455,8 +455,11 @@ check_tls_fifo:
       sp->flags |= TRANSPORT_SND_F_DESCHED;
     }
   else
-    /* Request tx reschedule of the app session */
-    app_session->flags |= SESSION_F_CUSTOM_TX;
+    {
+      /* Request tx reschedule of the app session */
+      if (wrote)
+	app_session->flags |= SESSION_F_CUSTOM_TX;
+    }
 
   return wrote;
 }
