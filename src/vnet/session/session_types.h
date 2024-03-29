@@ -154,19 +154,19 @@ typedef enum session_ft_action_
 /*
  * Session states
  */
-#define foreach_session_state				\
-  _(CREATED, "created")					\
-  _(LISTENING, "listening")				\
-  _(CONNECTING, "connecting")				\
-  _(ACCEPTING, "accepting")				\
-  _(READY, "ready")					\
-  _(OPENED, "opened")					\
-  _(TRANSPORT_CLOSING, "transport-closing")		\
-  _(CLOSING, "closing")					\
-  _(APP_CLOSED, "app-closed")				\
-  _(TRANSPORT_CLOSED, "transport-closed")		\
-  _(CLOSED, "closed")					\
-  _(TRANSPORT_DELETED, "transport-deleted")		\
+#define foreach_session_state                                                 \
+  _ (CREATED, "created")                                                      \
+  _ (LISTENING, "listening")                                                  \
+  _ (CONNECTING, "connecting")                                                \
+  _ (ACCEPTING, "accepting")                                                  \
+  _ (READY, "ready")                                                          \
+  _ (OPENED, "opened")                                                        \
+  _ (TRANSPORT_CLOSING, "transport-closing")                                  \
+  _ (CLOSING, "closing")                                                      \
+  _ (APP_CLOSED, "app-closed")                                                \
+  _ (TRANSPORT_CLOSED, "transport-closed")                                    \
+  _ (CLOSED, "closed")                                                        \
+  _ (TRANSPORT_DELETED, "transport-deleted")
 
 typedef enum
 {
@@ -174,7 +174,7 @@ typedef enum
   foreach_session_state
 #undef _
     SESSION_N_STATES,
-} session_state_t;
+} __clib_packed session_state_t;
 
 #define foreach_session_flag                                                  \
   _ (RX_EVT, "rx-event")                                                      \
@@ -225,13 +225,13 @@ typedef struct session_
   session_type_t session_type;
 
   /** State in session layer state machine. See @ref session_state_t */
-  volatile u8 session_state;
+  volatile session_state_t session_state;
 
   /** Index of the app worker that owns the session */
   u32 app_wrk_index;
 
   /** Session flags. See @ref session_flags_t */
-  u32 flags;
+  session_flags_t flags;
 
   /** Index of the transport connection associated to the session */
   u32 connection_index;
