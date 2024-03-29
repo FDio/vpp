@@ -644,10 +644,15 @@ class VPPType(Packer):
             else:
                 arg = data[a]
                 kwarg = kwargs[a] if a in kwargs else None
-            if isinstance(self.packers[i], VPPType):
-                b += self.packers[i].pack(arg, kwarg)
-            else:
-                b += self.packers[i].pack(arg, kwargs)
+            try:
+                if isinstance(self.packers[i], VPPType):
+                    b += self.packers[i].pack(arg, kwarg)
+                else:
+                    b += self.packers[i].pack(arg, kwargs)
+            except Exception as e:
+                raise VPPSerializerValueError(
+                    f"Exception while packing {data} for {self.name}.{a}."
+                ) from e
 
         return bytes(b)
 
