@@ -72,12 +72,14 @@ typedef struct
 typedef struct
 {
   CLIB_ALIGN_MARK (cl, 128);
-  union
-  {
-    struct npa_batch_alloc_status_s status;
-    u64 iova[16];
-  };
+  u64 iova[16];
 } oct_npa_batch_alloc_cl128_t;
+
+typedef union
+{
+  struct npa_batch_alloc_status_s status;
+  u64 as_u64;
+} oct_npa_batch_alloc_status_t;
 
 STATIC_ASSERT_SIZEOF (oct_npa_batch_alloc_cl128_t, 128);
 
