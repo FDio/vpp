@@ -57,12 +57,20 @@ oct_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
+  u32 sz = sizeof (void *) * ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS;
+  vnet_dev_rv_t rv;
 
   log_debug (dev, "tx_queue_alloc: queue %u alocated", txq->queue_id);
 
-  return vnet_dev_dma_mem_alloc (
-    vm, dev, sizeof (void *) * ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS, 128,
-    (void **) &ctq->ba_buffer);
+  rv = vnet_dev_dma_mem_alloc (vm, dev, sz, 128, (void **) &ctq->ba_buffer);
+
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  clib_memset_u64 (ctq->ba_buffer, OCT_BATCH_ALLOC_IOVA0_MASK,
+		   ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
+
+  return rv;
 }
 
 void
