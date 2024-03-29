@@ -46,8 +46,10 @@ oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 
       for (cl = ctq->ba_buffer + ctq->ba_first_cl; num_cl > 0; num_cl--, cl++)
 	{
-	  u8 count;
-	  if (cl->status.ccode == ALLOC_CCODE_INVAL)
+	  oct_npa_batch_alloc_status_t st;
+
+	  st.as_u64 = __atomic_load_n (cl->iova, __ATOMIC_ACQUIRE);
+	  if (st.status.ccode == ALLOC_CCODE_INVAL)
 	    {
 	      ctx->batch_alloc_not_ready++;
 	      n_freed = bi - (u32 *) ctq->ba_buffer;
@@ -63,11 +65,10 @@ oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 	      return 0;
 	    }
 
-	  count = cl->status.count;
 #if (CLIB_DEBUG > 0)
-	  cl->status.count = cl->status.ccode = 0;
+	  cl->iova[0] &= 0xfffffffffffffff8;
 #endif
-	  if (PREDICT_TRUE (count == 16))
+	  if (PREDICT_TRUE (st.status.count == 16))
 	    {
 	      /* optimize for likely case where cacheline is full */
 	      vlib_get_buffer_indices_with_offset (vm, (void **) cl, bi, 16,
@@ -76,9 +77,9 @@ oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 	    }
 	  else
 	    {
-	      vlib_get_buffer_indices_with_offset (vm, (void **) cl, bi, count,
-						   off);
-	      bi += count;
+	      vlib_get_buffer_indices_with_offset (vm, (void **) cl, bi,
+						   st.status.count, off);
+	      bi += st.status.count;
 	    }
 	}
 
