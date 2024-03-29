@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd9d14d1_64ce8a2d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2596
+      },
+      "writtenOn": "2024-03-29T16:43:00Z",
+      "side": 1,
+      "message": "Compilation successful with Clang 16, 17, 18.",
+      "revId": "6ec60a3bcc4f8bf71822096332e343d351db1837",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
