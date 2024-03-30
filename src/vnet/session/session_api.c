@@ -711,9 +711,10 @@ done:
     VL_API_APP_WORKER_ADD_DEL_REPLY,
     ((!rv && mp->is_add) ? vec_len (args.segment->name) : 0), ({
       rmp->is_add = mp->is_add;
-      rmp->wrk_index = clib_host_to_net_u32 (args.wrk_map_index);
+      rmp->wrk_index = mp->wrk_index;
       if (!rv && mp->is_add)
 	{
+	  rmp->wrk_index = clib_host_to_net_u32 (args.wrk_map_index);
 	  rmp->segment_handle = clib_host_to_net_u64 (args.segment_handle);
 	  rmp->app_event_queue_address =
 	    fifo_segment_msg_q_offset ((fifo_segment_t *) args.segment, 0);
@@ -1465,10 +1466,11 @@ done:
   rmp = &msg.worker_add_del_reply;
   rmp->retval = rv;
   rmp->is_add = mp->is_add;
+  rmp->wrk_index = mp->wrk_index;
   rmp->api_client_handle = sapi_handle;
-  rmp->wrk_index = args.wrk_map_index;
   if (!rv && mp->is_add)
     {
+      rmp->wrk_index = args.wrk_map_index;
       rmp->segment_handle = args.segment_handle;
       /* No segment name and size. This supports only memfds */
       rmp->app_event_queue_address =
