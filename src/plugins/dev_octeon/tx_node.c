@@ -392,11 +392,11 @@ VNET_DEV_NODE_FN (oct_tx_node)
 
   if (n < n_pkts)
     {
-      n = n_pkts - n;
-      vlib_buffer_free (vm, from + n, n);
+      u32 n_free = n_pkts - n;
+      vlib_buffer_free (vm, from + n, n_free);
       vlib_error_count (vm, node->node_index, OCT_TX_NODE_CTR_NO_FREE_SLOTS,
-			n);
-      n_pkts -= ctx.n_drop;
+			n_free);
+      n_pkts -= n_free;
     }
 
   if (ctx.n_drop)
