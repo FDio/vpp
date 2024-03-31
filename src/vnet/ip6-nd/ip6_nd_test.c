@@ -318,6 +318,81 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+static int
+api_sw_interface_ip6nd_ra_config_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip6nd_ra_config_v2_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 flags = 0;
+  u32 max_interval = 0;
+  u32 min_interval = 0;
+  u32 lifetime = 0;
+  u32 initial_count = 0;
+  u32 initial_interval = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "maxint %d", &max_interval))
+	;
+      else if (unformat (i, "minint %d", &min_interval))
+	;
+      else if (unformat (i, "life %d", &lifetime))
+	;
+      else if (unformat (i, "count %d", &initial_count))
+	;
+      else if (unformat (i, "interval %d", &initial_interval))
+	;
+      else if (unformat (i, "managed"))
+	flags |= IP6_RA_FLAG_MANAGED;
+      else if (unformat (i, "send_radv"))
+	flags |= IP6_RA_FLAG_SEND_RADV;
+      else if (unformat (i, "other"))
+	flags |= IP6_RA_FLAG_OTHER;
+      else if (unformat (i, "ll"))
+	flags |= IP6_RA_FLAG_LL_OPTION;
+      else if (unformat (i, "send"))
+	flags |= IP6_RA_FLAG_SEND_UNICAST;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_IP6ND_RA_CONFIG_V2, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->max_interval = ntohl (max_interval);
+  mp->min_interval = ntohl (min_interval);
+  mp->lifetime = ntohl (lifetime);
+  mp->initial_count = ntohl (initial_count);
+  mp->initial_interval = ntohl (initial_interval);
+  mp->flags = flags;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply, return good/bad news  */
+  W (ret);
+  return ret;
+}
+
 static int
 api_ip6nd_proxy_enable_disable (vat_main_t *vam)
 {
@@ -365,6 +440,46 @@ api_sw_interface_ip6nd_ra_dump (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_sw_interface_ip6nd_ra_v2_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_ip6nd_ra_v2_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_IP6ND_RA_DUMP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* Send it */
+  S (mp);
+
+  /* Use control ping for synchronization */
+  PING (&ip6_nd_test_main, mp_ping);
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
 static void
 vl_api_sw_interface_ip6nd_ra_details_t_handler (
   vl_api_sw_interface_ip6nd_ra_details_t *mp)
@@ -376,6 +491,23 @@ vl_api_sw_interface_ip6nd_ra_details_t_handler (
   /* Read the message */
   sw_if_index = ntohl (mp->sw_if_index);
   send_radv = mp->send_radv;
+
+  /* Print it */
+  print (vam->ofp, "sw_if_index: %u, send_radv: %s", sw_if_index,
+	 (send_radv ? "on" : "off"));
+}
+
+static void
+vl_api_sw_interface_ip6nd_ra_v2_details_t_handler (
+  vl_api_sw_interface_ip6nd_ra_v2_details_t *mp)
+{
+  vat_main_t *vam = ip6_nd_test_main.vat_main;
+  u32 sw_if_index;
+  u8 send_radv;
+
+  /* Read the message */
+  sw_if_index = ntohl (mp->sw_if_index);
+  send_radv = !!(mp->flags & IP6_RA_FLAG_SEND_RADV);
 
   /* Print it */
   print (vam->ofp, "sw_if_index: %u, send_radv: %s", sw_if_index,
