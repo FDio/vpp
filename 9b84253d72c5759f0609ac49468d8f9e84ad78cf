@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ecdc9dd4_b4889a51",
+        "filename": "src/vnet/fib/fib_entry.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-31T15:52:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6df5fac4_1a050dcf",
+      "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "23f97f05_b7315a1f",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Main reason - I think pool_foreach_index() works better checking next index is valid each loop w/o caching next pool elt address unlike pool_foreach(), therefore if pool is reallocated or pool elt put, next loop iteration will be fine with next valid index.\nAt the other hand, it\u0027s api process running in main thread, no other api or cli commands creating/deleting fib tables is expected, right? If so, this is not really useful in current codebase and one main thread approach.\nShould I remove?",
       "parentUuid": "23f97f05_b7315a1f",
+      "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "097fa715_4dc20fbc",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-03-31T15:52:32Z",
+      "side": 1,
+      "message": "send_ip_table_details() takes tib_table entry both for ip4 and ip6 fibs, so changing into fib_index will require passing exact fib pool (or is_ip6 bool) as well to get the entry. Or split send_ip_table_details() into two ip4 and ip6 variants, I think it\u0027ll be not beautiful and requires more code.\nThat\u0027s another one reason I\u0027ve kept send_ip_table_details() as is.",
+      "parentUuid": "3acafaeb_2655fc63",
       "revId": "9b84253d72c5759f0609ac49468d8f9e84ad78cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
