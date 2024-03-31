@@ -189,6 +189,26 @@ static void
 }
 
 static void
+vl_api_sw_interface_ip6nd_ra_config_v2_t_handler (
+  vl_api_sw_interface_ip6nd_ra_config_v2_t *mp)
+{
+  vl_api_sw_interface_ip6nd_ra_config_v2_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = ip6_ra_config_flags (
+    vm, ntohl (mp->sw_if_index), mp->flags, ntohl (mp->lifetime),
+    ntohl (mp->initial_count), ntohl (mp->initial_interval),
+    ntohl (mp->max_interval), ntohl (mp->min_interval));
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_CONFIG_V2_REPLY);
+}
+
+static void
   vl_api_sw_interface_ip6nd_ra_prefix_t_handler
   (vl_api_sw_interface_ip6nd_ra_prefix_t * mp)
 {
@@ -389,8 +409,8 @@ vl_api_sw_interface_ip6nd_ra_dump_t_handler (
 }
 
 static void
-  vl_api_ip6nd_send_router_solicitation_t_handler
-  (vl_api_ip6nd_send_router_solicitation_t * mp)
+vl_api_ip6nd_send_router_solicitation_t_handler (
+  vl_api_ip6nd_send_router_solicitation_t *mp)
 {
   vl_api_ip6nd_send_router_solicitation_reply_t *rmp;
   icmp6_send_router_solicitation_params_t params;
