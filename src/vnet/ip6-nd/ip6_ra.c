@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ip6-nd/ip6_ra.h>
+#include <vnet/ip6-nd/ip6_nd.api_types.h>
 
 #include <vnet/ip/ip.h>
 #include <vnet/ip-neighbor/ip_neighbor_dp.h>
@@ -1687,6 +1688,72 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   return (0);
 }
 
+int
+ip6_ra_config_flags (vlib_main_t *vm, u32 sw_if_index, u8 flags, u32 lifetime,
+		     u32 initial_count, u32 initial_interval, u32 max_interval,
+		     u32 min_interval)
+{
+  ip6_ra_t *radv_info;
+
+  /* look up the radv_t  information for this interface */
+  radv_info = ip6_ra_get_itf (sw_if_index);
+
+  if (!radv_info)
+    return (VNET_API_ERROR_IP6_NOT_ENABLED);
+
+  radv_info->send_radv = flags & IP6_RA_FLAG_SEND_RADV;
+  radv_info->adv_managed_flag = flags & IP6_RA_FLAG_MANAGED;
+  radv_info->adv_other_flag = flags & IP6_RA_FLAG_SEND_RADV;
+  radv_info->send_unicast = flags & IP6_RA_FLAG_MANAGED;
+
+  if ((max_interval != 0) && (min_interval == 0))
+    min_interval = .75 * max_interval;
+
+  radv_info->max_radv_interval =
+    max_interval != 0 ? max_interval : DEF_MAX_RADV_INTERVAL;
+  radv_info->min_radv_interval =
+    min_interval != 0 ? min_interval : DEF_MIN_RADV_INTERVAL;
+
+  if (lifetime)
+    {
+      if (lifetime > MAX_DEF_RTR_LIFETIME)
+	lifetime = MAX_DEF_RTR_LIFETIME;
+
+      if (lifetime <= max_interval)
+	return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  if (flags & IP6_RA_FLAG_USE_LIFETIME)
+    {
+      radv_info->adv_router_lifetime_in_sec =
+	lifetime != 0 ? lifetime : MAX_DEF_RTR_LIFETIME;
+    }
+
+  if (min_interval != 0)
+    {
+      if ((min_interval > .75 * max_interval) || (min_interval < 3))
+	return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  radv_info->min_radv_interval = min_interval;
+  radv_info->max_radv_interval = max_interval;
+
+  if ((initial_count > MAX_INITIAL_RTR_ADVERTISEMENTS) ||
+      (initial_interval > MAX_INITIAL_RTR_ADVERT_INTERVAL))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  radv_info->initial_adverts_count =
+    initial_count != 0 ? initial_count : MAX_INITIAL_RTR_ADVERTISEMENTS;
+  radv_info->initial_adverts_interval =
+    initial_interval != 0 ? initial_interval : MAX_INITIAL_RTR_ADVERT_INTERVAL;
+
+  radv_info->initial_adverts_sent = radv_info->initial_adverts_count - 1;
+  radv_info->next_multicast_time = vlib_time_now (vm);
+  radv_info->last_multicast_time = vlib_time_now (vm);
+  radv_info->last_radv_time = 0;
+
+  return (0);
+}
 
 int
 ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
