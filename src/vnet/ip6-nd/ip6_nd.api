@@ -20,7 +20,7 @@
     called through a shared memory interface.
 */
 
-option version = "1.1.0";
+option version = "1.2.0";
 
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
@@ -44,6 +44,7 @@ import "vnet/interface_types.api";
 */
 autoreply define sw_interface_ip6nd_ra_config
 {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_interface_index_t sw_if_index;
@@ -61,6 +62,40 @@ autoreply define sw_interface_ip6nd_ra_config
   u32 initial_count;
   u32 initial_interval;
 };
+
+
+enumflag ra_flags : u8 {
+    IP6_RA_FLAG_SEND_RADV = 0x0,
+    IP6_RA_FLAG_MANAGED = 0x1,
+    IP6_RA_FLAG_OTHER = 0x2,
+    IP6_RA_FLAG_LL_OPTION = 0x4,
+    IP6_RA_FLAG_SEND_UNICAST = 0x8,
+    IP6_RA_FLAG_USE_LIFETIME = 0x10,
+};
+
+/** \brief IPv6 router advertisement config request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param flags - router advertisements flags
+    @param max_interval -
+    @param min_interval -
+    @param lifetime -
+    @param initial_count -
+    @param initial_interval -
+*/
+autoreply define sw_interface_ip6nd_ra_config_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_ra_flags_t flags;
+  u32 max_interval;
+  u32 min_interval;
+  u32 lifetime;
+  u32 initial_count;
+  u32 initial_interval;
+};
+
 
 /** \brief IPv6 router advertisement prefix config request
     @param client_index - opaque cookie to identify the sender
@@ -233,6 +268,7 @@ define sw_interface_ip6nd_ra_details
   u32 n_prefixes;
   vl_api_ip6nd_ra_prefix_t prefixes[n_prefixes];
 };
+
 
 /** \brief IPv6 ND (mirror) proxy
     @param client_index - opaque cookie to identify the sender
