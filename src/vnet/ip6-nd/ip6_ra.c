@@ -1687,6 +1687,84 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   return (0);
 }
 
+/* Direct RA config */
+int
+ip6_ra_config_v2 (vlib_main_t *vm, u32 sw_if_index, u8 send_radv, u8 managed,
+		  u8 other, u8 ll_option, u8 send_unicast, u8 use_lifetime,
+		  u32 lifetime, u32 initial_count, u32 initial_interval,
+		  u32 max_interval, u32 min_interval, u8 defaults)
+{
+  ip6_ra_t *radv_info;
+
+  /* look up the radv_t  information for this interface */
+  radv_info = ip6_ra_get_itf (sw_if_index);
+
+  if (!radv_info)
+    return (VNET_API_ERROR_IP6_NOT_ENABLED);
+
+  if ((max_interval != 0) && (min_interval == 0))
+    min_interval = .75 * max_interval;
+
+  max_interval = (max_interval != 0) ?
+			 ((defaults) ? DEF_MAX_RADV_INTERVAL : max_interval) :
+			 radv_info->max_radv_interval;
+  min_interval = (min_interval != 0) ?
+			 ((defaults) ? DEF_MIN_RADV_INTERVAL : min_interval) :
+			 radv_info->min_radv_interval;
+  lifetime = (use_lifetime != 0) ?
+		     ((defaults) ? DEF_DEF_RTR_LIFETIME : lifetime) :
+		     radv_info->adv_router_lifetime_in_sec;
+
+  if (lifetime)
+    {
+      if (lifetime > MAX_DEF_RTR_LIFETIME)
+	lifetime = MAX_DEF_RTR_LIFETIME;
+
+      if (lifetime <= max_interval)
+	return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  if (min_interval != 0)
+    {
+      if ((min_interval > .75 * max_interval) || (min_interval < 3))
+	return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  if ((initial_count > MAX_INITIAL_RTR_ADVERTISEMENTS) ||
+      (initial_interval > MAX_INITIAL_RTR_ADVERT_INTERVAL))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  /*
+     if "flag" is set and is_no is true then restore default value else set
+     value corresponding to "flag" if "flag" is clear  don't change
+     corresponding value
+   */
+  radv_info->send_radv = defaults ? 1 : send_radv;
+  radv_info->adv_managed_flag = defaults ? 0 : managed;
+  radv_info->adv_other_flag = defaults ? 0 : other;
+  radv_info->adv_link_layer_address = defaults ? 1 : ll_option;
+  radv_info->send_unicast = defaults ? 0 : send_unicast;
+
+  radv_info->min_radv_interval = min_interval;
+  radv_info->max_radv_interval = max_interval;
+  radv_info->adv_router_lifetime_in_sec = lifetime;
+
+  radv_info->initial_adverts_count =
+    defaults ?
+	    MAX_INITIAL_RTR_ADVERTISEMENTS :
+	    ((initial_count != 0) ? initial_count : MAX_INITIAL_RTR_ADVERTISEMENTS);
+  radv_info->initial_adverts_interval =
+    defaults ? MAX_INITIAL_RTR_ADVERT_INTERVAL :
+		     ((initial_interval != 0) ? initial_interval :
+						MAX_INITIAL_RTR_ADVERT_INTERVAL);
+
+  radv_info->initial_adverts_sent = radv_info->initial_adverts_count - 1;
+  radv_info->next_multicast_time = vlib_time_now (vm);
+  radv_info->last_multicast_time = vlib_time_now (vm);
+  radv_info->last_radv_time = 0;
+
+  return (0);
+}
 
 int
 ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
