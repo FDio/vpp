@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "78dea47a_f9861f30",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-01T10:55:35Z",
+      "side": 1,
+      "message": "We need to build vnet_dev support for crypto devices first, same like we have for NICs.... Working on that...",
+      "revId": "122bf7cc5e84b283d52abe959b67e52aa64049e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
