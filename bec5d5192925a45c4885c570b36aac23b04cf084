@@ -16,6 +16,23 @@
       "message": "we cannot have two variants of external dependencies. External dependencies are sometimes packaged to .deb file....",
       "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67b5b2a0_80778886",
+        "filename": "src/plugins/dev_octeon/tx_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-01T18:07:44Z",
+      "side": 1,
+      "message": "What is the difference between octeon9 and octeon10 here?",
+      "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
