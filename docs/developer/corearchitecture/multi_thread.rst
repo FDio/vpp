@@ -43,7 +43,9 @@ placement works in the following way:
 
 -  if “skip-cores X” is defined first X cores will not be used
 -  if “main-core X” is defined, VPP main thread will be placed on core
-   X, otherwise 1st available one will be used
+   X, otherwise 1st available one will be used.
+-  if "main-core auto" is defined, VPP main thread will be placed on 1st core
+   in VPP core affinity list.
 -  if “workers N” is defined vpp will allocate first N available cores
    and it will run threads on them
 -  if “corelist-workers A,B1-Bn,C1-Cn” is defined vpp will automatically
@@ -98,6 +100,7 @@ on cores 2,3,4.
 .. code-block:: console
 
    cpu {
+     main-core auto
      skip-cores 1
      workers 3
    }
