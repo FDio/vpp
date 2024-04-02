@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b336bb35_486e239f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-04-02T02:44:24Z",
+      "side": 1,
+      "message": "Please do not check in build-root/dpdk_mlx_default.sh as it is a build artifact.\n\nPlease add this to the .gitignore file in a separate gerrit change.",
+      "revId": "e08964c41d0009605363c1d045e4cfed5c210fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
