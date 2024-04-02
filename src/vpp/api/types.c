@@ -176,13 +176,19 @@ unformat_vl_api_ip6_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_vl_api_prefix (unformat_input_t * input, va_list * args)
+unformat_vl_api_prefix (unformat_input_t *input, va_list *args)
 {
-   vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
+  vl_api_prefix_t *pfx = va_arg (*args, vl_api_prefix_t *);
+
+  u32 prefix_len = 0;
 
   if (unformat (input, "%U/%d", unformat_vl_api_address, &pfx->address,
-                &pfx->len))
+		&prefix_len) &&
+      prefix_len <= CLIB_U8_MAX)
+    {
+      pfx->len = prefix_len;
       return (1);
+    }
   return (0);
 }
 
