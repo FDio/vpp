@@ -1185,6 +1185,31 @@ unformat_double_quoted_string (unformat_input_t *input, va_list *va)
 
 #endif /* CLIB_UNIX */
 
+__clib_export uword
+unformat_u8 (unformat_input_t *input, va_list *args)
+{
+  u8 *d = va_arg (*args, u8 *);
+
+  u32 tmp;
+  if (!unformat (input, "%u", &tmp) || tmp > CLIB_U8_MAX)
+    return 0;
+
+  *d = tmp;
+  return 1;
+}
+
+__clib_export uword
+unformat_u16 (unformat_input_t *input, va_list *args)
+{
+  u16 *d = va_arg (*args, u16 *);
+
+  u32 tmp;
+  if (!unformat (input, "%u", &tmp) || tmp > CLIB_U16_MAX)
+    return 0;
+
+  *d = tmp;
+  return 1;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
