@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5103bcb_6dd425fa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2024-04-02T06:54:02Z",
+      "side": 1,
+      "message": "What situation do you end up in where you have sparse message id allocation?\nPlugins for example are not supposed to sit on fixed offsets.",
+      "revId": "1d8c5a410706b7371d0c52401c63c0c58c3d356c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
