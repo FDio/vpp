@@ -276,6 +276,12 @@ unformat_init_cstring (unformat_input_t * input, char *string)
 /* Setup for unformat of given vector string; vector will be freed by unformat_string. */
 void unformat_init_vector (unformat_input_t * input, u8 * vector_string);
 
+/* Unformat u8 */
+unformat_function_t unformat_u8;
+
+/* Unformat u16 */
+unformat_function_t unformat_u16;
+
 /* Format function for unformat input usable when an unformat error
    has occurred. */
 u8 *format_unformat_error (u8 * s, va_list * va);
