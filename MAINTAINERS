@@ -886,6 +886,11 @@ M:	Filip Tehlar <ftehlar@cisco.com>
 M:	Maros Ondrejicka <maros.ondrejicka@pantheon.tech>
 F:	extras/hs-test
 
+Github Actions/Workflows based CI/CD pipeline
+I: ga-ci
+M: Dave Wallace <dwallacelf@gmail.com>
+F: .github
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
