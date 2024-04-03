@@ -264,12 +264,16 @@ class TestVPPInterfacesQemu:
                     self.iprf_client_host_interface_on_linux,
                     self.iprf_client_host_interface_on_vpp,
                     self.client_namespace,
-                    layer2["client_ip4_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["client_ip4_prefix"],
-                    layer2["client_ip6_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["client_ip6_prefix"],
+                    (
+                        layer2["client_ip4_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["client_ip4_prefix"]
+                    ),
+                    (
+                        layer2["client_ip6_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["client_ip6_prefix"]
+                    ),
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -298,18 +302,26 @@ class TestVPPInterfacesQemu:
                     id=101,
                     host_namespace=self.client_namespace,
                     ip_version=ip_version,
-                    host_ip4_prefix=layer2["client_ip4_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["client_ip4_prefix"],
-                    host_ip6_prefix=layer2["client_ip6_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["client_ip6_prefix"],
-                    host_ip4_gw=vpp_client_nexthop
-                    if x_connect_mode == "L3" and ip_version == 4
-                    else None,
-                    host_ip6_gw=vpp_client_nexthop
-                    if x_connect_mode == "L3" and ip_version == 6
-                    else None,
+                    host_ip4_prefix=(
+                        layer2["client_ip4_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["client_ip4_prefix"]
+                    ),
+                    host_ip6_prefix=(
+                        layer2["client_ip6_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["client_ip6_prefix"]
+                    ),
+                    host_ip4_gw=(
+                        vpp_client_nexthop
+                        if x_connect_mode == "L3" and ip_version == 4
+                        else None
+                    ),
+                    host_ip6_gw=(
+                        vpp_client_nexthop
+                        if x_connect_mode == "L3" and ip_version == 6
+                        else None
+                    ),
                     int_type=client_if_type,
                     host_if_name=f"{client_if_type}0",
                     enable_gso=enable_client_if_gso,
@@ -373,12 +385,16 @@ class TestVPPInterfacesQemu:
                     id=102,
                     host_namespace=self.server_namespace,
                     ip_version=ip_version,
-                    host_ip4_prefix=layer2["server_ip4_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["server_ip4_prefix"],
-                    host_ip6_prefix=layer2["server_ip6_prefix"]
-                    if x_connect_mode == "L2"
-                    else layer3["server_ip6_prefix"],
+                    host_ip4_prefix=(
+                        layer2["server_ip4_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["server_ip4_prefix"]
+                    ),
+                    host_ip6_prefix=(
+                        layer2["server_ip6_prefix"]
+                        if x_connect_mode == "L2"
+                        else layer3["server_ip6_prefix"]
+                    ),
                     int_type=server_if_type,
                     host_if_name=f"{server_if_type}0",
                     enable_gso=enable_server_if_gso,

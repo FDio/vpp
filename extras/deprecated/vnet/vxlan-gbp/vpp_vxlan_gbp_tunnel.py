@@ -56,9 +56,9 @@ class VppVxlanGbpTunnel(VppInterface):
             "dst": self.dst,
             "mode": self.mode,
             "vni": self.vni,
-            "mcast_sw_if_index": self.mcast_itf.sw_if_index
-            if self.mcast_itf
-            else INDEX_INVALID,
+            "mcast_sw_if_index": (
+                self.mcast_itf.sw_if_index if self.mcast_itf else INDEX_INVALID
+            ),
             "encap_table_id": self.encap_table_id,
             "instance": self.instance,
         }

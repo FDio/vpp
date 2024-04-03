@@ -108,9 +108,11 @@ class CField(Field):
                 % (
                     ".".join([prefix] + path),
                     self.name,
-                    self.get_vla_parameter_name(path)
-                    if is_alloc
-                    else "%s.%s" % (prefix, self.get_vla_field_name(path)),
+                    (
+                        self.get_vla_parameter_name(path)
+                        if is_alloc
+                        else "%s.%s" % (prefix, self.get_vla_field_name(path))
+                    ),
                 )
             ]
         else:
@@ -593,12 +595,16 @@ class CMessage(Message):
                     '  VAPI_DBG("Swapping `%s\'@%%p to big endian", msg);'
                     % self.get_c_name()
                 ),
-                "  %s(&msg->header);" % self.header.get_swap_to_be_func_name()
-                if self.header is not None
-                else "",
-                "  %s(&msg->payload);" % self.get_swap_payload_to_be_func_name()
-                if self.has_payload()
-                else "",
+                (
+                    "  %s(&msg->header);" % self.header.get_swap_to_be_func_name()
+                    if self.header is not None
+                    else ""
+                ),
+                (
+                    "  %s(&msg->payload);" % self.get_swap_payload_to_be_func_name()
+                    if self.has_payload()
+                    else ""
+                ),
                 "}",
             ]
         )
@@ -612,12 +618,16 @@ class CMessage(Message):
                     '  VAPI_DBG("Swapping `%s\'@%%p to host byte order", msg);'
                     % self.get_c_name()
                 ),
-                "  %s(&msg->header);" % self.header.get_swap_to_host_func_name()
-                if self.header is not None
-                else "",
-                "  %s(&msg->payload);" % self.get_swap_payload_to_host_func_name()
-                if self.has_payload()
-                else "",
+                (
+                    "  %s(&msg->header);" % self.header.get_swap_to_host_func_name()
+                    if self.header is not None
+                    else ""
+                ),
+                (
+                    "  %s(&msg->payload);" % self.get_swap_payload_to_host_func_name()
+                    if self.has_payload()
+                    else ""
+                ),
                 "}",
             ]
         )
@@ -791,12 +801,16 @@ class CMessage(Message):
                 "    name_with_crc,",
                 "    sizeof(name_with_crc) - 1,",
                 "    true," if has_context else "    false,",
-                "    offsetof(%s, context)," % self.header.get_c_name()
-                if has_context
-                else "    0,",
-                ("    offsetof(%s, payload)," % self.get_c_name())
-                if self.has_payload()
-                else "    VAPI_INVALID_MSG_ID,",
+                (
+                    "    offsetof(%s, context)," % self.header.get_c_name()
+                    if has_context
+                    else "    0,"
+                ),
+                (
+                    ("    offsetof(%s, payload)," % self.get_c_name())
+                    if self.has_payload()
+                    else "    VAPI_INVALID_MSG_ID,"
+                ),
                 "    (verify_msg_size_fn_t)%s," % self.get_verify_msg_size_func_name(),
                 "    (generic_swap_fn_t)%s," % self.get_swap_to_be_func_name(),
                 "    (generic_swap_fn_t)%s," % self.get_swap_to_host_func_name(),

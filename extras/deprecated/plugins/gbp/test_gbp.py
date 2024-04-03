@@ -391,9 +391,9 @@ class VppGbpEndpointGroup(VppObject):
 
     def encode(self) -> dict:
         return {
-            "uplink_sw_if_index": self.uplink.sw_if_index
-            if self.uplink
-            else INDEX_INVALID,
+            "uplink_sw_if_index": (
+                self.uplink.sw_if_index if self.uplink else INDEX_INVALID
+            ),
             "bd_id": self.bd.bd.bd_id,
             "rd_id": self.rd.rd_id,
             "vnid": self.vnid,
@@ -460,12 +460,12 @@ class VppGbpBridgeDomain(VppObject):
         return {
             "flags": self.flags,
             "bvi_sw_if_index": self.bvi.sw_if_index,
-            "uu_fwd_sw_if_index": self.uu_fwd.sw_if_index
-            if self.uu_fwd
-            else INDEX_INVALID,
-            "bm_flood_sw_if_index": self.bm_flood.sw_if_index
-            if self.bm_flood
-            else INDEX_INVALID,
+            "uu_fwd_sw_if_index": (
+                self.uu_fwd.sw_if_index if self.uu_fwd else INDEX_INVALID
+            ),
+            "bm_flood_sw_if_index": (
+                self.bm_flood.sw_if_index if self.bm_flood else INDEX_INVALID
+            ),
             "bd_id": self.bd.bd_id,
             "rd_id": self.rd.rd_id,
         }
@@ -510,12 +510,12 @@ class VppGbpRouteDomain(VppObject):
             "scope": self.scope,
             "ip4_table_id": self.t4.table_id,
             "ip6_table_id": self.t6.table_id,
-            "ip4_uu_sw_if_index": self.ip4_uu.sw_if_index
-            if self.ip4_uu
-            else INDEX_INVALID,
-            "ip6_uu_sw_if_index": self.ip6_uu.sw_if_index
-            if self.ip6_uu
-            else INDEX_INVALID,
+            "ip4_uu_sw_if_index": (
+                self.ip4_uu.sw_if_index if self.ip4_uu else INDEX_INVALID
+            ),
+            "ip6_uu_sw_if_index": (
+                self.ip6_uu.sw_if_index if self.ip6_uu else INDEX_INVALID
+            ),
         }
 
     def add_vpp_config(self):
