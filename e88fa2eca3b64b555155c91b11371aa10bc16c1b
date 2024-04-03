@@ -16,6 +16,24 @@
       "message": "This is just a network-endian u64 (https://git.fd.io/vpp/tree/src/plugins/acl/acl.c#n215), so `clib_net_to_host_u64` here should be more than enough, and it won\u0027t leak BSD specifics here.\n\nEven more, it would fix this test on a (hypothetical) big-endian machine.",
       "revId": "e88fa2eca3b64b555155c91b11371aa10bc16c1b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c06b842b_87171c0f",
+        "filename": "src/plugins/acl/acl_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-04-03T09:11:52Z",
+      "side": 1,
+      "message": "I think that is a better change and I\u0027ve updated my review.",
+      "parentUuid": "2bc34473_866e205a",
+      "revId": "e88fa2eca3b64b555155c91b11371aa10bc16c1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
