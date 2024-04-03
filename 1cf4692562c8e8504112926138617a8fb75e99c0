@@ -123,6 +123,23 @@
       "message": "perftest-3n-icx nic_intel-e810cqANDdrv_vfio_pciAND1cAND1518bANDethip4ipsec1000tnlsw-ip4base-int-aes256gcm nic_intel-e810cqANDdrv_vfio_pciAND1cAND1518bANDethip4ipsec1000tnlhwasync-ip4base-int-aes256gcm nic_intel-e810cqANDdrv_vfio_pciAND2cAND1518bANDethip4ipsec8tnlswasync-scheduler-ip4base-int-aes256gcm !soak",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5667b1ae_7c9acb3d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-04-03T14:18:41Z",
+      "side": 1,
+      "message": "perftest-3n-snr nic_*ANDdrv_vfio_pciAND1cAND1518bANDethip4ipsec1000tnlsw-ip4base-int-aes256gcm nic_*ANDdrv_vfio_pciAND1cAND1518bANDethip4ipsec1000tnlhwasync-ip4base-int-aes256gcm nic_*ANDdrv_vfio_pciAND2cAND1518bANDethip4ipsec8tnlswasync-scheduler-ip4base-int-aes256gcm !soak",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
