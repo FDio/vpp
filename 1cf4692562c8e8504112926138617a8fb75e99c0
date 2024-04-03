@@ -157,6 +157,24 @@
       "message": "Sorry guys, my email backlog is quite long.\nHere is some documentation on the two previous triggers: https://csit.fd.io/cdocs/methodology/per_patch_testing/\nSometimes the interpretation of the results is quite an art, but anybody can trigger a run while waiting for my response.",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b4fd6e4_d2c8d678",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2024-04-03T14:29:34Z",
+      "side": 1,
+      "message": "Thank you so much, Vratko!",
+      "parentUuid": "3d9b35fd_aac1fd2b",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
