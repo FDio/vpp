@@ -248,7 +248,7 @@ class TestIPv6(TestIPv6ND):
         # create 2 subinterfaces for p1 and pg2
         self.sub_interfaces = [
             VppDot1QSubint(self, self.pg1, 100),
-            VppDot1QSubint(self, self.pg2, 200)
+            VppDot1QSubint(self, self.pg2, 200),
             # TODO: VppDot1ADSubint(self, self.pg2, 200, 300, 400)
         ]
 

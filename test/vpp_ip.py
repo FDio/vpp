@@ -2,6 +2,7 @@
   IP Types
 
 """
+
 import logging
 
 from ipaddress import ip_address

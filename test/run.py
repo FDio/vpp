@@ -111,9 +111,9 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
                         request being processed.
         """
         os.environ["VIRTUAL_ENV"] = context.env_dir
-        os.environ[
-            "CUSTOM_COMPILE_COMMAND"
-        ] = "make test-refresh-deps (or update requirements.txt)"
+        os.environ["CUSTOM_COMPILE_COMMAND"] = (
+            "make test-refresh-deps (or update requirements.txt)"
+        )
         # Set the venv python executable & binary install path
         env_exe = context.env_exe
         bin_path = context.bin_path
