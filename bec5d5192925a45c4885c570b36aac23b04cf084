@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3291e13a_1cccc30e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-04-04T11:23:51Z",
+      "side": 1,
+      "message": "We can either move Octeon10 to 128 Byte cache-line size to have same cache-line size on both octeon9 and octeon10 or add oct_plt_cache_line_size function to get cache-line size in roc and build only one variant.",
+      "parentUuid": "5d5dac77_e0082f09",
+      "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "67b5b2a0_80778886",
         "filename": "src/plugins/dev_octeon/tx_node.c",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2024-04-01T18:07:44Z",
       "side": 1,
       "message": "What is the difference between octeon9 and octeon10 here?",
+      "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9fb901b2_9d191821",
+        "filename": "src/plugins/dev_octeon/tx_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-04-04T11:23:51Z",
+      "side": 1,
+      "message": "Allocation of pointers from aura is different as octeon9 doesn\u0027t have NPA_LF_AURA_BATCH_ALLOC register to support batch alloc of pointers and similarly batch free.",
+      "parentUuid": "67b5b2a0_80778886",
       "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
