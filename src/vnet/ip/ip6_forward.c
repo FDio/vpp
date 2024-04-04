@@ -51,6 +51,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/adj/adj_dp.h>
 #include <vnet/pg/pg.h>
 
 #ifndef CLIB_MARCH_VARIANT
@@ -1897,18 +1898,6 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
-	  if (do_counters)
-	    {
-	      vlib_increment_combined_counter
-		(&adjacency_counters,
-		 thread_index, adj_index0, 1,
-		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-	      vlib_increment_combined_counter
-		(&adjacency_counters,
-		 thread_index, adj_index1, 1,
-		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
-	    }
-
 	  /* Check MTU of outgoing interface. */
 	  u16 ip0_len =
 	    clib_net_to_host_u16 (ip0->payload_length) +
@@ -1933,16 +1922,15 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
-	      p0->current_data -= rw_len0;
-	      p0->current_length += rw_len0;
+	      vlib_buffer_advance (p0, -(word) rw_len0);
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 	      next0 = adj0[0].rewrite_header.next_index;
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start_w_cfg_index
-		  (lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
-		   adj0->ia_cfg_index);
+		vnet_feature_arc_start_w_cfg_index (
+		  lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
+		  adj0->ia_cfg_index);
 	    }
 	  else
 	    {
@@ -1950,18 +1938,16 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	    }
 	  if (PREDICT_TRUE (error1 == IP6_ERROR_NONE))
 	    {
-	      p1->current_data -= rw_len1;
-	      p1->current_length += rw_len1;
-
+	      vlib_buffer_advance (p1, -(word) rw_len1);
 	      tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 	      next1 = adj1[0].rewrite_header.next_index;
 
 	      if (PREDICT_FALSE
 		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start_w_cfg_index
-		  (lm->output_feature_arc_index, tx_sw_if_index1, &next1, p1,
-		   adj1->ia_cfg_index);
+		vnet_feature_arc_start_w_cfg_index (
+		  lm->output_feature_arc_index, tx_sw_if_index1, &next1, p1,
+		  adj1->ia_cfg_index);
 	    }
 	  else
 	    {
@@ -1969,40 +1955,46 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	    }
 
 	  if (is_midchain)
-	    {
-	      /* Guess we are only writing on ipv6 header. */
-	      vnet_rewrite_two_headers (adj0[0], adj1[0],
-					ip0, ip1, sizeof (ip6_header_t));
-	    }
+	    /* Guess we are only writing on ipv6 header. */
+	    vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1,
+				      sizeof (ip6_header_t));
 	  else
 	    /* Guess we are only writing on simple Ethernet header. */
 	    vnet_rewrite_two_headers (adj0[0], adj1[0],
 				      ip0, ip1, sizeof (ethernet_header_t));
 
+	  if (do_counters)
+	    {
+	      if (error0 == IP6_ERROR_NONE)
+		vlib_increment_combined_counter (
+		  &adjacency_counters, thread_index, adj_index0, 1,
+		  vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	      if (error1 == IP6_ERROR_NONE)
+		vlib_increment_combined_counter (
+		  &adjacency_counters, thread_index, adj_index1, 1,
+		  vlib_buffer_length_in_chain (vm, p1) + rw_len1);
+	    }
+
 	  if (is_midchain)
 	    {
-	      if (adj0->sub_type.midchain.fixup_func)
-		adj0->sub_type.midchain.fixup_func
-		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	      if (adj1->sub_type.midchain.fixup_func)
-		adj1->sub_type.midchain.fixup_func
-		  (vm, adj1, p1, adj1->sub_type.midchain.fixup_data);
+	      if (error0 == IP6_ERROR_NONE)
+		adj_midchain_fixup (vm, adj0, p0, VNET_LINK_IP6);
+	      if (error1 == IP6_ERROR_NONE)
+		adj_midchain_fixup (vm, adj1, p1, VNET_LINK_IP6);
 	    }
 	  if (is_mcast)
 	    {
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_ip_mcast_fixup_header (IP6_MCAST_ADDR_MASK,
-					  adj0->
-					  rewrite_header.dst_mcast_offset,
-					  &ip0->dst_address.as_u32[3],
-					  (u8 *) ip0);
-	      vnet_ip_mcast_fixup_header (IP6_MCAST_ADDR_MASK,
-					  adj1->
-					  rewrite_header.dst_mcast_offset,
-					  &ip1->dst_address.as_u32[3],
-					  (u8 *) ip1);
+	      if (error0 == IP6_ERROR_NONE)
+		vnet_ip_mcast_fixup_header (
+		  IP6_MCAST_ADDR_MASK, adj0->rewrite_header.dst_mcast_offset,
+		  &ip0->dst_address.as_u32[3], (u8 *) ip0);
+	      if (error1 == IP6_ERROR_NONE)
+		vnet_ip_mcast_fixup_header (
+		  IP6_MCAST_ADDR_MASK, adj1->rewrite_header.dst_mcast_offset,
+		  &ip1->dst_address.as_u32[3], (u8 *) ip1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2061,27 +2053,9 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		}
 	    }
 
-	  if (is_midchain)
-	    {
-	      /* Guess we are only writing on ip6 header. */
-	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip6_header_t));
-	    }
-	  else
-	    /* Guess we are only writing on simple Ethernet header. */
-	    vnet_rewrite_one_header (adj0[0], ip0,
-				     sizeof (ethernet_header_t));
-
 	  /* Update packet buffer attributes/set output interface. */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
-
-	  if (do_counters)
-	    {
-	      vlib_increment_combined_counter
-		(&adjacency_counters,
-		 thread_index, adj_index0, 1,
-		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-	    }
 
 	  /* Check MTU of outgoing interface. */
 	  u16 ip0_len =
@@ -2098,9 +2072,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
 	    {
-	      p0->current_data -= rw_len0;
-	      p0->current_length += rw_len0;
-
+	      vlib_buffer_advance (p0, -(word) rw_len0);
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
@@ -2108,28 +2080,35 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE
 		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
-		vnet_feature_arc_start_w_cfg_index
-		  (lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
-		   adj0->ia_cfg_index);
+		vnet_feature_arc_start_w_cfg_index (
+		  lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
+		  adj0->ia_cfg_index);
+
+	      if (is_midchain)
+		/* Guess we are only writing on ip6 header. */
+		vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip6_header_t));
+	      else
+		/* Guess we are only writing on simple Ethernet header. */
+		vnet_rewrite_one_header (adj0[0], ip0,
+					 sizeof (ethernet_header_t));
+
+	      if (do_counters)
+		{
+		  vlib_increment_combined_counter (
+		    &adjacency_counters, thread_index, adj_index0, 1,
+		    vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+		}
+
+	      if (is_midchain && adj0->sub_type.midchain.fixup_func)
+		adj_midchain_fixup (vm, adj0, p0, VNET_LINK_IP6);
+	      if (is_mcast)
+		vnet_ip_mcast_fixup_header (
+		  IP6_MCAST_ADDR_MASK, adj0->rewrite_header.dst_mcast_offset,
+		  &ip0->dst_address.as_u32[3], (u8 *) ip0);
 	    }
 	  else
 	    {
 	      p0->error = error_node->errors[error0];
-	    }
-
-	  if (is_midchain)
-	    {
-	      if (adj0->sub_type.midchain.fixup_func)
-		adj0->sub_type.midchain.fixup_func
-		  (vm, adj0, p0, adj0->sub_type.midchain.fixup_data);
-	    }
-	  if (is_mcast)
-	    {
-	      vnet_ip_mcast_fixup_header (IP6_MCAST_ADDR_MASK,
-					  adj0->
-					  rewrite_header.dst_mcast_offset,
-					  &ip0->dst_address.as_u32[3],
-					  (u8 *) ip0);
 	    }
 
 	  from += 1;
