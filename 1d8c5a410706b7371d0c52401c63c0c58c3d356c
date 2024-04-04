@@ -16,6 +16,24 @@
       "message": "What situation do you end up in where you have sparse message id allocation?\nPlugins for example are not supposed to sit on fixed offsets.",
       "revId": "1d8c5a410706b7371d0c52401c63c0c58c3d356c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca580e19_cf2f06c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-04-04T20:40:14Z",
+      "side": 1,
+      "message": "Ho Ole,\n\nPlugins register api messages with requesting id range with vl_msg_api_get_msg_ids(name, n), where n is required range. Right after each plugin api message is registered with vl_msg_api_add_msg_name_and_crc() - registered messages go into hash msg_index_by_name_and_crc.\nOne plugin may request n range, but register only m \u003c n due any reason (old api, like https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/vnet/srmpls/sr_mpls_api.c;h\u003d920856acff6578a53eeafc02d03cb8a2a5851291;hb\u003dHEAD#l191, or error in old api like https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/plugins/nsh/nsh_api.c;hb\u003db040f98a88954ccf2e63fd7b2676865a2dbe0078#l710 with too high n). Next plugin will continue to register its messages from n+1, so there\u0027ll be no ids between m and n+1.\n\nOnce socket client is connected, registered message table is send by looping over hash msg_index_by_name_and_crc, so len(message_table) will be less than max message id due plugin(s) too greedy allocations.\n\nShared mem api used full API message time with real indices.\nGovpp allocates map for real message count, no issue there\nhttps://github.com/FDio/govpp/blob/master/adapter/socketclient/socketclient.go#L393\nVAC/VAPI/Lua calucates max of message api id and have no issue.\n\nPython api preallocates id_names and id_msgdef lists by exact vpp_dictionary_maxid \u003d\u003d len(message_table). So on referring that list with too high message index - python fails with \"IndexError: list assignment index out of range\"\nhttps://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/vpp-api/python/vpp_papi/vpp_papi.py;h\u003d30c00cd8dd318425957a204b0ecb147261723e8e;hb\u003dHEAD#l582\n\nSo, I think calculation max of msg in in python api follows the rest of clients and fixes the possible sparse messages cases for now and future.",
+      "parentUuid": "c5103bcb_6dd425fa",
+      "revId": "1d8c5a410706b7371d0c52401c63c0c58c3d356c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
