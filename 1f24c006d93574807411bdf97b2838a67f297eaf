@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e988199_5bd91a02",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2024-04-04T19:12:44Z",
+      "side": 1,
+      "message": "Added an affirmative test to prove the ARP reply on p2p works based on our discussion on vpp-dev@.\n\nNeale, if you have access again, PTAL. Happy to send this to an alternate committer otherwise.",
+      "revId": "1f24c006d93574807411bdf97b2838a67f297eaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
