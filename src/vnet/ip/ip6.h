@@ -68,6 +68,11 @@ typedef struct
 
   /* Index into FIB vector. */
   u32 index;
+
+  /**
+   * The hash table DB
+   */
+  uword *fib_entry_by_dst_address;
 } ip6_fib_t;
 
 typedef struct ip6_mfib_t
