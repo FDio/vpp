@@ -501,7 +501,6 @@ tls_session_accept_callback (session_t *ts)
   ctx->c_s_index = SESSION_INVALID_INDEX;
   ctx->c_thread_index = ts->thread_index;
   ctx->tls_ctx_handle = ctx_handle;
-  ts->session_state = SESSION_STATE_READY;
   ts->opaque = ctx_handle;
   ctx->tls_session_handle = session_handle (ts);
   ctx->listener_ctx_index = tls_listener->opaque;
@@ -517,6 +516,9 @@ tls_session_accept_callback (session_t *ts)
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       tls_disconnect_transport (ctx);
     }
+
+  if (ts->session_state < SESSION_STATE_READY)
+    ts->session_state = SESSION_STATE_READY;
 
   return 0;
 }
