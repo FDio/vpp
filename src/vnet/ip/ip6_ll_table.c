@@ -144,17 +144,20 @@ ip6_ll_table_entry_delete (const ip6_ll_prefix_t * ilp)
   fib_node_index_t ip6_ll_entry_index;
   u32 fib_index;
 
-  ip6_ll_entry_index = ip6_ll_table_lookup_exact_match (ilp);
+  fib_index = ip6_ll_fib_get (ilp->ilp_sw_if_index);
+  if (~0 == fib_index)
+    return;
 
-  if (FIB_NODE_INDEX_INVALID != ip6_ll_entry_index)
-    fib_table_entry_delete_index (ip6_ll_entry_index, FIB_SOURCE_IP6_ND);
+  ip6_ll_entry_index = ip6_ll_table_lookup_exact_match (ilp);
+  if (FIB_NODE_INDEX_INVALID == ip6_ll_entry_index)
+    return;
+
+  fib_table_entry_delete_index (ip6_ll_entry_index, FIB_SOURCE_IP6_ND);
 
   /*
    * if there are no ND sourced prefixes left, then we can clean up this FIB
    */
-  fib_index = ip6_ll_fib_get (ilp->ilp_sw_if_index);
-  if (~0 != fib_index &&
-      0 == fib_table_get_num_entries (fib_index, FIB_PROTOCOL_IP6,
+  if (0 == fib_table_get_num_entries (fib_index, FIB_PROTOCOL_IP6,
 				      FIB_SOURCE_IP6_ND))
     {
       fib_table_unlock (fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_IP6_ND);
@@ -208,33 +211,10 @@ ip6_ll_table_show_all (vlib_main_t * vm, u32 fib_index)
   vec_free (ctx.entries);
 }
 
-typedef struct
-{
-  u32 fib_index;
-  u64 count_by_prefix_length[129];
-} count_routes_in_fib_at_prefix_length_arg_t;
-
-static int
-count_routes_in_fib_at_prefix_length (clib_bihash_kv_24_8_t * kvp, void *arg)
-{
-  count_routes_in_fib_at_prefix_length_arg_t *ap = arg;
-  int mask_width;
-
-  if ((kvp->key[2] >> 32) != ap->fib_index)
-    return (BIHASH_WALK_CONTINUE);
-
-  mask_width = kvp->key[2] & 0xFF;
-
-  ap->count_by_prefix_length[mask_width]++;
-
-  return (BIHASH_WALK_CONTINUE);
-}
-
 static clib_error_t *
 ip6_ll_show_fib (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  count_routes_in_fib_at_prefix_length_arg_t _ca, *ca = &_ca;
   fib_table_t *fib_table;
   int verbose, matching;
   ip6_address_t matching_address;
@@ -272,9 +252,6 @@ ip6_ll_show_fib (vlib_main_t * vm,
 
   vec_foreach_index (sw_if_index, ip6_ll_table.ilt_fibs)
   {
-    fib_source_t source;
-    u8 *s = NULL;
-
     fib_index = ip6_ll_table.ilt_fibs[sw_if_index];
     if (~0 == fib_index)
       continue;
@@ -284,44 +261,9 @@ ip6_ll_show_fib (vlib_main_t * vm,
     if (!(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
       continue;
 
-    s = format (s, "%U, fib_index:%d, locks:[",
-		format_fib_table_name, fib_index,
-		FIB_PROTOCOL_IP6, fib_index);
-    vec_foreach_index (source, fib_table->ft_locks)
-    {
-      if (0 != fib_table->ft_locks[source])
-	{
-	  s = format (s, "%U:%d, ",
-		      format_fib_source, source, fib_table->ft_locks[source]);
-	}
-    }
-    s = format (s, "]");
-    vlib_cli_output (vm, "%v", s);
-    vec_free (s);
-
-    /* Show summary? */
+    ip6_fib_table_show (vm, fib_table, !verbose);
     if (!verbose)
-      {
-	clib_bihash_24_8_t *h =
-	  &ip6_fib_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash;
-	int len;
-
-	vlib_cli_output (vm, "%=20s%=16s", "Prefix length", "Count");
-
-	clib_memset (ca, 0, sizeof (*ca));
-	ca->fib_index = fib_index;
-
-	clib_bihash_foreach_key_value_pair_24_8
-	  (h, count_routes_in_fib_at_prefix_length, ca);
-
-	for (len = 128; len >= 0; len--)
-	  {
-	    if (ca->count_by_prefix_length[len])
-	      vlib_cli_output (vm, "%=20d%=16lld",
-			       len, ca->count_by_prefix_length[len]);
-	  }
-	continue;
-      }
+      continue;
 
     if (!matching)
       {
