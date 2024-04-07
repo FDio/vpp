@@ -2455,7 +2455,7 @@ ip6_scan_hbh_options (vlib_buffer_t * b0,
 		    }
 		  break;
 		}
-	      return (error0);
+	      //return (error0);
 	    }
 	}
       opt0 =
