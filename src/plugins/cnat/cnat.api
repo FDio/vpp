@@ -166,6 +166,25 @@ define cnat_get_snat_addresses_reply
   vl_api_interface_index_t sw_if_index;
 };
 
+define cnat_snat_addresses_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define cnat_snat_addresses_details
+{
+  u32 context;
+  i32 retval;
+  u32 fwd_table_id4;
+  u32 fwd_table_id6;
+  u32 ret_table_id4;
+  u32 ret_table_id6;
+  vl_api_ip4_address_t snat_ip4;
+  vl_api_ip6_address_t snat_ip6;
+  vl_api_interface_index_t sw_if_index;
+};
+
 autoreply define cnat_snat_policy_add_del_exclude_pfx
 {
   u32 client_index;

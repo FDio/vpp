@@ -548,6 +548,7 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
 	  cpe->snat_ip4_mask = (u32) ~0;
 	}
       cpe->snat_ip4.ce_sw_if_index = sw_if_index;
+      cpe->fwd_fib_index4 = fwd_fib_index;
       cpe->ret_fib_index4 = ret_fib_index;
       cnat_resolve_ep (&cpe->snat_ip4);
       cnat_translation_watch_addr (index, 0, &cpe->snat_ip4, CNAT_RESOLV_ADDR_SNAT);
@@ -575,6 +576,7 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
 	  cpe->snat_ip6_mask = (u64) ~0;
 	}
       cpe->snat_ip6.ce_sw_if_index = sw_if_index;
+      cpe->fwd_fib_index6 = fwd_fib_index;
       cpe->ret_fib_index6 = ret_fib_index;
       cnat_resolve_ep (&cpe->snat_ip6);
       cnat_translation_watch_addr (index, 0, &cpe->snat_ip6, CNAT_RESOLV_ADDR_SNAT);
