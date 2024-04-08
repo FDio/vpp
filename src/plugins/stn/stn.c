@@ -49,7 +49,7 @@ format_stn_rule (u8 * s, va_list * args)
   s = format (s, "%Uiface: %U (%d)\n", format_white_space, indent,
   	      format_vnet_sw_if_index_name, vnet_get_main(), r->sw_if_index,
 	      r->sw_if_index);
-  s = format (s, "%Unext_node: %s (%d)", format_white_space, indent,
+  s = format (s, "%Unext_node: %v (%d)", format_white_space, indent,
 	      next_node->name, next_node->index);
   return s;
 }
