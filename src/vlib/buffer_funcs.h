@@ -777,7 +777,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   const int queue_size = 128;
   vlib_buffer_pool_t *bp = 0;
   u8 buffer_pool_index = ~0;
-  u32 n_queue = 0, queue[queue_size + 4];
+  u32 n_queue = 0, queue[queue_size + 8];
   vlib_buffer_template_t bt = {};
 #if defined(CLIB_HAVE_VEC128)
   vlib_buffer_t bpi_mask = {.buffer_pool_index = ~0 };
