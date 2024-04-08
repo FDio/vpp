@@ -74,6 +74,9 @@ typedef struct cnat_snat_policy_entry_t_
 
   u32 cti;
 
+  u32 fwd_fib_index4;
+  u32 fwd_fib_index6;
+
   u32 ret_fib_index4;
   u32 ret_fib_index6;
 
