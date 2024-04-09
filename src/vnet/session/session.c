@@ -1596,6 +1596,20 @@ session_reset (session_t * s)
   session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_RESET);
 }
 
+void
+session_detach_app (session_t *s)
+{
+  if (s->session_state < SESSION_STATE_TRANSPORT_CLOSING)
+    session_close (s);
+  else if (s->session_state < SESSION_STATE_TRANSPORT_CLOSED)
+    session_set_state (s, SESSION_STATE_APP_CLOSED);
+  else if (s->session_state < SESSION_STATE_CLOSED)
+    session_set_state (s, SESSION_STATE_CLOSED);
+
+  s->flags |= SESSION_F_APP_CLOSED;
+  s->app_wrk_index = APP_INVALID_INDEX;
+}
+
 /**
  * Notify transport the session can be half-disconnected.
  *
