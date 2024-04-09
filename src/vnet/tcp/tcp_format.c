@@ -139,7 +139,9 @@ format_tcp_header (u8 * s, va_list * args)
 	      clib_net_to_host_u16 (tcp->window),
 	      clib_net_to_host_u16 (tcp->checksum));
 
-  if (tcp_options_parse (tcp, &opts, tcp_is_syn (tcp)) < 0)
+  if (header_bytes > max_header_bytes)
+    s = format (s, "\n%Uoptions: truncated", format_white_space, indent);
+  else if (tcp_options_parse (tcp, &opts, tcp_is_syn (tcp)) < 0)
     s = format (s, "\n%Uoptions: parsing failed", format_white_space, indent);
   else
     s = format (s, "\n%U%U", format_white_space, indent, format_tcp_options,
