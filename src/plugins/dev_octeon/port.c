@@ -379,6 +379,34 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
+oct_op_config_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rv;
+
+  if (roc_nix_is_vf_or_sdp (nix))
+    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+
+  rv = roc_nix_npc_promisc_ena_dis (nix, enable);
+  if (rv)
+    {
+      return oct_roc_err (dev, rv, "roc_nix_npc_promisc_ena_dis failed");
+    }
+
+  rv = roc_nix_mac_promisc_mode_enable (nix, enable);
+  if (rv)
+    {
+      return oct_roc_err (dev, rv,
+			  "roc_nix_mac_promisc_mode_enable(1) failed");
+      return -1;
+    }
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
 oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
 {
@@ -421,6 +449,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
+      rv = oct_op_config_promisc_mode (vm, port, req->enable);
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
