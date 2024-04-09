@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d7591a86_6c5d74fd",
+        "filename": "src/vnet/fib/ip4_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 380,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-09T04:32:35Z",
+      "side": 1,
+      "message": "why are these not MP-safe?",
+      "revId": "f347854c6b0cfc47e10dc9ae49521826c06c6eba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
