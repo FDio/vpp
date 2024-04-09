@@ -154,8 +154,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  old_state = s->session_state;
 	  if (app->cb_fns.session_accept_callback (s))
 	    {
-	      session_close (s);
-	      s->app_wrk_index = APP_INVALID_INDEX;
+	      session_detach_app (s);
 	      break;
 	    }
 	  if (is_builtin)
@@ -184,8 +183,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	    break;
 	  if (rv)
 	    {
-	      session_close (s);
-	      s->app_wrk_index = APP_INVALID_INDEX;
+	      session_detach_app (s);
 	      break;
 	    }
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
