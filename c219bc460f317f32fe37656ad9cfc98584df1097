@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad479d21_a56f4985",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-09T04:44:21Z",
+      "side": 1,
+      "message": "i\u0027m in favour of refactoring code. but please to the refactor in one commit and the functional change in another.",
+      "revId": "c219bc460f317f32fe37656ad9cfc98584df1097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f8bd93b_8c60bf92",
+        "filename": "src/plugins/urpf/urpf_dp.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-09T04:44:21Z",
+      "side": 1,
+      "message": "i can\u0027t find where this is set, so why would it be ~0?",
+      "revId": "c219bc460f317f32fe37656ad9cfc98584df1097",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
