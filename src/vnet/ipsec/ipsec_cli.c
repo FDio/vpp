@@ -41,17 +41,19 @@ set_interface_spd_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat
-      (line_input, "%U %u", unformat_vnet_sw_interface, im->vnet_main,
-       &sw_if_index, &spd_id))
-    ;
-  else if (unformat (line_input, "del"))
-    is_add = 0;
-  else
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      error = clib_error_return (0, "parse error: '%U'",
-				 format_unformat_error, line_input);
-      goto done;
+      if (unformat (line_input, "%U %u", unformat_vnet_sw_interface,
+		    im->vnet_main, &sw_if_index, &spd_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   err = ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
@@ -72,10 +74,9 @@ done:
 }
 
 VLIB_CLI_COMMAND (set_interface_spd_command, static) = {
-    .path = "set interface ipsec spd",
-    .short_help =
-    "set interface ipsec spd <int> <id>",
-    .function = set_interface_spd_command_fn,
+  .path = "set interface ipsec spd",
+  .short_help = "set interface ipsec spd <del> <int> <id>",
+  .function = set_interface_spd_command_fn,
 };
 
 static clib_error_t *
