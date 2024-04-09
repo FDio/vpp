@@ -448,6 +448,7 @@ int session_stop_listen (session_t * s);
 void session_half_close (session_t *s);
 void session_close (session_t * s);
 void session_reset (session_t * s);
+void session_detach_app (session_t *s);
 void session_transport_half_close (session_t *s);
 void session_transport_close (session_t * s);
 void session_transport_reset (session_t * s);
