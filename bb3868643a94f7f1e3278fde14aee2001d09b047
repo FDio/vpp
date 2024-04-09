@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff55e155_5e429335",
+        "filename": "src/vnet/udp/udp_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-09T05:05:10Z",
+      "side": 1,
+      "message": "... this check is superfluous.",
+      "revId": "bb3868643a94f7f1e3278fde14aee2001d09b047",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0c9a9ebb_446a78eb",
+        "filename": "src/vnet/udp/udp_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-09T05:05:10Z",
+      "side": 1,
+      "message": "this only iterates over valid indices so ...",
+      "revId": "bb3868643a94f7f1e3278fde14aee2001d09b047",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
