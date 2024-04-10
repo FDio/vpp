@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "516d1cab_6a1b1ac7",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-10T14:04:19Z",
+      "side": 1,
+      "message": "should we keep VNET_DEV_ERR_PORT_STARTED ?",
+      "revId": "51422b00e694b864194734087dd165e0145eb90c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
