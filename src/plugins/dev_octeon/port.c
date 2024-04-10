@@ -416,6 +416,44 @@ oct_op_config_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
   return VNET_DEV_OK;
 }
 
+static vnet_dev_rv_t
+oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
+			   vnet_dev_hw_addr_t *addr, int is_add,
+			   int is_primary)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+
+  i32 rrv;
+
+  if (is_primary)
+    {
+      if (is_add)
+	{
+	  /* Update mac address at NPC */
+	  rrv = roc_nix_npc_mac_addr_set (nix, (u8 *) addr);
+	  if (rrv)
+	    rv = oct_roc_err (dev, rrv, "roc_nix_npc_mac_addr_set() failed");
+
+	  /* Update mac address at CGX for PFs only */
+	  if (!roc_nix_is_vf_or_sdp (nix))
+	    {
+	      rrv = roc_nix_mac_addr_set (nix, (u8 *) addr);
+	      if (rrv)
+		{
+		  /* Rollback to previous mac address */
+		  roc_nix_npc_mac_addr_set (nix,
+					    (u8 *) &port->primary_hw_addr);
+		  rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_set() failed");
+		}
+	    }
+	}
+    }
+  return rv;
+}
+
 vnet_dev_rv_t
 oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
@@ -465,6 +503,9 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+				      /* is_add */ 1,
+				      /* is_primary */ 1);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
