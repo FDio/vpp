@@ -101,7 +101,7 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   u32 indent = format_get_indent (s);
 
   s = format (s, "Hardware Address is %U", format_vnet_dev_hw_addr,
-	      &port->attr.hw_addr);
+	      &port->primary_hw_addr);
   s = format (s, ", %u RX queues (max %u), %u TX queues (max %u)",
 	      pool_elts (port->rx_queues), port->attr.max_rx_queues,
 	      pool_elts (port->tx_queues), port->attr.max_tx_queues);

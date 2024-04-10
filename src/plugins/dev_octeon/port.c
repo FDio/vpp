@@ -106,6 +106,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       oct_port_deinit (vm, port);
       return oct_roc_err (dev, rrv, "roc_npc_init() failed");
     }
+
+  cp->oct_index_by_mac_addr =
+    hash_create_mem (0, sizeof (vnet_dev_hw_addr_t), sizeof (uword));
   cp->npc_initialized = 1;
 
   foreach_vnet_dev_port_rx_queue (q, port)
@@ -378,20 +381,107 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
     oct_txq_stop (vm, q);
 }
 
+static vnet_dev_rv_t
+oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
+			   vnet_dev_hw_addr_t *addr, int is_add,
+			   int is_primary)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+
+  u32 index;
+  uword *p;
+  i32 rrv;
+
+  if (is_primary)
+    {
+      if (is_add)
+	{
+	  rrv = roc_nix_npc_mac_addr_set (nix, (u8 *) addr);
+	  if (rrv)
+	    rv = oct_roc_err (dev, rrv, "roc_nix_npc_mac_addr_set() failed");
+	}
+    }
+  else
+    {
+      if (is_add)
+	{
+	  rrv = roc_nix_mac_addr_add (nix, (u8 *) addr);
+	  if (!rrv)
+	    rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_add() failed");
+
+	  hash_set_mem (cp->oct_index_by_mac_addr, addr, rrv);
+	}
+      else
+	{
+	  p = hash_get_mem (cp->oct_index_by_mac_addr, addr);
+	  index = p[0];
+	  rrv = roc_nix_mac_addr_del (nix, index);
+	  if (rrv)
+	    rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_del() failed");
+	}
+    }
+
+  return rv;
+}
+
+vnet_dev_rv_t
+oct_port_validate_params (vlib_main_t *vm, vnet_dev_port_t *port,
+			  u32 rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+
+  u32 max_len;
+  i32 min_len;
+
+  if (port->started)
+    return VNET_DEV_ERR_PORT_STARTED;
+
+  min_len = (i32) rx_frame_size - OCT_PKTIO_MAX_L2_SIZE;
+  if (min_len < 0 || min_len < NIX_MIN_HW_FRS)
+    {
+      log_err (
+	dev,
+	"Requested rx_frame_size is lower than the minimum supported value.");
+      return VNET_DEV_ERR_INVALID_VALUE;
+    }
+
+  max_len = roc_nix_max_pkt_len (nix);
+  if (rx_frame_size > max_len)
+    {
+      log_err (
+	dev,
+	"Requested rx_frame_size is higher than the max supported value.");
+      return VNET_DEV_ERR_INVALID_VALUE;
+    }
+
+  return rv;
+}
+
 vnet_dev_rv_t
 oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
 {
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv = VNET_DEV_OK;
 
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      if (port->started)
-	rv = VNET_DEV_ERR_PORT_STARTED;
+      rv = oct_port_validate_params (vm, port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
+      break;
+
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
@@ -417,6 +507,10 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 		     vnet_dev_port_cfg_change_req_t *req)
 {
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
 
   switch (req->type)
     {
@@ -424,15 +518,27 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+				      /* is_add */ 1,
+				      /* is_primary */ 1);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+				      /* is_add */ 1,
+				      /* is_primary */ 0);
       break;
 
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+				      /* is_add */ 0,
+				      /* is_primary */ 0);
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      rrv = roc_nix_mac_max_rx_len_set (nix, req->max_rx_frame_size);
+      if (rrv)
+	rv = oct_roc_err (dev, rrv, "roc_nix_mac_max_rx_len_set() failed");
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:

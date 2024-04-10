@@ -17,6 +17,8 @@
 
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
 
+#define OCT_PKTIO_MAX_L2_SIZE 30
+
 typedef enum
 {
   OCT_DEVICE_TYPE_UNKNOWN = 0,
@@ -54,6 +56,7 @@ typedef struct
   u8 npc_initialized : 1;
   struct roc_npc npc;
   oct_flow_entry_t *flow_entries;
+  uword *oct_index_by_mac_addr;
 } oct_port_t;
 
 typedef struct
