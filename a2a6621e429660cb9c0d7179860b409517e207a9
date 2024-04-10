@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e48c21d3_8339bc36",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1013,
+      "author": {
+        "id": 3021
+      },
+      "writtenOn": "2024-04-10T16:16:00Z",
+      "side": 1,
+      "message": "these seem fine to me - not sure how standard this is here but i\u0027d just print out the exact state name suffix instead",
+      "revId": "a2a6621e429660cb9c0d7179860b409517e207a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
