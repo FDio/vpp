@@ -50,3 +50,19 @@ define fib_source_details
     u32 context;
     vl_api_fib_source_t src;
 };
+
+define fib_index_from_table_id
+{
+  u32 client_index;
+  u32 context;
+
+  u32 table_id;
+  vl_api_fib_protocol_t fproto;
+};
+
+define fib_index_from_table_id_reply
+{
+  u32 context;
+  i32 retval;
+  u8 fib_index;
+};

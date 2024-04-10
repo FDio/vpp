@@ -631,6 +631,24 @@ vl_api_fib_source_dump_t_handler (vl_api_fib_source_dump_t * mp)
     fib_source_walk(send_fib_source, &ctx);
 }
 
+static void
+vl_api_fib_index_from_table_id_t_handler (vl_api_fib_index_from_table_id_t * mp)
+{
+    vl_api_fib_index_from_table_id_reply_t *rmp;
+    fib_protocol_t fproto;
+    u32 fib_index;
+    int rv = 0;
+
+    fib_index = fib_table_find(mp->fproto, ntohl(mp->table_id));
+
+    if (fib_index == ~0)
+        rv = VNET_API_ERROR_NO_SUCH_FIB;
+
+    REPLY_MACRO2 (VL_API_FIB_INDEX_FROM_TABLE_ID_REPLY,
+    ({
+        rmp->fib_index = fib_index;
+    }));
+}
 
 #include <vnet/fib/fib.api.c>
 
