@@ -379,6 +379,52 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
+oct_valid_config_max_rx_frame_size (vnet_dev_port_t *port,
+				    u32 max_rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+
+  max_len = roc_nix_max_pkt_len (nix);
+  if (max_rx_frame_size > max_len)
+    {
+      return oct_roc_err ("Given MTU(%d) exceeds hw supported(%d) value",
+			  max_rx_frame_size, max_len);
+      return -1;
+    }
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+oct_config_max_rx_frame_size (vnet_dev_port_t *port, u32 max_rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rv;
+  /*
+   * TODO: Flush SQ's before changing MTU
+   */
+  rv = roc_nix_mac_mtu_set (nix, mtu);
+  if (rv)
+    {
+      return oct_roc_err (dev, rv, "roc_nix_mac_mtu_set failed");
+    }
+
+  rv = roc_nix_mac_max_rx_len_set (nix, mtu);
+  if (rv)
+    {
+      return oct_roc_err (dev, rv, "roc_nix_mac_max_rx_len_set failed");
+    }
+
+  port->max_rx_frame_size = max_rx_frame_size;
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
 oct_validate_config_promisc_mode (vnet_dev_port_t *port, int enable)
 {
   vnet_dev_t *dev = port->dev;
@@ -425,8 +471,7 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      if (port->started)
-	rv = VNET_DEV_ERR_PORT_STARTED;
+      rv = oct_valid_config_max_rx_frame_size (port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
@@ -474,6 +519,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      rv = oct_config_max_rx_frame_size (port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
