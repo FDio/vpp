@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1cb32259_d896e315",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-04-10T06:25:05Z",
+      "side": 1,
+      "message": "This check can be in oct_port_cfg_change_validate().",
+      "range": {
+        "startLine": 389,
+        "startChar": 0,
+        "endLine": 390,
+        "endChar": 43
+      },
+      "revId": "b07605e5dda616971944c22d7b7ea24819c20e75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e582c78_3d2c29d2",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-04-10T06:25:05Z",
+      "side": 1,
+      "message": "this should be based on \u0027enable\u0027.",
+      "range": {
+        "startLine": 402,
+        "startChar": 38,
+        "endLine": 402,
+        "endChar": 39
+      },
+      "revId": "b07605e5dda616971944c22d7b7ea24819c20e75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d86ee58_3a1e9771",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-04-10T06:25:05Z",
+      "side": 1,
+      "message": "not neede, as already has return at L401.",
+      "range": {
+        "startLine": 403,
+        "startChar": 0,
+        "endLine": 403,
+        "endChar": 16
+      },
+      "revId": "b07605e5dda616971944c22d7b7ea24819c20e75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
