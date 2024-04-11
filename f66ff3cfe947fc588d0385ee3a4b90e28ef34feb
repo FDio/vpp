@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "21d2682c_e83e66a4",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 6
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-04-11T10:30:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "beb2507d_78670482",
+      "range": {
+        "startLine": 42,
+        "startChar": 14,
+        "endLine": 42,
+        "endChar": 20
+      },
+      "revId": "f66ff3cfe947fc588d0385ee3a4b90e28ef34feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "05796f6a_42469bbc",
@@ -37,6 +61,30 @@
       "writtenOn": "2024-04-11T07:42:28Z",
       "side": 1,
       "message": "maybe use \"go run github.com/onsi/ginkgo/v2/ginkgo\" instead? you don\u0027t need to update PATH env variable and run go install. this way we are also sure that version of executed ginkgo CLI match version in go.mod\nhttps://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration",
+      "range": {
+        "startLine": 85,
+        "startChar": 8,
+        "endLine": 85,
+        "endChar": 14
+      },
+      "revId": "f66ff3cfe947fc588d0385ee3a4b90e28ef34feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "386a96af_befb38af",
+        "filename": "extras/hs-test/test",
+        "patchSetId": 6
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-04-11T10:30:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "05796f6a_42469bbc",
       "range": {
         "startLine": 85,
         "startChar": 8,
