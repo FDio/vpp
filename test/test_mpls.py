@@ -1436,6 +1436,90 @@ class TestMPLS(VppTestCase):
         route_10_0_0_0.add_vpp_config()
         send_and_expect_mpls_lb(pkts, [[33], [44, 33], [34], [44, 34]], 0.70)
 
+    def test_tunnel_ecmp_resolve(self):
+        """MPLS Tunnel Tests - ECMP with peer resolve"""
+
+        #
+        # Create a tunnel with multiple paths and labels with no ip4 neighbors configured
+        #
+        N_PATHS = 2
+        self.pg0.generate_remote_hosts(1)
+        self.pg0.unconfig_ip4()
+
+        mpls_tun = []
+        for i in range(N_PATHS):
+            mpls_tun.append(
+                VppMPLSTunnelInterface(
+                    self,
+                    [
+                        VppRoutePath(
+                            self.pg0.remote_hosts[0].ip4,
+                            self.pg0.sw_if_index,
+                            labels=[VppMplsLabel(40 + i)],
+                        ),
+                    ],
+                )
+            )
+            mpls_tun[i].add_vpp_config()
+            mpls_tun[i].admin_up()
+
+        #
+        # add an labelled route through the new tunnel
+        #
+        route_10_0_0_0 = VppIpRoute(
+            self,
+            "10.0.0.0",
+            16,
+            [
+                VppRoutePath("0.0.0.0", mpls_tun[i]._sw_if_index, labels=[33])
+                for i in range(N_PATHS)
+            ],
+        )
+        route_10_0_0_0.add_vpp_config()
+
+        expected_labels = [[40 + i, 33] for i in range(N_PATHS)]
+
+        #
+        # bring ip4 up
+        #
+        self.pg0.config_ip4()
+        self.pg0.configure_ipv4_neighbors()
+
+        pkts = self.create_stream_ip4(
+            self.pg0, ["10.0.0.%d" % i for i in range(NUM_PKTS)], n=NUM_PKTS
+        )
+
+        self.pg0.add_stream(pkts)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+
+        paths = {}
+        for packet in rx:
+            eth = packet[Ether]
+            self.assertEqual(eth.type, 0x8847)
+
+            mpls = packet[MPLS]
+            labels = []
+            while True:
+                labels.append(mpls.label)
+                if mpls.s == 1:
+                    break
+                mpls = mpls[MPLS].payload
+            self.assertIn(labels, expected_labels)
+
+            key = "{}-{}".format(eth.dst, "-".join(str(i) for i in labels))
+            paths[key] = paths.get(key, 0) + 1
+
+        #
+        # Check distribution over multiple mpls paths
+        #
+        self.assertEqual(len(paths), N_PATHS)
+        for n in paths.values():
+            self.assertGreaterEqual(n, NUM_PKTS / len(paths) * 0.85)
+
     def test_mpls_tunnel_many(self):
         """MPLS Multiple Tunnels"""
 
