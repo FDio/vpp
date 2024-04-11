@@ -410,5 +410,11 @@ fib_node_index_is_valid (fib_node_index_t ni)
     return (FIB_NODE_INDEX_INVALID != ni);
 }
 
+static inline int
+fib_node_ptr_equals (fib_node_ptr_t a, fib_node_ptr_t b)
+{
+    return a.fnp_index == b.fnp_index && a.fnp_type == b.fnp_type;
+}
+
 #endif
 

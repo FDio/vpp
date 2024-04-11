@@ -336,7 +336,7 @@ static fib_walk_advance_rc_t
 fib_walk_advance (fib_node_index_t fwi)
 {
     fib_node_back_walk_rc_t wrc;
-    fib_node_ptr_t sibling;
+    fib_node_ptr_t sibling, new_sibling;
     fib_walk_t *fwalk;
     u32 n_ctxs, ii;
     int more_elts;
@@ -386,9 +386,13 @@ fib_walk_advance (fib_node_index_t fwi)
             n_ctxs = vec_len(fwalk->fw_ctx);
 	}
 	/*
-	 * move foward to the next node to visit
+	 * move foward to the next node to visit unless out position has been changed
 	 */
-	more_elts = fib_node_list_advance(fwalk->fw_dep_sibling);
+	more_elts = fib_node_list_elt_get_next (fwalk->fw_dep_sibling, &new_sibling);
+	if (more_elts && fib_node_ptr_equals (sibling, new_sibling))
+	{
+	    more_elts = fib_node_list_advance (fwalk->fw_dep_sibling);
+	}
     }
 
     if (more_elts)
