@@ -163,7 +163,7 @@ vl_api_sr_policy_add_v2_t_handler (vl_api_sr_policy_add_v2_t *mp)
 		   mp->type, ntohl (mp->fib_table), mp->is_encap, 0, NULL);
   vec_free (segments);
 
-  REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
+  REPLY_MACRO (VL_API_SR_POLICY_ADD_V2_REPLY);
 }
 
 static void
