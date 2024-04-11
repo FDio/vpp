@@ -16,6 +16,24 @@
       "message": "i don\u0027t think we want to mark `UDP_ENCAP` paths as `ATTACHED`. which line is it that causes the overwrite you mentioned?",
       "revId": "757ad80520b368d032a675f42275539c5cceed50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aefec4e9_c92f428e",
+        "filename": "src/vnet/fib/fib_table.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-04-11T16:22:48Z",
+      "side": 1,
+      "message": "Hi Neale, I don\u0027t think so either, that\u0027s exactly why this check is added to:\n1) do not overwrite fib_route_path union{...frp_addr, frp_udp_encap_id} with prefix-\u003efp_addr at line 522, or else frp_udp_encap_id will be lost\n2) do not mark udp encap as attached at line 523",
+      "parentUuid": "b3eaec6b_1fe34d54",
+      "revId": "757ad80520b368d032a675f42275539c5cceed50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
