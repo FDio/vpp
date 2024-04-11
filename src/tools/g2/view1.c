@@ -2329,21 +2329,22 @@ out:
 
 static void view1_button_click_callback(GtkButton *item, gpointer data)
 {
-    enum view1_button_click click = (enum view1_button_click) data;
-    event_t *ep;
-    ulonglong event_incdec;
-    ulonglong current_width;
-    ulonglong zoom_delta;
+  enum view1_button_click click = (enum view1_button_click) (long int) data;
+  event_t *ep;
+  ulonglong event_incdec;
+  ulonglong current_width;
+  ulonglong zoom_delta;
 
-    current_width = s_v1->maxvistime - s_v1->minvistime;
-    event_incdec = (current_width) / 3;
+  current_width = s_v1->maxvistime - s_v1->minvistime;
+  event_incdec = (current_width) / 3;
 
-    if (event_incdec == 0LL)
-        event_incdec = 1;
+  if (event_incdec == 0LL)
+    event_incdec = 1;
 
-    zoom_delta = (s_v1->maxvistime - s_v1->minvistime) / 6;
+  zoom_delta = (s_v1->maxvistime - s_v1->minvistime) / 6;
 
-    switch(click) {
+  switch (click)
+    {
     case TOP_BUTTON:
         /* First PID to top of window */
         s_v1->first_pid_index = 0;

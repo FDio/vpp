@@ -169,7 +169,7 @@ static void down_button(void)
 static void button_click_callback(GtkButton *item, gpointer data)
 {
     int i;
-    enum button_click click = (enum button_click)data;
+    enum button_click click = (enum button_click) (long int) data;
 
     switch (click) {
     case ALL_BUTTON:
