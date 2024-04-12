@@ -275,17 +275,31 @@ urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       fib_index0 = urpf_get_fib_index (b[0], af, dir);
       fib_index1 = urpf_get_fib_index (b[1], af, dir);
-      urpf_perform_check_x2 (af, dir, mode, b[0], b[1], h0, h1, fib_index0,
-			     fib_index1, &lb0, &lb1, &pass0, &pass1);
 
-      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+      if (PREDICT_FALSE (fib_index0 == ~0 && fib_index1 == ~0))
 	{
-	  urpf_trace_t *t;
-
-	  t = vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->urpf = lb0 ? lb0->lb_urpf : ~0;
-	  t->fib_index = fib_index0;
+	  /* skip urpf for these buffers */
+	  pass0 = 1;
+	  pass1 = 1;
 	}
+      else if (PREDICT_FALSE (fib_index0 == ~0))
+	{
+	  pass0 = 1;
+	  urpf_perform_check_x1 (af, dir, mode, b[1], h1, fib_index1, &lb1,
+				 &pass1);
+	}
+      else if (PREDICT_FALSE (fib_index1 == ~0))
+	{
+	  pass1 = 1;
+	  urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
+				 &pass0);
+	}
+      else
+	{
+	  urpf_perform_check_x2 (af, dir, mode, b[0], b[1], h0, h1, fib_index0,
+				 fib_index1, &lb0, &lb1, &pass0, &pass1);
+	}
+
       if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  urpf_trace_t *t;
@@ -327,8 +341,9 @@ urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       pass0 = 1;
       fib_index0 = urpf_get_fib_index (b[0], af, dir);
-      urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
-			     &pass0);
+      if (fib_index0 != ~0)
+	urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
+			       &pass0);
 
       if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	{

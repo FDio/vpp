@@ -95,12 +95,28 @@ unformat_urpf_mode (unformat_input_t * input, va_list * args)
 }
 
 int
+urpf_feature_enable_disable (ip_address_family_t af, vlib_dir_t dir,
+			     urpf_mode_t mode, u32 sw_if_index, int enable)
+{
+  return vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
+				      urpf_feats[af][dir][mode], sw_if_index,
+				      enable, 0, 0);
+}
+
+int
 urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
-	     vlib_dir_t dir, u32 table_id)
+	     vlib_dir_t dir, u32 table_id, bool default_skip)
 {
   fib_protocol_t proto;
   u32 fib_index;
-  if (table_id != ~0)
+  bool is_custom = true;
+
+  /* we only accept a fib index on a per packet basis, otherwise skip uRPF */
+  if (default_skip)
+    {
+      fib_index = ~0;
+    }
+  else if (table_id != ~0)
     {
       proto = ip_address_family_to_fib_proto (af);
       fib_index = fib_table_find (proto, table_id);
@@ -115,30 +131,24 @@ urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
 					      ip6_main.fib_index_by_sw_if_index;
 
       fib_index = fib_index_by_sw_if_index[sw_if_index];
+      is_custom = false;
     }
   urpf_data_t old;
   urpf_mode_t off = URPF_MODE_OFF;
-  urpf_data_t empty = { .fib_index = 0, .mode = off };
+  urpf_data_t empty = { .fib_index = ~0, .mode = off };
   vec_validate_init_empty (urpf_cfgs[af][dir], sw_if_index, empty);
   old = urpf_cfgs[af][dir][sw_if_index];
 
   urpf_data_t data = { .fib_index = fib_index,
 		       .mode = mode,
-		       .fib_index_is_custom = (table_id != ~0) };
+		       .fib_index_is_custom = is_custom };
   urpf_cfgs[af][dir][sw_if_index] = data;
   if (data.mode != old.mode || data.fib_index != old.fib_index)
     {
       if (URPF_MODE_OFF != old.mode)
-	/* disable what we have */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][old.mode],
-				     sw_if_index, 0, 0, 0);
-
+	urpf_feature_enable_disable (af, dir, old.mode, sw_if_index, false);
       if (URPF_MODE_OFF != data.mode)
-	/* enable what's new */
-	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][data.mode],
-				     sw_if_index, 1, 0, 0);
+	urpf_feature_enable_disable (af, dir, data.mode, sw_if_index, true);
     }
   /* else - no change to existing config */
   return 0;
@@ -149,7 +159,7 @@ urpf_table_bind_v4 (ip4_main_t *im, uword opaque, u32 sw_if_index,
 		    u32 new_fib_index, u32 old_fib_index)
 {
   vlib_dir_t dir;
-  urpf_data_t empty = { .fib_index = 0, .mode = URPF_MODE_OFF };
+  urpf_data_t empty = { .fib_index = ~0, .mode = URPF_MODE_OFF };
   FOREACH_VLIB_DIR (dir)
   {
     vec_validate_init_empty (urpf_cfgs[AF_IP4][dir], sw_if_index, empty);
@@ -165,7 +175,7 @@ urpf_table_bind_v6 (ip6_main_t *im, uword opaque, u32 sw_if_index,
 		    u32 new_fib_index, u32 old_fib_index)
 {
   vlib_dir_t dir;
-  urpf_data_t empty = { .fib_index = 0, .mode = URPF_MODE_OFF };
+  urpf_data_t empty = { .fib_index = ~0, .mode = URPF_MODE_OFF };
   FOREACH_VLIB_DIR (dir)
   {
     vec_validate_init_empty (urpf_cfgs[AF_IP6][dir], sw_if_index, empty);
@@ -205,12 +215,14 @@ urpf_cli_update (vlib_main_t * vm,
   u32 sw_if_index;
   vlib_dir_t dir;
   u32 table_id;
+  bool default_skip;
 
   sw_if_index = ~0;
   af = AF_IP4;
   dir = VLIB_RX;
   mode = URPF_MODE_STRICT;
   table_id = ~0;
+  default_skip = false;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -228,6 +240,8 @@ urpf_cli_update (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "%U", unformat_vlib_rx_tx, &dir))
 	;
+      else if (unformat (line_input, "skip"))
+	default_skip = true;
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -243,7 +257,7 @@ urpf_cli_update (vlib_main_t * vm,
     }
 
   int rv = 0;
-  rv = urpf_update (mode, sw_if_index, af, dir, table_id);
+  rv = urpf_update (mode, sw_if_index, af, dir, table_id, default_skip);
   if (rv)
     {
       error = clib_error_return (0, "unknown table id");
@@ -313,7 +327,7 @@ VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set urpf",
   .function = urpf_cli_update,
   .short_help = "set urpf [ip4|ip6] [rx|tx] [off|strict|loose] "
-		"<INTERFACE> [table <table>]",
+		"<INTERFACE> [table <table>] [skip]",
 };
 
 static clib_error_t *
