@@ -90,6 +90,10 @@ static_always_inline u32
 urpf_get_fib_index (vlib_buffer_t *b, ip_address_family_t af, vlib_dir_t dir)
 {
   u32 sw_if_index = vnet_buffer (b)->sw_if_index[dir];
+  if (vnet_buffer (b)->ip.urpf_fib_index != ~0)
+    return vnet_buffer (b)->ip.urpf_fib_index;
+  if (vec_len (urpf_cfgs[af][dir]) <= sw_if_index)
+    return ~0;
   return vec_elt (urpf_cfgs[af][dir], sw_if_index).fib_index;
 }
 
