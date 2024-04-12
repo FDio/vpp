@@ -2140,6 +2140,10 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
       adj_index1 = vnet_buffer (b[1])->ip.adj_index[VLIB_TX];
 
+      /* in case of output uRPF */
+      vnet_buffer (b[0])->ip.urpf_fib_index = ~0;
+      vnet_buffer (b[1])->ip.urpf_fib_index = ~0;
+
       /*
        * pre-fetch the per-adjacency counters
        */
@@ -2335,6 +2339,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
 
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      vnet_buffer (b[0])->ip.urpf_fib_index = ~0;
 
       /*
        * Prefetch the per-adjacency counters
@@ -2444,6 +2449,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 tx_sw_if_index0;
 
       adj_index0 = vnet_buffer (b[0])->ip.adj_index[VLIB_TX];
+      vnet_buffer (b[0])->ip.urpf_fib_index = ~0;
 
       adj0 = adj_get (adj_index0);
 
