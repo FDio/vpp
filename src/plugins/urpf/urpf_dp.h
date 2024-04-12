@@ -90,6 +90,18 @@ static_always_inline u32
 urpf_get_fib_index (vlib_buffer_t *b, ip_address_family_t af, vlib_dir_t dir)
 {
   u32 sw_if_index = vnet_buffer (b)->sw_if_index[dir];
+  // the buffer specify its own fib_index for uRPF check.
+  // using 0 as a special value to indicate that the buffer does not
+  // specify its own fib_index. Using any other value as the fib_index
+  // would need a prior node to set the default value.
+  // Warning: it is not be possible to set the default behavior to skip
+  // (~0) and specify 0 as the fib_index for the buffer, or the uRPF
+  // check will be skipped.
+  if (vnet_buffer (b)->ip.urpf_fib_index != 0)
+    return vnet_buffer (b)->ip.urpf_fib_index;
+  // otherwise use the interface's uRPF configuration,
+  // could be ~0 if the user want to skip the check for packets from this
+  // interface that does not set their own fib_index.
   return vec_elt (urpf_cfgs[af][dir], sw_if_index).fib_index;
 }
 
@@ -275,17 +287,31 @@ urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       fib_index0 = urpf_get_fib_index (b[0], af, dir);
       fib_index1 = urpf_get_fib_index (b[1], af, dir);
-      urpf_perform_check_x2 (af, dir, mode, b[0], b[1], h0, h1, fib_index0,
-			     fib_index1, &lb0, &lb1, &pass0, &pass1);
 
-      if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+      if (PREDICT_FALSE (fib_index0 == ~0 && fib_index1 == ~0))
 	{
-	  urpf_trace_t *t;
-
-	  t = vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->urpf = lb0 ? lb0->lb_urpf : ~0;
-	  t->fib_index = fib_index0;
+	  /* skip urpf for these buffers */
+	  pass0 = 1;
+	  pass1 = 1;
 	}
+      else if (PREDICT_FALSE (fib_index0 == ~0))
+	{
+	  pass0 = 1;
+	  urpf_perform_check_x1 (af, dir, mode, b[1], h1, fib_index1, &lb1,
+				 &pass1);
+	}
+      else if (PREDICT_FALSE (fib_index1 == ~0))
+	{
+	  pass1 = 1;
+	  urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
+				 &pass0);
+	}
+      else
+	{
+	  urpf_perform_check_x2 (af, dir, mode, b[0], b[1], h0, h1, fib_index0,
+				 fib_index1, &lb0, &lb1, &pass0, &pass1);
+	}
+
       if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  urpf_trace_t *t;
@@ -327,8 +353,9 @@ urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       pass0 = 1;
       fib_index0 = urpf_get_fib_index (b[0], af, dir);
-      urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
-			     &pass0);
+      if (fib_index0 != ~0)
+	urpf_perform_check_x1 (af, dir, mode, b[0], h0, fib_index0, &lb0,
+			       &pass0);
 
       if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	{

@@ -72,7 +72,7 @@ vl_api_urpf_update_t_handler (vl_api_urpf_update_t * mp)
     goto done;
 
   rv = urpf_update (mode, htonl (mp->sw_if_index), af,
-		    (mp->is_input ? VLIB_RX : VLIB_TX), 0);
+		    (mp->is_input ? VLIB_RX : VLIB_TX), 0, false);
   if (rv)
     goto done;
 
@@ -101,7 +101,8 @@ vl_api_urpf_update_v2_t_handler (vl_api_urpf_update_v2_t *mp)
     goto done;
 
   rv = urpf_update (mode, htonl (mp->sw_if_index), af,
-		    (mp->is_input ? VLIB_RX : VLIB_TX), ntohl (mp->table_id));
+		    (mp->is_input ? VLIB_RX : VLIB_TX), ntohl (mp->table_id),
+		    false);
 
   if (rv)
     goto done;
@@ -109,6 +110,37 @@ vl_api_urpf_update_v2_t_handler (vl_api_urpf_update_v2_t *mp)
   BAD_SW_IF_INDEX_LABEL;
 done:
   REPLY_MACRO (VL_API_URPF_UPDATE_V2_REPLY);
+}
+
+static void
+vl_api_urpf_update_v3_t_handler (vl_api_urpf_update_v3_t *mp)
+{
+  vl_api_urpf_update_reply_t *rmp;
+  ip_address_family_t af;
+  urpf_mode_t mode;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = urpf_mode_decode (mp->mode, &mode);
+  if (rv)
+    goto done;
+
+  rv = ip_address_family_decode (mp->af, &af);
+
+  if (rv)
+    goto done;
+
+  rv = urpf_update (mode, htonl (mp->sw_if_index), af,
+		    (mp->is_input ? VLIB_RX : VLIB_TX), ntohl (mp->table_id),
+		    mp->default_skip);
+
+  if (rv)
+    goto done;
+
+  BAD_SW_IF_INDEX_LABEL;
+done:
+  REPLY_MACRO (VL_API_URPF_UPDATE_V3_REPLY);
 }
 
 static void

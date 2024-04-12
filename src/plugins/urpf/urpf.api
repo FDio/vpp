@@ -71,6 +71,29 @@ autoreply define urpf_update_v2
   u32 table_id [default=0xffffffff];
 };
 
+/**
+ * @brief Enable uRPF on a given interface in a given direction
+ * @param client_index - opaque cookie to identify the sender
+ * @param context - sender context, to match reply w/ request
+ * @param mode - Mode
+ * @param af - Address Family
+ * @param sw_if_index - Interface
+ * @param is_input - Direction.
+ * @param table-id - Table ID
+ * @param default-skip - only accept fib index on a per packet basis
+ */
+autoreply define urpf_update_v3
+{
+  u32 client_index;
+  u32 context;
+  bool is_input[default = true];
+  vl_api_urpf_mode_t mode;
+  vl_api_address_family_t af;
+  vl_api_interface_index_t sw_if_index;
+  u32 table_id [default=0xffffffff];
+  bool default_skip [default=false];
+};
+
 /** @brief Dump uRPF enabled interface(s) in zero or more urpf_interface_details replies
     @param client_index - opaque cookie to identify the sender
     @param sw_if_index - sw_if_index of a specific interface, or -1 (default)
