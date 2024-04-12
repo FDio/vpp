@@ -1,0 +1,8 @@
+---
+name: MACVLAN
+maintainer: Benoît Ganne <bganne@cisco.com>
+features:
+  - basic MACVLAN implementation
+description: "MACVLAN plugin"
+state: experimental
+properties: [CLI, STATS, MULTITHREAD, API]

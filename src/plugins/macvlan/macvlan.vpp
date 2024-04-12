@@ -1,0 +1,66 @@
+create packet-generator interface pg0
+set int mac addr pg0 1.2.3
+set int ip addr pg0 192.168.1.1/24
+
+loop create
+set int mac addr loop0 4.5.6
+set int ip addr loop0 192.168.2.1/24
+
+macvlan parent pg0 child loop0
+
+set int st loop0 up
+set int st pg0 up
+
+packet-generator new { \
+  name arp0 \
+  limit 1 \
+  node ethernet-input \
+  interface pg0 \
+  size 64-64 \
+  data { \
+   ARP: a.b.c -> ffff.ffff.ffff \
+     request: a.b.c/192.168.1.2 -> 0.0.0/192.168.1.1 \
+  } \
+}
+
+packet-generator new { \
+  name arp1 \
+  limit 1 \
+  node ethernet-input \
+  interface pg0 \
+  size 64-64 \
+  data { \
+   ARP: d.e.f -> 4.5.6 \
+     request: d.e.f/192.168.2.2 -> 4.5.6/192.168.2.1 \
+  } \
+}
+
+packet-generator new { \
+  name ping0 \
+  limit 1 \
+  node ethernet-input \
+  interface pg0 \
+  size 64-64 \
+  data { \
+   IP4: a.b.c -> 1.2.3 \
+   ICMP: 192.168.1.2 -> 192.168.1.1 \
+    ICMP echo_request \
+    incrementing 100 \
+  } \
+}
+
+packet-generator new { \
+  name ping1 \
+  limit 1 \
+  node ethernet-input \
+  interface pg0 \
+  size 64-64 \
+  data { \
+   IP4: d.e.f -> 4.5.6 \
+   ICMP: 192.168.2.2 -> 192.168.2.1 \
+    ICMP echo_request \
+    incrementing 100 \
+  } \
+}
+
+trace add pg-input 10

@@ -852,6 +852,11 @@ I:	tracenode
 M:	Maxime Peim <mpeim@cisco.com>
 F:	src/plugins/tracenode
 
+Plugin - MACVLAN
+I:	macvlan
+M:	Benoît Ganne <bganne@cisco.com>
+F:	src/plugins/macvlan/
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
