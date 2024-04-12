@@ -317,14 +317,18 @@ dvr_dpo_inline (vlib_main_t * vm,
             dd0 = dvr_dpo_get(ddi0);
             dd1 = dvr_dpo_get(ddi1);
 
-            vnet_buffer(b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
-            vnet_buffer(b1)->sw_if_index[VLIB_TX] = dd1->dd_sw_if_index;
+	    /*in case of output uRPF */
+	    vnet_buffer (b0)->ip.urpf_fib_index = ~0;
+	    vnet_buffer (b1)->ip.urpf_fib_index = ~0;
 
-            len0 = ((u8*)vlib_buffer_get_current(b0) -
-                    (u8*)ethernet_buffer_get_header(b0));
-            len1 = ((u8*)vlib_buffer_get_current(b1) -
-                    (u8*)ethernet_buffer_get_header(b1));
-            vnet_buffer(b0)->l2.l2_len =
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
+	    vnet_buffer (b1)->sw_if_index[VLIB_TX] = dd1->dd_sw_if_index;
+
+	    len0 = ((u8 *) vlib_buffer_get_current (b0) -
+		    (u8 *) ethernet_buffer_get_header (b0));
+	    len1 = ((u8 *) vlib_buffer_get_current (b1) -
+		    (u8 *) ethernet_buffer_get_header (b1));
+	    vnet_buffer(b0)->l2.l2_len =
                 vnet_buffer(b0)->ip.save_rewrite_length =
                    len0;
             vnet_buffer(b1)->l2.l2_len =
@@ -383,12 +387,14 @@ dvr_dpo_inline (vlib_main_t * vm,
             ddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             dd0 = dvr_dpo_get(ddi0);
 
-            vnet_buffer(b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
+	    vnet_buffer (b0)->ip.urpf_fib_index = ~0;
 
-            /*
-             * take that, rewind it back...
-             */
-            len0 = ((u8*)vlib_buffer_get_current(b0) -
+	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = dd0->dd_sw_if_index;
+
+	    /*
+	     * take that, rewind it back...
+	     */
+	    len0 = ((u8*)vlib_buffer_get_current(b0) -
                     (u8*)ethernet_buffer_get_header(b0));
             vnet_buffer(b0)->l2.l2_len =
                 vnet_buffer(b0)->ip.save_rewrite_length =
