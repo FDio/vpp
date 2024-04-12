@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d3f1e68_9f5b8117",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1902,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-12T08:23:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "178312d7_e4de4a78",
+      "revId": "a2477951a79561cb1906a9b85db5a03dedfd01ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b1c57d1d_54c47e34",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cc1f472a_a1d638a3",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1938,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-12T08:23:12Z",
+      "side": 1,
+      "message": "I based myself in what it is done in the ipv4 node",
+      "parentUuid": "b1c57d1d_54c47e34",
+      "revId": "a2477951a79561cb1906a9b85db5a03dedfd01ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "482e1f77_0105e9a5",
@@ -48,6 +84,24 @@
       "writtenOn": "2024-04-09T04:54:58Z",
       "side": 1,
       "message": "... in the single loop you\u0027ve excluded the errors.",
+      "revId": "a2477951a79561cb1906a9b85db5a03dedfd01ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad553d2a_26187ca7",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2096,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-12T08:23:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "482e1f77_0105e9a5",
       "revId": "a2477951a79561cb1906a9b85db5a03dedfd01ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
