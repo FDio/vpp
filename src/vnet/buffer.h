@@ -219,16 +219,12 @@ typedef struct
 	  struct
 	  {
 	    /* input variables */
-	    struct
-	    {
-	      u32 next_index;	/* index of next node - used by custom apps */
-	      u32 error_next_index;	/* index of next node if error - used by custom apps */
-	    };
+	    u32 next_index; /* index of next node - used by custom apps */
+	    u32 error_next_index; /* index of next node if error - used by
+				     custom apps */
+	    u8 _save_rewrite_length;
 	    /* handoff variables */
-	    struct
-	    {
-	      u16 owner_thread_index;
-	    };
+	    u16 owner_thread_index;
 	  };
 	  /* output variables */
 	  struct
@@ -422,25 +418,26 @@ typedef struct
 STATIC_ASSERT (VNET_REWRITE_TOTAL_BYTES <= VLIB_BUFFER_PRE_DATA_SIZE,
 	       "VNET_REWRITE_TOTAL_BYTES too big");
 
-STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
-	       == STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  ip.reass.save_rewrite_length)
-	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  ip.reass.save_rewrite_length) ==
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length)
-	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  mpls.save_rewrite_length) == 1
-	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
-	       "save_rewrite_length member must be able to hold the max value of rewrite length");
+STATIC_ASSERT (
+  STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) &&
+    STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.reass._save_rewrite_length) &&
+    STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) ==
+      STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) &&
+    STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) == 1 &&
+    VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
+  "save_rewrite_length member must be able to hold the max value of rewrite "
+  "length");
 
-STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
-	       == STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				    ip.reass.save_rewrite_length)
-	       && STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				    mpls.save_rewrite_length) ==
-	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				 ip.reass.save_rewrite_length),
-	       "save_rewrite_length must be aligned so that reass doesn't overwrite it");
+STATIC_ASSERT (
+  STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) &&
+    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.reass._save_rewrite_length) &&
+    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) ==
+      STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length),
+  "save_rewrite_length must be aligned so that reass doesn't overwrite it");
 
 /*
  * The opaque field of the vlib_buffer_t is interpreted as a
