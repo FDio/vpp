@@ -42,6 +42,9 @@ vnet_api_error_t ip6_sv_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
 
 vnet_api_error_t ip6_sv_reass_enable_disable (u32 sw_if_index,
 					      u8 enable_disable);
+vnet_api_error_t
+ip6_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
+						int is_enable);
 
 int ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 uword ip6_sv_reass_custom_context_register_next_node (uword node_index);
