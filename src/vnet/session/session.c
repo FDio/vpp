@@ -273,12 +273,17 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
   app_worker_t *app_wrk;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
+  if (PREDICT_FALSE (!app_wrk))
     {
       if (ntf == SESSION_CLEANUP_TRANSPORT)
 	return;
 
-      session_cleanup (s);
+      /* Make sure transport close/cleanup have propagated */
+      if (s->al_index == SESSION_INVALID_INDEX)
+	session_cleanup (s);
+      else
+	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
+
       return;
     }
   app_worker_cleanup_notify (app_wrk, s, ntf);
