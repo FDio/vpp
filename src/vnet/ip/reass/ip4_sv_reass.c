@@ -150,6 +150,7 @@ typedef struct
   /** Worker handoff */
   u32 fq_index;
   u32 fq_feature_index;
+  u32 fq_output_feature_index;
   u32 fq_custom_context_index;
 
   // reference count for enabling/disabling feature - per interface
@@ -506,16 +507,14 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  clib_prefetch_load (p3->data);
 	}
 
-      ip4_header_t *ip0 =
-	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
-				     (is_output_feature ? 1 : 0) *
-				     vnet_buffer (b0)->
-				     ip.save_rewrite_length);
-      ip4_header_t *ip1 =
-	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b1),
-				     (is_output_feature ? 1 : 0) *
-				     vnet_buffer (b1)->
-				     ip.save_rewrite_length);
+      ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
+	vlib_buffer_get_current (b0),
+	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	  vnet_buffer (b0)->ip.save_rewrite_length);
+      ip4_header_t *ip1 = (ip4_header_t *) u8_ptr_add (
+	vlib_buffer_get_current (b1),
+	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	  vnet_buffer (b1)->ip.save_rewrite_length);
 
       if (PREDICT_FALSE
 	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0))
@@ -638,11 +637,10 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       b0 = *b;
       b++;
 
-      ip4_header_t *ip0 =
-	(ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
-				     (is_output_feature ? 1 : 0) *
-				     vnet_buffer (b0)->
-				     ip.save_rewrite_length);
+      ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
+	vlib_buffer_get_current (b0),
+	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	  vnet_buffer (b0)->ip.save_rewrite_length);
       if (PREDICT_FALSE
 	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0)))
 	{
@@ -736,11 +734,10 @@ slow_path:
 	  bi0 = from[0];
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  ip4_header_t *ip0 =
-	    (ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
-					 (is_output_feature ? 1 : 0) *
-					 vnet_buffer (b0)->
-					 ip.save_rewrite_length);
+	  ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
+	    vlib_buffer_get_current (b0),
+	    (ptrdiff_t) (is_output_feature ? 1 : 0) *
+	      vnet_buffer (b0)->ip.save_rewrite_length);
 	  if (!ip4_get_fragment_more (ip0) && !ip4_get_fragment_offset (ip0))
 	    {
 	      // this is a regular packet - no fragmentation
@@ -899,11 +896,10 @@ slow_path:
 	      {
 		u32 bi0 = vec_elt (reass->cached_buffers, idx);
 		vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-		ip0 =
-		  (ip4_header_t *) u8_ptr_add (vlib_buffer_get_current (b0),
-					       (is_output_feature ? 1 : 0) *
-					       vnet_buffer (b0)->
-					       ip.save_rewrite_length);
+		ip0 = (ip4_header_t *) u8_ptr_add (
+		  vlib_buffer_get_current (b0),
+		  (ptrdiff_t) (is_output_feature ? 1 : 0) *
+		    vnet_buffer (b0)->ip.save_rewrite_length);
 		u32 next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		if (is_feature)
 		  {
@@ -1054,7 +1050,6 @@ VLIB_NODE_FN (ip4_sv_reass_node_output_feature) (vlib_main_t * vm,
     false /* is_custom */, false /* with_custom_context */);
 }
 
-
 VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
     .name = "ip4-sv-reassembly-output-feature",
     .vector_size = sizeof (u32),
@@ -1066,7 +1061,7 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
         {
                 [IP4_SV_REASSEMBLY_NEXT_INPUT] = "ip4-input",
                 [IP4_SV_REASSEMBLY_NEXT_DROP] = "ip4-drop",
-                [IP4_SV_REASSEMBLY_NEXT_HANDOFF] = "ip4-sv-reass-feature-hoff",
+                [IP4_SV_REASSEMBLY_NEXT_HANDOFF] = "ip4-sv-reass-output-feature-hoff",
         },
 };
 
@@ -1200,7 +1195,7 @@ ip4_sv_reass_set (u32 timeout_ms, u32 max_reassemblies,
       ctx.failure = 0;
       ctx.new_hash = &new_hash;
       clib_bihash_init_16_8 (&new_hash, "ip4-dr", new_nbuckets,
-			     new_nbuckets * 1024);
+			     (uword) new_nbuckets * 1024);
       clib_bihash_foreach_key_value_pair_16_8 (&ip4_sv_reass_main.hash,
 					       ip4_rehash_cb, &ctx);
       if (ctx.failure)
@@ -1260,7 +1255,8 @@ ip4_sv_reass_init_function (vlib_main_t * vm)
 			   IP4_SV_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS);
 
   nbuckets = ip4_sv_reass_get_nbuckets ();
-  clib_bihash_init_16_8 (&rm->hash, "ip4-dr", nbuckets, nbuckets * 1024);
+  clib_bihash_init_16_8 (&rm->hash, "ip4-dr", nbuckets,
+			 (uword) nbuckets * 1024);
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
   ASSERT (node);
@@ -1269,6 +1265,8 @@ ip4_sv_reass_init_function (vlib_main_t * vm)
   rm->fq_index = vlib_frame_queue_main_init (ip4_sv_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip4_sv_reass_node_feature.index, 0);
+  rm->fq_output_feature_index =
+    vlib_frame_queue_main_init (ip4_sv_reass_node_output_feature.index, 0);
   rm->fq_custom_context_index =
     vlib_frame_queue_main_init (ip4_sv_reass_custom_context_node.index, 0);
 
@@ -1504,20 +1502,26 @@ format_ip4_sv_reass_handoff_trace (u8 * s, va_list * args)
   return s;
 }
 
+struct ip4_sv_reass_hoff_args
+{
+  bool is_feature;
+  bool is_output_feature;
+  bool is_custom_context;
+};
+
 always_inline uword
 ip4_sv_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-				  vlib_frame_t *frame, bool is_feature,
-				  bool is_custom_context)
+				  vlib_frame_t *frame,
+				  struct ip4_sv_reass_hoff_args a)
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
 
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 n_enq, n_left_from, *from, *context;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
-  u32 fq_index;
 
   from = vlib_frame_vector_args (frame);
-  if (is_custom_context)
+  if (a.is_custom_context)
     context = vlib_frame_aux_args (frame);
 
   n_left_from = frame->n_vectors;
@@ -1526,9 +1530,10 @@ ip4_sv_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   b = bufs;
   ti = thread_indices;
 
-  fq_index = (is_feature) ? rm->fq_feature_index :
-				  (is_custom_context ? rm->fq_custom_context_index :
-						       rm->fq_index);
+  const u32 fq_index = a.is_output_feature ? rm->fq_output_feature_index :
+		       a.is_feature	   ? rm->fq_feature_index :
+		       a.is_custom_context ? rm->fq_custom_context_index :
+						   rm->fq_index;
 
   while (n_left_from > 0)
     {
@@ -1547,7 +1552,7 @@ ip4_sv_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       ti += 1;
       b += 1;
     }
-  if (is_custom_context)
+  if (a.is_custom_context)
     n_enq = vlib_buffer_enqueue_to_thread_with_aux (
       vm, node, fq_index, from, context, thread_indices, frame->n_vectors, 1);
   else
@@ -1566,9 +1571,11 @@ VLIB_NODE_FN (ip4_sv_reass_handoff_node) (vlib_main_t * vm,
 					  vlib_frame_t * frame)
 {
   return ip4_sv_reass_handoff_node_inline (
-    vm, node, frame, false /* is_feature */, false /* is_custom_context */);
+    vm, node, frame,
+    (struct ip4_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = false,
+				     .is_custom_context = false });
 }
-
 
 VLIB_REGISTER_NODE (ip4_sv_reass_handoff_node) = {
   .name = "ip4-sv-reassembly-handoff",
@@ -1588,7 +1595,10 @@ VLIB_NODE_FN (ip4_sv_reass_custom_context_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip4_sv_reass_handoff_node_inline (
-    vm, node, frame, false /* is_feature */, true /* is_custom_context */);
+    vm, node, frame,
+    (struct ip4_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = false,
+				     .is_custom_context = true });
 }
 
 VLIB_REGISTER_NODE (ip4_sv_reass_custom_context_handoff_node) = {
@@ -1612,12 +1622,38 @@ VLIB_NODE_FN (ip4_sv_reass_feature_handoff_node) (vlib_main_t * vm,
 						    vlib_frame_t * frame)
 {
   return ip4_sv_reass_handoff_node_inline (
-    vm, node, frame, true /* is_feature */, false /* is_custom_context */);
+    vm, node, frame,
+    (struct ip4_sv_reass_hoff_args){ .is_feature = true,
+				     .is_output_feature = false,
+				     .is_custom_context = false });
 }
-
 
 VLIB_REGISTER_NODE (ip4_sv_reass_feature_handoff_node) = {
   .name = "ip4-sv-reass-feature-hoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip4_sv_reass_handoff_error_strings),
+  .error_strings = ip4_sv_reass_handoff_error_strings,
+  .format_trace = format_ip4_sv_reass_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (ip4_sv_reass_output_feature_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip4_sv_reass_handoff_node_inline (
+    vm, node, frame,
+    (struct ip4_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = true,
+				     .is_custom_context = false });
+}
+
+VLIB_REGISTER_NODE (ip4_sv_reass_output_feature_handoff_node) = {
+  .name = "ip4-sv-reass-output-feature-hoff",
   .vector_size = sizeof (u32),
   .n_errors = ARRAY_LEN(ip4_sv_reass_handoff_error_strings),
   .error_strings = ip4_sv_reass_handoff_error_strings,
