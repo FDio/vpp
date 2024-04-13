@@ -225,7 +225,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 	  s = session_get (evt->session_index, thread_index);
 	  /* Notification enqueued before session was refused by app */
 	  if (PREDICT_FALSE (s->app_wrk_index == APP_INVALID_INDEX))
-	    break;
+	    {
+	      /* No cleanup notification pending, unset connection now */
+	      if (s->session_state < SESSION_STATE_TRANSPORT_DELETED)
+		s->connection_index = SESSION_INVALID_INDEX;
+	      break;
+	    }
 	  if (app->cb_fns.session_transport_closed_callback)
 	    app->cb_fns.session_transport_closed_callback (s);
 	  break;
@@ -238,7 +243,10 @@ app_worker_flush_events_inline (app_worker_t *app_wrk, u32 thread_index,
 		app->cb_fns.session_cleanup_callback (s, evt->as_u64[0] >> 32);
 	    }
 	  if (evt->as_u64[0] >> 32 != SESSION_CLEANUP_SESSION)
-	    break;
+	    {
+	      s->connection_index = SESSION_INVALID_INDEX;
+	      break;
+	    }
 	  uword_to_pointer (evt->as_u64[1], void (*) (session_t * s)) (s);
 	  break;
 	case SESSION_CTRL_EVT_HALF_CLEANUP:
