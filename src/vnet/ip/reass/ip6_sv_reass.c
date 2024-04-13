@@ -150,10 +150,13 @@ typedef struct
   /** Worker handoff */
   u32 fq_index;
   u32 fq_feature_index;
+  u32 fq_output_feature_index;
   u32 fq_custom_context_index;
 
   // reference count for enabling/disabling feature - per interface
   u32 *feature_use_refcount_per_intf;
+  // reference count for enabling/disabling output feature - per interface
+  u32 *output_feature_use_refcount_per_intf;
 } ip6_sv_reass_main_t;
 
 extern ip6_sv_reass_main_t ip6_sv_reass_main;
@@ -513,17 +516,24 @@ ip6_sv_reass_verify_packet_size_lt_64k (vlib_main_t * vm,
   return true;
 }
 
+struct ip6_sv_reass_args
+{
+  bool is_feature;
+  bool is_output_feature;
+  bool custom_next;
+  bool custom_context;
+};
+
 always_inline uword
 ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-			  vlib_frame_t *frame, bool is_feature,
-			  bool custom_next, bool custom_context)
+			  vlib_frame_t *frame, struct ip6_sv_reass_args a)
 {
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, *to_next_aux, next_index;
   ip6_sv_reass_main_t *rm = &ip6_sv_reass_main;
   ip6_sv_reass_per_thread_t *rt = &rm->per_thread_data[vm->thread_index];
   u32 *context;
-  if (custom_context)
+  if (a.custom_context)
     context = vlib_frame_aux_args (frame);
 
   clib_spinlock_lock (&rt->lock);
@@ -533,7 +543,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left_from > 0)
     {
-      if (custom_context)
+      if (a.custom_context)
 	vlib_get_next_frame_with_aux_safe (vm, node, next_index, to_next,
 					   to_next_aux, n_left_to_next);
       else
@@ -549,7 +559,11 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  bi0 = from[0];
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  ip6_header_t *ip0 = vlib_buffer_get_current (b0);
+	  ip6_header_t *ip0 = (ip6_header_t *) u8_ptr_add (
+	    vlib_buffer_get_current (b0),
+	    (ptrdiff_t) (a.is_output_feature ? 1 : 0) *
+	      vnet_buffer (b0)->ip.save_rewrite_length);
+
 	  ip6_frag_hdr_t *frag_hdr;
 	  ip6_ext_hdr_chain_t hdr_chain;
 	  bool is_atomic_fragment = false;
@@ -585,8 +599,8 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  goto packet_enqueue;
 		}
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
-	      next0 = custom_next ? vnet_buffer (b0)->ip.reass.next_index :
-					  IP6_SV_REASSEMBLY_NEXT_INPUT;
+	      next0 = a.custom_next ? vnet_buffer (b0)->ip.reass.next_index :
+				      IP6_SV_REASSEMBLY_NEXT_INPUT;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip6_sv_reass_add_trace (
@@ -625,7 +639,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  kv.k.as_u64[1] = ip0->src_address.as_u64[1];
 	  kv.k.as_u64[2] = ip0->dst_address.as_u64[0];
 	  kv.k.as_u64[3] = ip0->dst_address.as_u64[1];
-	  if (custom_context)
+	  if (a.custom_context)
 	    kv.k.as_u64[4] =
 	      (u64) *context << 32 | (u64) frag_hdr->identification;
 	  else
@@ -644,7 +658,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      next0 = IP6_SV_REASSEMBLY_NEXT_HANDOFF;
 	      vnet_buffer (b0)->ip.reass.owner_thread_index =
 		kv.v.thread_index;
-	      if (custom_context)
+	      if (a.custom_context)
 		forward_context = 1;
 	      goto packet_enqueue;
 	    }
@@ -670,8 +684,8 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		reass->tcp_seq_number;
 	      vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
-	      next0 = custom_next ? vnet_buffer (b0)->ip.reass.next_index :
-					  IP6_SV_REASSEMBLY_NEXT_INPUT;
+	      next0 = a.custom_next ? vnet_buffer (b0)->ip.reass.next_index :
+				      IP6_SV_REASSEMBLY_NEXT_INPUT;
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip6_sv_reass_add_trace (
@@ -724,7 +738,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		to_next += 1;
 		n_left_to_next -= 1;
 		b0 = vlib_get_buffer (vm, bi0);
-		if (is_feature)
+		if (a.is_feature || a.is_output_feature)
 		  {
 		    vnet_feature_next (&next0, b0);
 		  }
@@ -761,12 +775,13 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  to_next[0] = bi0;
 	  to_next += 1;
 	  n_left_to_next -= 1;
-	  if (is_feature && IP6_ERROR_NONE == error0)
+	  if ((a.is_feature || a.is_output_feature) &&
+	      IP6_ERROR_NONE == error0)
 	    {
 	      b0 = vlib_get_buffer (vm, bi0);
 	      vnet_feature_next (&next0, b0);
 	    }
-	  if (custom_context && forward_context)
+	  if (a.custom_context && forward_context)
 	    {
 	      if (to_next_aux)
 		{
@@ -783,7 +798,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	next_packet:
 	  from += 1;
-	  if (custom_context)
+	  if (a.custom_context)
 	    context += 1;
 	  n_left_from -= 1;
 	}
@@ -795,13 +810,16 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip6_sv_reass_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_sv_reass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip6_sv_reassembly_inline (vm, node, frame, false /* is_feature */,
-				   false /* custom next */,
-				   false /* custom context */);
+  return ip6_sv_reassembly_inline (vm, node, frame,
+				   (struct ip6_sv_reass_args){
+				     .is_feature = false,
+				     .is_output_feature = false,
+				     .custom_context = false,
+				     .custom_next = false,
+				   });
 }
 
 VLIB_REGISTER_NODE (ip6_sv_reass_node) = {
@@ -824,9 +842,13 @@ VLIB_NODE_FN (ip6_sv_reass_node_feature) (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
 					  vlib_frame_t * frame)
 {
-  return ip6_sv_reassembly_inline (vm, node, frame, true /* is_feature */,
-				   false /* custom next */,
-				   false /* custom context */);
+  return ip6_sv_reassembly_inline (vm, node, frame,
+				   (struct ip6_sv_reass_args){
+				     .is_feature = true,
+				     .is_output_feature = false,
+				     .custom_context = false,
+				     .custom_next = false,
+				   });
 }
 
 VLIB_REGISTER_NODE (ip6_sv_reass_node_feature) = {
@@ -852,12 +874,50 @@ VNET_FEATURE_INIT (ip6_sv_reassembly_feature) = {
     .runs_after = 0,
 };
 
+VLIB_NODE_FN (ip6_sv_reass_node_output_feature)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_sv_reassembly_inline (vm, node, frame,
+				   (struct ip6_sv_reass_args){
+				     .is_feature = false,
+				     .is_output_feature = true,
+				     .custom_context = false,
+				     .custom_next = false,
+				   });
+}
+
+VLIB_REGISTER_NODE (ip6_sv_reass_node_output_feature) = {
+    .name = "ip6-sv-reassembly-output-feature",
+    .vector_size = sizeof (u32),
+    .format_trace = format_ip6_sv_reass_trace,
+    .n_errors = IP6_N_ERROR,
+    .error_counters = ip6_error_counters,
+    .n_next_nodes = IP6_SV_REASSEMBLY_N_NEXT,
+    .next_nodes =
+        {
+                [IP6_SV_REASSEMBLY_NEXT_INPUT] = "ip6-input",
+                [IP6_SV_REASSEMBLY_NEXT_DROP] = "ip6-drop",
+                [IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR] = "ip6-icmp-error",
+                [IP6_SV_REASSEMBLY_NEXT_HANDOFF] = "ip6-sv-reass-output-feature-hoff",
+        },
+};
+
+VNET_FEATURE_INIT (ip6_sv_reassembly_output_feature) = {
+  .arc_name = "ip6-output",
+  .node_name = "ip6-sv-reassembly-output-feature",
+  .runs_after = 0,
+};
+
 VLIB_NODE_FN (ip6_sv_reass_custom_context_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip6_sv_reassembly_inline (vm, node, frame, false /* is_feature */,
-				   true /* custom next */,
-				   true /* custom context */);
+  return ip6_sv_reassembly_inline (vm, node, frame,
+				   (struct ip6_sv_reass_args){
+				     .is_feature = false,
+				     .is_output_feature = false,
+				     .custom_context = true,
+				     .custom_next = true,
+				   });
 }
 
 VLIB_REGISTER_NODE (ip6_sv_reass_custom_context_node) = {
@@ -950,7 +1010,7 @@ ip6_sv_reass_set (u32 timeout_ms, u32 max_reassemblies,
       ctx.failure = 0;
       ctx.new_hash = &new_hash;
       clib_bihash_init_48_8 (&new_hash, "ip6-sv-reass", new_nbuckets,
-			     new_nbuckets * 1024);
+			     (uword) new_nbuckets * 1024);
       clib_bihash_foreach_key_value_pair_48_8 (&ip6_sv_reass_main.hash,
 					       ip6_rehash_cb, &ctx);
       if (ctx.failure)
@@ -1011,7 +1071,7 @@ ip6_sv_reass_init_function (vlib_main_t * vm)
 
   nbuckets = ip6_sv_reass_get_nbuckets ();
   clib_bihash_init_48_8 (&rm->hash, "ip6-sv-reass", nbuckets,
-			 nbuckets * 1024);
+			 (uword) nbuckets * 1024);
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip6-drop");
   ASSERT (node);
@@ -1026,6 +1086,8 @@ ip6_sv_reass_init_function (vlib_main_t * vm)
   rm->fq_index = vlib_frame_queue_main_init (ip6_sv_reass_node.index, 0);
   rm->fq_feature_index =
     vlib_frame_queue_main_init (ip6_sv_reass_node_feature.index, 0);
+  rm->fq_output_feature_index =
+    vlib_frame_queue_main_init (ip6_sv_reass_node_output_feature.index, 0);
   rm->fq_custom_context_index =
     vlib_frame_queue_main_init (ip6_sv_reass_custom_context_node.index, 0);
 
@@ -1260,20 +1322,26 @@ format_ip6_sv_reassembly_handoff_trace (u8 * s, va_list * args)
   return s;
 }
 
+struct ip6_sv_reass_hoff_args
+{
+  bool is_feature;
+  bool is_output_feature;
+  bool custom_context;
+};
+
 always_inline uword
 ip6_sv_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-				  vlib_frame_t *frame, bool is_feature,
-				  bool custom_context)
+				  vlib_frame_t *frame,
+				  struct ip6_sv_reass_hoff_args a)
 {
   ip6_sv_reass_main_t *rm = &ip6_sv_reass_main;
 
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 n_enq, n_left_from, *from, *context;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
-  u32 fq_index;
 
   from = vlib_frame_vector_args (frame);
-  if (custom_context)
+  if (a.custom_context)
     context = vlib_frame_aux_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
@@ -1281,9 +1349,10 @@ ip6_sv_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   b = bufs;
   ti = thread_indices;
 
-  fq_index = (is_feature) ?
-		     rm->fq_feature_index :
-		     (custom_context ? rm->fq_custom_context_index : rm->fq_index);
+  const u32 fq_index = a.is_output_feature ? rm->fq_output_feature_index :
+		       a.is_feature	   ? rm->fq_feature_index :
+		       a.custom_context	   ? rm->fq_custom_context_index :
+					     rm->fq_index;
 
   while (n_left_from > 0)
     {
@@ -1302,7 +1371,7 @@ ip6_sv_reassembly_handoff_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       ti += 1;
       b += 1;
     }
-  if (custom_context)
+  if (a.custom_context)
     n_enq = vlib_buffer_enqueue_to_thread_with_aux (
       vm, node, fq_index, from, context, thread_indices, frame->n_vectors, 1);
   else
@@ -1321,7 +1390,10 @@ VLIB_NODE_FN (ip6_sv_reassembly_handoff_node) (vlib_main_t * vm,
 					       vlib_frame_t * frame)
 {
   return ip6_sv_reassembly_handoff_inline (
-    vm, node, frame, false /* is_feature */, false /* custom_context */);
+    vm, node, frame,
+    (struct ip6_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = false,
+				     .custom_context = false });
 }
 
 VLIB_REGISTER_NODE (ip6_sv_reassembly_handoff_node) = {
@@ -1338,17 +1410,42 @@ VLIB_REGISTER_NODE (ip6_sv_reassembly_handoff_node) = {
   },
 };
 
-
 VLIB_NODE_FN (ip6_sv_reassembly_feature_handoff_node) (vlib_main_t * vm,
                                vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return ip6_sv_reassembly_handoff_inline (
-    vm, node, frame, true /* is_feature */, false /* custom_context */);
+    vm, node, frame,
+    (struct ip6_sv_reass_hoff_args){ .is_feature = true,
+				     .is_output_feature = false,
+				     .custom_context = false });
 }
-
 
 VLIB_REGISTER_NODE (ip6_sv_reassembly_feature_handoff_node) = {
   .name = "ip6-sv-reass-feature-hoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(ip6_sv_reassembly_handoff_error_strings),
+  .error_strings = ip6_sv_reassembly_handoff_error_strings,
+  .format_trace = format_ip6_sv_reassembly_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (ip6_sv_reassembly_output_feature_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return ip6_sv_reassembly_handoff_inline (
+    vm, node, frame,
+    (struct ip6_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = true,
+				     .custom_context = false });
+}
+
+VLIB_REGISTER_NODE (ip6_sv_reassembly_output_feature_handoff_node) = {
+  .name = "ip6-sv-reass-output-feature-hoff",
   .vector_size = sizeof (u32),
   .n_errors = ARRAY_LEN(ip6_sv_reassembly_handoff_error_strings),
   .error_strings = ip6_sv_reassembly_handoff_error_strings,
@@ -1365,7 +1462,10 @@ VLIB_NODE_FN (ip6_sv_reassembly_custom_context_handoff_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip6_sv_reassembly_handoff_inline (
-    vm, node, frame, false /* is_feature */, true /* custom_context */);
+    vm, node, frame,
+    (struct ip6_sv_reass_hoff_args){ .is_feature = false,
+				     .is_output_feature = false,
+				     .custom_context = true });
 }
 
 VLIB_REGISTER_NODE (ip6_sv_reassembly_custom_context_handoff_node) = {
@@ -1406,6 +1506,33 @@ ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
       if (!rm->feature_use_refcount_per_intf[sw_if_index])
 	return vnet_feature_enable_disable ("ip6-unicast",
 					    "ip6-sv-reassembly-feature",
+					    sw_if_index, 0, 0, 0);
+    }
+  return 0;
+}
+
+vnet_api_error_t
+ip6_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
+{
+  ip6_sv_reass_main_t *rm = &ip6_sv_reass_main;
+  vec_validate (rm->output_feature_use_refcount_per_intf, sw_if_index);
+  if (is_enable)
+    {
+      if (!rm->output_feature_use_refcount_per_intf[sw_if_index])
+	{
+	  ++rm->output_feature_use_refcount_per_intf[sw_if_index];
+	  return vnet_feature_enable_disable (
+	    "ip6-output", "ip6-sv-reassembly-output-feature", sw_if_index, 1,
+	    0, 0);
+	}
+      ++rm->output_feature_use_refcount_per_intf[sw_if_index];
+    }
+  else
+    {
+      --rm->output_feature_use_refcount_per_intf[sw_if_index];
+      if (!rm->output_feature_use_refcount_per_intf[sw_if_index])
+	return vnet_feature_enable_disable ("ip6-output",
+					    "ip6-sv-reassembly-output-feature",
 					    sw_if_index, 0, 0, 0);
     }
   return 0;
