@@ -37,6 +37,10 @@ u8 *
 format_vnet_api_errno (u8 *s, va_list *args)
 {
   vnet_api_error_t api_error = va_arg (*args, vnet_api_error_t);
+
+  if (0 == api_error)
+    return format (s, "Success");
+
 #ifdef _
 #undef _
 #endif
