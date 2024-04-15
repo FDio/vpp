@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "e40f4bf9f05b918a3995f4016c44b7176585d334",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c82dac3_9743a4bc",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3325,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-15T11:54:52Z",
+      "side": 1,
+      "message": "looks logical, and in sync with the comment above",
+      "revId": "e40f4bf9f05b918a3995f4016c44b7176585d334",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
