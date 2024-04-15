@@ -143,11 +143,14 @@ test_pinning_conf () {
 		VPP_CONTAINER_CPUSET="--cpuset-cpus $CONTAINER_CPU_RANGE"
 		echo "(Running vpp in container with limited cpuset $CONTAINER_CPU_RANGE)"
 	fi
-	(docker run -d ${VPP_CONTAINER_CPUSET} --name="$DOCKER_CONTAINER_NAME" \
-	-e LD_LIBRARY_PATH="/vpp/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/" -v $VPP_SOCK_PATH:$VPP_SOCK_PATH \
-	-v $WS_ROOT:/vpp  ubuntu:22.04 sh -c "/vpp/build-root/build-vpp_debug-native/vpp/bin/vpp unix {interactive \
+	VPP_CONF="unix {interactive \
 	nodaemon cli-listen $VPP_SOCK_PATH/cli.sock} cpu {main-core ${MAIN_CORE} ${VPP_CPU_EXTRA_OPTIONS} } plugins \
-	{ plugin dpdk_plugin.so {disable } }" > /dev/null )
+	{ plugin dpdk_plugin.so {disable } }"
+
+	(docker run -d $VPP_CONTAINER_CPUSET --name="$DOCKER_CONTAINER_NAME" \
+	-e LD_LIBRARY_PATH="/vpp/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/" -v $VPP_SOCK_PATH:$VPP_SOCK_PATH \
+	-v $WS_ROOT:/vpp  ubuntu:22.04 /usr/bin/bash -c "echo '$VPP_CONF' > /tmp/vpp-test.conf && \
+	/vpp/build-root/build-vpp_debug-native/vpp/bin/vpp -c /tmp/vpp-test.conf" > /dev/null )
 	sleep 3 # wait for VPP to initialize socket
 	# Change access permissions on vpp cli socket
 	# docker exec -it "$DOCKER_CONTAINER_NAME" /bin/bash -c "chmod 777  $VPP_SOCK_PATH/cli.sock"  > /dev/null
@@ -220,11 +223,13 @@ test_invalid_conf () {
 		VPP_CONTAINER_CPUSET="--cpuset-cpus $CONTAINER_CPU_RANGE"
 		echo "(Running vpp in container with limited cpuset $CONTAINER_CPU_RANGE)"
 	fi
-	(docker run -d --cpuset-cpus $CONTAINER_CPU_RANGE --name="$DOCKER_CONTAINER_NAME" \
+	VPP_CONF="unix {interactive \
+	nodaemon cli-listen $VPP_SOCK_PATH/cli.sock} cpu {main-core ${MAIN_CORE} ${VPP_CPU_EXTRA_OPTIONS} } plugins \
+	{ plugin dpdk_plugin.so {disable } }"
+	(docker run -d $VPP_CONTAINER_CPUSET --name="$DOCKER_CONTAINER_NAME" \
 	-e LD_LIBRARY_PATH="/vpp/build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/" -v $VPP_SOCK_PATH:$VPP_SOCK_PATH \
-	-v $WS_ROOT:/vpp  ubuntu:22.04 sh -c "/vpp/build-root/build-vpp_debug-native/vpp/bin/vpp unix {interactive \
-	nodaemon cli-listen $VPP_SOCK_PATH/cli.sock} cpu {main-core ${MAIN_CORE} ${VPP_CPU_EXTRA_OPTIONS}} plugins \
-	{ plugin dpdk_plugin.so {disable } }"  > /dev/null)
+	-v $WS_ROOT:/vpp  ubuntu:22.04 /usr/bin/bash -c "echo '$VPP_CONF' > /tmp/vpp-test.conf && \
+	/vpp/build-root/build-vpp_debug-native/vpp/bin/vpp -c /tmp/vpp-test.conf" > /dev/null )
 	sleep 3 # wait for vpp to initialize socket
 	# check if vpp launched with invalid configuration
 	taskset --all-tasks -pc $(pgrep vpp) &> /dev/null
@@ -290,6 +295,18 @@ run_tests () {
 	CONTAINER_RESTRAIN_CPUSET="t"
     CORELIST_WORKERS=""
 	MAIN_CORE="5"
+	test_pinning_conf
+	WORKERS_AUTO="1"
+    SKIP_CORE="1"
+	CONTAINER_RESTRAIN_CPUSET=""
+    CORELIST_WORKERS=""
+	MAIN_CORE="auto"
+	test_pinning_conf
+	WORKERS_AUTO="1"
+    SKIP_CORE="1"
+	CONTAINER_RESTRAIN_CPUSET=""
+    CORELIST_WORKERS=""
+	MAIN_CORE="1"
 	test_pinning_conf
 	echo "TESTING NON-VALID CORE PINNING CONFIGURATIONS"
 	echo " "
