@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fdfd52b8_2493d067",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-15T11:42:08Z",
+      "side": 1,
+      "message": "based on unix(7) \u0026 unix(4) manpages looks ok.",
+      "revId": "15e5d6f0b4bdf9d3af71fa57bbe082a3b34cf28e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
