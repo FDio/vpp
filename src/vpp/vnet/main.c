@@ -22,6 +22,8 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/cpu.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/threads.h>
@@ -117,6 +119,7 @@ main (int argc, char *argv[])
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
   int main_core = ~0;
+  int main_core_auto = 0;
   cpu_set_t cpuset;
   void *main_heap;
 
@@ -266,10 +269,17 @@ main (int argc, char *argv[])
 	{
 	  if (i < (argc - 1))
 	    {
-	      errno = 0;
-	      unsigned long x = strtol (argv[++i], 0, 0);
-	      if (errno == 0)
-		main_core = x;
+	      if (!strncmp (argv[++i], "auto", 14))
+		{
+		  main_core_auto = 1;
+		}
+	      else
+		{
+		  errno = 0;
+		  unsigned long x = strtol (argv[++i], 0, 0);
+		  if (errno == 0)
+		    main_core = x;
+		}
 	    }
 	}
       else if (!strncmp (argv[i], "interactive", 11))
@@ -323,7 +333,26 @@ defaulted:
 
   unformat_free (&input);
 
+  uword *affinity_cpus;
+
+  /* get cpu affinity bitmap */
+  affinity_cpus = os_get_cpu_affinity_bitmap ();
+
+  /* if fetching affinity fails, return online cpu core bmp */
+  if (affinity_cpus == 0)
+    affinity_cpus = os_get_online_cpu_core_bitmap ();
+
   /* set process affinity for main thread */
+  if (main_core_auto && main_core != ~0)
+    clib_unix_error ("cannot set both 'main-core %d' and 'main-core auto'",
+		     main_core);
+
+  if (main_core_auto)
+    {
+      uword c = clib_bitmap_first_set (affinity_cpus);
+      if (c != ~0)
+	main_core = c;
+    }
   if (main_core != ~0)
     {
       CPU_ZERO (&cpuset);
