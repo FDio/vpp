@@ -358,6 +358,7 @@ ip6_icmp_error (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  vlib_buffer_copy_trace_flag (vm, org_p0, pi0);
+	  org_p0->flags &= ~VLIB_BUFFER_IS_TRACED;
 
 	  /* Add IP header and ICMPv6 header including a 4 byte data field */
 	  vlib_buffer_advance (p0,
