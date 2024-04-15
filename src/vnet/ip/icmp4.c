@@ -341,7 +341,7 @@ ip4_icmp_error (vlib_main_t * vm,
 	  /* Prefer a source address from "offending interface" */
 	  if (!ip4_sas_by_sw_if_index (sw_if_index0, &out_ip0->dst_address,
 				       &out_ip0->src_address))
-	    { /* interface has no IP6 address - should not happen */
+	    { /* interface has no IP4 address - should not happen */
 	      next0 = IP4_ICMP_ERROR_NEXT_DROP;
 	      error0 = ICMP4_ERROR_DROP;
 	    }
