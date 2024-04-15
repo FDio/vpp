@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfd2652c_5ba56a94",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-04-15T11:44:10Z",
+      "side": 1,
+      "message": "A dependency on LLC exists in /vnet/ethernet/node.c, and must be resolved before merging.",
+      "revId": "e02ce272d9d6c75f452a6b8a41ed9ff6fb640807",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
