@@ -346,6 +346,23 @@
       "message": "Alright. Even for test cases where this change has worse performance, after comparing telemetry for this [1] against parent [2], I believe this is doing the right thing.\n\n[1] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3nb-spr/21/csit_current/0/log.html.gz#s1-s1-s1-s1-s2-t4-k2-k14-k18-k14-k1-k1-k1-k1\n[2] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3nb-spr/21/csit_parent/0/log.html.gz#s1-s1-s1-s1-s2-t4-k2-k14-k18-k14-k1-k1-k1-k1",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cbbf97c2_1fea977c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-04-15T15:15:38Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
