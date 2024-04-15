@@ -179,7 +179,6 @@ vlib_thread_init (vlib_main_t * vm)
   u32 n_vlib_mains = 1;
   u32 first_index = 1;
   u32 i;
-  pid_t pid;
   uword *avail_cpu, *affinity_cpu;
   uword n_cpus;
   u32 stats_num_worker_threads_dir_index;
@@ -192,9 +191,8 @@ vlib_thread_init (vlib_main_t * vm)
   tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
   tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
 
-  /* get bitmap of active cpu cores vpp has affinity to */
-  pid = getpid ();
-  tm->cpu_affinity_bitmap = os_get_cpu_affinity_bitmap (pid);
+  /* get bitmap of cpu cores affinity */
+  tm->cpu_affinity_bitmap = os_get_cpu_affinity_bitmap ();
 
   /* if fetching affinity fails, return online cpu core bmp */
   if (tm->cpu_affinity_bitmap == 0)

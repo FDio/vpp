@@ -54,6 +54,7 @@
 
 __clib_export __thread uword __os_thread_index = 0;
 __clib_export __thread uword __os_numa_index = 0;
+__clib_export cpu_set_t __os_affinity_cpu_set;
 
 clib_error_t *
 clib_file_n_bytes (char *file, uword * result)
@@ -276,28 +277,29 @@ os_get_online_cpu_core_bitmap ()
 }
 
 __clib_export clib_bitmap_t *
-os_get_cpu_affinity_bitmap (int pid)
+os_get_cpu_affinity_bitmap ()
 {
 #if __linux
   int index, ret;
-  cpu_set_t cpuset;
   uword *affinity_cpus;
 
   clib_bitmap_alloc (affinity_cpus, sizeof (cpu_set_t));
   clib_bitmap_zero (affinity_cpus);
 
-  __CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
-
-  ret = syscall (SYS_sched_getaffinity, 0, sizeof (cpu_set_t), &cpuset);
-
-  if (ret < 0)
+  /* store affinity cpuset for subsequent calls */
+  if (__CPU_COUNT_S (sizeof (cpu_set_t), &__os_affinity_cpu_set) == 0)
     {
-      clib_bitmap_free (affinity_cpus);
-      return 0;
+      ret = syscall (SYS_sched_getaffinity, 0, sizeof (cpu_set_t),
+		     &__os_affinity_cpu_set);
+      if (ret < 0)
+	{
+	  clib_bitmap_free (affinity_cpus);
+	  return 0;
+	}
     }
 
   for (index = 0; index < sizeof (cpu_set_t); index++)
-    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
+    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &__os_affinity_cpu_set))
       clib_bitmap_set (affinity_cpus, index, 1);
   return affinity_cpus;
 #else
