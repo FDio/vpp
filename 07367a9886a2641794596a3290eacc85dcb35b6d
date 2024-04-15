@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "545e207c_771e65d7",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-04-15T16:16:50Z",
+      "side": 1,
+      "message": "If this is now vnet specific, it should be moved out of vppinfra. Maybe move to main.c and rename to vnet_get_cpu_affinity_bitmap",
+      "range": {
+        "startLine": 280,
+        "startChar": 0,
+        "endLine": 280,
+        "endChar": 26
+      },
+      "revId": "07367a9886a2641794596a3290eacc85dcb35b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
