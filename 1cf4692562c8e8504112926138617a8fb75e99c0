@@ -381,6 +381,23 @@
       "parentUuid": "2825ab49_6d1e543f",
       "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5113679_d0ca9720",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-04-15T16:48:04Z",
+      "side": 1,
+      "message": "Do I need to rebase this for the \"submit\" button to be active ? It currently says I  do not have permission to submit.",
+      "revId": "1cf4692562c8e8504112926138617a8fb75e99c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
