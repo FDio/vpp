@@ -46,6 +46,30 @@
       },
       "revId": "07367a9886a2641794596a3290eacc85dcb35b6d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82a9938b_4b2a57c4",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-04-15T17:03:36Z",
+      "side": 1,
+      "message": "I\u0027m okay with keeping it under infra if it\u0027s meant to be consumed by multiple components. But then let\u0027s not change the name then, since it\u0027s not vpp \"app\" specific.",
+      "parentUuid": "2b3c10a6_bc77f742",
+      "range": {
+        "startLine": 280,
+        "startChar": 0,
+        "endLine": 280,
+        "endChar": 26
+      },
+      "revId": "07367a9886a2641794596a3290eacc85dcb35b6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
