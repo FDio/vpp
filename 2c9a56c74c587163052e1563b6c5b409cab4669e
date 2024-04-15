@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce4f2286_c44585cd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-15T11:44:19Z",
+      "side": 1,
+      "message": "If I understand well this is related to the freebsd work, am I right? Perhaps a commontag or jira item as reference would help reviews and later debugging",
+      "revId": "2c9a56c74c587163052e1563b6c5b409cab4669e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
