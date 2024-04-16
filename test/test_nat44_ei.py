@@ -953,8 +953,8 @@ class TestNAT44EI(MethodHolder):
         cls.pg1.configure_ipv4_neighbors()
 
         cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-        cls.vapi.ip_table_add_del(is_add=1, table={"table_id": 10})
-        cls.vapi.ip_table_add_del(is_add=1, table={"table_id": 20})
+        cls.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 10})
+        cls.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 20})
 
         cls.pg4._local_ip4 = "172.16.255.1"
         cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
@@ -2682,8 +2682,8 @@ class TestNAT44EI(MethodHolder):
 
         self.pg0.unconfig_ip4()
         self.pg1.unconfig_ip4()
-        self.vapi.ip_table_add_del(is_add=1, table={"table_id": vrf_id1})
-        self.vapi.ip_table_add_del(is_add=1, table={"table_id": vrf_id2})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": vrf_id1})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": vrf_id2})
         self.pg0.set_table_ip4(vrf_id1)
         self.pg1.set_table_ip4(vrf_id2)
         self.pg0.config_ip4()
@@ -2730,8 +2730,8 @@ class TestNAT44EI(MethodHolder):
             self.pg1.config_ip4()
             self.pg0.resolve_arp()
             self.pg1.resolve_arp()
-            self.vapi.ip_table_add_del(is_add=0, table={"table_id": vrf_id1})
-            self.vapi.ip_table_add_del(is_add=0, table={"table_id": vrf_id2})
+            self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": vrf_id1})
+            self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": vrf_id2})
 
     def test_vrf_feature_independent(self):
         """NAT44EI tenant VRF independent address pool mode"""
@@ -3468,8 +3468,8 @@ class TestNAT44EI(MethodHolder):
 
         self.pg1.unconfig_ip4()
         self.pg2.unconfig_ip4()
-        self.vapi.ip_table_add_del(is_add=1, table={"table_id": vrf_id1})
-        self.vapi.ip_table_add_del(is_add=1, table={"table_id": vrf_id2})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": vrf_id1})
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": vrf_id2})
         self.pg1.set_table_ip4(vrf_id1)
         self.pg2.set_table_ip4(vrf_id2)
         self.pg1.config_ip4()
@@ -4302,8 +4302,8 @@ class TestNAT44EIMW(MethodHolder):
         cls.pg1.configure_ipv4_neighbors()
 
         cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-        cls.vapi.ip_table_add_del(is_add=1, table={"table_id": 10})
-        cls.vapi.ip_table_add_del(is_add=1, table={"table_id": 20})
+        cls.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 10})
+        cls.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 20})
 
         cls.pg4._local_ip4 = "172.16.255.1"
         cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"

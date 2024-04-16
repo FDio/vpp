@@ -464,6 +464,60 @@ api_ip_table_add_del (vat_main_t *vam)
 }
 
 static int
+api_ip_table_add_del_v2 (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_add_del_v2_t *mp;
+  u8 create_mfib = 1;
+  u32 table_id = ~0;
+  u8 is_ipv6 = 0;
+  u8 is_add = 1;
+  int ret = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "table %d", &table_id))
+	;
+      else if (unformat (i, "no-mfib"))
+	create_mfib = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      errmsg ("missing table-ID");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_TABLE_ADD_DEL_V2, mp);
+
+  mp->table.table_id = ntohl (table_id);
+  mp->table.is_ip6 = is_ipv6;
+  mp->is_add = is_add;
+  mp->create_mfib = create_mfib;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ip_table_replace_begin (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;

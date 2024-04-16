@@ -169,16 +169,20 @@ def fib_interface_ip_prefix(test, addr, len, sw_if_index):
 
 
 class VppIpTable(VppObject):
-    def __init__(self, test, table_id, is_ip6=0, register=True, name=""):
+    def __init__(
+        self, test, table_id, is_ip6=0, register=True, name="", create_mfib=True
+    ):
         self._test = test
         self.name = name
         self.table_id = table_id
         self.is_ip6 = is_ip6
         self.register = register
+        self.create_mfib = True
 
     def add_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
+        self._test.vapi.ip_table_add_del_v2(
             is_add=1,
+            create_mfib=self.create_mfib,
             table={"is_ip6": self.is_ip6, "table_id": self.table_id, "name": self.name},
         )
         if self.register:
@@ -186,7 +190,7 @@ class VppIpTable(VppObject):
         return self
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
+        self._test.vapi.ip_table_add_del_v2(
             is_add=0, table={"is_ip6": self.is_ip6, "table_id": self.table_id}
         )
 

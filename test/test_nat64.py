@@ -76,7 +76,7 @@ class TestNAT64(VppTestCase):
         cls.ip6_interfaces.append(cls.pg_interfaces[2])
         cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
 
-        cls.vapi.ip_table_add_del(
+        cls.vapi.ip_table_add_del_v2(
             is_add=1, table={"table_id": cls.vrf1_id, "is_ip6": 1}
         )
 
