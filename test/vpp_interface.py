@@ -166,16 +166,15 @@ class VppInterface(metaclass=abc.ABCMeta):
         """
         return self._hosts_by_ip6[ip]
 
-    def generate_remote_hosts(self, count=1):
-        """Generate and add remote hosts for the interface.
+    def add_remote_hosts(self, count=1):
+        """Add remote hosts for the interface.
 
         :param int count: Number of generated remote hosts.
         """
-        self._remote_hosts = []
-        self._hosts_by_mac = {}
-        self._hosts_by_ip4 = {}
-        self._hosts_by_ip6 = {}
-        for i in range(2, count + 2):  # 0: network address, 1: local vpp address
+        remote_hosts_count = len(self._remote_hosts)
+        for i in range(
+            2 + remote_hosts_count, remote_hosts_count + count + 2
+        ):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
             ip6 = "fd01:%x::%x" % (self.sw_if_index, i)
@@ -185,6 +184,17 @@ class VppInterface(metaclass=abc.ABCMeta):
             self._hosts_by_mac[mac] = host
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
+
+    def generate_remote_hosts(self, count=1):
+        """Generate and add remote hosts for the interface.
+
+        :param int count: Number of generated remote hosts.
+        """
+        self._remote_hosts = []
+        self._hosts_by_mac = {}
+        self._hosts_by_ip4 = {}
+        self._hosts_by_ip6 = {}
+        self.add_remote_hosts(count)
 
     @abc.abstractmethod
     def __init__(self, test):
