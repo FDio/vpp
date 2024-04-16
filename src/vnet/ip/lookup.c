@@ -419,10 +419,12 @@ vnet_ip_table_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
   u32 table_id, is_add;
+  u8 create_mfib;
   u8 *name = NULL;
 
   is_add = 1;
   table_id = ~0;
+  create_mfib = 1;
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -438,6 +440,8 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 	is_add = 1;
       else if (unformat (line_input, "name %s", &name))
 	;
+      else if (unformat (line_input, "no-mfib"))
+	create_mfib = 0;
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -459,7 +463,8 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 		  table_id = ip_table_get_unused_id (fproto);
 		  vlib_cli_output (vm, "%u\n", table_id);
 		}
-	      ip_table_create (fproto, table_id, 0, name);
+	      ip_table_create (fproto, table_id, 0 /* is_api */, create_mfib,
+			       name);
 	    }
 	  else
 	    {
