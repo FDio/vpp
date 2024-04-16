@@ -273,7 +273,7 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
   app_worker_t *app_wrk;
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
+  if (PREDICT_FALSE (!app_wrk))
     {
       if (ntf == SESSION_CLEANUP_TRANSPORT)
 	return;
@@ -1600,11 +1600,23 @@ void
 session_detach_app (session_t *s)
 {
   if (s->session_state < SESSION_STATE_TRANSPORT_CLOSING)
-    session_close (s);
-  else if (s->session_state < SESSION_STATE_TRANSPORT_CLOSED)
-    session_set_state (s, SESSION_STATE_APP_CLOSED);
-  else if (s->session_state < SESSION_STATE_CLOSED)
-    session_set_state (s, SESSION_STATE_CLOSED);
+    {
+      session_close (s);
+    }
+  else if (s->session_state < SESSION_STATE_TRANSPORT_DELETED)
+    {
+      /* Transport is closing but it's not yet deleted. Force transport
+       * cleanup and enqueue a session cleanup notification before app worker
+       * index is detached */
+      transport_cleanup (session_get_transport_proto (s), s->connection_index,
+			 s->thread_index);
+      session_set_state (s, SESSION_STATE_TRANSPORT_DELETED);
+      session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
+    }
+  else
+    {
+      session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
+    }
 
   s->flags |= SESSION_F_APP_CLOSED;
   s->app_wrk_index = APP_INVALID_INDEX;
