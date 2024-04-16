@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a53addea_6a8d5bfa",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-04-16T07:48:30Z",
+      "side": 1,
+      "message": "Hi Maxim,\n\nwhat is the purpose of this patch? I see that it optimises the process, but what is the real benefit? I would assume that there is a set of private tests using this feature, but do these tests really add remote hosts so many times that it actually makes a performance difference? If not, then why complicate the code unnecessarily?",
+      "revId": "e3304401fe8870af83dd2c8ac7cb78425a9ebd3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
