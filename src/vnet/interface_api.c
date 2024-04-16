@@ -579,7 +579,7 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
   fib_index = fib_table_find (fproto, table_id);
   mfib_index = mfib_table_find (fproto, table_id);
 
-  if (~0 == fib_index || ~0 == mfib_index)
+  if (~0 == fib_index)
     {
       return (VNET_API_ERROR_NO_SUCH_FIB);
     }
@@ -601,7 +601,8 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
   /* clang-format on */
 
   fib_table_bind (fproto, sw_if_index, fib_index);
-  mfib_table_bind (fproto, sw_if_index, mfib_index);
+  if (mfib_index != ~0)
+    mfib_table_bind (fproto, sw_if_index, mfib_index);
 
   return (0);
 }

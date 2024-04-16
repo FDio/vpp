@@ -133,7 +133,8 @@ session_create_lookpback (u32 table_id, u32 * sw_if_index,
 
   if (table_id != 0)
     {
-      ip_table_create (FIB_PROTOCOL_IP4, table_id, 0, 0);
+      ip_table_create (FIB_PROTOCOL_IP4, table_id, 0 /* is_api */,
+		       1 /* create_mfib */, 0);
       ip_table_bind (FIB_PROTOCOL_IP4, *sw_if_index, table_id);
     }
 
