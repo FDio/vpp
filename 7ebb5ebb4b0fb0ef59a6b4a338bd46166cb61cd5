@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "298442d7_b4e65c70",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-16T00:54:54Z",
+      "side": 1,
+      "message": "to select the VRF of a packet based on its source address, there\u0027s a plugin called \u0027source VRF select\u0027.\nOnce the packet is in the correct VRF, then uRPF can run as normal.",
+      "parentUuid": "e524b110_34199cdf",
+      "revId": "7ebb5ebb4b0fb0ef59a6b4a338bd46166cb61cd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ee23b584_b37ba811",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "So where should I put it, please?",
       "parentUuid": "ee23b584_b37ba811",
+      "revId": "7ebb5ebb4b0fb0ef59a6b4a338bd46166cb61cd5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19357e9e_313f0c96",
+        "filename": "src/vnet/ip/ip4_input.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-04-16T00:54:54Z",
+      "side": 1,
+      "message": "in feature specific code, i.e. another node that runs on the ip input feature arc before uRPF.",
+      "parentUuid": "b227f87e_9c930430",
       "revId": "7ebb5ebb4b0fb0ef59a6b4a338bd46166cb61cd5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
