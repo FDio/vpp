@@ -57,6 +57,23 @@ autoreply define ip_table_add_del
   vl_api_ip_table_t table;
 };
 
+/** \brief Add / del table request - version 2
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table - the FIB table to add or del
+    @param create_mfib - whether to create mfib or not
+    @param is_add - add or del
+*/
+autoreply define ip_table_add_del_v2
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip_table_t table;
+  bool create_mfib [default=true];
+  bool is_add [default=true];
+};
+
 /** \brief Allocate an unused table
            A table can be added multiple times.
            If a large number of tables are in use (millions), this API might
