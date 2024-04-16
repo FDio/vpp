@@ -459,7 +459,8 @@ vnet_ip_table_cmd (vlib_main_t * vm,
 		  table_id = ip_table_get_unused_id (fproto);
 		  vlib_cli_output (vm, "%u\n", table_id);
 		}
-	      ip_table_create (fproto, table_id, 0, name);
+	      ip_table_create (fproto, table_id, 0 /* is_api */,
+			       1 /* create_mfib */, name);
 	    }
 	  else
 	    {

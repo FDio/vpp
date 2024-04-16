@@ -489,11 +489,15 @@ class TestVPPInterfacesQemu:
         except Exception:
             pass
         try:
-            self.vapi.ip_table_add_del(is_add=0, table={"table_id": layer3["ip4_vrf"]})
+            self.vapi.ip_table_add_del_v2(
+                is_add=0, table={"table_id": layer3["ip4_vrf"]}
+            )
         except Exception:
             pass
         try:
-            self.vapi.ip_table_add_del(is_add=0, table={"table_id": layer3["ip6_vrf"]})
+            self.vapi.ip_table_add_del_v2(
+                is_add=0, table={"table_id": layer3["ip6_vrf"]}
+            )
         except Exception:
             pass
         try:
@@ -693,7 +697,7 @@ class TestVPPInterfacesQemu:
         vrf_id -- vrf_id
         """
         is_ipv6 = 0 if ip_version == 4 else 1
-        self.vapi.ip_table_add_del(
+        self.vapi.ip_table_add_del_v2(
             is_add=1, table={"table_id": vrf_id, "is_ip6": is_ipv6}
         )
         for sw_if_index, ip_prefix in if_idx_ip_prefixes:
