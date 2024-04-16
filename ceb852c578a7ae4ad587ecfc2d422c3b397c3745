@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b0589199_09871b00",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-04-16T18:42:21Z",
+      "side": 1,
+      "message": "Hi Neale, due code relation chain, https://gerrit.fd.io/r/c/vpp/+/40627 relation needs this one, can you please take a look?",
+      "revId": "ceb852c578a7ae4ad587ecfc2d422c3b397c3745",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
