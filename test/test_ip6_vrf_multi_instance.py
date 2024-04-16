@@ -213,7 +213,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         """
         for i in range(count):
             vrf_id = i + start
-            self.vapi.ip_table_add_del(
+            self.vapi.ip_table_add_del_v2(
                 is_add=1, table={"table_id": vrf_id, "is_ip6": 1}
             )
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
@@ -276,7 +276,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             self.vrf_list.remove(vrf_id)
         if vrf_id in self.vrf_reset_list:
             self.vrf_reset_list.remove(vrf_id)
-        self.vapi.ip_table_add_del(is_add=0, table={"table_id": vrf_id, "is_ip6": 1})
+        self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": vrf_id, "is_ip6": 1})
 
     def create_stream(self, src_if, packet_sizes):
         """
