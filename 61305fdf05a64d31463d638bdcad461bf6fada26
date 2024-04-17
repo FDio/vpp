@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7e47173_6fc19d63",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 9
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-04-17T16:54:56Z",
+      "side": 1,
+      "message": "Please add a TODO comment describing why this commented out \u0026 what broken.\n\nOr if this is just a debug change, then please restore the ping call.",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 61
+      },
+      "revId": "61305fdf05a64d31463d638bdcad461bf6fada26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
