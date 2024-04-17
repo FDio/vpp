@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "00a7cf29_58a14e23",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-17T20:26:49Z",
+      "side": 1,
+      "message": "Hi Klement,\nIndeed I use this patch in private tests.\nI could just rely on `generate_remote_hosts` each time I need a new one, but it would re-generate the whole list when I could just add a new one ...\nI don\u0027t see a real complication there: Any code already relying on `generate_remote_hosts` would work the same way, and someone who does not know at the start of the test how many remote hosts he would need could add some dynamically.",
+      "parentUuid": "a53addea_6a8d5bfa",
+      "revId": "e3304401fe8870af83dd2c8ac7cb78425a9ebd3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8b7b95d9_279522c2",
@@ -60,6 +78,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fd29d0c7_34bf15b0",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-17T20:26:49Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8b7b95d9_279522c2",
+      "range": {
+        "startLine": 175,
+        "startChar": 12,
+        "endLine": 175,
+        "endChar": 13
+      },
+      "revId": "e3304401fe8870af83dd2c8ac7cb78425a9ebd3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "177c356d_74682e1a",
         "filename": "test/vpp_interface.py",
         "patchSetId": 1
@@ -71,6 +113,30 @@
       "writtenOn": "2024-04-17T09:41:24Z",
       "side": 1,
       "message": "so +2 is coming from the fact that 0 and 1 from the list are used for network and local vpp address, am I understand well from the below comment?",
+      "range": {
+        "startLine": 176,
+        "startChar": 12,
+        "endLine": 176,
+        "endChar": 13
+      },
+      "revId": "e3304401fe8870af83dd2c8ac7cb78425a9ebd3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2fe7e50_d9dfd28f",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-17T20:26:49Z",
+      "side": 1,
+      "message": "Indeed. I just moved the code from `generate_remote_hosts` here.",
+      "parentUuid": "177c356d_74682e1a",
       "range": {
         "startLine": 176,
         "startChar": 12,
