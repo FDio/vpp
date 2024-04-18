@@ -1375,14 +1375,14 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
 
       pool_foreach (this_prefix, radv_info->adv_prefixes_pool)
        {
-        if (this_prefix->prefix_len == prefix_len
+        if (this_prefix->prefix_len >= prefix_len
             && ip6_address_is_equal_masked (&this_prefix->prefix, address,
                                             &mask))
           {
             int rv = ip6_ra_prefix (vm,
                                     radv_info->sw_if_index,
-                                    address,
-                                    prefix_len,
+                                    &this_prefix->prefix,
+                                    this_prefix->prefix_len,
                                     0 /* use_default */,
                                     valid_time,
                                     preferred_time,
