@@ -22,6 +22,30 @@
       },
       "revId": "61305fdf05a64d31463d638bdcad461bf6fada26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b70776bc_8b62a21c",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 9
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-04-18T09:00:02Z",
+      "side": 1,
+      "message": "Done, test runs fine with or without the ping.",
+      "parentUuid": "c7e47173_6fc19d63",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 61
+      },
+      "revId": "61305fdf05a64d31463d638bdcad461bf6fada26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
