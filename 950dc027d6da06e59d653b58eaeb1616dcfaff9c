@@ -68,6 +68,24 @@
       "parentUuid": "3a76a1cb_df8a7467",
       "revId": "950dc027d6da06e59d653b58eaeb1616dcfaff9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f093962_35af7600",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-04-18T09:17:33Z",
+      "side": 1,
+      "message": "Hi Dave,\n\nPlease review after my latest changes.\n\nThanks,\nDenys.",
+      "parentUuid": "5c1ad942_3b003120",
+      "revId": "950dc027d6da06e59d653b58eaeb1616dcfaff9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
