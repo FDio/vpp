@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61240a61_c89f005b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2024-04-18T10:09:34Z",
+      "side": 1,
+      "message": "There - you said it. You can simply rely on the original, obvious function.\n\nNotice how your change introduced a question from Lajos about why there is a fixed size constant of 2.\n\nCode is read many more times than written and simplicity is a better long term goal than unnoticeable performance gain.\n\nI would rather not merge this.",
+      "revId": "054a39759f8164b84abd21692e77baecd03dac8f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
