@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4b79cd6_7376bee6",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 10
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-04-18T20:43:28Z",
+      "side": 0,
+      "message": "IMHO, it would be better to just delete the warning comment and leave the ping in place to ensure VPP is operational.",
+      "revId": "39e7f2e650a65bac596a6fc968c9860a1496a5bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
