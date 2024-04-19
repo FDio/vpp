@@ -244,12 +244,13 @@ class TestIPv4RouteLookup(VppTestCase):
     """IPv4 Route Lookup Test Case"""
 
     routes = []
+    tables = []
 
-    def route_lookup(self, prefix, exact):
+    def route_lookup(self, prefix, exact, table_id=0):
         return self.vapi.api(
             self.vapi.papi.ip_route_lookup,
             {
-                "table_id": 0,
+                "table_id": table_id,
                 "exact": exact,
                 "prefix": prefix,
             },
@@ -283,10 +284,29 @@ class TestIPv4RouteLookup(VppTestCase):
         r.add_vpp_config()
         self.routes.append(r)
 
+        custom_vrf = VppIpTable(self, 200)
+        custom_vrf.add_vpp_config()
+        self.tables.append(custom_vrf)
+
+        r = VppIpRoute(self, "2.2.0.0", 16, [drop_nh], 200)
+        r.add_vpp_config()
+        self.routes.append(r)
+
+        r = VppIpRoute(self, "2.2.2.0", 24, [drop_nh], 200)
+        r.add_vpp_config()
+        self.routes.append(r)
+
+        r = VppIpRoute(self, "2.2.2.2", 32, [drop_nh], 200)
+        r.add_vpp_config()
+        self.routes.append(r)
+
     def tearDown(self):
         # Remove the routes we added
         for r in self.routes:
             r.remove_vpp_config()
+
+        for vrf in self.tables:
+            vrf.remove_vpp_config()
 
         super(TestIPv4RouteLookup, self).tearDown()
 
@@ -305,6 +325,20 @@ class TestIPv4RouteLookup(VppTestCase):
         with self.vapi.assert_negative_api_retval():
             self.route_lookup("1.1.1.2/32", True)
 
+        # Verify we find the host route
+        prefix = "2.2.2.2/32"
+        result = self.route_lookup(prefix, True, 200)
+        assert prefix == str(result.route.prefix)
+
+        # Verify we find a middle prefix route
+        prefix = "2.2.2.0/24"
+        result = self.route_lookup(prefix, True, 200)
+        assert prefix == str(result.route.prefix)
+
+        # Verify we do not find an available LPM.
+        with self.vapi.assert_negative_api_retval():
+            self.route_lookup("2.2.2.1/32", True, 200)
+
     def test_longest_prefix_match(self):
         # verify we find lpm
         lpm_prefix = "1.1.1.0/24"
@@ -313,6 +347,15 @@ class TestIPv4RouteLookup(VppTestCase):
 
         # Verify we find the exact when not requested
         result = self.route_lookup(lpm_prefix, False)
+        assert lpm_prefix == str(result.route.prefix)
+
+        # verify we find lpm
+        lpm_prefix = "2.2.2.0/24"
+        result = self.route_lookup("2.2.2.1/32", False, 200)
+        assert lpm_prefix == str(result.route.prefix)
+
+        # Verify we find the exact when not requested
+        result = self.route_lookup(lpm_prefix, False, 200)
         assert lpm_prefix == str(result.route.prefix)
 
         # Can't seem to delete the default route so no negative LPM test.
