@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b506d29_f8b3a531",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-04-19T11:25:10Z",
+      "side": 1,
+      "message": "Good catch, I think it would be better to just update the test so it can also test drop routes in arbitrary fibs, instead of having it in the comments",
+      "revId": "8f25d47b3b0bd89652d6a99de33aeaac568145df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
