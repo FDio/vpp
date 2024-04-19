@@ -162,7 +162,8 @@ vnet_dev_rv_t oct_flow_query (vlib_main_t *, vnet_dev_port_t *, u32, uword,
   _ (AURA_BATCH_ALLOC_ISSUE_FAIL, aura_batch_alloc_issue_fail, ERROR,         \
      "aura batch alloc issue failed")                                         \
   _ (AURA_BATCH_ALLOC_NOT_READY, aura_batch_alloc_not_ready, ERROR,           \
-     "aura batch alloc not ready")
+     "aura batch alloc not ready")                                            \
+  _ (MTU_EXCEEDED, mtu_exceeded, ERROR, "mtu exceeded")
 
 typedef enum
 {
