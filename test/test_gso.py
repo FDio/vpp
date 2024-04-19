@@ -405,7 +405,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv4 - VXLAN
         #
         p45 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -424,7 +424,7 @@ class TestGSO(VppTestCase):
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
-            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[Ether].dst, self.pg2.local_mac)
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.3.3")
             self.assert_ip_checksum_valid(inner)
@@ -438,7 +438,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv6 - VXLAN
         #
         p65 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -457,7 +457,7 @@ class TestGSO(VppTestCase):
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IP].len - 20 - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
-            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[Ether].dst, self.pg2.local_mac)
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:3::3")
             self.assert_tcp_checksum_valid(inner)
@@ -483,7 +483,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv4 - VXLAN
         #
         p46 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.3.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -501,7 +501,7 @@ class TestGSO(VppTestCase):
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IPv6].plen - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
-            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[Ether].dst, self.pg2.local_mac)
             self.assertEqual(inner[IP].src, self.pg2.remote_ip4)
             self.assertEqual(inner[IP].dst, "172.16.3.3")
             self.assert_ip_checksum_valid(inner)
@@ -515,7 +515,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv6 - VXLAN
         #
         p66 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:3::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -533,7 +533,7 @@ class TestGSO(VppTestCase):
             inner = rx[VXLAN].payload
             self.assertEqual(rx[IPv6].plen - 8 - 8, len(inner))
             self.assertEqual(inner[Ether].src, self.pg2.remote_mac)
-            self.assertEqual(inner[Ether].dst, "02:fe:60:1e:a2:79")
+            self.assertEqual(inner[Ether].dst, self.pg2.local_mac)
             self.assertEqual(inner[IPv6].src, self.pg2.remote_ip6)
             self.assertEqual(inner[IPv6].dst, "fd01:3::3")
             self.assert_tcp_checksum_valid(inner)
@@ -590,7 +590,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv4 - IPIP
         #
         p47 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -633,7 +633,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv6 - IPIP
         #
         p67 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -731,7 +731,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv4 - IPIP
         #
         p48 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -774,7 +774,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv6 - IPIP
         #
         p68 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -842,7 +842,7 @@ class TestGSO(VppTestCase):
         self.ip4_via_gre4_tunnel.add_vpp_config()
 
         pgre4 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -952,7 +952,7 @@ class TestGSO(VppTestCase):
         # Create IPv6 packet
         #
         pgre6 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1078,7 +1078,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv4 - IPSEC
         #
         ipsec44 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1116,7 +1116,7 @@ class TestGSO(VppTestCase):
         # IPv4/IPv6 - IPSEC
         #
         ipsec46 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1213,7 +1213,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv4 - IPSEC
         #
         ipsec64 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IP(src=self.pg2.remote_ip4, dst="172.16.10.3", flags="DF")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)
@@ -1252,7 +1252,7 @@ class TestGSO(VppTestCase):
         # IPv6/IPv6 - IPSEC
         #
         ipsec66 = (
-            Ether(src=self.pg2.remote_mac, dst="02:fe:60:1e:a2:79")
+            Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
             / IPv6(src=self.pg2.remote_ip6, dst="fd01:10::3")
             / TCP(sport=1234, dport=1234)
             / Raw(b"\xa5" * 65200)

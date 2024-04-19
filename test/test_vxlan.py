@@ -580,6 +580,7 @@ class TestVxlanL2Mode(VppTestCase):
 
         # Send packets
         NUM_PKTS = 128
+        p.dst = self.pg1.local_mac
         rx = self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
         self.assertEqual(NUM_PKTS, len(rx))
 
