@@ -151,9 +151,8 @@ ip6_map_t_icmp (vlib_main_t * vm,
 			       vnet_buffer (p0)->map_t.map_domain_index);
 	  ctx0.d = d0;
 	  ctx0.sender_port = 0;
-	  if (!ip6_get_port
-	      (vm, p0, ip60, p0->current_length, NULL, &ctx0.sender_port,
-	       NULL, NULL, NULL, NULL))
+	  if (!ip6_get_port (vm, p0, ip60, p0->current_length, NULL,
+			     &ctx0.sender_port, NULL, NULL, NULL, NULL, NULL))
 	    {
 	      // In case of 1:1 mapping, we don't care about the port
 	      if (!(d0->ea_bits_len == 0 && d0->rules))
