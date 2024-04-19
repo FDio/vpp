@@ -715,6 +715,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = DPO_PROTO_IP6;
             rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
         }
+      else if (unformat (input, "drop"))
+        {
+          rpath->frp_flags = FIB_ROUTE_PATH_DROP;
+        }
       else if (unformat (input, "local"))
 	{
 	  clib_memset (&rpath->frp_addr, 0, sizeof (rpath->frp_addr));
