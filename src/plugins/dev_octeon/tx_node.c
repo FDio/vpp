@@ -22,8 +22,11 @@ typedef struct
   u32 n_tx_bytes;
   u32 n_drop;
   vlib_buffer_t *drop[VLIB_FRAME_SIZE];
+  u32 n_exd_mtu;
+  vlib_buffer_t *exd_mtu[VLIB_FRAME_SIZE];
   u32 batch_alloc_not_ready;
   u32 batch_alloc_issue_fail;
+  int max_pkt_len;
   u16 lmt_id;
   u64 lmt_ioaddr;
   lmt_line_t *lmt_lines;
@@ -148,6 +151,12 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
       .subdc = NIX_SUBDC_SG,
     },
   };
+
+  if (PREDICT_FALSE (vlib_buffer_length_in_chain (vm, b) > ctx->max_pkt_len))
+    {
+      ctx->exd_mtu[ctx->n_exd_mtu++] = b;
+      return 0;
+    }
 
   if (!simple && flags & VLIB_BUFFER_NEXT_PRESENT)
     {
@@ -360,6 +369,8 @@ VNET_DEV_NODE_FN (oct_tx_node)
   vnet_dev_tx_node_runtime_t *rt = vnet_dev_get_tx_node_runtime (node);
   vnet_dev_tx_queue_t *txq = rt->tx_queue;
   oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
+  vnet_dev_t *dev = txq->port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
   u32 node_index = node->node_index;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n, n_enq, n_left, n_pkts = frame->n_vectors;
@@ -373,6 +384,7 @@ VNET_DEV_NODE_FN (oct_tx_node)
       .sq = ctq->sq.qid,
       .sizem1 = 1,
     },
+    .max_pkt_len = roc_nix_max_pkt_len (cd->nix),
     .lmt_id = lmt_id,
     .lmt_ioaddr = ctq->io_addr,
     .lmt_lines = ctq->lmt_addr + (lmt_id << ROC_LMT_LINE_SIZE_LOG2),
@@ -406,7 +418,7 @@ VNET_DEV_NODE_FN (oct_tx_node)
 	n += oct_tx_enq16 (vm, &ctx, txq, b, n_left, /* trace */ 0);
     }
 
-  ctq->n_enq = n_enq + n - ctx.n_drop;
+  ctq->n_enq = n_enq + n - ctx.n_drop - ctx.n_exd_mtu;
 
   if (n < n_pkts)
     {
@@ -420,6 +432,10 @@ VNET_DEV_NODE_FN (oct_tx_node)
   if (ctx.n_drop)
     vlib_error_count (vm, node->node_index, OCT_TX_NODE_CTR_CHAIN_TOO_LONG,
 		      ctx.n_drop);
+
+  if (PREDICT_FALSE (ctx.n_exd_mtu))
+    vlib_error_count (vm, node->node_index, OCT_TX_NODE_CTR_MTU_EXCEEDED,
+		      ctx.n_exd_mtu);
 
   if (ctx.batch_alloc_not_ready)
     vlib_error_count (vm, node_index,
@@ -439,6 +455,14 @@ VNET_DEV_NODE_FN (oct_tx_node)
       vlib_get_buffer_indices (vm, ctx.drop, bi, ctx.n_drop);
       vlib_buffer_free (vm, bi, ctx.n_drop);
       n_pkts -= ctx.n_drop;
+    }
+
+  if (PREDICT_FALSE (ctx.n_exd_mtu))
+    {
+      u32 bi[VLIB_FRAME_SIZE];
+      vlib_get_buffer_indices (vm, ctx.exd_mtu, bi, ctx.n_exd_mtu);
+      vlib_buffer_free (vm, bi, ctx.n_exd_mtu);
+      n_pkts -= ctx.n_exd_mtu;
     }
 
   return n_pkts;
