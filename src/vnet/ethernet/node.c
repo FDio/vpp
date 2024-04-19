@@ -982,8 +982,31 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		{
 		  for (int j = 0; j < 16; j++)
-		    if (next[j] == 0)
-		      slowpath_indices[n_slowpath++] = i + j;
+		    {
+		      if (next[j] == 0)
+			slowpath_indices[n_slowpath++] = i + j;
+		      else if (dmac_check && main_is_l3 && dmacs_bad[i + j])
+			{
+			  next[j] = 0;
+			  slowpath_indices[n_slowpath++] = i + j;
+			}
+		    }
+		}
+	    }
+	  else
+	    {
+	      if (dmac_check && main_is_l3)
+		{
+		  u8x16 dmac_bad = u8x16_load_unaligned (&dmacs_bad[i]);
+		  if (!u8x16_is_all_zero (dmac_bad))
+		    {
+		      for (int j = 0; j < 16; j++)
+			if (dmacs_bad[i + j])
+			  {
+			    next[j] = 0;
+			    slowpath_indices[n_slowpath++] = i + j;
+			  }
+		    }
 		}
 	    }
 
@@ -994,7 +1017,12 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  continue;
 	}
 #endif
-      if (main_is_l3 && etype[0] == et_ip4)
+      if (dmac_check && main_is_l3 && dmacs_bad[i])
+	{
+	  next[0] = 0;
+	  slowpath_indices[n_slowpath++] = i;
+	}
+      else if (main_is_l3 && etype[0] == et_ip4)
 	next[0] = next_ip4;
       else if (main_is_l3 && etype[0] == et_ip6)
 	next[0] = next_ip6;
@@ -1052,7 +1080,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      /* untagged packet with not well known etyertype */
+	      /* untagged packet with not well known ethertype */
 	      if (last_unknown_etype != etype)
 		{
 		  last_unknown_etype = etype;
