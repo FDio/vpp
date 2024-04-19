@@ -350,6 +350,9 @@ VNET_DEV_NODE_FN (oct_tx_node)
   vnet_dev_tx_node_runtime_t *rt = vnet_dev_get_tx_node_runtime (node);
   vnet_dev_tx_queue_t *txq = rt->tx_queue;
   oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
+  vnet_dev_t *dev = txq->port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  int max_pkt_len = roc_nix_max_pkt_len (cd->nix);
   u32 node_index = node->node_index;
   u32 *from = vlib_frame_vector_args (frame);
   u32 n, n_enq, n_left, n_pkts = frame->n_vectors;
@@ -369,6 +372,25 @@ VNET_DEV_NODE_FN (oct_tx_node)
   };
 
   vlib_get_buffers (vm, vlib_frame_vector_args (frame), b, n_pkts);
+
+  n_left = n_pkts;
+  n_pkts = 0;
+  for (int i = 0; i < n_left; i++)
+    {
+      if (PREDICT_FALSE (vlib_buffer_length_in_chain (vm, b[i]) > max_pkt_len))
+	{
+	  vlib_buffer_free (vm, from + i, 1);
+	  vlib_error_count (vm, node->node_index, OCT_TX_NODE_CTR_MTU_EXCEEDED,
+			    1);
+	  continue;
+	}
+      b[n_pkts] = b[i];
+      n_pkts++;
+    }
+
+  if (PREDICT_FALSE (!n_pkts))
+    return 0;
+
   for (int i = 0; i < 8; i++)
     b[n_pkts + i] = b[n_pkts - 1];
 
