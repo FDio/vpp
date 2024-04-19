@@ -126,7 +126,7 @@ class TestL3xc(VppTestCase):
         p_2 = []
         for ii in range(NUM_PKTS):
             p_2.append(
-                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                Ether(src=self.pg2.remote_mac, dst=self.pg2.local_mac)
                 / IP(src="1.1.1.1", dst="1.1.1.2")
                 / UDP(sport=1000 + ii, dport=1234)
                 / Raw(b"\xa5" * 100)

@@ -216,7 +216,7 @@ class TestNAT44EDOutput(VppTestCase):
         # send FIN+ACK packet in->out - will cause session to be wiped
         # but won't create a new session
         p = (
-            Ether(src=pg0.remote_mac, dst=pg0.local_mac)
+            Ether(src=pg1.remote_mac, dst=pg1.local_mac)
             / IP(src=local_host, dst=remote_host)
             / TCP(sport=local_sport, dport=remote_dport, flags="FA", seq=300, ack=101)
         )

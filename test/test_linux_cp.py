@@ -126,7 +126,7 @@ class TestLinuxCP(VppTestCase):
         for phy, host in zip(phys, hosts):
             for j in range(N_HOSTS):
                 p = (
-                    Ether(src=phy.local_mac, dst=phy.remote_hosts[j].mac)
+                    Ether(src=phy.local_mac, dst=host.local_mac)
                     / IP(src=phy.local_ip4, dst=phy.remote_hosts[j].ip4)
                     / UDP(sport=1234, dport=1234)
                     / Raw()
