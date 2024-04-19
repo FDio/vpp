@@ -23,6 +23,7 @@
 #ifndef __included_ip4_sv_reass_h__
 #define __included_ip4_sv_reass_h__
 
+#include <stdbool.h>
 #include <vnet/api_errno.h>
 #include <vnet/vnet.h>
 
@@ -47,6 +48,33 @@ vnet_api_error_t ip4_sv_reass_enable_disable (u32 sw_if_index,
 int ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 int ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
 						    int is_enable);
+
+/*
+ * Enable or disable extended reassembly.
+ *
+ * Extended reassembly means that fragments are cached until both first and
+ * last fragments are seen. Furthermore, first fragment buffer will be cloned
+ * and stored in reassembly context for later retrieval.
+ */
+void ip4_sv_reass_enable_disable_extended (bool is_enable);
+
+struct ip4_sv_lock_unlock_args
+{
+  u32 *total_ip_payload_length;
+  u32 *first_fragment_buffer_index;
+  u32 *first_fragment_total_ip_header_length;
+};
+
+/*
+ * Lock thread-level lock and fetch information from reassembly context.
+ * Uses vnet_buffer2 data filled by extended reassembly.
+ *
+ * Returns 0 on success, -1 otherwise.
+ */
+int ip4_sv_reass_extended_lock (vlib_buffer_t *b,
+				struct ip4_sv_lock_unlock_args *a);
+
+void ip4_sv_reass_extended_unlock (vlib_buffer_t *b);
 
 uword ip4_sv_reass_custom_register_next_node (uword node_index);
 uword ip4_sv_reass_custom_context_register_next_node (uword node_index);
