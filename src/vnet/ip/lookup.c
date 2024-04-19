@@ -603,6 +603,8 @@ VLIB_CLI_COMMAND (vlib_cli_show_ip6_command, static) = {
  * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0 weight 3}
  * To add a route to a particular FIB table (VRF), use:
  * @cliexcmd{ip route add 172.16.24.0/24 table 7 via GigabitEthernet2/0/0}
+ * To add a route to drop the traffic:
+ * @cliexcmd{ip route add 172.16.24.0/24 table 100 via 127.0.0.1 drop}
  ?*/
 VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
@@ -612,7 +614,7 @@ VLIB_CLI_COMMAND (ip_route_command, static) = {
 		"<value>] [udp-encap <value>] [ip4-lookup-in-table <value>] "
 		"[ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] "
 		"[resolve-via-host] [resolve-via-connected] [rx-ip4|rx-ip6 "
-		"<interface>] [out-labels <value value value>]",
+		"<interface>] [out-labels <value value value>] [drop]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
 };
