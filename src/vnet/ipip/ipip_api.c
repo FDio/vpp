@@ -125,22 +125,23 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_tunnel_details_t *rmp;
   bool is_ipv6 = t->transport == IPIP_TRANSPORT_IP6 ? true : false;
+  ip46_type_t ip_type = is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4;
   fib_table_t *ft;
 
   ft = fib_table_get (t->fib_index,
 		      (is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4));
 
-  REPLY_MACRO_DETAILS2(VL_API_IPIP_TUNNEL_DETAILS,
-  ({
-    ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
-    ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
-    rmp->tunnel.table_id = htonl (ft->ft_table_id);
-    rmp->tunnel.instance = htonl (t->user_instance);
-    rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
-    rmp->tunnel.dscp = ip_dscp_encode(t->dscp);
-    rmp->tunnel.flags = tunnel_encap_decap_flags_encode(t->flags);
-    rmp->tunnel.mode = ipip_tunnel_mode_encode (t->mode);
-  }));
+  REPLY_MACRO_DETAILS2 (
+    VL_API_IPIP_TUNNEL_DETAILS, ({
+      ip_address_encode (&t->tunnel_src, ip_type, &rmp->tunnel.src);
+      ip_address_encode (&t->tunnel_dst, ip_type, &rmp->tunnel.dst);
+      rmp->tunnel.table_id = htonl (ft->ft_table_id);
+      rmp->tunnel.instance = htonl (t->user_instance);
+      rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+      rmp->tunnel.dscp = ip_dscp_encode (t->dscp);
+      rmp->tunnel.flags = tunnel_encap_decap_flags_encode (t->flags);
+      rmp->tunnel.mode = ipip_tunnel_mode_encode (t->mode);
+    }));
 }
 
 static void
