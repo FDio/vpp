@@ -241,7 +241,8 @@ typedef struct
 		u8 ip_proto;	/* protocol in ip header */
 		u8 icmp_type_or_tcp_flags;
 		u8 is_non_first_fragment : 1;
-		u8 l4_layer_truncated : 7;
+		u8 l4_hdr_truncated : 1;
+		u8 unused : 6;
 		u32 tcp_seq_number;
 	      };
 	      /* full reassembly output variables */
@@ -492,7 +493,22 @@ typedef struct
     };
   } nat;
 
-  u32 unused[8];
+  struct
+  {
+    /*
+     * Shallow virtual reassembly output values.
+     * Only populated if extended reassembly enabled via
+     * ipX_sv_reass_enable_disable_extended().
+     */
+    struct
+    {
+      u32 thread_index;
+      u32 pool_index;
+      u32 id;
+    } reass;
+  } ip;
+
+  u32 unused[5];
 } vnet_buffer_opaque2_t;
 
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
