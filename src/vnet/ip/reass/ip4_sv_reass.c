@@ -28,12 +28,13 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vnet/ip/reass/ip4_sv_reass.h>
 
-#define MSEC_PER_SEC 1000
+#define MSEC_PER_SEC			1000
 #define IP4_SV_REASS_TIMEOUT_DEFAULT_MS 100
-#define IP4_SV_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS 10000	// 10 seconds default
-#define IP4_SV_REASS_MAX_REASSEMBLIES_DEFAULT 1024
+#define IP4_SV_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS                          \
+  10000 // 10 seconds default
+#define IP4_SV_REASS_MAX_REASSEMBLIES_DEFAULT	   1024
 #define IP4_SV_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT 3
-#define IP4_SV_REASS_HT_LOAD_FACTOR (0.75)
+#define IP4_SV_REASS_HT_LOAD_FACTOR		   (0.75)
 
 typedef enum
 {
@@ -94,17 +95,23 @@ typedef struct
   // buffer indexes of buffers in this reassembly in chronological order -
   // including overlaps and duplicate fragments
   u32 *cached_buffers;
-  // set to true when this reassembly is completed
-  bool is_complete;
-  // ip protocol
+
+  bool first_fragment_seen;
+  bool last_fragment_seen;
+
+  // vnet_buffer data
   u8 ip_proto;
   u8 icmp_type_or_tcp_flags;
   u32 tcp_ack_number;
   u32 tcp_seq_number;
-  // l4 src port
   u16 l4_src_port;
-  // l4 dst port
   u16 l4_dst_port;
+
+  // vnet_buffer2 data
+  u32 total_ip_payload_length;
+  u32 first_fragment_total_ip_header_length;
+  u32 first_fragment_clone_bi;
+
   u32 next_index;
   // lru indexes
   u32 lru_prev;
@@ -114,13 +121,11 @@ typedef struct
 typedef struct
 {
   ip4_sv_reass_t *pool;
-  u32 reass_n;
   u32 id_counter;
   clib_spinlock_t lock;
   // lru indexes
   u32 lru_first;
   u32 lru_last;
-
 } ip4_sv_reass_per_thread_t;
 
 typedef struct
@@ -143,8 +148,6 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  // node index of ip4-drop node
-  u32 ip4_drop_idx;
   u32 ip4_sv_reass_expire_node_idx;
 
   /** Worker handoff */
@@ -159,6 +162,8 @@ typedef struct
   // reference count for enabling/disabling feature - per interface
   u32 *output_feature_use_refcount_per_intf;
 
+  // extended reassembly refcount - see ip4_sv_reass_enable_disable_extended()
+  u32 extended_refcount;
 } ip4_sv_reass_main_t;
 
 extern ip4_sv_reass_main_t ip4_sv_reass_main;
@@ -178,9 +183,15 @@ typedef enum
 typedef enum
 {
   REASS_FRAGMENT_CACHE,
-  REASS_FINISH,
+  REASS_FIRST_FRAG,
+  REASS_LAST_FRAG,
   REASS_FRAGMENT_FORWARD,
   REASS_PASSTHROUGH,
+  REASS_HANDOFF,
+  REASS_KEY,
+  REASS_FREE_TIMEOUT,
+  REASS_FREE_LRU,
+  REASS_FREE_ERROR,
 } ip4_sv_reass_trace_operation_e;
 
 typedef struct
@@ -191,19 +202,23 @@ typedef struct
   u8 ip_proto;
   u16 l4_src_port;
   u16 l4_dst_port;
-  int l4_layer_truncated;
+  int l4_hdr_truncated;
+  u32 handoff_thread_index;
+  clib_bihash_kv_16_8_t kv;
 } ip4_sv_reass_trace_t;
 
 extern vlib_node_registration_t ip4_sv_reass_node;
 extern vlib_node_registration_t ip4_sv_reass_node_feature;
 
 static u8 *
-format_ip4_sv_reass_trace (u8 * s, va_list * args)
+format_ip4_sv_reass_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_sv_reass_trace_t *t = va_arg (*args, ip4_sv_reass_trace_t *);
-  if (REASS_PASSTHROUGH != t->action)
+  if (REASS_PASSTHROUGH != t->action && REASS_HANDOFF != t->action &&
+      REASS_KEY != t->action && REASS_FREE_TIMEOUT != t->action &&
+      REASS_FREE_LRU != t->action && REASS_FREE_ERROR != t->action)
     {
       s = format (s, "reass id: %u, op id: %u ", t->reass_id, t->op_id);
     }
@@ -212,25 +227,42 @@ format_ip4_sv_reass_trace (u8 * s, va_list * args)
     case REASS_FRAGMENT_CACHE:
       s = format (s, "[cached]");
       break;
-    case REASS_FINISH:
+    case REASS_FIRST_FRAG:
       s =
-	format (s, "[finish, ip proto=%u, src_port=%u, dst_port=%u]",
+	format (s, "[first-frag-seen, ip proto=%u, src_port=%u, dst_port=%u]",
 		t->ip_proto, clib_net_to_host_u16 (t->l4_src_port),
 		clib_net_to_host_u16 (t->l4_dst_port));
       break;
+    case REASS_LAST_FRAG:
+      s = format (s, "[last-frag-seen]");
+      break;
+    case REASS_HANDOFF:
+      s = format (s, "[handoff, thread index: %u]", t->handoff_thread_index);
+      break;
+    case REASS_KEY:
+      s = format (s, "[lookup, key: %U]", format_bihash_kvp_16_8, &t->kv);
+      break;
+    case REASS_FREE_LRU:
+      s = format (s, "[free, LRU pressure]");
+      break;
+    case REASS_FREE_TIMEOUT:
+      s = format (s, "[free, timed out]");
+      break;
+    case REASS_FREE_ERROR:
+      s = format (s, "[free, error occurred]");
+      break;
     case REASS_FRAGMENT_FORWARD:
-      s =
-	format (s, "[forward, ip proto=%u, src_port=%u, dst_port=%u]",
-		t->ip_proto, clib_net_to_host_u16 (t->l4_src_port),
-		clib_net_to_host_u16 (t->l4_dst_port));
+      s = format (s, "[forward, ip proto=%u, src_port=%u, dst_port=%u]",
+		  t->ip_proto, clib_net_to_host_u16 (t->l4_src_port),
+		  clib_net_to_host_u16 (t->l4_dst_port));
       break;
     case REASS_PASSTHROUGH:
       s = format (s, "[not-fragmented]");
       break;
     }
-  if (t->l4_layer_truncated)
+  if (t->l4_hdr_truncated)
     {
-      s = format (s, " [l4-layer-truncated]");
+      s = format (s, " [l4-hdr-truncated]");
     }
   return s;
 }
@@ -239,12 +271,12 @@ static void
 ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 			ip4_sv_reass_t *reass, u32 bi,
 			ip4_sv_reass_trace_operation_e action, u32 ip_proto,
-			u16 l4_src_port, u16 l4_dst_port,
-			int l4_layer_truncated)
+			u16 l4_src_port, u16 l4_dst_port, int l4_hdr_truncated,
+			u32 handoff_thread_index)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  if (pool_is_free_index
-      (vm->trace_main.trace_buffer_pool, vlib_buffer_get_trace_index (b)))
+  if (pool_is_free_index (vm->trace_main.trace_buffer_pool,
+			  vlib_buffer_get_trace_index (b)))
     {
       // this buffer's trace is gone
       b->flags &= ~VLIB_BUFFER_IS_TRACED;
@@ -261,7 +293,8 @@ ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
   t->ip_proto = ip_proto;
   t->l4_src_port = l4_src_port;
   t->l4_dst_port = l4_dst_port;
-  t->l4_layer_truncated = l4_layer_truncated;
+  t->l4_hdr_truncated = l4_hdr_truncated;
+  t->handoff_thread_index = handoff_thread_index;
 #if 0
   static u8 *s = NULL;
   s = format (s, "%U", format_ip4_sv_reass_trace, NULL, NULL, t);
@@ -271,29 +304,56 @@ ip4_sv_reass_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 #endif
 }
 
+static void
+ip4_sv_reass_trace_timeout (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    ip4_sv_reass_t *reass, u32 bi)
+{
+  return ip4_sv_reass_add_trace (vm, node, reass, bi, REASS_FREE_TIMEOUT, ~0,
+				 ~0, ~0, 0, ~0);
+}
+
+static void
+ip4_sv_reass_trace_lru_free (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     ip4_sv_reass_t *reass, u32 bi)
+{
+  return ip4_sv_reass_add_trace (vm, node, reass, bi, REASS_FREE_LRU, ~0, ~0,
+				 ~0, 0, ~0);
+}
+
+static void
+ip4_sv_reass_trace_error_free (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       ip4_sv_reass_t *reass, u32 bi)
+{
+  return ip4_sv_reass_add_trace (vm, node, reass, bi, REASS_FREE_ERROR, ~0, ~0,
+				 ~0, 0, ~0);
+}
 
 always_inline void
-ip4_sv_reass_free (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
-		   ip4_sv_reass_per_thread_t * rt, ip4_sv_reass_t * reass)
+ip4_sv_reass_free (vlib_main_t *vm, ip4_sv_reass_main_t *rm,
+		   ip4_sv_reass_per_thread_t *rt, ip4_sv_reass_t *reass,
+		   bool del_bihash)
 {
-  clib_bihash_kv_16_8_t kv;
-  kv.key[0] = reass->key.as_u64[0];
-  kv.key[1] = reass->key.as_u64[1];
-  clib_bihash_add_del_16_8 (&rm->hash, &kv, 0);
+  if (del_bihash)
+    {
+      clib_bihash_kv_16_8_t kv;
+      kv.key[0] = reass->key.as_u64[0];
+      kv.key[1] = reass->key.as_u64[1];
+      clib_bihash_add_del_16_8 (&rm->hash, &kv, 0);
+    }
   vlib_buffer_free (vm, reass->cached_buffers,
 		    vec_len (reass->cached_buffers));
   vec_free (reass->cached_buffers);
   reass->cached_buffers = NULL;
+  if (~0 != reass->first_fragment_clone_bi)
+    vlib_buffer_free_one (vm, reass->first_fragment_clone_bi);
   if (~0 != reass->lru_prev)
     {
-      ip4_sv_reass_t *lru_prev =
-	pool_elt_at_index (rt->pool, reass->lru_prev);
+      ip4_sv_reass_t *lru_prev = pool_elt_at_index (rt->pool, reass->lru_prev);
       lru_prev->lru_next = reass->lru_next;
     }
   if (~0 != reass->lru_next)
     {
-      ip4_sv_reass_t *lru_next =
-	pool_elt_at_index (rt->pool, reass->lru_next);
+      ip4_sv_reass_t *lru_next = pool_elt_at_index (rt->pool, reass->lru_next);
       lru_next->lru_prev = reass->lru_prev;
     }
   if (rt->lru_first == reass - rt->pool)
@@ -305,20 +365,13 @@ ip4_sv_reass_free (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
       rt->lru_last = reass->lru_prev;
     }
   pool_put (rt->pool, reass);
-  --rt->reass_n;
-}
-
-always_inline void
-ip4_sv_reass_init (ip4_sv_reass_t * reass)
-{
-  reass->cached_buffers = NULL;
-  reass->is_complete = false;
 }
 
 always_inline ip4_sv_reass_t *
-ip4_sv_reass_find_or_create (vlib_main_t * vm, ip4_sv_reass_main_t * rm,
-			     ip4_sv_reass_per_thread_t * rt,
-			     ip4_sv_reass_kv_t * kv, u8 * do_handoff)
+ip4_sv_reass_find_or_create (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     u32 bi, ip4_sv_reass_main_t *rm,
+			     ip4_sv_reass_per_thread_t *rt,
+			     ip4_sv_reass_kv_t *kv, u8 *do_handoff)
 {
   ip4_sv_reass_t *reass = NULL;
   f64 now = vlib_time_now (vm);
@@ -336,7 +389,8 @@ again:
 
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip4_sv_reass_free (vm, rm, rt, reass);
+	  ip4_sv_reass_trace_timeout (vm, node, reass, bi);
+	  ip4_sv_reass_free (vm, rm, rt, reass, true);
 	  reass = NULL;
 	}
     }
@@ -347,18 +401,17 @@ again:
       return reass;
     }
 
-  if (rt->reass_n >= rm->max_reass_n && rm->max_reass_n)
+  if (pool_elts (rt->pool) >= rm->max_reass_n && rm->max_reass_n)
     {
       reass = pool_elt_at_index (rt->pool, rt->lru_first);
-      ip4_sv_reass_free (vm, rm, rt, reass);
+      ip4_sv_reass_trace_lru_free (vm, node, reass, bi);
+      ip4_sv_reass_free (vm, rm, rt, reass, true);
     }
 
-  pool_get (rt->pool, reass);
-  clib_memset (reass, 0, sizeof (*reass));
+  pool_get_zero (rt->pool, reass);
+  reass->first_fragment_clone_bi = ~0;
   reass->id = ((u64) vm->thread_index * 1000000000) + rt->id_counter;
   ++rt->id_counter;
-  ip4_sv_reass_init (reass);
-  ++rt->reass_n;
   reass->lru_prev = reass->lru_next = ~0;
 
   if (~0 != rt->lru_last)
@@ -382,7 +435,7 @@ again:
   int rv = clib_bihash_add_del_16_8 (&rm->hash, &kv->kv, 2);
   if (rv)
     {
-      ip4_sv_reass_free (vm, rm, rt, reass);
+      ip4_sv_reass_free (vm, rm, rt, reass, false);
       reass = NULL;
       // if other worker created a context already work with the other copy
       if (-2 == rv)
@@ -392,10 +445,23 @@ again:
   return reass;
 }
 
+always_inline bool
+ip4_sv_reass_is_complete (ip4_sv_reass_t *reass, bool extended)
+{
+  /*
+   * Both first and last fragments have to be seen for extended reassembly to
+   * be complete. Otherwise first fragment is enough.
+   */
+  if (extended)
+    return reass->first_fragment_seen && reass->last_fragment_seen;
+
+  return reass->first_fragment_seen;
+}
+
 always_inline ip4_sv_reass_rc_t
 ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     ip4_sv_reass_main_t *rm, ip4_header_t *ip0,
-		     ip4_sv_reass_t *reass, u32 bi0)
+		     ip4_sv_reass_t *reass, u32 bi0, bool extended)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   ip4_sv_reass_rc_t rc = IP4_SV_REASS_RC_OK;
@@ -409,33 +475,59 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	return IP4_SV_REASS_RC_UNSUPP_IP_PROTO;
       if (IP_PROTOCOL_TCP == reass->ip_proto)
 	{
-	  reass->icmp_type_or_tcp_flags = ((tcp_header_t *) (ip0 + 1))->flags;
-	  reass->tcp_ack_number = ((tcp_header_t *) (ip0 + 1))->ack_number;
-	  reass->tcp_seq_number = ((tcp_header_t *) (ip0 + 1))->seq_number;
+	  tcp_header_t *th = ip4_next_header (ip0);
+	  reass->icmp_type_or_tcp_flags = th->flags;
+	  reass->tcp_ack_number = th->ack_number;
+	  reass->tcp_seq_number = th->seq_number;
 	}
       else if (IP_PROTOCOL_ICMP == reass->ip_proto)
 	{
 	  reass->icmp_type_or_tcp_flags =
-	    ((icmp46_header_t *) (ip0 + 1))->type;
+	    ((icmp46_header_t *) (ip4_next_header (ip0)))->type;
 	}
-      reass->is_complete = true;
+      reass->first_fragment_seen = true;
+      if (extended)
+	{
+	  reass->first_fragment_total_ip_header_length =
+	    ip4_header_bytes (ip0);
+	  vlib_buffer_t *clone = vlib_buffer_copy_no_chain (
+	    vm, b0, &reass->first_fragment_clone_bi);
+	  if (!clone)
+	    reass->first_fragment_clone_bi = ~0;
+	}
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  ip4_sv_reass_add_trace (
-	    vm, node, reass, bi0, REASS_FINISH, reass->ip_proto,
+	    vm, node, reass, bi0, REASS_FIRST_FRAG, reass->ip_proto,
 	    reass->l4_src_port, reass->l4_dst_port,
-	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 	}
     }
+  if (!ip4_get_fragment_more (ip0))
+    {
+      const u32 fragment_length =
+	clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
+      reass->last_fragment_seen = true;
+      reass->total_ip_payload_length = fragment_first + fragment_length;
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  ip4_sv_reass_add_trace (
+	    vm, node, reass, bi0, REASS_LAST_FRAG, ~0, ~0, ~0,
+	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
+	}
+    }
+
   vec_add1 (reass->cached_buffers, bi0);
-  if (!reass->is_complete)
+
+  if (!ip4_sv_reass_is_complete (reass, extended))
     {
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  ip4_sv_reass_add_trace (
 	    vm, node, reass, bi0, REASS_FRAGMENT_CACHE, ~0, ~0, ~0,
-	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 	}
       if (vec_len (reass->cached_buffers) > rm->max_reass_len)
 	{
@@ -446,30 +538,63 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline int
-l4_layer_truncated (ip4_header_t *ip)
+l4_hdr_truncated (ip4_header_t *ip)
 {
-  static const int l4_layer_length[256] = {
-    [IP_PROTOCOL_TCP] = sizeof (tcp_header_t),
-    [IP_PROTOCOL_UDP] = sizeof (udp_header_t),
-    [IP_PROTOCOL_ICMP] = sizeof (icmp46_header_t),
-  };
+  if (IP_PROTOCOL_UDP == ip->protocol)
+    return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (udp_header_t) >
+	    (u8 *) ip + clib_net_to_host_u16 (ip->length));
+  if (IP_PROTOCOL_ICMP == ip->protocol)
+    return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (icmp46_header_t) >
+	    (u8 *) ip + clib_net_to_host_u16 (ip->length));
 
-  return ((u8 *) ip + ip4_header_bytes (ip) + l4_layer_length[ip->protocol] >
+  if (IP_PROTOCOL_TCP != ip->protocol)
+    return false;
+
+  tcp_header_t *th = ip4_next_header (ip);
+  const u32 tcp_opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+
+  return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (tcp_header_t) +
+	    tcp_opts_len >
 	  (u8 *) ip + clib_net_to_host_u16 (ip->length));
 }
 
+always_inline void
+ip4_sv_reass_reset_vnet_buffer2 (vlib_buffer_t *b)
+{
+  vnet_buffer2 (b)->ip.reass.pool_index = ~0;
+  vnet_buffer2 (b)->ip.reass.thread_index = ~0;
+  vnet_buffer2 (b)->ip.reass.id = ~0;
+}
+
+always_inline void
+ip4_sv_reass_set_vnet_buffer2_from_reass (vlib_main_t *vm, vlib_buffer_t *b,
+					  ip4_sv_reass_t *reass)
+{
+  vnet_buffer2 (b)->ip.reass.thread_index = vm->thread_index;
+  vnet_buffer2 (b)->ip.reass.id = reass->id;
+  vnet_buffer2 (b)->ip.reass.pool_index =
+    reass - ip4_sv_reass_main.per_thread_data[vm->thread_index].pool;
+}
+
+struct ip4_sv_reass_args
+{
+  bool is_feature;
+  bool is_output_feature;
+  bool is_custom;
+  bool with_custom_context;
+  bool extended;
+};
+
 always_inline uword
 ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
-		     vlib_frame_t *frame, bool is_feature,
-		     bool is_output_feature, bool is_custom,
-		     bool with_custom_context)
+		     vlib_frame_t *frame, struct ip4_sv_reass_args a)
 {
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, *to_next, *to_next_aux, next_index;
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
   ip4_sv_reass_per_thread_t *rt = &rm->per_thread_data[vm->thread_index];
   u32 *context;
-  if (with_custom_context)
+  if (a.with_custom_context)
     context = vlib_frame_aux_args (frame);
 
   clib_spinlock_lock (&rt->lock);
@@ -509,16 +634,16 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
 	vlib_buffer_get_current (b0),
-	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	(ptrdiff_t) (a.is_output_feature ? 1 : 0) *
 	  vnet_buffer (b0)->ip.save_rewrite_length);
       ip4_header_t *ip1 = (ip4_header_t *) u8_ptr_add (
 	vlib_buffer_get_current (b1),
-	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	(ptrdiff_t) (a.is_output_feature ? 1 : 0) *
 	  vnet_buffer (b1)->ip.save_rewrite_length);
 
-      if (PREDICT_FALSE
-	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0))
-	  || (ip4_get_fragment_more (ip1) || ip4_get_fragment_offset (ip1)))
+      if (PREDICT_FALSE (ip4_get_fragment_more (ip0) ||
+			 ip4_get_fragment_offset (ip0)) ||
+	  (ip4_get_fragment_more (ip1) || ip4_get_fragment_offset (ip1)))
 	{
 	  // fragment found, go slow path
 	  b -= 2;
@@ -529,39 +654,41 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  goto slow_path;
 	}
-      if (is_feature)
+      if (a.is_feature)
 	{
 	  vnet_feature_next (&next0, b0);
 	}
       else
 	{
-	  next0 = is_custom ? vnet_buffer (b0)->ip.reass.next_index :
-	    IP4_SV_REASSEMBLY_NEXT_INPUT;
+	  next0 = a.is_custom ? vnet_buffer (b0)->ip.reass.next_index :
+				      IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-      if (l4_layer_truncated (ip0))
+
+      if (a.extended)
+	ip4_sv_reass_reset_vnet_buffer2 (b0);
+
+      if (l4_hdr_truncated (ip0))
 	{
-	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
-	  vnet_buffer (b0)->ip.reass.l4_src_port = 0;
-	  vnet_buffer (b0)->ip.reass.l4_dst_port = 0;
+	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
 	}
       else
 	{
-	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
 	  if (IP_PROTOCOL_TCP == ip0->protocol)
 	    {
 	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip0 + 1))->flags;
+		((tcp_header_t *) (ip4_next_header (ip0)))->flags;
 	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip0 + 1))->ack_number;
+		((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
 	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip0 + 1))->seq_number;
+		((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
 	    }
 	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
 	    {
 	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip0 + 1))->type;
+		((icmp46_header_t *) (ip4_next_header (ip0)))->type;
 	    }
 	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
 	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
@@ -573,41 +700,43 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b0)->ip.reass.ip_proto,
 	    vnet_buffer (b0)->ip.reass.l4_src_port,
 	    vnet_buffer (b0)->ip.reass.l4_dst_port,
-	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 	}
-      if (is_feature)
+      if (a.is_feature)
 	{
 	  vnet_feature_next (&next1, b1);
 	}
       else
 	{
-	  next1 = is_custom ? vnet_buffer (b1)->ip.reass.next_index :
-	    IP4_SV_REASSEMBLY_NEXT_INPUT;
+	  next1 = a.is_custom ? vnet_buffer (b1)->ip.reass.next_index :
+				      IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
       vnet_buffer (b1)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b1)->ip.reass.ip_proto = ip1->protocol;
-      if (l4_layer_truncated (ip1))
+
+      if (a.extended)
+	ip4_sv_reass_reset_vnet_buffer2 (b1);
+
+      if (l4_hdr_truncated (ip1))
 	{
-	  vnet_buffer (b1)->ip.reass.l4_layer_truncated = 1;
-	  vnet_buffer (b1)->ip.reass.l4_src_port = 0;
-	  vnet_buffer (b1)->ip.reass.l4_dst_port = 0;
+	  vnet_buffer (b1)->ip.reass.l4_hdr_truncated = 1;
 	}
       else
 	{
-	  vnet_buffer (b1)->ip.reass.l4_layer_truncated = 0;
+	  vnet_buffer (b1)->ip.reass.l4_hdr_truncated = 0;
 	  if (IP_PROTOCOL_TCP == ip1->protocol)
 	    {
 	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip1 + 1))->flags;
+		((tcp_header_t *) (ip4_next_header (ip1)))->flags;
 	      vnet_buffer (b1)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip1 + 1))->ack_number;
+		((tcp_header_t *) (ip4_next_header (ip1)))->ack_number;
 	      vnet_buffer (b1)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip1 + 1))->seq_number;
+		((tcp_header_t *) (ip4_next_header (ip1)))->seq_number;
 	    }
 	  else if (IP_PROTOCOL_ICMP == ip1->protocol)
 	    {
 	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip1 + 1))->type;
+		((icmp46_header_t *) (ip4_next_header (ip1)))->type;
 	    }
 	  vnet_buffer (b1)->ip.reass.l4_src_port = ip4_get_port (ip1, 1);
 	  vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
@@ -619,14 +748,14 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b1)->ip.reass.ip_proto,
 	    vnet_buffer (b1)->ip.reass.l4_src_port,
 	    vnet_buffer (b1)->ip.reass.l4_dst_port,
-	    vnet_buffer (b1)->ip.reass.l4_layer_truncated);
+	    vnet_buffer (b1)->ip.reass.l4_hdr_truncated, ~0);
 	}
 
       n_left_from -= 2;
       next[0] = next0;
       next[1] = next1;
       next += 2;
-      if (with_custom_context)
+      if (a.with_custom_context)
 	context += 2;
     }
 
@@ -639,10 +768,10 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
 	vlib_buffer_get_current (b0),
-	(ptrdiff_t) (is_output_feature ? 1 : 0) *
+	(ptrdiff_t) (a.is_output_feature ? 1 : 0) *
 	  vnet_buffer (b0)->ip.save_rewrite_length);
-      if (PREDICT_FALSE
-	  (ip4_get_fragment_more (ip0) || ip4_get_fragment_offset (ip0)))
+      if (PREDICT_FALSE (ip4_get_fragment_more (ip0) ||
+			 ip4_get_fragment_offset (ip0)))
 	{
 	  // fragment found, go slow path
 	  b -= 1;
@@ -653,38 +782,41 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	  goto slow_path;
 	}
-      if (is_feature)
+      if (a.is_feature)
 	{
 	  vnet_feature_next (&next0, b0);
 	}
       else
 	{
-	  next0 =
-	    is_custom ? vnet_buffer (b0)->ip.
-	    reass.next_index : IP4_SV_REASSEMBLY_NEXT_INPUT;
+	  next0 = a.is_custom ? vnet_buffer (b0)->ip.reass.next_index :
+				      IP4_SV_REASSEMBLY_NEXT_INPUT;
 	}
       vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
       vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-      if (l4_layer_truncated (ip0))
+
+      if (a.extended)
+	ip4_sv_reass_reset_vnet_buffer2 (b0);
+
+      if (l4_hdr_truncated (ip0))
 	{
-	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
+	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
 	}
       else
 	{
-	  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
 	  if (IP_PROTOCOL_TCP == ip0->protocol)
 	    {
 	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip0 + 1))->flags;
+		((tcp_header_t *) (ip4_next_header (ip0)))->flags;
 	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip0 + 1))->ack_number;
+		((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
 	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip0 + 1))->seq_number;
+		((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
 	    }
 	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
 	    {
 	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip0 + 1))->type;
+		((icmp46_header_t *) (ip4_next_header (ip0)))->type;
 	    }
 	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
 	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
@@ -696,13 +828,13 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b0)->ip.reass.ip_proto,
 	    vnet_buffer (b0)->ip.reass.l4_src_port,
 	    vnet_buffer (b0)->ip.reass.l4_dst_port,
-	    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+	    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 	}
 
       n_left_from -= 1;
       next[0] = next0;
       next += 1;
-      if (with_custom_context)
+      if (a.with_custom_context)
 	context += 1;
     }
 
@@ -717,7 +849,7 @@ slow_path:
 
   while (n_left_from > 0)
     {
-      if (with_custom_context)
+      if (a.with_custom_context)
 	vlib_get_next_frame_with_aux_safe (vm, node, next_index, to_next,
 					   to_next_aux, n_left_to_next);
       else
@@ -736,12 +868,12 @@ slow_path:
 
 	  ip4_header_t *ip0 = (ip4_header_t *) u8_ptr_add (
 	    vlib_buffer_get_current (b0),
-	    (ptrdiff_t) (is_output_feature ? 1 : 0) *
+	    (ptrdiff_t) (a.is_output_feature ? 1 : 0) *
 	      vnet_buffer (b0)->ip.save_rewrite_length);
 	  if (!ip4_get_fragment_more (ip0) && !ip4_get_fragment_offset (ip0))
 	    {
 	      // this is a regular packet - no fragmentation
-	      if (is_custom)
+	      if (a.is_custom)
 		{
 		  next0 = vnet_buffer (b0)->ip.reass.next_index;
 		}
@@ -751,28 +883,28 @@ slow_path:
 		}
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-	      if (l4_layer_truncated (ip0))
+	      if (l4_hdr_truncated (ip0))
 		{
-		  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 1;
+		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
 		  vnet_buffer (b0)->ip.reass.l4_src_port = 0;
 		  vnet_buffer (b0)->ip.reass.l4_dst_port = 0;
 		}
 	      else
 		{
-		  vnet_buffer (b0)->ip.reass.l4_layer_truncated = 0;
+		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
 		  if (IP_PROTOCOL_TCP == ip0->protocol)
 		    {
 		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-			((tcp_header_t *) (ip0 + 1))->flags;
+			((tcp_header_t *) (ip4_next_header (ip0)))->flags;
 		      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-			((tcp_header_t *) (ip0 + 1))->ack_number;
+			((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
 		      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-			((tcp_header_t *) (ip0 + 1))->seq_number;
+			((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
 		    }
 		  else if (IP_PROTOCOL_ICMP == ip0->protocol)
 		    {
 		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-			((icmp46_header_t *) (ip0 + 1))->type;
+			((icmp46_header_t *) (ip4_next_header (ip0)))->type;
 		    }
 		  vnet_buffer (b0)->ip.reass.l4_src_port =
 		    ip4_get_port (ip0, 1);
@@ -786,7 +918,7 @@ slow_path:
 		    vnet_buffer (b0)->ip.reass.ip_proto,
 		    vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port,
-		    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+		    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 		}
 	      goto packet_enqueue;
 	    }
@@ -794,7 +926,11 @@ slow_path:
 	  const u32 fragment_length =
 	    clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
 	  const u32 fragment_last = fragment_first + fragment_length - 1;
-	  if (fragment_first > fragment_last || fragment_first + fragment_length > UINT16_MAX - 20 || (fragment_length < 8 && ip4_get_fragment_more (ip0)))	// 8 is minimum frag length per RFC 791
+	  if (fragment_first > fragment_last ||
+	      fragment_first + fragment_length > UINT16_MAX - 20 ||
+	      (fragment_length < 8 &&
+	       ip4_get_fragment_more (
+		 ip0))) // 8 is minimum frag length per RFC 791
 	    {
 	      next0 = IP4_SV_REASSEMBLY_NEXT_DROP;
 	      error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
@@ -804,7 +940,7 @@ slow_path:
 	  ip4_sv_reass_kv_t kv;
 	  u8 do_handoff = 0;
 
-	  if (with_custom_context)
+	  if (a.with_custom_context)
 	    kv.k.as_u64[0] = (u64) *context | (u64) ip0->src_address.as_u32
 						<< 32;
 	  else
@@ -816,15 +952,29 @@ slow_path:
 			   (u64) ip0->fragment_id << 32 |
 			   (u64) ip0->protocol << 48;
 
-	  ip4_sv_reass_t *reass =
-	    ip4_sv_reass_find_or_create (vm, rm, rt, &kv, &do_handoff);
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ip4_sv_reass_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (t[0]));
+	      t->action = REASS_KEY;
+	      STATIC_ASSERT_SIZEOF (t->kv, sizeof (kv));
+	      clib_memcpy (&t->kv, &kv, sizeof (kv));
+	    }
+
+	  ip4_sv_reass_t *reass = ip4_sv_reass_find_or_create (
+	    vm, node, bi0, rm, rt, &kv, &do_handoff);
 
 	  if (PREDICT_FALSE (do_handoff))
 	    {
+	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  ip4_sv_reass_add_trace (vm, node, reass, bi0, REASS_HANDOFF,
+					  ~0, ~0, ~0, 0, kv.v.thread_index);
+		}
 	      next0 = IP4_SV_REASSEMBLY_NEXT_HANDOFF;
 	      vnet_buffer (b0)->ip.reass.owner_thread_index =
 		kv.v.thread_index;
-	      if (with_custom_context)
+	      if (a.with_custom_context)
 		forward_context = 1;
 	      goto packet_enqueue;
 	    }
@@ -837,9 +987,9 @@ slow_path:
 	      goto packet_enqueue;
 	    }
 
-	  if (reass->is_complete)
+	  if (ip4_sv_reass_is_complete (reass, a.extended))
 	    {
-	      if (is_custom)
+	      if (a.is_custom)
 		{
 		  next0 = vnet_buffer (b0)->ip.reass.next_index;
 		}
@@ -848,7 +998,7 @@ slow_path:
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
-		! !fragment_first;
+		!!fragment_first;
 	      vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
 	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
 		reass->icmp_type_or_tcp_flags;
@@ -858,18 +1008,20 @@ slow_path:
 		reass->tcp_seq_number;
 	      vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
 	      vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
+	      if (a.extended)
+		ip4_sv_reass_set_vnet_buffer2_from_reass (vm, b0, reass);
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  ip4_sv_reass_add_trace (
 		    vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
 		    reass->ip_proto, reass->l4_src_port, reass->l4_dst_port,
-		    vnet_buffer (b0)->ip.reass.l4_layer_truncated);
+		    vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
 		}
 	      goto packet_enqueue;
 	    }
 
 	  ip4_sv_reass_rc_t rc =
-	    ip4_sv_reass_update (vm, node, rm, ip0, reass, bi0);
+	    ip4_sv_reass_update (vm, node, rm, ip0, reass, bi0, a.extended);
 	  u32 counter = ~0;
 	  switch (rc)
 	    {
@@ -886,61 +1038,64 @@ slow_path:
 	  if (~0 != counter)
 	    {
 	      vlib_node_increment_counter (vm, node->node_index, counter, 1);
-	      ip4_sv_reass_free (vm, rm, rt, reass);
+	      ip4_sv_reass_trace_error_free (vm, node, reass, bi0);
+	      ip4_sv_reass_free (vm, rm, rt, reass, true);
 	      goto next_packet;
 	    }
-	  if (reass->is_complete)
+	  if (ip4_sv_reass_is_complete (reass, a.extended))
 	    {
 	      u32 idx;
 	      vec_foreach_index (idx, reass->cached_buffers)
-	      {
-		u32 bi0 = vec_elt (reass->cached_buffers, idx);
-		vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-		ip0 = (ip4_header_t *) u8_ptr_add (
-		  vlib_buffer_get_current (b0),
-		  (ptrdiff_t) (is_output_feature ? 1 : 0) *
-		    vnet_buffer (b0)->ip.save_rewrite_length);
-		u32 next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
-		if (is_feature)
-		  {
-		    vnet_feature_next (&next0, b0);
-		  }
-		if (is_custom)
-		  {
-		    next0 = vnet_buffer (b0)->ip.reass.next_index;
-		  }
-		if (0 == n_left_to_next)
-		  {
-		    vlib_put_next_frame (vm, node, next_index,
-					 n_left_to_next);
-		    vlib_get_next_frame (vm, node, next_index, to_next,
-					 n_left_to_next);
-		  }
-		to_next[0] = bi0;
-		to_next += 1;
-		n_left_to_next -= 1;
-		vnet_buffer (b0)->ip.reass.is_non_first_fragment =
-		  ! !ip4_get_fragment_offset (ip0);
-		vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
-		vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		  reass->icmp_type_or_tcp_flags;
-		vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		  reass->tcp_ack_number;
-		vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		  reass->tcp_seq_number;
-		vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
-		vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
-		if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-		  {
-		    ip4_sv_reass_add_trace (
-		      vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
-		      reass->ip_proto, reass->l4_src_port, reass->l4_dst_port,
-		      vnet_buffer (b0)->ip.reass.l4_layer_truncated);
-		  }
-		vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-						 to_next, n_left_to_next, bi0,
-						 next0);
-	      }
+		{
+		  u32 bi0 = vec_elt (reass->cached_buffers, idx);
+		  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+		  ip0 = (ip4_header_t *) u8_ptr_add (
+		    vlib_buffer_get_current (b0),
+		    (ptrdiff_t) (a.is_output_feature ? 1 : 0) *
+		      vnet_buffer (b0)->ip.save_rewrite_length);
+		  u32 next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
+		  if (a.is_feature)
+		    {
+		      vnet_feature_next (&next0, b0);
+		    }
+		  if (a.is_custom)
+		    {
+		      next0 = vnet_buffer (b0)->ip.reass.next_index;
+		    }
+		  if (0 == n_left_to_next)
+		    {
+		      vlib_put_next_frame (vm, node, next_index,
+					   n_left_to_next);
+		      vlib_get_next_frame (vm, node, next_index, to_next,
+					   n_left_to_next);
+		    }
+		  to_next[0] = bi0;
+		  to_next += 1;
+		  n_left_to_next -= 1;
+		  vnet_buffer (b0)->ip.reass.is_non_first_fragment =
+		    !!ip4_get_fragment_offset (ip0);
+		  vnet_buffer (b0)->ip.reass.ip_proto = reass->ip_proto;
+		  vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
+		    reass->icmp_type_or_tcp_flags;
+		  vnet_buffer (b0)->ip.reass.tcp_ack_number =
+		    reass->tcp_ack_number;
+		  vnet_buffer (b0)->ip.reass.tcp_seq_number =
+		    reass->tcp_seq_number;
+		  vnet_buffer (b0)->ip.reass.l4_src_port = reass->l4_src_port;
+		  vnet_buffer (b0)->ip.reass.l4_dst_port = reass->l4_dst_port;
+		  if (a.extended)
+		    ip4_sv_reass_set_vnet_buffer2_from_reass (vm, b0, reass);
+		  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+		    {
+		      ip4_sv_reass_add_trace (
+			vm, node, reass, bi0, REASS_FRAGMENT_FORWARD,
+			reass->ip_proto, reass->l4_src_port,
+			reass->l4_dst_port,
+			vnet_buffer (b0)->ip.reass.l4_hdr_truncated, ~0);
+		    }
+		  vlib_validate_buffer_enqueue_x1 (
+		    vm, node, next_index, to_next, n_left_to_next, bi0, next0);
+		}
 	      vec_set_len (reass->cached_buffers,
 			   0); // buffers are owned by frame now
 	    }
@@ -950,12 +1105,13 @@ slow_path:
 	  to_next[0] = bi0;
 	  to_next += 1;
 	  n_left_to_next -= 1;
-	  if (is_feature && IP4_ERROR_NONE == error0)
+	  if (a.is_feature && IP4_ERROR_NONE == error0 &&
+	      IP4_SV_REASSEMBLY_NEXT_HANDOFF != next0)
 	    {
 	      b0 = vlib_get_buffer (vm, bi0);
 	      vnet_feature_next (&next0, b0);
 	    }
-	  if (with_custom_context && forward_context)
+	  if (a.with_custom_context && forward_context)
 	    {
 	      if (to_next_aux)
 		{
@@ -973,7 +1129,7 @@ slow_path:
 	next_packet:
 	  from += 1;
 	  n_left_from -= 1;
-	  if (with_custom_context)
+	  if (a.with_custom_context)
 	    context += 1;
 	}
 
@@ -985,13 +1141,20 @@ done:
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_sv_reass_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip4_sv_reass_inline (
-    vm, node, frame, false /* is_feature */, false /* is_output_feature */,
-    false /* is_custom */, false /* with_custom_context */);
+  /*
+   * Extended reassembly is not supported for non-feature nodes.
+   */
+  return ip4_sv_reass_inline (vm, node, frame,
+			      (struct ip4_sv_reass_args){
+				.is_feature = false,
+				.is_output_feature = false,
+				.is_custom = false,
+				.with_custom_context = false,
+				.extended = false,
+			      });
 }
 
 VLIB_REGISTER_NODE (ip4_sv_reass_node) = {
@@ -1010,13 +1173,27 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node) = {
         },
 };
 
-VLIB_NODE_FN (ip4_sv_reass_node_feature) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_node_feature)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip4_sv_reass_inline (
-    vm, node, frame, true /* is_feature */, false /* is_output_feature */,
-    false /* is_custom */, false /* with_custom_context */);
+  if (ip4_sv_reass_main.extended_refcount > 0)
+    return ip4_sv_reass_inline (vm, node, frame,
+				(struct ip4_sv_reass_args){
+				  .is_feature = true,
+				  .is_output_feature = false,
+				  .is_custom = false,
+				  .with_custom_context = false,
+				  .extended = true,
+				});
+
+  return ip4_sv_reass_inline (vm, node, frame,
+			      (struct ip4_sv_reass_args){
+				.is_feature = true,
+				.is_output_feature = false,
+				.is_custom = false,
+				.with_custom_context = false,
+				.extended = false,
+			      });
 }
 
 VLIB_REGISTER_NODE (ip4_sv_reass_node_feature) = {
@@ -1035,19 +1212,33 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_feature) = {
 };
 
 VNET_FEATURE_INIT (ip4_sv_reass_feature) = {
-    .arc_name = "ip4-unicast",
-    .node_name = "ip4-sv-reassembly-feature",
-    .runs_before = VNET_FEATURES ("ip4-lookup"),
-    .runs_after = 0,
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-sv-reassembly-feature",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+  .runs_after = 0,
 };
 
-VLIB_NODE_FN (ip4_sv_reass_node_output_feature) (vlib_main_t * vm,
-						 vlib_node_runtime_t * node,
-						 vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_node_output_feature)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip4_sv_reass_inline (
-    vm, node, frame, true /* is_feature */, true /* is_output_feature */,
-    false /* is_custom */, false /* with_custom_context */);
+  if (ip4_sv_reass_main.extended_refcount > 0)
+    return ip4_sv_reass_inline (vm, node, frame,
+				(struct ip4_sv_reass_args){
+				  .is_feature = true,
+				  .is_output_feature = true,
+				  .is_custom = false,
+				  .with_custom_context = false,
+				  .extended = true,
+				});
+
+  return ip4_sv_reass_inline (vm, node, frame,
+			      (struct ip4_sv_reass_args){
+				.is_feature = true,
+				.is_output_feature = true,
+				.is_custom = false,
+				.with_custom_context = false,
+				.extended = false,
+			      });
 }
 
 VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
@@ -1066,10 +1257,10 @@ VLIB_REGISTER_NODE (ip4_sv_reass_node_output_feature) = {
 };
 
 VNET_FEATURE_INIT (ip4_sv_reass_output_feature) = {
-    .arc_name = "ip4-output",
-    .node_name = "ip4-sv-reassembly-output-feature",
-    .runs_before = 0,
-    .runs_after = 0,
+  .arc_name = "ip4-output",
+  .node_name = "ip4-sv-reassembly-output-feature",
+  .runs_before = 0,
+  .runs_after = 0,
 };
 
 VLIB_REGISTER_NODE (ip4_sv_reass_custom_node) = {
@@ -1088,13 +1279,20 @@ VLIB_REGISTER_NODE (ip4_sv_reass_custom_node) = {
         },
 };
 
-VLIB_NODE_FN (ip4_sv_reass_custom_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_custom_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip4_sv_reass_inline (
-    vm, node, frame, false /* is_feature */, false /* is_output_feature */,
-    true /* is_custom */, false /* with_custom_context */);
+  /*
+   * Extended reassembly is not supported for non-feature nodes.
+   */
+  return ip4_sv_reass_inline (vm, node, frame,
+			      (struct ip4_sv_reass_args){
+				.is_feature = false,
+				.is_output_feature = false,
+				.is_custom = true,
+				.with_custom_context = false,
+				.extended = false,
+			      });
 }
 
 VLIB_REGISTER_NODE (ip4_sv_reass_custom_context_node) = {
@@ -1117,9 +1315,17 @@ VLIB_REGISTER_NODE (ip4_sv_reass_custom_context_node) = {
 VLIB_NODE_FN (ip4_sv_reass_custom_context_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip4_sv_reass_inline (
-    vm, node, frame, false /* is_feature */, false /* is_output_feature */,
-    true /* is_custom */, true /* with_custom_context */);
+  /*
+   * Extended reassembly is not supported for non-feature nodes.
+   */
+  return ip4_sv_reass_inline (vm, node, frame,
+			      (struct ip4_sv_reass_args){
+				.is_feature = false,
+				.is_output_feature = false,
+				.is_custom = true,
+				.with_custom_context = true,
+				.extended = false,
+			      });
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -1154,7 +1360,7 @@ typedef struct
 
 #ifndef CLIB_MARCH_VARIANT
 static int
-ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
+ip4_rehash_cb (clib_bihash_kv_16_8_t *kv, void *_ctx)
 {
   ip4_rehash_cb_ctx *ctx = _ctx;
   if (clib_bihash_add_del_16_8 (ctx->new_hash, kv, 1))
@@ -1181,8 +1387,8 @@ ip4_sv_reass_set (u32 timeout_ms, u32 max_reassemblies,
 		  u32 max_reassembly_length, u32 expire_walk_interval_ms)
 {
   u32 old_nbuckets = ip4_sv_reass_get_nbuckets ();
-  ip4_sv_reass_set_params (timeout_ms, max_reassemblies,
-			   max_reassembly_length, expire_walk_interval_ms);
+  ip4_sv_reass_set_params (timeout_ms, max_reassemblies, max_reassembly_length,
+			   expire_walk_interval_ms);
   vlib_process_signal_event (ip4_sv_reass_main.vlib_main,
 			     ip4_sv_reass_main.ip4_sv_reass_expire_node_idx,
 			     IP4_EVENT_CONFIG_CHANGED, 0);
@@ -1215,8 +1421,8 @@ ip4_sv_reass_set (u32 timeout_ms, u32 max_reassemblies,
 }
 
 vnet_api_error_t
-ip4_sv_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
-		  u32 * max_reassembly_length, u32 * expire_walk_interval_ms)
+ip4_sv_reass_get (u32 *timeout_ms, u32 *max_reassemblies,
+		  u32 *max_reassembly_length, u32 *expire_walk_interval_ms)
 {
   *timeout_ms = ip4_sv_reass_main.timeout_ms;
   *max_reassemblies = ip4_sv_reass_main.max_reass_n;
@@ -1226,7 +1432,7 @@ ip4_sv_reass_get (u32 * timeout_ms, u32 * max_reassemblies,
 }
 
 static clib_error_t *
-ip4_sv_reass_init_function (vlib_main_t * vm)
+ip4_sv_reass_init_function (vlib_main_t *vm)
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
   clib_error_t *error = 0;
@@ -1239,11 +1445,11 @@ ip4_sv_reass_init_function (vlib_main_t * vm)
   vec_validate (rm->per_thread_data, vlib_num_workers ());
   ip4_sv_reass_per_thread_t *rt;
   vec_foreach (rt, rm->per_thread_data)
-  {
-    clib_spinlock_init (&rt->lock);
-    pool_alloc (rt->pool, rm->max_reass_n);
-    rt->lru_first = rt->lru_last = ~0;
-  }
+    {
+      clib_spinlock_init (&rt->lock);
+      pool_alloc (rt->pool, rm->max_reass_n);
+      rt->lru_first = rt->lru_last = ~0;
+    }
 
   node = vlib_get_node_by_name (vm, (u8 *) "ip4-sv-reassembly-expire-walk");
   ASSERT (node);
@@ -1257,10 +1463,6 @@ ip4_sv_reass_init_function (vlib_main_t * vm)
   nbuckets = ip4_sv_reass_get_nbuckets ();
   clib_bihash_init_16_8 (&rm->hash, "ip4-dr", nbuckets,
 			 (uword) nbuckets * 1024);
-
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-drop");
-  ASSERT (node);
-  rm->ip4_drop_idx = node->index;
 
   rm->fq_index = vlib_frame_queue_main_init (ip4_sv_reass_node.index, 0);
   rm->fq_feature_index =
@@ -1289,10 +1491,8 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
 
   while (true)
     {
-      vlib_process_wait_for_event_or_clock (vm,
-					    (f64)
-					    rm->expire_walk_interval_ms /
-					    (f64) MSEC_PER_SEC);
+      vlib_process_wait_for_event_or_clock (
+	vm, (f64) rm->expire_walk_interval_ms / (f64) MSEC_PER_SEC);
       event_type = vlib_process_get_events (vm, &event_data);
 
       switch (event_type)
@@ -1321,19 +1521,20 @@ ip4_sv_reass_walk_expired (vlib_main_t *vm,
 	  clib_spinlock_lock (&rt->lock);
 
 	  vec_reset_length (pool_indexes_to_free);
-          pool_foreach_index (index, rt->pool)  {
-                                reass = pool_elt_at_index (rt->pool, index);
-                                if (now > reass->last_heard + rm->timeout)
-                                  {
-                                    vec_add1 (pool_indexes_to_free, index);
-                                  }
-                              }
+	  pool_foreach_index (index, rt->pool)
+	    {
+	      reass = pool_elt_at_index (rt->pool, index);
+	      if (now > reass->last_heard + rm->timeout)
+		{
+		  vec_add1 (pool_indexes_to_free, index);
+		}
+	    }
 	  int *i;
-          vec_foreach (i, pool_indexes_to_free)
-          {
-            ip4_sv_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
-            ip4_sv_reass_free (vm, rm, rt, reass);
-          }
+	  vec_foreach (i, pool_indexes_to_free)
+	    {
+	      ip4_sv_reass_t *reass = pool_elt_at_index (rt->pool, i[0]);
+	      ip4_sv_reass_free (vm, rm, rt, reass, true);
+	    }
 
 	  clib_spinlock_unlock (&rt->lock);
 	}
@@ -1358,7 +1559,7 @@ VLIB_REGISTER_NODE (ip4_sv_reass_expire_node) = {
 };
 
 static u8 *
-format_ip4_sv_reass_key (u8 * s, va_list * args)
+format_ip4_sv_reass_key (u8 *s, va_list *args)
 {
   ip4_sv_reass_key_t *key = va_arg (*args, ip4_sv_reass_key_t *);
   s =
@@ -1369,37 +1570,35 @@ format_ip4_sv_reass_key (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ip4_sv_reass (u8 * s, va_list * args)
+format_ip4_sv_reass (u8 *s, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   ip4_sv_reass_t *reass = va_arg (*args, ip4_sv_reass_t *);
 
-  s = format (s, "ID: %lu, key: %U trace_op_counter: %u\n",
-	      reass->id, format_ip4_sv_reass_key, &reass->key,
-	      reass->trace_op_counter);
+  s = format (s, "ID: %lu, key: %U trace_op_counter: %u\n", reass->id,
+	      format_ip4_sv_reass_key, &reass->key, reass->trace_op_counter);
 
   vlib_buffer_t *b;
   u32 *bip;
   u32 counter = 0;
   vec_foreach (bip, reass->cached_buffers)
-  {
-    u32 bi = *bip;
-    do
-      {
-	b = vlib_get_buffer (vm, bi);
-	s = format (s, "  #%03u: bi: %u, ", counter, bi);
-	++counter;
-	bi = b->next_buffer;
-      }
-    while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-  }
+    {
+      u32 bi = *bip;
+      do
+	{
+	  b = vlib_get_buffer (vm, bi);
+	  s = format (s, "  #%03u: bi: %u, ", counter, bi);
+	  ++counter;
+	  bi = b->next_buffer;
+	}
+      while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+    }
   return s;
 }
 
 static clib_error_t *
-show_ip4_reass (vlib_main_t * vm,
-		unformat_input_t * input,
-		CLIB_UNUSED (vlib_cli_command_t * lmd))
+show_ip4_reass (vlib_main_t *vm, unformat_input_t *input,
+		CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
 
@@ -1422,82 +1621,81 @@ show_ip4_reass (vlib_main_t * vm,
       clib_spinlock_lock (&rt->lock);
       if (details)
 	{
-          pool_foreach (reass, rt->pool) {
-            vlib_cli_output (vm, "%U", format_ip4_sv_reass, vm, reass);
-          }
+	  pool_foreach (reass, rt->pool)
+	    {
+	      vlib_cli_output (vm, "%U", format_ip4_sv_reass, vm, reass);
+	    }
 	}
-      sum_reass_n += rt->reass_n;
+      sum_reass_n += pool_elts (rt->pool);
       clib_spinlock_unlock (&rt->lock);
     }
   vlib_cli_output (vm, "---------------------");
   vlib_cli_output (vm, "Current IP4 reassemblies count: %lu\n",
 		   (long unsigned) sum_reass_n);
   vlib_cli_output (vm,
-		   "Maximum configured concurrent shallow virtual IP4 reassemblies per worker-thread: %lu\n",
+		   "Maximum configured concurrent shallow virtual IP4 "
+		   "reassemblies per worker-thread: %lu\n",
 		   (long unsigned) rm->max_reass_n);
   vlib_cli_output (vm,
 		   "Maximum configured amount of fragments per shallow "
 		   "virtual IP4 reassembly: %lu\n",
 		   (long unsigned) rm->max_reass_len);
+  vlib_cli_output (
+    vm, "Maximum configured shallow virtual IP4 reassembly timeout: %lums\n",
+    (long unsigned) rm->timeout_ms);
   vlib_cli_output (vm,
-		   "Maximum configured shallow virtual IP4 reassembly timeout: %lums\n",
-		   (long unsigned) rm->timeout_ms);
-  vlib_cli_output (vm,
-		   "Maximum configured shallow virtual IP4 reassembly expire walk interval: %lums\n",
+		   "Maximum configured shallow virtual IP4 reassembly expire "
+		   "walk interval: %lums\n",
 		   (long unsigned) rm->expire_walk_interval_ms);
+
   return 0;
 }
 
 VLIB_CLI_COMMAND (show_ip4_sv_reass_cmd, static) = {
-    .path = "show ip4-sv-reassembly",
-    .short_help = "show ip4-sv-reassembly [details]",
-    .function = show_ip4_reass,
+  .path = "show ip4-sv-reassembly",
+  .short_help = "show ip4-sv-reassembly [details]",
+  .function = show_ip4_reass,
 };
 
 #ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip4_sv_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
-  return ip4_sv_reass_enable_disable_with_refcnt (sw_if_index,
-						  enable_disable);
+  return ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, enable_disable);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-
-#define foreach_ip4_sv_reass_handoff_error                       \
-_(CONGESTION_DROP, "congestion drop")
-
+#define foreach_ip4_sv_reass_handoff_error                                    \
+  _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
-#define _(sym,str) IP4_SV_REASSEMBLY_HANDOFF_ERROR_##sym,
+#define _(sym, str) IP4_SV_REASSEMBLY_HANDOFF_ERROR_##sym,
   foreach_ip4_sv_reass_handoff_error
 #undef _
     IP4_SV_REASSEMBLY_HANDOFF_N_ERROR,
 } ip4_sv_reass_handoff_error_t;
 
 static char *ip4_sv_reass_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip4_sv_reass_handoff_error
 #undef _
 };
 
 typedef struct
 {
-  u32 next_worker_index;
+  u32 thread_index;
 } ip4_sv_reass_handoff_trace_t;
 
 static u8 *
-format_ip4_sv_reass_handoff_trace (u8 * s, va_list * args)
+format_ip4_sv_reass_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_sv_reass_handoff_trace_t *t =
     va_arg (*args, ip4_sv_reass_handoff_trace_t *);
 
-  s =
-    format (s, "ip4-sv-reassembly-handoff: next-worker %d",
-	    t->next_worker_index);
+  s = format (s, "to thread-index: %u", t->thread_index);
 
   return s;
 }
@@ -1539,13 +1737,12 @@ ip4_sv_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       ti[0] = vnet_buffer (b[0])->ip.reass.owner_thread_index;
 
-      if (PREDICT_FALSE
-	  ((node->flags & VLIB_NODE_FLAG_TRACE)
-	   && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  ip4_sv_reass_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->next_worker_index = ti[0];
+	  t->thread_index = ti[0];
 	}
 
       n_left_from -= 1;
@@ -1560,15 +1757,14 @@ ip4_sv_reass_handoff_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       vm, node, fq_index, from, thread_indices, frame->n_vectors, 1);
 
   if (n_enq < frame->n_vectors)
-    vlib_node_increment_counter (vm, node->node_index,
-				 IP4_SV_REASSEMBLY_HANDOFF_ERROR_CONGESTION_DROP,
-				 frame->n_vectors - n_enq);
+    vlib_node_increment_counter (
+      vm, node->node_index, IP4_SV_REASSEMBLY_HANDOFF_ERROR_CONGESTION_DROP,
+      frame->n_vectors - n_enq);
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_sv_reass_handoff_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip4_sv_reass_handoff_node_inline (
     vm, node, frame,
@@ -1616,10 +1812,8 @@ VLIB_REGISTER_NODE (ip4_sv_reass_custom_context_handoff_node) = {
   },
 };
 
-VLIB_NODE_FN (ip4_sv_reass_feature_handoff_node) (vlib_main_t * vm,
-						    vlib_node_runtime_t *
-						    node,
-						    vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_sv_reass_feature_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip4_sv_reass_handoff_node_inline (
     vm, node, frame,
@@ -1676,10 +1870,10 @@ ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
     {
       if (!rm->feature_use_refcount_per_intf[sw_if_index])
 	{
-	  ++rm->feature_use_refcount_per_intf[sw_if_index];
-	  return vnet_feature_enable_disable ("ip4-unicast",
-					      "ip4-sv-reassembly-feature",
-					      sw_if_index, 1, 0, 0);
+	  int rv = vnet_feature_enable_disable (
+	    "ip4-unicast", "ip4-sv-reassembly-feature", sw_if_index, 1, 0, 0);
+	  if (0 != rv)
+	    return rv;
 	}
       ++rm->feature_use_refcount_per_intf[sw_if_index];
     }
@@ -1688,9 +1882,10 @@ ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
       if (rm->feature_use_refcount_per_intf[sw_if_index])
 	--rm->feature_use_refcount_per_intf[sw_if_index];
       if (!rm->feature_use_refcount_per_intf[sw_if_index])
-	return vnet_feature_enable_disable ("ip4-unicast",
-					    "ip4-sv-reassembly-feature",
-					    sw_if_index, 0, 0, 0);
+	{
+	  return vnet_feature_enable_disable (
+	    "ip4-unicast", "ip4-sv-reassembly-feature", sw_if_index, 0, 0, 0);
+	}
     }
   return 0;
 }
@@ -1710,8 +1905,7 @@ ip4_sv_reass_custom_context_register_next_node (uword node_index)
 }
 
 int
-ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
-						int is_enable)
+ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index, int is_enable)
 {
   ip4_sv_reass_main_t *rm = &ip4_sv_reass_main;
   vec_validate (rm->output_feature_use_refcount_per_intf, sw_if_index);
@@ -1719,10 +1913,11 @@ ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
     {
       if (!rm->output_feature_use_refcount_per_intf[sw_if_index])
 	{
-	  ++rm->output_feature_use_refcount_per_intf[sw_if_index];
-	  return vnet_feature_enable_disable ("ip4-output",
-					      "ip4-sv-reassembly-output-feature",
-					      sw_if_index, 1, 0, 0);
+	  int rv = vnet_feature_enable_disable (
+	    "ip4-output", "ip4-sv-reassembly-output-feature", sw_if_index, 1,
+	    0, 0);
+	  if (0 != rv)
+	    return rv;
 	}
       ++rm->output_feature_use_refcount_per_intf[sw_if_index];
     }
@@ -1731,12 +1926,66 @@ ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
       if (rm->output_feature_use_refcount_per_intf[sw_if_index])
 	--rm->output_feature_use_refcount_per_intf[sw_if_index];
       if (!rm->output_feature_use_refcount_per_intf[sw_if_index])
-	return vnet_feature_enable_disable ("ip4-output",
-					    "ip4-sv-reassembly-output-feature",
-					    sw_if_index, 0, 0, 0);
+	{
+	  return vnet_feature_enable_disable (
+	    "ip4-output", "ip4-sv-reassembly-output-feature", sw_if_index, 0,
+	    0, 0);
+	}
     }
   return 0;
 }
+
+void
+ip4_sv_reass_enable_disable_extended (bool is_enable)
+{
+  if (is_enable)
+    ++ip4_sv_reass_main.extended_refcount;
+  else
+    --ip4_sv_reass_main.extended_refcount;
+}
+
+int
+ip4_sv_reass_extended_lock (vlib_buffer_t *b,
+			    struct ip4_sv_lock_unlock_args *a)
+{
+  ip4_sv_reass_per_thread_t *per_thread =
+    &ip4_sv_reass_main
+       .per_thread_data[vnet_buffer2 (b)->ip.reass.thread_index];
+
+  if (!vec_is_member (ip4_sv_reass_main.per_thread_data, per_thread))
+    return -1;
+
+  clib_spinlock_lock (&per_thread->lock);
+  if (pool_is_free_index (per_thread->pool,
+			  vnet_buffer2 (b)->ip.reass.pool_index))
+    goto fail;
+
+  ip4_sv_reass_t *reass = pool_elt_at_index (
+    per_thread->pool, vnet_buffer2 (b)->ip.reass.pool_index);
+  if (vnet_buffer2 (b)->ip.reass.id == reass->id)
+    {
+      *a->total_ip_payload_length = reass->total_ip_payload_length;
+
+      *a->first_fragment_buffer_index = reass->first_fragment_clone_bi;
+      *a->first_fragment_total_ip_header_length =
+	reass->first_fragment_total_ip_header_length;
+      return 0;
+    }
+
+fail:
+  clib_spinlock_unlock (&per_thread->lock);
+  return -1;
+}
+
+void
+ip4_sv_reass_extended_unlock (vlib_buffer_t *b)
+{
+  ip4_sv_reass_per_thread_t *per_thread =
+    &ip4_sv_reass_main
+       .per_thread_data[vnet_buffer2 (b)->ip.reass.thread_index];
+  clib_spinlock_unlock (&per_thread->lock);
+}
+
 #endif
 
 /*
