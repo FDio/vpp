@@ -1561,14 +1561,17 @@ linux_pci_init (vlib_main_t * vm)
 
   ASSERT (sizeof (vlib_pci_addr_t) == sizeof (u32));
 
-  addrs = vlib_pci_get_all_dev_addrs ();
-  vec_foreach (addr, addrs)
+  if (pm->pci_device_registrations)
     {
-      vlib_pci_device_info_t *d;
-      if ((d = vlib_pci_get_device_info (vm, addr, 0)))
+      addrs = vlib_pci_get_all_dev_addrs ();
+      vec_foreach (addr, addrs)
 	{
-	  init_device_from_registered (vm, d);
-	  vlib_pci_free_device_info (d);
+	  vlib_pci_device_info_t *d;
+	  if ((d = vlib_pci_get_device_info (vm, addr, 0)))
+	    {
+	      init_device_from_registered (vm, d);
+	      vlib_pci_free_device_info (d);
+	    }
 	}
     }
 
