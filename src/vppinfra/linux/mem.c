@@ -530,6 +530,7 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 {
   int i, *status = 0;
   void **ptr = 0;
+  unsigned char incore;
 
   log2_page_size = clib_mem_log2_page_size_validate (log2_page_size);
 
@@ -551,6 +552,19 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 
   for (i = 0; i < n_pages; i++)
     {
+      /* move_pages() returns -ENONET in status for huge pages on 5.19+ kernel.
+       * Retry with get_mempolicy() to obtain NUMA node info only if the pages
+       * are allocated and in memory, which is checked by mincore(). */
+      if (status[i] == -ENOENT &&
+	  syscall (__NR_mincore, ptr[i], 1, &incore) == 0 && (incore & 1) != 0)
+	{
+	  if (syscall (__NR_get_mempolicy, &status[i], 0, 0, ptr[i],
+		       MPOL_F_NODE | MPOL_F_ADDR) != 0)
+	    {
+	      /* if get_mempolicy fails, keep the original value in status */
+	      status[i] = -ENONET;
+	    }
+	}
       if (status[i] >= 0 && status[i] < CLIB_MAX_NUMAS)
 	{
 	  stats->mapped++;
