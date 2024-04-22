@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c310e29_cfeeb950",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1386,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-22T15:06:39Z",
+      "side": 1,
+      "message": "nit: could you please keep the original formatting to make review easier?\n int rv \u003d ip6_ra_prefix (vm,\n                         radv_info-\u003esw_if_index,\n                         address,\n                         \u0026this_prefix-\u003eprefix,\n                         this_prefix-\u003eprefix_len,\n                         0 /* use_default */,\n                         valid_time,\n                         preferred_time,\n                         0 /* no_advertise */,\n                         0 /* off_link */,\n                         0 /* no_autoconfig */,\n                         0 /* no_onlink */,\n                         0 /* is_no */);",
+      "range": {
+        "startLine": 1382,
+        "startChar": 5,
+        "endLine": 1386,
+        "endChar": 65
+      },
+      "revId": "1d8b6773d0a996cd095c6b5f4261440627db930e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
