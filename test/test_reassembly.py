@@ -1295,6 +1295,36 @@ class TestIPv6Reassembly(VppTestCase):
         self.verify_capture(packets)
         self.src_if.assert_nothing_captured()
 
+    def test_reassembly_cli(self):
+        """basic reassembly (params set with cli cmd)"""
+
+        self.vapi.cli("set ip6-full-reassembly reset")
+        reply = self.vapi.cli("show ip6-full-reassembly details")
+        self.assertIn("50ms", reply)
+
+        self.vapi.cli(
+            "set ip6-full-reassembly timeout 1000000 max-reassemblies 1000 max-reassembly-length 1000 expire-walk-interval 10000"
+        )
+        reply = self.vapi.cli("show ip6-full-reassembly details")
+        self.assertIn("10000ms", reply)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
     def test_buffer_boundary(self):
         """fragment header crossing buffer boundary"""
 
