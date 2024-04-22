@@ -95,7 +95,7 @@ For ip6:
 ``show ip6-full-reassembly [details]``
 
 Global full reassembly parameters can be modified using API
-``ip_reassembly_set`` and retrieved using ``ip_reassembly_get``.
+``ip_reassembly_set`` or CLI ``set ip6-full-reassembly`` and retrieved using ``ip_reassembly_get``.
 
 Defaults
 """"""""

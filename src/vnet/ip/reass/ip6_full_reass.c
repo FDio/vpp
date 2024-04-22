@@ -1959,6 +1959,68 @@ VLIB_CLI_COMMAND (show_ip6_full_reassembly_cmd, static) = {
 };
 
 #ifndef CLIB_MARCH_VARIANT
+static clib_error_t *
+ip6_full_reass_set_params_cmd (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *lmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+  u32 timeout = IP6_FULL_REASS_TIMEOUT_DEFAULT_MS;
+  u32 expire_walk_interval_ms = IP6_FULL_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS;
+  u32 max_reass_n = IP6_FULL_REASS_MAX_REASSEMBLIES_DEFAULT;
+  u32 max_reass_len = IP6_FULL_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "reset"))
+	{
+	  ip6_full_reass_set (timeout, max_reass_n, max_reass_len,
+			      expire_walk_interval_ms);
+	  break;
+	}
+      else if (unformat (line_input, "timeout %u", &timeout))
+	;
+      else if (unformat (line_input, "expire-walk-interval %u",
+			 &expire_walk_interval_ms))
+	;
+      else if (unformat (line_input, "max-reassemblies %u", &max_reass_n))
+	;
+      else if (unformat (line_input, "max-reassembly-length %u",
+			 &max_reass_len))
+	;
+      else
+	{
+	  err = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, input);
+	  break;
+	}
+    }
+  unformat_free (line_input);
+
+  if (err != 0)
+    return err;
+
+  ip6_full_reass_set (timeout, max_reass_n, max_reass_len,
+		      expire_walk_interval_ms);
+
+  return 0;
+}
+#endif /* CLIB_MARCH_VARIANT */
+
+#ifndef CLIB_MARCH_VARIANT
+VLIB_CLI_COMMAND (set_ip6_full_reassembly_params_cmd, static) = {
+  .path = "set ip6-full-reassembly",
+  .short_help =
+    "set ip6-full-reassembly [timeout <msec> | expire-walk-interval <msec> | "
+    "max-reassemblies <n> | max-reassembly-length <n> | reset]",
+  .function = ip6_full_reass_set_params_cmd,
+};
+#endif /* CLIB_MARCH_VARIANT */
+
+#ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip6_full_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {

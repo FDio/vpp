@@ -1182,6 +1182,7 @@ class TestIPv6Reassembly(VppTestCase):
             expire_walk_interval_ms=10000,
             is_ip6=1,
         )
+        # self.vapi.cli("set ip6-full-reassembly timeout 1000000 max-reassemblies 1000 max-reassembly-length 1000 expire-walk-interval 10000")
         self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -1193,7 +1194,7 @@ class TestIPv6Reassembly(VppTestCase):
 
     def show_commands_at_teardown(self):
         self.logger.debug(self.vapi.ppcli("show ip6-full-reassembly details"))
-        self.logger.debug(self.vapi.ppcli("show buffers"))
+        # self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -1270,9 +1271,36 @@ class TestIPv6Reassembly(VppTestCase):
                 index in seen or index in dropped_packet_indexes,
                 "Packet with packet_index %d not received" % index,
             )
-
     def test_reassembly(self):
         """basic reassembly"""
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.src_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.src_if.assert_nothing_captured()
+
+    def test_reassembly_cli(self):
+        """basic reassembly (params set with cli cmd)"""
+
+        self.vapi.cli("set ip6-full-reassembly reset")
+        reply = self.vapi.cli("show ip6-full-reassembly details")
+        self.assertIn("50ms", reply)
+
+        self.vapi.cli("set ip6-full-reassembly timeout 1000000 max-reassemblies 1000 max-reassembly-length 1000 expire-walk-interval 10000")
+        reply = self.vapi.cli("show ip6-full-reassembly details")
+        self.assertIn("10000ms", reply)
 
         self.pg_enable_capture()
         self.src_if.add_stream(self.fragments_400)
