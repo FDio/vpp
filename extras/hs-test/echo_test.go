@@ -30,18 +30,15 @@ func TcpWithLossTest(s *VethsSuite) {
 
 	clientVpp := s.getContainerByName("client-vpp").vppInstance
 
-	// TODO: investigate why this ping was here:
-	// ---------
 	// Ensure that VPP doesn't abort itself with NSIM enabled
-	// Warning: Removing this ping will make the test fail!
-	// clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
-	// ---------
+	// Warning: Removing this ping will make VPP crash!
+	clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
 		" packet-size 1400 packets-per-drop 1000")
 
-	clientVpp.vppctl("nsim output-feature enable-disable " + s.getInterfaceByName(clientInterfaceName).name)
+	clientVpp.vppctl("nsim output-feature enable-disable host-" + s.getInterfaceByName(clientInterfaceName).name)
 
 	// Do echo test from client-vpp container
 	output := clientVpp.vppctl("test echo client uri tcp://%s/20022 verbose echo-bytes mbytes 50",
