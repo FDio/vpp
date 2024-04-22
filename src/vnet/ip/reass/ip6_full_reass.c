@@ -1959,6 +1959,106 @@ VLIB_CLI_COMMAND (show_ip6_full_reassembly_cmd, static) = {
 };
 
 #ifndef CLIB_MARCH_VARIANT
+static clib_error_t *
+ip6_full_reass_set_params_cmd (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *lmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+  u32 old_nbuckets = ip6_full_reass_get_nbuckets ();
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "reset"))
+	{
+	  ip6_full_reass_main.timeout_ms = IP6_FULL_REASS_TIMEOUT_DEFAULT_MS;
+	  ip6_full_reass_main.timeout =
+	    (f64) IP6_FULL_REASS_TIMEOUT_DEFAULT_MS / (f64) MSEC_PER_SEC;
+	  ip6_full_reass_main.max_reass_n =
+	    IP6_FULL_REASS_MAX_REASSEMBLIES_DEFAULT;
+	  ip6_full_reass_main.max_reass_len =
+	    IP6_FULL_REASS_MAX_REASSEMBLY_LENGTH_DEFAULT;
+	  ip6_full_reass_main.expire_walk_interval_ms =
+	    IP6_FULL_REASS_EXPIRE_WALK_INTERVAL_DEFAULT_MS;
+	  break;
+	}
+      else if (unformat (line_input, "timeout %u",
+			 &ip6_full_reass_main.timeout_ms))
+	{
+	  ip6_full_reass_main.timeout =
+	    (f64) ip6_full_reass_main.timeout_ms / (f64) MSEC_PER_SEC;
+	}
+      else if (unformat (line_input, "expire-walk-interval %u",
+			 &ip6_full_reass_main.expire_walk_interval_ms))
+	;
+      else if (unformat (line_input, "max-reassemblies %u",
+			 &ip6_full_reass_main.max_reass_n))
+	;
+      else if (unformat (line_input, "max-reassembly-length %u",
+			 &ip6_full_reass_main.max_reass_len))
+	;
+
+      else
+	{
+	  err = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, input);
+	  break;
+	}
+    }
+  unformat_free (line_input);
+
+  vlib_process_signal_event (
+    ip6_full_reass_main.vlib_main,
+    ip6_full_reass_main.ip6_full_reass_expire_node_idx,
+    IP6_EVENT_CONFIG_CHANGED, 0);
+
+  u32 new_nbuckets = ip6_full_reass_get_nbuckets ();
+  if (ip6_full_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
+    {
+      clib_bihash_48_8_t new_hash;
+      clib_memset (&new_hash, 0, sizeof (new_hash));
+      ip6_rehash_cb_ctx ctx;
+      ctx.failure = 0;
+      ctx.new_hash = &new_hash;
+      clib_bihash_init_48_8 (&new_hash, "ip6-full-reass", new_nbuckets,
+			     new_nbuckets * 1024);
+      clib_bihash_foreach_key_value_pair_48_8 (&ip6_full_reass_main.hash,
+					       ip6_rehash_cb, &ctx);
+      if (ctx.failure)
+	{
+	  clib_bihash_free_48_8 (&new_hash);
+	  return clib_error_return (0, "an error occured");
+	}
+      else
+	{
+	  clib_bihash_free_48_8 (&ip6_full_reass_main.hash);
+	  clib_memcpy_fast (&ip6_full_reass_main.hash, &new_hash,
+			    sizeof (ip6_full_reass_main.hash));
+	  clib_bihash_copied (&ip6_full_reass_main.hash, &new_hash);
+	}
+    }
+
+  if (err != 0)
+    return err;
+
+  return 0;
+}
+#endif /* CLIB_MARCH_VARIANT */
+
+#ifndef CLIB_MARCH_VARIANT
+VLIB_CLI_COMMAND (set_ip6_full_reassembly_params_cmd, static) = {
+  .path = "set ip6-full-reassembly",
+  .short_help =
+    "set ip6-full-reassembly [timeout <msec> | expire-walk-interval <msec> | "
+    "max-reassemblies <n> | max-reassembly-length <n> | reset]",
+  .function = ip6_full_reass_set_params_cmd,
+};
+#endif /* CLIB_MARCH_VARIANT */
+
+#ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip6_full_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
