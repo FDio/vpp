@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a1324b9_f6f246d3",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-04-22T22:04:55Z",
+      "side": 1,
+      "message": "Can we get away with `check_function_exists(__libc_start_main HAVE_GLIBC)`?",
+      "revId": "9a19086d9fa4717cd6a2fd987e3b32bd515c78b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
