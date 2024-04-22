@@ -59,6 +59,10 @@ case "${i}" in
         ;;
     --parallel=*)
         ginkgo_args="$ginkgo_args -procs=${i#*=}"
+        ;;
+    --repeat=*)
+        ginkgo_args="$ginkgo_args --repeat=${i#*=}"
+        ;;
 esac
 done
 
