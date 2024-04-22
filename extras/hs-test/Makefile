@@ -27,6 +27,10 @@ ifeq ($(PARALLEL),)
 PARALLEL=1
 endif
 
+ifeq ($(REPEAT),)
+REPEAT=0
+endif
+
 ifeq ($(VPPSRC),)
 VPPSRC=$(shell pwd)/../..
 endif
@@ -64,7 +68,8 @@ help:
 	@echo " TEST=[test-name]         - specific test to run"
 	@echo " CPUS=[n-cpus]            - number of cpus to run with vpp"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
-	@echo " PARALLEL=[n-cpus]"		 - number of test processes to spawn to run in parallel
+	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
+	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo
 	@echo "List of all tests:"
 	$(call list_tests)
@@ -83,7 +88,7 @@ build-vpp-debug:
 test: .deps.ok .build.vpp
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL)
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
 
 build-go:
 	go build ./tools/http_server
