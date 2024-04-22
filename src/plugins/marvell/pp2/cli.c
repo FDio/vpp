@@ -31,7 +31,7 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   mrvl_pp2_create_if_args_t args = { 0 };
-  uint val;
+  unsigned int val;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
