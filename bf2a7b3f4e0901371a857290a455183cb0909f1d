@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "188ef628_6aa8c5a9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-22T15:38:30Z",
+      "side": 1,
+      "message": "I pushed a similar patch for marvell pp2 plugin: https://gerrit.fd.io/r/c/vpp/+/40772",
+      "revId": "bf2a7b3f4e0901371a857290a455183cb0909f1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
