@@ -61,6 +61,7 @@ plugins {
   plugin prom_plugin.so { enable }
   plugin tlsopenssl_plugin.so { enable }
   plugin ping_plugin.so { enable }
+  plugin nsim_plugin.so { enable }
 }
 
 logging {
