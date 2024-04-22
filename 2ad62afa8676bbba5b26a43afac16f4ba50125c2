@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b2401a3_5dc5bd93",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1979,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-22T08:45:38Z",
+      "side": 1,
+      "message": "use IP6_FULL_REASS_TIMEOUT_DEFAULT_MS,...",
+      "range": {
+        "startLine": 1975,
+        "startChar": 3,
+        "endLine": 1979,
+        "endChar": 52
+      },
+      "revId": "2ad62afa8676bbba5b26a43afac16f4ba50125c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6100e9a3_69e98627",
+        "filename": "src/vnet/ip/reass/ip6_full_reass.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2009,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-22T08:45:38Z",
+      "side": 1,
+      "message": "you need to send IP6_EVENT_CONFIG_CHANGED event to walk node after config change and if needed resize hash table, like in ip6_full_reass_set",
+      "revId": "2ad62afa8676bbba5b26a43afac16f4ba50125c2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
