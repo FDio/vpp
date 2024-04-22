@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c23c97a_a758cb9c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2024-04-22T13:25:14Z",
+      "side": 1,
+      "message": "Hi Neales,\nI made a change in behavior for the uRPF default value.\nInstead of using ~0 as a sentinel value, I am keeping 0.\nHence, as the buffer opaque is initialized to zero there is not issue.\nFurthermore, when the buffer is freed the buffer opaque is also reset to zero.",
+      "revId": "dbcf51222e3c2827427577c7b7bfdec618ee66a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
