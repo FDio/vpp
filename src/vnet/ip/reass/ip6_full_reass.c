@@ -1958,6 +1958,66 @@ VLIB_CLI_COMMAND (show_ip6_full_reassembly_cmd, static) = {
     .function = show_ip6_full_reass,
 };
 
+static clib_error_t *
+ip6_full_reass_set_params_cmd (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *lmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "reset"))
+	{
+	  ip6_full_reass_main.timeout_ms = 200;
+	  ip6_full_reass_main.timeout = (f64) 200 / (f64) MSEC_PER_SEC;
+	  ip6_full_reass_main.max_reass_n = 1024;
+	  ip6_full_reass_main.max_reass_len = 3;
+	  ip6_full_reass_main.expire_walk_interval_ms = 50;
+	  break;
+	}
+      else if (unformat (line_input, "timeout %u",
+			 &ip6_full_reass_main.timeout_ms))
+	{
+	  ip6_full_reass_main.timeout =
+	    (f64) ip6_full_reass_main.timeout_ms / (f64) MSEC_PER_SEC;
+	}
+      else if (unformat (line_input, "expire-walk-interval %u",
+			 &ip6_full_reass_main.expire_walk_interval_ms))
+	;
+      else if (unformat (line_input, "max-reassemblies %u",
+			 &ip6_full_reass_main.max_reass_n))
+	;
+      else if (unformat (line_input, "max-reassembly-length %u",
+			 &ip6_full_reass_main.max_reass_len))
+	;
+
+      else
+	{
+	  err = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, input);
+	  break;
+	}
+    }
+  unformat_free (line_input);
+
+  if (err != 0)
+    return err;
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_ip6_full_reassembly_params_cmd, static) = {
+  .path = "set ip6-full-reassembly",
+  .short_help =
+    "set ip6-full-reassembly [timeout <msec> | expire-walk-interval <msec> | "
+    "max-reassemblies <n> | max-reassembly-length <n> | reset]",
+  .function = ip6_full_reass_set_params_cmd,
+};
+
 #ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip6_full_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
