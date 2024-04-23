@@ -1,0 +1,237 @@
+/*
+ * Copyright (c) 2024 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+option version = "0.1.0";
+
+/**
+ * @brief Add a new traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param parent_node_id - Identifier of the parent node.
+ * @param node_id - Identifier for the new TM node.
+ * @param weight - Weight assigned to the new node.
+ * @param shaper_id - Identifier of the shaper profile to be applied.
+ * @param lvl - Level of the new node in the hierarchy.
+ * @param priority - Priority level of the new node.
+ * @param flow_name - Name of the flow associated with the new node.
+ */
+autoreply define tm_sys_node_add
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  i32 parent_node_id;
+  u32 node_id;
+  u32 weight;
+  i32 shaper_id;
+  u32 lvl;
+  u32 priority;
+  string flow_name[64];
+};
+
+/**
+ * @brief Suspend an existing traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be suspended.
+ */
+autoreply define tm_sys_node_suspend
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Resume a suspended traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be resumed.
+ */
+autoreply define tm_sys_node_resume
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Delete a traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be deleted.
+ */
+autoreply define tm_sys_node_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Create a new shaper profile.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_shaper_id - Identifier for the new shaper profile.
+ * @param is_pkt_mode - packet_mode or byte_mode
+ * @param shaper_commit_rate - Committed rate for the shaper.
+ * @param shaper_commit_burst - Committed burst size for the shaper.
+ * @param shaper_peak_rate - Peak rate for the shaper.
+ * @param shaper_peak_burst - Peak burst size for the shaper.
+ * @param shaper_len_adjust - Length adjustment for the shaper.
+ */
+autoreply define tm_sys_shaper_profile_create
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_shaper_id;
+  u8 is_pkt_mode;
+  u64 shaper_commit_rate;
+  u64 shaper_commit_burst;
+  u64 shaper_peak_rate;
+  u64 shaper_peak_burst;
+  i32 shaper_len_adjust;
+};
+
+/**
+ * @brief Update a node's shaper profile.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param shaper_id - Identifier of the shaper profile to be applied.
+ * @param node_id - Identifier of the TM node to be updated.
+ */
+autoreply define tm_sys_node_shaper_update
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  i32 shaper_id;
+  u32 node_id;
+};
+
+/**
+ * @brief Delete a shaper profile.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param shaper_id - Identifier of the shaper profile to be deleted.
+ */
+autoreply define tm_sys_shaper_profile_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  i32 shaper_id;
+};
+
+/**
+ * @brief Update the scheduling weight of a TM node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param node_id - Identifier of the TM node to be updated.
+ * @param weight - New weight to be assigned to the TM node.
+ */
+autoreply define tm_sys_node_sched_weight_update
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 node_id;
+  u32 weight;
+};
+
+/**
+ * @brief Get the capabilities of a TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+autoreply define tm_sys_get_capabilities
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
+
+/**
+ * @brief Get the capabilities of a specific level in a TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param level - Level in the TM system whose capabilities are to be read.
+ */
+autoreply define tm_sys_level_get_capabilities
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 level;
+};
+
+/**
+ * @brief Read the statistics of a TM node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param node_id - Identifier of the TM node whose statistics are to be read.
+ */
+autoreply define tm_sys_node_read_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 node_id;
+};
+
+/**
+ * @brief Start the traffic management (TM) system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+autoreply define tm_sys_start_tm
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
+
+/**
+ * @brief Stop the traffic management (TM) system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+autoreply define tm_sys_stop_tm
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
