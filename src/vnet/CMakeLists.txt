@@ -1363,6 +1363,21 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES teib/teib.api)
 
 ##############################################################################
+# TM
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  tm/tm.c
+  tm/tm_api.c
+)
+
+list(APPEND VNET_HEADERS
+  tm/tm.h
+)
+
+list(APPEND VNET_API_FILES tm/tm.api)
+
+##############################################################################
 # ARP/ND
 ##############################################################################
 
@@ -1478,6 +1493,7 @@ add_vat_test_library(vnet
   session/session_test.c
   l2/l2_test.c
   ipsec/ipsec_test.c
+  tm/tm_test.c
 )
 
 ##############################################################################

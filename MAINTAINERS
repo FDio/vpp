@@ -98,6 +98,12 @@ I:	policer
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/vnet/policer/
 
+VNET Traffic Management
+I:	tm
+M:	Venkata Ravichandra Mynidi <vmynidi@marvell.com>
+M:	Alok Mishra <almishra@marvell.com>
+F:	src/vnet/tm/
+
 VNET New Device Drivers Infra
 I:	dev
 M:	Damjan Marion <damarion@cisco.com>
