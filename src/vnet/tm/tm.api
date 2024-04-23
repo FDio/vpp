@@ -1,0 +1,457 @@
+/*
+ * Copyright (c) 2024 Marvell.
+ * SPDX-License-Identifier: Apache-2.0
+ * https://spdx.org/licenses/Apache-2.0.html
+ */
+
+option version = "0.1.0";
+
+/**
+ * @brief Reply for adding a traffic management node.
+ *
+ * This structure specifies the parameters returned in response to add a new TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param node_id - Identifier of the newly created TM node.
+ */
+define tm_sys_node_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_id;
+};
+
+/**
+ * @brief Add a new traffic management node.
+ *
+ * This structure outlines the necessary parameters for adding a new TM node within the VPP system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param parent_node_id - Identifier of the parent node.
+ * @param node_id - Identifier for the new TM node.
+ * @param weight - Weight assigned to the new node.
+ * @param shaper_id - Identifier of the shaper profile to be applied.
+ * @param lvl - Level of the new node in the hierarchy.
+ * @param priority - Priority level of the new node.
+ * @param flow_name - Name of the flow associated with the new node.
+ */
+define tm_sys_node_add
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  i32 parent_node_id;
+  u32 node_id;
+  u32 weight;
+  i32 shaper_id;
+  u32 lvl;
+  u32 priority;
+  string flow_name[64];
+};
+
+/**
+ * @brief Reply for suspending a traffic management node.
+ *
+ * This structure specifies the parameters returned in response for suspending a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param node_id - Index of the TM node to be suspended.
+ */
+define tm_sys_node_suspend_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_id;
+};
+
+/**
+ * @brief Suspend an existing traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be suspended.
+ */
+define tm_sys_node_suspend
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Reply for resuming a suspended traffic management node.
+ *
+ * This structure specifies the parameters returned in response for resuming a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param node_id - Index of the TM node to be resumed.
+ */
+define tm_sys_node_resume_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_id;
+};
+
+/**
+ * @brief Resume a suspended traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be resumed.
+ */
+define tm_sys_node_resume
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Reply for deleting a traffic management node.
+ *
+ * This structure specifies the parameters returned in response for deleting a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param node_id - Index of the TM node to be deleted.
+ */
+define tm_sys_node_delete_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_id;
+};
+
+/**
+ * @brief Delete a traffic management node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_node_id - Index of the TM node to be deleted.
+ */
+define tm_sys_node_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_node_id;
+};
+
+/**
+ * @brief Reply for creating a shaper profile.
+ *
+ * This structure specifies the parameters returned in response to creating a new shaper profile.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param shaper_id - Identifier of the newly created shaper profile.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_shaper_profile_create_reply
+{
+  u32 context;
+  u32 shaper_id;
+  i32 retval;
+};
+
+/**
+ * @brief Create a new shaper profile.
+ *
+ * This structure outlines the necessary parameters to create a new shaper profile.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param tm_shaper_id - Identifier for the new shaper profile.
+ * @param is_pkt_mode - packet_mode or byte_mode
+ * @param shaper_commit_rate - Committed rate for the shaper.
+ * @param shaper_commit_burst - Committed burst size for the shaper.
+ * @param shaper_peak_rate - Peak rate for the shaper.
+ * @param shaper_peak_burst - Peak burst size for the shaper.
+ * @param shaper_len_adjust - Length adjustment for the shaper.
+ */
+define tm_sys_shaper_profile_create
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 tm_shaper_id;
+  u8 is_pkt_mode;
+  u64 shaper_commit_rate;
+  u64 shaper_commit_burst;
+  u64 shaper_peak_rate;
+  u64 shaper_peak_burst;
+  i32 shaper_len_adjust;
+};
+
+/**
+ * @brief Reply for updating a node's shaper profile.
+ *
+ * This structure specifies the parameters returned in response to updating a shaper profile for a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param shaper_id - Identifier of the updated shaper profile.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_node_shaper_update_reply
+{
+  u32 context;
+  u32 shaper_id;
+  i32 retval;
+};
+
+/**
+ * @brief Update a node's shaper profile.
+ *
+ * This structure outlines the necessary parameters to update the shaper profile of a TM node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param shaper_id - Identifier of the shaper profile to be applied.
+ * @param node_id - Identifier of the TM node to be updated.
+ */
+define tm_sys_node_shaper_update
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 shaper_id;
+  u32 node_id;
+};
+
+/**
+ * @brief Reply for deleting a shaper profile.
+ *
+ * This structure specifies the parameters returned in response to deleting a shaper profile.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param shaper_id - Identifier of the deleted shaper profile.
+ */
+define tm_sys_shaper_profile_delete_reply
+{
+  u32 context;
+  i32 retval;
+  u32 shaper_id;
+};
+
+/**
+ * @brief Delete a shaper profile.
+ *
+ * This structure outlines the necessary parameters to delete a shaper profile.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param shaper_id - Identifier of the shaper profile to be deleted.
+ */
+define tm_sys_shaper_profile_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 shaper_id;
+};
+
+/**
+ * @brief Reply for updating the scheduling weight of a TM node.
+ *
+ * This structure specifies the parameters returned in response to updating the scheduling weight of a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ * @param node_id - Identifier of the TM node whose scheduling weight was updated.
+ */
+define tm_sys_node_sched_weight_update_reply
+{
+  u32 context;
+  i32 retval;
+  u32 node_id;
+};
+
+/**
+ * @brief Update the scheduling weight of a TM node.
+ *
+ * This structure outlines the necessary parameters to update the scheduling weight of a TM node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param node_id - Identifier of the TM node to be updated.
+ * @param weight - New weight to be assigned to the TM node.
+ */
+define tm_sys_node_sched_weight_update
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 node_id;
+  u32 weight;
+};
+
+/**
+ * @brief Reply for getting the capabilities of a TM system.
+ *
+ * This structure specifies the parameters returned in response to getting the capabilities of a TM system.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_get_capabilities_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Get the capabilities of a TM system.
+ *
+ * This structure outlines the necessary parameters to get the capabilities of a TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+define tm_sys_get_capabilities
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
+
+/**
+ * @brief Reply for getting the capabilities of a specific level in a TM system.
+ *
+ * This structure specifies the parameters returned in response to getting the capabilities of a specific level in a TM system.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_level_get_capabilities_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Get the capabilities of a specific level in a TM system.
+ *
+ * This structure outlines the necessary parameters to get the capabilities of a specific level in a TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param level - Level in the TM system whose capabilities are to be read.
+ */
+define tm_sys_level_get_capabilities
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 level;
+};
+
+/**
+ * @brief Reply for reading the statistics of a TM node.
+ *
+ * This structure specifies the parameters returned in response to reading the statistics of a TM node.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param node_id - Identifier of the TM node whose statistics are being read.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_node_read_stats_reply
+{
+  u32 context;
+  u32 node_id;
+  i32 retval;
+};
+
+/**
+ * @brief Read the statistics of a TM node.
+ *
+ * This structure outlines the necessary parameters to read the statistics of a TM node.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ * @param node_id - Identifier of the TM node whose statistics are to be read.
+ */
+define tm_sys_node_read_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+  u32 node_id;
+};
+
+/**
+ * @brief Reply for starting the traffic management (TM) system.
+ *
+ * This structure specifies the parameters returned in response to starting the TM system.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_start_tm_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Start the traffic management (TM) system.
+ *
+ * This structure outlines the necessary parameters to start the TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+define tm_sys_start_tm
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
+
+/**
+ * @brief Reply for stopping the traffic management (TM) system.
+ *
+ * This structure specifies the parameters returned in response to stopping the TM system.
+ *
+ * @param context - Sender context, to match reply with request.
+ * @param retval - Return value indicating success or failure of the operation.
+ */
+define tm_sys_stop_tm_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/**
+ * @brief Stop the traffic management (TM) system.
+ *
+ * This structure outlines the necessary parameters to stop the TM system.
+ *
+ * @param client_index - Opaque cookie to identify the sender.
+ * @param context - Sender context, to match reply with request.
+ * @param sw_if_idx - Software interface index.
+ */
+define tm_sys_stop_tm
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_idx;
+};
