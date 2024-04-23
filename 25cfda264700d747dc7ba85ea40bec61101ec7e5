@@ -16,6 +16,23 @@
       "message": "Hello! Could you please take a look at the patch?\n\nIt introduces V2 API so ip6-nd options could be controlled pretty much direct and predictable way. Currently I just doubt about \u0027defaults\u0027 option which ignores all the other inputs and just sets all feature options to default values(but maybe it\u0027s okay), like is_no option was used.\n\nThanks!",
       "revId": "25cfda264700d747dc7ba85ea40bec61101ec7e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a029fbf_4a908e33",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1760
+      },
+      "writtenOn": "2024-04-23T08:31:38Z",
+      "side": 1,
+      "message": "up",
+      "revId": "25cfda264700d747dc7ba85ea40bec61101ec7e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
