@@ -1,0 +1,24 @@
+---
+name: Traffic Management
+maintainer:
+  - Alok Mishra <almishra@marvell.com>
+  - Venkata Ravichandra Mynidi <vmynidi@marvell.com>
+features:
+  - Framework for optional hardware traffic management (TM) on VNET devices
+  - Callback-based architecture allowing device drivers to register TM implementations
+  - TM hierarchy management (add, delete, suspend, resume nodes)
+  - Dual-rate shaper profile support (committed and peak rates, burst sizes)
+  - Per-node scheduling with configurable weights and strict priorities
+  - Per-leaf-node statistics (packet/byte counters)
+  - Device and per-level capability queries
+  - Flow-based traffic classification via classifier integration (mark_flow action)
+  - Global flow name-to-ID mapping for TM queue selection on egress
+description: "A framework for hardware traffic management that enables device
+  drivers to offload scheduling, shaping, and policing to dedicated hardware
+  modules. When a TM hierarchy is configured on a VNET device, packets on
+  transmit queues flow through the hardware TM elements (scheduler, shaper,
+  policer) as per the hierarchy configuration. This offloads CPU-intensive,
+  high-frequency traffic management tasks to purpose-built hardware, improving
+  performance, latency, scalability, and power efficiency."
+state: development
+properties: [API]
