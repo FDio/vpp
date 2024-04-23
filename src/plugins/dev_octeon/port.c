@@ -14,6 +14,8 @@
 #define OCT_FLOW_MAX_PRIORITY	7
 #define OCT_ETH_LINK_SPEED_100G 100000 /**< 100 Gbps */
 
+tm_system_t tm_system_ops;
+
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
   .subclass_name = "port",
@@ -53,6 +55,14 @@ oct_roc_err (vnet_dev_t *dev, int rv, char *fmt, ...)
   return VNET_DEV_ERR_INTERNAL;
 }
 
+static int
+oct_init_tm_args (tm_system_t *tm)
+{
+  memset (tm, 0, sizeof (tm_system_t));
+  memcpy (tm, &dev_oct_tm_ops, sizeof (tm_system_t));
+  return 0;
+}
+
 vnet_dev_rv_t
 oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -63,7 +73,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_rv_t rv;
   int rrv;
 
-  log_debug (dev, "port init: port %u", port->port_id);
+  log_notice (dev, "port init: port %u", port->port_id);
 
   if ((rrv = roc_nix_lf_alloc (nix, port->intf.num_rx_queues,
 			       port->intf.num_tx_queues, rxq_cfg)))
@@ -123,6 +133,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	  oct_port_deinit (vm, port);
 	  return rv;
 	}
+
+  oct_init_tm_args (&tm_system_ops);
+  pktio_dev_tm_system_register (&tm_system_ops, port->intf.hw_if_index);
 
   return VNET_DEV_OK;
 }

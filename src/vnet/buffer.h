@@ -462,12 +462,13 @@ typedef struct
    */
   struct
   {
+    u16 tm_node;
     u8 bits;
     u8 source;
   } qos;
 
   u8 loop_counter;
-  u8 pad[5]; /* unused */
+  u8 pad[3]; /* unused */
 
   /**
    * The L4 payload size set on input on GSO enabled interfaces
