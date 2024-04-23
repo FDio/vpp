@@ -44,6 +44,7 @@
 #include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vppinfra/lock.h>
+#include <vnet/tm/tm.h>
 #include <vnet/hash/hash.h>
 
 struct vnet_main_t;
@@ -338,6 +339,7 @@ typedef struct _vnet_device_class
   /* Function to read EEPROM data from physical network device */
   vnet_interface_eeprom_read_t *eeprom_read_function;
 
+  tm_system_t *tm_sys_impl;
 } vnet_device_class_t;
 
 u32 vnet_register_device_class (vlib_main_t *, vnet_device_class_t *);
