@@ -1063,6 +1063,7 @@ sFlow
 sfr
 sha
 Shamir
+shaper
 sharepoint
 shg
 shm
