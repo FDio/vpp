@@ -106,8 +106,8 @@ parse_uri (char *uri, session_endpoint_cfg_t *sep)
   return 0;
 }
 
-int
-vnet_bind_uri (vnet_listen_args_t * a)
+session_error_t
+vnet_bind_uri (vnet_listen_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;

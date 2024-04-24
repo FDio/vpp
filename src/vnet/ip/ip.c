@@ -201,7 +201,8 @@ ip_feature_enable_disable (ip_address_family_t af,
 }
 
 int
-ip_flow_hash_set (ip_address_family_t af, u32 table_id, u32 flow_hash_config)
+ip_flow_hash_set (ip_address_family_t af, u32 table_id,
+		  flow_hash_config_t flow_hash_config)
 {
   fib_protocol_t fproto;
   u32 fib_index;
