@@ -71,6 +71,10 @@ clib_bitmap_t *os_get_cpu_on_node_bitmap (int node);
 /* Retrieve physical core id of specific cpu, -1 if not available */
 int os_get_cpu_phys_core_id (int cpu);
 
+/* Retrieve the path of the current executable as a vector (not
+ * null-terminated). */
+u8 *os_get_exec_path ();
+
 #endif /* included_clib_unix_h */
 
 /*

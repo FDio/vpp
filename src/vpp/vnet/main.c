@@ -22,6 +22,8 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/cpu.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/threads.h>
@@ -43,25 +45,26 @@ static void
 vpp_find_plugin_path ()
 {
   extern char *vat_plugin_path;
-  char *p, path[PATH_MAX];
-  int rv;
-  u8 *s;
+  char *p;
+  u8 *s, *path;
 
   /* find executable path */
-  if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
+  path = os_get_exec_path ();
+
+  if (!path)
     return;
 
-  /* readlink doesn't provide null termination */
-  path[rv] = 0;
+  /* add null termination */
+  vec_add1 (path, 0);
 
   /* strip filename */
-  if ((p = strrchr (path, '/')) == 0)
-    return;
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
   *p = 0;
 
   /* strip bin/ */
-  if ((p = strrchr (path, '/')) == 0)
-    return;
+  if ((p = strrchr ((char *) path, '/')) == 0)
+    goto done;
   *p = 0;
 
   s = format (0, "%s/" CLIB_LIB_DIR "/vpp_plugins", path, path);
@@ -71,6 +74,9 @@ vpp_find_plugin_path ()
   s = format (0, "%s/" CLIB_LIB_DIR "/vpp_api_test_plugins", path, path);
   vec_add1 (s, 0);
   vat_plugin_path = (char *) s;
+
+done:
+  vec_free (path);
 }
 
 static void

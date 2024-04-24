@@ -42,6 +42,8 @@
 #include <vppinfra/format.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#else
+#include <sys/sysctl.h>
 #endif
 
 #include <sys/stat.h>
@@ -356,6 +358,28 @@ os_get_cpu_phys_core_id (int cpu_id)
 #else
   return -1;
 #endif
+}
+
+__clib_export u8 *
+os_get_exec_path ()
+{
+  u8 *rv = 0;
+#ifdef __linux__
+  char tmp[PATH_MAX];
+  ssize_t sz = readlink ("/proc/self/exe", tmp, sizeof (tmp));
+
+  if (sz <= 0)
+    return 0;
+#else
+  char tmp[MAXPATHLEN];
+  int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+  size_t sz = MAXPATHLEN;
+
+  if (sysctl (mib, 4, tmp, &sz, NULL, 0) == -1)
+    return 0;
+#endif
+  vec_add (rv, tmp, sz);
+  return rv;
 }
 
 /*

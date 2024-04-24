@@ -17,6 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
+#include <vppinfra/unix.h>
 #include <fateshare/fateshare.h>
 
 #include <vlibapi/api.h>
@@ -197,24 +198,30 @@ fateshare_config (vlib_main_t *vm, unformat_input_t *input)
 
   if (fmp->monitor_cmd == 0)
     {
-      char *p, path[PATH_MAX];
-      int rv;
+      char *p;
+      u8 *path;
 
       /* find executable path */
-      if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
-	return clib_error_return (
-	  0, "could not stat /proc/self/exe - set monitor manually");
+      path = os_get_exec_path ();
 
-      /* readlink doesn't provide null termination */
-      path[rv] = 0;
+      if (path == 0)
+	return clib_error_return (
+	  0, "could not get exec path - set monitor manually");
+
+      /* add null termination */
+      vec_add1 (path, 0);
 
       /* strip filename */
-      if ((p = strrchr (path, '/')) == 0)
-	return clib_error_return (
-	  0, "could not determine vpp directory - set monitor manually");
+      if ((p = strrchr ((char *) path, '/')) == 0)
+	{
+	  vec_free (path);
+	  return clib_error_return (
+	    0, "could not determine vpp directory - set monitor manually");
+	}
       *p = 0;
 
       fmp->monitor_cmd = format (0, "%s/vpp_fateshare_monitor\0", path);
+      vec_free (path);
     }
   if (fmp->monitor_logfile == 0)
     {
