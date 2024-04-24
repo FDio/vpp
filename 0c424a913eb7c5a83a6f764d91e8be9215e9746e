@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3d0a412_32940c37",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-24T11:27:57Z",
+      "side": 1,
+      "message": "#elsif FreeBSD...\n...\n#else\n  return 0;\n#endif",
+      "revId": "0c424a913eb7c5a83a6f764d91e8be9215e9746e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
