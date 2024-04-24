@@ -411,7 +411,7 @@ hcc_run (vlib_main_t *vm)
       vec_free (hcm->http_response);
       break;
     default:
-      clib_error_return (0, "unexpected event %d", event_type);
+      err = clib_error_return (0, "unexpected event %d", event_type);
       break;
     }
 
