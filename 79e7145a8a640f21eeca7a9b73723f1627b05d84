@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f06bd1f3_fe19d2d7",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-24T17:58:08Z",
+      "side": 1,
+      "message": "one more #elif __FreeBSD__",
+      "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3d22b4d_4ab2b124",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-24T17:58:08Z",
+      "side": 1,
+      "message": "Not needed, bitmaps grow automatically and only when needed.",
+      "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
