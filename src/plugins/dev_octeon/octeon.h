@@ -34,8 +34,11 @@ typedef struct
   u8 full_duplex : 1;
   u32 speed;
   struct plt_pci_device plt_pci_dev;
-  struct roc_cpt cpt;
   struct roc_nix *nix;
+
+  struct roc_cpt *cpt;
+  struct roc_cpt_lmtline lmtline;
+  struct roc_cpt_lf lf;
 } oct_device_t;
 
 typedef struct
@@ -95,7 +98,6 @@ typedef struct
   u64 aura_handle;
   u64 io_addr;
   void *lmt_addr;
-
   oct_npa_batch_alloc_cl128_t *ba_buffer;
   u8 ba_first_cl;
   u8 ba_num_cl;

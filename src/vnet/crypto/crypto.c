@@ -280,7 +280,7 @@ vnet_crypto_register_ops_handlers (vlib_main_t * vm, u32 engine_index,
 void
 vnet_crypto_register_enqueue_handler (vlib_main_t *vm, u32 engine_index,
 				      vnet_crypto_async_op_id_t opt,
-				      vnet_crypto_frame_enqueue_t *enqueue_hdl)
+				      vnet_crypto_frame_enq_fn_t *enqueue_hdl)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
@@ -361,7 +361,7 @@ vnet_crypto_update_cm_dequeue_handlers (void)
 
 void
 vnet_crypto_register_dequeue_handler (vlib_main_t *vm, u32 engine_index,
-				      vnet_crypto_frame_dequeue_t *deq_fn)
+				      vnet_crypto_frame_deq_fn_t *deq_fn)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine_index);

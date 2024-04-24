@@ -72,10 +72,10 @@ vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl, u32 n_cache,
-		      u32 * n_total)
+crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vnet_crypto_thread_t *ct,
+		      vnet_crypto_frame_deq_fn_t *hdl, u32 n_cache,
+		      u32 *n_total)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 n_elts = 0;
