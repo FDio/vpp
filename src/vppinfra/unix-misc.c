@@ -44,6 +44,13 @@
 #include <vppinfra/linux/sysfs.h>
 #else
 #include <sys/sysctl.h>
+#include <sys/cdefs.h>
+#define _WANT_FREEBSD_BITSET
+
+#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/cpuset.h>
+#include <sys/domainset.h>
 #endif
 
 #include <sys/stat.h>
@@ -302,8 +309,25 @@ os_get_cpu_affinity_bitmap (int pid)
     if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
       clib_bitmap_set (affinity_cpus, index, 1);
   return affinity_cpus;
+#elif defined(__FreeBSD__)
+  cpuset_t mask;
+  uword *r = NULL;
+
+  clib_bitmap_alloc (r, CPU_SETSIZE);
+
+  if (cpuset_getaffinity (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			  sizeof (mask), &mask) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, (struct bitset *) &mask));
+
+  return r;
 #else
-  return 0;
+  return NULL;
 #endif
 }
 
@@ -312,6 +336,23 @@ os_get_online_cpu_node_bitmap ()
 {
 #if __linux__
   return clib_sysfs_read_bitmap ("/sys/devices/system/node/online");
+#elif defined(__FreeBSD__)
+  domainset_t domain;
+  uword *r = NULL;
+  int policy;
+
+  clib_bitmap_alloc (r, CPU_SETSIZE);
+
+  if (cpuset_getdomain (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			sizeof (domain), &domain, &policy) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, (struct bitset *) &domain));
+  return r;
 #else
   return 0;
 #endif
