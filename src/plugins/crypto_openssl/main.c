@@ -535,11 +535,11 @@ openssl_ctx_hmac (vnet_crypto_key_t *key, vnet_crypto_key_op_t kop,
 }
 
 static void
-crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			    vnet_crypto_key_index_t idx)
+crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_handler_args_t *a)
 {
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   crypto_openssl_main_t *cm = &crypto_openssl_main;
+  vnet_crypto_key_index_t idx = a->key_index;
+  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
 
   /** TODO: add linked alg support **/
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
@@ -548,7 +548,7 @@ crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   if (cm->ctx_fn[key->alg] == 0)
     return;
 
-  cm->ctx_fn[key->alg](key, kop, idx);
+  cm->ctx_fn[key->alg](key, a->key_op, idx);
 }
 
 #define _(m, a, b, iv)                                                        \
@@ -683,8 +683,10 @@ crypto_openssl_init (vlib_main_t * vm)
     ptd->hash_ctx = EVP_MD_CTX_create ();
 #endif
   }
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_openssl_key_handler);
+  vnet_crypto_register_key_handler (vm,
+				    &(vnet_crypto_register_key_handler_args_t){
+				      .engine_index = cm->crypto_engine_index,
+				      .keyh = crypto_openssl_key_handler });
   return 0;
 }
 

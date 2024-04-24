@@ -51,10 +51,13 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
 }
 
 static void
-crypto_sw_scheduler_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
-				 vnet_crypto_key_index_t idx)
+crypto_sw_scheduler_key_handler (vlib_main_t *vm,
+				 vnet_crypto_key_handler_args_t *a)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
+  vnet_crypto_key_op_t kop = a->key_op;
+  ;
+  vnet_crypto_key_index_t idx = a->key_index;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
 
   vec_validate (cm->keys, idx);
@@ -445,8 +448,8 @@ convert_async_crypto_id (vnet_crypto_async_op_id_t async_op_id, u32 *crypto_op,
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			     u32 *enqueue_thread_idx)
+crypto_sw_scheduler_dequeue (vlib_main_t *vm,
+			     vnet_crypto_frame_deq_fn_args_t *a)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd =
@@ -538,8 +541,8 @@ run_next_queues:
 	crypto_sw_scheduler_process_link (
 	  vm, cm, ptd, f, crypto_op, auth_op_or_aad_len, digest_len, is_enc);
 
-      *enqueue_thread_idx = f->enqueue_thread_index;
-      *nb_elts_processed = f->n_elts;
+      *a->enqueue_thread_idx = f->enqueue_thread_index;
+      *a->nb_elts_processed = f->n_elts;
     }
 
   if (ptd->last_return_queue)
@@ -721,33 +724,45 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
     vnet_crypto_register_engine (vm, "sw_scheduler", 100,
 				 "SW Scheduler Async Engine");
 
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_sw_scheduler_key_handler);
+  vnet_crypto_register_key_handler (
+    vm, &(vnet_crypto_register_key_handler_args_t){
+	  .engine_index = cm->crypto_engine_index,
+	  .keyh = crypto_sw_scheduler_key_handler });
 
   crypto_sw_scheduler_api_init (vm);
 
 #define _(n, s, k, t, a)                                                      \
   vnet_crypto_register_enqueue_handler (                                      \
-    vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,  \
-    crypto_sw_scheduler_frame_enqueue_encrypt);                               \
+    vm, &(vnet_crypto_register_enqueue_handler_args_t){                       \
+	  .engine_index = cm->crypto_engine_index,                            \
+	  .op_id = VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,                \
+	  .enq_fn = crypto_sw_scheduler_frame_enqueue_encrypt });             \
   vnet_crypto_register_enqueue_handler (                                      \
-    vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,  \
-    crypto_sw_scheduler_frame_enqueue_decrypt);
+    vm, &(vnet_crypto_register_enqueue_handler_args_t){                       \
+	  .engine_index = cm->crypto_engine_index,                            \
+	  .op_id = VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,                \
+	  .enq_fn = crypto_sw_scheduler_frame_enqueue_decrypt });
   foreach_crypto_aead_async_alg
 #undef _
 
 #define _(c, h, s, k, d)                                                      \
   vnet_crypto_register_enqueue_handler (                                      \
-    vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,     \
-    crypto_sw_scheduler_frame_enqueue_encrypt);                               \
+    vm, &(vnet_crypto_register_enqueue_handler_args_t){                       \
+	  .engine_index = cm->crypto_engine_index,                            \
+	  .op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,                   \
+	  .enq_fn = crypto_sw_scheduler_frame_enqueue_encrypt });             \
   vnet_crypto_register_enqueue_handler (                                      \
-    vm, cm->crypto_engine_index, VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,     \
-    crypto_sw_scheduler_frame_enqueue_decrypt);
+    vm, &(vnet_crypto_register_enqueue_handler_args_t){                       \
+	  .engine_index = cm->crypto_engine_index,                            \
+	  .op_id = VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,                   \
+	  .enq_fn = crypto_sw_scheduler_frame_enqueue_decrypt });
     foreach_crypto_link_async_alg
 #undef _
 
-      vnet_crypto_register_dequeue_handler (vm, cm->crypto_engine_index,
-					    crypto_sw_scheduler_dequeue);
+      vnet_crypto_register_dequeue_handler (
+	vm, &(vnet_crypto_register_dequeue_handler_args_t){
+	      .engine_index = cm->crypto_engine_index,
+	      .deq_fn = crypto_sw_scheduler_dequeue });
 
   if (error)
     vec_free (cm->per_thread_data);

@@ -17,6 +17,69 @@
 
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
 
+#define OCT_CRYPTO_DEFAULT_SW_ASYNC_FRAME_COUNT 256
+#define OCT_SCATTER_GATHER_BUFFER_SIZE		1024
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /** CPT opcode */
+  u16 cpt_op : 4;
+  /** Flag for AES GCM */
+  u16 aes_gcm : 1;
+  /** IV length in bytes */
+  u8 iv_length;
+  /** Auth IV length in bytes */
+  u8 auth_iv_length;
+  /** IV offset in bytes */
+  u16 iv_offset;
+  /** Auth IV offset in bytes */
+  u16 auth_iv_offset;
+  /** CPT inst word 7 */
+  u64 cpt_inst_w7;
+  struct roc_se_ctx cpt_ctx;
+} oct_crypto_sess_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  oct_crypto_sess_t *sess;
+} oct_crypto_key_t;
+
+typedef struct oct_crypto_scatter_gather
+{
+  u8 buf[OCT_SCATTER_GATHER_BUFFER_SIZE];
+} oct_crypto_scatter_gather_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /** Result data of all entries in the frame */
+  volatile union cpt_res_s res[VNET_CRYPTO_FRAME_SIZE];
+  /** Scatter gather data */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  u8 sg_data[OCT_SCATTER_GATHER_BUFFER_SIZE * VNET_CRYPTO_FRAME_SIZE];
+  /** Frame pointer */
+  vnet_crypto_async_frame_t *frame;
+  /** Number of async elements in frame */
+  u16 elts;
+  /** Next read entry in frame, when dequeue */
+  u16 deq_elts;
+} oct_crypto_inflight_req_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /** Array of pending request */
+  oct_crypto_inflight_req_t req_queue[OCT_CRYPTO_DEFAULT_SW_ASYNC_FRAME_COUNT];
+  /** Number of inflight operations in queue */
+  u32 n_crypto_inflight;
+  /** Tail of queue to be used for enqueue */
+  u16 enq_tail;
+  /** Head of queue to be used for dequeue */
+  u16 deq_head;
+} oct_crypto_pending_queue_t;
+
 typedef enum
 {
   OCT_DEVICE_TYPE_UNKNOWN = 0,
@@ -34,8 +97,13 @@ typedef struct
   u8 full_duplex : 1;
   u32 speed;
   struct plt_pci_device plt_pci_dev;
-  struct roc_cpt cpt;
   struct roc_nix *nix;
+
+  struct roc_cpt *cpt;
+  struct roc_cpt_lmtline lmtline;
+  struct roc_cpt_lf lf;
+  oct_crypto_key_t *keys[VNET_CRYPTO_ASYNC_OP_N_TYPES];
+  oct_crypto_pending_queue_t *pend_q;
 } oct_device_t;
 
 typedef struct
@@ -95,7 +163,6 @@ typedef struct
   u64 aura_handle;
   u64 io_addr;
   void *lmt_addr;
-
   oct_npa_batch_alloc_cl128_t *ba_buffer;
   u8 ba_first_cl;
   u8 ba_num_cl;

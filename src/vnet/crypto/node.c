@@ -72,15 +72,19 @@ vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl, u32 n_cache,
-		      u32 * n_total)
+crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vnet_crypto_thread_t *ct,
+		      vnet_crypto_frame_deq_fn_t *hdl, u32 n_cache,
+		      u32 *n_total)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 n_elts = 0;
   u32 enqueue_thread_idx = ~0;
-  vnet_crypto_async_frame_t *cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
+  vnet_crypto_frame_deq_fn_args_t args = {
+    .nb_elts_processed = &n_elts,
+    .enqueue_thread_idx = &enqueue_thread_idx,
+  };
+  vnet_crypto_async_frame_t *cf = (hdl) (vm, &args);
   *n_total += n_elts;
 
   while (cf || n_elts)
@@ -148,7 +152,7 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       n_elts = 0;
       enqueue_thread_idx = 0;
-      cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
+      cf = (hdl) (vm, &args);
       *n_total += n_elts;
     }
 

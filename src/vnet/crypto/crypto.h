@@ -368,6 +368,7 @@ typedef struct
   vnet_crypto_async_frame_state_t state;
   vnet_crypto_async_op_id_t op:8;
   u16 n_elts;
+  void *user_data;
   vnet_crypto_async_frame_elt_t elts[VNET_CRYPTO_FRAME_SIZE];
   u32 buffer_indices[VNET_CRYPTO_FRAME_SIZE];
   u16 next_node_index[VNET_CRYPTO_FRAME_SIZE];
@@ -392,17 +393,28 @@ typedef u32 (vnet_crypto_chained_ops_handler_t) (vlib_main_t * vm,
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
 
-typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
-					  vnet_crypto_key_op_t kop,
-					  vnet_crypto_key_index_t idx);
+typedef struct
+{
+  vnet_crypto_key_op_t key_op;
+  vnet_crypto_key_index_t key_index;
+  void *private_data;
+} vnet_crypto_key_handler_args_t;
+
+typedef void (vnet_crypto_key_handler_t) (
+  vlib_main_t *vm, vnet_crypto_key_handler_args_t *args);
 
 /** async crypto function handlers **/
-typedef int
-  (vnet_crypto_frame_enqueue_t) (vlib_main_t * vm,
-				 vnet_crypto_async_frame_t * frame);
-typedef vnet_crypto_async_frame_t *
-  (vnet_crypto_frame_dequeue_t) (vlib_main_t * vm, u32 * nb_elts_processed,
-				 u32 * enqueue_thread_idx);
+typedef int (vnet_crypto_frame_enq_fn_t) (vlib_main_t *vm,
+					  vnet_crypto_async_frame_t *frame);
+typedef struct
+{
+  u32 *nb_elts_processed;
+  u32 *enqueue_thread_idx;
+  void *private_data;
+} vnet_crypto_frame_deq_fn_args_t;
+
+typedef vnet_crypto_async_frame_t *(vnet_crypto_frame_deq_fn_t) (
+  vlib_main_t *vm, vnet_crypto_frame_deq_fn_args_t *);
 
 u32
 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
@@ -424,20 +436,39 @@ void vnet_crypto_register_ops_handlers (vlib_main_t * vm, u32 engine_index,
 					vnet_crypto_chained_ops_handler_t *
 					cfn);
 
-void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
-				       vnet_crypto_key_handler_t * keyh);
+typedef struct
+{
+  u32 engine_index;
+  vnet_crypto_key_handler_t *keyh;
+  void *user_data;
+} vnet_crypto_register_key_handler_args_t;
+
+void vnet_crypto_register_key_handler (
+  vlib_main_t *vm, vnet_crypto_register_key_handler_args_t *args);
 
 /** async crypto register functions */
 u32 vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
 
-void
-vnet_crypto_register_enqueue_handler (vlib_main_t *vm, u32 engine_index,
-				      vnet_crypto_async_op_id_t opt,
-				      vnet_crypto_frame_enqueue_t *enq_fn);
+typedef struct
+{
+  u32 engine_index;
+  vnet_crypto_async_op_id_t op_id;
+  vnet_crypto_frame_enq_fn_t *enq_fn;
+  void *user_data;
+} vnet_crypto_register_enqueue_handler_args_t;
 
-void
-vnet_crypto_register_dequeue_handler (vlib_main_t *vm, u32 engine_index,
-				      vnet_crypto_frame_dequeue_t *deq_fn);
+void vnet_crypto_register_enqueue_handler (
+  vlib_main_t *vm, vnet_crypto_register_enqueue_handler_args_t *eq);
+
+typedef struct
+{
+  u32 engine_index;
+  vnet_crypto_frame_deq_fn_t *deq_fn;
+  void *user_data;
+} vnet_crypto_register_dequeue_handler_args_t;
+
+void vnet_crypto_register_dequeue_handler (
+  vlib_main_t *vm, vnet_crypto_register_dequeue_handler_args_t *dh);
 
 typedef struct
 {
@@ -448,8 +479,8 @@ typedef struct
   vnet_crypto_ops_handler_t *ops_handlers[VNET_CRYPTO_N_OP_IDS];
     vnet_crypto_chained_ops_handler_t
     * chained_ops_handlers[VNET_CRYPTO_N_OP_IDS];
-  vnet_crypto_frame_enqueue_t *enqueue_handlers[VNET_CRYPTO_ASYNC_OP_N_IDS];
-  vnet_crypto_frame_dequeue_t *dequeue_handler;
+    vnet_crypto_frame_enq_fn_t *enqueue_handlers[VNET_CRYPTO_ASYNC_OP_N_IDS];
+    vnet_crypto_frame_deq_fn_t *dequeue_handler;
 } vnet_crypto_engine_t;
 
 typedef struct
@@ -464,8 +495,8 @@ typedef struct
   vnet_crypto_thread_t *threads;
   vnet_crypto_ops_handler_t **ops_handlers;
   vnet_crypto_chained_ops_handler_t **chained_ops_handlers;
-  vnet_crypto_frame_enqueue_t **enqueue_handlers;
-  vnet_crypto_frame_dequeue_t **dequeue_handlers;
+  vnet_crypto_frame_enq_fn_t **enqueue_handlers;
+  vnet_crypto_frame_deq_fn_t **dequeue_handlers;
   vnet_crypto_op_data_t opt_data[VNET_CRYPTO_N_OP_IDS];
   vnet_crypto_async_op_data_t async_opt_data[VNET_CRYPTO_ASYNC_OP_N_IDS];
   vnet_crypto_engine_t *engines;
