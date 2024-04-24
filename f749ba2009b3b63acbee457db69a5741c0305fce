@@ -50,6 +50,24 @@
       "message": "Would you folks mind reviewing this? I found you because you were reviewers of https://gerrit.fd.io/r/c/vpp/+/23350.",
       "revId": "f749ba2009b3b63acbee457db69a5741c0305fce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "847b3a32_f3ec4443",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-04-24T14:17:30Z",
+      "side": 1,
+      "message": "The gerrit change needs to pass all voting CI jobs prior to review.\n\nI have rebased the patch to the top of master to verify if the failures were due to a CI anomaly or a bug in the code.",
+      "parentUuid": "2cd333d8_d08914d0",
+      "revId": "f749ba2009b3b63acbee457db69a5741c0305fce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
