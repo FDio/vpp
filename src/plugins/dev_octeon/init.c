@@ -114,7 +114,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rrv = roc_nix_dev_init (cd->nix)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_dev_init");
 
-  if (roc_nix_npc_mac_addr_get (cd->nix, mac_addr))
+  if ((rrv = roc_nix_npc_mac_addr_get (cd->nix, mac_addr)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_npc_mac_addr_get");
 
   vnet_dev_port_add_args_t port_add_args = {
