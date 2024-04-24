@@ -13,13 +13,6 @@
  * limitations under the License.
  */
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <linux/vfio.h>
-#include <sys/ioctl.h>
-
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <dpdk/device/dpdk.h>
