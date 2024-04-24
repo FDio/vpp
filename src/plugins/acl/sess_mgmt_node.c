@@ -371,8 +371,9 @@ send_one_worker_interrupt (vlib_main_t * vm, acl_main_t * am,
 }
 
 void
-aclp_post_session_change_request (acl_main_t * am, u32 target_thread,
-				  u32 target_session, u32 request_type)
+aclp_post_session_change_request (acl_main_t *am, u32 target_thread,
+				  u32 target_session,
+				  acl_fa_sess_req_t request_type)
 {
   acl_fa_per_worker_data_t *pw_me =
     &am->per_worker_data[os_get_thread_index ()];
