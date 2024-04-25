@@ -42,8 +42,9 @@
 #include <vppinfra/format.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
-#else
+#elif defined(__FreeBSD__)
 #include <sys/sysctl.h>
+#include <sys/param.h>
 #endif
 
 #include <sys/stat.h>
