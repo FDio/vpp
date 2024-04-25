@@ -22,6 +22,30 @@
       },
       "revId": "12cc814dc975f945357f89a7026fa82847c16bbf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52802380_e881e68b",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-04-25T14:14:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7d3cfce2_68167529",
+      "range": {
+        "startLine": 100,
+        "startChar": 16,
+        "endLine": 100,
+        "endChar": 27
+      },
+      "revId": "12cc814dc975f945357f89a7026fa82847c16bbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
