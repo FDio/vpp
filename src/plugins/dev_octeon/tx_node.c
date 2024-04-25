@@ -133,7 +133,8 @@ oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq)
 
 static_always_inline u8
 oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
-	     lmt_line_t *line, u32 flags, int simple, int trace)
+	     lmt_line_t *line, u32 flags, int simple, int trace, u32 *n,
+	     u8 *dpl)
 {
   u8 n_dwords = 2;
   u32 total_len = 0;
@@ -159,7 +160,7 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
 	  tail_segs[n_tail_segs++] = t;
 	  if (n_tail_segs > 5)
 	    {
-	      ctx->drop[ctx->n_drop++] = t;
+	      ctx->drop[ctx->n_drop++] = b;
 	      return 0;
 	    }
 	}
@@ -231,6 +232,9 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
   for (u32 i = 0; i < n_dwords; i++)
     line->dwords[i] = d.as_u128[i];
 
+  *dpl = n_dwords;
+  *n = *n + 1;
+
   return n_dwords;
 }
 
@@ -240,7 +244,7 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
 {
   u8 dwords_per_line[16], *dpl = dwords_per_line;
   u64 lmt_arg, ioaddr, n_lines;
-  u32 n_left, or_flags_16 = 0;
+  u32 n_left, or_flags_16 = 0, n = 0;
   const u32 not_simple_flags =
     VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_OFFLOAD;
   lmt_line_t *l = ctx->lmt_lines;
@@ -248,7 +252,7 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
   /* Data Store Memory Barrier - outer shareable domain */
   asm volatile("dmb oshst" ::: "memory");
 
-  for (n_left = n_pkts; n_left >= 8; n_left -= 8, b += 8, l += 8)
+  for (n_left = n_pkts; n_left >= 8; n_left -= 8, b += 8)
     {
       u32 f0, f1, f2, f3, f4, f5, f6, f7, or_f = 0;
       vlib_prefetch_buffer_header (b[8], LOAD);
@@ -269,48 +273,54 @@ oct_tx_enq16 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
       if ((or_f & not_simple_flags) == 0)
 	{
 	  int simple = 1;
-	  oct_tx_enq1 (vm, ctx, b[0], l, f0, simple, trace);
-	  oct_tx_enq1 (vm, ctx, b[1], l + 1, f1, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[0], l, f0, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[1], l + n, f1, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[13], LOAD);
-	  oct_tx_enq1 (vm, ctx, b[2], l + 2, f2, simple, trace);
-	  oct_tx_enq1 (vm, ctx, b[3], l + 3, f3, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[2], l + n, f2, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[3], l + n, f3, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[14], LOAD);
-	  oct_tx_enq1 (vm, ctx, b[4], l + 4, f4, simple, trace);
-	  oct_tx_enq1 (vm, ctx, b[5], l + 5, f5, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[4], l + n, f4, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[5], l + n, f5, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[15], LOAD);
-	  oct_tx_enq1 (vm, ctx, b[6], l + 6, f6, simple, trace);
-	  oct_tx_enq1 (vm, ctx, b[7], l + 7, f7, simple, trace);
-	  dpl[0] = dpl[1] = dpl[2] = dpl[3] = 2;
-	  dpl[4] = dpl[5] = dpl[6] = dpl[7] = 2;
+	  oct_tx_enq1 (vm, ctx, b[6], l + n, f6, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[7], l + n, f7, simple, trace, &n, &dpl[n]);
 	}
       else
 	{
 	  int simple = 0;
-	  dpl[0] = oct_tx_enq1 (vm, ctx, b[0], l, f0, simple, trace);
-	  dpl[1] = oct_tx_enq1 (vm, ctx, b[1], l + 1, f1, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[0], l, f0, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[1], l + n, f1, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[13], LOAD);
-	  dpl[2] = oct_tx_enq1 (vm, ctx, b[2], l + 2, f2, simple, trace);
-	  dpl[3] = oct_tx_enq1 (vm, ctx, b[3], l + 3, f3, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[2], l + n, f2, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[3], l + n, f3, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[14], LOAD);
-	  dpl[4] = oct_tx_enq1 (vm, ctx, b[4], l + 4, f4, simple, trace);
-	  dpl[5] = oct_tx_enq1 (vm, ctx, b[5], l + 5, f5, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[4], l + n, f4, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[5], l + n, f5, simple, trace, &n, &dpl[n]);
 	  vlib_prefetch_buffer_header (b[15], LOAD);
-	  dpl[6] = oct_tx_enq1 (vm, ctx, b[6], l + 6, f6, simple, trace);
-	  dpl[7] = oct_tx_enq1 (vm, ctx, b[7], l + 7, f7, simple, trace);
+	  oct_tx_enq1 (vm, ctx, b[6], l + n, f6, simple, trace, &n, &dpl[n]);
+	  oct_tx_enq1 (vm, ctx, b[7], l + n, f7, simple, trace, &n, &dpl[n]);
 	}
-      dpl += 8;
+      dpl += n;
+      l += n;
+      n = 0;
     }
 
-  for (; n_left > 0; n_left -= 1, b += 1, l += 1)
+  for (; n_left > 0; n_left -= 1, b += 1)
     {
       u32 f0 = b[0]->flags;
-      dpl++[0] = oct_tx_enq1 (vm, ctx, b[0], l, f0, 0, trace);
+      oct_tx_enq1 (vm, ctx, b[0], l, f0, 0, trace, &n, &dpl[n]);
       or_flags_16 |= f0;
+      dpl += n;
+      l += n;
+      n = 0;
     }
 
   lmt_arg = ctx->lmt_id;
   ioaddr = ctx->lmt_ioaddr;
-  n_lines = n_pkts;
+  n_lines = dpl - dwords_per_line;
+
+  if (PREDICT_FALSE (!n_lines))
+    return n_pkts;
 
   if (PREDICT_FALSE (or_flags_16 & VLIB_BUFFER_NEXT_PRESENT))
     {
@@ -396,7 +406,7 @@ VNET_DEV_NODE_FN (oct_tx_node)
 	n += oct_tx_enq16 (vm, &ctx, txq, b, n_left, /* trace */ 0);
     }
 
-  ctq->n_enq = n_enq + n;
+  ctq->n_enq = n_enq + n - ctx.n_drop;
 
   if (n < n_pkts)
     {
