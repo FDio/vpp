@@ -24,4 +24,7 @@ add_vpp_plugin(srmpls
   API_FILES
   sr_mpls.api
 
+  # This might need to be VAT_AUTO_TEST? Not documented
+  API_TEST_SOURCES
+  sr_mpls_test.c
 )
