@@ -816,19 +816,9 @@ list(APPEND VNET_API_FILES
 # mpls segment routing
 ##############################################################################
 
-list(APPEND VNET_SOURCES
-  srmpls/sr_mpls_policy.c
-  srmpls/sr_mpls_steering.c
-  srmpls/sr_mpls_api.c
-)
-
-list(APPEND VNET_HEADERS
-  srmpls/sr_mpls.h
-)
-
-list(APPEND VNET_API_FILES
-  srmpls/sr_mpls.api
-)
+# list(APPEND VNET_HEADERS
+#   srmpls/sr_mpls.h
+# )
 
 ##############################################################################
 # IPFIX / netflow v10
