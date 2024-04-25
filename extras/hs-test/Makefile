@@ -78,30 +78,38 @@ help:
 list-tests:
 	$(call list_tests)
 
+.PHONY: build-vpp-release
 build-vpp-release:
 	@make -C ../.. build-release
 
+.PHONY: build-vpp-debug
 build-vpp-debug:
 	@make -C ../.. build
 
+.build.ok: build
+	@touch .build.ok
+
 .PHONY: test
-test: .deps.ok .build.vpp
+test: .deps.ok .build.ok
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
 
+.PHONY: build-go
 build-go:
 	go build ./tools/http_server
 
+.PHONY: build
 build: .deps.ok build-vpp-release build-go
-	@rm -f .build.vpp
+	@rm -f .build.ok
 	bash ./script/build_hst.sh release
-	@touch .build.vpp
+	@touch .build.ok
 
+.PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug build-go
-	@rm -f .build.vpp
+	@rm -f .build.ok
 	bash ./script/build_hst.sh debug
-	@touch .build.vpp
+	@touch .build.ok
 
 .deps.ok:
 	@sudo make install-deps
@@ -111,14 +119,13 @@ install-deps:
 	@rm -f .deps.ok
 	@apt-get update \
 		&& apt-get install -y apt-transport-https ca-certificates curl software-properties-common \
-		&& apt-get install -y golang apache2-utils wrk bridge-utils
+		apache2-utils wrk bridge-utils
 	@if [ ! -f /usr/share/keyrings/docker-archive-keyring.gpg ] ; then \
 		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg; \
 		echo "deb [arch=$(ARCH) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(UBUNTU_CODENAME) stable" \
 			| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null ; \
 		apt-get update; \
 	fi
-	@apt-get install -y docker-ce
 	@touch .deps.ok
 
 .PHONY: fixstyle
