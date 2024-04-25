@@ -55,6 +55,7 @@ install(
 # vlib shared library
 ##############################################################################
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 set(PLATFORM_SOURCES
   linux/pci.c
   linux/vfio.c
@@ -64,6 +65,11 @@ set(PLATFORM_SOURCES
 set(PLATFORM_HEADERS
   linux/vfio.h
 )
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+set(PLATFORM_SOURCES
+  freebsd/pci.c
+)
+endif()
 
 add_vpp_library(vlib
   SOURCES
