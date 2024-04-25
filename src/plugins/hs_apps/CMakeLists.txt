@@ -55,7 +55,7 @@ if(VPP_BUILD_VCL_TESTS)
   )
     add_vpp_executable(${test}
       SOURCES "vcl/${test}.c"
-      LINK_LIBRARIES vppcom pthread
+      LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
       NO_INSTALL
     )
   endforeach()
@@ -68,7 +68,7 @@ if(VPP_BUILD_VCL_TESTS)
       SOURCES
       "vcl/${test}.c"
       vcl/vcl_test_protos.c
-      LINK_LIBRARIES vppcom pthread
+      LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
       NO_INSTALL
     )
   endforeach()
