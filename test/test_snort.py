@@ -2,6 +2,10 @@ from asfframework import VppTestRunner
 from framework import VppTestCase
 import unittest
 from config import config
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from scapy.layers.inet import IP, UDP
+from random import randint
 
 
 @unittest.skipIf("snort" in config.excluded_plugins, "Exclude snort plugin test")
@@ -27,8 +31,30 @@ class TestSnort(VppTestCase):
             i.admin_down()
         super(TestSnort, cls).tearDownClass()
 
+    def setUp(self):
+        super(TestSnort, self).setUp()
+
+    def tearDown(self):
+        super(TestSnort, self).tearDown()
+
+    def create_stream(self, src_if, dst_if, count):
+        packets = []
+        for i in range(count):
+            info = self.create_packet_info(src_if, dst_if)
+            payload = self.info_to_payload(info)
+
+            p = (
+                Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+                / IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4)
+                / UDP(sport=randint(1000, 2000), dport=5678)
+                / Raw(payload)
+            )
+
+            packets.append(p)
+
+        return packets
+
     def test_snort_cli(self):
-        # TODO: add a test with packets
         # { cli command : part of the expected reply }
         commands_replies = {
             "snort create-instance name snortTest queue-size 16 on-disconnect drop": "",
@@ -39,15 +65,31 @@ class TestSnort(VppTestCase):
             "show snort interfaces": "pg0",
             "show snort clients": "number of clients",
             "show snort mode": "input mode: interrupt",
-            "snort mode polling": "",
             "snort mode interrupt": "",
             "snort detach interface pg0": "",
             "snort detach interface pg1": "",
         }
 
-        for command, reply in commands_replies.items():
+        for command, expected_reply in commands_replies.items():
             actual_reply = self.vapi.cli(command)
-            self.assertIn(reply, actual_reply)
+            self.assertIn(expected_reply, actual_reply)
+
+        self.vapi.cli("snort detach interface pg0")
+        self.vapi.cli("snort detach interface pg1")
+        self.vapi.cli(
+            "snort create-instance name snortTest3 queue-size 1 on-disconnect drop"
+        )
+        self.vapi.cli("snort attach instance snortTest3 interface pg0 inout")
+        self.vapi.cli("snort attach instance snortTest3 interface pg1 inout")
+        self.vapi.cli("snort mode polling")
+
+        packets = self.create_stream(self.pg0, self.pg1, 5)
+        self.pg0.add_stream(packets)
+        self.pg_start()
+        reply = self.vapi.cli("show snort interfaces")
+        self.assertIn("pg1", reply)
+        reply = self.vapi.cli("show trace max 1")
+        self.assertIn("null-node: blackholed packets", reply)
 
 
 if __name__ == "__main__":
