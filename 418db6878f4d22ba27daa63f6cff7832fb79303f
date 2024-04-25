@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9e31353_023da7c7",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 865,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-25T16:52:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "02abc640_09942358",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b391146f_2860856f",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-01-15T14:10:05Z",
       "side": 1,
       "message": "Do this only if there\u0027s more data to be read from ts-\u003erx_fifo.",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb370d12_cbbd4c65",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-25T16:52:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b391146f_2860856f",
       "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
