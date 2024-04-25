@@ -34,6 +34,24 @@
       "parentUuid": "4c9d25c2_2c916d78",
       "revId": "a0fd523013289c24c65f30ccd1bc9e4b39f81feb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "157a3c76_4a2d951a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-04-25T17:55:44Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/c/vpp/+/40787",
+      "parentUuid": "11caaa5d_585d7be7",
+      "revId": "a0fd523013289c24c65f30ccd1bc9e4b39f81feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
