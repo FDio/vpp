@@ -72,15 +72,18 @@ vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl, u32 n_cache,
-		      u32 * n_total)
+crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vnet_crypto_thread_t *ct,
+		      vnet_crypto_frame_deq_fn_t *hdl, u32 n_cache,
+		      u32 *n_total)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 n_elts = 0;
   u32 enqueue_thread_idx = ~0;
-  vnet_crypto_async_frame_t *cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
+  vnet_crypto_async_frame_t *cf = (hdl) (
+    vm, &(vnet_crypto_frame_deq_fn_args_t){
+	  .nb_elts_processed = &n_elts,
+	  .enqueue_thread_idx = &enqueue_thread_idx /* FIXME userdata */ });
   *n_total += n_elts;
 
   while (cf || n_elts)
@@ -148,7 +151,10 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       n_elts = 0;
       enqueue_thread_idx = 0;
-      cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
+      cf = (hdl) (vm, &(vnet_crypto_frame_deq_fn_args_t){
+			.nb_elts_processed = &n_elts,
+			.enqueue_thread_idx = &enqueue_thread_idx,
+			/* FIXME userdata */ });
       *n_total += n_elts;
     }
 
@@ -162,11 +168,9 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   u32 n_dispatched = 0, n_cache = 0, index;
-  vec_foreach_index (index, cm->dequeue_handlers)
-    {
-      n_cache = crypto_dequeue_frame (
-	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
-    }
+  vec_foreach_index (index, cm->active_deq_fn)
+    n_cache += crypto_dequeue_frame (vm, node, ct, cm->active_deq_fn[index],
+				     n_cache, &n_dispatched);
   if (n_cache)
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts,
 				     n_cache);

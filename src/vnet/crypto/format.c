@@ -22,7 +22,7 @@ format_vnet_crypto_alg (u8 * s, va_list * args)
 {
   vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_alg_data_t *d = vec_elt_at_index (cm->algs, alg);
+  vnet_crypto_alg_data_t *d = cm->algs + alg;
   return format (s, "%s", d->name);
 }
 

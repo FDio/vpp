@@ -175,7 +175,7 @@ probe ()
     .probe = probe,                                                           \
   };                                                                          \
   CRYPTO_NATIVE_KEY_HANDLER (crypto_native_hmac_sha##b) = {                   \
-    .alg_id = VNET_CRYPTO_ALG_HMAC_SHA##b,                                    \
+    .alg_id = VNET_CRYPTO_ALG_SHA##b,                                         \
     .key_fn = sha2_##b##_key_add,                                             \
     .probe = probe,                                                           \
   };

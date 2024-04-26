@@ -326,11 +326,10 @@ cryptodev_sess_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
     vec_validate (ckey->keys[i], CRYPTODEV_N_OP_TYPES - 1);
 }
 
-/*static*/ void
-cryptodev_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-		       vnet_crypto_key_index_t idx)
+static void
+cryptodev_key_handler (vlib_main_t *vm, vnet_crypto_key_handle_fn_args_t *a)
 {
-  cryptodev_sess_handler (vm, kop, idx, 8);
+  cryptodev_sess_handler (vm, a->key_op, a->key_index, 8);
 }
 
 clib_error_t *
@@ -1340,7 +1339,9 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 100,
 				      "DPDK Cryptodev Engine");
 
-  vnet_crypto_register_key_handler (vm, eidx, cryptodev_key_handler);
+  vnet_crypto_register_key_handler (
+    vm, &(vnet_crypto_register_key_handler_args_t){ .key_handle_fn =
+						      cryptodev_key_handler });
 
   if (cryptodev_register_raw_hdl)
     error = cryptodev_register_raw_hdl (vm, eidx);

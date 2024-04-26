@@ -536,8 +536,7 @@ cryptodev_enqueue_frame_to_qat (vlib_main_t *vm,
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-		       u32 *enqueue_thread_idx)
+cryptodev_raw_dequeue (vlib_main_t *vm, vnet_crypto_frame_deq_fn_args_t *a)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -548,7 +547,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   u8 dequeue_more = 1;
 
   while (cet->inflight > 0 && dequeue_more)
-    dequeue_more = cryptodev_raw_dequeue_internal (vm, enqueue_thread_idx);
+    dequeue_more = cryptodev_raw_dequeue_internal (vm, a->enqueue_thread_idx);
 
   if (PREDICT_TRUE (ring->frames[ring->enq_head].f != 0))
     cryptodev_enqueue_frame_to_qat (vm, &ring->frames[ring->enq_head]);
@@ -556,7 +555,7 @@ cryptodev_raw_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   if (PREDICT_TRUE (ring_elt->f != 0) &&
       (ring_elt->n_elts == ring_elt->deq_elts_tail))
     {
-      *nb_elts_processed = ring_elt->n_elts;
+      *a->nb_elts_processed = ring_elt->n_elts;
       vlib_node_set_interrupt_pending (
 	vlib_get_main_by_index (vm->thread_index), cm->crypto_node_index);
       ret_frame = cryptodev_cache_ring_pop (ring);
@@ -684,11 +683,15 @@ cryptodev_register_raw_hdl (vlib_main_t *vm, u32 eidx)
   if (cryptodev_check_cap_support (&cap_aead_idx, g, e, f))                   \
     {                                                                         \
       vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC,                 \
-	cryptodev_raw_enq_aead_aad_##f##_enc);                                \
+	vm, &(vnet_crypto_register_enqueue_handler_args_t){                   \
+	      .engine_index = eidx,                                           \
+	      .op_id = VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC,            \
+	      .enq_fn = cryptodev_raw_enq_aead_aad_##f##_enc });              \
       vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC,                 \
-	cryptodev_raw_enq_aead_aad_##f##_dec);                                \
+	vm, &(vnet_crypto_register_enqueue_handler_args_t){                   \
+	      .engine_index = eidx,                                           \
+	      .op_id = VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC,            \
+	      .enq_fn = cryptodev_raw_enq_aead_aad_##f##_dec });              \
       ref_cnt++;                                                              \
     }
   foreach_vnet_aead_crypto_conversion
@@ -703,18 +706,23 @@ cryptodev_register_raw_hdl (vlib_main_t *vm, u32 eidx)
       cryptodev_check_cap_support (&cap_auth_idx, -1, e, -1))                 \
     {                                                                         \
       vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_ENC,                    \
-	cryptodev_raw_enq_linked_alg_enc);                                    \
+	vm, &(vnet_crypto_register_enqueue_handler_args_t){                   \
+	      .engine_index = eidx,                                           \
+	      .op_id = VNET_CRYPTO_OP_##a##_##d##_TAG##e##_ENC,               \
+	      .enq_fn = cryptodev_raw_enq_linked_alg_enc });                  \
       vnet_crypto_register_enqueue_handler (                                  \
-	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_DEC,                    \
-	cryptodev_raw_enq_linked_alg_dec);                                    \
+	vm, &(vnet_crypto_register_enqueue_handler_args_t){                   \
+	      .engine_index = eidx,                                           \
+	      .op_id = VNET_CRYPTO_OP_##a##_##d##_TAG##e##_DEC,               \
+	      .enq_fn = cryptodev_raw_enq_linked_alg_dec });                  \
       ref_cnt++;                                                              \
     }
     foreach_cryptodev_link_async_alg
 #undef _
 
-    if (ref_cnt)
-      vnet_crypto_register_dequeue_handler (vm, eidx, cryptodev_raw_dequeue);
+    if (ref_cnt) vnet_crypto_register_dequeue_handler (
+      vm, &(vnet_crypto_register_dequeue_handler_args_t){
+	    .engine_index = eidx, .deq_fn = cryptodev_raw_dequeue });
 
   cmt->is_raw_api = 1;
 

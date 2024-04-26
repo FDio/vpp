@@ -29,14 +29,9 @@ typedef struct unittest_crypto_test_registration
 {
   char *name;
   vnet_crypto_alg_t alg;
-  unittest_crypto_test_data_t iv, key, digest, plaintext, ciphertext, aad,
+  unittest_crypto_test_data_t iv, key, hash, hmac, plaintext, ciphertext, aad,
     tag;
   u32 plaintext_incremental;
-  u8 is_chained;
-
-  /* plaintext and cipher text data used for testing chained buffers */
-  unittest_crypto_test_data_t pt_chunks[CRYPTO_TEST_MAX_OP_CHUNKS + 1];
-  unittest_crypto_test_data_t ct_chunks[CRYPTO_TEST_MAX_OP_CHUNKS + 1];
 
   /* next */
   struct unittest_crypto_test_registration *next;
@@ -65,7 +60,6 @@ extern crypto_test_main_t crypto_test_main;
   {                                                                           \
     .data = (u8 *) n, .length = sizeof (n) - 1                                \
   }
-#define TEST_DATA_CHUNK(s,off,n) { .data = (u8 *) s + off, .length = n}
 
 #define UNITTEST_REGISTER_CRYPTO_TEST(x)                                     \
   unittest_crypto_test_registration_t __unittest_crypto_test_##x;            \

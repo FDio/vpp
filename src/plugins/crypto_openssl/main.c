@@ -77,19 +77,12 @@ static openssl_per_thread_data_t *per_thread_data = 0;
 #endif
 
 #define foreach_openssl_hash_op                                               \
+  _ (MD5, EVP_md5)                                                            \
   _ (SHA1, EVP_sha1)                                                          \
   _ (SHA224, EVP_sha224)                                                      \
   _ (SHA256, EVP_sha256)                                                      \
   _ (SHA384, EVP_sha384)                                                      \
   _ (SHA512, EVP_sha512)
-
-#define foreach_openssl_hmac_op \
-  _(MD5, EVP_md5) \
-  _(SHA1, EVP_sha1) \
-  _(SHA224, EVP_sha224) \
-  _(SHA256, EVP_sha256) \
-  _(SHA384, EVP_sha384) \
-  _(SHA512, EVP_sha512)
 
 crypto_openssl_main_t crypto_openssl_main;
 
@@ -535,11 +528,12 @@ openssl_ctx_hmac (vnet_crypto_key_t *key, vnet_crypto_key_op_t kop,
 }
 
 static void
-crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
-			    vnet_crypto_key_index_t idx)
+crypto_openssl_key_handler (vlib_main_t *vm,
+			    vnet_crypto_key_handle_fn_args_t *a)
 {
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   crypto_openssl_main_t *cm = &crypto_openssl_main;
+  vnet_crypto_key_index_t idx = a->key_index;
+  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
 
   /** TODO: add linked alg support **/
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
@@ -548,7 +542,7 @@ crypto_openssl_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
   if (cm->ctx_fn[key->alg] == 0)
     return;
 
-  cm->ctx_fn[key->alg](key, kop, idx);
+  cm->ctx_fn[key->alg](key, a->key_op, idx);
 }
 
 #define _(m, a, b, iv)                                                        \
@@ -626,7 +620,7 @@ foreach_openssl_hash_op;
     return openssl_ctx_hmac (key, kop, idx, b ());                            \
   }
 
-foreach_openssl_hmac_op;
+foreach_openssl_hash_op;
 #undef _
 
 clib_error_t *
@@ -661,9 +655,9 @@ crypto_openssl_init (vlib_main_t * vm)
   vnet_crypto_register_ops_handlers (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC,     \
 				     openssl_ops_hmac_##a,                    \
 				     openssl_ops_hmac_chained_##a);           \
-  cm->ctx_fn[VNET_CRYPTO_ALG_HMAC_##a] = openssl_ctx_hmac_##a;
+  cm->ctx_fn[VNET_CRYPTO_ALG_##a] = openssl_ctx_hmac_##a;
 
-  foreach_openssl_hmac_op;
+  foreach_openssl_hash_op;
 #undef _
 
 #define _(a, b)                                                               \
@@ -683,8 +677,10 @@ crypto_openssl_init (vlib_main_t * vm)
     ptd->hash_ctx = EVP_MD_CTX_create ();
 #endif
   }
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_openssl_key_handler);
+  vnet_crypto_register_key_handler (
+    vm, &(vnet_crypto_register_key_handler_args_t){
+	  .engine_index = cm->crypto_engine_index,
+	  .key_handle_fn = crypto_openssl_key_handler });
   return 0;
 }
 

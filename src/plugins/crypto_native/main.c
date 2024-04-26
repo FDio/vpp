@@ -23,11 +23,13 @@
 crypto_native_main_t crypto_native_main;
 
 static void
-crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
-			   vnet_crypto_key_index_t idx)
+crypto_native_key_handler (vlib_main_t *vm,
+			   vnet_crypto_key_handle_fn_args_t *a)
 {
-  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
+  vnet_crypto_key_t *key = vnet_crypto_get_key (a->key_index);
   crypto_native_main_t *cm = &crypto_native_main;
+  vnet_crypto_key_op_t kop = a->key_op;
+  vnet_crypto_key_index_t idx = a->key_index;
 
   /** TODO: add linked alg support **/
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
@@ -110,8 +112,10 @@ crypto_native_init (vlib_main_t * vm)
   vec_free (best_by_op_id);
   vec_free (best_by_alg_id);
 
-  vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
-				    crypto_native_key_handler);
+  vnet_crypto_register_key_handler (
+    vm, &(vnet_crypto_register_key_handler_args_t){
+	  .engine_index = cm->crypto_engine_index,
+	  .key_handle_fn = crypto_native_key_handler });
   return 0;
 }
 
