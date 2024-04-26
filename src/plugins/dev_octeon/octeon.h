@@ -16,6 +16,7 @@
 #include <dev_octeon/hw_defs.h>
 
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
+#define OCT_PKTIO_MAX_L2_SIZE	   30
 
 typedef enum
 {
