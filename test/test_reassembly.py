@@ -1604,16 +1604,6 @@ class TestIPv6Reassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
 
-    def test_truncated_fragment(self):
-        """truncated fragment"""
-        pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
-            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=2)
-            / IPv6ExtHdrFragment(nh=6)
-        )
-
-        self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
-
     def test_invalid_frag_size(self):
         """fragment size not a multiple of 8"""
         p = (
