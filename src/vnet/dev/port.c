@@ -305,7 +305,8 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      if (req->max_rx_frame_size > port->attr.max_supported_rx_frame_size)
+      if ((req->max_rx_frame_size > port->attr.max_supported_rx_frame_size) ||
+	  (req->max_rx_frame_size < ETHERNET_MIN_PACKET_BYTES))
 	return VNET_DEV_ERR_INVALID_VALUE;
       if (req->max_rx_frame_size == port->max_rx_frame_size)
 	return VNET_DEV_ERR_NO_CHANGE;
