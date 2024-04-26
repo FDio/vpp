@@ -823,9 +823,9 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 
       if (m->is_autoendian)
 	{
-	  void (*endian_fp) (void *);
+	  void (*endian_fp) (void *, bool);
 	  endian_fp = am->msg_data[id].endian_handler;
-	  (*endian_fp) (the_msg);
+	  (*endian_fp) (the_msg, 0);
 	}
       if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */);
