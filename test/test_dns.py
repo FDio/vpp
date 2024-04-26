@@ -5,6 +5,7 @@ import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner
 from ipaddress import *
+from vpp_papi_exceptions import CliFailedCommandError
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
@@ -103,9 +104,36 @@ class TestDns(VppTestCase):
         self.verify_capture(self.pg0, pkts)
 
         # Make sure that the cache contents are correct
-        str = self.vapi.cli("show dns cache verbose")
-        self.assertIn("1.2.3.4", str)
-        self.assertIn("[P] no.clown.org:", str)
+        reply = self.vapi.cli("show dns cache verbose")
+        self.assertIn("1.2.3.4", reply)
+        self.assertIn("[P] no.clown.org:", reply)
+
+        reply = self.vapi.cli("show dns servers")
+        self.assertIn("8.8.8.8", reply)
+
+        reply = self.vapi.cli("test dns format")
+        self.assertIn("www.weatherlink.com", reply)
+        self.vapi.cli("test dns expire bozo.clown.org")
+
+        self.vapi.dns_name_server_add_del(
+            is_ip6=0, is_add=0, server_address=IPv4Address("8.8.8.8").packed
+        )
+        try:
+            self.vapi.cli("show dns servers")
+        except CliFailedCommandError as e:
+            self.assertIn("No name servers configured", str(e))
+
+        self.vapi.cli("dns cache del no.clown.org")
+        reply = self.vapi.cli("show dns cache verbose")
+        self.assertNotIn("no.clown.org", reply)
+
+        self.vapi.cli("dns cache clear")
+        reply = self.vapi.cli("show dns cache")
+        self.assertIn("The DNS cache is empty", reply)
+
+        self.vapi.dns_enable_disable(enable=0)
+        reply = self.vapi.cli("show dns cache")
+        self.assertIn("The DNS cache is disabled", reply)
 
 
 if __name__ == "__main__":
