@@ -125,6 +125,12 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   oct_port_add_counters (vm, port);
 
+  if ((rrv = roc_nix_mac_mtu_set (nix, port->max_rx_frame_size)))
+    {
+      rv = oct_roc_err (dev, rrv, "roc_nix_mac_mtu_set() failed");
+      return rv;
+    }
+
   return VNET_DEV_OK;
 }
 
@@ -344,12 +350,6 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       ctq->n_enq = 0;
     }
 
-  if ((rrv = roc_nix_mac_mtu_set (nix, 9200)))
-    {
-      rv = oct_roc_err (dev, rrv, "roc_nix_mac_mtu_set() failed");
-      goto done;
-    }
-
   if ((rrv = roc_nix_npc_rx_ena_dis (nix, true)))
     {
       rv = oct_roc_err (dev, rrv, "roc_nix_npc_rx_ena_dis() failed");
@@ -445,7 +445,6 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
   oct_device_t *cd = vnet_dev_get_data (dev);
   struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv = VNET_DEV_OK;
-
   i32 rrv;
 
   if (is_primary)
@@ -471,6 +470,24 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 	    }
 	}
     }
+
+  return rv;
+}
+
+vnet_dev_rv_t
+oct_op_config_max_rx_len (vlib_main_t *vm, vnet_dev_port_t *port,
+			  u32 rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+  i32 rrv;
+
+  rrv = roc_nix_mac_max_rx_len_set (nix, rx_frame_size);
+  if (rrv)
+    rv = oct_roc_err (dev, rrv, "roc_nix_mac_max_rx_len_set() failed");
+
   return rv;
 }
 
@@ -535,6 +552,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      rv = oct_op_config_max_rx_len (vm, port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
