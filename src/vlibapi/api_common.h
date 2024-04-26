@@ -235,8 +235,8 @@ typedef struct
   /** Message convert function vector */
   void *(*fromjson_handler) (cJSON *, int *);
 
-  /** Message endian handler vector */
-  void (*endian_handler) (void *);
+  /** Message endian handler vector. */
+  void (*endian_handler) (void *, bool to_net);
 
   /** Message calc size function vector */
   uword (*calc_size_func) (void *);
