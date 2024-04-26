@@ -391,7 +391,7 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   ip_address_t iaddr;
   ip_address_t raddr;
   vl_api_ikev2_keys_t *k = &sa->keys;
-  vl_api_ikev2_sa_t_endian (sa);
+  vl_api_ikev2_sa_t_endian (sa, 0 /* from network */);
 
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
@@ -461,7 +461,7 @@ vl_api_ikev2_sa_v2_details_t_handler (vl_api_ikev2_sa_v2_details_t *mp)
   ip_address_t iaddr;
   ip_address_t raddr;
   vl_api_ikev2_keys_t *k = &sa->keys;
-  vl_api_ikev2_sa_v2_t_endian (sa);
+  vl_api_ikev2_sa_v2_t_endian (sa, 0 /* from network */);
 
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
@@ -533,7 +533,7 @@ vl_api_ikev2_sa_v3_details_t_handler (vl_api_ikev2_sa_v3_details_t *mp)
   ip_address_t iaddr;
   ip_address_t raddr;
   vl_api_ikev2_keys_t *k = &sa->keys;
-  vl_api_ikev2_sa_v3_t_endian (sa);
+  vl_api_ikev2_sa_v3_t_endian (sa, 0 /* from network */);
 
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
@@ -619,7 +619,7 @@ vl_api_ikev2_child_sa_details_t_handler (vl_api_ikev2_child_sa_details_t * mp)
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_child_sa_t *child_sa = &mp->child_sa;
   vl_api_ikev2_keys_t *k = &child_sa->keys;
-  vl_api_ikev2_child_sa_t_endian (child_sa);
+  vl_api_ikev2_child_sa_t_endian (child_sa, 0 /* from network */);
 
   fformat (vam->ofp, "  child sa %u:\n", child_sa->child_sa_index);
 
@@ -696,7 +696,7 @@ vl_api_ikev2_child_sa_v2_details_t_handler (
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_child_sa_t *child_sa = &mp->child_sa;
   vl_api_ikev2_keys_t *k = &child_sa->keys;
-  vl_api_ikev2_child_sa_t_endian (child_sa);
+  vl_api_ikev2_child_sa_t_endian (child_sa, 0 /* from network */);
 
   fformat (vam->ofp, "  child sa %u:\n", child_sa->child_sa_index);
 
@@ -784,7 +784,7 @@ static void
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_ts_t *ts = &mp->ts;
   ip_address_t start_addr, end_addr;
-  vl_api_ikev2_ts_t_endian (ts);
+  vl_api_ikev2_ts_t_endian (ts, 0 /* from network */);
 
   ip_address_decode2 (&ts->start_addr, &start_addr);
   ip_address_decode2 (&ts->end_addr, &end_addr);
