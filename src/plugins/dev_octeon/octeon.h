@@ -17,6 +17,13 @@
 
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
 
+/*
+ * L2 header size includes
+ * ETH_HDR_LEN + ETH_CRC_LEN
+ * 2 VLAN TAGS
+ */
+#define OCT_PKTIO_MAX_L2_SIZE 26
+
 typedef enum
 {
   OCT_DEVICE_TYPE_UNKNOWN = 0,
