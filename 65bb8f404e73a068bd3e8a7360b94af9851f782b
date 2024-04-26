@@ -16,6 +16,23 @@
       "message": "(side note, that today is the release day of Ubuntu 24.04 LTS Noble Numbat, so as soon as there is a new image for that, we can update to that as well if everything works fine on that new version o:))",
       "revId": "65bb8f404e73a068bd3e8a7360b94af9851f782b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0fec864e_b22ff697",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-04-26T09:22:35Z",
+      "side": 1,
+      "message": "Thanks for the improvement",
+      "revId": "65bb8f404e73a068bd3e8a7360b94af9851f782b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
