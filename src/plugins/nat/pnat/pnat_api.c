@@ -116,7 +116,8 @@ static void send_bindings_details(u32 index, vl_api_registration_t *rp,
 
                              /* Endian hack until apigen registers _details
                               * endian functions */
-                             vl_api_pnat_bindings_details_t_endian(rmp);
+                             vl_api_pnat_bindings_details_t_endian(
+                                 rmp, 1 /* to network */);
                              rmp->_vl_msg_id = htons(rmp->_vl_msg_id);
                              rmp->context = htonl(rmp->context);
                          }));
@@ -158,7 +159,7 @@ static void send_interfaces_details(u32 index, vl_api_registration_t *rp,
 
             /* Endian hack until apigen registers _details
              * endian functions */
-            vl_api_pnat_interfaces_details_t_endian(rmp);
+            vl_api_pnat_interfaces_details_t_endian(rmp, 1 /* to network */);
             rmp->_vl_msg_id = htons(rmp->_vl_msg_id);
             rmp->context = htonl(rmp->context);
         }));

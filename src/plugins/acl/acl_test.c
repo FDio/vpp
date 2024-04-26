@@ -112,7 +112,7 @@ static void vl_api_acl_interface_list_details_t_handler
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
         u8 *out = 0;
-        vl_api_acl_interface_list_details_t_endian(mp);
+	vl_api_acl_interface_list_details_t_endian (mp, 0 /* from network */);
 	out = format(out, "sw_if_index: %d, count: %d, n_input: %d\n", mp->sw_if_index, mp->count, mp->n_input);
         out = format(out, "   input ");
 	for(i=0; i<mp->count; i++) {
@@ -139,7 +139,8 @@ static void vl_api_acl_interface_etype_whitelist_details_t_handler
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
         u8 *out = 0;
-        vl_api_acl_interface_etype_whitelist_details_t_endian(mp);
+	vl_api_acl_interface_etype_whitelist_details_t_endian (
+	  mp, 0 /* from network */);
 	out = format(out, "sw_if_index: %d, count: %d, n_input: %d\n", mp->sw_if_index, mp->count, mp->n_input);
         out = format(out, "   input ");
 	for(i=0; i<mp->count; i++) {
@@ -189,8 +190,8 @@ static void vl_api_acl_details_t_handler
     {
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
-        vl_api_acl_details_t_endian(mp);
-        u8 *out = 0;
+	vl_api_acl_details_t_endian (mp, 0 /* from network */);
+	u8 *out = 0;
         out = format(0, "acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
 	for(i=0; i<mp->count; i++) {
           out = format(out, "   ");
@@ -223,8 +224,8 @@ static void vl_api_macip_acl_details_t_handler
     {
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
-        vl_api_macip_acl_details_t_endian(mp);
-        u8 *out = format(0,"MACIP acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
+	vl_api_macip_acl_details_t_endian (mp, 0 /* from network */);
+	u8 *out = format(0,"MACIP acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
 	for(i=0; i<mp->count; i++) {
           out = format(out, "   ");
           out = vl_api_macip_acl_rule_t_pretty_format(out, &mp->r[i]);

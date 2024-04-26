@@ -173,7 +173,7 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
   rmp->profile.lifetime_jitter = profile->lifetime_jitter;
   rmp->profile.handover = profile->handover;
 
-  vl_api_ikev2_profile_t_endian (&rmp->profile);
+  vl_api_ikev2_profile_t_endian (&rmp->profile, 1 /* to network */);
 
   vl_api_send_msg (reg, (u8 *) rmp);
 }
@@ -291,7 +291,7 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
-    vl_api_ikev2_sa_t_endian(rsa);
+    vl_api_ikev2_sa_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -382,7 +382,7 @@ send_sa_v2 (ikev2_sa_t *sa, vl_api_ikev2_sa_v2_dump_t *mp, u32 api_sa_index)
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
-    vl_api_ikev2_sa_v2_t_endian (rsa);
+    vl_api_ikev2_sa_v2_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -476,7 +476,7 @@ send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
-    vl_api_ikev2_sa_v3_t_endian (rsa);
+    vl_api_ikev2_sa_v3_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -549,7 +549,7 @@ send_child_sa (ikev2_child_sa_t * child,
 		     k->sk_ar_len);
       }
 
-    vl_api_ikev2_child_sa_t_endian (&rmp->child_sa);
+    vl_api_ikev2_child_sa_t_endian (&rmp->child_sa, 1 /* to network */);
   });
 }
 
@@ -628,7 +628,7 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
 	clib_memcpy (&k->sk_ar, child->sk_ar, k->sk_ar_len);
       }
 
-    vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa);
+    vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa, 1 /* to network */);
   });
 }
 
@@ -700,7 +700,7 @@ static void
       rmp->ts.sa_index = api_sa_index;
       rmp->ts.child_sa_index = child_sa_index;
       cp_ts (&rmp->ts, ts, mp->is_initiator);
-      vl_api_ikev2_ts_t_endian (&rmp->ts);
+      vl_api_ikev2_ts_t_endian (&rmp->ts, 1 /* to network */);
     });
   }
 }
