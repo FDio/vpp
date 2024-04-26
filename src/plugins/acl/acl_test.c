@@ -114,7 +114,7 @@ static void vl_api_acl_interface_list_details_t_handler
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
         u8 *out = 0;
-        vl_api_acl_interface_list_details_t_endian(mp);
+	vl_api_acl_interface_list_details_t_endian (mp, 0 /* from network */);
 	out = format(out, "sw_if_index: %d, count: %d, n_input: %d\n", mp->sw_if_index, mp->count, mp->n_input);
         out = format(out, "   input ");
 	for(i=0; i<mp->count; i++) {
@@ -141,7 +141,8 @@ static void vl_api_acl_interface_etype_whitelist_details_t_handler
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
         u8 *out = 0;
-        vl_api_acl_interface_etype_whitelist_details_t_endian(mp);
+	vl_api_acl_interface_etype_whitelist_details_t_endian (
+	  mp, 0 /* from network */);
 	out = format(out, "sw_if_index: %d, count: %d, n_input: %d\n", mp->sw_if_index, mp->count, mp->n_input);
         out = format(out, "   input ");
 	for(i=0; i<mp->count; i++) {
@@ -173,15 +174,15 @@ vl_api_acl_rule_t_pretty_format (u8 *out, vl_api_acl_rule_t * a)
   inet_ntop(af, &a->src_prefix.address.un, (void *)src, sizeof(src));
   inet_ntop(af, &a->dst_prefix.address.un, (void *)dst, sizeof(dst));
 
-  out = format(out, "%s action %d src %s/%d dst %s/%d proto %d sport %d-%d dport %d-%d tcpflags %d mask %d",
-                     a->src_prefix.address.af ? "ipv6" : "ipv4", a->is_permit,
-                     src, a->src_prefix.len,
-                     dst, a->dst_prefix.len,
-                     a->proto,
-                     a->srcport_or_icmptype_first, a->srcport_or_icmptype_last,
-	             a->dstport_or_icmpcode_first, a->dstport_or_icmpcode_last,
-                     a->tcp_flags_value, a->tcp_flags_mask);
-  return(out);
+  out = format (out,
+		"%s action %d src %s/%d dst %s/%d proto %d sport %d-%d dport "
+		"%d-%d tcpflags %d mask %d",
+		a->src_prefix.address.af ? "ipv6" : "ipv4", a->is_permit, src,
+		a->src_prefix.len, dst, a->dst_prefix.len, a->proto,
+		a->srcport_or_icmptype_first, a->srcport_or_icmptype_last,
+		a->dstport_or_icmpcode_first, a->dstport_or_icmpcode_last,
+		a->tcp_flags_value, a->tcp_flags_mask);
+  return (out);
 }
 
 
@@ -191,9 +192,10 @@ static void vl_api_acl_details_t_handler
     {
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
-        vl_api_acl_details_t_endian(mp);
-        u8 *out = 0;
-        out = format(0, "acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
+	vl_api_acl_details_t_endian (mp, 0 /* from network */);
+	u8 *out = 0;
+	out = format (0, "acl_index: %d, count: %d\n   tag {%s}\n",
+		      mp->acl_index, mp->count, mp->tag);
 	for(i=0; i<mp->count; i++) {
           out = format(out, "   ");
           out = vl_api_acl_rule_t_pretty_format(out, &mp->r[i]);
@@ -225,8 +227,9 @@ static void vl_api_macip_acl_details_t_handler
     {
         int i;
         vat_main_t * vam = acl_test_main.vat_main;
-        vl_api_macip_acl_details_t_endian(mp);
-        u8 *out = format(0,"MACIP acl_index: %d, count: %d\n   tag {%s}\n", mp->acl_index, mp->count, mp->tag);
+	vl_api_macip_acl_details_t_endian (mp, 0 /* from network */);
+	u8 *out = format (0, "MACIP acl_index: %d, count: %d\n   tag {%s}\n",
+			  mp->acl_index, mp->count, mp->tag);
 	for(i=0; i<mp->count; i++) {
           out = format(out, "   ");
           out = vl_api_macip_acl_rule_t_pretty_format(out, &mp->r[i]);

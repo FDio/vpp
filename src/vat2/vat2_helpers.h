@@ -29,7 +29,7 @@ vat2_control_ping (u32 context)
     vl_api_control_ping_t mp = {0};
     mp._vl_msg_id = vac_get_msg_index(VL_API_CONTROL_PING_CRC);
     mp.context = context;
-    vl_api_control_ping_t_endian(&mp);
+    vl_api_control_ping_t_endian (&mp, 1 /* to network */);
     vac_write((char *)&mp, sizeof(mp));
 }
 

@@ -230,7 +230,7 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
 
   if (m && m->endian_handler)
     {
-      m->endian_handler (tmpmem);
+      m->endian_handler (tmpmem, 1);
     }
 
   if (m && m->tojson_handler)
@@ -561,7 +561,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	    }
 
 	  if (m->is_autoendian)
-	    m->endian_handler (the_msg);
+	    m->endian_handler (the_msg, 0);
 
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
