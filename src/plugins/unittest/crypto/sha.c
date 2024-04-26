@@ -50,35 +50,35 @@ static u8 sha512_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha1_tc1) = {
   .name = "NIST SHA-1 TC1",
-  .alg = VNET_CRYPTO_ALG_HASH_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha1_tc1_digest),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha224_tc1) = {
   .name = "NIST SHA-224 TC1",
-  .alg = VNET_CRYPTO_ALG_HASH_SHA224,
+  .alg = VNET_CRYPTO_ALG_SHA224,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha224_digest),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha256_tc1) = {
   .name = "NIST SHA-256 TC1",
-  .alg = VNET_CRYPTO_ALG_HASH_SHA256,
+  .alg = VNET_CRYPTO_ALG_SHA256,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha256_digest),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha384_tc1) = {
   .name = "NIST SHA-384 TC1",
-  .alg = VNET_CRYPTO_ALG_HASH_SHA384,
+  .alg = VNET_CRYPTO_ALG_SHA384,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha384_digest),
 };
 
 UNITTEST_REGISTER_CRYPTO_TEST (nist_sha512_tc1) = {
   .name = "NIST SHA-512 TC1",
-  .alg = VNET_CRYPTO_ALG_HASH_SHA512,
+  .alg = VNET_CRYPTO_ALG_SHA512,
   .plaintext = TEST_DATA (sha_data),
   .digest = TEST_DATA (sha512_digest),
 };

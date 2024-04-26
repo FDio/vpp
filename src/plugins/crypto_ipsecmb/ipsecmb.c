@@ -762,10 +762,12 @@ ipsec_mb_ops_chacha_poly_dec_chained (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 #endif
 
 static void
-crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
-			    vnet_crypto_key_index_t idx)
+crypto_ipsecmb_key_handler (vlib_main_t *vm,
+			    vnet_crypto_key_handle_fn_args_t *a)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
+  vnet_crypto_key_index_t idx = a->key_index;
+  vnet_crypto_key_op_t kop = a->key_op;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
   ipsecmb_alg_data_t *ad = imbm->alg_data + key->alg;
   u32 i;
@@ -882,14 +884,14 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 	  m = ptd->mgr;
     }
 
-#define _(a, b, c, d, e, f)                                              \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
-                                    ipsecmb_ops_hmac_##a);               \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                        \
-  ad->block_size = d;                                                    \
-  ad->data_size = e * 2;                                                 \
-  ad->hash_one_block = m-> c##_one_block;                                \
-  ad->hash_fn = m-> c;                                                   \
+#define _(a, b, c, d, e, f)                                                   \
+  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC,      \
+				    ipsecmb_ops_hmac_##a);                    \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
+  ad->block_size = d;                                                         \
+  ad->data_size = e * 2;                                                      \
+  ad->hash_one_block = m->c##_one_block;                                      \
+  ad->hash_fn = m->c;
 
   foreach_ipsecmb_hmac_op;
 #undef _
@@ -939,7 +941,9 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   ad->data_size = 0;
 #endif
 
-  vnet_crypto_register_key_handler (vm, eidx, crypto_ipsecmb_key_handler);
+  vnet_crypto_register_key_handler (
+    vm, &(vnet_crypto_register_key_handler_args_t){
+	  .engine_index = eidx, .key_handle_fn = crypto_ipsecmb_key_handler });
   return (NULL);
 }
 

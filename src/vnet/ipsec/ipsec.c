@@ -591,32 +591,32 @@ ipsec_init (vlib_main_t * vm)
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_MD5_96];
   i->op_id = VNET_CRYPTO_OP_MD5_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_MD5;
+  i->alg = VNET_CRYPTO_ALG_MD5;
   i->icv_size = 12;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA1_96];
   i->op_id = VNET_CRYPTO_OP_SHA1_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA1;
+  i->alg = VNET_CRYPTO_ALG_SHA1;
   i->icv_size = 12;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
   i->op_id = VNET_CRYPTO_OP_SHA1_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA256;
+  i->alg = VNET_CRYPTO_ALG_SHA256;
   i->icv_size = 12;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
   i->op_id = VNET_CRYPTO_OP_SHA256_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA256;
+  i->alg = VNET_CRYPTO_ALG_SHA256;
   i->icv_size = 16;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
   i->op_id = VNET_CRYPTO_OP_SHA384_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA384;
+  i->alg = VNET_CRYPTO_ALG_SHA384;
   i->icv_size = 24;
 
   i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
   i->op_id = VNET_CRYPTO_OP_SHA512_HMAC;
-  i->alg = VNET_CRYPTO_ALG_HMAC_SHA512;
+  i->alg = VNET_CRYPTO_ALG_SHA512;
   i->icv_size = 32;
 
   vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);

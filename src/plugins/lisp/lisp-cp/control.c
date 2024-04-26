@@ -2675,9 +2675,9 @@ lisp_key_type_to_crypto_alg (lisp_key_type_t key_id)
   switch (key_id)
     {
     case HMAC_SHA_1_96:
-      return VNET_CRYPTO_ALG_HMAC_SHA1;
+      return VNET_CRYPTO_ALG_SHA1;
     case HMAC_SHA_256_128:
-      return VNET_CRYPTO_ALG_HMAC_SHA256;
+      return VNET_CRYPTO_ALG_SHA256;
     default:
       clib_warning ("unsupported encryption key type: %d!", key_id);
       break;

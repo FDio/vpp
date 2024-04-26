@@ -35,7 +35,7 @@ static u8 sha1_tc1_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc1) = {
   .name = "RFC2202 HMAC-SHA-1 TC1",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc1_key),
   .plaintext = TEST_DATA (sha1_tc1_data),
   .digest = TEST_DATA (sha1_tc1_digest),
@@ -53,7 +53,7 @@ static u8 sha1_tc2_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc2) = {
   .name = "RFC2202 HMAC-SHA-1 TC2",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc2_key),
   .plaintext = TEST_DATA (sha1_tc2_data),
   .digest = TEST_DATA (sha1_tc2_digest),
@@ -83,7 +83,7 @@ static u8 sha1_tc3_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc3) = {
   .name = "RFC2202 HMAC-SHA-1 TC3",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc3_key),
   .plaintext = TEST_DATA (sha1_tc3_data),
   .digest = TEST_DATA (sha1_tc3_digest),
@@ -114,7 +114,7 @@ static u8 sha1_tc4_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc4) = {
   .name = "RFC2202 HMAC-SHA-1 TC4",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc4_key),
   .plaintext = TEST_DATA (sha1_tc4_data),
   .digest = TEST_DATA (sha1_tc4_digest),
@@ -136,7 +136,7 @@ static u8 sha1_tc5_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc5) = {
   .name = "RFC2202 HMAC-SHA-1 TC5",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc5_key),
   .plaintext = TEST_DATA (sha1_tc5_data),
   .digest = TEST_DATA (sha1_tc5_digest),
@@ -149,7 +149,7 @@ static u8 sha1_tc5_digest_96[12] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc5_trunc) = {
   .name = "RFC2202 HMAC-SHA-1-96 TC5-trunc",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc5_key),
   .plaintext = TEST_DATA (sha1_tc5_data),
   .digest = TEST_DATA (sha1_tc5_digest_96),
@@ -179,7 +179,7 @@ static u8 sha1_tc6_digest[] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc6) = {
   .name = "RFC2202 HMAC-SHA-1 TC6",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc6_key),
   .plaintext = TEST_DATA (sha1_tc6_data),
   .digest = TEST_DATA (sha1_tc6_digest),
@@ -196,28 +196,15 @@ static u8 sha1_tc7_digest[20] = {
 
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7) = {
   .name = "RFC2202 HMAC-SHA-1 TC7",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .key = TEST_DATA (sha1_tc6_key),
   .plaintext = TEST_DATA (sha1_tc7_data),
   .digest = TEST_DATA (sha1_tc7_digest),
 };
 
-UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_chained) = {
-  .name = "RFC2202 HMAC-SHA-1 TC7 [chained]",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
-  .key = TEST_DATA (sha1_tc6_key),
-  .digest = TEST_DATA (sha1_tc7_digest),
-
-  .is_chained = 1,
-  .pt_chunks = {
-    TEST_DATA_CHUNK (sha1_tc7_data, 0, 40),
-    TEST_DATA_CHUNK (sha1_tc7_data, 40, 33)
-  },
-};
-
 UNITTEST_REGISTER_CRYPTO_TEST (rfc_2202_sha1_tc7_inc) = {
   .name = "HMAC-SHA-1 incremental (1024 B)",
-  .alg = VNET_CRYPTO_ALG_HMAC_SHA1,
+  .alg = VNET_CRYPTO_ALG_SHA1,
   .plaintext_incremental = 1024,
   .key.length = 80,
   .digest.length = 12,

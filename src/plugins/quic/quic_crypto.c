@@ -134,15 +134,23 @@ quic_crypto_set_key (crypto_key_t *key)
   vnet_crypto_engine_t *engine;
 
   vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_DEL, key_id);
+    if (engine->key_handle_fn)
+      engine->key_handle_fn (vm,
+			     &(vnet_crypto_key_handle_fn_args_t){
+			       .key_op = VNET_CRYPTO_KEY_OP_DEL,
+			       .key_index = key_id,
+			       .user_data = engine->key_handle_user_data });
 
   vnet_key->alg = key->algo;
   clib_memcpy (vnet_key->data, key->key, key->key_len);
 
   vec_foreach (engine, cm->engines)
-    if (engine->key_op_handler)
-      engine->key_op_handler (vm, VNET_CRYPTO_KEY_OP_ADD, key_id);
+    if (engine->key_handle_fn)
+      engine->key_handle_fn (vm,
+			     &(vnet_crypto_key_handle_fn_args_t){
+			       .key_op = VNET_CRYPTO_KEY_OP_ADD,
+			       .key_index = key_id,
+			       .user_data = engine->key_handle_user_data });
 
   return key_id;
 }
