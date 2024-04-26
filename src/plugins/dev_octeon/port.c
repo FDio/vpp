@@ -425,7 +425,6 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
   oct_device_t *cd = vnet_dev_get_data (dev);
   struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv = VNET_DEV_OK;
-
   i32 rrv;
 
   if (is_primary)
@@ -451,6 +450,60 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 	    }
 	}
     }
+
+  return rv;
+}
+
+vnet_dev_rv_t
+oct_validate_config_max_rx_len (vlib_main_t *vm, vnet_dev_port_t *port,
+				u32 rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+
+  u32 max_len;
+  i32 min_len;
+
+  if (port->started)
+    return VNET_DEV_ERR_PORT_STARTED;
+
+  min_len = (i32) rx_frame_size - OCT_PKTIO_MAX_L2_SIZE;
+  if (min_len < 0 || min_len < NIX_MIN_HW_FRS)
+    {
+      log_err (
+	dev,
+	"Requested rx_frame_size is lower than the minimum supported value.");
+      return VNET_DEV_ERR_INVALID_VALUE;
+    }
+
+  max_len = roc_nix_max_pkt_len (nix);
+  if (rx_frame_size > max_len)
+    {
+      log_err (
+	dev,
+	"Requested rx_frame_size is higher than the max supported value.");
+      return VNET_DEV_ERR_INVALID_VALUE;
+    }
+
+  return rv;
+}
+
+vnet_dev_rv_t
+oct_op_config_max_rx_len (vlib_main_t *vm, vnet_dev_port_t *port,
+			  u32 rx_frame_size)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
+  i32 rrv;
+
+  rrv = roc_nix_mac_max_rx_len_set (nix, rx_frame_size);
+  if (rrv)
+    rv = oct_roc_err (dev, rrv, "roc_nix_mac_max_rx_len_set() failed");
+
   return rv;
 }
 
@@ -463,8 +516,7 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      if (port->started)
-	rv = VNET_DEV_ERR_PORT_STARTED;
+      rv = oct_validate_config_max_rx_len (vm, port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
@@ -515,6 +567,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      rv = oct_op_config_max_rx_len (vm, port, req->max_rx_frame_size);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
