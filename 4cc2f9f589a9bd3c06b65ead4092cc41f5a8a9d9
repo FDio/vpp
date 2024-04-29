@@ -16,6 +16,23 @@
       "message": "please fix commit msg, it is not vppinfra + more meaningful subject line",
       "revId": "4cc2f9f589a9bd3c06b65ead4092cc41f5a8a9d9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce3df41f_60c4d9f4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-04-29T08:36:51Z",
+      "side": 1,
+      "message": "What is compiler complaining about here?",
+      "revId": "4cc2f9f589a9bd3c06b65ead4092cc41f5a8a9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
