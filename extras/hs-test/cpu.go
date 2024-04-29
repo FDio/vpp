@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 )
 
-var CPU_PATH = "/sys/fs/cgroup/cpuset.cpus.effective"
+var CgroupPath = "/sys/fs/cgroup/"
 
 type CpuContext struct {
 	cpuAllocator *CpuAllocatorT
@@ -38,7 +41,25 @@ func (c *CpuAllocatorT) Allocate(nCpus int) (*CpuContext, error) {
 
 func (c *CpuAllocatorT) readCpus() error {
 	var first, last int
-	file, err := os.Open(CPU_PATH)
+
+	// Path depends on cgroup version. We need to check which version is in use.
+	// For that following command can be used: 'stat -fc %T /sys/fs/cgroup/'
+	// In case the output states 'cgroup2fs' then cgroups v2 is used, 'tmpfs' in case cgroups v1.
+	cmd := exec.Command("stat", "-fc", "%T", "/sys/fs/cgroup/")
+	byteOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	CpuPath := CgroupPath
+	if strings.Contains(string(byteOutput), "tmpfs") {
+		CpuPath += "cpuset/cpuset.effective_cpus"
+	} else if strings.Contains(string(byteOutput), "cgroup2fs") {
+		CpuPath += "cpuset.cpus.effective"
+	} else {
+		return errors.New("cgroup unknown fs: " + string(byteOutput))
+	}
+
+	file, err := os.Open(CpuPath)
 	if err != nil {
 		return err
 	}
