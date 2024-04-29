@@ -460,6 +460,8 @@ wg_input_process_chained_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
 	{
 	  u32 bi = op->user_data;
+
+	  ASSERT (b[bi] != 0);
 	  b[bi]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
 	  nexts[bi] = drop_next;
 	  n_fail--;
@@ -702,7 +704,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_crypto_op_t **crypto_ops;
   const u16 drop_next = WG_INPUT_NEXT_PUNT;
   message_type_t header_type;
-  vlib_buffer_t *data_bufs[VLIB_FRAME_SIZE];
+  vlib_buffer_t *data_bufs[VLIB_FRAME_SIZE] = { 0 };
   u32 data_bi[VLIB_FRAME_SIZE];	 /* buffer index for data */
   u32 other_bi[VLIB_FRAME_SIZE]; /* buffer index for drop or handoff */
   u16 other_nexts[VLIB_FRAME_SIZE], *other_next = other_nexts, n_other = 0;
