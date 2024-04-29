@@ -361,8 +361,8 @@ typedef struct
   ikev2_auth_t auth;
   ikev2_id_t loc_id;
   ikev2_id_t rem_id;
-  ikev2_ts_t loc_ts;
-  ikev2_ts_t rem_ts;
+  ikev2_ts_t *loc_ts;
+  ikev2_ts_t *rem_ts;
   ikev2_responder_t responder;
   ikev2_transforms_set ike_ts;
   ikev2_transforms_set esp_ts;

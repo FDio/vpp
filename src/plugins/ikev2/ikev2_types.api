@@ -88,6 +88,29 @@ typedef ikev2_profile
   vl_api_ikev2_auth_t auth;
 };
 
+typedef ikev2_profile_v2
+{
+  string name[64];
+  vl_api_ikev2_id_t loc_id;
+  vl_api_ikev2_id_t rem_id;
+  vl_api_ikev2_ts_t loc_ts[64];
+  u8 loc_ts_len;
+  vl_api_ikev2_ts_t rem_ts[64];
+  u8 rem_ts_len;
+  vl_api_ikev2_responder_t responder;
+  vl_api_ikev2_ike_transforms_t ike_ts;
+  vl_api_ikev2_esp_transforms_t esp_ts;
+  u64 lifetime;
+  u64 lifetime_maxdata;
+  u32 lifetime_jitter;
+  u32 handover;
+  u16 ipsec_over_udp_port;
+  u32 tun_itf;
+  bool udp_encap;
+  bool natt_disabled;
+  vl_api_ikev2_auth_t auth;
+};
+
 typedef ikev2_sa_transform
 {
   u8 transform_type;

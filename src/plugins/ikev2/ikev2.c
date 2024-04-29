@@ -1828,22 +1828,23 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
   ikev2_profile_t *p;
   ikev2_ts_t *ts, *p_tsi, *p_tsr, *tsi = 0, *tsr = 0;
   ikev2_id_t *id_rem, *id_loc;
+  ikev2_ts_t *loc_ts, *rem_ts;
 
   pool_foreach (p, km->profiles)  {
 
     if (sa->is_initiator)
       {
-        p_tsi = &p->loc_ts;
-        p_tsr = &p->rem_ts;
-        id_rem = &sa->r_id;
-        id_loc = &sa->i_id;
+	p_tsi = p->loc_ts;
+	p_tsr = p->rem_ts;
+	id_rem = &sa->r_id;
+	id_loc = &sa->i_id;
       }
     else
       {
-        p_tsi = &p->rem_ts;
-        p_tsr = &p->loc_ts;
-        id_rem = &sa->i_id;
-        id_loc = &sa->r_id;
+	p_tsi = p->rem_ts;
+	p_tsr = p->loc_ts;
+	id_rem = &sa->i_id;
+	id_loc = &sa->r_id;
       }
 
     if (!ikev2_match_profile (p, id_loc, id_rem, sa->is_initiator))
@@ -1853,20 +1854,26 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
 
     vec_foreach(ts, sa->childs[0].tsi)
       {
-        if (ikev2_ts_cmp(p_tsi, ts))
-          {
-            vec_add1 (tsi, ts[0]);
-            break;
-          }
+	vec_foreach (loc_ts, p_tsi)
+	  {
+	    if (ikev2_ts_cmp (loc_ts, ts))
+	      {
+		vec_add1 (tsi, ts[0]);
+		break;
+	      }
+	  }
       }
 
     vec_foreach(ts, sa->childs[0].tsr)
       {
-        if (ikev2_ts_cmp(p_tsr, ts))
-          {
-            vec_add1 (tsr, ts[0]);
-            break;
-          }
+	vec_foreach (rem_ts, p_tsr)
+	  {
+	    if (ikev2_ts_cmp (rem_ts, ts))
+	      {
+		vec_add1 (tsr, ts[0]);
+		break;
+	      }
+	  }
       }
 
     break;
@@ -4205,6 +4212,9 @@ ikev2_profile_free (ikev2_profile_t * p)
 
   vec_free (p->loc_id.data);
   vec_free (p->rem_id.data);
+
+  vec_free (p->loc_ts);
+  vec_free (p->rem_ts);
 }
 
 static void
@@ -4385,12 +4395,15 @@ ikev2_set_ts_addrs (ikev2_ts_t *ts, const ip_address_t *start,
 }
 
 clib_error_t *
-ikev2_set_profile_ts (vlib_main_t * vm, u8 * name, u8 protocol_id,
+ikev2_set_profile_ts (vlib_main_t *vm, u8 *name, u8 protocol_id,
 		      u16 start_port, u16 end_port, ip_address_t start_addr,
-		      ip_address_t end_addr, int is_local)
+		      ip_address_t end_addr, int is_local, bool is_add)
 {
   ikev2_profile_t *p;
   clib_error_t *r;
+  ikev2_ts_t loc_ts;
+  ikev2_ts_t rem_ts;
+  u32 index;
 
   p = ikev2_profile_index_by_name (name);
 
@@ -4405,19 +4418,53 @@ ikev2_set_profile_ts (vlib_main_t * vm, u8 * name, u8 protocol_id,
 
   if (is_local)
     {
-      ikev2_set_ts_addrs (&p->loc_ts, &start_addr, &end_addr);
-      p->loc_ts.start_port = start_port;
-      p->loc_ts.end_port = end_port;
-      p->loc_ts.protocol_id = protocol_id;
-      ikev2_set_ts_type (&p->loc_ts, &start_addr);
+      ikev2_set_ts_addrs (&loc_ts, &start_addr, &end_addr);
+      loc_ts.start_port = start_port;
+      loc_ts.end_port = end_port;
+      loc_ts.protocol_id = protocol_id;
+      ikev2_set_ts_type (&loc_ts, &start_addr);
+
+      index = vec_search_with_function (p->loc_ts, &loc_ts, ikev2_ts_cmp);
+
+      if (is_add)
+	{
+	  if (~0 == index)
+	    {
+	      vec_add1 (p->loc_ts, loc_ts);
+	    }
+	}
+      else
+	{
+	  if (~0 != index)
+	    {
+	      vec_del1 (p->loc_ts, index);
+	    }
+	}
     }
   else
     {
-      ikev2_set_ts_addrs (&p->rem_ts, &start_addr, &end_addr);
-      p->rem_ts.start_port = start_port;
-      p->rem_ts.end_port = end_port;
-      p->rem_ts.protocol_id = protocol_id;
-      ikev2_set_ts_type (&p->rem_ts, &start_addr);
+      ikev2_set_ts_addrs (&rem_ts, &start_addr, &end_addr);
+      rem_ts.start_port = start_port;
+      rem_ts.end_port = end_port;
+      rem_ts.protocol_id = protocol_id;
+      ikev2_set_ts_type (&rem_ts, &start_addr);
+
+      index = vec_search_with_function (p->rem_ts, &rem_ts, ikev2_ts_cmp);
+
+      if (is_add)
+	{
+	  if (~0 == index)
+	    {
+	      vec_add1 (p->rem_ts, rem_ts);
+	    }
+	}
+      else
+	{
+	  if (~0 != index)
+	    {
+	      vec_del1 (p->rem_ts, index);
+	    }
+	}
     }
 
   return 0;
@@ -4821,8 +4868,8 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   sa.i_auth.hex = p->auth.hex;
   sa.i_auth.data = vec_dup (p->auth.data);
   sa.sw_if_index = p->responder.sw_if_index;
-  vec_add (sa.childs[0].tsi, &p->loc_ts, 1);
-  vec_add (sa.childs[0].tsr, &p->rem_ts, 1);
+  sa.childs[0].tsi = vec_dup (p->loc_ts);
+  sa.childs[0].tsr = vec_dup (p->rem_ts);
 
   ikev2_initial_contact_cleanup (0, &sa);
 

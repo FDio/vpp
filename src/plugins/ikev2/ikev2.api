@@ -50,6 +50,16 @@ define ikev2_profile_dump
 {
   u32 client_index;
   u32 context;
+};
+
+/** \brief Dump all profiles
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ikev2_profile_v2_dump
+{
+  u32 client_index;
+  u32 context;
   option status="in_progress";
 };
 
@@ -61,6 +71,16 @@ define ikev2_profile_details
 {
   u32 context;
   vl_api_ikev2_profile_t profile;
+};
+
+/** \brief Details about all profiles
+    @param context - returned sender context, to match reply w/ request
+    @param profile - profile element with encapsulated attributes
+*/
+define ikev2_profile_v2_details
+{
+  u32 context;
+  vl_api_ikev2_profile_v2_t profile;
   option status="in_progress";
 };
 
@@ -351,6 +371,24 @@ autoreply define ikev2_profile_set_ts
   string name[64];
   vl_api_ikev2_ts_t ts;
   option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip> end_addr <ip> (local|remote)";
+};
+
+/** \brief IKEv2: Set IKEv2 profile traffic selector parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - IKEv2 profile name
+    @param ts - traffic selector data
+    @param is_add - Add traffic selector if non-zero, else delete
+*/
+autoreply define ikev2_profile_set_ts_v2
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  vl_api_ikev2_ts_t ts;
+  bool is_add;
+  option vat_help = "name <profile_name> protocol <proto> start_port <port> end_port <port> start_addr <ip> end_addr <ip> (local|remote) [del]";
   option status="in_progress";
 };
 

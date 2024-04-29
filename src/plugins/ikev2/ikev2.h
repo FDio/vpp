@@ -378,10 +378,11 @@ clib_error_t *ikev2_set_profile_auth (vlib_main_t * vm, u8 * name,
 				      u8 data_hex_format);
 clib_error_t *ikev2_set_profile_id (vlib_main_t * vm, u8 * name,
 				    u8 id_type, u8 * data, int is_local);
-clib_error_t *ikev2_set_profile_ts (vlib_main_t * vm, u8 * name,
-				    u8 protocol_id, u16 start_port,
-				    u16 end_port, ip_address_t start_addr,
-				    ip_address_t end_addr, int is_local);
+clib_error_t *ikev2_set_profile_ts (vlib_main_t *vm, u8 *name, u8 protocol_id,
+				    u16 start_port, u16 end_port,
+				    ip_address_t start_addr,
+				    ip_address_t end_addr, int is_local,
+				    bool is_add);
 clib_error_t *ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
 					   u32 sw_if_index,
 					   ip_address_t addr);

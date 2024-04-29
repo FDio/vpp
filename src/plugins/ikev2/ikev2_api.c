@@ -156,8 +156,15 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
   cp_id (&rmp->profile.loc_id, &profile->loc_id);
   cp_id (&rmp->profile.rem_id, &profile->rem_id);
 
-  cp_ts (&rmp->profile.rem_ts, &profile->rem_ts, 0 /* is_local */ );
-  cp_ts (&rmp->profile.loc_ts, &profile->loc_ts, 1 /* is_local */ );
+  if (vec_len (profile->rem_ts))
+    {
+      cp_ts (&rmp->profile.rem_ts, profile->rem_ts, 0 /* is_local */);
+    }
+
+  if (vec_len (profile->loc_ts))
+    {
+      cp_ts (&rmp->profile.loc_ts, profile->loc_ts, 1 /* is_local */);
+    }
 
   cp_auth (&rmp->profile.auth, &profile->auth);
 
@@ -192,6 +199,85 @@ vl_api_ikev2_profile_dump_t_handler (vl_api_ikev2_profile_dump_t * mp)
    {
     send_profile (profile, reg, mp->context);
   }
+}
+
+static void
+send_profile_v2 (ikev2_profile_t *profile, vl_api_registration_t *reg,
+		 u32 context)
+{
+  vl_api_ikev2_profile_v2_details_t *rmp = 0;
+  u32 i = 0;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len (profile->auth.data));
+  clib_memset (rmp, 0, sizeof (*rmp) + vec_len (profile->auth.data));
+  ikev2_main_t *im = &ikev2_main;
+  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_PROFILE_V2_DETAILS + im->msg_id_base);
+  rmp->context = context;
+
+  int size_data = sizeof (rmp->profile.name) - 1;
+  if (vec_len (profile->name) < size_data)
+    size_data = vec_len (profile->name);
+  clib_memcpy (rmp->profile.name, profile->name, size_data);
+
+  cp_ike_transforms (&rmp->profile.ike_ts, &profile->ike_ts);
+  cp_esp_transforms (&rmp->profile.esp_ts, &profile->esp_ts);
+
+  cp_id (&rmp->profile.loc_id, &profile->loc_id);
+  cp_id (&rmp->profile.rem_id, &profile->rem_id);
+
+  vec_foreach_index (i, profile->rem_ts)
+    {
+      if (i >= sizeof (rmp->profile.rem_ts) / sizeof (vl_api_ikev2_ts_t))
+	break;
+
+      cp_ts (&rmp->profile.rem_ts[i], &profile->rem_ts[i], 0 /* is_local */);
+    }
+
+  rmp->profile.rem_ts_len = i;
+
+  vec_foreach_index (i, profile->loc_ts)
+    {
+      if (i >= sizeof (rmp->profile.loc_ts) / sizeof (vl_api_ikev2_ts_t))
+	break;
+
+      cp_ts (&rmp->profile.loc_ts[i], &profile->loc_ts[i], 1 /* is_local */);
+    }
+
+  rmp->profile.loc_ts_len = i;
+
+  cp_auth (&rmp->profile.auth, &profile->auth);
+
+  cp_responder (&rmp->profile.responder, &profile->responder);
+
+  rmp->profile.udp_encap = profile->udp_encap;
+  rmp->profile.tun_itf = profile->tun_itf;
+  rmp->profile.natt_disabled = profile->natt_disabled;
+  rmp->profile.ipsec_over_udp_port = profile->ipsec_over_udp_port;
+
+  rmp->profile.lifetime = profile->lifetime;
+  rmp->profile.lifetime_maxdata = profile->lifetime_maxdata;
+  rmp->profile.lifetime_jitter = profile->lifetime_jitter;
+  rmp->profile.handover = profile->handover;
+
+  vl_api_ikev2_profile_v2_t_endian (&rmp->profile);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+static void
+vl_api_ikev2_profile_v2_dump_t_handler (vl_api_ikev2_profile_v2_dump_t *mp)
+{
+  ikev2_main_t *im = &ikev2_main;
+  ikev2_profile_t *profile;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  pool_foreach (profile, im->profiles)
+    {
+      send_profile_v2 (profile, reg, mp->context);
+    }
 }
 
 static void
@@ -888,11 +974,10 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   ip_address_t start_addr, end_addr;
   ip_address_decode2 (&mp->ts.start_addr, &start_addr);
   ip_address_decode2 (&mp->ts.end_addr, &end_addr);
-  error =
-    ikev2_set_profile_ts (vm, tmp, mp->ts.protocol_id,
-			  clib_net_to_host_u16 (mp->ts.start_port),
-			  clib_net_to_host_u16 (mp->ts.end_port),
-			  start_addr, end_addr, mp->ts.is_local);
+  error = ikev2_set_profile_ts (vm, tmp, mp->ts.protocol_id,
+				clib_net_to_host_u16 (mp->ts.start_port),
+				clib_net_to_host_u16 (mp->ts.end_port),
+				start_addr, end_addr, mp->ts.is_local, true);
   vec_free (tmp);
   if (error)
     {
@@ -901,6 +986,31 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
       rv = VNET_API_ERROR_UNSPECIFIED;
     }
   REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_TS_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_ts_v2_t_handler (vl_api_ikev2_profile_set_ts_v2_t *mp)
+{
+  vl_api_ikev2_profile_set_ts_v2_reply_t *rmp;
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  ip_address_t start_addr, end_addr;
+  ip_address_decode2 (&mp->ts.start_addr, &start_addr);
+  ip_address_decode2 (&mp->ts.end_addr, &end_addr);
+  error = ikev2_set_profile_ts (
+    vm, tmp, mp->ts.protocol_id, clib_net_to_host_u16 (mp->ts.start_port),
+    clib_net_to_host_u16 (mp->ts.end_port), start_addr, end_addr,
+    mp->ts.is_local, mp->is_add);
+  vec_free (tmp);
+  if (error)
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_TS_V2_REPLY);
 }
 
 static void

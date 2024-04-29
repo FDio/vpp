@@ -116,12 +116,14 @@ format_ikev2_child_sa (u8 * s, va_list * va)
 		  format_white_space, indent + 6,
 		  format_hex_bytes, child->sk_ar, vec_len (child->sk_ar));
     }
-  s = format (s, "%Utraffic selectors (i):", format_white_space, indent);
+  s = format (s, "%Utraffic selectors (i):\n", format_white_space, indent);
   vec_foreach (ts, child->tsi)
-    s = format (s, "%U", format_ikev2_traffic_selector, ts, ts - child->tsi);
-  s = format (s, "%Utraffic selectors (r):", format_white_space, indent);
+    s = format (s, "%U %U", format_white_space, indent,
+		format_ikev2_traffic_selector, ts, ts - child->tsi);
+  s = format (s, "%Utraffic selectors (r):\n", format_white_space, indent);
   vec_foreach (ts, child->tsr)
-    s = format (s, "%U", format_ikev2_traffic_selector, ts, ts - child->tsr);
+    s = format (s, "%U %U", format_white_space, indent,
+		format_ikev2_traffic_selector, ts, ts - child->tsr);
   return s;
 }
 
@@ -439,9 +441,13 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 			 unformat_ip_address, &ip,
 			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
+	  bool is_add = true;
+	  if (unformat (line_input, "del"))
+	    is_add = false;
+
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip, end_addr, /*local */ 1);
+				  ip, end_addr, /*local */ 1, is_add);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U traffic-selector remote "
@@ -450,9 +456,13 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 			 unformat_ip_address, &ip,
 			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
+	  bool is_add = true;
+	  if (unformat (line_input, "del"))
+	    is_add = false;
+
 	  r =
 	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip, end_addr, /*remote */ 0);
+				  ip, end_addr, /*remote */ 0, is_add);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U responder %U %U",
@@ -574,24 +584,27 @@ done:
 }
 
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
-    .path = "ikev2 profile",
-    .short_help =
+  .path = "ikev2 profile",
+  .short_help =
     "ikev2 profile [add|del] <id>\n"
-    "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] [cert-file|string|hex]"
+    "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] "
+    "[cert-file|string|hex]"
     " <data>\n"
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
     "ikev2 profile set <id> tunnel <interface>\n"
     "ikev2 profile set <id> udp-encap\n"
     "ikev2 profile set <id> traffic-selector <local|remote> ip-range "
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
-    "protocol <protocol-number>\n"
+    "protocol <protocol-number> [del]\n"
     "ikev2 profile set <id> responder <interface> <addr>\n"
-    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
+    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> "
+    "ike-integ-alg <integ alg> ike-dh <dh type>\n"
     "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> "
-      "[esp-integ-alg <integ alg>]\n"
-    "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>"
+    "[esp-integ-alg <integ alg>]\n"
+    "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max "
+    "bytes>"
     "ikev2 profile set <id> disable natt\n",
-    .function = ikev2_profile_add_del_command_fn,
+  .function = ikev2_profile_add_del_command_fn,
 };
 
 static clib_error_t *
@@ -601,6 +614,8 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
+  ikev2_ts_t *loc_ts;
+  ikev2_ts_t *rem_ts;
 
   pool_foreach (p, km->profiles)  {
     vlib_cli_output(vm, "profile %v", p->name);
@@ -622,21 +637,29 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
     if (p->rem_id.data)
       vlib_cli_output(vm, "  remote %U", format_ikev2_id_type_and_data, &p->rem_id);
 
-    if (!ip_address_is_zero (&p->loc_ts.start_addr))
-      vlib_cli_output(vm, "  local traffic-selector addr %U - %U port %u - %u"
-                      " protocol %u",
-                      format_ip_address, &p->loc_ts.start_addr,
-                      format_ip_address, &p->loc_ts.end_addr,
-                      p->loc_ts.start_port, p->loc_ts.end_port,
-                      p->loc_ts.protocol_id);
+    vec_foreach (loc_ts, p->loc_ts)
+      {
+	if (!ip_address_is_zero (&loc_ts->start_addr))
+	  vlib_cli_output (vm,
+			   "  local traffic-selector addr %U - %U port %u - %u"
+			   " protocol %u",
+			   format_ip_address, &loc_ts->start_addr,
+			   format_ip_address, &loc_ts->end_addr,
+			   loc_ts->start_port, loc_ts->end_port,
+			   loc_ts->protocol_id);
+      }
 
-    if (!ip_address_is_zero (&p->rem_ts.start_addr))
-      vlib_cli_output(vm, "  remote traffic-selector addr %U - %U port %u - %u"
-                      " protocol %u",
-                      format_ip_address, &p->rem_ts.start_addr,
-                      format_ip_address, &p->rem_ts.end_addr,
-                      p->rem_ts.start_port, p->rem_ts.end_port,
-                      p->rem_ts.protocol_id);
+    vec_foreach (rem_ts, p->rem_ts)
+      {
+	if (!ip_address_is_zero (&rem_ts->start_addr))
+	  vlib_cli_output (
+	    vm,
+	    "  remote traffic-selector addr %U - %U port %u - %u"
+	    " protocol %u",
+	    format_ip_address, &rem_ts->start_addr, format_ip_address,
+	    &rem_ts->end_addr, rem_ts->start_port, rem_ts->end_port,
+	    rem_ts->protocol_id);
+      }
     if (~0 != p->tun_itf)
       vlib_cli_output(vm, "  protected tunnel %U",
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
