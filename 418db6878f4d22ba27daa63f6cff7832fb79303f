@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4cc45ad_d4a62a4b",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 840,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-29T10:28:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "57ccda28_7d996b84",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "02abc640_09942358",
