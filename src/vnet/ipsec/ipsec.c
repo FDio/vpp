@@ -663,6 +663,7 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
   u32 ipsec_spd_fp_num_buckets;
   bool fp_spd_ip4_enabled = false;
   bool fp_spd_ip6_enabled = false;
+  u32 handoff_queue_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -757,6 +758,11 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 	    }
 
 	  ipsec_tun_table_init (AF_IP6, table_size, n_buckets);
+	}
+      else if (unformat (input, "async-handoff-queue-size %d",
+			 &handoff_queue_size))
+	{
+	  im->handoff_queue_size = handoff_queue_size;
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",
