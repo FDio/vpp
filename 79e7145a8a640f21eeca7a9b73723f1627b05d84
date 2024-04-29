@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d6f6d99d_bc79e279",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-04-29T13:07:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f06bd1f3_fe19d2d7",
+      "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c3d22b4d_4ab2b124",
@@ -31,6 +49,24 @@
       "writtenOn": "2024-04-24T17:58:08Z",
       "side": 1,
       "message": "Not needed, bitmaps grow automatically and only when needed.",
+      "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fad18715_fac1bcca",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 3055
+      },
+      "writtenOn": "2024-04-29T13:07:06Z",
+      "side": 1,
+      "message": "It seems to still need allocation, the first line of clib_bitmap_set reads from the bitmap without doing an call to ensure it is valid.\n\n```\nalways_inline uword *\nclib_bitmap_set (uword * ai, uword i, uword value)\n{\n  uword i0 \u003d i / BITS (ai[0]);\n  uword i1 \u003d i % BITS (ai[0]);\n  uword a;\n\n  /* Check for writing a zero to beyond end of bitmap. */\n  if (value \u003d\u003d 0 \u0026\u0026 i0 \u003e\u003d vec_len (ai))\n    return ai;                  /* Implied trailing zeros. */\n```",
+      "parentUuid": "c3d22b4d_4ab2b124",
       "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
