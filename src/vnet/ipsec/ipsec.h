@@ -248,6 +248,8 @@ typedef struct
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
+  u32 handoff_queue_size;
+
   /* Number of buckets for flow cache */
   u32 ipsec4_out_spd_hash_num_buckets;
   u32 ipsec4_out_spd_flow_cache_entries;
