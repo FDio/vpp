@@ -991,6 +991,52 @@ VLIB_CLI_COMMAND (set_async_mode_command, static) = {
     .function = set_async_mode_command_fn,
 };
 
+static clib_error_t *
+show_ipsec_threads_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
+{
+  u32 *num_isas = 0;
+  u32 *num_osas = 0;
+  ipsec_sa_t *sa;
+  int idx = 0;
+
+  vec_validate_init_empty (num_isas, vlib_get_n_threads (), 0);
+  vec_validate_init_empty (num_osas, vlib_get_n_threads (), 0);
+
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      if (sa->thread_index >= vlib_get_n_threads ())
+	{
+	  continue;
+	}
+      if (sa->flags & IPSEC_SA_FLAG_IS_INBOUND)
+	{
+	  num_isas[sa->thread_index] += 1;
+	}
+      else
+	{
+	  num_osas[sa->thread_index] += 1;
+	}
+    }
+
+  for (idx = 0; idx <= vlib_num_workers (); idx++)
+    {
+      vlib_cli_output (vm, "thread %d : num inbound sa %u num outbound sa %u",
+		       idx, num_isas[idx], num_osas[idx]);
+    }
+
+  vec_free (num_isas);
+  vec_free (num_osas);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ipsec_threads_command, static) = {
+  .path = "show ipsec threads",
+  .short_help = "show ipsec threads",
+  .function = show_ipsec_threads_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
