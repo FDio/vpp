@@ -1445,16 +1445,16 @@ esp_encrypt_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->esp4_enc_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_node.index, 0);
-  im->esp6_enc_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_node.index, 0);
-  im->esp4_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_tun_node.index, 0);
-  im->esp6_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_tun_node.index, 0);
-  im->esp_mpls_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp_mpls_encrypt_tun_node.index, 0);
+  im->esp4_enc_fq_index = vlib_frame_queue_main_init (esp4_encrypt_node.index,
+						      im->worker_queue_size);
+  im->esp6_enc_fq_index = vlib_frame_queue_main_init (esp6_encrypt_node.index,
+						      im->worker_queue_size);
+  im->esp4_enc_tun_fq_index = vlib_frame_queue_main_init (
+    esp4_encrypt_tun_node.index, im->worker_queue_size);
+  im->esp6_enc_tun_fq_index = vlib_frame_queue_main_init (
+    esp6_encrypt_tun_node.index, im->worker_queue_size);
+  im->esp_mpls_enc_tun_fq_index = vlib_frame_queue_main_init (
+    esp_mpls_encrypt_tun_node.index, im->worker_queue_size);
 
   return 0;
 }
