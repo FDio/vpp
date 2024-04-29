@@ -490,10 +490,10 @@ ah_encrypt_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->ah4_enc_fq_index =
-    vlib_frame_queue_main_init (ah4_encrypt_node.index, 0);
-  im->ah6_enc_fq_index =
-    vlib_frame_queue_main_init (ah6_encrypt_node.index, 0);
+  im->ah4_enc_fq_index = vlib_frame_queue_main_init (ah4_encrypt_node.index,
+						     im->handoff_queue_size);
+  im->ah6_enc_fq_index = vlib_frame_queue_main_init (ah6_encrypt_node.index,
+						     im->handoff_queue_size);
 
   return 0;
 }

@@ -500,10 +500,10 @@ ah_decrypt_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  im->ah4_dec_fq_index =
-    vlib_frame_queue_main_init (ah4_decrypt_node.index, 0);
-  im->ah6_dec_fq_index =
-    vlib_frame_queue_main_init (ah6_decrypt_node.index, 0);
+  im->ah4_dec_fq_index = vlib_frame_queue_main_init (ah4_decrypt_node.index,
+						     im->handoff_queue_size);
+  im->ah6_dec_fq_index = vlib_frame_queue_main_init (ah6_decrypt_node.index,
+						     im->handoff_queue_size);
 
   return 0;
 }
