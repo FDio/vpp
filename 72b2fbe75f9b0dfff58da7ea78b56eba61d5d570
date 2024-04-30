@@ -16,6 +16,23 @@
       "message": "looks ok and in sync with Ife8c2a2351c08c5c6c4fdf7c729eeff2697bc39a (https://gerrit.fd.io/r/c/vpp/+/40606)",
       "revId": "72b2fbe75f9b0dfff58da7ea78b56eba61d5d570",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b061f908_339f47f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-04-30T14:29:23Z",
+      "side": 1,
+      "message": "Core-pinning improvements were reverted for the time being.\n\nRevert patch: https://gerrit.fd.io/r/c/vpp/+/40803",
+      "revId": "72b2fbe75f9b0dfff58da7ea78b56eba61d5d570",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
