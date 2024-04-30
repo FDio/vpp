@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a5e43ea_3b1619a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-04-30T14:30:21Z",
+      "side": 1,
+      "message": "Previous patch on automatic core-pinning is reverted for the time being.\nRevert patch: https://gerrit.fd.io/r/c/vpp/+/40803",
+      "revId": "9ea74a00d098589cbe6260d6c8c637fc066d2531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
