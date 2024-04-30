@@ -123,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5edb823_6f1a4d38",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-30T12:00:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "de1e1b89_d9f8af11",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fdc989d6_5ce039ef",
@@ -140,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "93a1f1be_e11377de",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 915,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-30T12:00:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fdc989d6_5ce039ef",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b9011754_b0e74e6c",
@@ -153,6 +189,24 @@
       "writtenOn": "2024-01-15T14:10:05Z",
       "side": 1,
       "message": "Instead of this, we should request a dequeue notification, i.e., `svm_fifo_add_want_deq_ntf (as-\u003erx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);`",
+      "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "51404fee_9f54898e",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 916,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-04-30T12:00:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b9011754_b0e74e6c",
       "revId": "418db6878f4d22ba27daa63f6cff7832fb79303f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
