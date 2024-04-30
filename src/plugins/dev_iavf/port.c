@@ -42,29 +42,35 @@ iavf_port_vlan_strip_disable (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
   virtchnl_vlan_caps_t vc;
-  vnet_dev_rv_t rv;
+  vnet_dev_rv_t rv = VNET_DEV_ERR_NOT_SUPPORTED;
   u32 outer, inner;
   const u32 mask = VIRTCHNL_VLAN_ETHERTYPE_8100;
 
-  if ((ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) == 0)
+  if (ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2)
+    {
+      if ((rv = iavf_vc_op_get_offload_vlan_v2_caps (vm, dev, &vc)))
+	return rv;
+
+      outer = vc.offloads.stripping_support.outer;
+      inner = vc.offloads.stripping_support.inner;
+
+      outer = outer & VIRTCHNL_VLAN_TOGGLE ? outer & mask : 0;
+      inner = inner & VIRTCHNL_VLAN_TOGGLE ? inner & mask : 0;
+
+      virtchnl_vlan_setting_t vs = {
+	.vport_id = ap->vsi_id,
+	.outer_ethertype_setting = outer,
+	.inner_ethertype_setting = inner,
+      };
+
+      if ((rv = iavf_vc_op_disable_vlan_stripping_v2 (vm, dev, &vs)))
+	return rv;
+    }
+
+  if (ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN)
     return iavf_vc_op_disable_vlan_stripping (vm, dev);
 
-  if ((rv = iavf_vc_op_get_offload_vlan_v2_caps (vm, dev, &vc)))
-    return rv;
-
-  outer = vc.offloads.stripping_support.outer;
-  inner = vc.offloads.stripping_support.inner;
-
-  outer = outer & VIRTCHNL_VLAN_TOGGLE ? outer & mask : 0;
-  inner = inner & VIRTCHNL_VLAN_TOGGLE ? inner & mask : 0;
-
-  virtchnl_vlan_setting_t vs = {
-    .vport_id = ap->vsi_id,
-    .outer_ethertype_setting = outer,
-    .inner_ethertype_setting = inner,
-  };
-
-  return iavf_vc_op_disable_vlan_stripping_v2 (vm, dev, &vs);
+  return rv;
 }
 
 vnet_dev_rv_t
@@ -275,7 +281,12 @@ iavf_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       u64_bit_set (&ap->intr_mode_per_rxq_bitmap, q->queue_id, 1);
 
   if ((rv = iavf_port_vlan_strip_disable (vm, port)))
-    return rv;
+    {
+      if (rv == VNET_DEV_ERR_NOT_SUPPORTED)
+	log_warn (port->dev, "device doesn't support vlan stripping");
+      else
+	return rv;
+    }
 
   if ((rv = iavf_port_init_rss (vm, port)))
     return rv;
