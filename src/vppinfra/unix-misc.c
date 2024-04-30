@@ -49,7 +49,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/syscall.h>
 #include <sys/uio.h>		/* writev */
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
@@ -273,36 +272,6 @@ os_get_online_cpu_core_bitmap ()
 {
 #if __linux__
   return clib_sysfs_read_bitmap ("/sys/devices/system/cpu/online");
-#else
-  return 0;
-#endif
-}
-
-__clib_export clib_bitmap_t *
-os_get_cpu_affinity_bitmap (int pid)
-{
-#if __linux
-  int index, ret;
-  cpu_set_t cpuset;
-  uword *affinity_cpus;
-
-  clib_bitmap_alloc (affinity_cpus, sizeof (cpu_set_t));
-  clib_bitmap_zero (affinity_cpus);
-
-  __CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
-
-  ret = syscall (SYS_sched_getaffinity, 0, sizeof (cpu_set_t), &cpuset);
-
-  if (ret < 0)
-    {
-      clib_bitmap_free (affinity_cpus);
-      return 0;
-    }
-
-  for (index = 0; index < sizeof (cpu_set_t); index++)
-    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
-      clib_bitmap_set (affinity_cpus, index, 1);
-  return affinity_cpus;
 #else
   return 0;
 #endif
