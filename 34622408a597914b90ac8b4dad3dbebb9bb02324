@@ -16,6 +16,24 @@
       "message": "return VNET_DEV_NOT_SUPPORTED and then caller of this functrion should do log_warn(\"device doesn\u0027t support vlan stripping\") and continue executing...",
       "revId": "34622408a597914b90ac8b4dad3dbebb9bb02324",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4db42a98_267f8846",
+        "filename": "src/plugins/dev_iavf/port.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2024-05-01T15:16:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "057da405_7feea7e8",
+      "revId": "34622408a597914b90ac8b4dad3dbebb9bb02324",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
