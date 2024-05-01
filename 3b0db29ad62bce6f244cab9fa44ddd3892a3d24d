@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "939046b9_459a5ee4",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 601,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-05-01T05:07:21Z",
+      "side": 1,
+      "message": "In a future patch let\u0027s fix this as well. We want to notify client app that we failed to parse reply as opposed to replying to server.",
+      "revId": "3b0db29ad62bce6f244cab9fa44ddd3892a3d24d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8a5fb408_061ed50c",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-05-01T05:07:21Z",
+      "side": 1,
+      "message": "Here we should reply to client app that we errored out while trying to generate request.",
+      "revId": "3b0db29ad62bce6f244cab9fa44ddd3892a3d24d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
