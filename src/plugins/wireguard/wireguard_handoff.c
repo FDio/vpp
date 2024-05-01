@@ -67,9 +67,7 @@ wg_handoff (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 n_enq, n_left_from, *from;
-  wg_main_t *wmp;
 
-  wmp = &wg_main;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
@@ -88,11 +86,12 @@ wg_handoff (vlib_main_t * vm,
 	}
       else if (mode == WG_HANDOFF_INP_DATA)
 	{
-	  message_data_t *data = vlib_buffer_get_current (b[0]);
-	  u32 *entry =
-	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
-	  peeri = *entry;
+	  /* reuse ipsec sad_index in vlib_buffer opaque to store
+	   * peer ID, since they server same purpose.
+	   */
+	  peeri = vnet_buffer (b[0])->ipsec.sad_index;
 	  peer = wg_peer_get (peeri);
+	  ASSERT (peer != 0);
 
 	  ti[0] = peer->input_thread_index;
 	}

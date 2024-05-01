@@ -793,6 +793,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (PREDICT_TRUE (thread_index != peer->input_thread_index))
 	    {
+	      /* reuse ipsec sad_index in vlib_buffer opaque to store
+	       * peer ID, since they server same purpose.
+	       */
+	      vnet_buffer (b[0])->ipsec.sad_index = peeri;
 	      other_next[n_other] = WG_INPUT_NEXT_HANDOFF_DATA;
 	      other_bi[n_other] = buf_idx;
 	      n_other += 1;
