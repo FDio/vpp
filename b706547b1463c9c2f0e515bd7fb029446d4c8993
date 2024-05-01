@@ -1,0 +1,136 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "640bf2c9_412e0ab5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "Note that the docs verify job generates and uploads patches to a 7-day retention bucket in AWS S3.  Generated docs can be previewed by editing the s3-logs URL -\u003e\ns/s3-logs/s3-docs-7day/g\n\ne.g. https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1/vpp-docsonly-verify-master-ubuntu2204-x86_64/179/",
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b83e428e_7093be53",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "Please update this to 22.04 (Jammy)",
+      "range": {
+        "startLine": 6,
+        "startChar": 65,
+        "endLine": 6,
+        "endChar": 79
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "809dadb5_19c3c2ee",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "22.04",
+      "range": {
+        "startLine": 8,
+        "startChar": 24,
+        "endLine": 8,
+        "endChar": 26
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89c0dc9e_f6ef874b",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "22.04",
+      "range": {
+        "startLine": 9,
+        "startChar": 67,
+        "endLine": 9,
+        "endChar": 72
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aaff60bf_e26eb3e0",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "Please remove since the tutorial is updated to use libvert instead.",
+      "range": {
+        "startLine": 11,
+        "startChar": 8,
+        "endLine": 11,
+        "endChar": 24
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb9a39a5_5d062cb3",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-01T01:13:51Z",
+      "side": 1,
+      "message": "Please remove since the tutorial is updated to use libvert instead.",
+      "range": {
+        "startLine": 14,
+        "startChar": 25,
+        "endLine": 14,
+        "endChar": 41
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
