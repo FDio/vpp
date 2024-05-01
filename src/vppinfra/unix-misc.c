@@ -281,7 +281,7 @@ __clib_export clib_bitmap_t *
 os_get_cpu_affinity_bitmap (int pid)
 {
 #if __linux
-  int index, ret;
+  int cpu, ret;
   cpu_set_t cpuset;
   uword *affinity_cpus;
 
@@ -298,9 +298,9 @@ os_get_cpu_affinity_bitmap (int pid)
       return 0;
     }
 
-  for (index = 0; index < sizeof (cpu_set_t); index++)
-    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
-      clib_bitmap_set (affinity_cpus, index, 1);
+  for (cpu = 0; cpu < sizeof (cpu_set_t) * 8; cpu++)
+    if (__CPU_ISSET_S (cpu, sizeof (cpu_set_t), &cpuset))
+      clib_bitmap_set (affinity_cpus, cpu, 1);
   return affinity_cpus;
 #else
   return 0;
