@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e13819ce_e5c97927",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:19:57Z",
+      "side": 1,
+      "message": "Oh, thanks for this info, too, it\u0027s indeed there: https://s3-docs-7day.fd.io/vex-yul-rot-jenkins-1/vpp-docsonly-verify-master-ubuntu2204-x86_64/181/gettingstarted/progressivevpp/settingupenvironment.html#install-libvirt-and-vagrant",
+      "parentUuid": "640bf2c9_412e0ab5",
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b83e428e_7093be53",
