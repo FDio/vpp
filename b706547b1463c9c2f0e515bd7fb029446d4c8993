@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3fa4305_626b14ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Thanks for the review Dave! Updated the patch according to your comments.",
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b83e428e_7093be53",
@@ -31,6 +48,30 @@
       "writtenOn": "2024-05-01T01:13:51Z",
       "side": 1,
       "message": "Please update this to 22.04 (Jammy)",
+      "range": {
+        "startLine": 6,
+        "startChar": 65,
+        "endLine": 6,
+        "endChar": 79
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "70221e9d_ae5dd1f3",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b83e428e_7093be53",
       "range": {
         "startLine": 6,
         "startChar": 65,
@@ -64,6 +105,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f2cbbfa_e8cd6093",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "809dadb5_19c3c2ee",
+      "range": {
+        "startLine": 8,
+        "startChar": 24,
+        "endLine": 8,
+        "endChar": 26
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89c0dc9e_f6ef874b",
@@ -77,6 +142,30 @@
       "writtenOn": "2024-05-01T01:13:51Z",
       "side": 1,
       "message": "22.04",
+      "range": {
+        "startLine": 9,
+        "startChar": 67,
+        "endLine": 9,
+        "endChar": 72
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55d29e1b_f9d1248d",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89c0dc9e_f6ef874b",
       "range": {
         "startLine": 9,
         "startChar": 67,
@@ -110,6 +199,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c6f02aa_9d9b01cd",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aaff60bf_e26eb3e0",
+      "range": {
+        "startLine": 11,
+        "startChar": 8,
+        "endLine": 11,
+        "endChar": 24
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eb9a39a5_5d062cb3",
@@ -123,6 +236,30 @@
       "writtenOn": "2024-05-01T01:13:51Z",
       "side": 1,
       "message": "Please remove since the tutorial is updated to use libvert instead.",
+      "range": {
+        "startLine": 14,
+        "startChar": 25,
+        "endLine": 14,
+        "endChar": 41
+      },
+      "revId": "b706547b1463c9c2f0e515bd7fb029446d4c8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0cc22a83_44e9b1de",
+        "filename": "docs/gettingstarted/progressivevpp/settingupenvironment.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3079
+      },
+      "writtenOn": "2024-05-02T09:07:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eb9a39a5_5d062cb3",
       "range": {
         "startLine": 14,
         "startChar": 25,
