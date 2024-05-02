@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "6338aa9eb2c6b1b8fd0a7c386394c06ab1d79579",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "573f66c1_daade586",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-05-02T11:28:15Z",
+      "side": 1,
+      "message": "the failure of test_dns_unittest seems to be related to the change itself",
+      "revId": "6338aa9eb2c6b1b8fd0a7c386394c06ab1d79579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
