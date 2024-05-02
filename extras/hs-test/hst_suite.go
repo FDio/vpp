@@ -149,7 +149,7 @@ func (s *HstSuite) hstFail() {
 		out, err := container.log(20)
 		if err != nil {
 			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
-			break
+			continue
 		}
 		fmt.Printf("\nvvvvvvvvvvvvvvv " +
 			container.name + ":\n" +

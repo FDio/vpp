@@ -13,7 +13,7 @@ func init() {
 	registerNsTests(HttpTpsTest)
 	registerVethTests(HttpCliTest)
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
-		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest)
+		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest)
 	registerNoTopoSoloTests(HttpStaticPromTest)
 }
 
@@ -89,6 +89,21 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	}()
 	err := <-finished
 	s.assertNil(err)
+}
+
+func HeaderServerTest(s *NoTopoSuite) {
+	query := "show/version"
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	curlCont := s.getContainerByName("curl")
+	args := fmt.Sprintf("curl -i -s http://%s:80/%s", serverAddress, query)
+	curlCont.extraRunningArgs = args
+	o, err := curlCont.combinedOutput()
+	s.assertNil(err, fmt.Sprint(err))
+	s.log(o)
+	s.assertContains(o, "Server: http_cli_server")
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
