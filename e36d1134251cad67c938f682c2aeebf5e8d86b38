@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f007b404_1b982f14",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2024-05-02T11:51:21Z",
+      "side": 1,
+      "message": "Hi Benoit,\n\nPlease review.\n\nThanks,\nDenys.",
+      "revId": "e36d1134251cad67c938f682c2aeebf5e8d86b38",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
