@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03982203_e5dbf5d1",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-05-02T18:18:08Z",
+      "side": 1,
+      "message": "Just a nit, maybe app_name ?",
+      "range": {
+        "startLine": 230,
+        "startChar": 6,
+        "endLine": 230,
+        "endChar": 10
+      },
+      "revId": "f93f1132aec6989e8cbfa451fd1dc53fbc67323b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
