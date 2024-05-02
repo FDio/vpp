@@ -227,6 +227,7 @@ typedef struct http_tc_
 
   http_conn_state_t state;
   u32 timer_handle;
+  u8 *app_name;
 
   /*
    * Current request

@@ -140,6 +140,7 @@ http_listener_free (http_conn_t *lhc)
 {
   http_main_t *hm = &http_main;
 
+  vec_free (lhc->app_name);
   if (CLIB_DEBUG)
     memset (lhc, 0xfc, sizeof (*lhc));
   pool_put (hm->listener_pool, lhc);
@@ -372,7 +373,7 @@ static const char *http_redirect_template = "HTTP/1.1 %s\r\n";
 static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
 					    "Expires: %U GMT\r\n"
-					    "Server: VPP Static\r\n"
+					    "Server: %s\r\n"
 					    "Content-Type: %s\r\n"
 					    "Content-Length: %lu\r\n\r\n";
 
@@ -734,6 +735,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
    * Add headers. For now:
    * - current time
    * - expiration time
+   * - server name
    * - content type
    * - data length
    */
@@ -748,6 +750,8 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 		format_clib_timebase_time, now,
 		/* Expires */
 		format_clib_timebase_time, now + 600.0,
+		/* Server */
+		hc->app_name,
 		/* Content type */
 		http_content_type_str[msg.content_type],
 		/* Length */
@@ -1198,6 +1202,11 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc->h_pa_session_handle = listen_session_get_handle (app_listener);
   lhc->c_s_index = app_listener_index;
   lhc->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
+
+  if (vec_len (app->name))
+    lhc->app_name = vec_dup (app->name);
+  else
+    lhc->app_name = format (0, "VPP server app");
 
   return lhc_index;
 }
