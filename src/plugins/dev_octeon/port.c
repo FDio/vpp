@@ -108,6 +108,9 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
   cp->npc_initialized = 1;
 
+  cp->oct_index_by_mac_addr =
+    hash_create_mem (0, sizeof (vnet_dev_hw_addr_t), sizeof (uword));
+
   foreach_vnet_dev_port_rx_queue (q, port)
     if (q->enabled)
       if ((rv = oct_rxq_init (vm, q)))
@@ -425,6 +428,10 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
   oct_device_t *cd = vnet_dev_get_data (dev);
   struct roc_nix *nix = cd->nix;
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+
+  u32 index;
+  uword *p;
   i32 rrv;
 
   if (is_primary)
@@ -449,6 +456,25 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 		}
 	    }
 	}
+    }
+  else
+    {
+      if (is_add)
+       {
+         rrv = roc_nix_mac_addr_add (nix, (u8 *) addr);
+         if (!rrv)
+           rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_add() failed");
+
+         hash_set_mem (cp->oct_index_by_mac_addr, addr, rrv);
+       }
+      else
+       {
+         p = hash_get_mem (cp->oct_index_by_mac_addr, addr);
+         index = p[0];
+         rrv = roc_nix_mac_addr_del (nix, index);
+         if (rrv)
+           rv = oct_roc_err (dev, rrv, "roc_nix_mac_addr_del() failed");
+       }
     }
 
   return rv;
@@ -561,9 +587,15 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+                                     /* is_add */ 1,
+                                     /* is_primary */ 0);
       break;
 
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
+      rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
+                                     /* is_add */ 0,
+                                     /* is_primary */ 0);
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
