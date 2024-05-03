@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
-#include <hs_apps/http_cli.h>
 
 #define HCC_DEBUG 0
 
@@ -68,6 +66,7 @@ typedef struct
 typedef enum
 {
   HCC_REPLY_RECEIVED = 100,
+  HCC_TRANSPORT_CLOSED,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -273,6 +272,17 @@ hcc_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
   hcc_session_free (s->thread_index, hs);
 }
 
+static void
+hcc_ts_transport_closed (session_t *s)
+{
+  hcc_main_t *hcm = &hcc_main;
+
+  HCC_DBG ("transport closed");
+
+  vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
+				HCC_TRANSPORT_CLOSED, 0);
+}
+
 static session_cb_vft_t hcc_session_cb_vft = {
   .session_accept_callback = hcc_ts_accept_callback,
   .session_disconnect_callback = hcc_ts_disconnect_callback,
@@ -281,6 +291,7 @@ static session_cb_vft_t hcc_session_cb_vft = {
   .builtin_app_tx_callback = hcc_ts_tx_callback,
   .session_reset_callback = hcc_ts_reset_callback,
   .session_cleanup_callback = hcc_ts_cleanup_callback,
+  .session_transport_closed_callback = hcc_ts_transport_closed,
 };
 
 static clib_error_t *
@@ -410,6 +421,9 @@ hcc_run (vlib_main_t *vm, int print_output)
       if (print_output)
 	vlib_cli_output (vm, "%v", hcm->http_response);
       vec_free (hcm->http_response);
+      break;
+    case HCC_TRANSPORT_CLOSED:
+      err = clib_error_return (0, "error, transport closed");
       break;
     default:
       err = clib_error_return (0, "unexpected event %d", event_type);

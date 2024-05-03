@@ -111,6 +111,18 @@ http_conn_get_w_thread (u32 hc_index, u32 thread_index)
   return pool_elt_at_index (wrk->conn_pool, hc_index);
 }
 
+static inline void
+http_transport_closed_client_notify (http_conn_t *hc)
+{
+  session_t *as;
+  app_worker_t *app_wrk;
+
+  as = session_get_from_handle (hc->h_pa_session_handle);
+  app_wrk = app_worker_get_if_valid (as->app_wrk_index);
+  if (app_wrk)
+    app_worker_transport_closed_notify (app_wrk, as);
+}
+
 void
 http_conn_free (http_conn_t *hc)
 {
@@ -597,7 +609,6 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
     }
 
 error:
-
   http_send_error (hc, ec);
   session_transport_closing_notify (&hc->connection);
   http_disconnect_transport (hc);
@@ -834,7 +845,8 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   return HTTP_SM_STOP;
 
 error:
-  session_transport_closing_notify (&hc->connection);
+  svm_fifo_dequeue_drop_all (as->tx_fifo);
+  http_transport_closed_client_notify (hc);
   http_disconnect_transport (hc);
   return HTTP_SM_ERROR;
 }
@@ -1239,7 +1251,11 @@ http_transport_close (u32 hc_index, u32 thread_index)
       http_disconnect_transport (hc);
       return;
     }
-
+  else if (hc->state == HTTP_CONN_STATE_CLOSED)
+    {
+      HTTP_DBG (1, "nothing to do, already closed");
+      return;
+    }
   as = session_get_from_handle (hc->h_pa_session_handle);
 
   /* Nothing more to send, confirm close */
