@@ -31,7 +31,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/srmpls/sr_mpls.h>
+#include "sr_mpls.h"
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/fib/mpls_fib.h>
