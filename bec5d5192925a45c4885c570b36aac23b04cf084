@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4d56d75b_e4b63d66",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-05-03T10:09:12Z",
+      "side": 1,
+      "message": "Updated external dependency library to have single variant.",
+      "parentUuid": "3291e13a_1cccc30e",
+      "revId": "bec5d5192925a45c4885c570b36aac23b04cf084",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "67b5b2a0_80778886",
         "filename": "src/plugins/dev_octeon/tx_node.c",
         "patchSetId": 2
