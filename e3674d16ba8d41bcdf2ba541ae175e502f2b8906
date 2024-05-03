@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "884b3f17_cca4c63a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-05-03T15:07:11Z",
+      "side": 1,
+      "message": "I tried building with the \u0027mss_clamp\u0027 disabled but there\u0027s still one more file that includes the plugin header.\n\nvpp/src/vpp-api/vapi/vapi_c_test.c:31:10: fatal error: \u0027vapi/mss_clamp.api.vapi.h\u0027 file not found",
+      "revId": "e3674d16ba8d41bcdf2ba541ae175e502f2b8906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
