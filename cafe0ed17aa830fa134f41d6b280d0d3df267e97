@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3fe8a638_0c2a1df1",
+        "filename": "src/vnet/dev/format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-05-03T12:52:38Z",
+      "side": 1,
+      "message": "looks ok, based on https://github.com/FDio/vpp/blob/e574736322733ec5a126ca01efb958570e5355eb/src/vnet/dev/dev.h#L326",
+      "revId": "cafe0ed17aa830fa134f41d6b280d0d3df267e97",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
