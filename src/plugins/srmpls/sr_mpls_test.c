@@ -25,11 +25,11 @@
 
 /* Declare message IDs */
 #include <vnet/format_fns.h>
-#include <vnet/srmpls/sr_mpls.api_enum.h>
-#include <vnet/srmpls/sr_mpls.api_types.h>
+#include <plugins/srmpls/sr_mpls.api_enum.h>
+#include <plugins/srmpls/sr_mpls.api_types.h>
 
 #define vl_endianfun /* define message structures */
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_endianfun
 
 typedef struct
@@ -163,7 +163,7 @@ api_sr_mpls_policy_del (vat_main_t *vam)
   return ret;
 }
 
-#include <vnet/srmpls/sr_mpls.api_test.c>
+#include <plugins/srmpls/sr_mpls.api_test.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

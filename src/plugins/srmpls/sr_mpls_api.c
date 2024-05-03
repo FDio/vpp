@@ -17,7 +17,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/srmpls/sr_mpls.h>
+#include "sr_mpls.h"
 #include <vlibmemory/api.h>
 
 #include <vnet/interface.h>
@@ -26,28 +26,27 @@
 #include <vnet/ip/ip_types_api.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/srmpls/sr_mpls.api_enum.h>
-#include <vnet/srmpls/sr_mpls.api_types.h>
-
+#include <plugins/srmpls/sr_mpls.api_enum.h>
+#include <plugins/srmpls/sr_mpls.api_types.h>
 
 #define vl_api_version(n, v) static u32 api_version = v;
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_api_version
 
 #define vl_endianfun
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_endianfun
 
 #define vl_calcsizefun
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_calcsizefun
 
 #define vl_printfun
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_printfun
 
 #define vl_msg_name_crc_list
-#include <vnet/srmpls/sr_mpls.api.h>
+#include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_msg_name_crc_list
 
 #define REPLY_MSG_ID_BASE msg_id_base

@@ -1,1 +1,1 @@
-../../../../src/vnet/srmpls/sr_doc.rst
+../../../../src/plugins/srmpls/sr_doc.rst

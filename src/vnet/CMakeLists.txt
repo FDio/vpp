@@ -813,24 +813,6 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# mpls segment routing
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  srmpls/sr_mpls_policy.c
-  srmpls/sr_mpls_steering.c
-  srmpls/sr_mpls_api.c
-)
-
-list(APPEND VNET_HEADERS
-  srmpls/sr_mpls.h
-)
-
-list(APPEND VNET_API_FILES
-  srmpls/sr_mpls.api
-)
-
-##############################################################################
 # IPFIX / netflow v10
 ##############################################################################
 list(APPEND VNET_SOURCES
@@ -1460,7 +1442,6 @@ add_vat_test_library(vnet
   ip/ip_test.c
   arp/arp_test.c
   ip6-nd/ip6_nd_test.c
-  srmpls/sr_mpls_test.c
   session/session_test.c
   l2/l2_test.c
   ipsec/ipsec_test.c
