@@ -28,7 +28,7 @@
 #include <vapi/vlib.api.vapi.h>
 #include <vapi/vpe.api.vapi.h>
 #include <vapi/interface.api.vapi.h>
-#include <vapi/mss_clamp.api.vapi.h>
+#include <vapi/ip.api.vapi.h>
 #include <vapi/l2.api.vapi.h>
 #include <fake.api.vapi.h>
 
@@ -37,7 +37,7 @@
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
-DEFINE_VAPI_MSG_IDS_MSS_CLAMP_API_JSON;
+DEFINE_VAPI_MSG_IDS_IP_API_JSON;
 DEFINE_VAPI_MSG_IDS_L2_API_JSON;
 DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
@@ -489,9 +489,9 @@ sw_interface_dump_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
 }
 
 vapi_error_e
-vapi_mss_clamp_enable_disable_reply_cb (
-  struct vapi_ctx_s *ctx, void *callback_ctx, vapi_error_e rv, bool is_last,
-  vapi_payload_mss_clamp_enable_disable_reply *reply)
+vapi_ip_path_mtu_update_reply_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
+				  vapi_error_e rv, bool is_last,
+				  vapi_payload_ip_path_mtu_update_reply *reply)
 {
   bool *x = callback_ctx;
   *x = true;
@@ -499,34 +499,36 @@ vapi_mss_clamp_enable_disable_reply_cb (
 }
 
 vapi_error_e
-vapi_mss_clamp_get_reply_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
-			     vapi_error_e rv, bool is_last,
-			     vapi_payload_mss_clamp_get_reply *reply)
+vapi_ip_path_mtu_get_reply_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
+			       vapi_error_e rv, bool is_last,
+			       vapi_payload_ip_path_mtu_get_reply *reply)
 {
   int *counter = callback_ctx;
   ck_assert_int_gt (*counter, 0); // make sure details were called first
   ++*counter;
   ck_assert_int_eq (is_last, true);
-  printf ("Got mss clamp reply error %d\n", rv);
+  printf ("Got ip path mtu reply error %d\n", rv);
   ck_assert_int_eq (rv, VAPI_OK);
   printf ("counter is %d", *counter);
   return VAPI_OK;
 }
 
 vapi_error_e
-vapi_mss_clamp_get_details_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
-			       vapi_error_e rv, bool is_last,
-			       vapi_payload_mss_clamp_details *details)
+vapi_ip_path_mtu_details_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
+			     vapi_error_e rv, bool is_last,
+			     vapi_payload_ip_path_mtu_details *details)
 {
   int *counter = callback_ctx;
   ++*counter;
   if (!is_last)
     {
-      printf ("Got ipv4 mss clamp to %u for sw_if_index %u\n",
-	      details->ipv4_mss, details->sw_if_index);
-      ck_assert_int_eq (details->ipv4_mss, 1000 + details->sw_if_index);
+      printf ("Got ip path mtu to %u for ip %d.%d.%d.%d\n",
+	      details->pmtu.path_mtu, details->pmtu.nh.un.ip4[0],
+	      details->pmtu.nh.un.ip4[1], details->pmtu.nh.un.ip4[2],
+	      details->pmtu.nh.un.ip4[3]);
+      ck_assert_int_eq (details->pmtu.path_mtu, 1420);
     }
-  printf ("counter is %d", *counter);
+  printf ("counter is %d\n", *counter);
   return VAPI_OK;
 }
 
@@ -570,36 +572,6 @@ START_TEST (test_loopbacks_1)
 	      mac_addresses[i][3], mac_addresses[i][4], mac_addresses[i][5],
 	      sw_if_indexes[i]);
     }
-
-  { // new context
-    for (int i = 0; i < num_ifs; ++i)
-      {
-	vapi_msg_mss_clamp_enable_disable *mc =
-	  vapi_alloc_mss_clamp_enable_disable (ctx);
-	mc->payload.sw_if_index = sw_if_indexes[i];
-	mc->payload.ipv4_mss = 1000 + sw_if_indexes[i];
-	mc->payload.ipv4_direction = MSS_CLAMP_DIR_RX;
-	bool reply_ctx = false;
-	printf ("Set ipv4 mss clamp to %u for sw_if_index %u\n",
-		mc->payload.ipv4_mss, mc->payload.sw_if_index);
-	vapi_error_e rv = vapi_mss_clamp_enable_disable (
-	  ctx, mc, vapi_mss_clamp_enable_disable_reply_cb, &reply_ctx);
-	ck_assert_int_eq (VAPI_OK, rv);
-	ck_assert_int_eq (reply_ctx, true);
-      }
-  }
-
-  { // new context
-    int counter = 0;
-    vapi_msg_mss_clamp_get *msg = vapi_alloc_mss_clamp_get (ctx);
-    msg->payload.sw_if_index = ~0;
-    vapi_error_e rv =
-      vapi_mss_clamp_get (ctx, msg, vapi_mss_clamp_get_reply_cb, &counter,
-			  vapi_mss_clamp_get_details_cb, &counter);
-    printf ("counter is %d", counter);
-    ck_assert_int_eq (VAPI_OK, rv);
-    ck_assert_int_eq (counter, num_ifs + 1);
-  }
 
   bool seen[num_ifs];
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
@@ -649,6 +621,47 @@ START_TEST (test_loopbacks_1)
     {
       ck_assert_int_eq (false, seen[i]);
     }
+}
+
+END_TEST;
+
+START_TEST (test_pmtu)
+{
+  printf ("--- Set ip_path_mtu to test stream rpc ---\n");
+  const int num_path_mtus = 5;
+
+  { // new context
+    for (int i = 0; i < num_path_mtus; ++i)
+      {
+	vapi_msg_ip_path_mtu_update *mc = vapi_alloc_ip_path_mtu_update (ctx);
+	mc->payload.pmtu.path_mtu = 1420;
+	mc->payload.pmtu.nh.af = ADDRESS_IP4;
+	mc->payload.pmtu.nh.un.ip4[0] = 10;
+	mc->payload.pmtu.nh.un.ip4[1] = 0;
+	mc->payload.pmtu.nh.un.ip4[2] = 0;
+	mc->payload.pmtu.nh.un.ip4[3] = i;
+	bool reply_ctx = false;
+	printf ("Set ip path mtu to %u for %d.%d.%d.%d\n",
+		mc->payload.pmtu.path_mtu, mc->payload.pmtu.nh.un.ip4[0],
+		mc->payload.pmtu.nh.un.ip4[1], mc->payload.pmtu.nh.un.ip4[2],
+		mc->payload.pmtu.nh.un.ip4[3]);
+	vapi_error_e rv = vapi_ip_path_mtu_update (
+	  ctx, mc, vapi_ip_path_mtu_update_reply_cb, &reply_ctx);
+	ck_assert_int_eq (VAPI_OK, rv);
+	ck_assert_int_eq (reply_ctx, true);
+      }
+  }
+
+  { // new context
+    int counter = 0;
+    vapi_msg_ip_path_mtu_get *msg = vapi_alloc_ip_path_mtu_get (ctx);
+    vapi_error_e rv =
+      vapi_ip_path_mtu_get (ctx, msg, vapi_ip_path_mtu_get_reply_cb, &counter,
+			    vapi_ip_path_mtu_details_cb, &counter);
+    printf ("counter is %d", counter);
+    ck_assert_int_eq (VAPI_OK, rv);
+    ck_assert_int_eq (counter, num_path_mtus + 1);
+  }
 }
 
 END_TEST;
@@ -1042,6 +1055,7 @@ test_suite (void)
   tcase_add_test (tc_block, test_show_version_1);
   tcase_add_test (tc_block, test_show_version_2);
   tcase_add_test (tc_block, test_loopbacks_1);
+  tcase_add_test (tc_block, test_pmtu);
   suite_add_tcase (s, tc_block);
 
   TCase *tc_nonblock = tcase_create ("Nonblocking API");
