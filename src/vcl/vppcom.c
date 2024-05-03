@@ -2087,7 +2087,16 @@ read_again:
   ASSERT (rv >= 0);
 
   if (peek)
-    return rv;
+    {
+      /* Request new notifications if more data enqueued */
+      if (rv < n || rv == svm_fifo_max_dequeue_cons (rx_fifo))
+	{
+	  if (is_ct)
+	    svm_fifo_unset_event (s->rx_fifo);
+	  svm_fifo_unset_event (rx_fifo);
+	}
+      return rv;
+    }
 
   n_read += rv;
 
