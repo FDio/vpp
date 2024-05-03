@@ -266,7 +266,7 @@ F:	src/plugins/map
 VNET MPLS
 I:	mpls
 M:	Neale Ranns <neale@graphiant.com>
-F:	src/vnet/mpls/
+F:	src/plugins/mpls/
 
 VNET BIER
 I:	bier
