@@ -25,12 +25,12 @@
 #include <vapi/vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
-#include <vapi/mss_clamp.api.vapi.hpp>
+#include <vapi/ip.api.vapi.hpp>
 #include <fake.api.vapi.hpp>
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
-DEFINE_VAPI_MSG_IDS_MSS_CLAMP_API_JSON;
+DEFINE_VAPI_MSG_IDS_IP_API_JSON;
 DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = nullptr;
@@ -147,51 +147,6 @@ START_TEST (test_loopbacks_1)
               mac_addresses[i][3], mac_addresses[i][4], mac_addresses[i][5],
               sw_if_indexes[i]);
     }
-
-  { // new context
-    for (int i = 0; i < num_ifs; ++i)
-      {
-	Mss_clamp_enable_disable d (con);
-	auto &req = d.get_request ().get_payload ();
-	req.sw_if_index = sw_if_indexes[i];
-	req.ipv4_mss = 1420;
-	req.ipv4_direction = vapi_enum_mss_clamp_dir::MSS_CLAMP_DIR_RX;
-	auto rv = d.execute ();
-	ck_assert_int_eq (VAPI_OK, rv);
-	WAIT_FOR_RESPONSE (d, rv);
-	ck_assert_int_eq (VAPI_OK, rv);
-      }
-  }
-
-  { // new context
-    bool seen[num_ifs] = { 0 };
-    Mss_clamp_get d (con);
-    d.get_request ().get_payload ().sw_if_index = ~0;
-    auto rv = d.execute ();
-    ck_assert_int_eq (VAPI_OK, rv);
-    WAIT_FOR_RESPONSE (d, rv);
-    ck_assert_int_eq (VAPI_OK, rv);
-    auto &rs = d.get_result_set ();
-    for (auto &r : rs)
-      {
-	auto &p = r.get_payload ();
-	ck_assert_int_eq (p.ipv4_mss, 1420);
-	printf ("tcp-clamp: sw_if_idx %u ip4-mss %d dir %d\n", p.sw_if_index,
-		p.ipv4_mss, p.ipv4_direction);
-	for (int i = 0; i < num_ifs; ++i)
-	  {
-	    if (sw_if_indexes[i] == p.sw_if_index)
-	      {
-		ck_assert_int_eq (0, seen[i]);
-		seen[i] = true;
-	      }
-	  }
-      }
-    for (int i = 0; i < num_ifs; ++i)
-      {
-	ck_assert_int_eq (1, seen[i]);
-      }
-  }
 
   { // new context
     bool seen[num_ifs] = {0};
@@ -435,6 +390,60 @@ START_TEST (test_unsupported)
 
 END_TEST;
 
+START_TEST (test_pmtu)
+{
+  printf ("--- Set ip_path_mtu to test stream rpc ---\n");
+  const auto num_path_mtus = 5;
+  { // new context
+    for (int i = 0; i < num_path_mtus; ++i)
+      {
+	Ip_path_mtu_update d (con);
+	auto &req = d.get_request ().get_payload ();
+	req.pmtu.path_mtu = 1420;
+	req.pmtu.nh.af = vapi_enum_address_family::ADDRESS_IP4;
+	req.pmtu.nh.un.ip4[0] = 10;
+	req.pmtu.nh.un.ip4[1] = 0;
+	req.pmtu.nh.un.ip4[2] = 0;
+	req.pmtu.nh.un.ip4[3] = i;
+	auto rv = d.execute ();
+	WAIT_FOR_RESPONSE (d, rv);
+	ck_assert_int_eq (VAPI_OK, rv);
+      }
+  }
+
+  { // new context
+    bool seen[num_path_mtus] = { 0 };
+    Ip_path_mtu_get d (con);
+    d.get_request ().get_payload ().cursor = 0;
+    auto rv = d.execute ();
+    ck_assert_int_eq (VAPI_OK, rv);
+    WAIT_FOR_RESPONSE (d, rv);
+    ck_assert_int_eq (VAPI_OK, rv);
+    auto &rs = d.get_result_set ();
+    for (auto &r : rs)
+      {
+	auto &p = r.get_payload ();
+	printf ("ip_path_mtu_get: mtu %hu ip %d.%d.%d.%d\n", p.pmtu.path_mtu,
+		p.pmtu.nh.un.ip4[0], p.pmtu.nh.un.ip4[1], p.pmtu.nh.un.ip4[2],
+		p.pmtu.nh.un.ip4[3]);
+	for (int i = 0; i < num_path_mtus; ++i)
+	  {
+	    if (i == p.pmtu.nh.un.ip4[3])
+	      {
+		ck_assert_int_eq (0, seen[i]);
+		seen[i] = true;
+	      }
+	  }
+      }
+    for (int i = 0; i < num_path_mtus; ++i)
+      {
+	ck_assert_int_eq (1, seen[i]);
+      }
+  }
+}
+
+END_TEST;
+
 Suite *test_suite (void)
 {
   Suite *s = suite_create ("VAPI test");
@@ -447,6 +456,7 @@ Suite *test_suite (void)
   tcase_add_test (tc_cpp_api, test_loopbacks_1);
   tcase_add_test (tc_cpp_api, test_loopbacks_2);
   tcase_add_test (tc_cpp_api, test_unsupported);
+  tcase_add_test (tc_cpp_api, test_pmtu);
   suite_add_tcase (s, tc_cpp_api);
 
   return s;
