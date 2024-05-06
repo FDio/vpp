@@ -1,16 +1,15 @@
 package main
 
 func init() {
-	registerVethTests(VppEchoQuicTest, VppEchoTcpTest, VppEchoUdpTest)
+	registerVethTests(VppEchoQuicTest, VppEchoTcpTest)
 }
 
 func VppEchoQuicTest(s *VethsSuite) {
 	s.testVppEcho("quic")
 }
 
-// udp echo currently broken in vpp, skipping
+// TODO: udp echo currently broken in vpp
 func VppEchoUdpTest(s *VethsSuite) {
-	s.skip("Broken")
 	s.testVppEcho("udp")
 }
 

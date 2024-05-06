@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 
@@ -106,6 +108,10 @@ func (vpp *VppInstance) getEtcDir() string {
 }
 
 func (vpp *VppInstance) start() error {
+	// Replace default logger in govpp with our own
+	govppLogger := logrus.New()
+	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().logger.Writer(), GinkgoWriter))
+	core.SetLogger(govppLogger)
 	// Create folders
 	containerWorkDir := vpp.container.getContainerWorkDir()
 
