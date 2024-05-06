@@ -197,6 +197,7 @@ vlib_api_init (void)
   cJSON_Hooks cjson_hooks = {
     .malloc_fn = clib_mem_alloc,
     .free_fn = clib_mem_free,
+    .realloc_fn = clib_mem_realloc,
   };
   cJSON_InitHooks (&cjson_hooks);
 
