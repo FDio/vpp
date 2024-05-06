@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e7ca1bc_698e50ef",
+        "filename": "src/plugins/dev_octeon/flow.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-06T10:15:21Z",
+      "side": 1,
+      "message": "please use definitions already present in vpp, see ethernet_type_t enum",
+      "revId": "e3ae80e3a0dcf7a750ecb9204fe173e52e9067a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4cb35a8e_08268a46",
+        "filename": "src/plugins/dev_octeon/flow.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-06T10:15:21Z",
+      "side": 1,
+      "message": "same, see ip_protocol_t enum",
+      "revId": "e3ae80e3a0dcf7a750ecb9204fe173e52e9067a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
