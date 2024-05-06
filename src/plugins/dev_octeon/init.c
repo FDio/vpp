@@ -51,7 +51,8 @@ static struct
   }
 
   _ (0xa063, RVU_PF, "Marvell Octeon Resource Virtualization Unit PF"),
-  _ (0xa0f8, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
+  _ (0xa064, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
+  _ (0xa0f8, LBK_VF, "Marvell Octeon Loopback Unit VF"),
   _ (0xa0f7, SDP_VF, "Marvell Octeon System DPI Packet Interface Unit VF"),
   _ (0xa0f3, CPT_VF, "Marvell Octeon Cryptographic Accelerator Unit VF"),
 #undef _
