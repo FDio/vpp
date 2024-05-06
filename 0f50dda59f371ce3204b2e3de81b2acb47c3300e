@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16188e96_f48976cb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2024-05-06T13:35:00Z",
+      "side": 1,
+      "message": "Parent (bad): https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/124/csit_parent/0/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2\nCurrent (good): https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-2n-clx/124/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2",
+      "revId": "0f50dda59f371ce3204b2e3de81b2acb47c3300e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
