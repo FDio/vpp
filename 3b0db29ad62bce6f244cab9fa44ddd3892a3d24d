@@ -33,6 +33,24 @@
       "message": "Here we should reply to client app that we errored out while trying to generate request.",
       "revId": "3b0db29ad62bce6f244cab9fa44ddd3892a3d24d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1d517df_41190cf4",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 837,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-06T06:55:46Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/c/vpp/+/40864",
+      "parentUuid": "8a5fb408_061ed50c",
+      "revId": "3b0db29ad62bce6f244cab9fa44ddd3892a3d24d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
