@@ -16,6 +16,24 @@
       "message": "Kindly help with review and merge. Thanks.\n\nI discovered this issue when I was trying to pin the main and worker cores to cpu numbers greater than 128.",
       "revId": "a64690381876eabcdba4a2e3660920c9380d9f8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25b540b8_9dff694b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-05-06T13:08:03Z",
+      "side": 1,
+      "message": "Thanks Vinod. The patch which modified core-pinning \u0026 introduced os_get_cpu_affinity_bitmap was recently reverted (https://gerrit.fd.io/r/c/vpp/+/40803). This issue should not be present anymore in master.",
+      "parentUuid": "6655ba09_9bec0f5d",
+      "revId": "a64690381876eabcdba4a2e3660920c9380d9f8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
