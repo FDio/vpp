@@ -365,7 +365,7 @@ class FromJSON:
             write("    char *p = cJSON_GetStringValue(item);\n")
             write("    size_t plen = strlen(p);\n")
             write(
-                "    {msgvar} = cJSON_realloc({msgvar}, {msgsize} + plen, {msgsize});\n".format(
+                "    {msgvar} = cJSON_realloc({msgvar}, {msgsize} + plen);\n".format(
                     msgvar=msgvar, msgsize=msgsize
                 )
             )
@@ -434,7 +434,7 @@ class FromJSON:
         cJSON *array = cJSON_GetObjectItem(o, "{n}");
         int size = cJSON_GetArraySize(array);
         {lfield} = size;
-        {realloc} = cJSON_realloc({realloc}, {msgsize} + sizeof({t}) * size, {msgsize});
+        {realloc} = cJSON_realloc({realloc}, {msgsize} + sizeof({t}) * size);
         {t} *d = (void *){realloc} + {msgsize};
         {msgsize} += sizeof({t}) * size;
         for (i = 0; i < size; i++) {{
@@ -461,12 +461,12 @@ class FromJSON:
 
                 write(
                     "    {realloc} = cJSON_realloc({realloc}, {msgsize} + "
-                    "vec_len(s), {msgsize});\n".format(
+                    "vec_len(s));\n".format(
                         msgvar=msgvar, msgsize=msgsize, realloc=realloc
                     )
                 )
                 write(
-                    "    memcpy((void *){realloc} + {msgsize}, s, "
+                    "    clib_memcpy((void *){realloc} + {msgsize}, s, "
                     "vec_len(s));\n".format(realloc=realloc, msgsize=msgsize)
                 )
                 write("    {msgsize} += vec_len(s);\n".format(msgsize=msgsize))
