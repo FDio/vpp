@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -42,6 +42,11 @@ type HstSuite struct {
 }
 
 func (s *HstSuite) SetupSuite() {
+	s.log("Suite Setup")
+	RegisterFailHandler(func(message string, callerSkip ...int) {
+		s.hstFail()
+		Fail(message, callerSkip...)
+	})
 	var err error
 	s.pid = fmt.Sprint(os.Getpid())
 	s.cpuAllocator, err = CpuAllocator()
@@ -63,10 +68,12 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 }
 
 func (s *HstSuite) TearDownSuite() {
+	s.log("Suite Teardown")
 	s.unconfigureNetworkTopology()
 }
 
 func (s *HstSuite) TearDownTest() {
+	s.log("Test Teardown")
 	if *isPersistent {
 		return
 	}
@@ -85,10 +92,7 @@ func (s *HstSuite) skipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
-	RegisterFailHandler(func(message string, callerSkip ...int) {
-		s.hstFail()
-		Fail(message, callerSkip...)
-	})
+	s.log("Test Setup")
 	s.skipIfUnconfiguring()
 	s.setupVolumes()
 	s.setupContainers()
@@ -110,7 +114,7 @@ func (s *HstSuite) setupContainers() {
 	}
 }
 
-func logVppInstance(container *Container, maxLines int) {
+func (s *HstSuite) logVppInstance(container *Container, maxLines int) {
 	if container.vppInstance == nil {
 		return
 	}
@@ -136,26 +140,26 @@ func logVppInstance(container *Container, maxLines int) {
 		}
 	}
 
-	fmt.Println("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
+	s.log("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
 	for _, line := range lines {
-		fmt.Println(line)
+		s.log(line)
 	}
-	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
+	s.log("^^^^^^^^^^^^^^^\n\n")
 }
 
 func (s *HstSuite) hstFail() {
-	fmt.Println("Containers: " + fmt.Sprint(s.containers))
+	s.log("Containers: " + fmt.Sprint(s.containers))
 	for _, container := range s.containers {
 		out, err := container.log(20)
 		if err != nil {
 			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
 			continue
 		}
-		fmt.Printf("\nvvvvvvvvvvvvvvv " +
+		s.log("\nvvvvvvvvvvvvvvv " +
 			container.name + ":\n" +
 			out +
 			"^^^^^^^^^^^^^^^\n\n")
-		logVppInstance(container, 20)
+		s.logVppInstance(container, 20)
 	}
 }
 
@@ -187,9 +191,14 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
+
 func (s *HstSuite) log(arg any) {
+	logs := strings.Split(fmt.Sprint(arg), "\n")
+	for _, line := range logs{
+		log.Println(line)
+	}
 	if *isVerbose {
-		slog.Info(fmt.Sprint(arg))
+		GinkgoWriter.Println(arg)
 	}
 }
 
