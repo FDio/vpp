@@ -35,6 +35,10 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <vppinfra/error.h>
 #include <vppinfra/os.h>
 #include <vppinfra/bitmap.h>
@@ -42,9 +46,15 @@
 #include <vppinfra/format.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+#include <sched.h>
 #elif defined(__FreeBSD__)
-#include <sys/sysctl.h>
+#define _WANT_FREEBSD_BITSET
+#include <sys/cdefs.h>
 #include <sys/param.h>
+#include <sys/types.h>
+#include <sys/cpuset.h>
+#include <sys/domainset.h>
+#include <sys/sysctl.h>
 #endif
 
 #include <sys/stat.h>
@@ -278,10 +288,70 @@ os_get_online_cpu_core_bitmap ()
 }
 
 __clib_export clib_bitmap_t *
+os_get_cpu_affinity_bitmap (int pid)
+{
+#if __linux
+  int index, ret;
+  cpu_set_t cpuset;
+  uword *affinity_cpus;
+
+  clib_bitmap_alloc (affinity_cpus, sizeof (cpu_set_t));
+  clib_bitmap_zero (affinity_cpus);
+
+  __CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
+
+  ret = sched_getaffinity (0, sizeof (cpu_set_t), &cpuset);
+
+  if (ret < 0)
+    {
+      clib_bitmap_free (affinity_cpus);
+      return 0;
+    }
+
+  for (index = 0; index < sizeof (cpu_set_t); index++)
+    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
+      clib_bitmap_set (affinity_cpus, index, 1);
+  return affinity_cpus;
+#elif defined(__FreeBSD__)
+  cpuset_t mask;
+  uword *r = NULL;
+
+  if (cpuset_getaffinity (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			  sizeof (mask), &mask) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, &mask));
+
+  return r;
+#else
+  return NULL;
+#endif
+}
+
+__clib_export clib_bitmap_t *
 os_get_online_cpu_node_bitmap ()
 {
 #if __linux__
   return clib_sysfs_read_bitmap ("/sys/devices/system/node/online");
+#elif defined(__FreeBSD__)
+  domainset_t domain;
+  uword *r = NULL;
+  int policy;
+
+  if (cpuset_getdomain (CPU_LEVEL_CPUSET, CPU_WHICH_CPUSET, -1,
+			sizeof (domain), &domain, &policy) != 0)
+    {
+      clib_bitmap_free (r);
+      return NULL;
+    }
+
+  for (int bit = 0; bit < CPU_SETSIZE; bit++)
+    clib_bitmap_set (r, bit, CPU_ISSET (bit, &domain));
+  return r;
 #else
   return 0;
 #endif
