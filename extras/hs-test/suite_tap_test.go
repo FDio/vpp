@@ -48,7 +48,9 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 		test := test
 		pc := reflect.ValueOf(test).Pointer()
 		funcValue := runtime.FuncForPC(pc)
-		It(strings.Split(funcValue.Name(), ".")[2], func(ctx SpecContext) {
+		testName := strings.Split(funcValue.Name(), ".")[2]
+		It(testName, func(ctx SpecContext) {
+			s.log(testName + ": BEGIN")
 			test(&s)
 		}, SpecTimeout(time.Minute*5))
 	}
@@ -73,7 +75,9 @@ var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		test := test
 		pc := reflect.ValueOf(test).Pointer()
 		funcValue := runtime.FuncForPC(pc)
-		It(strings.Split(funcValue.Name(), ".")[2], Label("SOLO"), func(ctx SpecContext) {
+		testName := strings.Split(funcValue.Name(), ".")[2]
+		It(testName, Label("SOLO"), func(ctx SpecContext) {
+			s.log(testName + ": BEGIN")
 			test(&s)
 		}, SpecTimeout(time.Minute*5))
 	}
