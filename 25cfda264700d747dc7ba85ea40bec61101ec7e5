@@ -68,6 +68,24 @@
       "parentUuid": "f9acc6ac_8f76c0d2",
       "revId": "25cfda264700d747dc7ba85ea40bec61101ec7e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4dddb799_9ca52f88",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-05-06T08:54:51Z",
+      "side": 1,
+      "message": "ahh, ok, in Openstack we write the re-no files for the patch which need one and for the release the doc is generated from those",
+      "parentUuid": "1de2d404_80ca2e31",
+      "revId": "25cfda264700d747dc7ba85ea40bec61101ec7e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
