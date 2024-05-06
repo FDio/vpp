@@ -69,6 +69,24 @@
       "parentUuid": "c3d22b4d_4ab2b124",
       "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18876eba_2f1e7d6f",
+        "filename": "src/vppinfra/unix-misc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-06T11:43:58Z",
+      "side": 1,
+      "message": "It does\u0027t read, it just takes vector element size (uword size in bits):\n\n#define BITS(x)         (8*sizeof(x))",
+      "parentUuid": "fad18715_fac1bcca",
+      "revId": "79e7145a8a640f21eeca7a9b73723f1627b05d84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
