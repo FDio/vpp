@@ -5,7 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -39,9 +40,17 @@ type HstSuite struct {
 	cpuContexts      []*CpuContext
 	cpuPerVpp        int
 	pid              string
+	logger			 *log.Logger
+	logFile			 *os.File
 }
 
 func (s *HstSuite) SetupSuite() {
+	s.createLogger()
+	s.log("Suite Setup")
+	RegisterFailHandler(func(message string, callerSkip ...int) {
+		s.hstFail()
+		Fail(message, callerSkip...)
+	})
 	var err error
 	s.pid = fmt.Sprint(os.Getpid())
 	s.cpuAllocator, err = CpuAllocator()
@@ -63,10 +72,13 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 }
 
 func (s *HstSuite) TearDownSuite() {
+	defer s.logFile.Close()
+	s.log("Suite Teardown")
 	s.unconfigureNetworkTopology()
 }
 
 func (s *HstSuite) TearDownTest() {
+	s.log("Test Teardown")
 	if *isPersistent {
 		return
 	}
@@ -85,10 +97,7 @@ func (s *HstSuite) skipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
-	RegisterFailHandler(func(message string, callerSkip ...int) {
-		s.hstFail()
-		Fail(message, callerSkip...)
-	})
+	s.log("Test Setup")
 	s.skipIfUnconfiguring()
 	s.setupVolumes()
 	s.setupContainers()
@@ -110,7 +119,7 @@ func (s *HstSuite) setupContainers() {
 	}
 }
 
-func logVppInstance(container *Container, maxLines int) {
+func (s *HstSuite) logVppInstance(container *Container, maxLines int) {
 	if container.vppInstance == nil {
 		return
 	}
@@ -136,26 +145,26 @@ func logVppInstance(container *Container, maxLines int) {
 		}
 	}
 
-	fmt.Println("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
+	s.log("vvvvvvvvvvvvvvv " + container.name + " [VPP instance]:")
 	for _, line := range lines {
-		fmt.Println(line)
+		s.log(line)
 	}
-	fmt.Printf("^^^^^^^^^^^^^^^\n\n")
+	s.log("^^^^^^^^^^^^^^^\n\n")
 }
 
 func (s *HstSuite) hstFail() {
-	fmt.Println("Containers: " + fmt.Sprint(s.containers))
+	s.log("Containers: " + fmt.Sprint(s.containers))
 	for _, container := range s.containers {
 		out, err := container.log(20)
 		if err != nil {
 			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
 			continue
 		}
-		fmt.Printf("\nvvvvvvvvvvvvvvv " +
+		s.log("\nvvvvvvvvvvvvvvv " +
 			container.name + ":\n" +
 			out +
 			"^^^^^^^^^^^^^^^\n\n")
-		logVppInstance(container, 20)
+		s.logVppInstance(container, 20)
 	}
 }
 
@@ -187,9 +196,25 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
+func (s *HstSuite) createLogger(){
+	suiteName := CurrentSpecReport().ContainerHierarchyTexts[0]
+	var err error
+	s.logFile, err = os.Create("summary/" + suiteName + ".log")
+	if err != nil {
+		Fail("Unable to create log file.")
+	}
+	s.logger = log.New(io.Writer(s.logFile), "", log.LstdFlags)
+}
+
+// Logs to files by default, logs to stdout when VERBOSE=true with GinkgoWriter
+// to keep console tidy
 func (s *HstSuite) log(arg any) {
+	logs := strings.Split(fmt.Sprint(arg), "\n")
+	for _, line := range logs {
+		s.logger.Println(line)
+	}
 	if *isVerbose {
-		slog.Info(fmt.Sprint(arg))
+		GinkgoWriter.Println(arg)
 	}
 }
 
@@ -266,7 +291,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Volumes {
 		volumeMap := elem["volume"].(VolumeConfig)
 		hostDir := volumeMap["host-dir"].(string)
-		workingVolumeDir := logDir + CurrentSpecReport().LeafNodeText + s.pid + volumeDir
+		workingVolumeDir := logDir + CurrentSpecReport().LeafNodeText + volumeDir
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		hostDir = volDirReplacer.Replace(hostDir)
 		s.volumes = append(s.volumes, hostDir)

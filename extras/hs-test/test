@@ -86,4 +86,6 @@ if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
     exit 1
 fi
 
-sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --no-color --trace $ginkgo_args -- $args
+mkdir -p summary
+
+sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --no-color --trace --json-report=summary/report.json $ginkgo_args -- $args
