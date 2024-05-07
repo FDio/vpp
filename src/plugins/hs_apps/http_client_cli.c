@@ -509,6 +509,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
+  os_panic();
   vec_free (hcm->appns_id);
   hcm->appns_id = appns_id;
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
