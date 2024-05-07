@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d728b066_2b179477",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 848,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-05-07T17:00:59Z",
+      "side": 1,
+      "message": "Technically, http1.1 supports pipelining but yes in the future we do hope to support http2 but not sure if with this code. But we can figure out how to handle it once we get there.",
+      "parentUuid": "9adab61e_c67ba524",
+      "revId": "5611149107898819032ff4dc713b18434f5fe965",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "41782ba4_0763f9e7",
