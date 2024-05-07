@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3c6862f_38e7565c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2024-05-07T14:48:55Z",
+      "side": 1,
+      "message": "I just tried to resolve some merge conflict but haven\u0027t tested this yet. I also need to test florin\u0027s recommandation.",
+      "revId": "0a0a95e362d7eba913823caa6336a0d0d522e19e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
