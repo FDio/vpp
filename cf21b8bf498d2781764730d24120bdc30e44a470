@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95eac4a6_7c8e6f7f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-07T11:58:17Z",
+      "side": 1,
+      "message": "Overall looks good apart MAINTAINERS",
+      "revId": "cf21b8bf498d2781764730d24120bdc30e44a470",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb141779_8808ef98",
+        "filename": "MAINTAINERS",
+        "patchSetId": 7
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-07T11:58:17Z",
+      "side": 1,
+      "message": "That\u0027s not the right one :) - you should update VNET Segment Routing (IPv6 and MPLS) not MPLS",
+      "revId": "cf21b8bf498d2781764730d24120bdc30e44a470",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
