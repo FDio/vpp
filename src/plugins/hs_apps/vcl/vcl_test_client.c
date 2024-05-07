@@ -226,7 +226,7 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
   return 0;
 }
 
-static int stats_lock = 0;
+static int stats_lock = 1;
 
 static void
 vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
