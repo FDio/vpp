@@ -1045,12 +1045,14 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_main_t *dm = &dpdk_main;
   clib_error_t *error = 0;
   dpdk_config_main_t *conf = &dpdk_config_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   dpdk_device_config_t *devconf;
   vlib_pci_addr_t pci_addr = { 0 };
   vlib_vmbus_addr_t vmbus_addr = { 0 };
   unformat_input_t sub_input;
+#ifdef __linux
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword default_hugepage_sz, x;
+#endif /* __linux__ */
   u8 *s, *tmp = 0;
   int ret, i;
   int num_whitelisted = 0;
@@ -1258,6 +1260,11 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     {
       vec_add1 (conf->eal_init_args, (u8 *) "--in-memory");
 
+#ifdef __linux__
+      /*
+       * FreeBSD performs huge page prealloc through a dedicated kernel mode
+       * this process is only required on Linux.
+       */
       default_hugepage_sz = clib_mem_get_default_hugepage_size ();
 
       clib_bitmap_foreach (x, tm->cpu_socket_bitmap)
@@ -1272,6 +1279,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
 	    clib_error_report (e);
         }
+#endif /* __linux__ */
     }
 
   /* on/off dpdk's telemetry thread */
