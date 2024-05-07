@@ -898,6 +898,13 @@ http_state_client_io_more_data (http_conn_t *hc, transport_send_params_t *sp)
   hc->to_recv -= rv;
   HTTP_DBG (1, "drained %d from ts; remains %d", rv, hc->to_recv);
 
+  if (hc->to_recv == 0)
+    {
+      hc->rx_buf_offset = 0;
+      vec_reset_length (hc->rx_buf);
+      http_state_change (hc, HTTP_STATE_WAIT_APP_METHOD);
+    }
+
   app_wrk = app_worker_get_if_valid (as->app_wrk_index);
   if (app_wrk)
     app_worker_rx_notify (app_wrk, as);
