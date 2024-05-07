@@ -34,7 +34,7 @@ func TcpWithLossTest(s *VethsSuite) {
 
 	// Ensure that VPP doesn't abort itself with NSIM enabled
 	// Warning: Removing this ping will make VPP crash!
-	clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
+	// clientVpp.vppctl("ping %s", serverVeth.ip4AddressString())
 
 	// Add loss of packets with Network Delay Simulator
 	clientVpp.vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 40 gbit" +
