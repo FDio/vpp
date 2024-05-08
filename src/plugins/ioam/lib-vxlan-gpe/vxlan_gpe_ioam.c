@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/format.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 #include <vnet/dpo/load_balance.h>

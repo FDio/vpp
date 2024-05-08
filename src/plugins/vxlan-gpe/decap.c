@@ -22,7 +22,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/udp/udp_local.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vxlan-gpe/vxlan_gpe.h>
 
 /**
  * @brief Struct for VXLAN GPE decap packet tracing
@@ -617,7 +617,7 @@ VLIB_NODE_FN (vxlan6_gpe_input_node) (vlib_main_t * vm,
  */
 static char *vxlan_gpe_error_strings[] = {
 #define vxlan_gpe_error(n,s) s,
-#include <vnet/vxlan-gpe/vxlan_gpe_error.def>
+#include <vxlan-gpe/vxlan_gpe_error.def>
 #undef vxlan_gpe_error
 #undef _
 };
