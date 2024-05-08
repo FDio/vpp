@@ -80,9 +80,9 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   clib_error_t *error;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
-  vxlan_gpe_main_t *gm = &vxlan_gpe_main;
   vxlan_gpe_tunnel_t *t = 0;
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
+  vxlan_gpe_main_t *gm = hm->gpe_main;
   u32 vni;
 
 
@@ -130,7 +130,8 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   clib_error_t *error;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
-  vxlan_gpe_main_t *gm = &vxlan_gpe_main;
+  vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
+  vxlan_gpe_main_t *gm = hm->gpe_main;
   vxlan_gpe_tunnel_t *t = 0;
   u32 vni;
 
@@ -214,6 +215,13 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
   vlib_node_t *vxlan_gpe_decap_node = NULL;
   uword next_node = 0;
 
+  sm->gpe_main =
+    vlib_get_plugin_symbol ("vxlan-gpe_plugin.so", "vxlan_gpe_main");
+  if (sm->gpe_main == 0)
+    {
+      return clib_error_return (0, "vxlan-gpe_plugin.so is not loaded");
+    }
+
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
   sm->unix_time_0 = (u32) time (0);	/* Store starting time */
@@ -231,7 +239,7 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
     vlib_get_node_by_name (vm, (u8 *) "vxlan4-gpe-input");
   next_node =
     vlib_node_add_next (vm, vxlan_gpe_decap_node->index, decap_node_index);
-  vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IOAM, next_node);
+  sm->gpe_main->register_decap_protocol (VXLAN_GPE_PROTOCOL_IOAM, next_node);
 
   vec_new (vxlan_gpe_ioam_sw_interface_t, pool_elts (sm->sw_interfaces));
   sm->dst_by_ip4 = hash_create_mem (0, sizeof (fib_prefix_t), sizeof (uword));
@@ -243,7 +251,9 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ioam_vxlan_gpe_init);
+VLIB_INIT_FUNCTION (ioam_vxlan_gpe_init) = {
+  .runs_after = VLIB_INITS ("vxlan_gpe_init"),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON
