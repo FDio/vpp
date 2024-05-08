@@ -750,29 +750,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES mpls/mpls.api)
 
 ##############################################################################
-# Tunnel protocol: vxlan-gpe
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  vxlan-gpe/vxlan_gpe.c
-  vxlan-gpe/encap.c
-  vxlan-gpe/decap.c
-  vxlan-gpe/vxlan_gpe_api.c
-)
-
-list (APPEND VNET_MULTIARCH_SOURCES
-  vxlan-gpe/decap.c
-)
-
-list(APPEND VNET_HEADERS
-  vxlan-gpe/vxlan_gpe.h
-  vxlan-gpe/vxlan_gpe_packet.h
-  vxlan-gpe/vxlan_gpe_error.def
-)
-
-list(APPEND VNET_API_FILES vxlan-gpe/vxlan_gpe.api)
-
-##############################################################################
 # ipv6 segment routing
 ##############################################################################
 

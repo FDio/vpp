@@ -80,7 +80,7 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   clib_error_t *error;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
-  vxlan_gpe_main_t *gm = &vxlan_gpe_main;
+  vxlan_gpe_main_t *gm = vxlan_gpe_main_plugin_sym;
   vxlan_gpe_tunnel_t *t = 0;
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   u32 vni;
@@ -130,7 +130,7 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   clib_error_t *error;
   vxlan4_gpe_tunnel_key_t key4;
   uword *p = NULL;
-  vxlan_gpe_main_t *gm = &vxlan_gpe_main;
+  vxlan_gpe_main_t *gm = vxlan_gpe_main_plugin_sym;
   vxlan_gpe_tunnel_t *t = 0;
   u32 vni;
 
@@ -213,6 +213,13 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
   vlib_node_t *vxlan_gpe_encap_node = NULL;
   vlib_node_t *vxlan_gpe_decap_node = NULL;
   uword next_node = 0;
+
+  vxlan_gpe_main_plugin_sym =
+    vlib_get_plugin_symbol ("vxlan_gpe_plugin.so", "vxlan_gpe_main");
+  if (vxlan_gpe_main_plugin_sym == 0)
+    {
+      return clib_error_return (0, "vxlan_gpe_plugin.so is not loaded");
+    }
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
