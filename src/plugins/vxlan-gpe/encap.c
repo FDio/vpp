@@ -23,7 +23,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/udp/udp_inlines.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vxlan-gpe/vxlan_gpe.h>
 
 /** Statistics (not really errors) */
 #define foreach_vxlan_gpe_encap_error    \
