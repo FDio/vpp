@@ -20,7 +20,7 @@
 #include <nsh/nsh.h>
 #include <gre/gre.h>
 #include <vxlan/vxlan.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/adj/adj.h>
 #include <vpp/app/version.h>
