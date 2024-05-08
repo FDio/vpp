@@ -15,8 +15,8 @@
 #ifndef __included_vxlan_gpe_ioam_packet_h__
 #define __included_vxlan_gpe_ioam_packet_h__
 
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip.h>
 
 
