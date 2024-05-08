@@ -17,7 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h>
@@ -71,7 +71,8 @@ vxlan_gpe_encap_ioam_v4 (vlib_main_t * vm,
 			 vlib_frame_t * from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  vxlan_gpe_main_t *ngm = &vxlan_gpe_main;
+  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
+  vxlan_gpe_main_t *ngm = sm->gpe_main;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;

@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <nsh/nsh_packet.h>
 #include <vnet/ip/ip4_packet.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 
 typedef struct {
   u16 class;
@@ -166,6 +167,10 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
+
+  /* vxlan gpe plugin */
+  vxlan_gpe_main_t *vgm;
+
 } nsh_main_t;
 
 extern nsh_main_t nsh_main;
