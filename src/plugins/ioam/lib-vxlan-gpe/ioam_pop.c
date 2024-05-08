@@ -17,7 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 
 /* Statistics (not really errors) */
@@ -231,7 +231,7 @@ vxlan_gpe_pop_ioam (vlib_main_t * vm,
 		    vlib_frame_t * from_frame, u8 is_ipv6)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  vxlan_gpe_main_t *ngm = &vxlan_gpe_main;
+  vxlan_gpe_main_t *ngm = vxlan_gpe_main_plugin_sym;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
