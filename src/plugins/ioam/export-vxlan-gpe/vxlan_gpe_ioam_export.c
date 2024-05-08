@@ -21,7 +21,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <ioam/export-common/ioam_export.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
