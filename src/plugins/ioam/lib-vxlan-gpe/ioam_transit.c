@@ -18,7 +18,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h>

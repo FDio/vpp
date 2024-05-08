@@ -23,13 +23,13 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/feature/feature.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vxlan-gpe/vxlan_gpe.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/format_fns.h>
 
 #include <vnet/ip/ip_types_api.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.api_enum.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.api_types.h>
+#include <vxlan-gpe/vxlan_gpe.api_enum.h>
+#include <vxlan-gpe/vxlan_gpe.api_types.h>
 
 #define REPLY_MSG_ID_BASE msg_id_base
 #include <vlibapi/api_helper_macros.h>

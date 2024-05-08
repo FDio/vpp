@@ -16,8 +16,8 @@
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe_packet.h>
 #include <ioam/export-common/ioam_export.h>
 
 typedef struct
