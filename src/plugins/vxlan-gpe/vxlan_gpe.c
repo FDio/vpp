@@ -17,7 +17,7 @@
  *  @brief Common utility functions for IPv4 and IPv6 VXLAN GPE tunnels
  *
 */
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vxlan-gpe/vxlan_gpe.h>
 #include <vnet/fib/fib.h>
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
@@ -44,7 +44,7 @@
  * You can refer to this kind of L2 overlay bridge domain as a VXLAN-GPE segment.
  */
 
-vxlan_gpe_main_t vxlan_gpe_main;
+vxlan_gpe_main_t vxlan_gpe_main __clib_export;
 
 static u8 *
 format_decap_next (u8 * s, va_list * args)
@@ -1212,11 +1212,13 @@ VNET_FEATURE_INIT (ip6_vxlan_gpe_bypass, static) =
  * @return error
  *
  */
-clib_error_t *
+__clib_export clib_error_t *
 vxlan_gpe_init (vlib_main_t * vm)
 {
   vxlan_gpe_main_t *ngm = &vxlan_gpe_main;
 
+  ngm->register_decap_protocol = vxlan_gpe_register_decap_protocol;
+  ngm->unregister_decap_protocol = vxlan_gpe_unregister_decap_protocol;
   ngm->vnet_main = vnet_get_main ();
   ngm->vlib_main = vm;
 

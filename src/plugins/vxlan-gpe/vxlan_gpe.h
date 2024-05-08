@@ -29,7 +29,7 @@
 #include <vnet/l2/l2_output.h>
 #include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
@@ -196,10 +196,13 @@ typedef enum
 typedef enum
 {
 #define vxlan_gpe_error(n,s) VXLAN_GPE_ERROR_##n,
-#include <vnet/vxlan-gpe/vxlan_gpe_error.def>
+#include <plugins/vxlan-gpe/vxlan_gpe_error.def>
 #undef vxlan_gpe_error
   VXLAN_GPE_N_ERROR,
 } vxlan_gpe_input_error_t;
+
+typedef void (*vxlan_gpe_register_decap_protocol_callback_t)(u8 protocol_id, uword next_node_index);
+typedef void (*vxlan_gpe_unregister_decap_protocol_callback_t)(u8 protocol_id, uword next_node_index);
 
 /** Struct for VXLAN GPE node state */
 typedef struct
@@ -233,6 +236,10 @@ typedef struct
 
   /** List of next nodes for the decap indexed on protocol */
   uword decap_next_node_list[VXLAN_GPE_PROTOCOL_MAX];
+
+  /* export callbacks to register/unregister decapsulation protocol */
+  vxlan_gpe_register_decap_protocol_callback_t register_decap_protocol;
+  vxlan_gpe_unregister_decap_protocol_callback_t unregister_decap_protocol;
 } vxlan_gpe_main_t;
 
 extern vxlan_gpe_main_t vxlan_gpe_main;
@@ -279,12 +286,8 @@ typedef enum
   VXLAN_GPE_ENCAP_N_NEXT
 } vxlan_gpe_encap_next_t;
 
-
-void vxlan_gpe_unregister_decap_protocol (u8 protocol_id,
-					  uword next_node_index);
-
-void vxlan_gpe_register_decap_protocol (u8 protocol_id,
-					uword next_node_index);
+void vxlan_gpe_register_decap_protocol(u8 protocol_id, uword next_node_index);
+void vxlan_gpe_unregister_decap_protocol(u8 protocol_id, uword next_node_index);
 
 void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6,
 				     u8 is_enable);

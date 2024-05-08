@@ -15,11 +15,10 @@
 #ifndef __included_vxlan_gpe_ioam_h__
 #define __included_vxlan_gpe_ioam_h__
 
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <vnet/ip/ip.h>
-
 
 typedef struct vxlan_gpe_sw_interface_
 {
@@ -100,7 +99,8 @@ typedef struct vxlan_gpe_ioam_main_
   vlib_main_t *vlib_main;
   /** State convenience vnet_main_t */
   vnet_main_t *vnet_main;
-
+  /** State convenience vxlan_gpe_main_t */
+  vxlan_gpe_main_t *gpe_main;
 
 } vxlan_gpe_ioam_main_t;
 extern vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;

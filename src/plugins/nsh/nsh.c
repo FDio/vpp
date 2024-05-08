@@ -20,7 +20,7 @@
 #include <nsh/nsh.h>
 #include <gre/gre.h>
 #include <vxlan/vxlan.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <plugins/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/adj/adj.h>
 #include <vpp/app/version.h>
@@ -182,7 +182,8 @@ nsh_md2_set_next_ioam_export_override (uword next)
 clib_error_t *
 nsh_init (vlib_main_t * vm)
 {
-  vlib_node_t *node, *gre4_input, *gre6_input;
+  vlib_node_t *node, *gre4_input, *gre6_input, *vxlan4_gpe_input,
+    *vxlan6_gpe_input;
   nsh_main_t *nm = &nsh_main;
   clib_error_t *error = 0;
   uword next_node;
@@ -222,20 +223,24 @@ nsh_init (vlib_main_t * vm)
 
   /* Add dispositions to nodes that feed nsh-input */
   //alagalah - validate we don't really need to use the node value
+  vxlan4_gpe_input = vlib_get_node_by_name (vm, (u8 *) "vxlan4-gpe-input");
+  vxlan6_gpe_input = vlib_get_node_by_name (vm, (u8 *) "vxlan6-gpe-input");
+  nm->vgm = vlib_get_plugin_symbol ("vxlan-gpe_plugin.so", "vxlan_gpe_main");
+  if (vxlan4_gpe_input == 0 || vxlan6_gpe_input == 0 || nm->vgm == 0)
+    {
+      error = clib_error_return (0, "vxlan_gpe_plugin.so is not loaded");
+      return error;
+    }
   next_node =
-    vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
-			nm->nsh_input_node_index);
-  vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
-		      nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
+    vlib_node_add_next (vm, vxlan4_gpe_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, vxlan4_gpe_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, vxlan4_gpe_input->index,
 		      nsh_aware_vnf_proxy_node.index);
-  vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_NSH, next_node);
+  nm->vgm->register_decap_protocol (VXLAN_GPE_PROTOCOL_NSH, next_node);
 
-  vlib_node_add_next (vm, vxlan6_gpe_input_node.index,
-		      nm->nsh_input_node_index);
-  vlib_node_add_next (vm, vxlan6_gpe_input_node.index,
-		      nm->nsh_proxy_node_index);
-  vlib_node_add_next (vm, vxlan6_gpe_input_node.index,
+  vlib_node_add_next (vm, vxlan6_gpe_input->index, nm->nsh_input_node_index);
+  vlib_node_add_next (vm, vxlan6_gpe_input->index, nm->nsh_proxy_node_index);
+  vlib_node_add_next (vm, vxlan6_gpe_input->index,
 		      nsh_aware_vnf_proxy_node.index);
 
   gre4_input = vlib_get_node_by_name (vm, (u8 *) "gre4-input");
@@ -280,7 +285,9 @@ nsh_init (vlib_main_t * vm)
   return error;
 }
 
-VLIB_INIT_FUNCTION (nsh_init);
+VLIB_INIT_FUNCTION (nsh_init) = {
+    .runs_after = VLIB_INITS ("vxlan_gpe_init"),
+};
 
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
