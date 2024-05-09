@@ -521,17 +521,19 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
   http_msg_t msg = {};
   app_worker_t *app_wrk;
   session_t *as;
-  http_status_code_t ec;
 
   rv = http_read_message (hc);
 
   /* Nothing yet, wait for data or timer expire */
   if (rv)
-    return HTTP_SM_STOP;
+    {
+      HTTP_DBG (1, "no data to deq");
+      return HTTP_SM_STOP;
+    }
 
   if (vec_len (hc->rx_buf) < 8)
     {
-      ec = HTTP_STATUS_BAD_REQUEST;
+      clib_warning ("response buffer too short");
       goto error;
     }
 
@@ -547,9 +549,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
       if (rv)
 	{
 	  clib_warning ("failed to parse http reply");
-	  session_transport_closing_notify (&hc->connection);
-	  http_disconnect_transport (hc);
-	  return -1;
+	  goto error;
 	}
       msg.data.len = content_length;
       u32 dlen = vec_len (hc->rx_buf) - hc->rx_buf_offset;
@@ -592,16 +592,14 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
     }
   else
     {
-      HTTP_DBG (0, "Unknown http method %v", hc->rx_buf);
-      ec = HTTP_STATUS_METHOD_NOT_ALLOWED;
+      clib_warning ("Unknown http method %v", hc->rx_buf);
       goto error;
     }
 
 error:
-  http_send_error (hc, ec);
   session_transport_closing_notify (&hc->connection);
+  session_transport_closed_notify (&hc->connection);
   http_disconnect_transport (hc);
-
   return HTTP_SM_ERROR;
 }
 
