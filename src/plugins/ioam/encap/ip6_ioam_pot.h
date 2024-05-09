@@ -18,10 +18,11 @@
 
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 
+#define PROFILE_ID_MASK 0xF
+
 typedef CLIB_PACKED (struct {
   ip6_hop_by_hop_option_t hdr;
   u8 pot_type;
-  #define PROFILE_ID_MASK 0xF
   u8 reserved_profile_id;	/* 4 bits reserved, 4 bits to carry profile id */
   u64 random;
   u64 cumulative;
