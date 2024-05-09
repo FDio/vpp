@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80d57347_2f9b1800",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-05-09T23:55:06Z",
+      "side": 1,
+      "message": "The original API pre-dates the support for `enumflag` in .api files, i think that would be a good candidate here.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "28546c02_18844f07",
+        "filename": "src/vnet/ip6-nd/ip6_ra.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2024-05-09T23:55:06Z",
+      "side": 1,
+      "message": "i don\u0027t think introducing an internal function that is `_v2` is a good idea. instead have a common internal API that is used by both the external API versions.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
