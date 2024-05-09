@@ -246,13 +246,13 @@ typedef CLIB_PACKED (struct
     u8 data[0];
 }) icmp6_neighbor_discovery_option_header_t;
 
+#define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_FLAG_ON_LINK (1 << 7)
+#define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_AUTO	 (1 << 6)
 typedef CLIB_PACKED (struct
 {
     icmp6_neighbor_discovery_option_header_t header;
     u8 dst_address_length;
     u8 flags;
-#define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_FLAG_ON_LINK (1 << 7)
-#define ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_AUTO (1 << 6)
     u32 valid_time;
     u32 preferred_time;
     u32 unused; ip6_address_t dst_address;
@@ -299,6 +299,8 @@ typedef CLIB_PACKED (struct
     icmp46_header_t icmp; u32 reserved_must_be_zero;
 }) icmp6_neighbor_discovery_header_t;
 
+#define ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP (1 << 7)
+#define ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP   (1 << 6)
 /* Router advertisement packet formats. */
 typedef CLIB_PACKED (struct
 {
@@ -306,8 +308,6 @@ typedef CLIB_PACKED (struct
     /* Current hop limit to use for outgoing packets. */
     u8 current_hop_limit;
     u8 flags;
-#define ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP (1 << 7)
-#define ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP (1 << 6)
     /* Zero means unspecified. */
     u16 router_lifetime_in_sec;
     /* Zero means unspecified. */
@@ -318,17 +318,17 @@ typedef CLIB_PACKED (struct
     /* Options that may follow: source_link_layer_address, mtu, prefix_information. */
 }) icmp6_router_advertisement_header_t;
 
+/* Set when sent by a router. */
+#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER (1 << 31)
+/* Set when response to solicitation. */
+#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED (1 << 30)
+#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE  (1 << 29)
 /* Neighbor solicitation/advertisement header. */
 typedef CLIB_PACKED (struct
 {
     icmp46_header_t icmp;
     /* Zero for solicitation; flags for advertisement. */
     u32 advertisement_flags;
-    /* Set when sent by a router. */
-#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER (1 << 31)
-    /* Set when response to solicitation. */
-#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED (1 << 30)
-#define ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE (1 << 29)
     ip6_address_t target_address;
     /* Options that may follow: source_link_layer_address
        (for solicitation) target_link_layer_address (for advertisement). */
