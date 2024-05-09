@@ -433,8 +433,8 @@ typedef CLIB_PACKED (struct {
   u8 data[0];
 }) ip6_padN_option_t;
 
+#define IP6_MLDP_ALERT_TYPE 0x5
 typedef CLIB_PACKED (struct {
-#define IP6_MLDP_ALERT_TYPE  0x5
   u8 type;
   u8 len;
   u16 value;
