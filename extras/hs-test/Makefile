@@ -50,6 +50,7 @@ list_tests = @go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --
 help:
 	@echo "Make targets:"
 	@echo " test                 - run tests"
+	@echo " test-debug           - run tests (vpp debug image)"
 	@echo " build                - build test infra"
 	@echo " build-debug          - build test infra (vpp debug image)"
 	@echo " build-go             - just build golang files"
@@ -89,8 +90,17 @@ build-vpp-debug:
 .build.ok: build
 	@touch .build.ok
 
+.build_debug.ok: build-debug
+	@touch .build.ok
+
 .PHONY: test
 test: .deps.ok .build.ok
+	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
+		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
+
+.PHONY: test-debug
+test-debug: .deps.ok .build_debug.ok
 	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
