@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -13,7 +14,9 @@ func init() {
 	registerNsTests(HttpTpsTest)
 	registerVethTests(HttpCliTest)
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
-		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest)
+		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
+		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
+		HttpCliBadRequestTest)
 	registerNoTopoSoloTests(HttpStaticPromTest)
 }
 
@@ -91,19 +94,79 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.assertNil(err)
 }
 
-func HeaderServerTest(s *NoTopoSuite) {
-	query := "show/version"
+func HttpStaticMovedTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	vpp.container.exec("mkdir -p /tmp/tmp.aaa")
+	vpp.container.createFile("/tmp/tmp.aaa/index.html", "<http><body><p>Hello</p></body></http>")
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/tmp.aaa", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(301, resp.StatusCode)
+	s.assertNotEqual("", resp.Header.Get("Location"))
+}
+
+func HttpStaticNotFoundTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/notfound.html", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := http.DefaultClient.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(404, resp.StatusCode)
+}
+
+func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	vpp := s.getContainerByName("vpp").vppInstance
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
-	curlCont := s.getContainerByName("curl")
-	args := fmt.Sprintf("curl -i -s http://%s:80/%s", serverAddress, query)
-	curlCont.extraRunningArgs = args
-	o, err := curlCont.combinedOutput()
+	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test", nil)
 	s.assertNil(err, fmt.Sprint(err))
-	s.log(o)
-	s.assertContains(o, "Server: http_cli_server")
+	resp, err := http.DefaultClient.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(405, resp.StatusCode)
+	// TODO: need to be fixed in http code
+	//s.assertNotEqual("", resp.Header.Get("Allow"))
+}
+
+func HttpCliBadRequestTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := http.DefaultClient.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(400, resp.StatusCode)
+}
+
+func HeaderServerTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := http.DefaultClient.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual("http_cli_server", resp.Header.Get("Server"))
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
