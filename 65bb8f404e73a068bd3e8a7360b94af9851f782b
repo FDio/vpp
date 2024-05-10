@@ -33,6 +33,24 @@
       "message": "Thanks for the improvement",
       "revId": "65bb8f404e73a068bd3e8a7360b94af9851f782b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0770ccfc_755b79a2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-10T21:39:46Z",
+      "side": 1,
+      "message": "CI jobs \u0026 infra upgrade to Ubuntu 24.04 Noble Numbat is targeted for VPP Release 24.10.  This is both to allow enough time for 24.04.1 to be released as well as to allow time to upgrade all of the servers for CI \u0026 CSIT.  Active upgrades will begin soon after VPP 24.06 Release is complete.\n\nEarly testing feedback is appreciated and Damjan has fixed the VPP to build using the Noble toolchain versions.",
+      "parentUuid": "5871d741_8ee4227b",
+      "revId": "65bb8f404e73a068bd3e8a7360b94af9851f782b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
