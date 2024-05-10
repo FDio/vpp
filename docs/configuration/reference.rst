@@ -1606,6 +1606,15 @@ trace is disabled.
 
    memory-trace
 
+seed <n>
+^^^^^^^^
+
+Allows user to specify seed to make random sequence deterministic.
+
+.. code-block:: console
+
+   seed 0x12345
+
 elog-events <n>
 ^^^^^^^^^^^^^^^
 
