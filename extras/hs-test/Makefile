@@ -1,3 +1,4 @@
+export HS_ROOT=$(CURDIR)
 
 ifeq ($(VERBOSE),)
 VERBOSE=false
@@ -95,17 +96,21 @@ build-vpp-debug:
 
 .PHONY: test
 test: .deps.ok .build.ok
+	# '-' ignores the exit status, it is set in compress.sh
+	# necessary so gmake won't skip executing the bash script
 	-bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
-	$(call jq-summary)
 	@bash ./script/compress.sh
 
 .PHONY: test-debug
 test-debug: .deps.ok .build_debug.ok
-	@bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
+	# '-' ignores the exit status, it is set in compress.sh
+	# necessary so gmake won't skip executing the bash script
+	-bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
+	@bash ./script/compress.sh
 
 .PHONY: build-go
 build-go:
@@ -144,7 +149,3 @@ install-deps:
 fixstyle:
 	@gofmt -w .
 	@go mod tidy
-
-# splitting this into multiple lines breaks the command
-jq-summary = @jq -r '.[0] | .SpecReports[] | select(.State == "failed") | select(.Failure != null) | "TestName: \(.LeafNodeText)\nMessage:\n\(.Failure.Message)\n Full Stack Trace:\n\(.Failure.Location.FullStackTrace)\n"' summary/report.json > summary/failed-summary.log \
-	&& echo "Summary generated -> failed-summary.log"
