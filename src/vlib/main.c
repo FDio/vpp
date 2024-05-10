@@ -1759,6 +1759,8 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "memory-trace"))
 	turn_on_mem_trace = 1;
 
+      else if (unformat (input, "seed %x", &vm->random_seed))
+	;
       else if (unformat (input, "elog-events %d",
 			 &vgm->configured_elog_ring_size))
 	vgm->configured_elog_ring_size =
@@ -1909,8 +1911,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vlib_register_all_static_nodes (vm);
 
   /* Set seed for random number generator.
-     Allow user to specify seed to make random sequence deterministic. */
-  if (!unformat (input, "seed %wd", &vm->random_seed))
+     If user doesn't specify seed, use cpu time instead. */
+  if (!vm->random_seed)
     vm->random_seed = clib_cpu_time_now ();
   clib_random_buffer_init (&vm->random_buffer, vm->random_seed);
 
