@@ -146,5 +146,5 @@ fixstyle:
 	@go mod tidy
 
 # splitting this into multiple lines breaks the command
-jq-summary = @jq -r '.[0] | .SpecReports[] | select(.State == "failed") | select(.Failure != null) | "TestName: \(.LeafNodeText)\nMessage:\n\(.Failure.Message)\n Full Stack Trace:\n\(.Failure.Location.FullStackTrace)\n"' summary/report.json > summary/failed-summary.log \
+jq-summary = @jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) | "TestName: \(.LeafNodeText)\nMessage:\n\(.Failure.Message)\n Full Stack Trace:\n\(.Failure.Location.FullStackTrace)\n"' summary/report.json > summary/failed-summary.log \
 	&& echo "Summary generated -> failed-summary.log"
