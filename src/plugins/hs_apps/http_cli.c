@@ -323,6 +323,13 @@ hcs_ts_rx_callback (session_t *ts)
       return 0;
     }
 
+  if (msg.data.len == 0)
+    {
+      hs->tx_buf = 0;
+      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+      return 0;
+    }
+
   /* send the command to a new/recycled vlib process */
   vec_validate (args.buf, msg.data.len - 1);
   rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, args.buf);
