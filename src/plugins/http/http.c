@@ -740,6 +740,10 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
 
   switch (msg.code)
     {
+    case HTTP_STATUS_NOT_FOUND:
+    case HTTP_STATUS_METHOD_NOT_ALLOWED:
+    case HTTP_STATUS_BAD_REQUEST:
+    case HTTP_STATUS_INTERNAL_ERROR:
     case HTTP_STATUS_OK:
       header =
 	format (0, http_response_template, http_status_code_str[msg.code],
@@ -760,6 +764,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       /* Location: http(s)://new-place already queued up as data */
       break;
     default:
+      clib_warning ("unsupported status code: %d", msg.code);
       return HTTP_SM_ERROR;
     }
 
