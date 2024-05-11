@@ -2734,11 +2734,18 @@ epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout)
 int
 poll (struct pollfd *fds, nfds_t nfds, int timeout)
 {
-  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   int rv, i, n_revents = 0;
+  ldp_worker_ctx_t *ldpw;
   vls_handle_t vlsh;
   vcl_poll_t *vp;
   double max_time;
+
+  ldp_init_check ();
+
+  if (PREDICT_FALSE (vppcom_worker_index () == ~0))
+    vls_register_vcl_worker ();
+
+  ldpw = ldp_worker_get_current ();
 
   LDBG (3, "fds %p, nfds %ld, timeout %d", fds, nfds, timeout);
 
@@ -2780,7 +2787,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
     {
       if (vec_len (ldpw->vcl_poll))
 	{
-	  rv = vppcom_poll (ldpw->vcl_poll, vec_len (ldpw->vcl_poll), 0);
+	  rv = vls_poll (ldpw->vcl_poll, vec_len (ldpw->vcl_poll), 0);
 	  if (rv < 0)
 	    {
 	      errno = -rv;

@@ -48,6 +48,7 @@ int vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 		    int maxevents, double wait_for_time);
 int vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
 		vcl_si_set * except_map, double wait_for_time);
+int vls_poll (vcl_poll_t *vp, uint32_t n_sids, double wait_for_time);
 vcl_session_handle_t vlsh_to_sh (vls_handle_t vlsh);
 vcl_session_handle_t vlsh_to_session_index (vls_handle_t vlsh);
 int vlsh_to_worker_index (vls_handle_t vlsh);
