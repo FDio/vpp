@@ -34,6 +34,23 @@
       "parentUuid": "dfe3b2ef_de8fa4e3",
       "revId": "9d136c9a1f82013da1b35a20aa62d979c062b448",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f3e1b94_c765c7a9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-05-11T09:49:09Z",
+      "side": 1,
+      "message": "Hello guys,\nCould you review this patch?",
+      "revId": "9d136c9a1f82013da1b35a20aa62d979c062b448",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
