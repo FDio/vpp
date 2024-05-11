@@ -1626,6 +1626,20 @@ vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   return rv;
 }
 
+int
+vls_poll (vcl_poll_t *vp, uint32_t n_sids, double wait_for_time)
+{
+  int rv;
+  vcl_locked_session_t *vls = NULL;
+
+  vls_mt_detect ();
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
+  rv = vppcom_poll (vp, n_sids, wait_for_time);
+  vls_mt_unguard ();
+  vls_handle_pending_wrk_cleanup ();
+  return rv;
+}
+
 static void
 vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
 {
@@ -1752,12 +1766,12 @@ done:
       void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
       fn (signum, si, uc);
     }
-  else
-    {
-      void (*fn) (int) = old_sa.sa_handler;
-      if (fn)
-	fn (signum);
-    }
+  //   else
+  //     {
+  //       void (*fn) (int) = old_sa.sa_handler;
+  //       if (fn)
+  // 	fn (signum);
+  //     }
 }
 
 static void
