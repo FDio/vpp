@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "16d668e8_ab1a1895",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-05-13T08:03:35Z",
+      "side": 1,
+      "message": "Thanks for review Neale! Just to be sure if I understood you well. Are you\u0027re suggesting to use enumflag so the API could set any option one-by-one?",
+      "parentUuid": "80d57347_2f9b1800",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "28546c02_18844f07",
         "filename": "src/vnet/ip6-nd/ip6_ra.h",
         "patchSetId": 2
@@ -31,6 +49,24 @@
       "writtenOn": "2024-05-09T23:55:06Z",
       "side": 1,
       "message": "i don\u0027t think introducing an internal function that is `_v2` is a good idea. instead have a common internal API that is used by both the external API versions.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "28939ad6_e3cda91e",
+        "filename": "src/vnet/ip6-nd/ip6_ra.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2024-05-13T08:03:35Z",
+      "side": 1,
+      "message": "So regarding your previous comment about enumflag, we could have something like ip6_ra_config_flag.. Sounds good",
+      "parentUuid": "28546c02_18844f07",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
