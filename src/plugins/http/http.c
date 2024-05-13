@@ -267,17 +267,21 @@ http_ts_connected_callback (u32 http_app_index, u32 ho_hc_index, session_t *ts,
   app_worker_t *app_wrk;
   int rv;
 
+  ho_hc = http_conn_get_w_thread (ho_hc_index, 0);
+  ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
+
   if (err)
     {
-      clib_warning ("ERROR: %d", err);
+      clib_warning ("half-open hc index %d, error: %U", ho_hc_index,
+		    format_session_error, err);
+      app_wrk = app_worker_get_if_valid (ho_hc->h_pa_wrk_index);
+      if (app_wrk)
+	app_worker_connect_notify (app_wrk, 0, err, ho_hc->h_pa_app_api_ctx);
       return 0;
     }
 
   new_hc_index = http_conn_alloc_w_thread (ts->thread_index);
   hc = http_conn_get_w_thread (new_hc_index, ts->thread_index);
-  ho_hc = http_conn_get_w_thread (ho_hc_index, 0);
-
-  ASSERT (ho_hc->state == HTTP_CONN_STATE_CONNECTING);
 
   clib_memcpy_fast (hc, ho_hc, sizeof (*hc));
 

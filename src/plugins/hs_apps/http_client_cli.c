@@ -67,6 +67,7 @@ typedef enum
 {
   HCC_REPLY_RECEIVED = 100,
   HCC_TRANSPORT_CLOSED,
+  HCC_CONNECT_FAILED,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -135,6 +136,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
     {
       clib_warning ("connected error: hc_index(%d): %U", hc_index,
 		    format_session_error, err);
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
+				    HCC_CONNECT_FAILED, 0);
       return -1;
     }
 
@@ -424,6 +427,9 @@ hcc_run (vlib_main_t *vm, int print_output)
       break;
     case HCC_TRANSPORT_CLOSED:
       err = clib_error_return (0, "error, transport closed");
+      break;
+    case HCC_CONNECT_FAILED:
+      err = clib_error_return (0, "failed to connect");
       break;
     default:
       err = clib_error_return (0, "unexpected event %d", event_type);

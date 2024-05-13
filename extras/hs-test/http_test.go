@@ -11,7 +11,7 @@ import (
 
 func init() {
 	registerNsTests(HttpTpsTest)
-	registerVethTests(HttpCliTest)
+	registerVethTests(HttpCliTest, HttpCliConnectErrorTest)
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
 		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest)
 	registerNoTopoSoloTests(HttpStaticPromTest)
@@ -53,6 +53,20 @@ func HttpCliTest(s *VethsSuite) {
 
 	s.log(o)
 	s.assertContains(o, "<html>", "<html> not found in the result!")
+}
+
+func HttpCliConnectErrorTest(s *VethsSuite) {
+	clientContainer := s.getContainerByName("client-vpp")
+
+	serverVeth := s.getInterfaceByName(serverInterfaceName)
+
+	uri := "http://" + serverVeth.ip4AddressString() + "/80"
+
+	o := clientContainer.vppInstance.vppctl("http cli client" +
+		" uri " + uri + " query /show/vlib/graph")
+
+	s.log(o)
+	s.assertContains(o, "failed to connect")
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
