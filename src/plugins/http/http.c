@@ -378,7 +378,7 @@ static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Content-Length: %lu\r\n\r\n";
 
 static const char *http_request_template = "GET %s HTTP/1.1\r\n"
-					   "User-Agent: VPP HTTP client\r\n"
+					   "User-Agent: %s\r\n"
 					   "Accept: */*\r\n";
 
 static u32
@@ -819,7 +819,7 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
   rv = svm_fifo_dequeue (as->tx_fifo, msg.data.len, buf);
   ASSERT (rv == msg.data.len);
 
-  request = format (0, http_request_template, buf);
+  request = format (0, http_request_template, buf, hc->app_name);
   offset = http_send_data (hc, request, vec_len (request), 0);
   if (offset != vec_len (request))
     {
@@ -1156,6 +1156,11 @@ http_transport_connect (transport_endpoint_cfg_t *tep)
   hc->h_pa_app_api_ctx = sep->opaque;
   hc->state = HTTP_CONN_STATE_CONNECTING;
   cargs->api_context = hc_index;
+
+  if (vec_len (app->name))
+    hc->app_name = vec_dup (app->name);
+  else
+    hc->app_name = format (0, "VPP HTTP client");
 
   HTTP_DBG (1, "hc ho_index %x", hc_index);
 
