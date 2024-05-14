@@ -36,6 +36,7 @@
 */
 
 #include <vppinfra/format.h>
+#include <vnet/pg/edit.h>
 #include <fcntl.h>
 
 /* Call user's function to fill input buffer. */
@@ -296,6 +297,9 @@ unformat_hex_string (unformat_input_t * input, va_list * va)
     {
       return 0;
     }
+
+  if (!unformat_is_eof (input))
+    unformat_user (input, unformat_pg_payload, s);
 
   *hexstring_return = s;
   return 1;
