@@ -179,6 +179,9 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
 
   e->values[PG_EDIT_LO] = v;
 
+  if (!unformat_is_eof (input))
+    unformat_user (input, unformat_pg_payload, s);
+
   return 1;
 }
 
