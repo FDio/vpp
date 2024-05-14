@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9953ccf3_7176c843",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-14T07:23:31Z",
+      "side": 1,
+      "message": "Does this really fix the issue? uninitialised pointer or null pointer - what\u0027s the difference....",
+      "revId": "450acb6427e6e917f30fb81b0873505c936cad59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
