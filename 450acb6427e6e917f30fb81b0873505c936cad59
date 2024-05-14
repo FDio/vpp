@@ -34,6 +34,24 @@
       "parentUuid": "9953ccf3_7176c843",
       "revId": "450acb6427e6e917f30fb81b0873505c936cad59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8196ebc0_18207704",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-14T09:35:02Z",
+      "side": 1,
+      "message": "Coverity reported data_buf[bi] may be uninitialized (which is extremely unlikely) and may be randomly written an error value. The fix first initializes data_buf, and then checks if data_buf[bi] is NULL before writting (in debug mode only, again I consider it is not properly set is very unlikely).",
+      "parentUuid": "5f1aebb6_9a2dd53a",
+      "revId": "450acb6427e6e917f30fb81b0873505c936cad59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
