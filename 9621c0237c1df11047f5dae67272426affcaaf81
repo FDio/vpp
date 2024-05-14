@@ -85,6 +85,24 @@
       "message": "I fully agree with the goal of having a simpler ike implementation.\nWhat about always handoff to the 1st worker instead? I\u0027d feel more comfortable than main thread processing packets...",
       "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "828fad9a_2fd3793d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-05-14T16:42:11Z",
+      "side": 1,
+      "message": "my main concert is that I won\u0027t be able to simplify a couple of things I wanted to simplify. (e.g. get rid of vl_api_rpc_call_main_thread and atomics).\n\nalso (concerning my next patches for ikev2), it\u0027d be a bit more difficult to do a cleanup of old remote ids. I noticed that sometimes phase 2 expires, than immediately expires phase 1 and strongswan asks for a phase 2 rekey again. while we still have an old remote id present - the current implementation fails to process this request and sessions goes to unknown state. I fixed that by calling the cleanup directly from rekeying code when this is the case (this works fine if we are executing it on main thread).\n\nmy last argument would be - look, the wireguard plugin has the similar approach with handing off packets to main thread :) \n\nbut if you say you\u0027d be more comfortable with control packets on the 1st worker only - so it is. I will rework this patch later this week.\n\nPS I also thought about keeping current behaviour with sessions mapped to 1 worker, but I don\u0027t see a simple proper solution for that:\n* we can\u0027t dispatch stateless-ly based on rpsi (e.g. next_worker \u003d rspi % workers_num ) - since phase 1 rekeying change the rspi and packets could get processed by another worker\n* basic hash table isn\u0027t thread safe, so the only way to maintain one hash table to determine the next worker is clib_bihash. this looks like an overkill to me.",
+      "parentUuid": "bb479e44_9be19807",
+      "revId": "9621c0237c1df11047f5dae67272426affcaaf81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
