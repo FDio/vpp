@@ -824,6 +824,13 @@ http_state_wait_app_method (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
+  /* currently we support only GET method */
+  if (msg.method_type != HTTP_REQ_GET)
+    {
+      clib_warning ("unsupported method %d", msg.method_type);
+      goto error;
+    }
+
   vec_validate (buf, msg.data.len - 1);
   rv = svm_fifo_dequeue (as->tx_fifo, msg.data.len, buf);
   ASSERT (rv == msg.data.len);
