@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4a505c86_66546f31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2024-05-14T09:00:58Z",
+      "side": 1,
+      "message": "The patch to improve core-pinning (https://gerrit.fd.io/r/c/vpp/+/40606) was reverted after issues were reported with CPU configuration keywords (revert commit: https://gerrit.fd.io/r/c/vpp/+/40803).\n\nIf we consider re-introducing these improvements to core-pinning, we should consider the fix in this patch, and also another fix to resolve core affinity on platforms with more than 128 cpus (https://gerrit.fd.io/r/c/vpp/+/40848)",
+      "revId": "7ec7068e8a73bdb6df73dbec6f632f2976fb0249",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
