@@ -13,6 +13,7 @@
 
 include (CheckFunctionExists)
 if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
+  message(STATUS ": OPENSSL_INCLUDE_DIR == ${OPENSSL_INCLUDE_DIR}")
   include_directories(${OPENSSL_INCLUDE_DIR})
   add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
   add_vpp_plugin(tlsopenssl
