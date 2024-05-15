@@ -16,6 +16,23 @@
       "message": "Nice ! That\u0027s super helpful !\nThanks Maxime 😊",
       "revId": "2b8fff021deec06113a35c853f541a56b33902cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef40c7dc_16262825",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-05-15T12:22:24Z",
+      "side": 1,
+      "message": "This is a useful change, but you need to also update other usages of format_ip_neighbor aside from the CLI command. In ip_neighbor_destroy() and ip_neighbor_age_out() it is used in IP_NEIGHBOR_DBG() calls.",
+      "revId": "2b8fff021deec06113a35c853f541a56b33902cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
