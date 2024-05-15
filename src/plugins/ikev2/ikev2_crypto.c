@@ -478,6 +478,7 @@ ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 }
 
 #ifndef BN_bn2binpad
+#if OPENSSL_VERSION_NUMBER < 0x30030000L
 int
 BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
 {
@@ -491,6 +492,7 @@ BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
   BN_bn2bin (a, to + pad);
   return tolen;
 }
+#endif
 #endif
 
 void

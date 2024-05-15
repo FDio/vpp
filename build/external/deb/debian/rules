@@ -30,4 +30,4 @@ override_dh_install:
 	dh_install -p$(PKG) --autodest /opt
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l$(INSTALL_DIR)lib/
+	dh_shlibdeps -l$(INSTALL_DIR)lib/:$(INSTALL_DIR)lib64
