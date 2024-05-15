@@ -4,13 +4,13 @@ DEB_BUILD_OPTIONS = noddebs
 DEB_CFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects -O2
 DEB_LDFLAGS_MAINT_STRIP = -flto=auto -ffat-lto-objects -flto=auto -ffat-lto-objects
 DEB_CFLAGS_MAINT_APPEND = -O3
-PKG=vpp-ext-deps
+PKG=vpp-opt-deps
 
 VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
 BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
 
 export BUILD_DIR=$(CURDIR)/_build
-export INSTALL_DIR=$(CURDIR)/debian/tmp/opt/vpp/external/$(shell uname -m)/
+export INSTALL_DIR=$(CURDIR)/debian/tmp/opt/vpp/optional/$(shell uname -m)/
 
 MAKE_ARGS=-C ..
 

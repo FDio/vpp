@@ -31,6 +31,17 @@
 /build/external/deb/debian/files/
 /build/external/deb/debian/.debhelper/
 /build/external/deb/debian/vpp-ext-deps*
+/build/optional/downloads/
+/build/optional/*.tar.gz
+/build/optional/*.tar.xz
+/build/optional/vpp-*
+/build/optional/deb/_build/
+/build/optional/deb/debian/changelog
+/build/optional/deb/debian/debhelper-build-stamp
+/build/optional/deb/debian/tmp/
+/build/optional/deb/debian/files/
+/build/optional/deb/debian/.debhelper/
+/build/optional/deb/debian/vpp-ext-deps*
 /path_setup
 /tools/
 # start autotools ignore
