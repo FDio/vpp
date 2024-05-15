@@ -271,6 +271,7 @@ help:
 	@echo " snap-clean           - clean up snap build environment"
 	@echo " pkg-rpm              - build RPM packages"
 	@echo " install-ext-dep[s]   - install external development dependencies"
+	@echo " install-opt-deps     - install optional dependencies"
 	@echo " ctags                - (re)generate ctags database"
 	@echo " gtags                - (re)generate gtags database"
 	@echo " cscope               - (re)generate cscope database"
@@ -739,6 +740,10 @@ install-ext-deps:
 
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps
+
+.PHONY: install-opt-deps
+install-opt-deps:
+	$(MAKE) -C build/optional install-$(PKG)
 
 .PHONY: json-api-files
 json-api-files:
