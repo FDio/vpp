@@ -24,6 +24,13 @@
 /build/external/vpp-*
 /build/external/dpdk_mlx_default.sh
 /build/external/downloads/
+/build/external/deb/_build/
+/build/external/deb/debian/changelog
+/build/external/deb/debian/debhelper-build-stamp
+/build/external/deb/debian/tmp/
+/build/external/deb/debian/files/
+/build/external/deb/debian/.debhelper/
+/build/external/deb/debian/vpp-ext-deps*
 /path_setup
 /tools/
 # start autotools ignore
@@ -139,3 +146,6 @@ compile_commands.json
 /cmake_install.cmake
 /startup.conf
 /startup.vpp
+
+# log file archives
+/archives
