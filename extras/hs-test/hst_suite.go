@@ -40,8 +40,8 @@ type HstSuite struct {
 	cpuContexts      []*CpuContext
 	cpuPerVpp        int
 	pid              string
-	logger			 *log.Logger
-	logFile			 *os.File
+	logger           *log.Logger
+	logFile          *os.File
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -196,7 +196,7 @@ func (s *HstSuite) assertNotEmpty(object interface{}, msgAndArgs ...interface{})
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
 
-func (s *HstSuite) createLogger(){
+func (s *HstSuite) createLogger() {
 	suiteName := CurrentSpecReport().ContainerHierarchyTexts[0]
 	var err error
 	s.logFile, err = os.Create("summary/" + suiteName + ".log")
@@ -475,7 +475,7 @@ func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, ad
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {
-		fmt.Println("Failed to start http server: " + fmt.Sprint(err))
+		s.log("Failed to start http server: " + fmt.Sprint(err))
 		return
 	}
 	running <- struct{}{}
