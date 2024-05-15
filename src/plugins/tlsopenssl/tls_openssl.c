@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#define OPENSSL_NO_DEPRECATED_1_1_0
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
@@ -751,7 +752,10 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
   SSL_CTX_set_ecdh_auto (oc->client_ssl_ctx, 1);
+#pragma GCC diagnostic pop
   SSL_CTX_set_mode (oc->client_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 #ifdef HAVE_OPENSSL_ASYNC
   if (om->async)
@@ -878,7 +882,10 @@ openssl_start_listen (tls_ctx_t * lctx)
     }
 #endif
   SSL_CTX_set_options (ssl_ctx, flags);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
   SSL_CTX_set_ecdh_auto (ssl_ctx, 1);
+#pragma GCC diagnostic pop
 
   rv = SSL_CTX_set_cipher_list (ssl_ctx, (const char *) om->ciphers);
   if (rv != 1)
