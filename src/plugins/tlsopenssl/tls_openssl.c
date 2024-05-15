@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#define OPENSSL_NO_DEPRECATED_1_1_0
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
