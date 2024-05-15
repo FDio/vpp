@@ -30,6 +30,12 @@ endif	# FreeBSD
 
 B := $(BUILD_DIR)
 I := $(INSTALL_DIR)
+ifeq ($(WORKSPACE),)
+L := $(B)
+else
+L := $(WORKSPACE)/archives/vpp-ext-deps
+$(shell rm -rf $(L) && mkdir -p $(L))
+endif
 
 ifneq ($(shell which cmake3),)
 CMAKE?=cmake3
@@ -48,6 +54,7 @@ include packages/rdma-core.mk
 include packages/dpdk.mk
 include packages/xdp-tools.mk
 include packages/octeon-roc.mk
+include packages/openssl.mk
 endif	# FreeBSD
 
 .PHONY: clean
@@ -58,14 +65,14 @@ clean:
 ifeq ($(shell uname), FreeBSD)
 install: $(if $(ARCH_X86_64), ipsec-mb-install) quicly-install
 else
-install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install xdp-tools-install $(if $(AARCH64), octeon-roc-install)
+install: $(if $(ARCH_X86_64), ipsec-mb-install) dpdk-install rdma-core-install quicly-install openssl-install xdp-tools-install $(if $(AARCH64), octeon-roc-install)
 endif	# FreeBSD
 
 .PHONY: config
 ifeq ($(shell uname), FreeBSD)
 config: $(if $(ARCH_X86_64), ipsec-mb-config) quicly-build
 else
-config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build
+config: $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build openssl-config
 endif	# FreeBSD
 
 ##############################################################################
