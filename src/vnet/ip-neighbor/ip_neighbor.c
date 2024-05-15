@@ -460,6 +460,7 @@ ip_neighbor_destroy (ip_neighbor_t * ipn)
   af = ip_neighbor_get_af (ipn);
 
   IP_NEIGHBOR_DBG ("free: %U", format_ip_neighbor,
+		   vlib_time_now (vlib_get_main ()),
 		   ip_neighbor_get_index (ipn));
 
   ip_neighbor_publish (ip_neighbor_get_index (ipn),
@@ -944,20 +945,20 @@ ip_neighbor_show_sorted_i (vlib_main_t * vm,
 			   vlib_cli_command_t * cmd, ip_address_family_t af)
 {
   ip_neighbor_elt_t *elt, *head;
+  f64 now;
 
   head = pool_elt_at_index (ip_neighbor_elt_pool, ip_neighbor_list_head[af]);
+  now = vlib_time_now (vm);
 
-
-  vlib_cli_output (vm, "%=12s%=40s%=6s%=20s%=24s", "Time", "IP",
-		   "Flags", "Ethernet", "Interface");
+  vlib_cli_output (vm, "%=12s%=40s%=6s%=20s%=24s", "Age", "IP", "Flags",
+		   "Ethernet", "Interface");
 
   /* the list is time sorted, newest first, so start from the back
    * and work forwards. Stop when we get to one that is alive */
-  clib_llist_foreach_reverse(ip_neighbor_elt_pool,
-                             ipne_anchor, head, elt,
-  ({
-    vlib_cli_output (vm, "%U", format_ip_neighbor, elt->ipne_index);
-  }));
+  clib_llist_foreach_reverse (ip_neighbor_elt_pool, ipne_anchor, head, elt, ({
+				vlib_cli_output (vm, "%U", format_ip_neighbor,
+						 now, elt->ipne_index);
+			      }));
 
   return (NULL);
 }
@@ -969,6 +970,7 @@ ip_neighbor_show_i (vlib_main_t * vm,
 {
   index_t *ipni, *ipnis = NULL;
   u32 sw_if_index;
+  f64 now;
 
   /* Filter entries by interface if given. */
   sw_if_index = ~0;
@@ -976,14 +978,15 @@ ip_neighbor_show_i (vlib_main_t * vm,
 			&sw_if_index);
 
   ipnis = ip_neighbor_entries (sw_if_index, af);
+  now = vlib_time_now (vm);
 
   if (ipnis)
-    vlib_cli_output (vm, "%=12s%=40s%=6s%=20s%=24s", "Time", "IP",
-		     "Flags", "Ethernet", "Interface");
+    vlib_cli_output (vm, "%=12s%=40s%=6s%=20s%=24s", "Age", "IP", "Flags",
+		     "Ethernet", "Interface");
 
   vec_foreach (ipni, ipnis)
   {
-    vlib_cli_output (vm, "%U", format_ip_neighbor, *ipni);
+    vlib_cli_output (vm, "%U", format_ip_neighbor, now, *ipni);
   }
   vec_free (ipnis);
 
@@ -1573,13 +1576,12 @@ ip_neighbour_age_out (index_t ipni, f64 now, f64 * wait)
 
   if (ttl > ipndb_age)
     {
-      IP_NEIGHBOR_DBG ("aged: %U @%f - %f > %d",
-		       format_ip_neighbor, ipni, now,
-		       ipn->ipn_time_last_updated, ipndb_age);
+      IP_NEIGHBOR_DBG ("aged: %U @%f - %f > %d", format_ip_neighbor, now, ipni,
+		       now, ipn->ipn_time_last_updated, ipndb_age);
       if (ipn->ipn_n_probes > 2)
 	{
 	  /* 3 strikes and yea-re out */
-	  IP_NEIGHBOR_DBG ("dead: %U", format_ip_neighbor, ipni);
+	  IP_NEIGHBOR_DBG ("dead: %U", format_ip_neighbor, now, ipni);
 	  *wait = 1;
 	  return (IP_NEIGHBOR_AGE_DEAD);
 	}
