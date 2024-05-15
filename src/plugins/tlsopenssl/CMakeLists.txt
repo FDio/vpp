@@ -12,35 +12,40 @@
 # limitations under the License.
 
 include (CheckFunctionExists)
-if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
-  include_directories(${OPENSSL_INCLUDE_DIR})
-  add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
-  add_vpp_plugin(tlsopenssl
-    SOURCES
-    tls_bio.c
-    tls_openssl.c
-    tls_openssl_api.c
-    tls_async.c
-    dtls_bio.c
 
-    API_FILES
-    tls_openssl.api
+vpp_plugin_find_library(openssl OPENSSL_EXT_DEPS_LIB libcrypto.a)
+message(STATUS ": OPENSSL_EXT_DEPS_LIB == ${OPENSSL_EXT_DEPS_LIB}")
+message(STATUS ": OPENSSL_INCLUDE_DIR == ${OPENSSL_INCLUDE_DIR}")
+if (NOT OPENSSL_EXT_DEPS_LIB OR NOT OPENSSL_FOUND OR OPENSSL_VERSION VERSION_LESS "1.1.0")
+ warning(ERROR ": OPENSSL Libraries not found!  Not building tlsopenssl plugin!")
+ return()
+endif()
 
-    API_TEST_SOURCES
-    tls_openssl_test.c
+include_directories(${OPENSSL_INCLUDE_DIR})
+add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
+add_vpp_plugin(tlsopenssl
+  SOURCES
+  tls_bio.c
+  tls_openssl.c
+  tls_openssl_api.c
+  tls_async.c
+  dtls_bio.c
 
-    LINK_LIBRARIES
-    ${OPENSSL_LIBRARIES}
-  )
+  API_FILES
+  tls_openssl.api
 
-  set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
-  set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")
-  check_function_exists(SSL_set_async_callback HAVE_OPENSSL_ASYNC)
+  API_TEST_SOURCES
+  tls_openssl_test.c
 
-  if (HAVE_OPENSSL_ASYNC)
-    add_definitions(-DHAVE_OPENSSL_ASYNC)
-  endif()
+  LINK_LIBRARIES
+  ${OPENSSL_LIBRARIES}
+)
 
+set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")
+check_function_exists(SSL_set_async_callback HAVE_OPENSSL_ASYNC)
 
+if (HAVE_OPENSSL_ASYNC)
+  add_definitions(-DHAVE_OPENSSL_ASYNC)
 endif()
 
