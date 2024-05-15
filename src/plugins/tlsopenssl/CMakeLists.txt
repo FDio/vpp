@@ -12,7 +12,16 @@
 # limitations under the License.
 
 include (CheckFunctionExists)
-if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
+
+vpp_plugin_find_library(openssl OPENSSL_EXT_DEPS_LIB libcrypto.a)
+message(STATUS ": OPENSSL_EXT_DEPS_LIB == ${OPENSSL_EXT_DEPS_LIB}")
+message(STATUS ": OPENSSL_INCLUDE_DIR == ${OPENSSL_INCLUDE_DIR}")
+if (NOT OPENSSL_EXT_DEPS_LIB OR NOT OPENSSL_FOUND OR OPENSSL_VERSION VERSION_LESS "1.1.0")
+ warning(ERROR ": OPENSSL Libraries not found!  Not building tlsopenssl plugin!")
+ return()
+endif()
+
+#if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
   include_directories(${OPENSSL_INCLUDE_DIR})
   add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED)
   add_vpp_plugin(tlsopenssl
@@ -33,7 +42,11 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
     ${OPENSSL_LIBRARIES}
   )
 
-  set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+  if (OPENSSL_EXT_DEPS_LIB)
+   set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+  else()
+   set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+  endif()
   set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")
   check_function_exists(SSL_set_async_callback HAVE_OPENSSL_ASYNC)
 
@@ -42,5 +55,5 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
   endif()
 
 
-endif()
+#endif()
 
