@@ -68,19 +68,18 @@ format_ip_neighbor_watcher (u8 * s, va_list * va)
 u8 *
 format_ip_neighbor (u8 * s, va_list * va)
 {
+  f64 now = va_arg (*va, f64);
   index_t ipni = va_arg (*va, index_t);
   ip_neighbor_t *ipn;
 
   ipn = ip_neighbor_get (ipni);
 
-  return (format (s, "%=12U%=40U%=6U%=20U%U",
-		  format_vlib_time, vlib_get_main (),
-		  ipn->ipn_time_last_updated,
-		  format_ip_address, &ipn->ipn_key->ipnk_ip,
-		  format_ip_neighbor_flags, ipn->ipn_flags,
-		  format_mac_address_t, &ipn->ipn_mac,
-		  format_vnet_sw_if_index_name, vnet_get_main (),
-		  ipn->ipn_key->ipnk_sw_if_index));
+  return (
+    format (s, "%=12U%=40U%=6U%=20U%U", format_vlib_time, vlib_get_main (),
+	    now - ipn->ipn_time_last_updated, format_ip_address,
+	    &ipn->ipn_key->ipnk_ip, format_ip_neighbor_flags, ipn->ipn_flags,
+	    format_mac_address_t, &ipn->ipn_mac, format_vnet_sw_if_index_name,
+	    vnet_get_main (), ipn->ipn_key->ipnk_sw_if_index));
 }
 
 static void
