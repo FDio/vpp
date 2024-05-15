@@ -21,9 +21,9 @@ $1_src_dir ?= $(B)/src-$1
 $1_patch_dir ?= $(CURDIR)/patches/$1_$($1_version)
 $1_build_dir ?= $(B)/build-$1
 $1_install_dir ?= $(I)
-$1_config_log ?= $(B)/$1.config.log
-$1_build_log ?= $(B)/$1.build.log
-$1_install_log ?= $(B)/$1.install.log
+$1_config_log ?= $(L)/$1.config.log
+$1_build_log ?= $(L)/$1.build.log
+$1_install_log ?= $(L)/$1.install.log
 
 ##############################################################################
 # Download
