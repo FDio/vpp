@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c6f2380_06b6e4f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2024-05-15T07:59:06Z",
+      "side": 1,
+      "message": "Nice ! That\u0027s super helpful !\nThanks Maxime 😊",
+      "revId": "2b8fff021deec06113a35c853f541a56b33902cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
