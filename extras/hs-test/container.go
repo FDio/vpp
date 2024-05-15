@@ -340,7 +340,7 @@ func (c *Container) log(maxLines int) (string, error) {
 }
 
 func (c *Container) stop() error {
-	if c.vppInstance != nil && c.vppInstance.apiChannel != nil {
+	if c.vppInstance != nil && c.vppInstance.apiStream != nil {
 		c.vppInstance.saveLogs()
 		c.vppInstance.disconnect()
 	}

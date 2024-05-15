@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/sirupsen/logrus"
 
 	"go.fd.io/govpp"
 	"go.fd.io/govpp/api"
@@ -22,7 +23,6 @@ import (
 	"go.fd.io/govpp/binapi/interface_types"
 	"go.fd.io/govpp/binapi/session"
 	"go.fd.io/govpp/binapi/tapv2"
-	"go.fd.io/govpp/binapi/vpe"
 	"go.fd.io/govpp/core"
 )
 
@@ -83,7 +83,7 @@ type VppInstance struct {
 	container        *Container
 	additionalConfig []Stanza
 	connection       *core.Connection
-	apiChannel       api.Channel
+	apiStream        api.Stream
 	cpus             []int
 }
 
@@ -169,7 +169,7 @@ func (vpp *VppInstance) start() error {
 		core.DefaultMaxReconnectAttempts,
 		core.DefaultReconnectInterval)
 	if err != nil {
-		fmt.Println("async connect error: ", err)
+		vpp.getSuite().log("async connect error: " + fmt.Sprint(err))
 		return err
 	}
 	vpp.connection = conn
@@ -177,24 +177,19 @@ func (vpp *VppInstance) start() error {
 	// ... wait for Connected event
 	e := <-connEv
 	if e.State != core.Connected {
-		fmt.Println("connecting to VPP failed: ", e.Error)
+		vpp.getSuite().log("connecting to VPP failed: " + fmt.Sprint(e.Error))
 	}
 
-	// ... check compatibility of used messages
-	ch, err := conn.NewAPIChannel()
+	ch, err := conn.NewStream(
+		context.Background(),
+		core.WithRequestSize(50),
+		core.WithReplySize(50),
+		core.WithReplyTimeout(time.Second*10))
 	if err != nil {
-		fmt.Println("creating channel failed: ", err)
+		vpp.getSuite().log("creating stream failed: " + fmt.Sprint(err))
 		return err
 	}
-	if err := ch.CheckCompatiblity(vpe.AllMessages()...); err != nil {
-		fmt.Println("compatibility error: ", err)
-		return err
-	}
-	if err := ch.CheckCompatiblity(interfaces.AllMessages()...); err != nil {
-		fmt.Println("compatibility error: ", err)
-		return err
-	}
-	vpp.apiChannel = ch
+	vpp.apiStream = ch
 
 	return nil
 }
@@ -242,7 +237,8 @@ func (vpp *VppInstance) waitForApp(appName string, timeout int) {
 func (vpp *VppInstance) createAfPacket(
 	veth *NetInterface,
 ) (interface_types.InterfaceIndex, error) {
-	createReq := &af_packet.AfPacketCreateV2{
+	createReq := &af_packet.AfPacketCreateV3{
+		Mode:            1,
 		UseRandomHwAddr: true,
 		HostIfName:      veth.Name(),
 	}
@@ -250,23 +246,40 @@ func (vpp *VppInstance) createAfPacket(
 		createReq.UseRandomHwAddr = false
 		createReq.HwAddr = veth.hwAddress
 	}
-	createReply := &af_packet.AfPacketCreateV2Reply{}
 
 	vpp.getSuite().log("create af-packet interface " + veth.Name())
-	if err := vpp.apiChannel.SendRequest(createReq).ReceiveReply(createReply); err != nil {
+	if err := vpp.apiStream.SendMsg(createReq); err != nil {
+		vpp.getSuite().hstFail()
 		return 0, err
 	}
-	veth.index = createReply.SwIfIndex
+	replymsg, err := vpp.apiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply := replymsg.(*af_packet.AfPacketCreateV3Reply)
+	err = api.RetvalToVPPApiError(reply.Retval)
+	if err != nil {
+		return 0, err
+	}
+
+	veth.index = reply.SwIfIndex
 
 	// Set to up
 	upReq := &interfaces.SwInterfaceSetFlags{
 		SwIfIndex: veth.index,
 		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
 	}
-	upReply := &interfaces.SwInterfaceSetFlagsReply{}
 
 	vpp.getSuite().log("set af-packet interface " + veth.Name() + " up")
-	if err := vpp.apiChannel.SendRequest(upReq).ReceiveReply(upReply); err != nil {
+	if err := vpp.apiStream.SendMsg(upReq); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply2 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
+	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
 		return 0, err
 	}
 
@@ -285,10 +298,18 @@ func (vpp *VppInstance) createAfPacket(
 		SwIfIndex: veth.index,
 		Prefix:    veth.addressWithPrefix(),
 	}
-	addressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
 	vpp.getSuite().log("af-packet interface " + veth.Name() + " add address " + veth.ip4Address)
-	if err := vpp.apiChannel.SendRequest(addressReq).ReceiveReply(addressReply); err != nil {
+	if err := vpp.apiStream.SendMsg(addressReq); err != nil {
+		return 0, err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return 0, err
+	}
+	reply3 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
+	err = api.RetvalToVPPApiError(reply3.Retval)
+	if err != nil {
 		return 0, err
 	}
 
@@ -300,25 +321,41 @@ func (vpp *VppInstance) addAppNamespace(
 	ifx interface_types.InterfaceIndex,
 	namespaceId string,
 ) error {
-	req := &session.AppNamespaceAddDelV2{
+	req := &session.AppNamespaceAddDelV4{
+		IsAdd:       true,
 		Secret:      secret,
 		SwIfIndex:   ifx,
 		NamespaceID: namespaceId,
+		SockName:    defaultApiSocketFilePath,
 	}
-	reply := &session.AppNamespaceAddDelV2Reply{}
 
 	vpp.getSuite().log("add app namespace " + namespaceId)
-	if err := vpp.apiChannel.SendRequest(req).ReceiveReply(reply); err != nil {
+	if err := vpp.apiStream.SendMsg(req); err != nil {
+		return err
+	}
+	replymsg, err := vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply := replymsg.(*session.AppNamespaceAddDelV4Reply)
+	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
 		return err
 	}
 
 	sessionReq := &session.SessionEnableDisable{
 		IsEnable: true,
 	}
-	sessionReply := &session.SessionEnableDisableReply{}
 
 	vpp.getSuite().log("enable app namespace " + namespaceId)
-	if err := vpp.apiChannel.SendRequest(sessionReq).ReceiveReply(sessionReply); err != nil {
+	if err := vpp.apiStream.SendMsg(sessionReq); err != nil {
+		return err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply2 := replymsg.(*session.SessionEnableDisableReply)
+	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
 		return err
 	}
 
@@ -333,43 +370,64 @@ func (vpp *VppInstance) createTap(
 	if len(tapId) > 0 {
 		id = tapId[0]
 	}
-	createTapReq := &tapv2.TapCreateV2{
+	createTapReq := &tapv2.TapCreateV3{
 		ID:               id,
 		HostIfNameSet:    true,
 		HostIfName:       tap.Name(),
 		HostIP4PrefixSet: true,
 		HostIP4Prefix:    tap.ip4AddressWithPrefix(),
 	}
-	createTapReply := &tapv2.TapCreateV2Reply{}
 
 	vpp.getSuite().log("create tap interface " + tap.Name())
 	// Create tap interface
-	if err := vpp.apiChannel.SendRequest(createTapReq).ReceiveReply(createTapReply); err != nil {
+	if err := vpp.apiStream.SendMsg(createTapReq); err != nil {
+		return err
+	}
+	replymsg, err := vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply := replymsg.(*tapv2.TapCreateV3Reply)
+	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
 		return err
 	}
 
 	// Add address
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
 		IsAdd:     true,
-		SwIfIndex: createTapReply.SwIfIndex,
+		SwIfIndex: reply.SwIfIndex,
 		Prefix:    tap.peer.addressWithPrefix(),
 	}
-	addAddressReply := &interfaces.SwInterfaceAddDelAddressReply{}
 
 	vpp.getSuite().log("tap interface " + tap.Name() + " add address " + tap.peer.ip4Address)
-	if err := vpp.apiChannel.SendRequest(addAddressReq).ReceiveReply(addAddressReply); err != nil {
+	if err := vpp.apiStream.SendMsg(addAddressReq); err != nil {
+		return err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply2 := replymsg.(*interfaces.SwInterfaceAddDelAddressReply)
+	if err = api.RetvalToVPPApiError(reply2.Retval); err != nil {
 		return err
 	}
 
 	// Set interface to up
 	upReq := &interfaces.SwInterfaceSetFlags{
-		SwIfIndex: createTapReply.SwIfIndex,
+		SwIfIndex: reply.SwIfIndex,
 		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
 	}
-	upReply := &interfaces.SwInterfaceSetFlagsReply{}
 
 	vpp.getSuite().log("set tap interface " + tap.Name() + " up")
-	if err := vpp.apiChannel.SendRequest(upReq).ReceiveReply(upReply); err != nil {
+	if err := vpp.apiStream.SendMsg(upReq); err != nil {
+		return err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	reply3 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
+	if err = api.RetvalToVPPApiError(reply3.Retval); err != nil {
 		return err
 	}
 
@@ -386,7 +444,7 @@ func (vpp *VppInstance) saveLogs() {
 
 func (vpp *VppInstance) disconnect() {
 	vpp.connection.Disconnect()
-	vpp.apiChannel.Close()
+	vpp.apiStream.Close()
 }
 
 func (vpp *VppInstance) generateCpuConfig() string {
