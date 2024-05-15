@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b08e777a_8983b6db",
+        "filename": "src/plugins/dev_octeon/flow.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-05-15T08:24:25Z",
+      "side": 1,
+      "message": "perhaps vlan_hdr_mask ?",
+      "range": {
+        "startLine": 258,
+        "startChar": 41,
+        "endLine": 258,
+        "endChar": 49
+      },
+      "revId": "8539ff6124250846a2da56a92425c149e1cdef69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
