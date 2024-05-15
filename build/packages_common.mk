@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2024 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -28,8 +28,8 @@ $1_install_log ?= $(L)/$1.install.log
 ##############################################################################
 # Download
 ##############################################################################
-downloads/$($1_tarball):
-	mkdir -p downloads
+$(D)/$($1_tarball):
+	mkdir -p $(D)
 	@if [ -e $(DL_CACHE_DIR)/$($1_tarball) ] ; \
 		then cp $(DL_CACHE_DIR)/$($1_tarball) $$@ ; \
 	else \
@@ -38,7 +38,7 @@ downloads/$($1_tarball):
 	fi
 	@rm -f $(B)/.$1.download.ok
 
-$(B)/.$1.download.ok: downloads/$($1_tarball)
+$(B)/.$1.download.ok: $(D)/$($1_tarball)
 	@mkdir -p $(B)
 	$$(call h1,"validating $1 $($1_version) checksum")
 	@SUM=$$(shell openssl md5 $$< | cut -f 2 -d " " -) ; \
@@ -65,7 +65,7 @@ $(B)/.$1.extract.ok: $(B)/.$1.download.ok
 	  --directory $$($1_src_dir) \
 	  --extract \
 	  --strip-components=$$($1_tarball_strip_dirs) \
-	  --file downloads/$($1_tarball)
+	  --file $(D)/$($1_tarball)
 	@touch $$@
 
 .PHONY: $1-extract
