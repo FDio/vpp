@@ -124,6 +124,8 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	  return rv;
 	}
 
+  oct_port_add_counters (vm, port);
+
   return VNET_DEV_OK;
 }
 
@@ -171,6 +173,21 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   struct roc_nix_link_info link_info = {};
   vnet_dev_port_state_changes_t changes = {};
   int rrv;
+
+  if (oct_port_get_stats (vm, port))
+    return;
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      if (oct_rxq_get_stats (vm, port, q))
+	return;
+    }
+
+  foreach_vnet_dev_port_tx_queue (q, port)
+    {
+      if (oct_txq_get_stats (vm, port, q))
+	return;
+    }
 
   if (roc_nix_is_lbk (nix))
     {
