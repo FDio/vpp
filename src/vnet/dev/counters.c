@@ -54,7 +54,7 @@ vnet_dev_counters_clear (vlib_main_t *vm, vnet_dev_counter_main_t *cm)
 {
   for (int i = 0; i < cm->n_counters; i++)
     {
-      cm->counter_start[i] = cm->counter_data[i];
+      cm->counter_start[i] += cm->counter_data[i];
       cm->counter_data[i] = 0;
     }
 }
