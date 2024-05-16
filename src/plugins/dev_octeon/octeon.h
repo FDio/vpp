@@ -141,6 +141,14 @@ vnet_dev_rv_t oct_flow_validate_params (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t oct_flow_query (vlib_main_t *, vnet_dev_port_t *, u32, uword,
 			      u64 *);
 
+/* counter.c */
+void oct_port_add_counters (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_rv_t oct_port_get_stats (vlib_main_t *, vnet_dev_port_t *);
+vnet_dev_rv_t oct_rxq_get_stats (vlib_main_t *, vnet_dev_port_t *,
+				 vnet_dev_rx_queue_t *);
+vnet_dev_rv_t oct_txq_get_stats (vlib_main_t *, vnet_dev_port_t *,
+				 vnet_dev_tx_queue_t *);
+
 #define log_debug(dev, f, ...)                                                \
   vlib_log (VLIB_LOG_LEVEL_DEBUG, oct_log.class, "%U: " f,                    \
 	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
