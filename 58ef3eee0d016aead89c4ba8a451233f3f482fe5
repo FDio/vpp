@@ -16,6 +16,24 @@
       "message": "out of curiosity, can\u0027t we flush handover queue before going into worker barrier?",
       "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90359a43_96bf08b8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-16T19:25:58Z",
+      "side": 1,
+      "message": "I don\u0027t think we have a way to flush the handoff queue neatly at the moment, as this means implementing a way for main core to inform all worker cores to block handing off packets and drain the hand-off queues ASAP (and there is no way for esp nodes to know if the queue is drained!). Also I don\u0027t think this is necessary.",
+      "parentUuid": "edd0ce81_54a81dac",
+      "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
