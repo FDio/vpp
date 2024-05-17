@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "334d5b27_e73ab9f0",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-17T03:44:38Z",
+      "side": 1,
+      "message": "This seems to be a stray character (not a valid gmake syntax AFAIK), but it does not cause an error.  The same syntax is on line 98 above, but not on lines 117 or 123.\n\nPlease remove the leading \u0027-\u0027 in both places unless it has some purpose that I\u0027m missing...",
+      "range": {
+        "startLine": 105,
+        "startChar": 1,
+        "endLine": 105,
+        "endChar": 2
+      },
+      "revId": "06ff697fffd0a39d95f41f4090c3981daff05f72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
