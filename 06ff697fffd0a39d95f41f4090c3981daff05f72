@@ -22,6 +22,30 @@
       },
       "revId": "06ff697fffd0a39d95f41f4090c3981daff05f72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da1d38f2_c332a72d",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-05-17T05:58:20Z",
+      "side": 1,
+      "message": "\"To ignore errors in a recipe line, write a ‘-’ at the beginning of the line’s text (after the initial tab). The ‘-’ is discarded before the line is passed to the shell for execution.\"\nhttps://www.gnu.org/software/make/manual/make.html#Errors\n\nExit 1 is called by compress.sh if failed-summary.log is not empty. Compress.sh would get skipped without \u0027-\u0027 before \u0027bash ./test ...\u0027.",
+      "parentUuid": "334d5b27_e73ab9f0",
+      "range": {
+        "startLine": 105,
+        "startChar": 1,
+        "endLine": 105,
+        "endChar": 2
+      },
+      "revId": "06ff697fffd0a39d95f41f4090c3981daff05f72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
