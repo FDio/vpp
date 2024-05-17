@@ -115,10 +115,13 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
 
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
+		Transport: transport,
 	}
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/tmp.aaa", nil)
 	s.assertNil(err, fmt.Sprint(err))
@@ -134,9 +137,12 @@ func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
 
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/notfound.html", nil)
 	s.assertNil(err, fmt.Sprint(err))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	s.assertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.assertEqual(404, resp.StatusCode)
@@ -147,9 +153,12 @@ func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test", nil)
 	s.assertNil(err, fmt.Sprint(err))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	s.assertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.assertEqual(405, resp.StatusCode)
@@ -162,9 +171,12 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80", nil)
 	s.assertNil(err, fmt.Sprint(err))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	s.assertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.assertEqual(400, resp.StatusCode)
@@ -175,9 +187,12 @@ func HeaderServerTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
 	s.assertNil(err, fmt.Sprint(err))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	s.assertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.assertEqual("http_cli_server", resp.Header.Get("Server"))
