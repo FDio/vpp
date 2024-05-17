@@ -41,6 +41,7 @@
   _ (UNSUPPORTED_DEVICE, "unsupported device")                                \
   _ (UNSUPPORTED_DEVICE_VER, "unsupported device version")                    \
   _ (ALREADY_DONE, "already done")                                            \
-  _ (NO_SUCH_INTERFACE, "no such interface")
+  _ (NO_SUCH_INTERFACE, "no such interface")                                  \
+  _ (INIT_FAILED, "init failed")
 
 #endif /* _VNET_DEV_ERRORS_H_ */

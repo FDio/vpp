@@ -37,6 +37,7 @@ list(APPEND VNET_SOURCES
   dev/format.c
   dev/handlers.c
   dev/pci.c
+  dev/platform.c
   dev/port.c
   dev/process.c
   dev/queue.c
@@ -74,7 +75,18 @@ list(APPEND VNET_HEADERS
   config.h
   devices/devices.h
   devices/netlink.h
+  dev/api.h
+  dev/args.h
+  dev/counters.h
+  dev/dev_funcs.h
   dev/dev.h
+  dev/errors.h
+  dev/log.h
+  dev/mgmt.h
+  dev/pci.h
+  dev/platform.h
+  dev/process.h
+  dev/types.h
   flow/flow.h
   global_funcs.h
   interface/rx_queue_funcs.h
