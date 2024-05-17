@@ -162,7 +162,7 @@ format_mvpp2_rx_trace (u8 *s, va_list *args)
   vlib_node_t *node = va_arg (*args, vlib_node_t *);
   mvpp2_rx_trace_t *t = va_arg (*args, mvpp2_rx_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = t->rxq->port->intf.hw_if_index;
+  u32 hw_if_index = vnet_dev_port_get_intf_hw_if_index (t->rxq->port);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   u32 indent = format_get_indent (s);
   struct pp2_ppio_desc *d = &t->desc;

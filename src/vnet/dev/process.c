@@ -20,9 +20,11 @@ typedef enum
   VNET_DEV_EVENT_PROCESS_QUIT,
   VNET_DEV_EVENT_CALL_OP,
   VNET_DEV_EVENT_CALL_OP_NO_RV,
+  VNET_DEV_EVENT_CALL_OP_WITH_PTR,
   VNET_DEV_EVENT_CALL_OP_NO_WAIT,
   VNET_DEV_EVENT_CALL_PORT_OP,
   VNET_DEV_EVENT_CALL_PORT_OP_NO_RV,
+  VNET_DEV_EVENT_CALL_PORT_OP_WITH_PTR,
   VNET_DEV_EVENT_CALL_PORT_OP_NO_WAIT,
   VNET_DEV_EVENT_CLOCK = ~0
 } __clib_packed vnet_dev_event_t;
@@ -49,6 +51,11 @@ typedef struct
     } call_op_no_rv;
     struct
     {
+      vnet_dev_op_with_ptr_t *op;
+      void *ptr;
+    } call_op_with_ptr;
+    struct
+    {
       vnet_dev_op_no_rv_t *op;
     } call_op_no_wait;
     struct
@@ -61,6 +68,12 @@ typedef struct
       vnet_dev_port_op_no_rv_t *op;
       vnet_dev_port_t *port;
     } call_port_op_no_rv;
+    struct
+    {
+      vnet_dev_port_op_with_ptr_t *op;
+      vnet_dev_port_t *port;
+      void *ptr;
+    } call_port_op_with_ptr;
     struct
     {
       vnet_dev_port_op_no_rv_t *op;
@@ -105,6 +118,10 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
       log_debug (dev, "call op no rv");
       ed->call_op_no_rv.op (vm, dev);
       break;
+    case VNET_DEV_EVENT_CALL_OP_WITH_PTR:
+      log_debug (dev, "call op woth ptr");
+      rv = ed->call_op_with_ptr.op (vm, dev, ed->call_op_with_ptr.ptr);
+      break;
     case VNET_DEV_EVENT_CALL_OP_NO_WAIT:
       log_debug (dev, "call op no wait");
       ed->call_op_no_wait.op (vm, dev);
@@ -116,6 +133,11 @@ vnet_dev_process_one_event (vlib_main_t *vm, vnet_dev_t *dev,
     case VNET_DEV_EVENT_CALL_PORT_OP_NO_RV:
       log_debug (dev, "call port op no rv");
       ed->call_port_op_no_rv.op (vm, ed->call_port_op_no_rv.port);
+      break;
+    case VNET_DEV_EVENT_CALL_PORT_OP_WITH_PTR:
+      log_debug (dev, "call port op woth ptr");
+      rv = ed->call_port_op_with_ptr.op (vm, ed->call_port_op_with_ptr.port,
+					 ed->call_op_with_ptr.ptr);
       break;
     case VNET_DEV_EVENT_CALL_PORT_OP_NO_WAIT:
       log_debug (dev, "call port op no wait");
@@ -425,6 +447,18 @@ vnet_dev_process_call_op_no_rv (vlib_main_t *vm, vnet_dev_t *dev,
   return vnet_dev_process_event_send_and_wait (vm, dev, ed);
 }
 
+vnet_dev_rv_t
+vnet_dev_process_call_op_with_ptr (vlib_main_t *vm, vnet_dev_t *dev,
+				   vnet_dev_op_with_ptr_t *op, void *p)
+{
+  const vnet_dev_event_data_t ed = {
+    .event = VNET_DEV_EVENT_CALL_OP_WITH_PTR,
+    .call_op_with_ptr = { .op = op, .ptr = p },
+  };
+
+  return vnet_dev_process_event_send_and_wait (vm, dev, ed);
+}
+
 void
 vnet_dev_process_call_op_no_wait (vlib_main_t *vm, vnet_dev_t *dev,
 				  vnet_dev_op_no_rv_t *op)
@@ -456,6 +490,19 @@ vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm, vnet_dev_port_t *port,
   const vnet_dev_event_data_t ed = {
     .event = VNET_DEV_EVENT_CALL_PORT_OP_NO_RV,
     .call_port_op_no_rv = { .op = op, .port = port },
+  };
+
+  return vnet_dev_process_event_send_and_wait (vm, port->dev, ed);
+}
+
+vnet_dev_rv_t
+vnet_dev_process_call_port_op_with_ptr (vlib_main_t *vm, vnet_dev_port_t *port,
+					vnet_dev_port_op_with_ptr_t *op,
+					void *p)
+{
+  const vnet_dev_event_data_t ed = {
+    .event = VNET_DEV_EVENT_CALL_PORT_OP_WITH_PTR,
+    .call_port_op_with_ptr = { .op = op, .port = port, .ptr = p },
   };
 
   return vnet_dev_process_event_send_and_wait (vm, port->dev, ed);
