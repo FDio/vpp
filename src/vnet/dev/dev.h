@@ -660,6 +660,7 @@ format_function_t format_vnet_dev_info;
 format_function_t format_vnet_dev_interface_info;
 format_function_t format_vnet_dev_interface_name;
 format_function_t format_vnet_dev_log;
+format_function_t format_vnet_dev_log_prefix;
 format_function_t format_vnet_dev_port_caps;
 format_function_t format_vnet_dev_port_flags;
 format_function_t format_vnet_dev_port_info;
