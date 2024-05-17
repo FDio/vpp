@@ -29,6 +29,7 @@ list(APPEND VNET_SOURCES
   dev/api.c
   dev/args.c
   dev/bus/pci.c
+  dev/bus/platform.c
   dev/cli.c
   dev/config.c
   dev/counters.c
@@ -77,9 +78,16 @@ list(APPEND VNET_HEADERS
   dev/api.h
   dev/args.h
   dev/bus/pci.h
+<<<<<<< HEAD
   dev/counters.h
   dev/dev.h
   dev/dev_funcs.h
+=======
+  dev/bus/platform.h
+  dev/counters.h
+  dev/dev_funcs.h
+  dev/dev.h
+>>>>>>> ca0df8180 (dev_armada)
   dev/errors.h
   dev/log.h
   dev/mgmt.h

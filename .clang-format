@@ -35,6 +35,7 @@ ForEachMacros:
   - 'foreach_vnet_dev_port'
   - 'foreach_vnet_dev_args'
   - 'foreach_vnet_dev_port_args'
+  - 'foreach_fdt_tree_node'
 
 StatementMacros:
   - 'CLIB_MULTIARCH_FN'

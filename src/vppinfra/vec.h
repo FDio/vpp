@@ -773,7 +773,10 @@ _vec_add (void **vp, void *e, word n_add, uword hdr_sz, uword align,
       _vec_update_pointer (vp, v);
     }
   else
-    _vec_set_len (v, len + n_add, elt_sz);
+    {
+      _vec_set_len (v, len + n_add, elt_sz);
+      clib_mem_unpoison (v + len * elt_sz, n_add * elt_sz);
+    }
 
   clib_memcpy_fast (v + len * elt_sz, e, n_add * elt_sz);
 }

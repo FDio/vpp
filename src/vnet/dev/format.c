@@ -41,6 +41,22 @@ format_vnet_dev_addr (u8 *s, va_list *args)
 }
 
 u8 *
+format_vnet_dev_log_prefix (u8 *s, va_list *args)
+{
+  vnet_dev_main_t *dm = &vnet_dev_main;
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  vnet_dev_bus_t *bus;
+
+  if (dev == 0)
+    return 0;
+
+  bus = pool_elt_at_index (dm->buses, dev->bus_index);
+  s = format (s, "%U: ", bus->ops.format_device_addr, dev);
+
+  return s;
+}
+
+u8 *
 format_vnet_dev_interface_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
@@ -408,6 +424,9 @@ format_vnet_dev_log (u8 *s, va_list *args)
 {
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   char *func = va_arg (*args, char *);
+
+  if (!dev && !func)
+    return s;
 
   if (dev)
     s = format (s, "%U", format_vnet_dev_addr, dev);
