@@ -65,4 +65,27 @@ vnet_dev_rv_t
 vnet_dev_api_remove_port_if (vlib_main_t *,
 			     vnet_dev_api_remove_port_if_args_t *);
 
+typedef struct
+{
+  u32 main_sw_if_index;
+  u32 subif_id;
+  u8 *args;
+
+  /* return */
+  u32 sw_if_index;
+} vnet_dev_api_create_port_subif_args_t;
+
+vnet_dev_rv_t
+vnet_dev_api_create_port_subif (vlib_main_t *,
+				vnet_dev_api_create_port_subif_args_t *);
+
+typedef struct
+{
+  u32 sw_if_index;
+} vnet_dev_api_remove_port_subif_args_t;
+
+vnet_dev_rv_t
+vnet_dev_api_remove_port_subif (vlib_main_t *,
+				vnet_dev_api_remove_port_subif_args_t *);
+
 #endif /* _VNET_DEV_API_H_ */
