@@ -46,6 +46,30 @@
       },
       "revId": "06ff697fffd0a39d95f41f4090c3981daff05f72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d71dec1_aaa2bc73",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-05-17T14:20:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da1d38f2_c332a72d",
+      "range": {
+        "startLine": 105,
+        "startChar": 1,
+        "endLine": 105,
+        "endChar": 2
+      },
+      "revId": "06ff697fffd0a39d95f41f4090c3981daff05f72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
