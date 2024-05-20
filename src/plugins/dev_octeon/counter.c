@@ -294,3 +294,45 @@ oct_txq_get_stats (vlib_main_t *vm, vnet_dev_port_t *port,
 
   return VNET_DEV_OK;
 }
+
+void
+oct_port_clear_counters (vlib_main_t *vm, vnet_dev_port_t *port)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  if ((rrv = roc_nix_stats_reset (nix)))
+    oct_roc_err (dev, rrv, "roc_nix_stats_reset() failed");
+}
+
+void
+oct_rxq_clear_counters (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
+{
+  oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
+  vnet_dev_t *dev = rxq->port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  if ((rrv = roc_nix_stats_queue_reset (nix, crq->rq.qid, 1)))
+    oct_roc_err (dev, rrv,
+		 "roc_nix_stats_queue_reset() failed for rx queue %u",
+		 rxq->queue_id);
+}
+
+void
+oct_txq_clear_counters (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
+{
+  oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
+  vnet_dev_t *dev = txq->port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  if ((rrv = roc_nix_stats_queue_reset (nix, ctq->sq.qid, 0)))
+    oct_roc_err (dev, rrv,
+		 "roc_nix_stats_queue_reset() failed for tx queue %u",
+		 txq->queue_id);
+}
