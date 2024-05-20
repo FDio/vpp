@@ -35,6 +35,7 @@ option version = "1.0.0";
 */
 
 autoreply define builtinurl_enable {
+    option deprecated="incorporated in http_static plugin";
     /* Client identifier, set from api_main.my_client_index */
     u32 client_index;
 
