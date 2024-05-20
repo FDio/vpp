@@ -115,6 +115,7 @@ typedef struct
   vnet_dev_rx_queue_op_t *start;
   vnet_dev_rx_queue_op_no_rv_t *stop;
   vnet_dev_rx_queue_op_no_rv_t *free;
+  vnet_dev_rx_queue_op_no_rv_t *clear_counters;
   format_function_t *format_info;
 } vnet_dev_rx_queue_ops_t;
 
@@ -124,6 +125,7 @@ typedef struct
   vnet_dev_tx_queue_op_t *start;
   vnet_dev_tx_queue_op_no_rv_t *stop;
   vnet_dev_tx_queue_op_no_rv_t *free;
+  vnet_dev_tx_queue_op_no_rv_t *clear_counters;
   format_function_t *format_info;
 } vnet_dev_tx_queue_ops_t;
 
@@ -245,6 +247,7 @@ typedef struct
   vnet_dev_port_op_no_rv_t *stop;
   vnet_dev_port_op_no_rv_t *deinit;
   vnet_dev_port_op_no_rv_t *free;
+  vnet_dev_port_op_no_rv_t *clear_counters;
   format_function_t *format_status;
   format_function_t *format_flow;
 } vnet_dev_port_ops_t;
