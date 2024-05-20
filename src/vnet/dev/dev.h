@@ -245,6 +245,7 @@ typedef struct
   vnet_dev_port_op_no_rv_t *stop;
   vnet_dev_port_op_no_rv_t *deinit;
   vnet_dev_port_op_no_rv_t *free;
+  vnet_dev_port_op_no_rv_t *clear_counters;
   format_function_t *format_status;
   format_function_t *format_flow;
 } vnet_dev_port_ops_t;

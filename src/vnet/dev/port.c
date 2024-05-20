@@ -733,6 +733,12 @@ vnet_dev_port_if_remove (vlib_main_t *vm, vnet_dev_port_t *port)
 void
 vnet_dev_port_clear_counters (vlib_main_t *vm, vnet_dev_port_t *port)
 {
+  if (port->port_ops.clear_counters)
+    {
+      port->port_ops.clear_counters (vm, port);
+      return;
+    }
+
   if (port->counter_main)
     vnet_dev_counters_clear (vm, port->counter_main);
 
