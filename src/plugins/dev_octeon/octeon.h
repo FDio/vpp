@@ -143,6 +143,7 @@ vnet_dev_rv_t oct_flow_query (vlib_main_t *, vnet_dev_port_t *, u32, uword,
 
 /* counter.c */
 void oct_port_add_counters (vlib_main_t *, vnet_dev_port_t *);
+void oct_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t oct_port_get_stats (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t oct_rxq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_rx_queue_t *);

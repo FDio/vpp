@@ -141,6 +141,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
         .config_change_validate = oct_port_cfg_change_validate,
         .format_status = format_oct_port_status,
         .format_flow = format_oct_port_flow,
+        .clear_counters = oct_port_clear_counters,
       },
       .data_size = sizeof (oct_port_t),
       .initial_data = &oct_port,
