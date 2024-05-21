@@ -34,6 +34,24 @@
       "parentUuid": "edd0ce81_54a81dac",
       "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b11cee8_280eb66c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-05-21T07:53:05Z",
+      "side": 1,
+      "message": "while I understand that this is out of scope for this particular patch - I don\u0027t completely agree with you. indeed now we don\u0027t have a nice way to overcome it.\n\nanyway, this approach only \"fixes\" esp encrypt code while we have many places with handoff packets. what about esp_decrypt, ah_encrypt, ah_decrypt?\n\nin general, the similar approach should(?) be applied to all the places where we have handoff + management of dp accessed objects via api. I just thought what if there was a way to get rid off this vector of error proneness..",
+      "parentUuid": "90359a43_96bf08b8",
+      "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
