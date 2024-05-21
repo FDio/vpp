@@ -1184,7 +1184,6 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
     {
-      ASSERT ((u32) (kv6.value >> 32) == thread_index);
       if (PREDICT_FALSE ((u32) (kv6.value >> 32) != thread_index))
 	{
 	  *result = SESSION_LOOKUP_RESULT_WRONG_THREAD;
