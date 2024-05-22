@@ -581,11 +581,10 @@ vnet_classify_find_entry_inline (const vnet_classify_table_t *t, const u8 *h,
   return 0;
 }
 
-vnet_classify_table_t *vnet_classify_new_table (vnet_classify_main_t *cm,
-						const u8 *mask, u32 nbuckets,
-						u32 memory_size,
-						u32 skip_n_vectors,
-						u32 match_n_vectors);
+vnet_classify_table_t *
+vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
+			 u32 nbuckets, u32 memory_size, u32 skip_n_vectors,
+			 u32 match_n_vectors, char *heap_name);
 
 int vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
 				   const u8 *match, u16 hit_next_index,
@@ -597,7 +596,7 @@ int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 				 u32 match, u32 next_table_index,
 				 u32 miss_next_index, u32 *table_index,
 				 u8 current_data_flag, i16 current_data_offset,
-				 int is_add, int del_chain);
+				 int is_add, int del_chain, char *heap_name);
 void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
 				       u32 table_index, int del_chain);
 

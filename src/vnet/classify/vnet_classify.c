@@ -130,7 +130,7 @@ vnet_classify_register_unformat_opaque_index_fn (unformat_function_t * fn)
 vnet_classify_table_t *
 vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
 			 u32 nbuckets, u32 memory_size, u32 skip_n_vectors,
-			 u32 match_n_vectors)
+			 u32 match_n_vectors, char *heap_name)
 {
   vnet_classify_table_t *t;
   void *oldheap;
@@ -150,8 +150,8 @@ vnet_classify_new_table (vnet_classify_main_t *cm, const u8 *mask,
   t->entries_per_page = 2;
   t->load_mask = pow2_mask (match_n_vectors * 2);
 
-  t->mheap = clib_mem_create_heap (0, memory_size, 1 /* locked */ ,
-				   "classify");
+  t->mheap = clib_mem_create_heap (0, memory_size, 1 /* locked */,
+				   heap_name ? heap_name : "classify");
 
   vec_validate_aligned (t->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
   oldheap = clib_mem_set_heap (t->mheap);
@@ -747,7 +747,7 @@ vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 			     u32 match, u32 next_table_index,
 			     u32 miss_next_index, u32 *table_index,
 			     u8 current_data_flag, i16 current_data_offset,
-			     int is_add, int del_chain)
+			     int is_add, int del_chain, char *heap_name)
 {
   vnet_classify_table_t *t;
 
@@ -764,8 +764,8 @@ vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
 	  if (match < 1 || match > 5)
 	    return VNET_API_ERROR_INVALID_VALUE;
 
-	  t = vnet_classify_new_table (cm, mask, nbuckets, memory_size,
-				       skip, match);
+	  t = vnet_classify_new_table (cm, mask, nbuckets, memory_size, skip,
+				       match, heap_name);
 	  t->next_table_index = next_table_index;
 	  t->miss_next_index = miss_next_index;
 	  t->current_data_flag = current_data_flag;
@@ -1549,6 +1549,7 @@ classify_table_command_fn (vlib_main_t * vm,
   u32 tmp;
   u32 current_data_flag = 0;
   int current_data_offset = 0;
+  char *heap_name;
 
   u8 *mask = 0;
   vnet_classify_main_t *cm = &vnet_classify_main;
@@ -1598,10 +1599,11 @@ classify_table_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "current-data-flag %d", &current_data_flag))
 	;
-      else
-	if (unformat (input, "current-data-offset %d", &current_data_offset))
+      else if (unformat (input, "current-data-offset %d",
+			 &current_data_offset))
 	;
-
+      else if (unformat (input, "heap %s", &heap_name))
+	;
       else
 	break;
     }
@@ -1618,11 +1620,10 @@ classify_table_command_fn (vlib_main_t * vm,
   if (!is_add && table_index == ~0)
     return clib_error_return (0, "table index required for delete");
 
-  rv = vnet_classify_add_del_table (cm, mask, nbuckets, (u32) memory_size,
-				    skip, match, next_table_index,
-				    miss_next_index, &table_index,
-				    current_data_flag, current_data_offset,
-				    is_add, del_chain);
+  rv = vnet_classify_add_del_table (
+    cm, mask, nbuckets, (u32) memory_size, skip, match, next_table_index,
+    miss_next_index, &table_index, current_data_flag, current_data_offset,
+    is_add, del_chain, heap_name);
   switch (rv)
     {
     case 0:
@@ -1642,7 +1643,7 @@ VLIB_CLI_COMMAND (classify_table, static) =
   "classify table [miss-next|l2-miss_next|acl-miss-next <next_index>]"
   "\n mask <mask-value> buckets <nn> [skip <n>] [match <n>]"
   "\n [current-data-flag <n>] [current-data-offset <n>] [table <n>]"
-  "\n [memory-size <nn>[M][G]] [next-table <n>]"
+  "\n [memory-size <nn>[M][G]] [next-table <n>] [heap <name>]"
   "\n [del] [del-chain]",
   .function = classify_table_command_fn,
 };
@@ -1976,11 +1977,10 @@ classify_filter_command_fn (vlib_main_t * vm,
        * Matching table wasn't found, so create a new one at the
        * head of the next_table_index chain.
        */
-      rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
-					skip, match, next_table_index,
-					miss_next_index, &table_index,
-					current_data_flag,
-					current_data_offset, 1, 0);
+      rv = vnet_classify_add_del_table (
+	cm, mask, nbuckets, memory_size, skip, match, next_table_index,
+	miss_next_index, &table_index, current_data_flag, current_data_offset,
+	1, 0, 0);
 
       if (rv != 0)
 	{
@@ -3145,11 +3145,9 @@ test_classify_churn (test_classify_main_t * tm)
       tmp++;
     }
 
-  tm->table = vnet_classify_new_table (tm->classify_main,
-				       (u8 *) mask,
-				       tm->buckets,
-				       tm->memory_size, 0 /* skip */ ,
-				       3 /* vectors to match */ );
+  tm->table = vnet_classify_new_table (
+    tm->classify_main, (u8 *) mask, tm->buckets, tm->memory_size, 0 /* skip */,
+    3 /* vectors to match */, 0);
   tm->table->miss_next_index = IP_LOOKUP_NEXT_DROP;
   tm->table_index = tm->table - tm->classify_main->tables;
   vlib_cli_output (vm, "Created table %d, buckets %d",

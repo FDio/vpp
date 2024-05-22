@@ -490,12 +490,10 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
   if (0 == match)
     match = 1;
 
-  int ret = vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
-					 memory_size, skip, match,
-					 next_table_index, miss_next_index,
-					 table_index, current_data_flag,
-					 current_data_offset, is_add,
-					 1 /* delete_chain */ );
+  int ret = vnet_classify_add_del_table (
+    cm, skip_mask_ptr, nbuckets, memory_size, skip, match, next_table_index,
+    miss_next_index, table_index, current_data_flag, current_data_offset,
+    is_add, 1 /* delete_chain */, 0);
   return ret;
 }
 

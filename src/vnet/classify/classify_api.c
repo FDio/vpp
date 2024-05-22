@@ -372,11 +372,74 @@ static void vl_api_classify_add_del_table_t_handler
   u8 current_data_flag = mp->current_data_flag;
   i16 current_data_offset = clib_net_to_host_i16 (mp->current_data_offset);
 
-  rv = vnet_classify_add_del_table
-    (cm, mp->mask, nbuckets, memory_size,
-     skip_n_vectors, match_n_vectors,
-     next_table_index, miss_next_index, &table_index,
-     current_data_flag, current_data_offset, mp->is_add, mp->del_chain);
+  rv = vnet_classify_add_del_table (
+    cm, mp->mask, nbuckets, memory_size, skip_n_vectors, match_n_vectors,
+    next_table_index, miss_next_index, &table_index, current_data_flag,
+    current_data_offset, mp->is_add, mp->del_chain, 0);
+
+out:
+  REPLY_MACRO2 (VL_API_CLASSIFY_ADD_DEL_TABLE_REPLY, ({
+		  if (rv == 0 && mp->is_add)
+		    {
+		      t = pool_elt_at_index (cm->tables, table_index);
+		      rmp->skip_n_vectors = htonl (t->skip_n_vectors);
+		      rmp->match_n_vectors = htonl (t->match_n_vectors);
+		      rmp->new_table_index = htonl (table_index);
+		    }
+		  else
+		    {
+		      rmp->skip_n_vectors = ~0;
+		      rmp->match_n_vectors = ~0;
+		      rmp->new_table_index = ~0;
+		    }
+		}));
+}
+
+static void
+vl_api_classify_add_del_table_v2_t_handler (
+  vl_api_classify_add_del_table_v2_t *mp)
+{
+  vl_api_classify_add_del_table_v2_reply_t *rmp;
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  vnet_classify_table_t *t;
+  int rv;
+
+#define _(a) u32 a;
+  foreach_classify_add_del_table_field;
+#undef _
+
+#define _(a) a = ntohl (mp->a);
+  foreach_classify_add_del_table_field;
+#undef _
+
+  if (mask_len != match_n_vectors * sizeof (u32x4))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
+  /* The underlying API fails silently, on purpose, so check here */
+  if (mp->is_add == 0) /* delete */
+    {
+      if (pool_is_free_index (cm->tables, table_index))
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_TABLE;
+	  goto out;
+	}
+    }
+  else /* add or update */
+    {
+      if (table_index != ~0 && pool_is_free_index (cm->tables, table_index))
+	table_index = ~0;
+    }
+
+  u8 current_data_flag = mp->current_data_flag;
+  i16 current_data_offset = clib_net_to_host_i16 (mp->current_data_offset);
+
+  rv = vnet_classify_add_del_table (
+    cm, mp->mask, nbuckets, memory_size, skip_n_vectors, match_n_vectors,
+    next_table_index, miss_next_index, &table_index, current_data_flag,
+    current_data_offset, mp->is_add, mp->del_chain, (char *) mp->heap_name);
 
 out:
   REPLY_MACRO2(VL_API_CLASSIFY_ADD_DEL_TABLE_REPLY,
