@@ -253,6 +253,8 @@ typedef struct
 
   vlib_worker_thread_t *worker_threads;
 
+  int use_workers_auto;
+
   int use_pthreads;
 
   /* Number of vlib_main / vnet_main clones */
