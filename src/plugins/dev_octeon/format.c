@@ -25,7 +25,7 @@ format_oct_nix_rx_cqe_desc (u8 *s, va_list *args)
   typeof (d->sg0) *sg0 = &d->sg0;
   typeof (d->sg0) *sg1 = &d->sg1;
 
-  s = format (s, "hdr: cqe_type %u nude %u q %u tag 0x%x", h->cqe_type,
+  s = format (s, "hdr: cqe_type %u nude %u qid %u tag 0x%x", h->cqe_type,
 	      h->node, h->q, h->tag);
   s = format (s, "\n%Uparse:", format_white_space, indent);
 #define _(n, f) s = format (s, " " #n " " f, p->n)
