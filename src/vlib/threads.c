@@ -370,6 +370,8 @@ void
 vlib_worker_thread_init (vlib_worker_thread_t * w)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  sigset_t signals;
+  int rv;
 
   /*
    * Note: disabling signals in worker threads as follows
@@ -379,7 +381,17 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
    *    sigfillset (&s);
    *    pthread_sigmask (SIG_SETMASK, &s, 0);
    *  }
+   * We can still disable signals for SIGINT,SIGHUP and SIGTERM as they don't
+   * trigger post-dump handlers anyway.
    */
+  sigemptyset (&signals);
+  sigaddset (&signals, SIGINT);
+  sigaddset (&signals, SIGHUP);
+  sigaddset (&signals, SIGTERM);
+  rv = pthread_sigmask (SIG_BLOCK, &signals, NULL);
+
+  if (rv)
+    clib_unix_warning ("Failed to set the worker signal mask");
 
   clib_mem_set_heap (w->thread_mheap);
 
