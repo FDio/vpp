@@ -205,6 +205,11 @@ vlib_thread_init (vlib_main_t * vm)
       avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
     }
 
+  /* if main-core is unspecified with automatic worker pinning, pin
+   * main-thread to cpu it currently runs on */
+  if ( tm->main_lcore == ~0 && tm->use_workers_auto)
+    tm->main_lcore = sched_getcpu ();
+
   /* grab cpu for main thread */
   if (tm->main_lcore != ~0)
     {
@@ -1129,6 +1134,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   tm->sched_policy = ~0;
   tm->sched_priority = ~0;
   tm->main_lcore = ~0;
+  tm->use_workers_auto = 0;
 
   tr = tm->next;
 
@@ -1197,6 +1203,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	      (0, "number of '%s' threads is already configured", name);
 
 	  tr->count = count;
+	  if (!strncmp ((char *) name, "workers", 7))
+	    tm->use_workers_auto = 1;
 	}
       else
 	break;
@@ -1707,8 +1715,9 @@ threads_init (vlib_main_t * vm)
   const vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   if (tm->main_lcore == ~0 && tm->n_vlib_mains > 1)
-    return clib_error_return (0, "Configuration error, a main core must "
-				 "be specified when using worker threads");
+    return clib_error_return (
+      0, "Configuration error, a main core must "
+	 "be specified when using worker threads with manual pinning");
 
   return 0;
 }
