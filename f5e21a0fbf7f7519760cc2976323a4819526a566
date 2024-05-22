@@ -16,6 +16,24 @@
       "message": "Why is this needed? Can you simply rely on existing code which stores counters on clear and uses delta...?",
       "revId": "f5e21a0fbf7f7519760cc2976323a4819526a566",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "608468bb_e4d24109",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-05-22T21:36:44Z",
+      "side": 1,
+      "message": "\u003e\u003e Why is this needed? \nDevice can have h/w based reset counter. This will allow to show same stats via vpp and other tools (for ex. https://doc.dpdk.org/guides/platform/cnxk.html#debugfs-support in case of octeon), otherwise other tools will show data from bringup.\n\n\u003e\u003e Can you simply rely on existing code which stores counters on clear and uses delta...?\nclear operation is optional, if not set by the device driver then existing infra will be used.",
+      "parentUuid": "6127054a_fca905c1",
+      "revId": "f5e21a0fbf7f7519760cc2976323a4819526a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
