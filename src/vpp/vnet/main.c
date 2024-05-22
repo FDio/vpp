@@ -123,6 +123,7 @@ main (int argc, char *argv[])
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
   int main_core = ~0;
+  int use_workers_auto = ~0;
   cpu_set_t cpuset;
   void *main_heap;
 
@@ -278,6 +279,8 @@ main (int argc, char *argv[])
 		main_core = x;
 	    }
 	}
+      else if (!strncmp (argv[i], "workers", 7))
+	use_workers_auto = 1;
       else if (!strncmp (argv[i], "interactive", 11))
 	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
       else if (!strncmp (argv[i], "nosyslog", 8))
@@ -328,6 +331,13 @@ defaulted:
   vec_free (v);
 
   unformat_free (&input);
+
+  /* if main-core is unspecified with automatic worker pinning, select
+   * cpu currently used in main thread */
+  if (main_core == ~0 && use_workers_auto != ~0)
+    {
+      main_core = sched_getcpu ();
+    }
 
   /* set process affinity for main thread */
   if (main_core != ~0)
