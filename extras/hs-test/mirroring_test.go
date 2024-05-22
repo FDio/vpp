@@ -8,6 +8,7 @@ func init() {
 	registerNginxTests(MirroringTest)
 }
 
+// broken when CPUS > 1
 func MirroringTest(s *NginxSuite) {
 	proxyAddress := s.getInterfaceByName(mirroringClientInterfaceName).peer.ip4AddressString()
 

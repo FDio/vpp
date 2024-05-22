@@ -21,6 +21,7 @@ func EchoBuiltinTest(s *VethsSuite) {
 	s.assertNotContains(o, "failed:")
 }
 
+// unstable with multiple workers
 func TcpWithLossTest(s *VethsSuite) {
 	serverVpp := s.getContainerByName("server-vpp").vppInstance
 

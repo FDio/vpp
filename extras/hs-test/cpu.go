@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	. "github.com/onsi/ginkgo/v2"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,26 +17,31 @@ type CpuContext struct {
 	cpus         []int
 }
 
-func (c *CpuContext) Release() {
-	c.cpuAllocator.cpus = append(c.cpuAllocator.cpus, c.cpus...)
-	c.cpus = c.cpus[:0] // empty the list
-}
-
 type CpuAllocatorT struct {
 	cpus []int
 }
 
 var cpuAllocator *CpuAllocatorT = nil
 
-func (c *CpuAllocatorT) Allocate(nCpus int) (*CpuContext, error) {
+func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, error) {
 	var cpuCtx CpuContext
-
-	if len(c.cpus) < nCpus {
-		return nil, fmt.Errorf("could not allocate %d CPUs; available: %d", nCpus, len(c.cpus))
+	maxCpu := GinkgoParallelProcess() * 2 * nCpus
+	minCpu := (GinkgoParallelProcess() - 1) * 2 * nCpus
+	if len(c.cpus) < maxCpu {
+		containerCount += 1
+		err := fmt.Errorf("could not allocate %d CPUs; available: %d; attempted to allocate cores %d-%d",
+			nCpus*containerCount, len(c.cpus), minCpu, minCpu+nCpus*containerCount)
+		return nil, err
 	}
-	cpuCtx.cpus = c.cpus[0:nCpus]
+	if containerCount == 0 {
+		cpuCtx.cpus = c.cpus[minCpu : maxCpu-nCpus]
+	} else if containerCount == 1 {
+		cpuCtx.cpus = c.cpus[minCpu+nCpus : maxCpu]
+	} else {
+		return nil, fmt.Errorf("too many VPP containers; CPU allocation for >2 VPP containers is not implemented yet")
+	}
+
 	cpuCtx.cpuAllocator = c
-	c.cpus = c.cpus[nCpus:]
 	return &cpuCtx, nil
 }
 
