@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ad8c6d5_579e38b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-22T15:52:27Z",
+      "side": 1,
+      "message": "overall it looks good to me, just some minor comments",
+      "revId": "a41a5e0d537068d8723be9ca05602ddd4de96a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a6beb85_e86889c6",
+        "filename": "extras/hs-test/echo_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-22T15:52:27Z",
+      "side": 1,
+      "message": "please use SkipIfMultiWorker, later we can investigate why",
+      "revId": "a41a5e0d537068d8723be9ca05602ddd4de96a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8aab0a54_b5c3e3c9",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-22T15:52:27Z",
+      "side": 1,
+      "message": "I think vppContainerCount is better name so it is clear that we are interested only in number of spawned VPP instances",
+      "revId": "a41a5e0d537068d8723be9ca05602ddd4de96a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da46e557_35cd4687",
+        "filename": "extras/hs-test/http_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-22T15:52:27Z",
+      "side": 1,
+      "message": "please use SkipIfMultiWorker, later we can investigate why",
+      "revId": "a41a5e0d537068d8723be9ca05602ddd4de96a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e711ff50_d954bb35",
+        "filename": "extras/hs-test/mirroring_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-22T15:52:27Z",
+      "side": 1,
+      "message": "please use SkipIfMultiWorker, later we can investigate why",
+      "revId": "a41a5e0d537068d8723be9ca05602ddd4de96a43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
