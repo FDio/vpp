@@ -239,6 +239,7 @@ func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*Vp
 	vpp := new(VppInstance)
 	vpp.container = c
 	vpp.cpus = cpus
+	c.suite.vppContainerCount += 1
 	vpp.additionalConfig = append(vpp.additionalConfig, additionalConfigs...)
 	c.vppInstance = vpp
 	return vpp, nil

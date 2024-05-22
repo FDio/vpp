@@ -30,18 +30,19 @@ var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var vppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 
 type HstSuite struct {
-	containers       map[string]*Container
-	volumes          []string
-	netConfigs       []NetConfig
-	netInterfaces    map[string]*NetInterface
-	ip4AddrAllocator *Ip4AddressAllocator
-	testIds          map[string]string
-	cpuAllocator     *CpuAllocatorT
-	cpuContexts      []*CpuContext
-	cpuPerVpp        int
-	pid              string
-	logger           *log.Logger
-	logFile          *os.File
+	containers        map[string]*Container
+	vppContainerCount int
+	volumes           []string
+	netConfigs        []NetConfig
+	netInterfaces     map[string]*NetInterface
+	ip4AddrAllocator  *Ip4AddressAllocator
+	testIds           map[string]string
+	cpuAllocator      *CpuAllocatorT
+	cpuContexts       []*CpuContext
+	cpuPerVpp         int
+	pid               string
+	logger            *log.Logger
+	logFile           *os.File
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -61,7 +62,7 @@ func (s *HstSuite) SetupSuite() {
 }
 
 func (s *HstSuite) AllocateCpus() []int {
-	cpuCtx, err := s.cpuAllocator.Allocate(s.cpuPerVpp)
+	cpuCtx, err := s.cpuAllocator.Allocate(s.vppContainerCount, s.cpuPerVpp)
 	s.assertNil(err)
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
@@ -82,9 +83,6 @@ func (s *HstSuite) TearDownTest() {
 	if *isPersistent {
 		return
 	}
-	for _, c := range s.cpuContexts {
-		c.Release()
-	}
 	s.resetContainers()
 	s.removeVolumes()
 	s.ip4AddrAllocator.deleteIpAddresses()
@@ -98,6 +96,7 @@ func (s *HstSuite) skipIfUnconfiguring() {
 
 func (s *HstSuite) SetupTest() {
 	s.log("Test Setup")
+	s.vppContainerCount = 0
 	s.skipIfUnconfiguring()
 	s.setupVolumes()
 	s.setupContainers()
@@ -157,7 +156,7 @@ func (s *HstSuite) hstFail() {
 	for _, container := range s.containers {
 		out, err := container.log(20)
 		if err != nil {
-			fmt.Printf("An error occured while obtaining '%s' container logs: %s\n", container.name, fmt.Sprint(err))
+			s.log("An error occured while obtaining '" + container.name + "' container logs: " + fmt.Sprint(err))
 			continue
 		}
 		s.log("\nvvvvvvvvvvvvvvv " +
