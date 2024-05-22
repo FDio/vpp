@@ -329,6 +329,10 @@ defaulted:
 
   unformat_free (&input);
 
+  /* if main thread affinity is unspecified, set to current running cpu */
+  if (main_core == ~0)
+    main_core = sched_getcpu ();
+
   /* set process affinity for main thread */
   if (main_core != ~0)
     {

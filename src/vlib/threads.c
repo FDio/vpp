@@ -205,6 +205,10 @@ vlib_thread_init (vlib_main_t * vm)
       avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
     }
 
+  /* if main thread affinity is unspecified, set to current running cpu */
+  if (tm->main_lcore == ~0)
+    tm->main_lcore = sched_getcpu ();
+
   /* grab cpu for main thread */
   if (tm->main_lcore != ~0)
     {
@@ -1134,6 +1138,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *name;
   uword *bitmap;
   u32 count;
+  int use_corelist = 0;
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
 
@@ -1185,6 +1190,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
+	  use_corelist = 1;
 	}
       else
 	if (unformat
@@ -1214,6 +1220,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	break;
     }
 
+  if (use_corelist && tm->main_lcore == ~0)
+    return clib_error_return (0, "main-core must be specified when using "
+				 "corelist-* or coremask-* attribute");
   if (tm->sched_priority != ~0)
     {
       if (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR)
