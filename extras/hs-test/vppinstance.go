@@ -456,6 +456,7 @@ func (vpp *VppInstance) generateCpuConfig() string {
 	}
 	c.newStanza("cpu").
 		append(fmt.Sprintf("main-core %d", vpp.cpus[0]))
+	vpp.getSuite().log(fmt.Sprintf("main-core %d", vpp.cpus[0]))
 	workers := vpp.cpus[1:]
 
 	if len(workers) > 0 {
@@ -466,6 +467,7 @@ func (vpp *VppInstance) generateCpuConfig() string {
 			s = s + fmt.Sprintf("%d", workers[i])
 		}
 		c.append(fmt.Sprintf("corelist-workers %s", s))
+		vpp.getSuite().log("corelist-workers " + s)
 	}
 	return c.close().toString()
 }

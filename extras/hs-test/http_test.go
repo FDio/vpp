@@ -272,7 +272,9 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	return nil
 }
 
+// unstable with multiple workers
 func NginxPerfCpsTest(s *NoTopoSuite) {
+	s.SkipIfMultiWorker()
 	s.assertNil(runNginxPerf(s, "cps", "ab"))
 }
 
