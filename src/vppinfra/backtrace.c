@@ -219,8 +219,17 @@ backtrace_done:
 #ifndef clib_backtrace_defined
 #define clib_backtrace_defined
 
+#ifndef USE_LIBUNWIND
 /* use glibc backtrace for stack trace */
 #include <execinfo.h>
+#else
+#include <libunwind.h>
+static int
+backtrace (void **buffer, int size)
+{
+  return unw_backtrace (buffer, size);
+}
+#endif
 
 __clib_export uword
 clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)

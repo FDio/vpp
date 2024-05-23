@@ -234,9 +234,13 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
 else()
   option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." OFF)
 endif()
+option(VPP_USE_LIBUNWIND "Use libunwind for backtrace." OFF)
 
 if(VPP_USE_EXTERNAL_LIBEXECINFO)
   set(EXECINFO_LIB execinfo)
+elseif(VPP_USE_LIBUNWIND)
+  set(EXECINFO_LIB unwind)
+  add_compile_definitions(USE_LIBUNWIND)
 endif()
 add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
