@@ -27,6 +27,7 @@ ForEachMacros:
   - 'foreach_vlib_frame_bitmap_set_bit_index'
   - 'FOREACH_ARRAY_ELT'
   - 'RTE_ETH_FOREACH_DEV'
+  - 'foreach_clib_stack_frame'
   - 'foreach_vnet_dev_rx_queue_runtime'
   - 'foreach_vnet_dev_counter'
   - 'foreach_vnet_dev_port_rx_queue'
