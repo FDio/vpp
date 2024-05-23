@@ -52,6 +52,24 @@
       "parentUuid": "90359a43_96bf08b8",
       "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d25a38c1_1355194f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-23T20:33:48Z",
+      "side": 1,
+      "message": "I believe this is all down to the synchronization between cp and multi-core dp - and this is a common problem not limited to vpp. Handed-off packets are not second class citizens in vpp land actually, each core\u0027s main loop actually deals with the hand-off queues first. Hand-off also helps improving performance in many places such as NAT and crypto scheduler.\n\nThe only question is when cp issues a config change affecting packets waiting in the hand-off queues, should we let these packets processed before the config is effective, or should we apply the packets processed by the new config?\n\nAs I mentioned, choosing the former way is not impossible but I have to believe it is costly. There are at least 3 messages between main core and every worker, and the workers finished draining early have to wait for the slower cores before continuing (only all queues drained the main core can apply the new config). If you have a better way please share, much appreciated!",
+      "parentUuid": "7b11cee8_280eb66c",
+      "revId": "58ef3eee0d016aead89c4ba8a451233f3f482fe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
