@@ -385,10 +385,6 @@ void qsort (void *base, uword n, uword size,
 	    int (*)(const void *, const void *));
 #endif
 
-/* Stack backtrace. */
-uword
-clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip);
-
 #include <vppinfra/byte_order.h>
 #endif /* included_clib_h */
 
