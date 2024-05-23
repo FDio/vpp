@@ -14,6 +14,34 @@
 enable_language(ASM)
 
 ##############################################################################
+# find libdl
+##############################################################################
+vpp_find_path(LIBDL_INCLUDE_DIR dlfcn.h)
+vpp_find_library(LIBDL_LIB NAMES dl)
+
+if (LIBDL_INCLUDE_DIR AND LIBDL_LIB)
+  message(STATUS "libdl found at ${LIBDL_LIB}")
+  list(APPEND VPPINFRA_LIBS ${LIBDL_LIB})
+else()
+  message(FATAL_ERROR "libdl not found")
+endif()
+
+##############################################################################
+# find libunwind
+##############################################################################
+vpp_find_path(LIBUNWIND_INCLUDE_DIR unwind.h)
+vpp_find_library(LIBUNWIND_LIB NAMES unwind libunwind)
+
+if (LIBUNWIND_INCLUDE_DIR AND LIBUNWIND_LIB)
+  message(STATUS "libunwind found at ${LIBUNWIND_LIB}")
+  list(APPEND VPPINFRA_LIBS ${LIBUNWIND_LIB})
+  add_definitions(-DHAVE_LIBUNWIND=1)
+else()
+  message(WARNING "libunwind not found - stack traces disabled")
+  add_definitions(-DHAVE_LIBUNWIND=0)
+endif()
+
+##############################################################################
 # Generate vppinfra/config.h
 ##############################################################################
 set(LOG2_CACHE_LINE_BYTES ${VPP_LOG2_CACHE_LINE_SIZE})
@@ -42,12 +70,10 @@ add_definitions(-fvisibility=hidden)
 set_source_files_properties( cJSON.c jsonformat.c PROPERTIES
   COMPILE_DEFINITIONS " CJSON_API_VISIBILITY " )
 
-
 ##############################################################################
 # vppinfra sources
 ##############################################################################
 set(VPPINFRA_SRCS
-  backtrace.c
   bitmap.c
   bihash_all_vector.c
   cpu.c
@@ -80,6 +106,7 @@ set(VPPINFRA_SRCS
   rbtree.c
   serialize.c
   socket.c
+  stack.c
   std-formats.c
   string.c
   time.c
@@ -142,6 +169,7 @@ set(VPPINFRA_HEADERS
   fifo.h
   file.h
   format.h
+  format_ansi.h
   format_table.h
   hash.h
   heap.h
@@ -175,6 +203,7 @@ set(VPPINFRA_HEADERS
   smp.h
   socket.h
   sparse_vec.h
+  stack.h
   string.h
   time.h
   time_range.h
@@ -229,22 +258,9 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
    )
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
-  option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." ON)
-else()
-  option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-glibc targets)." OFF)
-endif()
-option(VPP_USE_LIBUNWIND "Use libunwind for backtrace." OFF)
-
-if(VPP_USE_EXTERNAL_LIBEXECINFO)
-  set(EXECINFO_LIB execinfo)
-elseif(VPP_USE_LIBUNWIND)
-  set(EXECINFO_LIB unwind)
-  add_compile_definitions(USE_LIBUNWIND)
-endif()
 add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
-  LINK_LIBRARIES m ${EXECINFO_LIB}
+  LINK_LIBRARIES m ${VPPINFRA_LIBS}
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
   COMPONENT libvppinfra
   LTO

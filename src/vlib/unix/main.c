@@ -40,6 +40,8 @@
 #include <vlib/unix/unix.h>
 #include <vlib/unix/plugin.h>
 #include <vppinfra/unix.h>
+#include <vppinfra/stack.h>
+#include <vppinfra/format_ansi.h>
 
 #include <limits.h>
 #include <signal.h>
@@ -97,19 +99,41 @@ int vlib_last_signum = 0;
 uword vlib_last_faulting_address = 0;
 
 static void
+log_one_line ()
+{
+  vec_terminate_c_string (syslog_msg);
+  if (unix_main.flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG))
+    fprintf (stderr, "%s\n", syslog_msg);
+  else
+    syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
+  vec_reset_length (syslog_msg);
+}
+
+static void
 unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 {
   uword fatal = 0;
+  int color =
+    (unix_main.flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG)) &&
+    (unix_main.flags & UNIX_FLAG_NOCOLOR) == 0;
 
   /* These come in handy when looking at core files from optimized images */
   vlib_last_signum = signum;
   vlib_last_faulting_address = (uword) si->si_addr;
 
+  if (color)
+    syslog_msg = format (syslog_msg, ANSI_FG_BR_RED);
+
   syslog_msg = format (syslog_msg, "received signal %U, PC %U",
 		       format_signal, signum, format_ucontext_pc, uc);
 
-  if (signum == SIGSEGV)
+  if (signum == SIGSEGV || signum == SIGBUS)
     syslog_msg = format (syslog_msg, ", faulting address %p", si->si_addr);
+
+  if (color)
+    syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
+
+  log_one_line ();
 
   switch (signum)
     {
@@ -120,11 +144,17 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
        */
       if (unix_main.vlib_main && unix_main.vlib_main->main_loop_exit_set)
 	{
-	  syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
+	  syslog_msg = format (
+	    syslog_msg, "received SIGTERM from PID %d UID %d, exiting...",
+	    si->si_pid, si->si_uid);
+	  log_one_line ();
 	  unix_main.vlib_main->main_loop_exit_now = 1;
 	}
       else
-	syslog (LOG_ERR | LOG_DAEMON, "IGNORE early SIGTERM...");
+	{
+	  syslog_msg = format (syslog_msg, "IGNORE early SIGTERM...");
+	  log_one_line ();
+	}
       break;
       /* fall through */
     case SIGQUIT:
@@ -144,26 +174,75 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       break;
     }
 
-  /* Null terminate. */
-  vec_add1 (syslog_msg, 0);
 
   if (fatal)
     {
-      syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
+      int skip = 1, index = 0;
 
-      /* Address of callers: outer first, inner last. */
-      uword callers[15];
-      uword n_callers = clib_backtrace (callers, ARRAY_LEN (callers), 0);
-      int i;
-      for (i = 0; i < n_callers; i++)
+      foreach_clib_stack_frame (sf)
 	{
-	  vec_reset_length (syslog_msg);
+	  if (sf->is_signal_frame)
+	    {
+	      int pipefd[2];
+	      const int n_bytes = 20;
+	      u8 *ip = (void *) sf->ip;
 
-	  syslog_msg =
-	    format (syslog_msg, "#%-2d 0x%016lx %U%c", i, callers[i],
-		    format_clib_elf_symbol_with_address, callers[i], 0);
+	      if (pipe (pipefd) == 0)
+		{
+		  /* check PC points to valid memory */
+		  if (write (pipefd[1], ip, n_bytes) == n_bytes)
+		    {
+		      syslog_msg = format (syslog_msg, "Code: ");
+		      if (color)
+			syslog_msg = format (syslog_msg, ANSI_FG_CYAN);
+		      for (int i = 0; i < n_bytes; i++)
+			syslog_msg = format (syslog_msg, " %02x", ip[i]);
+		      if (color)
+			syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
+		    }
+		  else
+		    {
+		      syslog_msg = format (
+			syslog_msg, "PC contains invalid memory address");
+		    }
+		  log_one_line ();
+		  foreach_int (i, 0, 1)
+		    close (pipefd[i]);
+		}
+	      skip = 0;
+	    }
 
-	  syslog (LOG_ERR | LOG_DAEMON, "%s", syslog_msg);
+	  if (skip)
+	    continue;
+
+	  syslog_msg = format (syslog_msg, "#%-2d ", index++);
+	  if (color)
+	    syslog_msg = format (syslog_msg, ANSI_FG_BLUE);
+	  syslog_msg = format (syslog_msg, "0x%016lx", sf->ip);
+	  if (color)
+	    syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
+
+	  if (sf->name[0])
+	    {
+	      if (color)
+		syslog_msg = format (syslog_msg, ANSI_FG_YELLOW);
+	      syslog_msg =
+		format (syslog_msg, " %s + 0x%x", sf->name, sf->offset);
+	      if (color)
+		syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
+	    }
+
+	  log_one_line ();
+
+	  if (sf->file_name)
+	    {
+	      if (color)
+		syslog_msg = format (syslog_msg, ANSI_FG_GREEN);
+	      syslog_msg = format (syslog_msg, "     from %s", sf->file_name);
+	      if (color)
+		syslog_msg = format (syslog_msg, ANSI_FG_DEFAULT);
+	      log_one_line ();
+	    }
 	}
 
       /* have to remove SIGABRT to avoid recursive - os_exit calling abort() */
@@ -175,9 +254,6 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       else
 	os_exit (1);
     }
-  else
-    clib_warning ("%s", syslog_msg);
-
 }
 
 static clib_error_t *
