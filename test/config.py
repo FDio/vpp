@@ -409,10 +409,11 @@ parser.add_argument(
     "/var/run/user/${uid}/vpp.",
 )
 
-default_decode_pcaps = False
+default_decode_pcaps = "failed"
 parser.add_argument(
     "--decode-pcaps",
-    action="store_true",
+    action="store",
+    choices=["none", "failed", "all"],
     default=default_decode_pcaps,
     help=f"if set, decode all pcap files from a test run (default: {default_decode_pcaps})",
 )

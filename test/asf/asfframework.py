@@ -1155,16 +1155,13 @@ class VppTestResult(unittest.TestResult):
         self.runner = runner
         self.printed = []
 
-    def decodePcapFiles(self, test, when_configured=False):
-        if when_configured == False or config.decode_pcaps == True:
-            if hasattr(test, "pg_interfaces") and len(test.pg_interfaces) > 0:
-                testcase_dir = os.path.dirname(test.pg_interfaces[0].out_path)
-                test.pg_interfaces[0].decode_pcap_files(
-                    testcase_dir, f"suite{test.__class__.__name__}"
-                )
-                test.pg_interfaces[0].decode_pcap_files(
-                    testcase_dir, test._testMethodName
-                )
+    def decodePcapFiles(self, test):
+        if hasattr(test, "pg_interfaces") and len(test.pg_interfaces) > 0:
+            testcase_dir = os.path.dirname(test.pg_interfaces[0].out_path)
+            test.pg_interfaces[0].decode_pcap_files(
+                testcase_dir, f"suite{test.__class__.__name__}"
+            )
+            test.pg_interfaces[0].decode_pcap_files(testcase_dir, test._testMethodName)
 
     def addSuccess(self, test):
         """
@@ -1174,7 +1171,8 @@ class VppTestResult(unittest.TestResult):
 
         """
         self.log_result("addSuccess", test)
-        self.decodePcapFiles(test, when_configured=True)
+        if "all" == config.decode_pcaps:
+            self.decodePcapFiles(test)
         unittest.TestResult.addSuccess(self, test)
         self.result_string = colorize("OK", GREEN)
         self.result_code = TestResultCode.PASS
@@ -1182,7 +1180,8 @@ class VppTestResult(unittest.TestResult):
 
     def addExpectedFailure(self, test, err):
         self.log_result("addExpectedFailure", test, err)
-        self.decodePcapFiles(test)
+        if "none" != config.decode_pcaps:
+            self.decodePcapFiles(test)
         super().addExpectedFailure(test, err)
         self.result_string = colorize("FAIL", GREEN)
         self.result_code = TestResultCode.EXPECTED_FAIL
@@ -1190,7 +1189,8 @@ class VppTestResult(unittest.TestResult):
 
     def addUnexpectedSuccess(self, test):
         self.log_result("addUnexpectedSuccess", test)
-        self.decodePcapFiles(test, when_configured=True)
+        if "none" != config.decode_pcaps:
+            self.decodePcapFiles(test)
         super().addUnexpectedSuccess(test)
         self.result_string = colorize("OK", RED)
         self.result_code = TestResultCode.UNEXPECTED_PASS
@@ -1276,7 +1276,9 @@ class VppTestResult(unittest.TestResult):
             error_type_str = colorize("ERROR", RED)
         else:
             raise Exception(f"Unexpected result code {result_code}")
-        self.decodePcapFiles(test)
+
+        if "none" != config.decode_pcaps:
+            self.decodePcapFiles(test)
 
         unittest_fn(self, test, err)
         if self.current_test_case_info:
