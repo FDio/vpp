@@ -255,8 +255,8 @@ ARG17=--extern-apidir=$(EXTERN_APIDIR)
 endif
 
 ARG18=
-ifneq ($(findstring $(DECODE_PCAPS),1 y yes),)
-ARG18=--decode-pcaps
+ifneq ($(DECODE_PCAPS),)
+ARG18=--decode-pcaps=$(DECODE_PCAPS)
 endif
 
 ifneq ($(findstring $(API_PRELOAD),1 y yes),)
@@ -653,6 +653,10 @@ help:
 	@echo "   RND_SEED=<seed>"
 	@echo "       random seed used by test framework"
 	@echo "       (default: time.time())"
+	@echo ""
+	@echo "   DECODE_PCAPS=[all|failed|none]"
+	@echo "       decode pcap files using tshark - all, only failed or none"
+	@echo "       (default: failed)"
 	@echo ""
 	@echo "Starting VPP in GDB for use with DEBUG=attach:"
 	@echo ""
