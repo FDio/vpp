@@ -16,6 +16,24 @@
       "message": "when is `addr` ever `NULL`?",
       "revId": "4ffd75f8b22a906786dcf833e4f472c540cd5a7f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bcb166e9_35a528e9",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1127,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-05-23T09:25:28Z",
+      "side": 1,
+      "message": "it was seemed as the only code place where explicit crash can occur after address deletion in parallel, once if there\u0027ll be other main threads running api or cli.\nnow, it\u0027s not the case - there\u0027s only one main thread, so check can be removed",
+      "parentUuid": "c583d58c_9e51cd9e",
+      "revId": "4ffd75f8b22a906786dcf833e4f472c540cd5a7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
