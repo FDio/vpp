@@ -245,6 +245,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     {
     case OCT_DEVICE_TYPE_RVU_PF:
     case OCT_DEVICE_TYPE_RVU_VF:
+    case OCT_DEVICE_TYPE_LBK_VF:
     case OCT_DEVICE_TYPE_SDP_VF:
       return oct_init_nix (vm, dev);
 
