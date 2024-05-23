@@ -33,6 +33,24 @@
       "message": "looks logical, and in sync with the comment above",
       "revId": "e40f4bf9f05b918a3995f4016c44b7176585d334",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b37d194d_bf7fa227",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3325,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-05-23T09:42:35Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "3c82dac3_9743a4bc",
+      "revId": "e40f4bf9f05b918a3995f4016c44b7176585d334",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
