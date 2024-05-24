@@ -785,9 +785,9 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
             # create the packet streams
             # packet hashes to:
             # ad727628
-            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 1)
+            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 4500)
             # b5512898
-            packets2 = self.create_stream(self.pg0, self.pg3, pkt_count, 1, 1)
+            packets2 = self.create_stream(self.pg0, self.pg3, pkt_count, 1, 4500)
             # add the streams to the source interfaces
             self.pg2.add_stream(packets1)
             self.pg0.add_stream(packets2)
@@ -821,9 +821,9 @@ class IPSec4SpdTestCaseCollisionInbound(SpdFlowCacheInbound):
 
             # create the packet streams
             # 2f8f90f557eef12c
-            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 1)
+            packets1 = self.create_stream(self.pg2, self.pg1, pkt_count, 1, 4500)
             # 6b7f9987719ffc1c
-            packets2 = self.create_stream(self.pg3, self.pg2, pkt_count, 1, 1)
+            packets2 = self.create_stream(self.pg3, self.pg2, pkt_count, 1, 4500)
             # add the streams to the source interfaces
             self.pg2.add_stream(packets1)
             self.pg3.add_stream(packets2)
