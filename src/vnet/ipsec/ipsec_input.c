@@ -552,12 +552,14 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  udp_header_t *udp0 = NULL;
 	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
-	  /* As per rfc3948 in UDP Encapsulated Header, UDP checksum must be
-	   * Zero, and receivers must not depen upon UPD checksum.
-	   * inside ESP header , SPI ID value MUST NOT be a zero value
-	   * */
-
-	  if (udp0->checksum == 0)
+	  /*
+	   * As per rfc3948 in UDP Encapsulated Header, UDP src and dst ports
+	   * are 4500, UDP checksum must be Zero, and receivers must not depend
+	   * upon UPD checksum inside ESP header, SPI ID value MUST NOT be a
+	   * zero value.
+	   */
+	  if ((udp0->dst_port == 4500 && udp0->src_port == udp0->dst_port) &&
+	      udp0->checksum == 0)
 	    {
 	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
 
