@@ -338,7 +338,7 @@ ip6_icmp_error (vlib_main_t * vm,
 
 	  if (throttle_check (&icmp_throttle, thread_index, r0, seed))
 	    {
-	      vlib_error_count (vm, node->node_index, ICMP4_ERROR_DROP, 1);
+	      vlib_error_count (vm, node->node_index, ICMP6_ERROR_DROP, 1);
 	      from += 1;
 	      n_left_from -= 1;
 	      continue;
