@@ -29,28 +29,29 @@ typedef struct cnat_session_t_
   /**
    * this key sits in the same memory location a 'key' in the bihash kvp
    */
-  struct
+  union
   {
-    /**
-     * IP 4/6 address, ports in the rx/tx direction & iproto
-     */
-    cnat_5tuple_t cs_5tuple;
-
-    u16 __cs_pad1;
-
-    u32 fib_index;
-
-    u32 __cs_pad2;
+    struct
+    {
+      /**
+       * IP 4/6 address, ports in the rx/tx direction & iproto
+       */
+      cnat_5tuple_t cs_5tuple;
+      u32 fib_index;
+    };
+    u64 as_u64[6];
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
    */
-  struct
+  union
   {
-
-    u32 cs_session_index;
-    u32 cs_flags;
-
+    struct
+    {
+      u32 cs_session_index;
+      u32 cs_flags;
+    };
+    u64 as_u64;
   } value;
 } cnat_session_t;
 

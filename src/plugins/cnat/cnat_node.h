@@ -1074,11 +1074,11 @@ cnat_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
   session[2] = ((cnat_session_t *) &bkey[2]);
   session[3] = ((cnat_session_t *) &bkey[3]);
 
-  /* this never changes */
-  session[0]->key.__cs_pad1 = session[0]->key.__cs_pad2 = 0;
-  session[1]->key.__cs_pad1 = session[1]->key.__cs_pad2 = 0;
-  session[2]->key.__cs_pad1 = session[2]->key.__cs_pad2 = 0;
-  session[3]->key.__cs_pad1 = session[3]->key.__cs_pad2 = 0;
+  /* make sure all paddings are 0 */
+  clib_memset_u8 (&session[0]->key, 0, sizeof (session[0]->key));
+  clib_memset_u8 (&session[1]->key, 0, sizeof (session[1]->key));
+  clib_memset_u8 (&session[2]->key, 0, sizeof (session[2]->key));
+  clib_memset_u8 (&session[3]->key, 0, sizeof (session[3]->key));
 
   /* Kickstart our state */
   if (n_left >= 4)
