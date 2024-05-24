@@ -232,18 +232,43 @@ udp_session_get_listener (u32 listener_index)
   return &us->connection;
 }
 
+always_inline u16
+udp_compute_checksum (vlib_main_t *vm, vlib_buffer_t *b, u8 csum_offload,
+		      u8 is_ip4)
+{
+  u16 csum = 0;
+
+  if (csum_offload)
+    vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+  else
+    {
+      if (is_ip4)
+	csum =
+	  ip4_tcp_udp_compute_checksum (vm, b, vlib_buffer_get_current (b));
+      else
+	{
+	  int bogus = 0;
+	  csum = ip6_tcp_udp_icmp_compute_checksum (
+	    vm, b, vlib_buffer_get_current (b), &bogus);
+	}
+    }
+
+  return csum;
+}
+
 always_inline u32
 udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
 		     u8 is_cless)
 {
+  udp_header_t *uh;
+
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   /* reuse tcp medatada for now */
   vnet_buffer (b)->tcp.connection_index = uc->c_c_index;
 
   if (!is_cless)
     {
-      vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port,
-			    udp_csum_offload (uc));
+      uh = vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port);
 
       if (uc->c_is_ip4)
 	vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
@@ -263,8 +288,7 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
       hdr = *(session_dgram_hdr_t *) (data - sizeof (hdr));
 
       /* Local port assumed to be bound, not overwriting it */
-      vlib_buffer_push_udp (b, uc->c_lcl_port, hdr.rmt_port,
-			    udp_csum_offload (uc));
+      uh = vlib_buffer_push_udp (b, uc->c_lcl_port, hdr.rmt_port);
 
       if (uc->c_is_ip4)
 	vlib_buffer_push_ip4_custom (vm, b, &hdr.lcl_ip.ip4, &hdr.rmt_ip.ip4,
@@ -278,6 +302,9 @@ udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b,
        * udp_output */
       vnet_buffer (b)->tcp.flags |= UDP_CONN_F_LISTEN;
     }
+
+  uh->checksum =
+    udp_compute_checksum (vm, b, udp_csum_offload (uc), uc->c_is_ip4);
 
   return 0;
 }
