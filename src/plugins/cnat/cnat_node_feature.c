@@ -89,10 +89,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
     }
 
   /* never source nat in this node */
-  if (af == AF_IP4)
-    rw->tuple.ip4[VLIB_TX].as_u32 = trk0->ct_ep[VLIB_TX].ce_ip.ip.ip4.as_u32;
-  else
-    ip6_address_copy (&rw->tuple.ip6[VLIB_TX], &trk0->ct_ep[VLIB_TX].ce_ip.ip.ip6);
+  ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
 			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
 			      rw->tuple.port[VLIB_TX];
@@ -366,7 +363,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
 	}
-      cnat_node_select_ip4 (&rw->tuple.ip4[VLIB_RX], &ip_addr_v4 (&cpe->snat_ip4.ce_ip),
+      cnat_node_select_ip4 (&rw->tuple.ip[VLIB_RX].ip4, &ip_addr_v4 (&cpe->snat_ip4.ce_ip),
 			    cpe->snat_ip4_mask);
     }
   else
@@ -376,7 +373,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
 	}
-      cnat_node_select_ip6 (&rw->tuple.ip6[VLIB_RX], &ip_addr_v6 (&cpe->snat_ip6.ce_ip),
+      cnat_node_select_ip6 (&rw->tuple.ip[VLIB_RX].ip6, &ip_addr_v6 (&cpe->snat_ip6.ce_ip),
 			    cpe->snat_ip6_mask);
     }
 

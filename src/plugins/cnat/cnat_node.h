@@ -406,8 +406,8 @@ cnat_translation_ip4 (const cnat_5tuple_t *tuple, ip4_header_t *ip4, udp_header_
   ip4_address_t new_addr[VLIB_N_DIR];
   u16 new_port[VLIB_N_DIR];
 
-  new_addr[VLIB_TX] = tuple->ip4[VLIB_TX];
-  new_addr[VLIB_RX] = tuple->ip4[VLIB_RX];
+  new_addr[VLIB_TX] = tuple->ip[VLIB_TX].ip4;
+  new_addr[VLIB_RX] = tuple->ip[VLIB_RX].ip4;
   new_port[VLIB_TX] = tuple->port[VLIB_TX];
   new_port[VLIB_RX] = tuple->port[VLIB_RX];
 
@@ -673,8 +673,8 @@ cnat_translation_ip6 (const cnat_5tuple_t *tuple, ip6_header_t *ip6, udp_header_
   ip6_address_t new_addr[VLIB_N_DIR];
   u16 new_port[VLIB_N_DIR];
 
-  ip6_address_copy (&new_addr[VLIB_TX], &tuple->ip6[VLIB_TX]);
-  ip6_address_copy (&new_addr[VLIB_RX], &tuple->ip6[VLIB_RX]);
+  ip6_address_copy (&new_addr[VLIB_TX], &tuple->ip[VLIB_TX].ip6);
+  ip6_address_copy (&new_addr[VLIB_RX], &tuple->ip[VLIB_RX].ip6);
   new_port[VLIB_TX] = tuple->port[VLIB_TX];
   new_port[VLIB_RX] = tuple->port[VLIB_RX];
 
@@ -717,7 +717,6 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 {
   udp_header_t *udp;
   clib_memset (tup, 0, sizeof (*tup));
-  tup->af = af;
   /* We don't hash address family for now */
   if (AF_IP4 == af)
     {
@@ -737,8 +736,8 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 		    {
 		      cnat_echo_header_t *echo =
 			(cnat_echo_header_t *) (icmp + 1);
-		      tup->ip4[VLIB_RX ^ swap].as_u32 = ip4->dst_address.as_u32;
-		      tup->ip4[VLIB_TX ^ swap].as_u32 = ip4->src_address.as_u32;
+		      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap], &ip4->dst_address);
+		      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap], &ip4->src_address);
 		      tup->iproto = ip4->protocol;
 		      tup->port[VLIB_TX ^ swap] = echo->identifier;
 		      tup->port[VLIB_RX ^ swap] = echo->identifier;
@@ -748,8 +747,8 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 		{
 		  udp = (udp_header_t *) (ip4 + 1);
 		  /* Swap dst & src for search as ICMP payload is reversed */
-		  tup->ip4[VLIB_RX ^ swap].as_u32 = ip4->dst_address.as_u32;
-		  tup->ip4[VLIB_TX ^ swap].as_u32 = ip4->src_address.as_u32;
+		  ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap], &ip4->dst_address);
+		  ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap], &ip4->src_address);
 		  tup->iproto = ip4->protocol;
 		  tup->port[VLIB_TX ^ swap] = udp->src_port;
 		  tup->port[VLIB_RX ^ swap] = udp->dst_port;
@@ -758,28 +757,22 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 	  else if (icmp_type_is_echo (icmp->type))
 	    {
 	      cnat_echo_header_t *echo = (cnat_echo_header_t *) (icmp + 1);
-	      tup->ip4[VLIB_TX ^ swap].as_u32 = ip4->dst_address.as_u32;
-	      tup->ip4[VLIB_RX ^ swap].as_u32 = ip4->src_address.as_u32;
+	      ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap], &ip4->dst_address);
+	      ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap], &ip4->src_address);
 	      tup->iproto = ip4->protocol;
 	      tup->port[VLIB_TX ^ swap] = echo->identifier;
 	      tup->port[VLIB_RX ^ swap] = echo->identifier;
 	    }
 	}
-      else if ((ip4->protocol == IP_PROTOCOL_UDP || ip4->protocol == IP_PROTOCOL_TCP) && swap)
-	{
-	  udp = (udp_header_t *) (ip4 + 1);
-	  tup->ip4[VLIB_TX ^ swap].as_u32 = ip4->dst_address.as_u32;
-	  tup->ip4[VLIB_RX ^ swap].as_u32 = ip4->src_address.as_u32;
-	  tup->iproto = ip4->protocol;
-	  tup->port[VLIB_RX ^ swap] = udp->src_port;
-	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
-	}
       else if (ip4->protocol == IP_PROTOCOL_UDP || ip4->protocol == IP_PROTOCOL_TCP ||
 	       ip4->protocol == IP_PROTOCOL_SCTP)
 	{
-	  /* assuming no IP options, we can copy directly addresses & ports */
+	  udp = (udp_header_t *) (ip4 + 1);
+	  ip46_address_set_ip4 (&tup->ip[VLIB_TX ^ swap], &ip4->dst_address);
+	  ip46_address_set_ip4 (&tup->ip[VLIB_RX ^ swap], &ip4->src_address);
 	  tup->iproto = ip4->protocol;
-	  clib_memcpy_fast ((void *) &tup->ip4, (void *) &ip4->src_address, 12);
+	  tup->port[VLIB_RX ^ swap] = udp->src_port;
+	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
 	}
     }
   else
@@ -799,8 +792,8 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 		    {
 		      cnat_echo_header_t *echo =
 			(cnat_echo_header_t *) (icmp + 1);
-		      ip6_address_copy (&tup->ip6[VLIB_RX ^ swap], &ip6->dst_address);
-		      ip6_address_copy (&tup->ip6[VLIB_TX ^ swap], &ip6->src_address);
+		      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap], &ip6->dst_address);
+		      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap], &ip6->src_address);
 		      tup->iproto = ip6->protocol;
 		      tup->port[VLIB_TX ^ swap] = echo->identifier;
 		      tup->port[VLIB_RX ^ swap] = echo->identifier;
@@ -810,8 +803,8 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 		{
 		  udp = (udp_header_t *) (ip6 + 1);
 		  /* Swap dst & src for search as ICMP payload is reversed */
-		  ip6_address_copy (&tup->ip6[VLIB_RX ^ swap], &ip6->dst_address);
-		  ip6_address_copy (&tup->ip6[VLIB_TX ^ swap], &ip6->src_address);
+		  ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap], &ip6->dst_address);
+		  ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap], &ip6->src_address);
 		  tup->iproto = ip6->protocol;
 		  tup->port[VLIB_TX ^ swap] = udp->src_port;
 		  tup->port[VLIB_RX ^ swap] = udp->dst_port;
@@ -820,19 +813,19 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 	  else if (icmp6_type_is_echo (icmp->type))
 	    {
 	      cnat_echo_header_t *echo = (cnat_echo_header_t *) (icmp + 1);
-	      ip6_address_copy (&tup->ip6[VLIB_TX ^ swap], &ip6->dst_address);
-	      ip6_address_copy (&tup->ip6[VLIB_RX ^ swap], &ip6->src_address);
+	      ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap], &ip6->dst_address);
+	      ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap], &ip6->src_address);
 	      tup->iproto = ip6->protocol;
 	      tup->port[VLIB_TX ^ swap] = echo->identifier;
 	      tup->port[VLIB_RX ^ swap] = echo->identifier;
 	    }
 	}
-      else if (ip6->protocol == IP_PROTOCOL_UDP ||
-	       ip6->protocol == IP_PROTOCOL_TCP)
+      else if (ip6->protocol == IP_PROTOCOL_UDP || ip6->protocol == IP_PROTOCOL_TCP ||
+	       ip6->protocol == IP_PROTOCOL_SCTP)
 	{
 	  udp = (udp_header_t *) (ip6 + 1);
-	  ip6_address_copy (&tup->ip6[VLIB_TX ^ swap], &ip6->dst_address);
-	  ip6_address_copy (&tup->ip6[VLIB_RX ^ swap], &ip6->src_address);
+	  ip46_address_set_ip6 (&tup->ip[VLIB_TX ^ swap], &ip6->dst_address);
+	  ip46_address_set_ip6 (&tup->ip[VLIB_RX ^ swap], &ip6->src_address);
 	  tup->port[VLIB_RX ^ swap] = udp->src_port;
 	  tup->port[VLIB_TX ^ swap] = udp->dst_port;
 	  tup->iproto = ip6->protocol;
@@ -879,10 +872,11 @@ static_always_inline void
 cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
 {
   cnat_client_t *cc;
+  const ip_address_family_t af = ip46_address_is_ip4 (&rw->tuple.ip[VLIB_RX]) ? AF_IP4 : AF_IP6;
 
   /* is this the first time we've seen this source address */
-  cc = (AF_IP4 == rw->tuple.af ? cnat_client_ip4_find (&rw->tuple.ip4[VLIB_RX], ret_fib_index) :
-				 cnat_client_ip6_find (&rw->tuple.ip6[VLIB_RX], ret_fib_index));
+  cc = (AF_IP4 == af ? cnat_client_ip4_find (&rw->tuple.ip[VLIB_RX].ip4, ret_fib_index) :
+		       cnat_client_ip6_find (&rw->tuple.ip[VLIB_RX].ip6, ret_fib_index));
 
   if (cc)
     {
@@ -897,11 +891,8 @@ cnat_rsession_create_client (cnat_timestamp_rewrite_t *rw, u32 ret_fib_index)
   uword *p;
   u32 refcnt;
 
-  cl_args.addr.version = rw->tuple.af;
-  if (rw->tuple.af == AF_IP4)
-    ip46_address_set_ip4 (&cl_args.addr.ip, &rw->tuple.ip4[VLIB_RX]);
-  else
-    ip46_address_set_ip6 (&cl_args.addr.ip, &rw->tuple.ip6[VLIB_RX]);
+  cl_args.addr.version = af;
+  ip46_address_copy (&ip_addr_46 (&cl_args.addr), &rw->tuple.ip[VLIB_RX]);
   cl_args.fib_index = ret_fib_index;
 
   /* Throttle */

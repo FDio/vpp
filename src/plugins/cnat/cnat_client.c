@@ -89,12 +89,11 @@ cnat_client_destroy (cnat_client_t *cc, u32 fib_index)
 }
 
 void
-cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af, u32 fib_index,
-			int is_session)
+cnat_client_free_by_ip (const ip46_address_t *ip, u32 fib_index, int is_session)
 {
   cnat_client_t *cc;
-  cc =
-    (AF_IP4 == af ? cnat_client_ip4_find (ip4, fib_index) : cnat_client_ip6_find (ip6, fib_index));
+  cc = (ip46_address_is_ip4 (ip) ? cnat_client_ip4_find (&ip->ip4, fib_index) :
+				   cnat_client_ip6_find (&ip->ip6, fib_index));
   ASSERT (NULL != cc);
 
   if (0 == cc->tr_refcnt && (!is_session || 0 == cnat_client_uncnt_session (cc)))
