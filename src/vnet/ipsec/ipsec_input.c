@@ -299,10 +299,11 @@ ipsec_esp_packet_process (vlib_main_t *vm, ipsec_main_t *im, ip4_header_t *ip0,
   search_flow_cache = im->input_flow_cache_flag;
 udp_or_esp:
 
-  /* SPI ID field in the ESP header MUST NOT be a zero value */
   if (esp0->spi == 0)
     {
-      /* Drop the packet if SPI ID is zero */
+      /* RFC 4303, section 2.1: The SPI value of zero (0 is reserved for
+       * local, implementation-specific use and MUST NOT be sent on the wire.
+       */
       *ipsec_unprocessed += 1;
       next[0] = IPSEC_INPUT_NEXT_DROP;
       return;
@@ -552,12 +553,10 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	  udp_header_t *udp0 = NULL;
 	  udp0 = (udp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
-	  /* As per rfc3948 in UDP Encapsulated Header, UDP checksum must be
-	   * Zero, and receivers must not depen upon UPD checksum.
-	   * inside ESP header , SPI ID value MUST NOT be a zero value
-	   * */
-
-	  if (udp0->checksum == 0)
+	  /* RFC5996 Section 2.23 "Port 4500 is reserved for
+	   * UDP-encapsulated ESP and IKE."
+	   */
+	  if (clib_host_to_net_u16 (4500) == udp0->dst_port)
 	    {
 	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
 
