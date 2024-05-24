@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f3132fa_00eeec8a",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-24T08:21:11Z",
+      "side": 1,
+      "message": "changing main-core pinning behaviour with",
+      "revId": "1fbd9fad710268f557d31776186228fca781b3a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
