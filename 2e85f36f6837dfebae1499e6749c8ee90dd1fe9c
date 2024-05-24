@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "16b0dfe0_35497725",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-24T16:45:18Z",
+      "side": 1,
+      "message": "Also I\u0027m not sure we should enforce src port is 4500, because NAT can change the source port - and that\u0027s the purpose of UDP encap for IPsec, going through NAT 😊\nI think the only thing we can rely on is dst port is 4500, and that the dest IP address matches one of our local addresses (but that might be more tricky to check).\nThat\u0027s what we do in tunnel mode: any UDP packets destined to us on port 4500 is delivered to IPsec, whatever the source port.\nMaybe the best should be to just program a skip rule automatically by default for udp dest port 4500?\nThat way packets destined to udp port 4500 will follow regular processing, but the user can always override this",
+      "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
