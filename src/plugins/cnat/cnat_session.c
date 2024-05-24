@@ -155,12 +155,11 @@ cnat_session_free__ (cnat_session_t *session)
 {
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip4[VLIB_TX],
-			      &session->key.cs_5tuple.ip6[VLIB_TX], session->key.cs_5tuple.af,
-			      session->key.fib_index, 1 /* is_session */);
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
+			      1 /* is_session */);
     }
   cnat_timestamp_free (session->value.cs_session_index,
-		       session->key.cs_5tuple.af == AF_IP6 /* is_v6 */);
+		       !ip46_address_is_ip4 (&session->key.cs_5tuple.ip[VLIB_TX]) /*is_v6 */);
 }
 
 /* This is call when adding a session that already exists

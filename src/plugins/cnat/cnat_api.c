@@ -102,22 +102,8 @@ cnat_5tuple_encode (const cnat_5tuple_t *in, vl_api_cnat_5tuple_t *out)
 {
   out->port[VLIB_RX] = clib_net_to_host_u16 (in->port[VLIB_RX]);
   out->port[VLIB_TX] = clib_net_to_host_u16 (in->port[VLIB_TX]);
-
-  if (in->af == AF_IP4)
-    {
-      ip4_address_encode (&in->ip4[VLIB_RX], out->addr[VLIB_RX].un.ip4);
-      out->addr[VLIB_RX].af = ADDRESS_IP4;
-      ip4_address_encode (&in->ip4[VLIB_TX], out->addr[VLIB_TX].un.ip4);
-      out->addr[VLIB_TX].af = ADDRESS_IP4;
-    }
-  else
-    {
-      ip6_address_encode (&in->ip6[VLIB_RX], out->addr[VLIB_RX].un.ip6);
-      out->addr[VLIB_RX].af = ADDRESS_IP6;
-      ip6_address_encode (&in->ip6[VLIB_TX], out->addr[VLIB_TX].un.ip6);
-      out->addr[VLIB_TX].af = ADDRESS_IP6;
-    }
-
+  ip_address_encode (&in->ip[VLIB_RX], IP46_TYPE_ANY, &out->addr[VLIB_RX]);
+  ip_address_encode (&in->ip[VLIB_TX], IP46_TYPE_ANY, &out->addr[VLIB_TX]);
   out->ip_proto = ip_proto_encode (in->iproto);
 }
 
