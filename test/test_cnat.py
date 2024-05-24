@@ -41,9 +41,9 @@ class CnatCommonTestCase(VppTestCase):
         "session-cleanup-timeout",
         "0.1",
         "session-max-age",
-        "1",
+        "10",
         "tcp-max-age",
-        "1",
+        "10",
         "scanner",
         "off",
         "session-max",
@@ -51,7 +51,7 @@ class CnatCommonTestCase(VppTestCase):
         "session-max-per-vrf",
         f"{N_SESSIONS_PER_VRF}",
         "session-log2-pool-size",
-        "1",
+        "0",
         "}",
     ]
 
@@ -487,7 +487,7 @@ class TestCNatTranslation(CnatCommonTestCase):
         # all disapper
         #
         self.vapi.cli("test cnat scanner on")
-        self.virtual_sleep(2)
+        self.virtual_sleep(20)
         sessions = self.vapi.cnat_session_dump()
         self.assertEqual(len(sessions), 0)
         self.vapi.cli("test cnat scanner off")
