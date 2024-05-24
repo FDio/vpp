@@ -132,10 +132,10 @@ static void
 cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe)
 {
   if (cpe->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED)
-    cnat_client_free_by_ip (&ip_addr_v4 (&cpe->snat_ip4.ce_ip), 0, AF_IP4, cpe->ret_fib_index4,
+    cnat_client_free_by_ip (&ip_addr_46 (&cpe->snat_ip4.ce_ip), cpe->ret_fib_index4,
 			    0 /* is_session */);
   if (cpe->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED)
-    cnat_client_free_by_ip (0, &ip_addr_v6 (&cpe->snat_ip6.ce_ip), AF_IP6, cpe->ret_fib_index6,
+    cnat_client_free_by_ip (&ip_addr_46 (&cpe->snat_ip6.ce_ip), cpe->ret_fib_index6,
 			    0 /* is_session */);
   if (cnat_snat_policy_entry_is_init (cpe))
     {
@@ -455,8 +455,7 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address, u8 i
   if (is_del)
     {
       /* remove installed client */
-      cnat_client_free_by_ip (&ip_addr_v4 (&ep->ce_ip), &ip_addr_v6 (&ep->ce_ip), ar->af,
-			      ret_fib_index, 0 /* is_session */);
+      cnat_client_free_by_ip (&ip_addr_46 (&ep->ce_ip), ret_fib_index, 0 /* is_session */);
       ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVED;
       /* Are there remaining addresses ? */
       if (0 == cnat_resolve_addr (ar->sw_if_index, ar->af, address))

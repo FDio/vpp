@@ -18,22 +18,11 @@ char *cnat_error_strings[] = {
 u8 *
 format_cnat_5tuple (u8 *s, va_list *args)
 {
-  cnat_5tuple_t *tuple = va_arg (*args, cnat_5tuple_t *);
-
-  if (tuple->af == AF_IP4)
-    {
-      s = format (s, "%U [%U;%u -> %U;%u]", format_ip_protocol, tuple->iproto, format_ip4_address,
-		  &tuple->ip4[VLIB_RX], clib_net_to_host_u16 (tuple->port[VLIB_RX]),
-		  format_ip4_address, &tuple->ip4[VLIB_TX],
-		  clib_net_to_host_u16 (tuple->port[VLIB_TX]));
-    }
-  else
-    {
-      s = format (s, "%U [%U;%u -> %U;%u]", format_ip_protocol, tuple->iproto, format_ip6_address,
-		  &tuple->ip6[VLIB_RX], clib_net_to_host_u16 (tuple->port[VLIB_RX]),
-		  format_ip6_address, &tuple->ip6[VLIB_TX],
-		  clib_net_to_host_u16 (tuple->port[VLIB_TX]));
-    }
+  const cnat_5tuple_t *tuple = va_arg (*args, cnat_5tuple_t *);
+  s = format (s, "%U [%U;%u -> %U;%u]", format_ip_protocol, tuple->iproto, format_ip46_address,
+	      &tuple->ip[VLIB_RX], IP46_TYPE_ANY, clib_net_to_host_u16 (tuple->port[VLIB_RX]),
+	      format_ip46_address, &tuple->ip[VLIB_TX], IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (tuple->port[VLIB_TX]));
   return (s);
 }
 

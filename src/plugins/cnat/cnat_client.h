@@ -77,8 +77,7 @@ typedef struct cnat_client_learn_args_t_
 } cnat_client_learn_args_t;
 
 extern u8 *format_cnat_client (u8 * s, va_list * args);
-extern void cnat_client_free_by_ip (ip4_address_t *ip4, ip6_address_t *ip6, u8 af, u32 fib_index,
-				    int is_session);
+extern void cnat_client_free_by_ip (const ip46_address_t *ip, u32 fib_index, int is_session);
 
 extern cnat_client_t *cnat_client_pool;
 extern dpo_type_t cnat_client_dpo;
