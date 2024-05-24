@@ -2215,7 +2215,7 @@ VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (ip6_midchain_node) = {
   .name = "ip6-midchain",
   .vector_size = sizeof (u32),
-  .format_trace = format_ip6_forward_next_trace,
+  .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
 
