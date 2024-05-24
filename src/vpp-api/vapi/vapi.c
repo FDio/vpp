@@ -1627,7 +1627,8 @@ vapi_wait (vapi_ctx_t ctx)
     return VAPI_ENOTSUP;
 
   svm_queue_lock (ctx->vl_input_queue);
-  svm_queue_wait (ctx->vl_input_queue);
+  if (ctx->vl_input_queue->cursize == 0)
+    svm_queue_wait (ctx->vl_input_queue);
   svm_queue_unlock (ctx->vl_input_queue);
 
   return VAPI_OK;
