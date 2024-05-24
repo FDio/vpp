@@ -97,9 +97,9 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
       return;
     }
 
+  clib_memset_u8 (&session->key, 0, sizeof (session->key));
   iph_offset = vnet_buffer (b)->ip.save_rewrite_length;
   cnat_make_buffer_5tuple (b, af, &session->key.cs_5tuple, iph_offset, 1 /* swap */);
-  session->key.__cs_pad1 = session->key.__cs_pad2 = 0;
 
   session->value.cs_session_index = vnet_buffer2 (b)->session.generic_flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
