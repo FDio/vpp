@@ -64,10 +64,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
-  if (af == AF_IP4)
-    rw->tuple.ip4[VLIB_TX].as_u32 = trk0->ct_ep[VLIB_TX].ce_ip.ip.ip4.as_u32;
-  else
-    ip6_address_copy (&rw->tuple.ip6[VLIB_TX], &trk0->ct_ep[VLIB_TX].ce_ip.ip.ip6);
+  ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
 			      clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
 			      rw->tuple.port[VLIB_TX];
@@ -79,10 +76,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
     {
       /* We source NAT with the translation */
       do_snat = 1;
-      if (af == AF_IP4)
-	rw->tuple.ip4[VLIB_RX].as_u32 = trk0->ct_ep[VLIB_RX].ce_ip.ip.ip4.as_u32;
-      else
-	ip6_address_copy (&rw->tuple.ip6[VLIB_RX], &trk0->ct_ep[VLIB_RX].ce_ip.ip.ip6);
+      ip46_address_copy (&rw->tuple.ip[VLIB_RX], &ip_addr_46 (&trk0->ct_ep[VLIB_RX].ce_ip));
       if (ct->flags & CNAT_TR_FLAG_ALLOCATE_PORT)
 	{
 	  rv = cspm->vip_policy (iproto, &rw->tuple.port[VLIB_RX]);
