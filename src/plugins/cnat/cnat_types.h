@@ -153,37 +153,16 @@ typedef struct cnat_main_
 
 typedef struct __attribute__ ((__packed__)) cnat_5tuple_t_
 {
-  union
-  {
-    struct
-    {
-      u32 __pad[6];
-      ip4_address_t ip4[VLIB_N_DIR];
-    };
-    ip6_address_t ip6[VLIB_N_DIR];
-  };
-
+  ip46_address_t ip[VLIB_N_DIR];
   u16 port[VLIB_N_DIR];
-
   ip_protocol_t iproto;
-
-  u8 af;
 } cnat_5tuple_t;
 
 static_always_inline void
 cnat_5tuple_copy (cnat_5tuple_t *dst, const cnat_5tuple_t *src, u8 swap)
 {
-  dst->af = src->af;
-  if (src->af == AF_IP4)
-    {
-      dst->ip4[VLIB_RX].as_u32 = src->ip4[VLIB_RX ^ swap].as_u32;
-      dst->ip4[VLIB_TX].as_u32 = src->ip4[VLIB_TX ^ swap].as_u32;
-    }
-  else
-    {
-      ip6_address_copy (&dst->ip6[VLIB_RX], &src->ip6[VLIB_RX ^ swap]);
-      ip6_address_copy (&dst->ip6[VLIB_TX], &src->ip6[VLIB_TX ^ swap]);
-    }
+  dst->ip[VLIB_RX] = src->ip[VLIB_RX ^ swap];
+  dst->ip[VLIB_TX] = src->ip[VLIB_TX ^ swap];
   dst->port[VLIB_RX] = src->port[VLIB_RX ^ swap];
   dst->port[VLIB_TX] = src->port[VLIB_TX ^ swap];
   dst->iproto = src->iproto;
