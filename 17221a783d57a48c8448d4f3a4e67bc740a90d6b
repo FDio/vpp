@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a5ea145_56cb0eb7",
+        "filename": "Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 446,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-24T00:25:00Z",
+      "side": 1,
+      "message": "This target is a phony target since it does not produce the build-vpp-gcov file.\nPlease add \".PHONY: build-vpp-gcov\" before it.",
+      "range": {
+        "startLine": 446,
+        "startChar": 0,
+        "endLine": 446,
+        "endChar": 15
+      },
+      "revId": "17221a783d57a48c8448d4f3a4e67bc740a90d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09566a1c_2755feca",
+        "filename": "Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-24T00:25:00Z",
+      "side": 1,
+      "message": "It might be better to specify the build-root directory explicitly instead of presuming that the current directory is $(WS_ROOT).  Also, specifying $(BR) will use less cycles than searching the entire workspace tree.\n\n.e.g. find $(BR) -name \u0027*.gcda\u0027 -delete",
+      "range": {
+        "startLine": 503,
+        "startChar": 1,
+        "endLine": 505,
+        "endChar": 30
+      },
+      "revId": "17221a783d57a48c8448d4f3a4e67bc740a90d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e368c4cd_33e38ba9",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-24T00:25:00Z",
+      "side": 1,
+      "message": "This target is a phony target since it does not produce the build-vpp-gcov file.\nPlease add \".PHONY: build-vpp-gcov\" before it.",
+      "range": {
+        "startLine": 92,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 15
+      },
+      "revId": "17221a783d57a48c8448d4f3a4e67bc740a90d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e08a72c_2b9d47da",
+        "filename": "extras/hs-test/Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-24T00:25:00Z",
+      "side": 1,
+      "message": "This target is a phony target since it does not produce the build-cov file.\nPlease add \".PHONY: build-cov\" before it.",
+      "range": {
+        "startLine": 136,
+        "startChar": 0,
+        "endLine": 136,
+        "endChar": 10
+      },
+      "revId": "17221a783d57a48c8448d4f3a4e67bc740a90d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "281c7513_4eb41133",
+        "filename": "test/Makefile",
+        "patchSetId": 8
+      },
+      "lineNbr": 379,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-24T00:25:00Z",
+      "side": 1,
+      "message": "This can be simplified by using \u0027-p\u0027 option of mkdir:\n\n@mkdir -p $(BR)/test-coverage-merged\n\ndoes the same thing.",
+      "range": {
+        "startLine": 379,
+        "startChar": 1,
+        "endLine": 379,
+        "endChar": 72
+      },
+      "revId": "17221a783d57a48c8448d4f3a4e67bc740a90d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
