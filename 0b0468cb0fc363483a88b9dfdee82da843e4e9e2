@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05b8920d_d7942a70",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2024-05-26T14:31:17Z",
+      "side": 1,
+      "message": "Seems the change here does not match the comment[1] in startup.conf any more if skip-cores argument is used. \n\nAnd BTW, will it be an issue if the main thread is automatically pinned to CPU in socket 1 while the worker threads is pinned to CPU cores in a different socket?\n\nDBGvpp# show threads\nID     Name                Type        LWP     Sched Policy (Priority)  lcore  Core   Socket State\n0      vpp_main                        458382  other (0)                215    75009  1\n1      vpp_wk_0            workers     458386  other (0)                1      4609   0\n2      vpp_wk_1            workers     458387  other (0)                2      5120   0\n\n\n\n[1] https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/vpp/conf/startup.conf;h\u003d929106a4c8a6716b2ccf941a35bef39702cf7a49;hb\u003dHEAD#l75",
+      "revId": "0b0468cb0fc363483a88b9dfdee82da843e4e9e2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
