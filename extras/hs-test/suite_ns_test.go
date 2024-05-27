@@ -48,9 +48,8 @@ func (s *NsSuite) SetupTest() {
 		append("evt_qs_memfd_seg").
 		append("event-queue-length 100000").close()
 
-	cpus := s.AllocateCpus()
 	container := s.getContainerByName("vpp")
-	vpp, _ := container.newVppInstance(cpus, sessionConfig)
+	vpp, _ := container.newVppInstance(container.allocatedCpus, sessionConfig)
 	s.assertNil(vpp.start())
 
 	idx, err := vpp.createAfPacket(s.getInterfaceByName(serverInterface))
