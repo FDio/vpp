@@ -33,6 +33,24 @@
       "message": "Also I\u0027m not sure we should enforce src port is 4500, because NAT can change the source port - and that\u0027s the purpose of UDP encap for IPsec, going through NAT 😊\nI think the only thing we can rely on is dst port is 4500, and that the dest IP address matches one of our local addresses (but that might be more tricky to check).\nThat\u0027s what we do in tunnel mode: any UDP packets destined to us on port 4500 is delivered to IPsec, whatever the source port.\nMaybe the best should be to just program a skip rule automatically by default for udp dest port 4500?\nThat way packets destined to udp port 4500 will follow regular processing, but the user can always override this",
       "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1498df5_fc5a09d1",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-27T08:30:17Z",
+      "side": 1,
+      "message": "The change was based on https://www.rfc-editor.org/rfc/rfc4306.html#section-2:\n\n\"IKE normally listens and sends on UDP port 500, though IKE messages\n may also be received on UDP port 4500 with a slightly different\n format\"\n\nAlso in https://datatracker.ietf.org/doc/html/rfc3947#section-4\n\n\"IPsec-aware NATs can cause problems ... Some NATs will not change IKE source \n port 500 even if there are multiple clients behind the NAT ... Take the common \n case of the initiator behind the NAT.  The initiator must quickly change to port \n 4500 once the NAT has been detected to minimize the window of IPsec-aware NAT \n problems. ... In Main Mode, ...  The initiator MUST set both UDP source and \n destination ports to 4500.  All subsequent packets sent to this peer ... MUST be \n sent on port 4500.\"\n\nAnd in https://datatracker.ietf.org/doc/html/rfc3948#section-1\n\n\"The UDP port numbers are the same as those used by IKE traffic, as defined in \n [RFC3947].\"\n\nThe skip rule is a good idea - but not done in IPsec SA add action, as the ipip mode of IPsec SA will not like it (the packets will goes into ipsec-input to do a skip rule check, and then goes into ipip tunnel for a header lookup). But this is something we can do in ike node.",
+      "parentUuid": "16b0dfe0_35497725",
+      "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
