@@ -51,6 +51,24 @@
       "parentUuid": "16b0dfe0_35497725",
       "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "096012f9_3747a52d",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-27T09:04:36Z",
+      "side": 1,
+      "message": "What is the usecase you have in mind here?\nThe peer will set src port to 500/4500 but the NAT will rewrite this src port to something arbitrary. The very purpose of UDP encap is to go through NAT, and NAT will rewrite src port, you won\u0027t receive packets with UDP src port set to 500/4500 unless it\u0027s coming from the local host.",
+      "parentUuid": "a1498df5_fc5a09d1",
+      "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
