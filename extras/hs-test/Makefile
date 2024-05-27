@@ -68,7 +68,7 @@ help:
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " TEST=[test-name]         - specific test to run"
-	@echo " CPUS=[n-cpus]            - number of cpus to run with vpp"
+	@echo " CPUS=[n-cpus]            - number of cpus to allocate to VPP and containers"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
 	@echo " PARALLEL=[n-cpus]        - number of test processes to spawn to run in parallel"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"

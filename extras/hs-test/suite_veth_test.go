@@ -50,8 +50,7 @@ func (s *VethsSuite) SetupTest() {
 	// ... For server
 	serverContainer := s.getContainerByName("server-vpp")
 
-	cpus := s.AllocateCpus()
-	serverVpp, err := serverContainer.newVppInstance(cpus, sessionConfig)
+	serverVpp, err := serverContainer.newVppInstance(serverContainer.allocatedCpus, sessionConfig)
 	s.assertNotNil(serverVpp, fmt.Sprint(err))
 
 	s.setupServerVpp()
@@ -59,8 +58,7 @@ func (s *VethsSuite) SetupTest() {
 	// ... For client
 	clientContainer := s.getContainerByName("client-vpp")
 
-	cpus = s.AllocateCpus()
-	clientVpp, err := clientContainer.newVppInstance(cpus, sessionConfig)
+	clientVpp, err := clientContainer.newVppInstance(clientContainer.allocatedCpus, sessionConfig)
 	s.assertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.setupClientVpp()

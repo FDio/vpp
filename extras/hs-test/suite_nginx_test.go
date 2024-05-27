@@ -48,10 +48,9 @@ func (s *NginxSuite) SetupTest() {
 		append("enable").
 		append("use-app-socket-api").close()
 
-	cpus := s.AllocateCpus()
 	// ... for proxy
 	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	proxyVpp, _ := vppProxyContainer.newVppInstance(cpus, sessionConfig)
+	proxyVpp, _ := vppProxyContainer.newVppInstance(vppProxyContainer.allocatedCpus, sessionConfig)
 	s.assertNil(proxyVpp.start())
 
 	clientInterface := s.getInterfaceByName(mirroringClientInterfaceName)

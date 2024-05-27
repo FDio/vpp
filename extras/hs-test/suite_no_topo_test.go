@@ -45,9 +45,8 @@ func (s *NoTopoSuite) SetupTest() {
 		append("enable").
 		append("use-app-socket-api").close()
 
-	cpus := s.AllocateCpus()
 	container := s.getContainerByName(singleTopoContainerVpp)
-	vpp, _ := container.newVppInstance(cpus, sessionConfig)
+	vpp, _ := container.newVppInstance(container.allocatedCpus, sessionConfig)
 	s.assertNil(vpp.start())
 
 	tapInterface := s.getInterfaceByName(tapInterfaceName)
