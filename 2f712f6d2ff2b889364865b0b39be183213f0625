@@ -16,6 +16,24 @@
       "message": "I don\u0027t think we should enforce checksum 0, as it ignores UDP IPsec packets with non-zero checksum which is in contradiction with https://datatracker.ietf.org/doc/html/rfc3948#section-2.1 statement \"receivers MUST NOT depend on the UDP checksum being a zero value.\"",
       "revId": "2f712f6d2ff2b889364865b0b39be183213f0625",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a47def99_74da5368",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 562,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-27T07:52:04Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "47173af1_2f77d0db",
+      "revId": "2f712f6d2ff2b889364865b0b39be183213f0625",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
