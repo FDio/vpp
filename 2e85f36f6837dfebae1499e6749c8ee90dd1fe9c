@@ -69,6 +69,24 @@
       "parentUuid": "a1498df5_fc5a09d1",
       "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d154e4c_14781f01",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 561,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-05-27T09:58:50Z",
+      "side": 1,
+      "message": "You are right. I also found the statement in my original email responding your question: \n\nhttps://datatracker.ietf.org/doc/html/rfc5996#section-2.11\n\n\"An implementation MUST\n   accept incoming requests even if the source port is not 500 or 4500,\n   and MUST respond to the address and port from which the request was\n   received. \n\"\n\nNew revision pushed. Thanks!",
+      "parentUuid": "096012f9_3747a52d",
+      "revId": "2e85f36f6837dfebae1499e6749c8ee90dd1fe9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
