@@ -23,22 +23,25 @@ type CpuAllocatorT struct {
 
 var cpuAllocator *CpuAllocatorT = nil
 
-func (c *CpuAllocatorT) Allocate(vppContainerCount int, nCpus int) (*CpuContext, error) {
+func (c *CpuAllocatorT) Allocate(containerCount int, nCpus int) (*CpuContext, error) {
 	var cpuCtx CpuContext
-	maxCpu := GinkgoParallelProcess() * 2 * nCpus
-	minCpu := (GinkgoParallelProcess() - 1) * 2 * nCpus
-	if len(c.cpus) < maxCpu {
-		vppContainerCount += 1
+
+	// splitting cpus into equal parts; this will over-allocate cores but it's good enough for now
+	maxContainerCount := 4
+	minCpu := (GinkgoParallelProcess() - 1) * maxContainerCount * nCpus
+	maxCpu := (GinkgoParallelProcess() * maxContainerCount * nCpus) - 1
+
+	if len(c.cpus)-1 < maxCpu {
 		err := fmt.Errorf("could not allocate %d CPUs; available: %d; attempted to allocate cores %d-%d",
-			nCpus*vppContainerCount, len(c.cpus), minCpu, minCpu+nCpus*vppContainerCount)
+			nCpus*containerCount, len(c.cpus), minCpu, minCpu+nCpus*containerCount)
 		return nil, err
 	}
-	if vppContainerCount == 0 {
-		cpuCtx.cpus = c.cpus[minCpu : maxCpu-nCpus]
-	} else if vppContainerCount == 1 {
-		cpuCtx.cpus = c.cpus[minCpu+nCpus : maxCpu]
+	if containerCount == 1 {
+		cpuCtx.cpus = c.cpus[minCpu : minCpu+nCpus]
+	} else if containerCount > 1 && containerCount <= maxContainerCount {
+		cpuCtx.cpus = c.cpus[minCpu+(nCpus*(containerCount-1)) : minCpu+(nCpus*containerCount)]
 	} else {
-		return nil, fmt.Errorf("too many VPP containers; CPU allocation for >2 VPP containers is not implemented yet")
+		return nil, fmt.Errorf("too many containers; CPU allocation for >%d containers is not implemented", maxContainerCount)
 	}
 
 	cpuCtx.cpuAllocator = c

@@ -37,6 +37,7 @@ type Container struct {
 	volumes          map[string]Volume
 	envVars          map[string]string
 	vppInstance      *VppInstance
+	allocatedCpus    []int
 }
 
 func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
@@ -160,6 +161,12 @@ func (c *Container) create() error {
 	return exechelper.Run(cmd)
 }
 
+func (c *Container) allocateCpus() {
+	c.suite.vppContainerCount += 1
+	c.allocatedCpus = c.suite.AllocateCpus()
+	c.suite.log("Allocated CPUs " + fmt.Sprint(c.allocatedCpus) + " to container " + c.name)
+}
+
 func (c *Container) start() error {
 	cmd := "docker start " + c.name
 	c.suite.log(cmd)
@@ -175,6 +182,9 @@ func (c *Container) prepareCommand() (string, error) {
 	if c.runDetached {
 		cmd += " -d"
 	}
+
+	c.allocateCpus()
+	cmd += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.allocatedCpus[0], c.allocatedCpus[len(c.allocatedCpus)-1])
 	cmd += " " + c.getContainerArguments()
 
 	c.suite.log(cmd)
@@ -239,7 +249,6 @@ func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*Vp
 	vpp := new(VppInstance)
 	vpp.container = c
 	vpp.cpus = cpus
-	c.suite.vppContainerCount += 1
 	vpp.additionalConfig = append(vpp.additionalConfig, additionalConfigs...)
 	c.vppInstance = vpp
 	return vpp, nil
@@ -287,7 +296,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 	GinkgoHelper()
 	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err, err)
+	c.suite.assertNil(err, fmt.Sprint(err))
 	return string(byteOutput)
 }
 
