@@ -134,23 +134,90 @@ format_cnat_session (u8 * s, va_list * args)
   return (s);
 }
 
+typedef struct
+{
+  vlib_main_t *vm;
+  ip46_address_t ip;
+  u32 flags;
+  int verbose;
+  int max;
+  u16 port;
+  ip_protocol_t proto;
+  u8 refcount;
+} cnat_session_show_cbak_arg_t;
+
+static int
+cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  const cnat_session_t *s = (void *) kvp;
+  cnat_session_show_cbak_arg_t *a = arg;
+
+  if (a->flags && a->flags != (a->flags & s->value.cs_flags))
+    return BIHASH_WALK_CONTINUE;
+
+  if (a->proto && a->proto != s->key.cs_5tuple.iproto)
+    return BIHASH_WALK_CONTINUE;
+
+  if (a->port && a->port != s->key.cs_5tuple.port[VLIB_RX] &&
+      a->port != s->key.cs_5tuple.port[VLIB_TX])
+    return BIHASH_WALK_CONTINUE;
+
+  if (!ip46_address_is_zero (&a->ip) &&
+      !ip46_address_cmp (&a->ip, &s->key.cs_5tuple.ip[VLIB_RX]) &&
+      !ip46_address_cmp (&a->ip, &s->key.cs_5tuple.ip[VLIB_TX]))
+    return BIHASH_WALK_CONTINUE;
+
+  if (a->refcount)
+    {
+      const cnat_timestamp_t *ts =
+	cnat_timestamp_get (s->value.cs_session_index);
+      if (a->refcount != ts->ts_session_refcnt)
+	return BIHASH_WALK_CONTINUE;
+    }
+
+  vlib_cli_output (a->vm, "%U\n", format_cnat_session, s, a->verbose);
+
+  if (a->max-- <= 0)
+    {
+      vlib_cli_output (a->vm, "Please note: only the first entries displayed. "
+			      "To display more, specify max.");
+      return BIHASH_WALK_STOP;
+    }
+
+  return BIHASH_WALK_CONTINUE;
+}
+
 static clib_error_t *
 cnat_session_show (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u8 verbose = 0;
+  cnat_session_show_cbak_arg_t arg = { .vm = vm, .max = 50 };
+  int v;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "verbose"))
-	verbose = 1;
+	arg.verbose = 1;
+      else if (unformat (input, "return"))
+	arg.flags |= CNAT_SESSION_IS_RETURN;
+      else if (unformat (input, "ip %U", unformat_ip46_address, &arg.ip, IP46_TYPE_ANY))
+	;
+      else if (unformat (input, "port %d", &v))
+	arg.port = clib_host_to_net_u16 (v);
+      else if (unformat (input, "proto %U", unformat_ip_protocol, &arg.proto))
+	;
+      else if (unformat (input, "ref %d", &v))
+	arg.refcount = v;
+      else if (unformat (input, "max %d", &arg.max))
+	;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, input));
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
     }
 
-  vlib_cli_output (vm, "CNat Sessions: now:%f\n%U\n",
-		   vlib_time_now (vm),
-		   BV (format_bihash), &cnat_session_db, verbose);
+  vlib_cli_output (vm, "CNat Sessions: now:%f\n", vlib_time_now (vm));
+  BV (clib_bihash_foreach_key_value_pair)
+  (&cnat_session_db, cnat_session_show_cbak, &arg);
 
   return (NULL);
 }
@@ -158,7 +225,8 @@ cnat_session_show (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
-  .short_help = "show cnat session",
+  .short_help = "show cnat session [verbose] [return] [ip <ip>] [port <port>] "
+		"[proto <proto>] [ref <ref>] [max <max>]",
   .is_mp_safe = 1,
 };
 
