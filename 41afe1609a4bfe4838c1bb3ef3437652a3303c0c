@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59d71128_85c57bb6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-28T07:28:58Z",
+      "side": 1,
+      "message": "please update also make help content\nCPUS\u003d[n-cpus] - number of cpus to run with vpp\nto something like:\nCPUS\u003d[n-cpus] - number of cpus per container",
+      "revId": "41afe1609a4bfe4838c1bb3ef3437652a3303c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd154426_128862a0",
+        "filename": "extras/hs-test/container.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-28T07:28:58Z",
+      "side": 1,
+      "message": "now it should be containerCount",
+      "revId": "41afe1609a4bfe4838c1bb3ef3437652a3303c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0feb4ad_e457e6db",
+        "filename": "extras/hs-test/cpu.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2024-05-28T07:28:58Z",
+      "side": 1,
+      "message": "we should skip first cpu core (index 0) so start allocating from index 1",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 33,
+        "endChar": 0
+      },
+      "revId": "41afe1609a4bfe4838c1bb3ef3437652a3303c0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
