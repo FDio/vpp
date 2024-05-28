@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e1c1f21_62ca049e",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-28T16:02:05Z",
+      "side": 1,
+      "message": "vec_terminate_c_string() might be more clear/readable.",
+      "range": {
+        "startLine": 104,
+        "startChar": 2,
+        "endLine": 104,
+        "endChar": 10
+      },
+      "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
