@@ -33,6 +33,57 @@
       "message": "Thanks! Approved, feel free to merge once verified",
       "revId": "f8bc4d7da98285cbe6c728c18fea6eb4a28b6ff3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1bc1b18_5d8cc348",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-28T07:37:39Z",
+      "side": 1,
+      "message": "Actually, we might be missing a byteswap for the ports",
+      "revId": "f8bc4d7da98285cbe6c728c18fea6eb4a28b6ff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5e144b37_8db660c7",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 557,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-28T07:37:39Z",
+      "side": 1,
+      "message": "can we change \"to \"UDP checksum can be zero\" or similar?",
+      "revId": "f8bc4d7da98285cbe6c728c18fea6eb4a28b6ff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "517a694b_0e97be83",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-05-28T07:37:39Z",
+      "side": 1,
+      "message": "need to be byteswapped? And we can use the constant: clib_host_to_net_u16 (UDP_DST_PORT_ipsec)",
+      "revId": "f8bc4d7da98285cbe6c728c18fea6eb4a28b6ff3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
