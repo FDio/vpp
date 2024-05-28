@@ -243,15 +243,6 @@ cnat_session_free__ (cnat_session_t *session)
     !ip46_address_is_ip4 (&session->key.cs_5tuple.ip[VLIB_TX]) /*is_v6 */);
 }
 
-/* This is call when adding a session that already exists
- * we need to cleanup refcounts to keep things consistant */
-void
-cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
-{
-  cnat_session_t *session = (cnat_session_t *) kv;
-  cnat_session_free__ (session);
-}
-
 void
 cnat_session_free (cnat_session_t * session)
 {
@@ -260,24 +251,7 @@ cnat_session_free (cnat_session_t * session)
   cnat_bihash_add_del (&cnat_session_db, bkey, 0 /* is_add */);
 }
 
-int
-cnat_session_purge (void)
-{
-  /* flush all the session from the DB */
-  cnat_session_purge_walk_ctx_t ctx = { };
-  cnat_bihash_kv_t *key;
-
-  BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
-					   cnat_session_purge_walk, &ctx);
-
-  vec_foreach (key, ctx.keys) cnat_session_free ((cnat_session_t *) key);
-
-  vec_free (ctx.keys);
-
-  return (0);
-}
-
-void
+static void
 cnat_reverse_session_free (cnat_session_t *session)
 {
   cnat_bihash_kv_t rkey = { 0 }, rvalue;
@@ -327,6 +301,34 @@ cnat_reverse_session_free (cnat_session_t *session)
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
       cnat_session_free (rsession);
     }
+}
+
+/* This is call when adding a session that already exists
+ * we need to cleanup refcounts to keep things consistant */
+void
+cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
+{
+  cnat_session_t *session = (cnat_session_t *) kv;
+  cnat_reverse_session_free (session);
+  cnat_session_free__ (session);
+}
+
+int
+cnat_session_purge (void)
+{
+  /* flush all the session from the DB */
+  cnat_session_purge_walk_ctx_t ctx = {};
+  cnat_bihash_kv_t *key;
+
+  BV (clib_bihash_foreach_key_value_pair)
+  (&cnat_session_db, cnat_session_purge_walk, &ctx);
+
+  vec_foreach (key, ctx.keys)
+    cnat_session_free ((cnat_session_t *) key);
+
+  vec_free (ctx.keys);
+
+  return (0);
 }
 
 u64
