@@ -357,7 +357,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 		  u8 *request)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
-  u8 *path;
+  u8 *path, *sanitized_path;
   u32 ce_index;
   http_content_type_t type;
 
@@ -367,6 +367,9 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
 
   type = content_type_from_request (request);
 
+  /* Remove dot segments to prevent path traversal */
+  sanitized_path = http_path_remove_dot_segments (request);
+
   /*
    * Construct the file to open
    * Browsers are capable of sporadically including a leading '/'
@@ -374,9 +377,9 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (!request)
     path = format (0, "%s%c", hsm->www_root, 0);
   else if (request[0] == '/')
-    path = format (0, "%s%s%c", hsm->www_root, request, 0);
+    path = format (0, "%s%s%c", hsm->www_root, sanitized_path, 0);
   else
-    path = format (0, "%s/%s%c", hsm->www_root, request, 0);
+    path = format (0, "%s/%s%c", hsm->www_root, sanitized_path, 0);
 
   if (hsm->debug_level > 0)
     clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", path);
@@ -419,7 +422,7 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   hs->cache_pool_index = ce_index;
 
 done:
-
+  vec_free (sanitized_path);
   hs->content_type = type;
   start_send_data (hs, sc);
   if (!hs->data)
