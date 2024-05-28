@@ -277,6 +277,74 @@ http_state_is_tx_valid (http_conn_t *hc)
 	  state == HTTP_STATE_WAIT_APP_METHOD);
 }
 
+/**
+ * Remove dot segments from path (RFC3986 section 5.2.4)
+ *
+ * @param path Path to sanitize.
+ *
+ * @return New vector with sanitized path.
+ *
+ * The caller is always responsible to free the returned vector.
+ */
+always_inline u8 *
+http_path_remove_dot_segments (u8 *path)
+{
+  u32 *segments = 0, *segments_len = 0, segment_len;
+  u8 *new_path = 0;
+  int i, ii;
+
+  if (!path)
+    return vec_new (u8, 0);
+
+  segments = vec_new (u32, 1);
+  /* first segment */
+  segments[0] = 0;
+  /* find all segments */
+  for (i = 1; i < (vec_len (path) - 1); i++)
+    {
+      if (path[i] == '/')
+	vec_add1 (segments, i + 1);
+    }
+  /* dummy tail */
+  vec_add1 (segments, vec_len (path));
+
+  /* scan all segments for "." and ".." */
+  segments_len = vec_new (u32, vec_len (segments) - 1);
+  for (i = 0; i < vec_len (segments_len); i++)
+    {
+      segment_len = segments[i + 1] - segments[i];
+      if (segment_len == 2 && path[segments[i]] == '.')
+	segment_len = 0;
+      else if (segment_len == 3 && path[segments[i]] == '.' &&
+	       path[segments[i] + 1] == '.')
+	{
+	  segment_len = 0;
+	  /* remove parent (if any) */
+	  for (ii = i - 1; ii >= 0; ii--)
+	    {
+	      if (segments_len[ii])
+		{
+		  segments_len[ii] = 0;
+		  break;
+		}
+	    }
+	}
+      segments_len[i] = segment_len;
+    }
+
+  /* we might end with empty path, so return at least empty vector */
+  new_path = vec_new (u8, 0);
+  /* append all valid segments */
+  for (i = 0; i < vec_len (segments_len); i++)
+    {
+      if (segments_len[i])
+	vec_add (new_path, path + segments[i], segments_len[i]);
+    }
+  vec_free (segments);
+  vec_free (segments_len);
+  return new_path;
+}
+
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
 
 /*

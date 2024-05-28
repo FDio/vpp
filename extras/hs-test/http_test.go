@@ -16,9 +16,11 @@ func init() {
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
 		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
-		HttpCliBadRequestTest)
+		HttpCliBadRequestTest, HttpStaticPathTraversalTest)
 	registerNoTopoSoloTests(HttpStaticPromTest)
 }
+
+const wwwRootPath = "/tmp/www_root"
 
 func HttpTpsTest(s *NsSuite) {
 	iface := s.getInterfaceByName(clientInterface)
@@ -108,21 +110,31 @@ func HttpStaticPromTest(s *NoTopoSuite) {
 	s.assertNil(err)
 }
 
+func HttpStaticPathTraversalTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	vpp.container.exec("mkdir -p " + wwwRootPath)
+	vpp.container.exec("mkdir -p " + "/tmp/secret_folder")
+	vpp.container.createFile("/tmp/secret_folder/secret_file.txt", "secret")
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/../secret_folder/secret_file.txt", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(404, resp.StatusCode)
+}
+
 func HttpStaticMovedTest(s *NoTopoSuite) {
 	vpp := s.getContainerByName("vpp").vppInstance
-	vpp.container.exec("mkdir -p /tmp/tmp.aaa")
-	vpp.container.createFile("/tmp/tmp.aaa/index.html", "<http><body><p>Hello</p></body></http>")
+	vpp.container.exec("mkdir -p " + wwwRootPath + "/tmp.aaa")
+	vpp.container.createFile(wwwRootPath+"/tmp.aaa/index.html", "<http><body><p>Hello</p></body></http>")
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
-	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
+	s.log(vpp.vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Transport: transport,
-	}
+	client := newHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/tmp.aaa", nil)
 	s.assertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
@@ -134,12 +146,11 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	vpp := s.getContainerByName("vpp").vppInstance
+	vpp.container.exec("mkdir -p " + wwwRootPath)
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
-	s.log(vpp.vppctl("http static server www-root /tmp uri tcp://" + serverAddress + "/80 debug"))
+	s.log(vpp.vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
 
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	client := &http.Client{Transport: transport}
+	client := newHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/notfound.html", nil)
 	s.assertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
@@ -153,9 +164,7 @@ func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	client := &http.Client{Transport: transport}
+	client := newHttpClient()
 	req, err := http.NewRequest("POST", "http://"+serverAddress+":80/test", nil)
 	s.assertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
@@ -171,9 +180,7 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	client := &http.Client{Transport: transport}
+	client := newHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80", nil)
 	s.assertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
@@ -187,9 +194,7 @@ func HeaderServerTest(s *NoTopoSuite) {
 	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
 	vpp.vppctl("http cli server")
 
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	client := &http.Client{Transport: transport}
+	client := newHttpClient()
 	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/show/version", nil)
 	s.assertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)

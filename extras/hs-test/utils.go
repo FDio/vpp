@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 const networkTopologyDir string = "topo-network/"
@@ -77,4 +79,18 @@ func (s *Stanza) saveToFile(fileName string) error {
 
 	_, err = io.Copy(fo, strings.NewReader(s.content))
 	return err
+}
+
+// newHttpClient creates [http.Client] with disabled proxy and redirects, it also sets timeout to 30seconds.
+func newHttpClient() *http.Client {
+	transport := http.DefaultTransport
+	transport.(*http.Transport).Proxy = nil
+	transport.(*http.Transport).DisableKeepAlives = true
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Second * 30,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}}
+	return client
 }
