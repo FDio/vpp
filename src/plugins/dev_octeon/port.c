@@ -203,7 +203,8 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   if (cd->speed != link_info.speed)
     {
       changes.change.link_speed = 1;
-      changes.link_speed = link_info.speed;
+      /* Convert to Kbps */
+      changes.link_speed = link_info.speed * 1000;
       cd->speed = link_info.speed;
     }
 
