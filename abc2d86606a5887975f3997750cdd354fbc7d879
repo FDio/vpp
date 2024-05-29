@@ -45,6 +45,30 @@
       },
       "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8337803f_514ea966",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-29T10:09:26Z",
+      "side": 1,
+      "message": "if you are asking if it points to valid memory address, answer is just few lines bellow (line 192)",
+      "parentUuid": "61a647f2_28013df1",
+      "range": {
+        "startLine": 188,
+        "startChar": 7,
+        "endLine": 188,
+        "endChar": 32
+      },
+      "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
