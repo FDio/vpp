@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da8fd18f_5efe16ef",
+        "filename": "src/plugins/dev_octeon/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-05-29T21:50:21Z",
+      "side": 1,
+      "message": "why printing same value twice?",
+      "revId": "8e62ec3f13a74b85eef2b767f4229173b1eda5e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
