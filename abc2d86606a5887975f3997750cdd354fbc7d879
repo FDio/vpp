@@ -69,6 +69,30 @@
       },
       "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31e2336c_417a2377",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1755
+      },
+      "writtenOn": "2024-05-29T10:58:55Z",
+      "side": 1,
+      "message": "I was wondering why we need to check if it\u0027s valid",
+      "parentUuid": "8337803f_514ea966",
+      "range": {
+        "startLine": 188,
+        "startChar": 7,
+        "endLine": 188,
+        "endChar": 32
+      },
+      "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
