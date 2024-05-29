@@ -3022,7 +3022,7 @@ class SpdFlowCacheTemplate(IPSecIPv4Fwd):
             return False
 
     def create_stream(
-        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=5678, proto="UDP-ESP"
+        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=4500, proto="UDP-ESP"
     ):
         packets = []
         packets = super(SpdFlowCacheTemplate, cls).create_stream(
@@ -3031,7 +3031,7 @@ class SpdFlowCacheTemplate(IPSecIPv4Fwd):
         return packets
 
     def verify_capture(
-        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=5678
+        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=4500
     ):
         super(SpdFlowCacheTemplate, self).verify_l3_l4_capture(
             src_if, dst_if, capture, tcp_port_in, udp_port_in
@@ -3056,7 +3056,7 @@ class SpdFastPathTemplate(IPSecIPv4Fwd):
         super(SpdFastPathTemplate, self).tearDown()
 
     def create_stream(
-        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=5678, proto="UDP-ESP"
+        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=4500, proto="UDP-ESP"
     ):
         packets = []
         packets = super(SpdFastPathTemplate, cls).create_stream(
@@ -3065,7 +3065,7 @@ class SpdFastPathTemplate(IPSecIPv4Fwd):
         return packets
 
     def verify_capture(
-        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=5678
+        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=4500
     ):
         super(SpdFastPathTemplate, self).verify_l3_l4_capture(
             src_if, dst_if, capture, tcp_port_in, udp_port_in
@@ -3084,7 +3084,7 @@ class IpsecDefaultTemplate(IPSecIPv4Fwd):
         super(IpsecDefaultTemplate, self).tearDown()
 
     def create_stream(
-        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=5678, proto="UDP-ESP"
+        cls, src_if, dst_if, pkt_count, src_prt=1234, dst_prt=4500, proto="UDP-ESP"
     ):
         packets = []
         packets = super(IpsecDefaultTemplate, cls).create_stream(
@@ -3093,7 +3093,7 @@ class IpsecDefaultTemplate(IPSecIPv4Fwd):
         return packets
 
     def verify_capture(
-        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=5678
+        self, src_if, dst_if, capture, tcp_port_in=1234, udp_port_in=4500
     ):
         super(IpsecDefaultTemplate, self).verify_l3_l4_capture(
             src_if, dst_if, capture, tcp_port_in, udp_port_in
