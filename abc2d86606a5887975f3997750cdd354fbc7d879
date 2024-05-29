@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a098b1d_4edb8623",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-29T16:20:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1e1c1f21_62ca049e",
+      "range": {
+        "startLine": 104,
+        "startChar": 2,
+        "endLine": 104,
+        "endChar": 10
+      },
+      "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61a647f2_28013df1",
@@ -85,6 +109,30 @@
       "side": 1,
       "message": "I was wondering why we need to check if it\u0027s valid",
       "parentUuid": "8337803f_514ea966",
+      "range": {
+        "startLine": 188,
+        "startChar": 7,
+        "endLine": 188,
+        "endChar": 32
+      },
+      "revId": "abc2d86606a5887975f3997750cdd354fbc7d879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bcb49603_123ce9e7",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-05-29T16:20:51Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31e2336c_417a2377",
       "range": {
         "startLine": 188,
         "startChar": 7,
