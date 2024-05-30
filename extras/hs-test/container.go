@@ -251,7 +251,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.pid)
+	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.processIndex)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 	GinkgoHelper()
 	c.suite.log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err, err)
+	c.suite.assertNil(err, fmt.Sprint(err))
 	return string(byteOutput)
 }
 

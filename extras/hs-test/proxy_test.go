@@ -13,9 +13,9 @@ func init() {
 }
 
 func testProxyHttpTcp(s *NsSuite, proto string) error {
-	var outputFile string = "test" + s.pid + ".data"
-	var srcFilePid string = "httpTestFile" + s.pid
-	const srcFileNoPid = "httpTestFile"
+	var outputFile string = "test" + s.processIndex + ".data"
+	var srcFileProcessIndex string = "httpTestFile" + s.processIndex
+	const srcFileNoProcessIndex = "httpTestFile"
 	const fileSize string = "10M"
 	stopServer := make(chan struct{}, 1)
 	serverRunning := make(chan struct{}, 1)
@@ -23,9 +23,9 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	clientNetns := s.getNetNamespaceByName("cln")
 
 	// create test file
-	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNetns, fileSize, srcFilePid))
+	err := exechelper.Run(fmt.Sprintf("ip netns exec %s truncate -s %s %s", serverNetns, fileSize, srcFileProcessIndex))
 	s.assertNil(err, "failed to run truncate command: "+fmt.Sprint(err))
-	defer func() { os.Remove(srcFilePid) }()
+	defer func() { os.Remove(srcFileProcessIndex) }()
 
 	s.log("test file created...")
 
@@ -48,7 +48,7 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	if proto == "tls" {
 		c += " --secure-protocol=TLSv1_3 --no-check-certificate https://"
 	}
-	c += fmt.Sprintf("%s:555/%s", clientVeth.ip4AddressString(), srcFileNoPid)
+	c += fmt.Sprintf("%s:555/%s", clientVeth.ip4AddressString(), srcFileNoProcessIndex)
 	s.log(c)
 	_, err = exechelper.CombinedOutput(c)
 
@@ -57,7 +57,7 @@ func testProxyHttpTcp(s *NsSuite, proto string) error {
 	s.assertNil(err, "failed to run wget: '%s', cmd: %s", err, c)
 	stopServer <- struct{}{}
 
-	s.assertNil(assertFileSize(outputFile, srcFilePid))
+	s.assertNil(assertFileSize(outputFile, srcFileProcessIndex))
 	return nil
 }
 

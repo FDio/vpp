@@ -40,7 +40,7 @@ type HstSuite struct {
 	cpuAllocator      *CpuAllocatorT
 	cpuContexts       []*CpuContext
 	cpuPerVpp         int
-	pid               string
+	processIndex      string
 	logger            *log.Logger
 	logFile           *os.File
 }
@@ -53,7 +53,7 @@ func (s *HstSuite) SetupSuite() {
 		Fail(message, callerSkip...)
 	})
 	var err error
-	s.pid = fmt.Sprint(os.Getpid())
+	s.processIndex = fmt.Sprint(GinkgoParallelProcess())
 	s.cpuAllocator, err = CpuAllocator()
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
@@ -256,15 +256,15 @@ func (s *HstSuite) removeVolumes() {
 }
 
 func (s *HstSuite) getNetNamespaceByName(name string) string {
-	return name + s.pid
+	return name + s.processIndex
 }
 
 func (s *HstSuite) getInterfaceByName(name string) *NetInterface {
-	return s.netInterfaces[name+s.pid]
+	return s.netInterfaces[name+s.processIndex]
 }
 
 func (s *HstSuite) getContainerByName(name string) *Container {
-	return s.containers[name+s.pid]
+	return s.containers[name+s.processIndex]
 }
 
 /*
@@ -272,7 +272,7 @@ func (s *HstSuite) getContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) getTransientContainerByName(name string) *Container {
-	containerCopy := *s.containers[name+s.pid]
+	containerCopy := *s.containers[name+s.processIndex]
 	return &containerCopy
 }
 
@@ -300,7 +300,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
 		newContainer.suite = s
-		newContainer.name += newContainer.suite.pid
+		newContainer.name += newContainer.suite.processIndex
 		if err != nil {
 			Fail("container config error: " + fmt.Sprint(err))
 		}
@@ -324,26 +324,26 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 
 	for _, elem := range yamlTopo.Devices {
 		if _, ok := elem["name"]; ok {
-			elem["name"] = elem["name"].(string) + s.pid
+			elem["name"] = elem["name"].(string) + s.processIndex
 		}
 
 		if peer, ok := elem["peer"].(NetDevConfig); ok {
 			if peer["name"].(string) != "" {
-				peer["name"] = peer["name"].(string) + s.pid
+				peer["name"] = peer["name"].(string) + s.processIndex
 			}
 			if _, ok := peer["netns"]; ok {
-				peer["netns"] = peer["netns"].(string) + s.pid
+				peer["netns"] = peer["netns"].(string) + s.processIndex
 			}
 		}
 
 		if _, ok := elem["netns"]; ok {
-			elem["netns"] = elem["netns"].(string) + s.pid
+			elem["netns"] = elem["netns"].(string) + s.processIndex
 		}
 
 		if _, ok := elem["interfaces"]; ok {
 			interfaceCount := len(elem["interfaces"].([]interface{}))
 			for i := 0; i < interfaceCount; i++ {
-				elem["interfaces"].([]interface{})[i] = elem["interfaces"].([]interface{})[i].(string) + s.pid
+				elem["interfaces"].([]interface{})[i] = elem["interfaces"].([]interface{})[i].(string) + s.processIndex
 			}
 		}
 
@@ -414,17 +414,8 @@ func (s *HstSuite) getTestId() string {
 	return s.testIds[testName]
 }
 
-// Returns last 4 digits of PID
-func (s *HstSuite) getPortFromPid() string {
-	port := s.pid
-	for len(port) < 4 {
-		port += "0"
-	}
-	return port[len(port)-4:]
-}
-
 func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.getPortFromPid())
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", "500"+s.processIndex)
 	if env != nil {
 		cmd.Env = env
 	}
@@ -448,7 +439,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.getPortFromPid())
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", "500"+s.processIndex)
 		if env != nil {
 			cmd.Env = env
 		}
@@ -470,7 +461,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 }
 
 func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort, s.pid}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort, s.processIndex}, netNs)
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {
