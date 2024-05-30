@@ -48,6 +48,12 @@ int ip6_full_reass_enable_disable_with_refcnt (u32 sw_if_index,
 
 void ip6_local_full_reass_enable_disable (int enable);
 int ip6_local_full_reass_enabled ();
+
+uword ip6_full_reass_custom_context_register_next_node (uword node_index);
+uword ip6_full_reass_custom_register_next_node (uword node_index);
+
+uword ip6_full_reass_get_error_next_index ();
+
 #endif /* __included_ip6_full_reass_h */
 
 /*

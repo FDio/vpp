@@ -41,6 +41,9 @@
 #define IP_FRAG_FLAG_IP4_HEADER 0x01	//Encapsulating IPv4 header
 #define IP_FRAG_FLAG_IP6_HEADER 0x02	//Encapsulating IPv6 header
 
+// Copy the meta data from the original pkt to the fragments
+#define IP_FRAG_FLAG_COPY_METADATA 0x04
+
 #define IP4_FRAG_NODE_NAME "ip4-frag"
 #define IP6_FRAG_NODE_NAME "ip6-frag"
 
@@ -60,9 +63,8 @@ typedef enum
 
 typedef vl_counter_ip_frag_enum_t ip_frag_error_t;
 
-void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 mtu,
-			      u8 next_index, u8 flags);
-
+void ip_frag_set_vnet_buffer (vlib_buffer_t *b, u16 mtu, u8 next_index,
+			      u8 df_err_next_index, u8 flags);
 extern ip_frag_error_t ip4_frag_do_fragment (vlib_main_t * vm,
 					     u32 from_bi,
 					     u16 mtu,
