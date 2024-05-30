@@ -456,6 +456,7 @@ typedef CLIB_PACKED (struct {
 #define foreach_ext_hdr_type \
   _(IP6_HOP_BY_HOP_OPTIONS) \
   _(IPV6_ROUTE) \
+  _(IPV6_FRAGMENTATION) \
   _(IP6_DESTINATION_OPTIONS) \
   _(MOBILITY) \
   _(HIP) \
