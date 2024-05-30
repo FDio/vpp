@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfb1d667_dce764d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2024-05-30T15:50:28Z",
+      "side": 1,
+      "message": "Hi guys,\n\nI\u0027ve adjusted the patch, so now everything is handed off to 1st worker (with capability to change it to other worker or main thread).",
+      "revId": "cfc01d5f7621f7cf40a9481495f0e5bfd1443811",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
