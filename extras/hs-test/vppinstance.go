@@ -108,6 +108,7 @@ func (vpp *VppInstance) getEtcDir() string {
 }
 
 func (vpp *VppInstance) start() error {
+	maxReconnectAttempts := 3
 	// Replace default logger in govpp with our own
 	govppLogger := logrus.New()
 	govppLogger.SetOutput(io.MultiWriter(vpp.getSuite().logger.Writer(), GinkgoWriter))
@@ -142,6 +143,8 @@ func (vpp *VppInstance) start() error {
 
 	vpp.getSuite().log("starting vpp")
 	if *isVppDebug {
+		// default = 3; VPP will timeout while debugging if there are not enough attempts
+		maxReconnectAttempts = 5000
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGQUIT)
 		cont := make(chan bool, 1)
@@ -166,7 +169,7 @@ func (vpp *VppInstance) start() error {
 	sockAddress := vpp.container.getHostWorkDir() + defaultApiSocketFilePath
 	conn, connEv, err := govpp.AsyncConnect(
 		sockAddress,
-		core.DefaultMaxReconnectAttempts,
+		maxReconnectAttempts,
 		core.DefaultReconnectInterval)
 	if err != nil {
 		vpp.getSuite().log("async connect error: " + fmt.Sprint(err))
@@ -184,7 +187,7 @@ func (vpp *VppInstance) start() error {
 		context.Background(),
 		core.WithRequestSize(50),
 		core.WithReplySize(50),
-		core.WithReplyTimeout(time.Second*10))
+		core.WithReplyTimeout(time.Second*5))
 	if err != nil {
 		vpp.getSuite().log("creating stream failed: " + fmt.Sprint(err))
 		return err
