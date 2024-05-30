@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -77,7 +76,7 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 		It(testName, func(ctx SpecContext) {
 			s.log(testName + ": BEGIN")
 			test(&s)
-		}, SpecTimeout(time.Minute*5))
+		}, SpecTimeout(suiteTimeout))
 	}
 })
 
@@ -104,6 +103,6 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		It(testName, Label("SOLO"), func(ctx SpecContext) {
 			s.log(testName + ": BEGIN")
 			test(&s)
-		}, SpecTimeout(time.Minute*5))
+		}, SpecTimeout(suiteTimeout))
 	}
 })

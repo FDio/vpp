@@ -52,7 +52,7 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 		It(testName, func(ctx SpecContext) {
 			s.log(testName + ": BEGIN")
 			test(&s)
-		}, SpecTimeout(time.Minute*5))
+		}, SpecTimeout(suiteTimeout))
 	}
 })
 
@@ -79,6 +79,6 @@ var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		It(testName, Label("SOLO"), func(ctx SpecContext) {
 			s.log(testName + ": BEGIN")
 			test(&s)
-		}, SpecTimeout(time.Minute*5))
+		}, SpecTimeout(suiteTimeout))
 	}
 })
