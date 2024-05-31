@@ -28,6 +28,10 @@
 #define TLS_CHUNK_SIZE 		(1 << 14)
 #define TLS_CA_CERT_PATH	"/etc/ssl/certs/ca-certificates.crt"
 
+#define TLS_INVALID_HANDLE    ~0
+#define TLS_IDX_MASK	      0x00FFFFFF
+#define TLS_ENGINE_TYPE_SHIFT 28
+
 #if TLS_DEBUG
 #define TLS_DBG(_lvl, _fmt, _args...) 			\
   if (_lvl <= TLS_DEBUG) 				\
@@ -148,6 +152,8 @@ typedef struct tls_engine_vft_
   int (*ctx_reinit_cachain) (void);
 } tls_engine_vft_t;
 
+extern tls_engine_vft_t *tls_vfts;
+
 tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
 			  crypto_engine_type_t type);
@@ -160,7 +166,6 @@ int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 void tls_notify_app_io_error (tls_ctx_t *ctx);
 void tls_disconnect_transport (tls_ctx_t * ctx);
-int tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id);
 
 void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();
