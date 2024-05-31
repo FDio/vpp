@@ -16,6 +16,24 @@
       "message": "this makes output inconsistent, as other fields reflect struct naming, so I wold prefer that it stays as it is.\n\nAlso. parsing trace in CSIT test is very bad idea, we had similar situation in the past making major headache.\n\nI\u0027m fine with changing \u0027q\u0027 to \u0027qid\u0027....",
       "revId": "4fcf7aad3825023a7f46ee314b4ca1759dd6e4f9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27b52ec2_53a2b3e4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-05-31T07:10:23Z",
+      "side": 1,
+      "message": "\u003e\u003e this makes output inconsistent, as other fields reflect struct naming, so I wold prefer that it stays as it is.\nFor this reason, I was printing same value twice. \n\n\u003e\u003e  parsing trace in CSIT test is very bad idea, we had similar situation in the past making major headache.\nCSIT is doing following check for mark action, without \"PKT_RX_FDIR\" couple of flow test will fail. Do we have any other option to make CSIT test pass ? \n\nhttps://gerrit.fd.io/r/gitweb?p\u003dcsit.git;a\u003dblob;f\u003dresources/libraries/python/FlowUtil.py;h\u003d054356b9a2e05db5e6eb39d30e3d86e7f1ebf117;hb\u003d8b2ca2f17acca6f93d15dc10015ad3543f3550df#l575\n\n 574         elif action \u003d\u003d u\"mark\":\n 575             if u\"PKT_RX_FDIR\" not in stdout and  u\"flow-id 1\" not in stdout:\n 576                 raise RuntimeError(err_info)\n 577             if expected_str not in stdout:\n 578                 raise RuntimeError(err_info)",
+      "parentUuid": "cd2f1065_de020525",
+      "revId": "4fcf7aad3825023a7f46ee314b4ca1759dd6e4f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
