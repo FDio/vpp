@@ -165,6 +165,13 @@ int tls_reinit_ca_chain (crypto_engine_type_t tls_engine_id);
 void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();
 
+
+u32 tls_ctx_alloc_ext (crypto_engine_type_t engine_type, u32 thread_index);
+tls_ctx_t *tls_ctx_get_ext (u32 ctx_handle);
+int tls_ctx_init_server_ext (tls_ctx_t * ctx);
+int tls_ctx_init_client_ext (tls_ctx_t *ctx);
+int tls_ctx_read_ext (tls_ctx_t * ctx, session_t * ts_session);
+
 #endif /* SRC_VNET_TLS_TLS_H_ */
 
 /*
