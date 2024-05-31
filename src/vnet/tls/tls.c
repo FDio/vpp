@@ -1197,6 +1197,42 @@ tls_enable (vlib_main_t * vm, u8 is_en)
   return 0;
 }
 
+u32
+tls_ctx_alloc_ext (crypto_engine_type_t engine_type, u32 thread_index)
+{
+  return tls_ctx_alloc_w_thread (engine_type, thread_index);
+}
+
+void
+tls_ctx_free_ext (tls_ctx_t *ctx)
+{
+  tls_ctx_free (ctx);
+}
+
+tls_ctx_t *
+tls_ctx_get_ext (u32 ctx_handle)
+{
+  return tls_ctx_get (ctx_handle);
+}
+
+int
+tls_ctx_init_server_ext (tls_ctx_t *ctx)
+{
+  return tls_ctx_init_server (ctx);
+}
+
+int
+tls_ctx_init_client_ext (tls_ctx_t *ctx)
+{
+  return tls_ctx_init_client (ctx);
+}
+
+int
+tls_ctx_read_ext (tls_ctx_t *ctx, session_t *ts_session)
+{
+  return tls_ctx_read (ctx, ts_session);
+}
+
 static const transport_proto_vft_t tls_proto = {
   .enable = tls_enable,
   .connect = tls_connect,
