@@ -257,7 +257,6 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		args += " -r"
 		args += " http://" + serverAddress + ":80/64B.json"
 		abCont.extraRunningArgs = args
-		time.Sleep(time.Second * 10)
 		o, err := abCont.combinedOutput()
 		rps := parseString(o, "Requests per second:")
 		s.log(rps)

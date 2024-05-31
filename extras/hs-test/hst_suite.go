@@ -30,19 +30,19 @@ var nConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var vppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 
 type HstSuite struct {
-	containers       map[string]*Container
-	containerCount   int
-	volumes          []string
-	netConfigs       []NetConfig
-	netInterfaces    map[string]*NetInterface
-	ip4AddrAllocator *Ip4AddressAllocator
-	testIds          map[string]string
-	cpuAllocator     *CpuAllocatorT
-	cpuContexts      []*CpuContext
-	cpuPerVpp        int
-	pid              string
-	logger           *log.Logger
-	logFile          *os.File
+	containers        map[string]*Container
+	startedContainers []*Container
+	volumes           []string
+	netConfigs        []NetConfig
+	netInterfaces     map[string]*NetInterface
+	ip4AddrAllocator  *Ip4AddressAllocator
+	testIds           map[string]string
+	cpuAllocator      *CpuAllocatorT
+	cpuContexts       []*CpuContext
+	cpuPerVpp         int
+	pid               string
+	logger            *log.Logger
+	logFile           *os.File
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -62,7 +62,7 @@ func (s *HstSuite) SetupSuite() {
 }
 
 func (s *HstSuite) AllocateCpus() []int {
-	cpuCtx, err := s.cpuAllocator.Allocate(s.containerCount, s.cpuPerVpp)
+	cpuCtx, err := s.cpuAllocator.Allocate(len(s.startedContainers), s.cpuPerVpp)
 	s.assertNil(err)
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
@@ -96,7 +96,7 @@ func (s *HstSuite) skipIfUnconfiguring() {
 
 func (s *HstSuite) SetupTest() {
 	s.log("Test Setup")
-	s.containerCount = 0
+	s.startedContainers = s.startedContainers[:0]
 	s.skipIfUnconfiguring()
 	s.setupVolumes()
 	s.setupContainers()
@@ -152,11 +152,11 @@ func (s *HstSuite) logVppInstance(container *Container, maxLines int) {
 }
 
 func (s *HstSuite) hstFail() {
-	s.log("Containers: " + fmt.Sprint(s.containers))
-	for _, container := range s.containers {
+	for _, container := range s.startedContainers {
 		out, err := container.log(20)
 		if err != nil {
 			s.log("An error occured while obtaining '" + container.name + "' container logs: " + fmt.Sprint(err))
+			s.log("The container might not be running - check logs in " + container.getLogDirPath())
 			continue
 		}
 		s.log("\nvvvvvvvvvvvvvvv " +

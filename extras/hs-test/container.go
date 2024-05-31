@@ -162,7 +162,7 @@ func (c *Container) create() error {
 }
 
 func (c *Container) allocateCpus() {
-	c.suite.containerCount += 1
+	c.suite.startedContainers = append(c.suite.startedContainers, c)
 	c.allocatedCpus = c.suite.AllocateCpus()
 	c.suite.log("Allocated CPUs " + fmt.Sprint(c.allocatedCpus) + " to container " + c.name)
 }
