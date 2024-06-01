@@ -88,19 +88,14 @@ extract (u8 * sp, u8 * ep)
  */
 
 static clib_error_t *
-r2_to_reg (elf_main_t * em, vlib_plugin_r2_t * r2,
-	   vlib_plugin_registration_t * reg)
+r2_to_reg (elf_main_t *em, vlib_plugin_r2_t *r2,
+	   vlib_plugin_registration_t *reg, elf_section_t *data_section)
 {
-  clib_error_t *error;
-  elf_section_t *section;
   uword data_segment_offset;
   u8 *data;
 
   /* It turns out that the strings land in the ".data" section */
-  error = elf_get_section_by_name (em, ".data", &section);
-  if (error)
-    return error;
-  data = elf_get_section_contents (em, section->index, 1);
+  data = elf_get_section_contents (em, data_section->index, 1);
 
   /*
    * Offsets in the ".vlib_plugin_r2" section
@@ -177,13 +172,52 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   error = elf_get_section_by_name (&em, ".vlib_plugin_r2", &section);
   if (error == 0)
     {
+      elf_section_t *data_section;
+      elf_relocation_table_t *rt;
+      elf_relocation_with_addend_t *r;
+      elf_symbol_table_t *st;
+      elf64_symbol_t *sym, *symok = 0;
+
       data = elf_get_section_contents (&em, section->index, 1);
       r2 = (vlib_plugin_r2_t *) data;
+
+      elf_get_section_by_name (&em, ".data", &data_section);
+
+      // Find first symbol in .vlib_plugin_r2 section.
+      vec_foreach (st, em.symbol_tables)
+	{
+	  vec_foreach (sym, st->symbols)
+	    {
+	      if (sym->section_index == section->index)
+		{
+		  symok = sym;
+		  break;
+		}
+	    }
+	}
+
+      // Relocate section data as per relocation tables.
+      if (symok != 0)
+	{
+	  vec_foreach (rt, em.relocation_tables)
+	    {
+	      vec_foreach (r, rt->relocations)
+		{
+		  if (r->address >= symok->value &&
+		      r->address < symok->value + symok->size)
+		    {
+		      *(uword *) ((void *) data + r->address - symok->value) +=
+			r->addend - data_section->header.exec_address;
+		    }
+		}
+	    }
+	}
+
       reg = clib_mem_alloc (sizeof (*reg));
       memset (reg, 0, sizeof (*reg));
 
       reg->default_disabled = r2->default_disabled != 0;
-      error = r2_to_reg (&em, r2, reg);
+      error = r2_to_reg (&em, r2, reg, data_section);
       if (error)
 	{
 	  PLUGIN_LOG_ERR ("Bad r2 registration: %s\n", (char *) pi->name);
