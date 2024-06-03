@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "97efadcf7dbf316aeb1afd53b10cf93fa539d513",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e902730_bd1cc10c",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 559,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-03T08:41:12Z",
+      "side": 1,
+      "message": "why not if (clib_host_to_net_u16 (4500) \u003d\u003d udp0-\u003edst_port) instead? The bysteswap can be done at compile-time instead of runtime?",
+      "revId": "97efadcf7dbf316aeb1afd53b10cf93fa539d513",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
