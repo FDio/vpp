@@ -3,7 +3,7 @@ ARG UBUNTU_VERSION
 FROM ubuntu:${UBUNTU_VERSION}
 
 RUN apt-get update \
- && apt-get install -y nginx gdb less \
+ && apt-get install -y nginx gdb less libunwind-dev \
  && rm -rf /var/lib/apt/lists/*
 
 COPY vpp-data/lib/* /usr/lib/

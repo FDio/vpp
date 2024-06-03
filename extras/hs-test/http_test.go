@@ -204,7 +204,6 @@ func HeaderServerTest(s *NoTopoSuite) {
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
-	s.skip("Broken in the CI")
 	query := "return_ok"
 	finished := make(chan error, 1)
 
@@ -279,17 +278,14 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 // unstable with multiple workers
 func NginxPerfCpsTest(s *NoTopoSuite) {
-	s.skip("Broken in the CI")
 	s.SkipIfMultiWorker()
 	s.assertNil(runNginxPerf(s, "cps", "ab"))
 }
 
 func NginxPerfRpsTest(s *NoTopoSuite) {
-	s.skip("Broken in the CI")
 	s.assertNil(runNginxPerf(s, "rps", "ab"))
 }
 
 func NginxPerfWrkTest(s *NoTopoSuite) {
-	s.skip("Broken in the CI")
 	s.assertNil(runNginxPerf(s, "", "wrk"))
 }
