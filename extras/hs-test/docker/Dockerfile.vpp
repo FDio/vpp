@@ -20,6 +20,7 @@ COPY \
    $DIR/nsim_plugin.so \
    $DIR/prom_plugin.so \
    $DIR/tlsopenssl_plugin.so \
+   $DIR/mactime_plugin.so \
    /usr/lib/x86_64-linux-gnu/vpp_plugins/
 
 COPY vpp-data/bin/vpp /usr/bin/

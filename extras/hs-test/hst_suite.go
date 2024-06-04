@@ -385,6 +385,7 @@ func (s *HstSuite) configureNetworkTopology(topologyName string) {
 	}
 
 	for _, nc := range s.netConfigs {
+		s.log(nc.Name())
 		if err := nc.configure(); err != nil {
 			Fail("Network config error: " + fmt.Sprint(err))
 		}
