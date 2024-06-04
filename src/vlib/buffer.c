@@ -663,7 +663,7 @@ vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
 				  u8 unpriv)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  u32 buffers_per_numa = bm->buffers_per_numa;
+  u32 buffers_per_numa = bm->buffers_per_numa[numa_node];
   clib_error_t *error;
   u32 buffer_size;
   uword n_pages, pagesize;
@@ -678,6 +678,9 @@ vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
   if (buffer_size > pagesize)
     return clib_error_return (0, "buffer size (%llu) is greater than page "
 			      "size (%llu)", buffer_size, pagesize);
+
+  if (buffers_per_numa == 0)
+    buffers_per_numa = bm->default_buffers_per_numa;
 
   if (buffers_per_numa == 0)
     buffers_per_numa = unpriv ? VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV :
@@ -906,18 +909,48 @@ done:
 }
 
 static clib_error_t *
+vlib_buffers_numa_configure (vlib_buffer_main_t *bm, u32 numa_node,
+			     unformat_input_t *input)
+{
+  u32 buffers = 0;
+
+  if (numa_node >= VLIB_BUFFER_MAX_NUMA_NODES)
+    return clib_error_return (0, "invalid numa node");
+
+  if (!input)
+    return 0;
+
+  unformat_skip_white_space (input);
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "buffers %u", &buffers))
+	;
+      else
+	return unformat_parse_error (input);
+    }
+
+  bm->buffers_per_numa[numa_node] = buffers;
+  return 0;
+}
+
+static clib_error_t *
 vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 {
   vlib_buffer_main_t *bm;
+  u32 numa_node;
+  unformat_input_t sub_input;
+  clib_error_t *error = 0;
 
   vlib_buffer_main_alloc (vm);
 
   bm = vm->buffer_main;
   bm->log2_page_size = CLIB_MEM_PAGE_SZ_UNKNOWN;
+  memset (bm->buffers_per_numa, 0, sizeof (bm->buffers_per_numa));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "buffers-per-numa %u", &bm->buffers_per_numa))
+      if (unformat (input, "buffers-per-numa %u",
+		    &bm->default_buffers_per_numa))
 	;
       else if (unformat (input, "page-size %U", unformat_log2_page_size,
 			 &bm->log2_page_size))
@@ -925,6 +958,15 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "default data-size %u",
 			 &bm->default_data_size))
 	;
+      else if (unformat (input, "numa %u %U", &numa_node,
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  error = vlib_buffers_numa_configure (bm, numa_node, &sub_input);
+	  unformat_free (&sub_input);
+
+	  if (error)
+	    return error;
+	}
       else
 	return unformat_parse_error (input);
     }
