@@ -219,6 +219,17 @@ openssl_ops_enc_aead (vlib_main_t *vm, vnet_crypto_op_t *ops[],
       vnet_crypto_op_t *op = ops[i];
       int len = 0;
 
+      if (i + 2 < n_ops)
+	{
+	  CLIB_PREFETCH (ops[i + 1]->src, 4 * CLIB_CACHE_PREFETCH_BYTES, LOAD);
+	  CLIB_PREFETCH (ops[i + 1]->dst, 4 * CLIB_CACHE_PREFETCH_BYTES,
+			 STORE);
+
+	  CLIB_PREFETCH (ops[i + 2]->src, 4 * CLIB_CACHE_PREFETCH_BYTES, LOAD);
+	  CLIB_PREFETCH (ops[i + 2]->dst, 4 * CLIB_CACHE_PREFETCH_BYTES,
+			 STORE);
+	}
+
       ctx = ptd->evp_cipher_enc_ctx[op->key_index];
       EVP_EncryptInit_ex (ctx, 0, 0, NULL, op->iv);
       if (op->aad_len)
