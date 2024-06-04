@@ -212,7 +212,7 @@ content_type_from_request (u8 *request)
 
 static int
 try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
-		 u8 *request)
+		 u8 *target_path, u8 *target_query, u8 *data)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
   hss_url_handler_args_t args = {};
@@ -220,22 +220,22 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   http_content_type_t type;
   int rv;
 
-  if (!hsm->enable_url_handlers || !request)
+  if (!hsm->enable_url_handlers || !target_path)
     return -1;
 
   /* zero-length? try "index.html" */
-  if (vec_len (request) == 0)
+  if (vec_len (target_path) == 0)
     {
-      request = format (request, "index.html");
+      target_path = format (target_path, "index.html");
     }
 
-  type = content_type_from_request (request);
+  type = content_type_from_request (target_path);
 
   /* Look for built-in GET / POST handlers */
   url_table =
     (rt == HTTP_REQ_GET) ? hsm->get_url_handlers : hsm->post_url_handlers;
 
-  p = hash_get_mem (url_table, request);
+  p = hash_get_mem (url_table, target_path);
   if (!p)
     return -1;
 
@@ -244,10 +244,12 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   hs->cache_pool_index = ~0;
 
   if (hsm->debug_level > 0)
-    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
+    clib_warning ("%s '%s'", (rt == HTTP_REQ_GET) ? "GET" : "POST",
+		  target_path);
 
-  args.reqtype = rt;
-  args.request = request;
+  args.req_type = rt;
+  args.query = target_query;
+  args.req_data = data;
   args.sh.thread_index = hs->thread_index;
   args.sh.session_index = hs->session_index;
 
@@ -260,7 +262,7 @@ try_url_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (rv == HSS_URL_HANDLER_ERROR)
     {
       clib_warning ("builtin handler %llx hit on %s '%s' but failed!", p[0],
-		    (rt == HTTP_REQ_GET) ? "GET" : "POST", request);
+		    (rt == HTTP_REQ_GET) ? "GET" : "POST", target_path);
       sc = HTTP_STATUS_NOT_FOUND;
     }
 
@@ -354,7 +356,7 @@ try_index_file (hss_main_t *hsm, hss_session_t *hs, u8 *path)
 
 static int
 try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
-		  u8 *request)
+		  u8 *target)
 {
   http_status_code_t sc = HTTP_STATUS_OK;
   u8 *path, *sanitized_path;
@@ -365,19 +367,16 @@ try_file_handler (hss_main_t *hsm, hss_session_t *hs, http_req_method_t rt,
   if (!hsm->www_root)
     return -1;
 
-  type = content_type_from_request (request);
+  type = content_type_from_request (target);
 
   /* Remove dot segments to prevent path traversal */
-  sanitized_path = http_path_remove_dot_segments (request);
+  sanitized_path = http_path_remove_dot_segments (target);
 
   /*
    * Construct the file to open
-   * Browsers are capable of sporadically including a leading '/'
    */
-  if (!request)
+  if (!target)
     path = format (0, "%s%c", hsm->www_root, 0);
-  else if (request[0] == '/')
-    path = format (0, "%s%s%c", hsm->www_root, sanitized_path, 0);
   else
     path = format (0, "%s/%s%c", hsm->www_root, sanitized_path, 0);
 
@@ -431,33 +430,33 @@ done:
   return 0;
 }
 
-static int
-handle_request (hss_session_t *hs, http_req_method_t rt, u8 *request)
+static void
+handle_request (hss_session_t *hs, http_req_method_t rt, u8 *target_path,
+		u8 *target_query, u8 *data)
 {
   hss_main_t *hsm = &hss_main;
 
-  if (!try_url_handler (hsm, hs, rt, request))
-    return 0;
+  if (!try_url_handler (hsm, hs, rt, target_path, target_query, data))
+    return;
 
-  if (!try_file_handler (hsm, hs, rt, request))
-    return 0;
+  if (!try_file_handler (hsm, hs, rt, target_path))
+    return;
 
   /* Handler did not find anything return 404 */
   start_send_data (hs, HTTP_STATUS_NOT_FOUND);
   hss_session_disconnect_transport (hs);
-
-  return 0;
 }
 
 static int
 hss_ts_rx_callback (session_t *ts)
 {
   hss_session_t *hs;
-  u8 *request = 0;
+  u8 *target_path = 0, *target_query = 0, *data = 0;
   http_msg_t msg;
   int rv;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
+  hs->data = 0;
 
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -466,26 +465,63 @@ hss_ts_rx_callback (session_t *ts)
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST))
     {
-      hs->data = 0;
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
-      return 0;
+      goto done;
     }
 
-  /* Read request */
-  if (msg.data.len)
+  if (msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
     {
-      vec_validate (request, msg.data.len - 1);
-      rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, request);
-      ASSERT (rv == msg.data.len);
-      /* request must be a proper C-string in addition to a vector */
-      vec_add1 (request, 0);
+      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+      goto done;
+    }
+
+  /* Read target path */
+  if (msg.data.target_path_len)
+    {
+      vec_validate (target_path, msg.data.target_path_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
+			  msg.data.target_path_len, target_path);
+      ASSERT (rv == msg.data.target_path_len);
+      if (http_validate_abs_path_syntax (target_path, 0))
+	{
+	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+	  goto done;
+	}
+      /* Target path must be a proper C-string in addition to a vector */
+      vec_add1 (target_path, 0);
+    }
+
+  /* Read target query */
+  if (msg.data.target_query_len)
+    {
+      vec_validate (target_query, msg.data.target_query_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_query_offset,
+			  msg.data.target_query_len, target_query);
+      ASSERT (rv == msg.data.target_query_len);
+      if (http_validate_query_syntax (target_query, 0))
+	{
+	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
+	  goto done;
+	}
+    }
+
+  /* Read body */
+  if (msg.data.body_len)
+    {
+      vec_validate (data, msg.data.body_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.body_offset, msg.data.body_len,
+			  data);
+      ASSERT (rv == msg.data.body_len);
     }
 
   /* Find and send data */
-  handle_request (hs, msg.method_type, request);
+  handle_request (hs, msg.method_type, target_path, target_query, data);
 
-  vec_free (request);
-
+done:
+  vec_free (target_path);
+  vec_free (target_query);
+  vec_free (data);
+  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
   return 0;
 }
 

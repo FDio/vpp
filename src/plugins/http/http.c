@@ -83,6 +83,16 @@ format_http_state (u8 *s, va_list *va)
     }                                                                         \
   while (0)
 
+static inline int
+http_state_is_tx_valid (http_conn_t *hc)
+{
+  http_state_t state = hc->http_state;
+  return (state == HTTP_STATE_APP_IO_MORE_DATA ||
+	  state == HTTP_STATE_CLIENT_IO_MORE_DATA ||
+	  state == HTTP_STATE_WAIT_APP_REPLY ||
+	  state == HTTP_STATE_WAIT_APP_METHOD);
+}
+
 static inline http_worker_t *
 http_worker_get (u32 thread_index)
 {
@@ -383,7 +393,7 @@ static const char *http_response_template = "HTTP/1.1 %s\r\n"
 
 static const char *http_request_template = "GET %s HTTP/1.1\r\n"
 					   "User-Agent: %s\r\n"
-					   "Accept: */*\r\n";
+					   "Accept: */*\r\n\r\n";
 
 static u32
 http_send_data (http_conn_t *hc, u8 *data, u32 length, u32 offset)
@@ -449,8 +459,18 @@ http_read_message (http_conn_t *hc)
   return 0;
 }
 
-static int
-v_find_index (u8 *vec, u32 offset, char *str)
+/**
+ * @brief Find the first occurrence of the string in the vector.
+ *
+ * @param vec The vector to be scanned.
+ * @param offset Search offset in the vector.
+ * @param num Maximum number of characters to be searched if non-zero.
+ * @param str The string to be searched.
+ *
+ * @return @c -1 if the string is not found within the vector; index otherwise.
+ */
+static inline int
+v_find_index (u8 *vec, u32 offset, u32 num, char *str)
 {
   int start_index = offset;
   u32 slen = (u32) strnlen_s_inline (str, 16);
@@ -461,13 +481,274 @@ v_find_index (u8 *vec, u32 offset, char *str)
   if (vlen <= slen)
     return -1;
 
-  for (; start_index < (vlen - slen); start_index++)
+  int end_index = vlen - slen;
+  if (num)
+    {
+      if (num < slen)
+	return -1;
+      end_index = clib_min (end_index, offset + num - slen);
+    }
+
+  for (; start_index <= end_index; start_index++)
     {
       if (!memcmp (vec + start_index, str, slen))
 	return start_index;
     }
 
   return -1;
+}
+
+static void
+http_identify_optional_query (http_conn_t *hc)
+{
+  u32 pos = vec_search (hc->rx_buf, '?');
+  if (~0 != pos)
+    {
+      hc->target_query_offset = pos + 1;
+      hc->target_query_len =
+	hc->target_path_offset + hc->target_path_len - hc->target_query_offset;
+      hc->target_path_len = hc->target_path_len - hc->target_query_len - 1;
+    }
+}
+
+static int
+http_get_target_form (http_conn_t *hc)
+{
+  int i;
+
+  /* "*" */
+  if ((hc->rx_buf[hc->target_path_offset] == '*') &&
+      (hc->target_path_len == 1))
+    {
+      hc->target_form = HTTP_TARGET_ASTERISK_FORM;
+      return 0;
+    }
+
+  /* 1*( "/" segment ) [ "?" query ] */
+  if (hc->rx_buf[hc->target_path_offset] == '/')
+    {
+      /* drop leading slash */
+      hc->target_path_len--;
+      hc->target_path_offset++;
+      hc->target_form = HTTP_TARGET_ORIGIN_FORM;
+      http_identify_optional_query (hc);
+      return 0;
+    }
+
+  /* scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
+  i = v_find_index (hc->rx_buf, hc->target_path_offset, hc->target_path_len,
+		    "://");
+  if (i > 0)
+    {
+      hc->target_form = HTTP_TARGET_ABSOLUTE_FORM;
+      http_identify_optional_query (hc);
+      return 0;
+    }
+
+  /* host ":" port */
+  for (i = hc->target_path_offset;
+       i < (hc->target_path_offset + hc->target_path_len); i++)
+    {
+      if ((hc->rx_buf[i] == ':') && (isdigit (hc->rx_buf[i + 1])))
+	{
+	  hc->target_form = HTTP_TARGET_AUTHORITY_FORM;
+	  return 0;
+	}
+    }
+
+  return -1;
+}
+
+static int
+http_parse_request_line (http_conn_t *hc, http_status_code_t *ec)
+{
+  int i, target_len;
+  u32 next_line_offset;
+
+  /* request-line = method SP request-target SP HTTP-version CRLF */
+  i = v_find_index (hc->rx_buf, 0, 0, "\r\n");
+  if (i < 0)
+    {
+      clib_warning ("request line incomplete");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  HTTP_DBG (0, "request line length: %d", i);
+  next_line_offset = i + 2;
+
+  /* there should be at least one more CRLF */
+  if (vec_len (hc->rx_buf) < (next_line_offset + 2))
+    {
+      clib_warning ("malformed message, too short");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+
+  /* parse method */
+  if ((i = v_find_index (hc->rx_buf, 0, next_line_offset, "GET ")) >= 0)
+    {
+      HTTP_DBG (0, "GET method");
+      hc->method = HTTP_REQ_GET;
+      hc->target_path_offset = i + 4;
+    }
+  else if ((i = v_find_index (hc->rx_buf, 0, next_line_offset, "POST ")) >= 0)
+    {
+      HTTP_DBG (0, "POST method");
+      hc->method = HTTP_REQ_POST;
+      hc->target_path_offset = i + 5;
+    }
+  else
+    {
+      clib_warning ("method not implemented: %8v", hc->rx_buf);
+      *ec = HTTP_STATUS_NOT_IMPLEMENTED;
+      return -1;
+    }
+
+  /* find version */
+  i = v_find_index (hc->rx_buf, next_line_offset - 11, 11, " HTTP/");
+  if (i < 0)
+    {
+      clib_warning ("HTTP version not present");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  /* verify major version */
+  if (isdigit (hc->rx_buf[i + 6]))
+    {
+      if (hc->rx_buf[i + 6] != '1')
+	{
+	  clib_warning ("HTTP major version '%c' not supported",
+			hc->rx_buf[i + 6]);
+	  *ec = HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED;
+	  return -1;
+	}
+    }
+  else
+    {
+      clib_warning ("HTTP major version '%c' is not digit", hc->rx_buf[i + 6]);
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+
+  /* parse request-target */
+  target_len = i - hc->target_path_offset;
+  if (target_len < 1)
+    {
+      clib_warning ("request-target not present");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  hc->target_path_len = target_len;
+  hc->target_query_offset = 0;
+  hc->target_query_len = 0;
+  if (http_get_target_form (hc))
+    {
+      clib_warning ("invalid target");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  HTTP_DBG (0, "request-target path length: %u", hc->target_path_len);
+  HTTP_DBG (0, "request-target path offset: %u", hc->target_path_offset);
+  HTTP_DBG (0, "request-target query length: %u", hc->target_query_len);
+  HTTP_DBG (0, "request-target query offset: %u", hc->target_query_offset);
+
+  /* set buffer offset to nex line start */
+  hc->rx_buf_offset = next_line_offset;
+
+  return 0;
+}
+
+static int
+http_identify_headers (http_conn_t *hc, http_status_code_t *ec)
+{
+  int i;
+
+  /* check if we have any header */
+  if ((hc->rx_buf[hc->rx_buf_offset] == '\r') &&
+      (hc->rx_buf[hc->rx_buf_offset + 1] == '\n'))
+    {
+      /* just another CRLF -> no headers */
+      HTTP_DBG (0, "no headers");
+      hc->headers_len = 0;
+      return 0;
+    }
+
+  /* find empty line indicating end of header section */
+  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "\r\n\r\n");
+  if (i < 0)
+    {
+      clib_warning ("cannot find header section end");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  hc->headers_offset = hc->rx_buf_offset;
+  hc->headers_len = i - hc->rx_buf_offset + 2;
+  HTTP_DBG (0, "headers length: %u", hc->headers_len);
+  HTTP_DBG (0, "headers offset: %u", hc->headers_offset);
+
+  return 0;
+}
+
+static int
+http_identify_message_body (http_conn_t *hc, http_status_code_t *ec)
+{
+  unformat_input_t input;
+  int i, len;
+  u8 *line;
+
+  hc->body_len = 0;
+
+  if (hc->headers_len == 0)
+    {
+      HTTP_DBG (0, "no header, no message-body");
+      return 0;
+    }
+
+  /* TODO check for chunked transfer coding */
+
+  /* try to find Content-Length header */
+  i = v_find_index (hc->rx_buf, hc->headers_offset, hc->headers_len,
+		    "Content-Length:");
+  if (i < 0)
+    {
+      HTTP_DBG (0, "Content-Length header not present, no message-body");
+      return 0;
+    }
+  hc->rx_buf_offset = i + 15;
+
+  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, hc->headers_len, "\r\n");
+  if (i < 0)
+    {
+      clib_warning ("end of line missing");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  len = i - hc->rx_buf_offset;
+  if (len < 1)
+    {
+      clib_warning ("invalid header, content length value missing");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+
+  line = vec_new (u8, len);
+  clib_memcpy (line, hc->rx_buf + hc->rx_buf_offset, len);
+  HTTP_DBG (0, "%v", line);
+
+  unformat_init_vector (&input, line);
+  if (!unformat (&input, "%lu", &hc->body_len))
+    {
+      clib_warning ("failed to unformat content length value");
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      return -1;
+    }
+  unformat_free (&input);
+
+  hc->body_offset = hc->headers_offset + hc->headers_len + 2;
+  HTTP_DBG (0, "body length: %u", hc->body_len);
+  HTTP_DBG (0, "body offset: %u", hc->body_offset);
+
+  return 0;
 }
 
 static int
@@ -477,7 +758,7 @@ http_parse_header (http_conn_t *hc, int *content_length)
   int i, len;
   u8 *line;
 
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, CONTENT_LEN_STR);
+  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, CONTENT_LEN_STR);
   if (i < 0)
     {
       clib_warning ("cannot find '%s' in the header!", CONTENT_LEN_STR);
@@ -486,7 +767,7 @@ http_parse_header (http_conn_t *hc, int *content_length)
 
   hc->rx_buf_offset = i;
 
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, "\n");
+  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "\n");
   if (i < 0)
     {
       clib_warning ("end of line missing; incomplete data");
@@ -507,7 +788,7 @@ http_parse_header (http_conn_t *hc, int *content_length)
 
   /* skip rest of the header */
   hc->rx_buf_offset += len;
-  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, "<html>");
+  i = v_find_index (hc->rx_buf, hc->rx_buf_offset, 0, "<html>");
   if (i < 0)
     {
       clib_warning ("<html> tag not found");
@@ -541,7 +822,7 @@ http_state_wait_server_reply (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  if ((i = v_find_index (hc->rx_buf, 0, "200 OK")) >= 0)
+  if ((i = v_find_index (hc->rx_buf, 0, 0, "200 OK")) >= 0)
     {
       msg.type = HTTP_MSG_REPLY;
       msg.content_type = HTTP_CONTENT_TEXT_HTML;
@@ -614,9 +895,8 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   app_worker_t *app_wrk;
   http_msg_t msg;
   session_t *as;
-  int i, rv;
+  int rv;
   u32 len;
-  u8 *buf;
 
   rv = http_read_message (hc);
 
@@ -624,50 +904,45 @@ http_state_wait_client_method (http_conn_t *hc, transport_send_params_t *sp)
   if (rv)
     return HTTP_SM_STOP;
 
+  HTTP_DBG (0, "%v", hc->rx_buf);
+
   if (vec_len (hc->rx_buf) < 8)
     {
       ec = HTTP_STATUS_BAD_REQUEST;
       goto error;
     }
 
-  if ((i = v_find_index (hc->rx_buf, 0, "GET ")) >= 0)
-    {
-      hc->method = HTTP_REQ_GET;
-      hc->rx_buf_offset = i + 5;
+  rv = http_parse_request_line (hc, &ec);
+  if (rv)
+    goto error;
 
-      i = v_find_index (hc->rx_buf, hc->rx_buf_offset, "HTTP");
-      if (i < 0)
-	{
-	  ec = HTTP_STATUS_BAD_REQUEST;
-	  goto error;
-	}
+  rv = http_identify_headers (hc, &ec);
+  if (rv)
+    goto error;
 
-      HTTP_DBG (0, "GET method %v", hc->rx_buf);
-      len = i - hc->rx_buf_offset - 1;
-    }
-  else if ((i = v_find_index (hc->rx_buf, 0, "POST ")) >= 0)
-    {
-      hc->method = HTTP_REQ_POST;
-      hc->rx_buf_offset = i + 6;
-      len = vec_len (hc->rx_buf) - hc->rx_buf_offset - 1;
-      HTTP_DBG (0, "POST method %v", hc->rx_buf);
-    }
-  else
-    {
-      HTTP_DBG (0, "Unknown http method %v", hc->rx_buf);
-      ec = HTTP_STATUS_METHOD_NOT_ALLOWED;
-      goto error;
-    }
+  rv = http_identify_message_body (hc, &ec);
+  if (rv)
+    goto error;
 
-  buf = &hc->rx_buf[hc->rx_buf_offset];
+  len = vec_len (hc->rx_buf);
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hc->method;
   msg.content_type = HTTP_CONTENT_TEXT_HTML;
   msg.data.type = HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
+  msg.data.target_form = hc->target_form;
+  msg.data.target_path_offset = hc->target_path_offset;
+  msg.data.target_path_len = hc->target_path_len;
+  msg.data.target_query_offset = hc->target_query_offset;
+  msg.data.target_query_len = hc->target_query_len;
+  msg.data.headers_offset = hc->headers_offset;
+  msg.data.headers_len = hc->headers_len;
+  msg.data.body_offset = hc->body_offset;
+  msg.data.body_len = hc->body_len;
 
-  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { buf, len } };
+  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
+			     { hc->rx_buf, len } };
 
   as = session_get_from_handle (hc->h_pa_session_handle);
   rv = svm_fifo_enqueue_segments (as->rx_fifo, segs, 2, 0 /* allow partial */);
@@ -748,6 +1023,7 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
     case HTTP_STATUS_METHOD_NOT_ALLOWED:
     case HTTP_STATUS_BAD_REQUEST:
     case HTTP_STATUS_INTERNAL_ERROR:
+    case HTTP_STATUS_FORBIDDEN:
     case HTTP_STATUS_OK:
       header =
 	format (0, http_response_template, http_status_code_str[msg.code],

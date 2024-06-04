@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -16,7 +18,12 @@ func init() {
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
 		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
-		HttpCliBadRequestTest, HttpStaticPathTraversalTest)
+		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
+		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
+		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
+		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
+		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
+		HttpHeadersTest)
 	registerNoTopoSoloTests(HttpStaticPromTest)
 }
 
@@ -32,7 +39,7 @@ func HttpTpsTest(s *NsSuite) {
 	container := s.getContainerByName("vpp")
 
 	// configure vpp in the container
-	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
+	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080 debug")
 
 	go func() {
 		defer GinkgoRecover()
@@ -187,6 +194,351 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	s.assertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
 	s.assertEqual(400, resp.StatusCode)
+}
+
+func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(string(data), "vpp_details")
+	s.assertContains(string(data), "version")
+	s.assertContains(string(data), "build_date")
+	s.assertNotContains(string(data), "build_by")
+	s.assertNotContains(string(data), "build_host")
+	s.assertNotContains(string(data), "build_dir")
+}
+
+func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/version.json?verbose=true", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(string(data), "vpp_details")
+	s.assertContains(string(data), "version")
+	s.assertContains(string(data), "build_date")
+	s.assertContains(string(data), "build_by")
+	s.assertContains(string(data), "build_host")
+	s.assertContains(string(data), "build_dir")
+}
+
+func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/interface_list.json", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(string(data), "interface_list")
+	s.assertContains(string(data), s.getInterfaceByName(tapInterfaceName).peer.Name())
+}
+
+func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/interface_stats.json", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(string(data), "interface_stats")
+	s.assertContains(string(data), "local0")
+	s.assertContains(string(data), s.getInterfaceByName(tapInterfaceName).peer.Name())
+}
+
+func validatePostInterfaceStats(s *NoTopoSuite, data string) {
+	s.assertContains(data, "interface_stats")
+	s.assertContains(data, s.getInterfaceByName(tapInterfaceName).peer.Name())
+	s.assertNotContains(data, "error")
+	s.assertNotContains(data, "local0")
+}
+
+func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	body := []byte(s.getInterfaceByName(tapInterfaceName).peer.Name())
+
+	client := newHttpClient()
+	req, err := http.NewRequest("POST",
+		"http://"+serverAddress+":80/interface_stats.json", bytes.NewBuffer(body))
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	validatePostInterfaceStats(s, string(data))
+}
+
+func HttpStaticMacTimeTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	s.log(vpp.vppctl("mactime enable-disable " + s.getInterfaceByName(tapInterfaceName).peer.Name()))
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/mactime.json", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(string(data), "mactime")
+	s.assertContains(string(data), s.getInterfaceByName(tapInterfaceName).ip4AddressString())
+	s.assertContains(string(data), s.getInterfaceByName(tapInterfaceName).hwAddress.String())
+}
+
+func HttpInvalidRequestLineTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	resp, err := tcpSendReceive(serverAddress+":80", "GET / HTTP/1.1")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET / HTTP/1.1\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "HTTP-version must be present")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "request-target must be present")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET  HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "request-target must be present")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET / HTTP/x\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP/x' invalid http version not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET / HTTP1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'HTTP1.1' invalid http version not allowed")
+}
+
+func HttpInvalidTargetSyntaxTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+
+	resp, err := tcpSendReceive(serverAddress+":80", "GET /interface|stats.json HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'|' not allowed in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /interface#stats.json HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'#' not allowed in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /interface%stats.json HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /interface%1stats.json HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /interface%Bstats.json HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /interface%stats.json%B HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target path")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /version.json?verbose>true HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'>' not allowed in target query")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /version.json?verbose%true HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target query")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /version.json?verbose=%1 HTTP/1.1\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"after '%' there must be two hex-digit characters in target query")
+}
+
+func HttpInvalidContentLengthTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	resp, err := tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length:\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length: \r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nContent-Length: a\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request",
+		"Content-Length value other than digit not allowed")
+}
+
+func HttpContentLengthTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	s.log(vpp.vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers debug"))
+	ifName := s.getInterfaceByName(tapInterfaceName).peer.Name()
+
+	resp, err := tcpSendReceive(serverAddress+":80",
+		"POST /interface_stats.json HTTP/1.1\r\nContent-Length:4\r\n\r\n"+ifName)
+	s.assertNil(err, fmt.Sprint(err))
+	validatePostInterfaceStats(s, resp)
+
+	resp, err = tcpSendReceive(serverAddress+":80",
+		"POST /interface_stats.json HTTP/1.1\r\n Content-Length:  4 \r\n\r\n"+ifName)
+	s.assertNil(err, fmt.Sprint(err))
+	validatePostInterfaceStats(s, resp)
+
+	resp, err = tcpSendReceive(serverAddress+":80",
+		"POST /interface_stats.json HTTP/1.1\r\n\tContent-Length:\t\t4\r\n\r\n"+ifName)
+	s.assertNil(err, fmt.Sprint(err))
+	validatePostInterfaceStats(s, resp)
+}
+
+func HttpMethodNotImplementedTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	client := newHttpClient()
+	req, err := http.NewRequest("OPTIONS", "http://"+serverAddress+":80/show/version", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(501, resp.StatusCode)
+}
+
+func HttpVersionNotSupportedTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	resp, err := tcpSendReceive(serverAddress+":80", "GET / HTTP/2\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 505 HTTP Version Not Supported")
+}
+
+func HttpUriDecodeTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/sh%6fw%20versio%6E%20verbose", nil)
+	s.assertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	data, err := io.ReadAll(resp.Body)
+	s.assertNil(err, fmt.Sprint(err))
+	s.log(string(data))
+	s.assertNotContains(string(data), "unknown input")
+	s.assertContains(string(data), "Compiler")
+}
+
+func HttpHeadersTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	resp, err := tcpSendReceive(
+		serverAddress+":80",
+		"GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:test\r\nAccept:text/xml\r\nAccept:\ttext/plain\t \r\nAccept:text/html\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 200 OK")
+	s.assertContains(resp, "Content-Type: text / plain")
+	s.assertNotContains(resp, "<html>", "html content received instead of plain text")
+}
+
+func HttpInvalidHeadersTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http cli server")
+
+	resp, err := tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nUser-Agent: test\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "Header section must end with CRLF CRLF")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser@Agent:test\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "'@' not allowed in field name")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "incomplete field line not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\n: test\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "empty field name not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\rUser-Agent:test\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\nUser-Agent:test\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:\r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
+
+	resp, err = tcpSendReceive(serverAddress+":80", "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+":80\r\nUser-Agent:    \r\n\r\n")
+	s.assertNil(err, fmt.Sprint(err))
+	s.assertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
 }
 
 func HeaderServerTest(s *NoTopoSuite) {

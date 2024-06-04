@@ -246,7 +246,7 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
 }
 
 static int
-try_test_file (hts_session_t *hs, u8 *request)
+try_test_file (hts_session_t *hs, u8 *target)
 {
   char *test_str = "test_file";
   hts_main_t *htm = &hts_main;
@@ -254,10 +254,10 @@ try_test_file (hts_session_t *hs, u8 *request)
   uword file_size;
   int rc = 0;
 
-  if (memcmp (request, test_str, clib_strnlen (test_str, 9)))
+  if (memcmp (target, test_str, clib_strnlen (test_str, 9)))
     return -1;
 
-  unformat_init_vector (&input, vec_dup (request));
+  unformat_init_vector (&input, vec_dup (target));
   if (!unformat (&input, "test_file_%U", unformat_memory_size, &file_size))
     {
       rc = -1;
@@ -297,8 +297,9 @@ done:
 static int
 hts_ts_rx_callback (session_t *ts)
 {
+  hts_main_t *htm = &hts_main;
   hts_session_t *hs;
-  u8 *request = 0;
+  u8 *target = 0;
   http_msg_t msg;
   int rv;
 
@@ -314,20 +315,28 @@ hts_ts_rx_callback (session_t *ts)
       goto done;
     }
 
-  if (!msg.data.len)
+  if (msg.data.target_path_len == 0 ||
+      msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
     {
       hts_start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       goto done;
     }
 
-  vec_validate (request, msg.data.len - 1);
-  rv = svm_fifo_dequeue (ts->rx_fifo, msg.data.len, request);
+  vec_validate (target, msg.data.target_path_len - 1);
+  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
+		      msg.data.target_path_len, target);
+  ASSERT (rv == msg.data.target_path_len);
 
-  if (try_test_file (hs, request))
+  if (htm->debug_level)
+    clib_warning ("Request target: %v", target);
+
+  if (try_test_file (hs, target))
     hts_start_send_data (hs, HTTP_STATUS_NOT_FOUND);
 
-done:
+  vec_free (target);
 
+done:
+  svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
   return 0;
 }
 

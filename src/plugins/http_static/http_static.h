@@ -79,8 +79,9 @@ typedef struct hss_url_handler_args_
     /* Request args */
     struct
     {
-      u8 *request;
-      http_req_method_t reqtype;
+      u8 *query;
+      u8 *req_data;
+      http_req_method_t req_type;
     };
 
     /* Reply args */
