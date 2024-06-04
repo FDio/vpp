@@ -123,6 +123,7 @@ compile_commands.json
 /extras/hs-test/hs-test
 /extras/hs-test/http_server
 /extras/hs-test/.build.ok
+/extras/hs-test/.build.cov.ok
 /extras/hs-test/summary/
 
 # ./configure
