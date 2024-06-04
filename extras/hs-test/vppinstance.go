@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.fd.io/govpp/binapi/ethernet_types"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -64,6 +66,7 @@ plugins {
   plugin tlsopenssl_plugin.so { enable }
   plugin ping_plugin.so { enable }
   plugin nsim_plugin.so { enable }
+  plugin mactime_plugin.so { enable }
 }
 
 logging {
@@ -395,6 +398,21 @@ func (vpp *VppInstance) createTap(
 	if err = api.RetvalToVPPApiError(reply.Retval); err != nil {
 		return err
 	}
+	tap.peer.index = reply.SwIfIndex
+
+	// Get name and mac
+	if err := vpp.apiStream.SendMsg(&interfaces.SwInterfaceDump{
+		SwIfIndex: reply.SwIfIndex,
+	}); err != nil {
+		return err
+	}
+	replymsg, err = vpp.apiStream.RecvMsg()
+	if err != nil {
+		return err
+	}
+	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
+	tap.peer.name = ifDetails.InterfaceName
+	tap.peer.hwAddress = ifDetails.L2Address
 
 	// Add address
 	addAddressReq := &interfaces.SwInterfaceAddDelAddress{
@@ -421,7 +439,6 @@ func (vpp *VppInstance) createTap(
 		SwIfIndex: reply.SwIfIndex,
 		Flags:     interface_types.IF_STATUS_API_FLAG_ADMIN_UP,
 	}
-
 	vpp.getSuite().log("set tap interface " + tap.Name() + " up")
 	if err := vpp.apiStream.SendMsg(upReq); err != nil {
 		return err
@@ -433,6 +450,12 @@ func (vpp *VppInstance) createTap(
 	reply3 := replymsg.(*interfaces.SwInterfaceSetFlagsReply)
 	if err = api.RetvalToVPPApiError(reply3.Retval); err != nil {
 		return err
+	}
+
+	// Get host mac
+	netIntf, err := net.InterfaceByName(tap.Name())
+	if err == nil {
+		tap.hwAddress, _ = ethernet_types.ParseMacAddress(netIntf.HardwareAddr.String())
 	}
 
 	return nil

@@ -20,9 +20,27 @@ hss_url_handler_rc_t
 handle_get_version (hss_url_handler_args_t *args)
 {
   u8 *s = 0;
+  unformat_input_t input;
+  int verbose = 0;
+
+  if (args->query)
+    {
+      unformat_init_vector (&input, args->query);
+      if (unformat (&input, "verbose="))
+	{
+	  if (unformat (&input, "true"))
+	    verbose = 1;
+	}
+    }
 
   s = format (s, "{\"vpp_details\": {");
   s = format (s, "   \"version\": \"%s\",", VPP_BUILD_VER);
+  if (verbose)
+    {
+      s = format (s, "   \"build_by\": \"%s\",", VPP_BUILD_USER);
+      s = format (s, "   \"build_host\": \"%s\",", VPP_BUILD_HOST);
+      s = format (s, "   \"build_dir\": \"%s\",", VPP_BUILD_TOPDIR);
+    }
   s = format (s, "   \"build_date\": \"%s\"}}\r\n", VPP_BUILD_DATE);
 
   args->data = s;
@@ -31,66 +49,38 @@ handle_get_version (hss_url_handler_args_t *args)
   return HSS_URL_HANDLER_OK;
 }
 
-void
-trim_path_from_request (u8 *s, char *path)
-{
-  u8 *cp;
-  int trim_length = strlen (path) + 1 /* remove '?' */;
-
-  /* Get rid of the path and question-mark */
-  vec_delete (s, trim_length, 0);
-
-  /* Tail trim irrelevant browser info */
-  cp = s;
-  while ((cp - s) < vec_len (s))
-    {
-      if (*cp == ' ')
-	{
-	  /*
-	   * Makes request a vector which happens to look
-	   * like a c-string.
-	   */
-	  *cp = 0;
-	  vec_set_len (s, cp - s);
-	  break;
-	}
-      cp++;
-    }
-}
-
 hss_url_handler_rc_t
 handle_get_interface_stats (hss_url_handler_args_t *args)
 {
   u8 *s = 0, *stats = 0;
-  uword *p;
-  u32 *sw_if_indices = 0;
+  u32 sw_if_index, *sw_if_indices = 0;
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
   char *q = "\"";
   int i;
   int need_comma = 0;
+  unformat_input_t input;
   u8 *format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
 				      vnet_sw_interface_t * si, int json);
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
 
   /* Get stats for a single interface via http POST */
-  if (args->reqtype == HTTP_REQ_POST)
+  if (args->req_type == HTTP_REQ_POST)
     {
-      trim_path_from_request (args->request, "interface_stats.json");
-
+      unformat_init_vector (&input, args->req_data);
       /* Find the sw_if_index */
-      p = hash_get (im->hw_interface_by_name, args->request);
-      if (!p)
+      if (!unformat (&input, "%U", unformat_vnet_sw_interface, vnm,
+		     &sw_if_index))
 	{
 	  s = format (s, "{\"interface_stats\": {[\n");
-	  s = format (s, "   \"name\": \"%s\",", args->request);
+	  s = format (s, "   \"name\": \"%s\",", args->req_data);
 	  s = format (s, "   \"error\": \"%s\"", "UnknownInterface");
 	  s = format (s, "]}\n");
 	  goto out;
 	}
 
-      vec_add1 (sw_if_indices, p[0]);
+      vec_add1 (sw_if_indices, sw_if_index);
     }
   else /* default, HTTP_BUILTIN_METHOD_GET */
     {

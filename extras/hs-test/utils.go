@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -93,4 +94,26 @@ func newHttpClient() *http.Client {
 			return http.ErrUseLastResponse
 		}}
 	return client
+}
+
+func tcpSendReceive(address, data string) (string, error) {
+	conn, err := net.DialTimeout("tcp", address, time.Second*30)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	err = conn.SetDeadline(time.Now().Add(time.Second * 30))
+	if err != nil {
+		return "", err
+	}
+	_, err = conn.Write([]byte(data))
+	if err != nil {
+		return "", err
+	}
+	reply := make([]byte, 1024)
+	_, err = conn.Read(reply)
+	if err != nil {
+		return "", err
+	}
+	return string(reply), nil
 }

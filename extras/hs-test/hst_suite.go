@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/onsi/gomega/gmeasure"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -391,6 +391,7 @@ func (s *HstSuite) configureNetworkTopology(topologyName string) {
 	}
 
 	for _, nc := range s.netConfigs {
+		s.log(nc.Name())
 		if err := nc.configure(); err != nil {
 			Fail("Network config error: " + fmt.Sprint(err))
 		}
