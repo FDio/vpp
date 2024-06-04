@@ -78,16 +78,14 @@ handle_get_interface_stats (hss_url_handler_args_t *args)
   vnet_interface_main_t *im = &vnm->interface_main;
 
   /* Get stats for a single interface via http POST */
-  if (args->reqtype == HTTP_REQ_POST)
+  if (args->req_type == HTTP_REQ_POST)
     {
-      trim_path_from_request (args->request, "interface_stats.json");
-
       /* Find the sw_if_index */
-      p = hash_get (im->hw_interface_by_name, args->request);
+      p = hash_get (im->hw_interface_by_name, args->req_data);
       if (!p)
 	{
 	  s = format (s, "{\"interface_stats\": {[\n");
-	  s = format (s, "   \"name\": \"%s\",", args->request);
+	  s = format (s, "   \"name\": \"%s\",", args->req_data);
 	  s = format (s, "   \"error\": \"%s\"", "UnknownInterface");
 	  s = format (s, "]}\n");
 	  goto out;
