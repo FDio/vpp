@@ -3,6 +3,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "039ae156_d6837d43",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "The version should get bumped to 1.2.0.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a3630ef_c48d594d",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "The old message should be marked deprecated so that eventually everyone could migrate to the newer one.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "80d57347_2f9b1800",
         "filename": "src/vnet/ip6-nd/ip6_nd.api",
         "patchSetId": 2
@@ -32,6 +66,92 @@
       "side": 1,
       "message": "Thanks for review Neale! Just to be sure if I understood you well. Are you\u0027re suggesting to use enumflag so the API could set any option one-by-one?",
       "parentUuid": "80d57347_2f9b1800",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5da70caf_722e4146",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "I can\u0027t speak for Neale, but I believe he is suggesting that in the new _v2 message, you should replace the u8 fields that are being treated as booleans with a single field that is an enumflag type.",
+      "parentUuid": "16d668e8_ab1a1895",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d51b4fa5_a6df08ee",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "I don\u0027t think you need sw_interface_ip6nd_ra_v2_{dump,details}. The only difference from the old dump/details appears to be that cease_radv isn\u0027t included in the details message. Since cease_radv needs to be maintained for backwards compatibility for the moment, I think we can just keep the old dump/details message until cease_radv could be deprecated (if that is able to happen).",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1521fbba_c7c747a8",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1708,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "I think you should get rid of \"defaults\". If you\u0027re trying to simplify the configuration of IPv6 RA, lets just use the values that were passed in. If the default values should be set, the default values can be passed in the message.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "104e4241_f4d4e459",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1738,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "This comment is copy/pasted and is not relevant anymore since \"is_no\" is going away.",
+      "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71880cf7_1f4ed924",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1746,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-04T21:48:48Z",
+      "side": 1,
+      "message": "Neale suggested in an earlier comment that you should have a single internal function that can be called by the API handler functions for both the old message type and the new one. To maintain backward compatibility, that function will still need to support setting radv_info-\u003ecease_radv.\n\nI don\u0027t personally understand the need for cease_radv as a separate setting from send_radv. Maybe it can go away when the old message type is deprecated. Or maybe it needs to stay for some reason that I don\u0027t know about. For now though, if you use code from ip6_ra_config_v2() to replace the existing ip6_ra_config(), it will still need to support \"cease\".",
       "revId": "f3ab9cd6c83503533b3564fa2c4b10474ea99536",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
