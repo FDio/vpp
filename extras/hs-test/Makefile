@@ -100,6 +100,9 @@ build-vpp-gcov:
 .build.ok: build
 	@touch .build.ok
 
+.build.cov.ok: build-vpp-gcov
+	@touch .build.cov.ok
+
 .build_debug.ok: build-debug
 	@touch .build.ok
 
@@ -122,7 +125,7 @@ test-debug: .deps.ok .build_debug.ok
 	@bash ./script/compress.sh
 
 .PHONY: test-cov
-test-cov: .deps.ok .build.ok
+test-cov: .deps.ok .build.cov.ok
 	-bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC)
@@ -141,9 +144,9 @@ build: .deps.ok build-vpp-release build-go
 
 .PHONY: build-cov
 build-cov: .deps.ok build-vpp-gcov build-go
-	@rm -f .build.vpp
+	@rm -f .build.cov.ok
 	bash ./script/build_hst.sh gcov
-	@touch .build.vpp
+	@touch .build.cov.ok
 
 .PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug build-go
