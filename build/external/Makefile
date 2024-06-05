@@ -94,7 +94,7 @@ build-deb: $(DEV_DEB)
 
 install-deb:
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
-	@make $(DEV_DEB)
+	@$(MAKE) $(DEV_DEB)
 	@sudo dpkg -i $(DEV_DEB)
 else
 	@echo "=========================================================="
@@ -175,7 +175,7 @@ ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	$(MAKE) config
 else
 ifneq ($(INSTALLED_VER),)
-	make check-deb
+	$(MAKE) check-deb
 endif
 ifneq ($(INSTALLED_RPM_VER),)
 	$(MAKE) check-rpm

@@ -87,15 +87,15 @@ list-tests:
 
 .PHONY: build-vpp-release
 build-vpp-release:
-	@make -C ../.. build-release
+	@$(MAKE) -C ../.. build-release
 
 .PHONY: build-vpp-debug
 build-vpp-debug:
-	@make -C ../.. build
+	@$(MAKE) -C ../.. build
 
 .PHONY: build-vpp-gcov
 build-vpp-gcov:
-	@make -C ../.. build-vpp-gcov
+	@$(MAKE) -C ../.. build-vpp-gcov
 
 .build.ok: build
 	@touch .build.ok
@@ -129,7 +129,7 @@ test-cov: .deps.ok .build.cov.ok
 	-bash ./test --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST-HS) --cpus=$(CPUS) \
 		--vppsrc=$(VPPSRC)
-	@make -C ../.. test-cov-post HS_TEST=1
+	@$(MAKE) -C ../.. test-cov-post HS_TEST=1
 	@bash ./script/compress.sh
 
 .PHONY: build-go
@@ -155,7 +155,7 @@ build-debug: .deps.ok build-vpp-debug build-go
 	@touch .build.ok
 
 .deps.ok:
-	@sudo make install-deps
+	@sudo $(MAKE) install-deps
 
 .PHONY: install-deps
 install-deps:

@@ -70,7 +70,7 @@ venv:
 spell: venv
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
-	  make -C ${SCRIPTS_DIR} generate && \
+	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
 	  $(SPHINXBUILD) -b spelling $(SPHINXOPTS) $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
 	)
 
@@ -81,7 +81,7 @@ rebuild-spell: clean spell
 docs: venv
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
-	  make -C ${SCRIPTS_DIR} generate && \
+	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
 	  $(SPHINXBUILD) $(SPHINXOPTS) -b html $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
 	)
 
@@ -90,7 +90,7 @@ rebuild: clean docs
 
 .PHONY: clean
 clean:
-	@make -C ${SCRIPTS_DIR} clean
+	@$(MAKE) -C ${SCRIPTS_DIR} clean
 
 .PHONY: build
 build: docs

@@ -76,8 +76,8 @@ install-swan:
 	  echo "SSWAN not downloaded, please run "make" or "make pull-swan" first." ; \
 	  exit 1 ; \
 	fi
-	cd ${SWANDIR} && make -j$(nproc)
-	cd ${SWANDIR} && sudo make install
+	cd ${SWANDIR} && $(MAKE) -j$(nproc)
+	cd ${SWANDIR} && sudo $(MAKE) install
 
 # check if VPP is installed
 ifneq ($(shell test "$(shell ldconfig -p | grep vppinfra.so | awk 'NR==1{print $$1;}')" && echo "yes"), yes)

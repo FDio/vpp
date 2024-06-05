@@ -997,7 +997,7 @@ $(PLATFORM_IMAGE_DIR)/ro.img ro-image: $(patsubst %,%-find-source,$(ROOT_PACKAGE
 		| xargs sign $($(PLATFORM)_public_key)			\
 			     $($(PLATFORM)_private_key_passphrase) ;	\
 	  fi ;								\
-	  : make read-only file system ;				\
+	  : $(MAKE) read-only file system ;				\
 	  mksquashfs							\
 	    $${tmp_dir} $${ro_image}					\
 	    -no-exports -no-progress -no-recovery ;			\
