@@ -15,6 +15,7 @@
 #include <cnat/cnat_client.h>
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_translation.h>
+#include "cnat_log.h"
 
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -955,7 +956,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
       /* We 1st try to use the original src port */
       int rv = cnat_bihash_add_del (&cnat_session_db, &rkey, 2 /* no overwrite */);
       if (!rv)
-	return; /* success! */
+	goto out; /* success! */
 
       /* The original src port is already in use, try something else: we'll
        * generate random ports and try to use that instead.
@@ -982,7 +983,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
 	      (*sport_retries)++;
 	      int rv = cnat_bihash_add_del (&cnat_session_db, &rkey, 2 /* no overwrite */);
 	      if (!rv)
-		return;	   /* success ! */
+		goto out;  /* success ! */
 	      hash_ >>= 2; /* try next port... */
 	    }
 	}
@@ -992,6 +993,9 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
     }
 
   cnat_bihash_add_with_overwrite_cb (&cnat_session_db, &rkey, cnat_session_free_stale_cb, NULL);
+
+out:
+  cnat_log_session_create (rsession);
 }
 
 static_always_inline void
