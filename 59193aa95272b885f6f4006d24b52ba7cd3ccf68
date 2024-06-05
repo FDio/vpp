@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aa9aca7f_f1ced410",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-06-05T12:25:43Z",
+      "side": 1,
+      "message": "Can you please explain logic behind this check?",
+      "parentUuid": "417d9c20_55f8d261",
+      "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "776e36b0_32a6a08b",
         "filename": "src/plugins/dev_octeon/port.c",
         "patchSetId": 10
