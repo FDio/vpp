@@ -16,6 +16,7 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_inline.h>
+#include "cnat_log.h"
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
@@ -277,6 +278,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
 static_always_inline void
 cnat_session_free__ (cnat_session_t *session)
 {
+  cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX],
