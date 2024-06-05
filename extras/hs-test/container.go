@@ -180,7 +180,7 @@ func (c *Container) prepareCommand() (string, error) {
 
 	cmd := "docker run "
 	if c.runDetached {
-		cmd += " -d"
+		cmd += " -dt"
 	}
 
 	c.allocateCpus()

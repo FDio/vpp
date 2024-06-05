@@ -247,6 +247,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 
 	if ab_or_wrk == "ab" {
 		abCont := s.getContainerByName("ab")
+		abCont.runDetached = true
 		args := fmt.Sprintf("-n %d -c %d", nRequests, nClients)
 		if mode == "rps" {
 			args += " -k"
@@ -264,6 +265,7 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 		s.assertNil(err, "err: '%s', output: '%s'", err, o)
 	} else {
 		wrkCont := s.getContainerByName("wrk")
+		wrkCont.runDetached = true
 		args := fmt.Sprintf("-c %d -t 2 -d 30 http://%s:80/64B.json", nClients,
 			serverAddress)
 		wrkCont.extraRunningArgs = args
