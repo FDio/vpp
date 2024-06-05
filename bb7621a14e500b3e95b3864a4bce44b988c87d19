@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3c51164_c74bd5b9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-06-05T20:48:03Z",
+      "side": 1,
+      "message": "Looks like this patched fail hst test due to parent missing a fix.\nPlease rebase on top of VPP HEAD.",
+      "revId": "bb7621a14e500b3e95b3864a4bce44b988c87d19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
