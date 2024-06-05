@@ -495,17 +495,17 @@ test-cov:
 
 .PHONY: test-cov-hs
 test-cov-hs:
-	@make -C extras/hs-test build-cov
-	@make -C extras/hs-test test-cov
+	@$(MAKE) -C extras/hs-test build-cov
+	@$(MAKE) -C extras/hs-test test-cov
 
 .PHONY: test-cov-both
 test-cov-both:
 	@echo "Running Python, Golang tests and merging coverage reports."
 	find $(BR) -name '*.gcda' -delete
-	@make test-cov
+	@$(MAKE) test-cov
 	find $(BR) -name '*.gcda' -delete
-	@make test-cov-hs
-	@make cov-merge
+	@$(MAKE) test-cov-hs
+	@$(MAKE) cov-merge
 
 .PHONY: test-cov-build
 test-cov-build:
@@ -580,7 +580,7 @@ test-shell-cov:
 
 .PHONY: test-dep
 test-dep:
-	@make -C test test-dep
+	@$(MAKE) -C test test-dep
 
 .PHONY: test-doc
 test-doc:

@@ -24,15 +24,15 @@ define  xdp-tools_config_cmds
 endef
 
 define  xdp-tools_build_cmds
-	@cd ${xdp-tools_src_dir} && make V=1 BUILD_STATIC_ONLY=y > $(xdp-tools_build_log)
+	@cd ${xdp-tools_src_dir} && $(MAKE) V=1 BUILD_STATIC_ONLY=y > $(xdp-tools_build_log)
 endef
 
 define  xdp-tools_install_cmds
 	@rm -f $(xdp-tools_install_log)
 	@cd ${xdp-tools_src_dir} && \
-		make -C lib/libbpf/src install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
+		$(MAKE) -C lib/libbpf/src install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
 	@cd ${xdp-tools_src_dir} && \
-		make libxdp_install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
+		$(MAKE) libxdp_install V=1 BUILD_STATIC_ONLY=y PREFIX='' DESTDIR='$(xdp-tools_install_dir)' >> $(xdp-tools_install_log)
 endef
 
 $(eval $(call package,xdp-tools))
