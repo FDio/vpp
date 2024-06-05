@@ -138,7 +138,7 @@ DPDK_DRIVERS_DISABLED := $(shell echo $(DPDK_DRIVERS_DISABLED) | tr -d '\\\t ')
 DPDK_LIBS_DISABLED := $(shell echo $(DPDK_LIBS_DISABLED) | tr -d '\\\t ')
 
 SED=sed
-ifeq ($shell(uname), FreeBSD)
+ifeq ($(shell uname), FreeBSD)
 SED=gsed
 endif
 
