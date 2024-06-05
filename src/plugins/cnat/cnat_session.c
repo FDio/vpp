@@ -6,6 +6,7 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_inline.h>
+#include "cnat_log.h"
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
@@ -272,6 +273,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
 static_always_inline void
 cnat_session_free__ (cnat_session_t *session)
 {
+  cnat_log_session_free (session);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
       cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
@@ -287,6 +289,7 @@ void
 cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
 {
   cnat_session_t *session = (cnat_session_t *) kv;
+  cnat_log_session_overwrite (session);
   cnat_session_free__ (session);
 }
 
@@ -402,6 +405,8 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
   BVT (clib_bihash) * h = &cnat_session_db;
   int j, k;
 
+  cnat_log_scanner_start (i);
+
   if (alloc_arena (h) == 0)
     return 0;
 
@@ -409,7 +414,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
     {
       /* allow no more than 100us without a pause */
       if ((vlib_time_now (vm) - start_time) > 10e-5)
-	return (i);
+	goto out;
 
       if (i < (h->nbuckets - 3))
 	{
@@ -441,6 +446,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 	      if (start_time > cnat_timestamp_exp (session->value.cs_session_index))
 		{
 		  /* age it */
+		  cnat_log_session_expire (session);
 		  cnat_reverse_session_free (session);
 		  /* this should be last as deleting the session memset it to
 		   * 0xff */
@@ -460,8 +466,10 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
       ;
     }
 
-  /* start again */
-  return (0);
+out:
+  cnat_log_scanner_stop (i);
+  /* if at the end, return 0 to start again */
+  return i < h->nbuckets ? i : 0;
 }
 
 static clib_error_t *
