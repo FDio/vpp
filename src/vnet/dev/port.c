@@ -253,8 +253,9 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
     vnet_dev_alloc_with_data (sizeof (vnet_dev_port_t), args->port.data_size);
   pool_get (dev->ports, pp);
   pp[0] = port;
-  clib_memcpy (vnet_dev_get_port_data (port), args->port.initial_data,
-	       args->port.data_size);
+  if (args->port.data_size && args->port.initial_data)
+    clib_memcpy (vnet_dev_get_port_data (port), args->port.initial_data,
+		 args->port.data_size);
   port->port_id = id;
   port->index = pp - dev->ports;
   port->dev = dev;
