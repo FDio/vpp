@@ -212,6 +212,9 @@ vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align,
     log_debug (dev, "%u bytes va %p dma-addr 0x%lx numa %u align %u", size,
 	       *pp, vnet_dev_get_dma_addr (vm, dev, *pp), dev->numa_node,
 	       align);
+  else
+    log_err (dev, "DMA alloc failed (size %u align %u rv %d)", size, align,
+	     rv);
   return rv;
 }
 

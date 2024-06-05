@@ -760,6 +760,7 @@ format_function_t format_vnet_dev_port_flags;
 format_function_t format_vnet_dev_port_info;
 format_function_t format_vnet_dev_port_rx_offloads;
 format_function_t format_vnet_dev_port_tx_offloads;
+format_function_t format_vnet_dev_port_primary_intf_name;
 format_function_t format_vnet_dev_rv;
 format_function_t format_vnet_dev_rx_queue_info;
 format_function_t format_vnet_dev_tx_queue_info;

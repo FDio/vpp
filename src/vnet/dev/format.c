@@ -56,6 +56,21 @@ format_vnet_dev_interface_name (u8 *s, va_list *args)
 }
 
 u8 *
+format_vnet_dev_port_primary_intf_name (u8 *s, va_list *args)
+{
+  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+
+  if (port == 0 || port->interfaces == 0)
+    return format (s, "(none)");
+
+  u8 *name = (u8 *) port->interfaces->primary_interface.name;
+  if (name[0] == 0)
+    return format (s, "(unnamed)");
+
+  return format (s, "%s", name);
+}
+
+u8 *
 format_vnet_dev_info (u8 *s, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
