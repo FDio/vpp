@@ -20,6 +20,7 @@
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_bihash.h>
+#include "cnat_log.h"
 
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -211,6 +212,7 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
       vnet_buffer2 (b)->session.generic_flow_id =
 	ksession->value.cs_session_index;
       vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_NEW;
+      cnat_log_session_create (ksession);
     }
   else if (session->key.cs_5tuple.iproto != 0)
     {
