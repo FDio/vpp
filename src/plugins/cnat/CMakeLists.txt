@@ -27,6 +27,7 @@ add_vpp_plugin(cnat
   cnat_snat_policy.c
   cnat_src_policy.c
   cnat_maglev.c
+  cnat_log.c
 
   INSTALL_HEADERS
   cnat_bihash.h
