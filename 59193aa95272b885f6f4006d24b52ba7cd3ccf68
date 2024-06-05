@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "1143a9c2_0a0c5039",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2024-06-05T12:41:04Z",
+      "side": 1,
+      "message": "VPP adds frame overhead to the mtu size given from the cli, thus checking here with hw min length after adjusting that.\nIt is something similar to driver overhead used in dpdk as follows:\nxd-\u003edriver_frame_overhead \u003d RTE_ETHER_HDR_LEN + 2 * RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN;",
+      "parentUuid": "aa9aca7f_f1ced410",
+      "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "776e36b0_32a6a08b",
         "filename": "src/plugins/dev_octeon/port.c",
         "patchSetId": 10
@@ -49,6 +67,24 @@
       "writtenOn": "2024-06-01T17:27:26Z",
       "side": 1,
       "message": "not needed, it will never be true as in init.c driver declares max_supported_rx_frame_size",
+      "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b2af2e51_b2854d47",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2024-06-05T12:41:04Z",
+      "side": 1,
+      "message": "ACK. Removed from here.",
+      "parentUuid": "776e36b0_32a6a08b",
       "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
