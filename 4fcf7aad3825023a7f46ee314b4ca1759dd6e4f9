@@ -34,6 +34,24 @@
       "parentUuid": "cd2f1065_de020525",
       "revId": "4fcf7aad3825023a7f46ee314b4ca1759dd6e4f9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c13b4ad1_c2568b15",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-06-06T06:36:25Z",
+      "side": 1,
+      "message": "removed \"PKT_RX_FDIR\" reference from patch.",
+      "parentUuid": "27b52ec2_53a2b3e4",
+      "revId": "4fcf7aad3825023a7f46ee314b4ca1759dd6e4f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
