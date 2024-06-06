@@ -40,7 +40,8 @@ type HstSuite struct {
 	cpuAllocator      *CpuAllocatorT
 	cpuContexts       []*CpuContext
 	cpuPerVpp         int
-	pid               string
+	ppid               string
+	processIndex      string
 	logger            *log.Logger
 	logFile           *os.File
 }
@@ -53,7 +54,10 @@ func (s *HstSuite) SetupSuite() {
 		Fail(message, callerSkip...)
 	})
 	var err error
-	s.pid = fmt.Sprint(os.Getpid())
+	s.ppid = fmt.Sprint(os.Getppid())
+	// remove last number so we have space to prepend a process index (interfaces have a char limit)
+	s.ppid = s.ppid[:len(s.ppid)-1]
+	s.processIndex = fmt.Sprint(GinkgoParallelProcess())
 	s.cpuAllocator, err = CpuAllocator()
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
@@ -76,6 +80,13 @@ func (s *HstSuite) TearDownSuite() {
 	defer s.logFile.Close()
 	s.log("Suite Teardown")
 	s.unconfigureNetworkTopology()
+
+	// make sure the containers are stopped and removed: containers are sometimes not killed
+	// when a test run is interrupted
+	for _, c := range s.containers{
+		exechelper.Run("docker stop " + c.name + " -t 0")
+		exechelper.Run("docker rm " + c.name)
+	}
 }
 
 func (s *HstSuite) TearDownTest() {
@@ -256,15 +267,15 @@ func (s *HstSuite) removeVolumes() {
 }
 
 func (s *HstSuite) getNetNamespaceByName(name string) string {
-	return name + s.pid
+	return s.processIndex + name + s.ppid
 }
 
 func (s *HstSuite) getInterfaceByName(name string) *NetInterface {
-	return s.netInterfaces[name+s.pid]
+	return s.netInterfaces[s.processIndex + name + s.ppid]
 }
 
 func (s *HstSuite) getContainerByName(name string) *Container {
-	return s.containers[name+s.pid]
+	return s.containers[s.processIndex + name + s.ppid]
 }
 
 /*
@@ -272,7 +283,7 @@ func (s *HstSuite) getContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) getTransientContainerByName(name string) *Container {
-	containerCopy := *s.containers[name+s.pid]
+	containerCopy := *s.containers[s.processIndex + name + s.ppid]
 	return &containerCopy
 }
 
@@ -300,7 +311,7 @@ func (s *HstSuite) loadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
 		newContainer.suite = s
-		newContainer.name += newContainer.suite.pid
+		newContainer.name = newContainer.suite.processIndex + newContainer.name + newContainer.suite.ppid
 		if err != nil {
 			Fail("container config error: " + fmt.Sprint(err))
 		}
@@ -324,26 +335,26 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) {
 
 	for _, elem := range yamlTopo.Devices {
 		if _, ok := elem["name"]; ok {
-			elem["name"] = elem["name"].(string) + s.pid
+			elem["name"] = s.processIndex + elem["name"].(string) + s.ppid
 		}
 
 		if peer, ok := elem["peer"].(NetDevConfig); ok {
 			if peer["name"].(string) != "" {
-				peer["name"] = peer["name"].(string) + s.pid
+				peer["name"] = s.processIndex + peer["name"].(string) + s.ppid
 			}
 			if _, ok := peer["netns"]; ok {
-				peer["netns"] = peer["netns"].(string) + s.pid
+				peer["netns"] = s.processIndex + peer["netns"].(string) + s.ppid
 			}
 		}
 
 		if _, ok := elem["netns"]; ok {
-			elem["netns"] = elem["netns"].(string) + s.pid
+			elem["netns"] = s.processIndex + elem["netns"].(string) + s.ppid
 		}
 
 		if _, ok := elem["interfaces"]; ok {
 			interfaceCount := len(elem["interfaces"].([]interface{}))
 			for i := 0; i < interfaceCount; i++ {
-				elem["interfaces"].([]interface{})[i] = elem["interfaces"].([]interface{})[i].(string) + s.pid
+				elem["interfaces"].([]interface{})[i] = s.processIndex + elem["interfaces"].([]interface{})[i].(string) + s.ppid
 			}
 		}
 
@@ -414,17 +425,17 @@ func (s *HstSuite) getTestId() string {
 	return s.testIds[testName]
 }
 
-// Returns last 4 digits of PID
-func (s *HstSuite) getPortFromPid() string {
-	port := s.pid
+// Returns last 4 digits of PID + Ginkgo process index as the 5th digit
+func (s *HstSuite) getPortFromPpid() string {
+	port := s.ppid
 	for len(port) < 4 {
 		port += "0"
 	}
-	return port[len(port)-4:]
+	return port[len(port)-4:] + s.processIndex
 }
 
 func (s *HstSuite) startServerApp(running chan error, done chan struct{}, env []string) {
-	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.getPortFromPid())
+	cmd := exec.Command("iperf3", "-4", "-s", "-p", s.getPortFromPpid())
 	if env != nil {
 		cmd.Env = env
 	}
@@ -448,7 +459,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 	nTries := 0
 
 	for {
-		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.getPortFromPid())
+		cmd := exec.Command("iperf3", "-c", ipAddress, "-u", "-l", "1460", "-b", "10g", "-p", s.getPortFromPpid())
 		if env != nil {
 			cmd.Env = env
 		}
@@ -470,7 +481,7 @@ func (s *HstSuite) startClientApp(ipAddress string, env []string, clnCh chan err
 }
 
 func (s *HstSuite) startHttpServer(running chan struct{}, done chan struct{}, addressPort, netNs string) {
-	cmd := newCommand([]string{"./http_server", addressPort, s.pid}, netNs)
+	cmd := newCommand([]string{"./http_server", addressPort, s.ppid, s.processIndex}, netNs)
 	err := cmd.Start()
 	s.log(cmd)
 	if err != nil {

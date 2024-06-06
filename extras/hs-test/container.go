@@ -260,7 +260,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.pid)
+	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.ppid)
 	if err != nil {
 		return err
 	}
