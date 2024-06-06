@@ -238,44 +238,44 @@ gdb_show_traces ()
 
   /* Get active traces from pool. */
 
-  foreach_vlib_main ()
-    {
-      fmt = "------------------- Start of thread %d %s -------------------\n";
-      s = format (s, fmt, index, vlib_worker_threads[index].name);
+  foreach_vlib_main__ (0 /* no checks */)
+  {
+    fmt = "------------------- Start of thread %d %s -------------------\n";
+    s = format (s, fmt, index, vlib_worker_threads[index].name);
 
-      tm = &this_vlib_main->trace_main;
+    tm = &this_vlib_main->trace_main;
 
-      trace_apply_filter (this_vlib_main);
+    trace_apply_filter (this_vlib_main);
 
-      traces = 0;
-      pool_foreach (h, tm->trace_buffer_pool)
-	{
-	  vec_add1 (traces, h[0]);
-	}
+    traces = 0;
+    pool_foreach (h, tm->trace_buffer_pool)
+      {
+	vec_add1 (traces, h[0]);
+      }
 
-      if (vec_len (traces) == 0)
-	{
-	  s = format (s, "No packets in trace buffer\n");
-	  goto done;
-	}
+    if (vec_len (traces) == 0)
+      {
+	s = format (s, "No packets in trace buffer\n");
+	goto done;
+      }
 
-      /* Sort them by increasing time. */
-      vec_sort_with_function (traces, trace_cmp);
+    /* Sort them by increasing time. */
+    vec_sort_with_function (traces, trace_cmp);
 
-      for (i = 0; i < vec_len (traces); i++)
-	{
-	  if (i == max)
-	    {
-	      fformat (stderr,
-		       "Limiting display to %d packets."
-		       " To display more specify max.",
-		       max);
-	      goto done;
-	    }
+    for (i = 0; i < vec_len (traces); i++)
+      {
+	if (i == max)
+	  {
+	    fformat (stderr,
+		     "Limiting display to %d packets."
+		     " To display more specify max.",
+		     max);
+	    goto done;
+	  }
 
-	  s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace,
-		      vlib_get_first_main (), traces[i]);
-	}
+	s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace,
+		    vlib_get_first_main (), traces[i]);
+      }
 
     done:
       vec_free (traces);
