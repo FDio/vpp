@@ -200,7 +200,7 @@ vlib_smp_unsafe_warning (void)
 }
 
 always_inline int
-__foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)
+__foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p, int checks)
 {
   vlib_main_t *vm;
   u32 index = ii - (vlib_main_t *) 0;
@@ -209,14 +209,16 @@ __foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)
     return 0;
 
   *p = vm = vlib_global_main.vlib_mains[index];
-  ASSERT (index == 0 || vm->parked_at_barrier == 1);
+  ASSERT (!checks || index == 0 || vm->parked_at_barrier == 1);
   return 1;
 }
 
-#define foreach_vlib_main()                                                   \
+#define foreach_vlib_main__(checks)                                           \
   for (vlib_main_t *ii = 0, *this_vlib_main;                                  \
-       __foreach_vlib_main_helper (ii, &this_vlib_main); ii++)                \
+       __foreach_vlib_main_helper (ii, &this_vlib_main, checks); ii++)        \
     if (this_vlib_main)
+
+#define foreach_vlib_main() foreach_vlib_main__ (1)
 
 #define foreach_sched_policy_posix                                            \
   _ (SCHED_OTHER, OTHER, "other")                                             \
