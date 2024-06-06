@@ -8,13 +8,13 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 3 {
+	if len(os.Args) < 4 {
 		fmt.Println("arg expected")
 		os.Exit(1)
 	}
 
 	http.HandleFunc("/httpTestFile", func(w http.ResponseWriter, r *http.Request) {
-		file, _ := os.Open("httpTestFile" + os.Args[2])
+		file, _ := os.Open(os.Args[3] + "httpTestFile" + os.Args[2])
 		defer file.Close()
 		io.Copy(w, file)
 	})
