@@ -395,7 +395,10 @@ cnat_reverse_session_free (cnat_session_t *session)
     {
       /* other session is in bihash */
       cnat_session_t *rsession = (cnat_session_t *) &rvalue;
-      cnat_session_free (rsession);
+      /* if a session was overwritten (eg. because lack of ports), it's
+       * 5-tuple could have been reused. */
+      if (session->value.cs_session_index == rsession->value.cs_session_index)
+	cnat_session_free (rsession);
     }
 }
 
