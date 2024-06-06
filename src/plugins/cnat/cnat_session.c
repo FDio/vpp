@@ -367,6 +367,8 @@ cnat_reverse_session_free (cnat_session_t *session)
   cnat_timestamp_t *ts;
   int rv;
 
+  cnat_log ("reverse");
+
   ASSERT (session->value.cs_session_index != 0);
   ts = cnat_timestamp_get (session->value.cs_session_index);
   ASSERT (ts != NULL);
@@ -408,7 +410,10 @@ cnat_reverse_session_free (cnat_session_t *session)
     }
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
-    return;
+    {
+      cnat_log ("same session");
+      return;
+    }
 
   rv = cnat_bihash_search_i2 (&cnat_session_db, &rkey, &rvalue);
   if (!rv)
@@ -419,6 +424,12 @@ cnat_reverse_session_free (cnat_session_t *session)
        * 5-tuple could have been reused. */
       if (session->value.cs_session_index == rsession->value.cs_session_index)
 	cnat_session_free (rsession);
+      else
+	cnat_log ("wrong session");
+    }
+  else
+    {
+      cnat_log_session_reverse_not_found (rsession);
     }
 }
 
