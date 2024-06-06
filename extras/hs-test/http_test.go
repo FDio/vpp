@@ -90,6 +90,7 @@ func NginxHttp3Test(s *NoTopoSuite) {
 	args := fmt.Sprintf("curl --noproxy '*' --local-port 55444 --http3-only -k https://%s:8443/%s", serverAddress, query)
 	curlCont.extraRunningArgs = args
 	o, err := curlCont.combinedOutput()
+	s.log(o)
 	s.assertNil(err, fmt.Sprint(err))
 	s.assertContains(o, "<http>", "<http> not found in the result!")
 }
