@@ -410,8 +410,8 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 
   cnat_log_scanner_start (i);
 
-  if (alloc_arena (h) == 0)
-    return 0;
+  if (!h->instantiated)
+    goto out;
 
   for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
