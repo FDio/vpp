@@ -78,7 +78,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + CurrentSpecReport().LeafNodeText + volumeDir
+		workingVolumeDir := logDir + suite.getCurrentTestName() + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -132,7 +132,9 @@ func (c *Container) getContainerWorkDir() (res string) {
 }
 
 func (c *Container) getContainerArguments() string {
-	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host --rm"
+	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
+	c.allocateCpus()
+	args += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.allocatedCpus[0], c.allocatedCpus[len(c.allocatedCpus)-1])
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
 	if *vppSourceFileDir != "" {
@@ -180,11 +182,9 @@ func (c *Container) prepareCommand() (string, error) {
 
 	cmd := "docker run "
 	if c.runDetached {
-		cmd += " -dt"
+		cmd += " -d"
 	}
 
-	c.allocateCpus()
-	cmd += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.allocatedCpus[0], c.allocatedCpus[len(c.allocatedCpus)-1])
 	cmd += " " + c.getContainerArguments()
 
 	c.suite.log(cmd)
@@ -260,7 +260,7 @@ func (c *Container) copy(sourceFileName string, targetFileName string) error {
 }
 
 func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.pid)
+	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.ppid)
 	if err != nil {
 		return err
 	}
@@ -302,7 +302,7 @@ func (c *Container) exec(command string, arguments ...any) string {
 
 func (c *Container) getLogDirPath() string {
 	testId := c.suite.getTestId()
-	testName := CurrentSpecReport().LeafNodeText
+	testName := c.suite.getCurrentTestName()
 	logDirPath := logDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
@@ -314,17 +314,13 @@ func (c *Container) getLogDirPath() string {
 }
 
 func (c *Container) saveLogs() {
-	cmd := exec.Command("docker", "inspect", "--format='{{.State.Status}}'", c.name)
-	if output, _ := cmd.CombinedOutput(); !strings.Contains(string(output), "running") {
-		return
-	}
-
 	testLogFilePath := c.getLogDirPath() + "container-" + c.name + ".log"
 
-	cmd = exec.Command("docker", "logs", "--details", "-t", c.name)
+	cmd := exec.Command("docker", "logs", "--details", "-t", c.name)
+	c.suite.log(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		Fail("fetching logs error: " + fmt.Sprint(err))
+		c.suite.log(err)
 	}
 
 	f, err := os.Create(testLogFilePath)
@@ -356,6 +352,7 @@ func (c *Container) stop() error {
 	}
 	c.vppInstance = nil
 	c.saveLogs()
+	c.suite.log("docker stop " + c.name + " -t 0")
 	return exechelper.Run("docker stop " + c.name + " -t 0")
 }
 
