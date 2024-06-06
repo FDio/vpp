@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6ce24be_ff2ec81f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-06-06T08:44:17Z",
+      "side": 1,
+      "message": "Regarding process indexes and PPIDs: I wanted to stop and remove contaiers using PPIDs and Ginkgo\u0027s SynchronizedAfterSuite but that didn\u0027t work for some reason - docker returned \u0027exit status 125\u0027. I decided keep Ginkgo process indexes + PPIDs anyway, as it makes manual teardown a bit easier.",
+      "revId": "41470f893fa7221e5975b682b5809e8a2bf48797",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
