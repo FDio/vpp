@@ -30,8 +30,10 @@ void cnat_log_session_create__ (const cnat_session_t *s);
 void cnat_log_session_free__ (const cnat_session_t *s);
 void cnat_log_session_overwrite__ (const cnat_session_t *s);
 void cnat_log_session_expire__ (const cnat_session_t *s);
+void cnat_log_session_reverse_not_found__ (const cnat_session_t *s);
 void cnat_log_scanner_start (int i);
 void cnat_log_scanner_stop (int i);
+void cnat_log__ (const char *s, int n);
 void cnat_log_enable_disable (const ip46_address_t *ip, int enable);
 
 static_always_inline int
@@ -74,6 +76,21 @@ cnat_log_session_expire (const cnat_session_t *s)
   if (PREDICT_FALSE (cnat_log_session_is_logged (s)))
     cnat_log_session_expire__ (s);
 }
+
+static_always_inline void
+cnat_log_session_reverse_not_found (const cnat_session_t *s)
+{
+  if (PREDICT_FALSE (cnat_log_session_is_logged (s)))
+    cnat_log_session_reverse_not_found__ (s);
+}
+
+static_always_inline void
+cnat_log_ (const char *s, int n)
+{
+  if (PREDICT_FALSE (cnat_log_main.enabled))
+    cnat_log__ (s, n);
+}
+#define cnat_log(s) cnat_log_ (s, sizeof (s))
 
 /*
  * fd.io coding-style-patch-verification: ON

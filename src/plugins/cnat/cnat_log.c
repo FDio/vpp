@@ -79,6 +79,16 @@ cnat_log_session_expire__ (const cnat_session_t *s)
   cnat_log_session (s, &e);
 }
 
+void
+cnat_log_session_reverse_not_found__ (const cnat_session_t *s)
+{
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "cnat-reverse-not-found: " CNAT_LOG_SESSION_FMT,
+    .format_args = CNAT_LOG_SESSION_FMT_ARGS,
+  };
+  cnat_log_session (s, &e);
+}
+
 static void
 cnat_log_scanner__ (int i, elog_event_type_t *e)
 {
@@ -104,6 +114,19 @@ cnat_log_scanner_stop (int i)
     .format_args = "i4",
   };
   cnat_log_scanner__ (i, &e);
+}
+
+void
+cnat_log__ (const char *s, int n)
+{
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "cnat: %s",
+    .format_args = "s20",
+  };
+  u8 *s__ = ELOG_DATA (&vlib_global_main.elog_main, e);
+  n = clib_min (n, 19);
+  clib_memcpy_fast (s__, (void *) s, n);
+  s__[19] = 0;
 }
 
 void
