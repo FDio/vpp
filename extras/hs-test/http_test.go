@@ -11,36 +11,22 @@ import (
 )
 
 func init() {
-	registerNsTests(HttpTpsTest)
 	registerVethTests(HttpCliTest, HttpCliConnectErrorTest)
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
 		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
 		HttpCliBadRequestTest, HttpStaticPathTraversalTest)
-	registerNoTopoSoloTests(HttpStaticPromTest)
+	registerNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
 
-func HttpTpsTest(s *NsSuite) {
-	iface := s.getInterfaceByName(clientInterface)
-	client_ip := iface.ip4AddressString()
-	port := "8080"
-	finished := make(chan error, 1)
-	clientNetns := s.getNetNamespaceByName("cln")
+func HttpTpsTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	vpp.vppctl("http tps uri tcp://0.0.0.0/8080")
 
-	container := s.getContainerByName("vpp")
-
-	// configure vpp in the container
-	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
-
-	go func() {
-		defer GinkgoRecover()
-		s.startWget(finished, client_ip, port, "test_file_10M", clientNetns)
-	}()
-	// wait for client
-	err := <-finished
-	s.assertNil(err, fmt.Sprint(err))
+	s.httpDownloadBenchmark("http://"+serverAddress+":8080/test_file_10M", "HTTP tps 10M", 10, 0)
 }
 
 func HttpCliTest(s *VethsSuite) {

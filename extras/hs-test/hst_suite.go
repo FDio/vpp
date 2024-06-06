@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/onsi/gomega/gmeasure"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -499,4 +501,24 @@ func (s *HstSuite) startWget(finished chan error, server_ip, port, query, netNs 
 		return
 	}
 	finished <- nil
+}
+
+func (s *HstSuite) httpDownloadBenchmark(url, name string, samplesNum, parallelNum int) {
+	experiment := gmeasure.NewExperiment(name)
+
+	experiment.Sample(func(idx int) {
+		defer GinkgoRecover()
+		client := newHttpClient()
+		req, err := http.NewRequest("GET", url, nil)
+		s.assertNil(err, fmt.Sprint(err))
+		t := time.Now()
+		resp, err := client.Do(req)
+		s.assertNil(err, fmt.Sprint(err))
+		defer resp.Body.Close()
+		s.assertEqual(200, resp.StatusCode)
+		_, err = io.ReadAll(resp.Body)
+		duration := time.Since(t)
+		experiment.RecordValue("Download Speed", (float64(resp.ContentLength)/1024/1024)/duration.Seconds(), gmeasure.Units("MB/s"), gmeasure.Precision(2))
+	}, gmeasure.SamplingConfig{N: samplesNum, NumParallel: parallelNum})
+	AddReportEntry(experiment.Name, experiment)
 }
