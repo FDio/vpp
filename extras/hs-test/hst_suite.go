@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/onsi/gomega/gmeasure"
 	"io"
 	"log"
 	"os"
@@ -499,4 +500,22 @@ func (s *HstSuite) startWget(finished chan error, server_ip, port, query, netNs 
 		return
 	}
 	finished <- nil
+}
+
+/*
+runBenchmark creates Gomega's experiment with the passed-in name and samples the passed-in callback repeatedly (samplesNum times),
+passing in suite context, experiment and your data.
+
+You can also instruct runBenchmark to run with multiple concurrent workers.
+You can record multiple named measurements (float64 or duration) within passed-in callback.
+runBenchmark then produces report to show statistical distribution of measurements.
+*/
+func (s *HstSuite) runBenchmark(name string, samplesNum, parallelNum int, callback func(s *HstSuite, e *gmeasure.Experiment, data interface{}), data interface{}) {
+	experiment := gmeasure.NewExperiment(name)
+
+	experiment.Sample(func(idx int) {
+		defer GinkgoRecover()
+		callback(s, experiment, data)
+	}, gmeasure.SamplingConfig{N: samplesNum, NumParallel: parallelNum})
+	AddReportEntry(experiment.Name, experiment)
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/onsi/gomega/gmeasure"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -11,36 +13,41 @@ import (
 )
 
 func init() {
-	registerNsTests(HttpTpsTest)
 	registerVethTests(HttpCliTest, HttpCliConnectErrorTest)
 	registerNoTopoTests(NginxHttp3Test, NginxAsServerTest,
 		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
 		HttpCliBadRequestTest, HttpStaticPathTraversalTest)
-	registerNoTopoSoloTests(HttpStaticPromTest)
+	registerNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
 
-func HttpTpsTest(s *NsSuite) {
-	iface := s.getInterfaceByName(clientInterface)
-	client_ip := iface.ip4AddressString()
-	port := "8080"
-	finished := make(chan error, 1)
-	clientNetns := s.getNetNamespaceByName("cln")
-
-	container := s.getContainerByName("vpp")
-
-	// configure vpp in the container
-	container.vppInstance.vppctl("http tps uri tcp://0.0.0.0/8080")
-
-	go func() {
-		defer GinkgoRecover()
-		s.startWget(finished, client_ip, port, "test_file_10M", clientNetns)
-	}()
-	// wait for client
-	err := <-finished
+func httpDownloadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data interface{}) {
+	url, isValid := data.(string)
+	s.assertEqual(true, isValid)
+	client := newHttpClient()
+	req, err := http.NewRequest("GET", url, nil)
 	s.assertNil(err, fmt.Sprint(err))
+	t := time.Now()
+	resp, err := client.Do(req)
+	s.assertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.assertEqual(200, resp.StatusCode)
+	_, err = io.ReadAll(resp.Body)
+	duration := time.Since(t)
+	experiment.RecordValue("Download Speed", (float64(resp.ContentLength)/1024/1024)/duration.Seconds(), gmeasure.Units("MB/s"), gmeasure.Precision(2))
+
+}
+
+func HttpTpsTest(s *NoTopoSuite) {
+	vpp := s.getContainerByName("vpp").vppInstance
+	serverAddress := s.getInterfaceByName(tapInterfaceName).peer.ip4AddressString()
+	url := "http://" + serverAddress + ":8080/test_file_10M"
+
+	vpp.vppctl("http tps uri tcp://0.0.0.0/8080")
+
+	s.runBenchmark("HTTP tps 10M", 10, 0, httpDownloadBenchmark, url)
 }
 
 func HttpCliTest(s *VethsSuite) {
