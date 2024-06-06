@@ -107,6 +107,19 @@ cnat_log_scanner_stop (int i)
 }
 
 void
+cnat_log__(const char *s, int n)
+{
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "cnat: %s",
+    .format_args = "s20",
+  };
+  u8 *s__ = ELOG_DATA (&vlib_global_main.elog_main, e);
+  n = clib_min(n, 19);
+  clib_memcpy_fast (s__, (void *)s, n);
+  s__[19] = 0;
+}
+
+void
 cnat_log_enable_disable (const ip46_address_t *ip, int enable)
 {
   cnat_log_main_t *clm = &cnat_log_main;
