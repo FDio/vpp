@@ -56,6 +56,17 @@ clib_error_t *unix_proc_file_contents (char *file, u8 ** result);
 /* Retrieve bitmap of online cpu cures */
 clib_bitmap_t *os_get_online_cpu_core_bitmap ();
 
+/* Retrieve bitmap of cpu affinity */
+clib_bitmap_t *os_get_cpu_affinity_bitmap ();
+
+/* Retrieve cpu in bitmap of cpu affinity */
+int os_translate_cpu_affinity_bitmap (int cpu_req, int is_translated);
+
+/* Retrieve cpu in bitmap of cpu affinity */
+clib_bitmap_t *
+os_translate_cpu_bmp_affinity_bitmap (clib_bitmap_t *corelist_bmp,
+				      int is_translated);
+
 /* Retrieve bitmap of online cpu nodes (sockets) */
 clib_bitmap_t *os_get_online_cpu_node_bitmap ();
 

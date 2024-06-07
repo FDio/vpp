@@ -255,6 +255,9 @@ typedef struct
 
   int use_pthreads;
 
+  /* Translate requested cpu configuration to vpp affinity mask */
+  int cpu_core_translate;
+
   /* Number of vlib_main / vnet_main clones */
   u32 n_vlib_mains;
 

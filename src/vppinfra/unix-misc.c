@@ -66,6 +66,7 @@
 
 __clib_export __thread uword __os_thread_index = 0;
 __clib_export __thread uword __os_numa_index = 0;
+__clib_export cpu_set_t __os_affinity_cpu_set;
 
 clib_error_t *
 clib_file_n_bytes (char *file, uword * result)
@@ -288,29 +289,29 @@ os_get_online_cpu_core_bitmap ()
 }
 
 __clib_export clib_bitmap_t *
-os_get_cpu_affinity_bitmap (int pid)
+os_get_cpu_affinity_bitmap ()
 {
 #if __linux
-  int index, ret;
-  cpu_set_t cpuset;
+  int cpu;
   uword *affinity_cpus;
 
-  clib_bitmap_alloc (affinity_cpus, sizeof (cpu_set_t));
+  clib_bitmap_alloc (affinity_cpus, __CPU_SETSIZE);
   clib_bitmap_zero (affinity_cpus);
 
-  __CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
-
-  ret = sched_getaffinity (0, sizeof (cpu_set_t), &cpuset);
-
-  if (ret < 0)
+  if (__CPU_COUNT_S (sizeof (cpu_set_t), &__os_affinity_cpu_set) == 0)
     {
-      clib_bitmap_free (affinity_cpus);
-      return 0;
+      int ret;
+      ret = sched_getaffinity (0, sizeof (cpu_set_t), &__os_affinity_cpu_set);
+      if (ret < 0)
+	{
+	  clib_bitmap_free (affinity_cpus);
+	  return 0;
+	}
     }
 
-  for (index = 0; index < sizeof (cpu_set_t); index++)
-    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
-      clib_bitmap_set (affinity_cpus, index, 1);
+  for (cpu = 0; cpu < __CPU_SETSIZE; cpu++)
+    if (__CPU_ISSET_S (cpu, __CPU_SETSIZE, &__os_affinity_cpu_set))
+      clib_bitmap_set (affinity_cpus, cpu, 1);
   return affinity_cpus;
 #elif defined(__FreeBSD__)
   cpuset_t mask;
@@ -330,6 +331,100 @@ os_get_cpu_affinity_bitmap (int pid)
 #else
   return NULL;
 #endif
+}
+
+__clib_export int
+os_translate_cpu_affinity_bitmap (int cpu_requested, int is_translated)
+{
+  uword *affinity_bmp = os_get_cpu_affinity_bitmap ();
+  int size = clib_bitmap_count_set_bits (affinity_bmp);
+  int tmp_cpu = 0;
+  int cpu = 0;
+
+  if (!affinity_bmp || cpu_requested == ~0)
+    return -1;
+
+  if (!is_translated && size <= cpu_requested)
+    return -1;
+
+  if (!is_translated)
+    {
+      /* find index of nth set bit in cpu affinity bmp*/
+      clib_bitmap_foreach (cpu, affinity_bmp)
+	{
+
+	  if (cpu_requested == tmp_cpu)
+	    break;
+
+	  tmp_cpu++;
+	}
+    }
+  else
+    {
+      /* find absolute index of cpu mapped to nth set bit in cpu affinity bmp
+       */
+      clib_bitmap_foreach (cpu, affinity_bmp)
+	{
+
+	  if (cpu_requested == cpu)
+	    break;
+	}
+    }
+
+  clib_bitmap_free (affinity_bmp);
+
+  if (size == cpu)
+    return -1;
+
+  return cpu;
+}
+
+__clib_export clib_bitmap_t *
+os_translate_cpu_bmp_affinity_bitmap (clib_bitmap_t *corelist_bmp,
+				      int is_translated)
+{
+  uword *affinity_bmp = os_get_cpu_affinity_bitmap ();
+
+  if (!affinity_bmp)
+    return 0;
+
+  u32 cpu_count_relative = clib_bitmap_count_set_bits (affinity_bmp);
+  u32 cpu_max_corelist = clib_bitmap_last_set (corelist_bmp);
+
+  if (cpu_count_relative < cpu_max_corelist)
+    return 0;
+
+  uword *translated_cpulist = 0;
+  clib_bitmap_alloc (translated_cpulist, __CPU_SETSIZE);
+  clib_bitmap_zero (translated_cpulist);
+
+  uword cpu;
+  uword cpu_translated = 0;
+
+  if (is_translated)
+    {
+      clib_bitmap_foreach (cpu, affinity_bmp)
+	{
+	  if (clib_bitmap_get (corelist_bmp, cpu))
+	    clib_bitmap_set (translated_cpulist, cpu_translated, 1);
+
+	  cpu_translated++;
+	}
+    }
+  else
+    {
+      clib_bitmap_foreach (cpu, affinity_bmp)
+	{
+
+	  if (clib_bitmap_get (corelist_bmp, cpu_translated))
+	    clib_bitmap_set (translated_cpulist, cpu, 1);
+
+	  cpu_translated++;
+	}
+    }
+
+  vec_free (affinity_bmp);
+  return translated_cpulist;
 }
 
 __clib_export clib_bitmap_t *
