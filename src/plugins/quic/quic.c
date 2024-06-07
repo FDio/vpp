@@ -1058,6 +1058,8 @@ quic_on_stream_open (quicly_stream_open_t * self, quicly_stream_t * stream)
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+  svm_fifo_init_ooo_lookup (stream_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (stream_session->tx_fifo, 1 /* ooo deq */);
 
   stream_session->session_state = SESSION_STATE_ACCEPTING;
   if ((rv = app_worker_accept_notify (app_wrk, stream_session)))
@@ -1302,6 +1304,8 @@ quic_connect_stream (session_t * quic_session, session_endpoint_cfg_t * sep)
       return app_worker_connect_notify (app_wrk, NULL, rv, sep->opaque);
     }
 
+  svm_fifo_init_ooo_lookup (stream_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (stream_session->tx_fifo, 1 /* ooo deq */);
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
@@ -1678,6 +1682,9 @@ quic_on_quic_session_connected (quic_ctx_t * ctx)
       app_worker_connect_notify (app_wrk, NULL, rv, ctx->client_opaque);
       return;
     }
+
+  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
 
   quic_session->session_state = SESSION_STATE_CONNECTING;
   if ((rv = app_worker_connect_notify (app_wrk, quic_session,
@@ -2136,6 +2143,9 @@ quic_accept_connection (quic_rx_packet_ctx_t * pctx)
       quic_proto_on_close (pctx->ctx_index, pctx->thread_index);
       return;
     }
+
+  svm_fifo_init_ooo_lookup (quic_session->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (quic_session->tx_fifo, 1 /* ooo deq */);
 
   app_wrk = app_worker_get (quic_session->app_wrk_index);
   quic_session->session_state = SESSION_STATE_ACCEPTING;
