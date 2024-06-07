@@ -466,6 +466,19 @@ CPU cores while skipping "skip-cores" CPU core(s) and main thread's CPU core
 
    workers 2
 
+translate
+^^^^^^^^^
+Apply thread pinning configuration with respect to the available logical cores
+in the current control group CPU set.
+By default, VPP applies the thread pinning configuration with respect to the
+available logical cores on host (e.g. '/sys/devices/system/cpu/online'). With
+the 'translate' keyword, the thread pinning configuration is applied with respect
+to the available logical cores (obtained with sched_getaffinity).
+
+.. code-block:: console
+
+   translate
+
 scheduler-policy other | batch | idle | fifo | rr
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
