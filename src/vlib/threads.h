@@ -255,6 +255,9 @@ typedef struct
 
   int use_pthreads;
 
+  /* FIXME: a more descriptive keyword than 'relative' must be used... */
+  int relative;
+
   /* Number of vlib_main / vnet_main clones */
   u32 n_vlib_mains;
 

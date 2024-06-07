@@ -183,6 +183,7 @@ vlib_thread_init (vlib_main_t * vm)
   u32 first_index = 1;
   u32 i;
   uword *avail_cpu;
+  uword n_cpus;
   u32 stats_num_worker_threads_dir_index;
 
   stats_num_worker_threads_dir_index =
@@ -190,12 +191,20 @@ vlib_thread_init (vlib_main_t * vm)
   ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
-  tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
   tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
+  if (tm->relative)
+    tm->cpu_core_bitmap = os_get_cpu_affinity_bitmap ();
+  else
+    tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
   /* skip cores */
+  /* FIXME: test with skip-cores */
+  n_cpus = clib_bitmap_count_set_bits (avail_cpu);
+  if (tm->skip_cores >= n_cpus)
+    return clib_error_return (0, "skip-core greater than available cpus");
+
   for (i = 0; i < tm->skip_cores; i++)
     {
       uword c = clib_bitmap_first_set (avail_cpu);
@@ -213,8 +222,19 @@ vlib_thread_init (vlib_main_t * vm)
   if (tm->main_lcore != ~0)
     {
       if (clib_bitmap_get (avail_cpu, tm->main_lcore) == 0)
-	return clib_error_return (0, "cpu %u is not available to be used"
-				  " for the main thread", tm->main_lcore);
+	{
+	  if (tm->relative)
+	    return clib_error_return (
+	      0,
+	      "cpu %u is not available to be used"
+	      " for the main thread in relative mode",
+	      os_translate_cpu_affinity_bitmap (tm->main_lcore, 1));
+	  else
+	    return clib_error_return (0,
+				      "cpu %u is not available to be used"
+				      " for the main thread",
+				      tm->main_lcore);
+	}
       avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
     }
 
@@ -292,11 +312,23 @@ vlib_thread_init (vlib_main_t * vm)
 	  uword c;
           clib_bitmap_foreach (c, tr->coremask)  {
             if (clib_bitmap_get(avail_cpu, c) == 0)
-              return clib_error_return (0, "cpu %u is not available to be used"
-                                        " for the '%s' thread",c, tr->name);
+	      {
+		if (tm->relative)
+		  return clib_error_return (
+		    0,
+		    "cpu %u is not available to be used"
+		    " for the '%s' thread in relative mode",
+		    os_translate_cpu_affinity_bitmap (c, 1), tr->name);
+		else
+		  return clib_error_return (
+		    0,
+		    "cpu %u is not available to be used"
+		    " for the '%s' thread",
+		    c, tr->name);
+	      }
 
-            avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
-          }
+	    avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	    }
 	}
       else
 	{
@@ -308,7 +340,7 @@ vlib_thread_init (vlib_main_t * vm)
 
 	      uword c = clib_bitmap_first_set (avail_cpu);
 	      /* Use CPU 0 as a last resort */
-	      if (c == ~0 && avail_c0)
+	      if (c == ~0 && avail_c0 && !tm->relative)
 		{
 		  c = 0;
 		  avail_c0 = 0;
@@ -318,7 +350,7 @@ vlib_thread_init (vlib_main_t * vm)
 		return clib_error_return (0,
 					  "no available cpus to be used for"
 					  " the '%s' thread #%u",
-					  tr->name, tr->count);
+					  tr->name, j);
 
 	      avail_cpu = clib_bitmap_set (avail_cpu, 0, avail_c0);
 	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
@@ -1165,6 +1197,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
+      else if (unformat (input, "relative"))
+	tm->relative = 1;
       else if (unformat (input, "numa-heap-size %U",
 			 unformat_memory_size, &tm->numa_heap_size))
 	;
@@ -1253,6 +1287,30 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
       tm->n_pthreads += tr->count * tr->use_pthreads;
       tm->n_threads += tr->count * (tr->use_pthreads == 0);
       tr = tr->next;
+    }
+
+  if (tm->relative)
+    {
+      if (tm->main_lcore != ~0)
+	{
+	  int relative_main_core =
+	    os_translate_cpu_affinity_bitmap (tm->main_lcore, 0);
+	  if (relative_main_core == -1)
+	    clib_error ("cpu %u is not available to be used"
+			" for the main thread in relative mode",
+			tm->main_lcore);
+	  tm->main_lcore = relative_main_core;
+	}
+
+      tr = tm->next;
+      uword *tmp_bmp;
+      while (tr)
+	{
+	  tmp_bmp = os_translate_cpu_bmp_affinity_bitmap (tr->coremask, 0);
+	  clib_bitmap_free (tr->coremask);
+	  tr->coremask = tmp_bmp;
+	  tr = tr->next;
+	}
     }
 
   return 0;
