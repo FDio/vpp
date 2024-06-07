@@ -123,6 +123,7 @@ main (int argc, char *argv[])
   unformat_input_t input, sub_input;
   u8 *s = 0, *v = 0;
   int main_core = ~0;
+  int cpu_translate = 0;
   cpu_set_t cpuset;
   void *main_heap;
 
@@ -282,6 +283,8 @@ main (int argc, char *argv[])
 	unix_main.flags |= UNIX_FLAG_INTERACTIVE;
       else if (!strncmp (argv[i], "nosyslog", 8))
 	unix_main.flags |= UNIX_FLAG_NOSYSLOG;
+      else if (!strncmp (argv[i], "translate", 9))
+	cpu_translate = 1;
     }
 defaulted:
 
@@ -328,6 +331,18 @@ defaulted:
   vec_free (v);
 
   unformat_free (&input);
+
+  int cpu_translate_main_core =
+    os_translate_cpu_to_affinity_bitmap (main_core);
+
+  if (cpu_translate && main_core != ~0)
+    {
+      if (cpu_translate_main_core == -1)
+	clib_error ("cpu %u is not available to be used"
+		    " for the main thread in translate mode",
+		    main_core);
+      main_core = cpu_translate_main_core;
+    }
 
   /* if main thread affinity is unspecified, set to current running cpu */
   if (main_core == ~0)
