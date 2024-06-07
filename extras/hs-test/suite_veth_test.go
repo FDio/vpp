@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -16,18 +17,22 @@ const (
 	clientInterfaceName = "cln"
 )
 
-var vethTests = []func(s *VethsSuite){}
-var vethSoloTests = []func(s *VethsSuite){}
+var vethTests = map[string][]func(s *VethsSuite){}
+var vethSoloTests = map[string][]func(s *VethsSuite){}
 
 type VethsSuite struct {
 	HstSuite
 }
 
 func registerVethTests(tests ...func(s *VethsSuite)) {
-	vethTests = append(vethTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	vethTests[file] = tests
 }
 func registerSoloVethTests(tests ...func(s *VethsSuite)) {
-	vethSoloTests = append(vethSoloTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	vethSoloTests[file] = tests
 }
 
 func (s *VethsSuite) SetupSuite() {
@@ -101,15 +106,17 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for _, test := range vethTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range vethTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
 
@@ -129,14 +136,16 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for _, test := range vethSoloTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, Label("SOLO"), func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range vethSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })

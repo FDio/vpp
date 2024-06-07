@@ -89,6 +89,30 @@ This can be put in file ``extras/hs-test/my_test.go`` and run with command ``mak
                 s.log(result)
         }
 
+
+Filtering test cases
+--------------------
+
+The framework allows us to filter test cases in a few different ways, using ``make test TEST=``:
+* Suite name
+* File name
+* Test name
+* All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
+
+**Names are case sensitive!**
+
+Names don't have to be complete, as long as they are last:
+This is valid and will run all tests in every ``http`` file (if there is more than one):
+``make test TEST=VethsSuite.http``
+This is not valid:
+``make test TEST=Veths.http``
+
+They can also be left out:
+``make test TEST=http_test.go`` will run every test in ``http_test.go``
+``make test TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
+``make test TEST=HeaderServerTest`` will only run the header server test
+
+
 Modifying the framework
 -----------------------
 
