@@ -386,7 +386,7 @@ oct_validate_config_promisc_mode (vnet_dev_port_t *port, int enable)
   oct_device_t *cd = vnet_dev_get_data (dev);
   struct roc_nix *nix = cd->nix;
 
-  if (roc_nix_is_vf_or_sdp (nix))
+  if (roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix))
     return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
 
   return VNET_DEV_OK;
@@ -405,6 +405,9 @@ oct_op_config_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
     {
       return oct_roc_err (dev, rv, "roc_nix_npc_promisc_ena_dis failed");
     }
+
+  if (!roc_nix_is_pf (nix))
+    return VNET_DEV_OK;
 
   rv = roc_nix_mac_promisc_mode_enable (nix, enable);
   if (rv)
