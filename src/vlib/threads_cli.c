@@ -14,6 +14,8 @@
  */
 #define _GNU_SOURCE
 
+#include <vppinfra/bitmap.h>
+#include <vppinfra/unix.h>
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 
@@ -47,15 +49,20 @@ show_threads_fn (vlib_main_t * vm,
   vlib_worker_thread_t *w;
   int i;
 
-  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s",
-		   "ID", "Name", "Type", "LWP", "Sched Policy (Priority)",
-		   "lcore", "Core", "Socket", "State");
+  u8 *line = NULL;
+  line = format (line, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s%", "ID",
+		 "Name", "Type", "LWP", "Sched Policy (Priority)", "lcore",
+		 "Core", "Socket", "State");
+  if (tm->cpu_translate)
+    line = format (line, "%-9s%-4s%", "Translated", "Core");
+  vlib_cli_output (vm, "%v", line);
+  vec_free (line);
 
 #if !defined(__powerpc64__)
   for (i = 0; i < vec_len (vlib_worker_threads); i++)
     {
       w = vlib_worker_threads + i;
-      u8 *line = NULL;
+      line = NULL;
 
       line = format (line, "%-7d%-20s%-12s%-8d",
 		     i,
@@ -69,7 +76,13 @@ show_threads_fn (vlib_main_t * vm,
 	{
 	  int core_id = w->core_id;
 	  int numa_id = w->numa_id;
-	  line = format (line, "%-7u%-7u%-7u%", cpu_id, core_id, numa_id);
+	  line = format (line, "%-7u%-7u%-17u%", cpu_id, core_id, numa_id);
+	  if (tm->cpu_translate)
+	    {
+	      int cpu_translate_core_id =
+		os_translate_cpu_from_affinity_bitmap (cpu_id);
+	      line = format (line, "%-7u%", cpu_translate_core_id);
+	    }
 	}
       else
 	{
