@@ -48,6 +48,10 @@ placement works in the following way:
    and it will run threads on them
 -  if “corelist-workers A,B1-Bn,C1-Cn” is defined vpp will automatically
    assign those CPU cores to worker threads
+-  if "translate" is defined, vpp will consider cores it has affinity
+   (using sched_getaffinity) rather than all cores available on the
+   host machine. This is useful if running in a containerized environment which
+   is only allowed to use a subset of the host's CPUs.
 
 User can see active placement of cores by using the VPP debug CLI
 command show threads:
@@ -100,6 +104,25 @@ on cores 2,3,4.
    cpu {
      skip-cores 1
      workers 3
+   }
+
+Translated Placement
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Translated placement can be used in addition to manual or auto placement. It takes
+into consideration that the VPP might be allowed to run on a limited subset of
+logical cores on the host machine (e.g. running in a container), and automatically
+remaps the user requested pinning configuration to the logical cores available to VPP
+(checked using sched_getaffinity).
+If a VPP instance runs with CPU set 20,25,26,27 and translate mode is enabled, a
+manual placement of main thread on core 0 and workers on cores 2,3 will result
+in placement of main thread on core 20 and workers on cores 26,27.
+
+.. code-block:: console
+
+   cpu {
+   main-core 0
+   corelist-workers  2-3
+   translate
    }
 
 Buffer Memory Allocation
