@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -9,6 +11,11 @@ import (
 )
 
 var suiteTimeout time.Duration
+
+func getTestFilename() string {
+	_, filename, _, _ := runtime.Caller(2)
+	return filepath.Base(filename)
+}
 
 func TestHst(t *testing.T) {
 	if *isVppDebug {

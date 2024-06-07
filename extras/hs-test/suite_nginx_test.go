@@ -17,18 +17,18 @@ const (
 	mirroringServerInterfaceName = "hstsrv"
 )
 
-var nginxTests = []func(s *NginxSuite){}
-var nginxSoloTests = []func(s *NginxSuite){}
+var nginxTests = map[string][]func(s *NginxSuite){}
+var nginxSoloTests = map[string][]func(s *NginxSuite){}
 
 type NginxSuite struct {
 	HstSuite
 }
 
 func registerNginxTests(tests ...func(s *NginxSuite)) {
-	nginxTests = append(nginxTests, tests...)
+	nginxTests[getTestFilename()] = tests
 }
 func registerNginxSoloTests(tests ...func(s *NginxSuite)) {
-	nginxSoloTests = append(nginxSoloTests, tests...)
+	nginxSoloTests[getTestFilename()] = tests
 }
 
 func (s *NginxSuite) SetupSuite() {
@@ -92,15 +92,18 @@ var _ = Describe("NginxSuite", Ordered, ContinueOnFailure, func() {
 	AfterEach(func() {
 		s.TearDownTest()
 	})
-	for _, test := range nginxTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+
+	for filename, tests := range nginxTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
 
@@ -119,14 +122,16 @@ var _ = Describe("NginxSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range nginxSoloTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, Label("SOLO"), func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range nginxSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
