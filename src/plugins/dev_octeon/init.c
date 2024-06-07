@@ -115,6 +115,8 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rrv = roc_nix_dev_init (cd->nix)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_dev_init");
 
+  cd->nix_initialized = 1;
+
   if ((rrv = roc_nix_npc_mac_addr_get (cd->nix, mac_addr)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_npc_mac_addr_get");
 
@@ -273,8 +275,8 @@ oct_free (vlib_main_t *vm, vnet_dev_t *dev)
 {
   oct_device_t *cd = vnet_dev_get_data (dev);
 
-  if (cd->nix_initialized)
-    roc_nix_dev_fini (cd->nix);
+  if (cd->nix)
+    clib_mem_free (cd->nix);
 }
 
 VNET_DEV_REGISTER_DRIVER (octeon) = {
