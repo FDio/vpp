@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -13,14 +14,18 @@ type TapSuite struct {
 	HstSuite
 }
 
-var tapTests = []func(s *TapSuite){}
-var tapSoloTests = []func(s *TapSuite){}
+var tapTests = map[string][]func(s *TapSuite){}
+var tapSoloTests = map[string][]func(s *TapSuite){}
 
 func registerTapTests(tests ...func(s *TapSuite)) {
-	tapTests = append(tapTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	tapTests[file] = tests
 }
 func registerTapSoloTests(tests ...func(s *TapSuite)) {
-	tapSoloTests = append(tapSoloTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	tapSoloTests[file] = tests
 }
 
 func (s *TapSuite) SetupSuite() {
@@ -44,15 +49,17 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range tapTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range tapTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
 
@@ -71,14 +78,16 @@ var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range tapSoloTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, Label("SOLO"), func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range tapSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })

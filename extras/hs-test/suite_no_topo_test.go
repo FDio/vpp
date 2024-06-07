@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -14,18 +15,22 @@ const (
 	tapInterfaceName         = "htaphost"
 )
 
-var noTopoTests = []func(s *NoTopoSuite){}
-var noTopoSoloTests = []func(s *NoTopoSuite){}
+var noTopoTests = map[string][]func(s *NoTopoSuite){}
+var noTopoSoloTests = map[string][]func(s *NoTopoSuite){}
 
 type NoTopoSuite struct {
 	HstSuite
 }
 
 func registerNoTopoTests(tests ...func(s *NoTopoSuite)) {
-	noTopoTests = append(noTopoTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	noTopoTests[file] = tests
 }
 func registerNoTopoSoloTests(tests ...func(s *NoTopoSuite)) {
-	noTopoSoloTests = append(noTopoSoloTests, tests...)
+	_, file, _, _ := runtime.Caller(1)
+	file = filepath.Base(file)
+	noTopoSoloTests[file] = tests
 }
 
 func (s *NoTopoSuite) SetupSuite() {
@@ -68,15 +73,17 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range noTopoTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range noTopoTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
 
@@ -95,14 +102,16 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range noTopoSoloTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, Label("SOLO"), func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range noTopoSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
