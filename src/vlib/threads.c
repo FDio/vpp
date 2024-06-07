@@ -183,6 +183,7 @@ vlib_thread_init (vlib_main_t * vm)
   u32 first_index = 1;
   u32 i;
   uword *avail_cpu;
+  uword n_cpus;
   u32 stats_num_worker_threads_dir_index;
 
   stats_num_worker_threads_dir_index =
@@ -190,12 +191,24 @@ vlib_thread_init (vlib_main_t * vm)
   ASSERT (stats_num_worker_threads_dir_index != ~0);
 
   /* get bitmaps of active cpu cores and sockets */
-  tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
   tm->cpu_socket_bitmap = os_get_online_cpu_node_bitmap ();
+  if (!tm->cpu_translate)
+    tm->cpu_core_bitmap = os_get_online_cpu_core_bitmap ();
+  else
+    {
+      /* get bitmap of cpu core affinity */
+      if ((tm->cpu_core_bitmap = os_get_cpu_affinity_bitmap ()) == 0)
+	return clib_error_return (0, "could not fetch cpu affinity bmp");
+    }
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 
   /* skip cores */
+  n_cpus = clib_bitmap_count_set_bits (avail_cpu);
+  if (tm->skip_cores >= n_cpus)
+    return clib_error_return (
+      0, "skip-core value greater or equal to available cpus");
+
   for (i = 0; i < tm->skip_cores; i++)
     {
       uword c = clib_bitmap_first_set (avail_cpu);
@@ -213,8 +226,20 @@ vlib_thread_init (vlib_main_t * vm)
   if (tm->main_lcore != ~0)
     {
       if (clib_bitmap_get (avail_cpu, tm->main_lcore) == 0)
-	return clib_error_return (0, "cpu %u is not available to be used"
-				  " for the main thread", tm->main_lcore);
+	{
+	  if (tm->cpu_translate)
+	    return clib_error_return (
+	      0,
+	      "cpu %u (translated cpu %u) is not available to be used"
+	      " for the main thread in translate mode",
+	      tm->main_lcore,
+	      os_translate_cpu_from_affinity_bitmap (tm->main_lcore));
+	  else
+	    return clib_error_return (0,
+				      "cpu %u is not available to be used"
+				      " for the main thread",
+				      tm->main_lcore);
+	}
       avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
     }
 
@@ -297,11 +322,23 @@ vlib_thread_init (vlib_main_t * vm)
 	  uword c;
           clib_bitmap_foreach (c, tr->coremask)  {
             if (clib_bitmap_get(avail_cpu, c) == 0)
-              return clib_error_return (0, "cpu %u is not available to be used"
-                                        " for the '%s' thread",c, tr->name);
+	      {
+		if (tm->cpu_translate)
+		  return clib_error_return (
+		    0,
+		    "cpu %u (translated cpu %u) is not available to be used"
+		    " for the '%s' thread in translate mode",
+		    c, os_translate_cpu_from_affinity_bitmap (c), tr->name);
+		else
+		  return clib_error_return (
+		    0,
+		    "cpu %u is not available to be used"
+		    " for the '%s' thread",
+		    c, tr->name);
+	      }
 
-            avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
-          }
+	    avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	    }
 	}
       else
 	{
@@ -313,7 +350,7 @@ vlib_thread_init (vlib_main_t * vm)
 
 	      uword c = clib_bitmap_first_set (avail_cpu);
 	      /* Use CPU 0 as a last resort */
-	      if (c == ~0 && avail_c0)
+	      if (c == ~0 && avail_c0 && !tm->cpu_translate)
 		{
 		  c = 0;
 		  avail_c0 = 0;
@@ -323,7 +360,7 @@ vlib_thread_init (vlib_main_t * vm)
 		return clib_error_return (0,
 					  "no available cpus to be used for"
 					  " the '%s' thread #%u",
-					  tr->name, tr->count);
+					  tr->name, j);
 
 	      avail_cpu = clib_bitmap_set (avail_cpu, 0, avail_c0);
 	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
@@ -1177,6 +1214,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
+      else if (unformat (input, "translate"))
+	tm->cpu_translate = 1;
       else if (unformat (input, "numa-heap-size %U",
 			 unformat_memory_size, &tm->numa_heap_size))
 	;
@@ -1265,6 +1304,36 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
       tm->n_pthreads += tr->count * tr->use_pthreads;
       tm->n_threads += tr->count * (tr->use_pthreads == 0);
       tr = tr->next;
+    }
+
+  /* for translate mode, update requested main-core and corelists */
+  if (tm->cpu_translate)
+    {
+
+      if (tm->main_lcore == ~0)
+	clib_error ("main-core must be specified in translate mode");
+      int cpu_translate_main_core =
+	os_translate_cpu_to_affinity_bitmap (tm->main_lcore);
+      if (cpu_translate_main_core == -1)
+	clib_error ("cpu %u is not available to be used"
+		    " for the main thread in translate mode",
+		    tm->main_lcore);
+      tm->main_lcore = cpu_translate_main_core;
+
+      tr = tm->next;
+      uword *translated_cpu_bmp;
+      while (tr && tr->coremask)
+	{
+	  translated_cpu_bmp =
+	    os_translate_cpu_bmp_to_affinity_bitmap (tr->coremask);
+
+	  if (!translated_cpu_bmp)
+	    clib_error ("could not translate corelist associated to %s",
+			tr->name);
+	  clib_bitmap_free (tr->coremask);
+	  tr->coremask = translated_cpu_bmp;
+	  tr = tr->next;
+	}
     }
 
   return 0;

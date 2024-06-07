@@ -402,6 +402,7 @@ geneve
 Geneve
 gerrit
 Gerrit
+getaffinity
 gethostbyname
 gettingsources
 gettingstarted
@@ -1003,6 +1004,7 @@ scanf
 scapy
 Scapy
 SCHED_RR
+sched
 sclass
 scooby
 screenshot
