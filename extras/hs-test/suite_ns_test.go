@@ -15,18 +15,18 @@ const (
 	serverInterface = "hsrvvpp"
 )
 
-var nsTests = []func(s *NsSuite){}
-var nsSoloTests = []func(s *NsSuite){}
+var nsTests = map[string][]func(s *NsSuite){}
+var nsSoloTests = map[string][]func(s *NsSuite){}
 
 type NsSuite struct {
 	HstSuite
 }
 
 func registerNsTests(tests ...func(s *NsSuite)) {
-	nsTests = append(nsTests, tests...)
+	nsTests[getTestFilename()] = tests
 }
 func registerNsSoloTests(tests ...func(s *NsSuite)) {
-	nsSoloTests = append(nsSoloTests, tests...)
+	nsSoloTests[getTestFilename()] = tests
 }
 
 func (s *NsSuite) SetupSuite() {
@@ -77,15 +77,17 @@ var _ = Describe("NsSuite", Ordered, ContinueOnFailure, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range nsTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range nsTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
 
@@ -104,14 +106,16 @@ var _ = Describe("NsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 		s.TearDownTest()
 	})
 
-	for _, test := range nsSoloTests {
-		test := test
-		pc := reflect.ValueOf(test).Pointer()
-		funcValue := runtime.FuncForPC(pc)
-		testName := strings.Split(funcValue.Name(), ".")[2]
-		It(testName, Label("SOLO"), func(ctx SpecContext) {
-			s.log(testName + ": BEGIN")
-			test(&s)
-		}, SpecTimeout(suiteTimeout))
+	for filename, tests := range nsSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, Label("SOLO"), func(ctx SpecContext) {
+				s.log(testName + ": BEGIN")
+				test(&s)
+			}, SpecTimeout(suiteTimeout))
+		}
 	}
 })
