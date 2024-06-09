@@ -226,6 +226,38 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   return &dm->conf->default_devconf;
 }
 
+static unsigned int
+index_of_vmbus_dev (struct rte_eth_dev_info *di)
+{
+  vlib_vmbus_addr_t *addrs = vlib_vmbus_get_net_dev_addrs ();
+  vlib_vmbus_addr_t *addr = 0;
+  int ctr = 0;
+  {
+    unformat_input_t input_vmbus;
+    vlib_vmbus_addr_t vmbus_addr;
+#if RTE_VERSION >= RTE_VERSION_NUM(22, 11, 0, 0)
+    const char *dev_name = rte_dev_name (di->device);
+#else
+    const char *dev_name = di->device->name;
+#endif
+    unformat_init_string (&input_vmbus, dev_name, strlen (dev_name));
+    if (unformat (&input_vmbus, "%U", unformat_vlib_vmbus_addr, &vmbus_addr))
+      {
+	vec_foreach (addr, addrs)
+	  {
+	    if (!memcmp (&vmbus_addr, addr, sizeof (vlib_vmbus_addr_t)))
+	      {
+		unformat_free (&input_vmbus);
+		return ctr;
+	      }
+	    ctr++;
+	  }
+      }
+    unformat_free (&input_vmbus);
+  }
+  return ~0;
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -332,6 +364,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	{
 	  struct rte_pci_device *pci_dev;
+	  struct rte_vmbus_device *vmbus_dev;
 	  if (dr && dr->interface_name_prefix)
 	    {
 	      /* prefix override by driver */
@@ -362,6 +395,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  else if ((pci_dev = dpdk_get_pci_device (&di)))
 	    xd->name = format (xd->name, if_num_fmt, pci_dev->addr.bus,
 			       pci_dev->addr.devid, pci_dev->addr.function);
+	  else if ((vmbus_dev = dpdk_get_vmbus_device (&di)))
+	    {
+	      unsigned int if_index = index_of_vmbus_dev (&di);
+	      xd->name =
+		format (xd->name, "%u", if_index == ~0 ? port_id : if_index);
+	    }
 	  else
 	    xd->name = format (xd->name, "%u", port_id);
 
@@ -1297,6 +1336,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (conf->eal_init_args, tmp);
     }
 #endif
+
+  /* If no-pci is not defined, but VMBUS exists, don't use PCI */
+  if (no_pci == 0)
+    {
+      if (access ("/sys/bus/vmbus/", F_OK) == 0)
+	{
+	  no_pci = 1;
+	  tmp = format (0, "--no-pci%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	  clib_warning ("VMBUS devices detected. Disabling PCI.");
+	}
+    }
 
   if (no_pci == 0 && geteuid () == 0)
     dpdk_bind_devices_to_uio (conf);
