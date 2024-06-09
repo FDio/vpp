@@ -30,6 +30,7 @@ typedef union
 typedef u32 vlib_vmbus_dev_handle_t;
 
 vlib_vmbus_addr_t *vlib_vmbus_get_all_dev_addrs ();
+vlib_vmbus_addr_t *vlib_vmbus_get_net_dev_addrs ();
 vlib_vmbus_addr_t *vlib_vmbus_get_addr (vlib_vmbus_dev_handle_t h);
 uword vlib_vmbus_get_private_data (vlib_vmbus_dev_handle_t h);
 void vlib_vmbus_set_private_data (vlib_vmbus_dev_handle_t h,

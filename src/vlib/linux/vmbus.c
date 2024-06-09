@@ -36,6 +36,9 @@ static const char sysfs_vmbus_drv_path[] = "/sys/bus/vmbus/drivers";
 static const char sysfs_class_net_path[] = "/sys/class/net";
 static const char uio_drv_name[] = "uio_hv_generic";
 static const char netvsc_uuid[] = "f8615163-df3e-46c5-913f-f2d2f965ed0e";
+static const char uio_hv_generic_devs[] =
+  "/sys/bus/vmbus/drivers/uio_hv_generic";
+static const char uio_netvsc_devs[] = "/sys/bus/vmbus/drivers/hv_netvsc";
 
 typedef struct
 {
@@ -410,6 +413,29 @@ scan_vmbus_addr (void *arg, u8 * dev_dir_name, u8 * ignored)
   return 0;
 }
 
+static clib_error_t *
+scan_vmbus_driver_addr (void *arg, u8 *dev_dir_name, u8 *ignored)
+{
+  vlib_vmbus_addr_t addr, **addrv = arg;
+  unformat_input_t input;
+  clib_error_t *err = 0;
+
+  unformat_init_string (&input, (char *) dev_dir_name, vec_len (dev_dir_name));
+
+  if (!unformat (&input, "/sys/bus/vmbus/drivers/%s/%U\0", NULL /* driver */,
+		 unformat_vlib_vmbus_addr, &addr))
+    err = clib_error_return (0, "unformat error `%v`", dev_dir_name);
+
+  unformat_free (&input);
+
+  /* Don't stop scan after error */
+  if (err)
+    return 0;
+
+  vec_add1 (*addrv, addr);
+  return 0;
+}
+
 static int
 vmbus_addr_cmp (void *v1, void *v2)
 {
@@ -441,6 +467,21 @@ vlib_vmbus_get_all_dev_addrs ()
     }
 
   vec_sort_with_function (addrs, vmbus_addr_cmp);
+
+  return addrs;
+}
+
+vlib_vmbus_addr_t *
+vlib_vmbus_get_net_dev_addrs ()
+{
+  vlib_vmbus_addr_t *addrs = 0;
+
+  foreach_directory_file ((char *) uio_hv_generic_devs, scan_vmbus_driver_addr,
+			  &addrs, /* scan_dirs */ 0);
+  foreach_directory_file ((char *) uio_netvsc_devs, scan_vmbus_driver_addr,
+			  &addrs, /* scan_dirs */ 0);
+  if (addrs)
+    vec_sort_with_function (addrs, vmbus_addr_cmp);
 
   return addrs;
 }

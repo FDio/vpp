@@ -31,6 +31,12 @@ vlib_vmbus_get_all_dev_addrs ()
   return NULL;
 }
 
+vlib_vmbus_addr_t *__clib_weak
+vlib_vmbus_get_net_dev_addrs ()
+{
+  return NULL;
+}
+
 u8 *__clib_weak
 format_vlib_vmbus_addr (u8 *s, va_list *va)
 {
