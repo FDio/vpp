@@ -869,6 +869,34 @@ counters ipsec_tun {
   };
 };
 
+/** \brief IPsec: Get worker's SA distribution
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipsec_get_sa_distribution
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IPsec: Reply get worker's SA distribution
+
+    @param context - sender context, to match reply w/ request
+    @param retval - success/fail rutrun code
+    @param num_workers - the number of workers
+    @param num_inbound_sa - array of workers which handles the inbound SAs. Hardcoded to max 64 workers.
+    @param num_outbound_sa - array of workers which handles the outbound SAs. Hardcoded to max 64 workers.
+*/
+define ipsec_get_sa_distribution_reply
+{
+  u32 context;
+  i32 retval;
+  u32 num_workers;
+  u8 num_inbound_sa[64];
+  u8 num_outbound_sa[64];
+};
+
 paths {
   "/err/esp4-encrypt" "esp_encrypt";
   "/err/esp4-encrypt-post" "esp_encrypt";
