@@ -51,6 +51,24 @@
       "message": "This looks broken to me, as presence of port op will cause qeueue ops to be skipped....\n\nWe should have rx/tx  queue ops beside port op....",
       "revId": "f5e21a0fbf7f7519760cc2976323a4819526a566",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8db028d7_b469ead2",
+        "filename": "src/vnet/dev/port.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2024-06-10T18:29:58Z",
+      "side": 1,
+      "message": "Updated patch to have rx/tx queue clear counter ops as well.",
+      "parentUuid": "2a4c4406_4ba91b86",
+      "revId": "f5e21a0fbf7f7519760cc2976323a4819526a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
