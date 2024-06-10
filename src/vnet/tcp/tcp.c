@@ -1642,6 +1642,9 @@ tcp_configuration_init (void)
 
   /* This value is seconds */
   tcp_cfg.cleanup_time = 0.1;	/* 100ms */
+
+  /* Time constants defined as tcp tick (1us) multiples */
+  tcp_cfg.syn_rcvd_time = TCP_ESTABLISH_TIME;
 }
 
 static clib_error_t *
