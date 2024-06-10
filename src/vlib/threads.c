@@ -1223,6 +1223,11 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   if (use_corelist && tm->main_lcore == ~0)
     return clib_error_return (0, "main-core must be specified when using "
 				 "corelist-* or coremask-* attribute");
+
+  if (tm->skip_cores != 0 && tm->main_lcore == ~0)
+    return clib_error_return (
+      0, "main-core must be specified when using skip-cores attribute");
+
   if (tm->sched_priority != ~0)
     {
       if (tm->sched_policy == SCHED_FIFO || tm->sched_policy == SCHED_RR)
