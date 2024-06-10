@@ -197,6 +197,9 @@ typedef struct tcp_configuration_
   /** Time to wait (sec) before cleaning up the connection */
   f32 cleanup_time;
 
+  /** Time to wait (tcp ticks) for syn-rcvd connection to establish */
+  u32 syn_rcvd_time;
+
   /** Number of preallocated connections */
   u32 preallocated_connections;
 

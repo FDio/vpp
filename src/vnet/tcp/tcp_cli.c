@@ -1009,6 +1009,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.alloc_err_timeout = tmp_time / TCP_TIMER_TICK;
       else if (unformat (input, "cleanup-time %u", &tmp_time))
 	tcp_cfg.cleanup_time = tmp_time / 1000.0;
+      else if (unformat (input, "syn-rcvd-time %u", &tmp_time))
+	tcp_cfg.syn_rcvd_time = tmp_time * THZ;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
