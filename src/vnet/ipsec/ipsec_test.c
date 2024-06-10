@@ -746,6 +746,27 @@ api_ipsec_spd_add_del (vat_main_t *vam)
   return ret;
 }
 
+static int
+api_ipsec_get_sa_distribution (vat_main_t *vam)
+{
+  int ret = 0;
+  vl_api_ipsec_get_sa_distribution_t *mp;
+
+  M (IPSEC_GET_SA_DISTRIBUTION, mp);
+
+  S (mp);
+
+  W (ret);
+
+  return (ret);
+}
+
+static void
+vl_api_ipsec_get_sa_distribution_reply_t_handler (
+  vl_api_ipsec_get_sa_distribution_reply_t *mp)
+{
+}
+
 #include <vnet/ipsec/ipsec.api_test.c>
 
 /*
