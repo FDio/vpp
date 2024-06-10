@@ -1465,6 +1465,33 @@ vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
   REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
 }
 
+static void
+vl_api_ipsec_get_sa_distribution_t_handler (
+  vl_api_ipsec_get_sa_distribution_t *mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_get_sa_distribution_reply_t *rmp;
+
+  u32 *num_isas = 0;
+  u32 *num_osas = 0;
+  int num_workers;
+  int rv = 0;
+
+  REPLY_MACRO2 (
+    VL_API_IPSEC_GET_SA_DISTRIBUTION_REPLY, ({
+      ipsec_sa_worker_distribution (&num_isas, &num_osas);
+      num_workers =
+	clib_min (vlib_get_n_threads (), ARRAY_LEN (rmp->num_inbound_sa));
+      memcpy_s (rmp->num_inbound_sa, sizeof (rmp->num_inbound_sa), num_isas,
+		num_workers * sizeof (rmp->num_inbound_sa[0]));
+      memcpy_s (rmp->num_outbound_sa, sizeof (rmp->num_outbound_sa), num_osas,
+		num_workers * sizeof (rmp->num_outbound_sa[0]));
+      rmp->num_workers = htons (num_workers);
+      vec_free (num_isas);
+      vec_free (num_osas);
+    }));
+}
+
 #include <vnet/ipsec/ipsec.api.c>
 static clib_error_t *
 ipsec_api_hookup (vlib_main_t * vm)
