@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6ba03fd_a0761a2e",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-06-10T12:26:50Z",
+      "side": 1,
+      "message": "Just a nit here: it maybe clearer to rename the variable to \"handoff_queue_size\" for future maintenance purpose. Also the commit log worth updating for this reason as well.",
+      "revId": "398192e330f1dcf82b82cd7a41bf0c394172d13c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "71f8a4df_7cb0e407",
+        "filename": "src/vnet/ipsec/ipsec_cli.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 995,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2024-06-10T12:26:50Z",
+      "side": 1,
+      "message": "This CLI change does not fit into the patch description. Please create another patch to include this change (also needed to add API changes too).",
+      "revId": "398192e330f1dcf82b82cd7a41bf0c394172d13c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
