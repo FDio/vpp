@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2204732e_8ad015c0",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-06-10T17:19:01Z",
+      "side": 1,
+      "message": "Extra whitespace should be removed.\n\nIt would be best to add a \u0027make checkstyle-golang\u0027 and \u0027make fixstyle-golang\u0027 to $WS_ROOT/Makefile to verify/fix formatting changes for all golang files repo in the same manner as \u0027make checkstyle-python\u0027.  Please do this in a separate gerrit change.\n\nOnce that has been added, then golang format verification can be added to the vpp-verify-checkstyle-* job",
+      "range": {
+        "startLine": 43,
+        "startChar": 19,
+        "endLine": 43,
+        "endChar": 20
+      },
+      "revId": "3f795cbb961c5858d0bacef97a54d48d048f9fdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
