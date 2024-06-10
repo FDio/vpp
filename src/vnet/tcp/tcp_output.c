@@ -1391,7 +1391,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       tc->rtt_ts = 0;
 
       /* Passive open establish timeout */
-      if (tc->rto > TCP_ESTABLISH_TIME >> 1)
+      if (tc->rto > tcp_cfg.syn_rcvd_time >> 1)
 	{
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
 	  tcp_connection_timers_reset (tc);
