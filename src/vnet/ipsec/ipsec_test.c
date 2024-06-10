@@ -746,6 +746,37 @@ api_ipsec_spd_add_del (vat_main_t *vam)
   return ret;
 }
 
+static void
+vl_api_ipsec_get_sa_distribution_reply_t_handler (
+  vl_api_ipsec_get_sa_distribution_reply_t *rmp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (rmp->retval);
+  u32 idx;
+
+  for (idx = 0; idx < ntohs (rmp->num_workers); idx++)
+    {
+      print (vam->ofp, "worker %u : num in SA: %u, num out SA: %u \n", idx,
+	     rmp->num_inbound_sa[idx], rmp->num_outbound_sa[idx]);
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int
+api_ipsec_get_sa_distribution (vat_main_t *vam)
+{
+  vl_api_ipsec_get_sa_distribution_t *mp;
+  int ret = 0;
+
+  M (IPSEC_GET_SA_DISTRIBUTION, mp);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 #include <vnet/ipsec/ipsec.api_test.c>
 
 /*

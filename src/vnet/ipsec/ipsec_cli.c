@@ -991,6 +991,38 @@ VLIB_CLI_COMMAND (set_async_mode_command, static) = {
     .function = set_async_mode_command_fn,
 };
 
+/**
+ * show IPSEC sa distribution over workers
+ */
+static clib_error_t *
+show_ipsec_sa_distribution_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
+{
+  u32 *num_isas = 0;
+  u32 *num_osas = 0;
+  int idx = 0;
+
+  ipsec_sa_worker_distribution (&num_isas, &num_osas);
+
+  for (idx = 0; idx <= vlib_num_workers (); idx++)
+    {
+      vlib_cli_output (vm, "thread %d : num inbound sa %u num outbound sa %u",
+		       idx, num_isas[idx], num_osas[idx]);
+    }
+
+  vec_free (num_isas);
+  vec_free (num_osas);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_ipsec_sa_distribution_command, static) = {
+  .path = "show ipsec threads",
+  .short_help = "show ipsec threads",
+  .function = show_ipsec_sa_distribution_command_fn,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

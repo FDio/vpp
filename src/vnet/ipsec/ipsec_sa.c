@@ -510,6 +510,34 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   return (0);
 }
 
+void
+ipsec_sa_worker_distribution (u32 **num_isas, u32 **num_osas)
+{
+  ipsec_sa_t *sa;
+  *num_isas = 0;
+  *num_osas = 0;
+
+  vec_validate_init_empty (*num_isas, vlib_get_n_threads (), 0);
+  vec_validate_init_empty (*num_osas, vlib_get_n_threads (), 0);
+
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      if (sa->thread_index >= vlib_get_n_threads ())
+	{
+	  continue;
+	}
+      if (sa->flags & IPSEC_SA_FLAG_IS_INBOUND)
+	{
+	  *num_isas[sa->thread_index] += 1;
+	}
+      else
+	{
+	  *num_osas[sa->thread_index] += 1;
+	}
+    }
+  /* Make sure free num_isas and num_osas */
+}
+
 static void
 ipsec_sa_del (ipsec_sa_t * sa)
 {
