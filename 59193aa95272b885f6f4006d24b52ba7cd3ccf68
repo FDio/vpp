@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "917501b6_40826e59",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-06-10T12:44:12Z",
+      "side": 1,
+      "message": "First let\u0027s distinguish between MTU and max_frame_size. MTU is term from  IP and it is related to L3 payload size. max_frame_size is term from IEEE 802.3 / Ethernet spec and because this is ethernet driver we should use term max frame size and not MTU.\n\nAs DPDK folks didn\u0027t take it right driver_frame_overhead is fix to undo bogus calculation they do in their drivers.\n\nObvious example why this is bogus is MACSEC. MACSEC header is part of ethernet header (fits between SMAC and optional dot1q tag). So clearly l2 header size can be bigger than math you pointed on above.\n\nOn other side spec says ethernet frame size cannot bee smaller than 64 bytes so checking agains 64 makes more sense to me (ideally in vnet/dev infra code as it applies to all drivers).",
+      "parentUuid": "1143a9c2_0a0c5039",
+      "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "776e36b0_32a6a08b",
         "filename": "src/plugins/dev_octeon/port.c",
         "patchSetId": 10
