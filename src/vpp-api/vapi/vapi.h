@@ -225,6 +225,18 @@ vapi_error_e vapi_wait (vapi_ctx_t ctx);
 /**
  * @brief pick next message sent by vpp and call the appropriate callback
  *
+ * @note if using block mode, it will be blocked indefinitely until the next
+ * msg available. If using non-blocking mode, it will block for time_wait
+ * seconds until the next msg available if time_wait > 0, or does not block if
+ * time_wait == 0.
+ *
+ * @return VAPI_OK on success, other error code on error
+ */
+vapi_error_e vapi_dispatch_one_timedwait (vapi_ctx_t ctx, u32 wait_time);
+
+/**
+ * @brief pick next message sent by vpp and call the appropriate callback
+ *
  * @return VAPI_OK on success, other error code on error
  */
 vapi_error_e vapi_dispatch_one (vapi_ctx_t ctx);
@@ -235,11 +247,11 @@ vapi_error_e vapi_dispatch_one (vapi_ctx_t ctx);
  *
  * @note the dispatch loop is interrupted if any error is encountered or
  * returned from the callback, in which case this error is returned as the
- * result of vapi_dispatch. In this case it might be necessary to call dispatch
- * again to process the remaining messages. Returning VAPI_EUSER from
- * a callback allows the user to break the dispatch loop (and distinguish
- * this case in the calling code from other failures). VAPI never returns
- * VAPI_EUSER on its own.
+ * result of vapi_dispatch. In this case it might be necessary to call
+ * dispatch again to process the remaining messages. Returning VAPI_EUSER
+ * from a callback allows the user to break the dispatch loop (and
+ * distinguish this case in the calling code from other failures). VAPI never
+ * returns VAPI_EUSER on its own.
  *
  * @return VAPI_OK on success, other error code on error
  */
