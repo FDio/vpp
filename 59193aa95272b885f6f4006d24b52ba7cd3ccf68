@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b9318c55_dca2678e",
+        "filename": "src/plugins/dev_octeon/port.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 1863
+      },
+      "writtenOn": "2024-06-11T09:39:16Z",
+      "side": 1,
+      "message": "ACK. Moved the check to dev infra and checking max_frame_size against 64 bytes.",
+      "parentUuid": "917501b6_40826e59",
+      "revId": "59193aa95272b885f6f4006d24b52ba7cd3ccf68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "776e36b0_32a6a08b",
         "filename": "src/plugins/dev_octeon/port.c",
         "patchSetId": 10
