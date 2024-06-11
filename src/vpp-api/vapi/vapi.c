@@ -1791,15 +1791,22 @@ vapi_verify_msg_size (vapi_msg_id_t id, void *buf, uword buf_size)
   return __vapi_metadata.msgs[id]->verify_msg_size (buf, buf_size);
 }
 
+/*
+ * If time_wait > 0, it will block for time_wait seconds,
+ * else if time_wait is zero, check on the user input mode block or
+ * nonblocking.
+ */
+
 vapi_error_e
-vapi_dispatch_one (vapi_ctx_t ctx)
+vapi_dispatch_one (vapi_ctx_t ctx, u32 wait_time)
 {
   VAPI_DBG ("vapi_dispatch_one()");
   void *msg;
   uword size;
   svm_q_conditional_wait_t cond =
-    vapi_is_nonblocking (ctx) ? SVM_Q_NOWAIT : SVM_Q_WAIT;
-  vapi_error_e rv = vapi_recv (ctx, &msg, &size, cond, 0);
+    vapi_is_nonblocking (ctx) ? (wait_time ? SVM_Q_TIMEDWAIT : SVM_Q_NOWAIT) :
+				      SVM_Q_WAIT;
+  vapi_error_e rv = vapi_recv (ctx, &msg, &size, cond, wait_time);
   if (VAPI_OK != rv)
     {
       VAPI_DBG ("vapi_recv failed with rv=%d", rv);
@@ -1852,7 +1859,7 @@ vapi_dispatch (vapi_ctx_t ctx)
   vapi_error_e rv = VAPI_OK;
   while (!vapi_requests_empty (ctx))
     {
-      rv = vapi_dispatch_one (ctx);
+      rv = vapi_dispatch_one (ctx, 0);
       if (VAPI_OK != rv)
 	{
 	  return rv;
