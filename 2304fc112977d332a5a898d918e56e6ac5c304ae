@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "08560fcd_2e566b9a",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1795,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-06-11T20:33:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "429d5d67_e2f662ac",
+      "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a190b91c_efbe582e",
@@ -48,6 +66,24 @@
       "writtenOn": "2024-06-11T19:16:37Z",
       "side": 1,
       "message": "It would be better if the change is backwards compatible so users with working code which calls vapi_dispatch_one() don\u0027t have their code broken when they upgrade to the version of VPP that contains this change.\n\nE.g. you could:\n* create a new function `vapi_error_e vapi_dispatch_one_timedwait(vapi_ctx_t ctx, u32 wait_time)` which contains all the code currently in vapi_dispatch_one() including your changes.\n* leave the signature of vapi_dispatch_one() as it currently is and change the body of the function to just `return vapi_dispatch_one_timedwait(ctx, 0);`.I believe that would retain the current behavior of vapi_dispatch_one() and also provide the new functionality you want.",
+      "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7273d893_9f600580",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1801,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-06-11T20:33:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a190b91c_efbe582e",
       "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
