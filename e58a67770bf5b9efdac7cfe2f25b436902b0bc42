@@ -16,6 +16,40 @@
       "message": "Please approve this change. Thanks",
       "revId": "e58a67770bf5b9efdac7cfe2f25b436902b0bc42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c40d8501_739ba307",
+        "filename": "src/vnet/ipsec/ipsec_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1007,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-11T07:46:22Z",
+      "side": 1,
+      "message": "Can we have a common function for API and CLI?",
+      "revId": "e58a67770bf5b9efdac7cfe2f25b436902b0bc42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab5a8624_25aea6e9",
+        "filename": "src/vnet/ipsec/ipsec_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 749,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-11T07:46:22Z",
+      "side": 1,
+      "message": "Please fill the API tests",
+      "revId": "e58a67770bf5b9efdac7cfe2f25b436902b0bc42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
