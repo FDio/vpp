@@ -777,6 +777,14 @@ checkstyle-test:
 checkstyle-python:
 	@$(MAKE) -C test checkstyle-python-all
 
+.PHONY: checkstyle-go
+checkstyle-go:
+	@$(MAKE) -C extras/hs-test checkstyle-go
+
+.PHONY: fixstyle-go
+fixstyle-go:
+	@$(MAKE) -C extras/hs-test fixstyle-go
+
 .PHONY: checkstyle-all
 checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell
 
