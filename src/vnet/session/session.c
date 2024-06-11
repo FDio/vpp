@@ -1659,8 +1659,10 @@ session_transport_close (session_t * s)
     {
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
 	session_set_state (s, SESSION_STATE_CLOSED);
-      /* If transport is already deleted, just free the session */
-      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+      /* If transport is already deleted, just free the session. Half-opens
+       * expected to be already cleaning up at this point */
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED &&
+	       !(s->flags & SESSION_F_HALF_OPEN))
 	session_program_cleanup (s);
       return;
     }
