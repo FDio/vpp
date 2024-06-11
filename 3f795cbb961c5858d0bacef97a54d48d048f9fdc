@@ -22,6 +22,30 @@
       },
       "revId": "3f795cbb961c5858d0bacef97a54d48d048f9fdc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ee4359f_fac56996",
+        "filename": "extras/hs-test/hst_suite.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 3024
+      },
+      "writtenOn": "2024-06-11T08:39:02Z",
+      "side": 1,
+      "message": "Done: https://gerrit.fd.io/r/c/vpp/+/40966",
+      "parentUuid": "2204732e_8ad015c0",
+      "range": {
+        "startLine": 43,
+        "startChar": 19,
+        "endLine": 43,
+        "endChar": 20
+      },
+      "revId": "3f795cbb961c5858d0bacef97a54d48d048f9fdc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
