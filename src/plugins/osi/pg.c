@@ -39,7 +39,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/osi/osi.h>
+#include <osi/osi.h>
 
 typedef struct
 {
