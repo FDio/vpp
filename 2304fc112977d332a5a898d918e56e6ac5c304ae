@@ -16,6 +16,40 @@
       "message": "Please approve this change. We need this blocking with timeout for our ipsec offload feature. Thanks.",
       "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "429d5d67_e2f662ac",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1795,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-11T19:16:37Z",
+      "side": 1,
+      "message": "The comment describes the reverse of what the code is actually doing.\nThe comment implies that if time_wait \u003e 0, it will block for time_wait seconds regardless of the mode and if time_wait \u003d\u003d 0 it will check the mode to decide whether to block or not.\nWhat the code is actually doing is checking the mode and blocking indefinitely if using blocking mode. If using non-blocking mode it blocks for time_wait seconds if time_wait \u003e 0 or does not block if time_wait \u003d\u003d 0.\n\nIt also might be better to put comments like this (an explanation of how arguments are used) in the vapi.h header file instead of the source file because the header file is used as documentation of the API.",
+      "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a190b91c_efbe582e",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1801,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2024-06-11T19:16:37Z",
+      "side": 1,
+      "message": "It would be better if the change is backwards compatible so users with working code which calls vapi_dispatch_one() don\u0027t have their code broken when they upgrade to the version of VPP that contains this change.\n\nE.g. you could:\n* create a new function `vapi_error_e vapi_dispatch_one_timedwait(vapi_ctx_t ctx, u32 wait_time)` which contains all the code currently in vapi_dispatch_one() including your changes.\n* leave the signature of vapi_dispatch_one() as it currently is and change the body of the function to just `return vapi_dispatch_one_timedwait(ctx, 0);`.I believe that would retain the current behavior of vapi_dispatch_one() and also provide the new functionality you want.",
+      "revId": "2304fc112977d332a5a898d918e56e6ac5c304ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
