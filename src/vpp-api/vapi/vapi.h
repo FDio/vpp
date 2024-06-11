@@ -227,7 +227,7 @@ vapi_error_e vapi_wait (vapi_ctx_t ctx);
  *
  * @return VAPI_OK on success, other error code on error
  */
-vapi_error_e vapi_dispatch_one (vapi_ctx_t ctx);
+vapi_error_e vapi_dispatch_one (vapi_ctx_t ctx, u32 wait_time);
 
 /**
  * @brief loop vapi_dispatch_one until responses to all currently outstanding

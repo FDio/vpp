@@ -853,7 +853,7 @@ START_TEST (test_show_version_5)
   int called = 0;
   vapi_set_generic_event_cb (ctx, generic_cb, &called);
   ck_assert_int_eq (VAPI_OK, rv);
-  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx)))
+  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx, 0)))
     ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);
@@ -864,7 +864,7 @@ START_TEST (test_show_version_5)
     ;
   ck_assert_int_eq (VAPI_OK, rv);
   vapi_clear_generic_event_cb (ctx);
-  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx)))
+  while (VAPI_EAGAIN == (rv = vapi_dispatch_one (ctx, 0)))
     ;
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);	/* needs to remain unchanged */
