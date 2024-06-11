@@ -1,5 +1,10 @@
 export HS_ROOT=$(CURDIR)
 
+# sets WS_ROOT if called from extras/hs-test
+ifeq ($(WS_ROOT),)
+export WS_ROOT=$(HS_ROOT)/../..
+endif
+
 ifeq ($(VERBOSE),)
 VERBOSE=false
 endif
@@ -60,7 +65,8 @@ help:
 	@echo " build-cov			 - coverage build of VPP and Docker images"
 	@echo " build-debug          - build test infra (vpp debug image)"
 	@echo " build-go             - just build golang files"
-	@echo " fixstyle             - format .go source files"
+	@echo " checkstyle-go        - check style of .go source files"
+	@echo " fixstyle-go          - format .go source files"
 	@echo " list-tests           - list all tests"
 	@echo
 	@echo "make build arguments:"
@@ -171,7 +177,26 @@ install-deps:
 	fi
 	@touch .deps.ok
 
-.PHONY: fixstyle
-fixstyle:
-	@gofmt -w .
+.PHONY: checkstyle-go
+checkstyle-go:
+	@output=$$(gofmt -d $${WS_ROOT}); \
+    if [ -z "$$output" ]; then \
+        echo "*******************************************************************"; \
+        echo "Checkstyle OK."; \
+        echo "*******************************************************************"; \
+    else \
+        echo "$$output"; \
+        echo "*******************************************************************"; \
+        echo "Checkstyle failed. Use 'make fixstyle-go' or fix errors manually."; \
+        echo "*******************************************************************"; \
+        exit 1; \
+    fi
+
+.PHONY: fixstyle-go
+fixstyle-go:
+	@echo "Modified files:"
+	@gofmt -w -l $(WS_ROOT)
 	@go mod tidy
+	@echo "*******************************************************************"
+	@echo "Fixstyle done."
+	@echo "*******************************************************************"
