@@ -2845,6 +2845,17 @@ acl_set_aclplugin_interface_fn (vlib_main_t * vm,
     } \
   } while (0)
 
+#define vec_validate_macip_acl_rules(v, idx)                                  \
+  do                                                                          \
+    {                                                                         \
+      if (vec_len (v) < idx + 1)                                              \
+	{                                                                     \
+	  vec_validate (v, idx);                                              \
+	  v[idx].is_permit = 0x1;                                             \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
 static clib_error_t *
 acl_set_aclplugin_acl_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -3060,6 +3071,160 @@ acl_show_aclplugin_macip_interface_fn (vlib_main_t * vm,
 		       vec_elt (am->macip_acl_by_sw_if_index, i));
     }
   return error;
+}
+
+static clib_error_t *
+acl_set_aclplugin_macip_acl_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
+{
+  vl_api_macip_acl_rule_t *rules = 0;
+  int rule_idx = 0;
+  int rv = 0;
+  u32 acl_index = ~0;
+  u32 action = 0;
+  u8 src_mac[6];
+  u8 *tag = 0;
+  u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  ip_prefix_t src_ip;
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      vec_validate_macip_acl_rules (rules, rule_idx);
+      if (unformat (line_input, "permit"))
+	{
+	  rules[rule_idx].is_permit = 1;
+	}
+      else if (unformat (line_input, "deny"))
+	{
+	  rules[rule_idx].is_permit = 0;
+	}
+      else if (unformat (line_input, "action %d", &action))
+	{
+	  rules[rule_idx].is_permit = action;
+	}
+      else if (unformat (line_input, "ip %U", unformat_ip_prefix, &src_ip))
+	{
+	  ip_prefix_encode2 (&src_ip, &rules[rule_idx].src_prefix);
+	}
+      else if (unformat (line_input, "src"))
+	{
+	  /* Everything in MACIP is "source" but allow this verbosity */
+	}
+      else if (unformat (line_input, "mac %U", unformat_mac_address, &src_mac))
+	{
+	  memcpy (rules[rule_idx].src_mac, &src_mac,
+		  sizeof (rules[rule_idx].src_mac));
+	  memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1,
+		  sizeof (rules[rule_idx].src_mac_mask));
+	}
+      else if (unformat (line_input, "mask %U", unformat_mac_address,
+			 &src_mac))
+	{
+	  memcpy (rules[rule_idx].src_mac_mask, &src_mac,
+		  sizeof (rules[rule_idx].src_mac_mask));
+	}
+      else if (unformat (line_input, "tag %s", &tag))
+	;
+      else if (unformat (line_input, ","))
+	{
+	  rule_idx++;
+	}
+      else
+	break;
+    }
+
+  if (!tag)
+    vec_add (tag, "cli", 4);
+
+  rv = macip_acl_add_list (vec_len (rules), rules, &acl_index, tag);
+  vec_free (rules);
+  vec_free (tag);
+
+  unformat_free (line_input);
+  if (rv)
+    return clib_error_return (0, "Failed to set MACIP ACL rule");
+
+  vlib_cli_output (vm, "ACL index:%u", acl_index);
+  return 0;
+}
+
+static clib_error_t *
+acl_macip_delete_aclplugin_acl_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int rv;
+  u32 macip_acl_index = ~0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "index %u", &macip_acl_index))
+	{
+	  /* operate on this acl index (which must exist) */
+	}
+      else
+	break;
+    }
+
+  if (macip_acl_index == ~0)
+    return (clib_error_return (0, "invalid acl index"));
+
+  rv = macip_acl_del_list (macip_acl_index);
+
+  unformat_free (line_input);
+  if (rv)
+    return (clib_error_return (0, "Failed to delete ACL index"));
+
+  vlib_cli_output (vm, "Deleted ACL index:%u", macip_acl_index);
+  return 0;
+}
+
+static clib_error_t *
+acl_set_aclplugin_macip_interface_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  int rv = 0;
+  u32 sw_if_index = ~0;
+  u32 acl_index = ~0;
+  u32 is_add = 1;
+  unformat_input_t _line_input, *line_input = &_line_input;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+		    vnet_get_main (), &sw_if_index))
+	;
+      else if (unformat (line_input, "add"))
+	is_add = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "acl %u", &acl_index))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    return (clib_error_return (0, "invalid interface"));
+
+  if (acl_index == ~0)
+    return (clib_error_return (0, "invalid acl index"));
+
+  rv = macip_acl_interface_add_del_acl (sw_if_index, is_add, acl_index);
+
+  if (rv)
+    return (clib_error_return (0, "Failed to add acl rule to interface"));
+
+  return 0;
 }
 
 static void
@@ -3632,6 +3797,38 @@ VLIB_CLI_COMMAND (aclplugin_set_acl_command, static) = {
 };
 
 /*?
+ * Create an MACIP Access Control List (ACL)
+ *  A MACIP ACL is used to add L2-L3 ACL rules.
+ *  A MACIP ACL can be added similar to ACL rules by using following command :
+ *
+ *  @cliexcmd{set acl-plugin macip acl <permit|deny|action N>
+ *  ip <PREFIX> mac <MAC> mask <int> [tag FOO] {use comma
+ *  separated list for multiple rules}}
+ ?*/
+VLIB_CLI_COMMAND (aclplugin_macip_set_acl_command, static) = {
+  .path = "set acl-plugin macip acl ",
+  .short_help = "set acl-plugin macip acl <permit|deny|action N> "
+		"ip <PREFIX> mac <MAC> mask <int> [tag FOO] {use comma "
+		"separated list for multiple rules}",
+  .function = acl_set_aclplugin_macip_acl_fn,
+};
+
+/*?
+ * [un]Apply a MACIP ACL to an interface.
+ * The ACL being applied must already exist.
+ *
+ * @cliexpar
+ * <b><em> set acl-plugin macip interface <interface> <acl INDEX> [del]
+ </b></em>
+ * @cliexend
+ ?*/
+VLIB_CLI_COMMAND (aclplugin_macip_set_interface_command, static) = {
+  .path = "set acl-plugin macip interface",
+  .short_help = "set acl-plugin macip interface <interface> <acl INDEX> [del]",
+  .function = acl_set_aclplugin_macip_interface_fn,
+};
+
+/*?
  * Delete an Access Control List (ACL)
  *  Removes an ACL at the specified index, which must exist but not in use by
  *  any interface.
@@ -3642,6 +3839,20 @@ VLIB_CLI_COMMAND (aclplugin_delete_acl_command, static) = {
   .path = "delete acl-plugin acl",
   .short_help = "delete acl-plugin acl index <idx>",
   .function = acl_delete_aclplugin_acl_fn,
+};
+
+/*?
+ * Delete a MACIP Access Control List (ACL)
+ *  Removes an MACIP ACL at the specified index, which must exist but not in
+ *  use by
+ *  any interface.
+ *
+ * @cliexcmd{delete acl-plugin macip acl index <idx>}
+ ?*/
+VLIB_CLI_COMMAND (aclplugin_macip_delete_acl_command, static) = {
+  .path = "delete acl-plugin macip acl",
+  .short_help = "delete acl-plugin macip acl index <idx>",
+  .function = acl_macip_delete_aclplugin_acl_fn,
 };
 
 static clib_error_t *
