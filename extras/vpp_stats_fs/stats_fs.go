@@ -132,7 +132,7 @@ func getCounterContent(index uint32, client *statsclient.StatsClient) (content s
 	return content, fs.OK
 }
 
-//The dirNode structure represents directories
+// The dirNode structure represents directories
 type dirNode struct {
 	fs.Inode
 	client *statsclient.StatsClient
@@ -175,7 +175,7 @@ func (dn *dirNode) Opendir(ctx context.Context) syscall.Errno {
 	return status
 }
 
-//The statNode structure represents counters
+// The statNode structure represents counters
 type statNode struct {
 	fs.Inode
 	client *statsclient.StatsClient
@@ -192,7 +192,7 @@ func (fh *statNode) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.Attr
 	return 0
 }
 
-//When a file is opened, the correpsonding counter value is dumped and a file handle is created
+// When a file is opened, the correpsonding counter value is dumped and a file handle is created
 func (sn *statNode) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
 	content, status := getCounterContent(sn.index, sn.client)
 	if status == syscall.ENOENT {
@@ -220,7 +220,7 @@ func (fh *statFH) Read(ctx context.Context, data []byte, off int64) (fuse.ReadRe
 	return fuse.ReadResultData(fh.data[off:end]), fs.OK
 }
 
-//NewStatsFileSystem creates the fs for the stat segment.
+// NewStatsFileSystem creates the fs for the stat segment.
 func NewStatsFileSystem(sc *statsclient.StatsClient) (root fs.InodeEmbedder, err error) {
 	return &dirNode{client: sc}, nil
 }
