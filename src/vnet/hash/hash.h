@@ -10,7 +10,8 @@
 
 #define foreach_vnet_hash_fn_types                                            \
   _ (ETHERNET, 0, "hash-fn-ethernet")                                         \
-  _ (IP, 1, "hash-fn-ip")
+  _ (IP, 1, "hash-fn-ip")                                                     \
+  _ (ESP, 2, "hash-fn-esp")
 
 typedef enum
 {

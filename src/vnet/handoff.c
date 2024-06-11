@@ -19,11 +19,21 @@
 #include <vlib/threads.h>
 #include <vnet/feature/feature.h>
 
+enum
+{
+  IP_TYPE_L3 = 0,
+  IP_TYPE_L4 = 1,
+  IP_TYPE_ESP = 2
+};
+
 typedef struct
 {
   vnet_hash_fn_t hash_fn;
   uword *workers_bitmap;
   u32 *workers;
+  u32 ip_type;
+  u32 sw_if_index;
+  u32 queue_size;
 } per_inteface_handoff_data_t;
 
 typedef struct
@@ -184,8 +194,9 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
 
 int
 interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
-				  uword *bitmap, u8 is_sym, int is_l4,
-				  int enable_disable)
+				  uword *bitmap, u8 is_sym, int ip_type,
+				  int enable_disable, u32 queue_size,
+				  u8 *input_node)
 {
   handoff_main_t *hm = &handoff_main;
   vnet_sw_interface_t *sw;
@@ -205,8 +216,17 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 
   if (hm->frame_queue_index == ~0)
     {
-      vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-      hm->frame_queue_index = vlib_frame_queue_main_init (n->index, 0);
+      vlib_node_t *n = 0;
+      if (input_node != 0)
+	{
+	  n = vlib_get_node_by_name (vm, input_node);
+	}
+      else
+	{
+	  n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
+	}
+      hm->frame_queue_index =
+	vlib_frame_queue_main_init (n->index, queue_size);
     }
 
   vec_validate (hm->if_data, sw_if_index);
@@ -217,7 +237,10 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 
   if (enable_disable)
     {
+      d->ip_type = ip_type;
+      d->sw_if_index = sw_if_index;
       d->workers_bitmap = bitmap;
+      d->queue_size = queue_size;
       clib_bitmap_foreach (i, bitmap)
 	{
 	  vec_add1(d->workers, i);
@@ -225,7 +248,7 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 
       if (is_sym)
 	{
-	  if (is_l4)
+	  if (ip_type == IP_TYPE_L4)
 	    return VNET_API_ERROR_UNIMPLEMENTED;
 
 	  d->hash_fn = vnet_hash_function_from_name (
@@ -233,13 +256,21 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 	}
       else
 	{
-	  if (is_l4)
+	  if (ip_type == IP_TYPE_L4)
 	    d->hash_fn =
 	      vnet_hash_default_function (VNET_HASH_FN_TYPE_ETHERNET);
+	  else if (ip_type == IP_TYPE_ESP)
+	    d->hash_fn = vnet_hash_function_from_name ("handoff-esp",
+						       VNET_HASH_FN_TYPE_ESP);
 	  else
 	    d->hash_fn = vnet_hash_function_from_name (
 	      "handoff-eth", VNET_HASH_FN_TYPE_ETHERNET);
 	}
+    }
+  else
+    {
+      if (bitmap != 0)
+	vec_free (bitmap);
     }
 
   vnet_feature_enable_disable ("device-input", "worker-handoff",
@@ -254,9 +285,11 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
-  u32 sw_if_index = ~0, is_sym = 0, is_l4 = 0;
+  u32 sw_if_index = ~0, is_sym = 0, ip_type = 0;
+  u32 queue_size = 0; /* default 64 */
   int enable_disable = 1;
   uword *bitmap = 0;
+  u8 *input_node = 0;
   int rv = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -273,7 +306,13 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
       else if (unformat (input, "asymmetrical"))
 	is_sym = 0;
       else if (unformat (input, "l4"))
-	is_l4 = 1;
+	ip_type = 1;
+      else if (unformat (input, "esp"))
+	ip_type = 2;
+      else if (unformat (input, "queue-size %u", &queue_size))
+	;
+      else if (unformat (input, "input-node %s", &input_node))
+	;
       else
 	break;
     }
@@ -281,11 +320,20 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
 
-  if (bitmap == 0)
+  if ((enable_disable == 0) && (bitmap == 0))
     return clib_error_return (0, "Please specify list of workers...");
 
-  rv = interface_handoff_enable_disable (vm, sw_if_index, bitmap, is_sym,
-					 is_l4, enable_disable);
+  if (input_node != 0)
+    {
+      vlib_node_t *n = 0;
+      n = vlib_get_node_by_name (vm, input_node);
+      if (n == 0)
+	return clib_error_return (0, "Invalid input node name ...");
+    }
+
+  rv =
+    interface_handoff_enable_disable (vm, sw_if_index, bitmap, is_sym, ip_type,
+				      enable_disable, queue_size, input_node);
 
   switch (rv)
     {
@@ -315,8 +363,52 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
   .short_help = "set interface handoff <interface-name> workers <workers-list>"
-		" [symmetrical|asymmetrical]",
+		" [symmetrical|asymmetrical] [l4|esp] [queue-size <n>] "
+		"[input-node <s>] [disable]",
   .function = set_interface_handoff_command_fn,
+};
+
+static clib_error_t *
+show_interface_handoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  handoff_main_t *hm = &handoff_main;
+  per_inteface_handoff_data_t *d;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  vec_foreach (d, hm->if_data)
+    {
+      if (d == 0)
+	continue;
+      if (d->workers_bitmap == 0)
+	continue;
+      if (d->ip_type == 2)
+	{
+	  vlib_cli_output (vm, "%U: workers %08x ip_type: esp, queue_size: %u",
+			   format_vnet_sw_if_index_name, vnm, d->sw_if_index,
+			   *(d->workers_bitmap), d->queue_size);
+	}
+      else if (d->ip_type == 1)
+	{
+	  vlib_cli_output (vm, "%U: workers %08x ip_type: l4, queue_size: %u",
+			   format_vnet_sw_if_index_name, vnm, d->sw_if_index,
+			   *(d->workers_bitmap), d->queue_size);
+	}
+      else
+	{
+	  vlib_cli_output (vm, "%U: workers %08x ip_type: l3, queue_size: %u",
+			   format_vnet_sw_if_index_name, vnm, d->sw_if_index,
+			   *(d->workers_bitmap), d->queue_size);
+	}
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_interface_handoff_command, static) = {
+  .path = "show interface handoff",
+  .short_help = "show interface handoff",
+  .function = show_interface_handoff_command_fn,
 };
 
 clib_error_t *

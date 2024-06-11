@@ -21,6 +21,8 @@
 #include <vnet/mpls/packet.h>
 #include <vppinfra/crc32.h>
 #include <vppinfra/xxhash.h>
+#include <vnet/ipsec/esp.h>
+#include <vnet/udp/udp_local.h>
 
 always_inline u32
 ho_hash (u64 key)
@@ -51,6 +53,29 @@ ipv6_get_key (ip6_header_t * ip)
     rotate_left (ip->src_address.as_u64[1], 13) ^
     rotate_left (ip->dst_address.as_u64[0], 26) ^
     rotate_left (ip->dst_address.as_u64[1], 39) ^ ip->protocol;
+
+  return hash_key;
+}
+
+static inline u64
+ipv4_esp_get_key (ip4_header_t *ip, u32 spi)
+{
+  u64 hash_key;
+
+  hash_key = *((u64 *) (&ip->address_pair)) ^ ip->protocol ^ spi;
+
+  return hash_key;
+}
+
+static inline u64
+ipv6_esp_get_key (ip6_header_t *ip, u32 spi)
+{
+  u64 hash_key;
+
+  hash_key = ip->src_address.as_u64[0] ^
+	     rotate_left (ip->src_address.as_u64[1], 13) ^
+	     rotate_left (ip->dst_address.as_u64[0], 26) ^
+	     rotate_left (ip->dst_address.as_u64[1], 39) ^ ip->protocol ^ spi;
 
   return hash_key;
 }
@@ -245,6 +270,71 @@ eth_get_key (ethernet_header_t * h0)
   return hash_key;
 }
 
+static inline u64
+esp_get_key (ethernet_header_t *h0)
+{
+  u64 hash_key = 0;
+  ip4_header_t *ip40;
+  ip6_header_t *ip60;
+  esp_header_t *esp0 = NULL;
+  udp_header_t *udp0;
+
+  if (PREDICT_TRUE (h0->type) == clib_host_to_net_u16 (ETHERNET_TYPE_IP4))
+    {
+      ip40 = (ip4_header_t *) (h0 + 1);
+      if (ip40->protocol == IP_PROTOCOL_IPSEC_ESP)
+	{
+	  esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
+	  hash_key = ipv4_esp_get_key (ip40, clib_net_to_host_u32 (esp0->spi));
+	}
+      else if (ip40->protocol == IP_PROTOCOL_UDP)
+	{
+	  udp0 = (udp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40));
+	  if (udp0->dst_port == clib_host_to_net_u16 (UDP_DST_PORT_ipsec))
+	    {
+	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
+	      hash_key =
+		ipv4_esp_get_key (ip40, clib_net_to_host_u32 (esp0->spi));
+	    }
+	}
+      else
+	{
+	  /* normal ip hashing */
+	  hash_key = 0;
+	}
+    }
+  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+    {
+      ip60 = (ip6_header_t *) (h0 + 1);
+      if (ip60->protocol == IP_PROTOCOL_IPSEC_ESP)
+	{
+	  esp0 = (esp_header_t *) ((u8 *) ip60 + sizeof (ip60[0]));
+	  hash_key = ipv6_esp_get_key (ip60, clib_net_to_host_u32 (esp0->spi));
+	}
+      else if (ip60->protocol == IP_PROTOCOL_UDP)
+	{
+	  udp0 = (udp_header_t *) ((u8 *) ip60 + sizeof (udp_header_t));
+	  if (udp0->dst_port == clib_host_to_net_u16 (UDP_DST_PORT_ipsec))
+	    {
+	      esp0 = (esp_header_t *) ((u8 *) udp0 + sizeof (udp_header_t));
+	      hash_key =
+		ipv6_esp_get_key (ip60, clib_net_to_host_u32 (esp0->spi));
+	    }
+	}
+      else
+	{
+	  /* normal ip hashing */
+	  hash_key = 0;
+	}
+    }
+  else
+    {
+      hash_key = 0;
+    }
+
+  return hash_key;
+}
+
 void
 handoff_eth_func (void **p, u32 *hash, u32 n_packets)
 {
@@ -341,6 +431,55 @@ VNET_REGISTER_HASH_FUNCTION (handoff_eth_sym, static) = {
   .description = "Ethernet/IPv4/IPv6/MPLS headers Symmetric",
   .priority = 1,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_sym_func,
+};
+
+void
+handoff_esp_func (void **p, u32 *hash, u32 n_packets)
+{
+  u32 n_left_from = n_packets;
+
+  while (n_left_from >= 8)
+    {
+      u64 key[4] = {};
+
+      clib_prefetch_load (p[4]);
+      clib_prefetch_load (p[5]);
+      clib_prefetch_load (p[6]);
+      clib_prefetch_load (p[7]);
+
+      key[0] = esp_get_key ((ethernet_header_t *) p[0]);
+      key[1] = esp_get_key ((ethernet_header_t *) p[1]);
+      key[2] = esp_get_key ((ethernet_header_t *) p[2]);
+      key[3] = esp_get_key ((ethernet_header_t *) p[3]);
+
+      hash[0] = ho_hash (key[0]);
+      hash[1] = ho_hash (key[1]);
+      hash[2] = ho_hash (key[2]);
+      hash[3] = ho_hash (key[3]);
+
+      hash += 4;
+      n_left_from -= 4;
+      p += 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      u64 key;
+
+      key = esp_get_key ((ethernet_header_t *) p[0]);
+      hash[0] = ho_hash (key);
+
+      hash += 1;
+      n_left_from -= 1;
+      p += 1;
+    }
+}
+
+VNET_REGISTER_HASH_FUNCTION (handoff_esp, static) = {
+  .name = "handoff-esp",
+  .description = "Ethernet/IPv4/IPv6/ESP headers",
+  .priority = 1,
+  .function[VNET_HASH_FN_TYPE_ESP] = handoff_esp_func,
 };
 
 /*
