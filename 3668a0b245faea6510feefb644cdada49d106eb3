@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cbf1a64_904c57ad",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1483,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-12T07:23:39Z",
+      "side": 1,
+      "message": "what about\n\n  num_workers \u003d clib_min(vlib_get_n_threads(), ARRAY_LEN(rmp-\u003enum_inbound_sa));\n  memcpy_s(rmp-\u003enum_inbound_sa, sizeof(rmp-\u003enum_inbound_sa), num_isas, num_workers * sizeof(rmp-\u003enum_inbound_sa[0]));\n  \nor similar?",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4acb5805_84745fab",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1486,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-12T07:23:39Z",
+      "side": 1,
+      "message": "should be num_workers instead",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9973ec6_a0ffa9ac",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1492,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-12T07:23:39Z",
+      "side": 1,
+      "message": "REPLY_MACRO2 can return before reaching this point in case of API error leading to a memory leak, the call to ipsec_sa_worker_distribution should probably be in the macro too (so it is not called if the macro returns early).",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
