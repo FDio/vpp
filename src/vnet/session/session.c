@@ -1689,7 +1689,8 @@ session_transport_reset (session_t * s)
     {
       if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
 	session_set_state (s, SESSION_STATE_CLOSED);
-      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED &&
+	       !(s->flags & SESSION_F_HALF_OPEN))
 	session_program_cleanup (s);
       return;
     }
