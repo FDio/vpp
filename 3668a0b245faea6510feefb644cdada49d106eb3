@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cecea4f_a588425d",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1483,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-06-12T13:41:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7cbf1a64_904c57ad",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4acb5805_84745fab",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0797b1fe_6d034d73",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1486,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-06-12T13:41:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4acb5805_84745fab",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a9973ec6_a0ffa9ac",
@@ -48,6 +84,24 @@
       "writtenOn": "2024-06-12T07:23:39Z",
       "side": 1,
       "message": "REPLY_MACRO2 can return before reaching this point in case of API error leading to a memory leak, the call to ipsec_sa_worker_distribution should probably be in the macro too (so it is not called if the macro returns early).",
+      "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4301a036_53e53cbf",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1492,
+      "author": {
+        "id": 2551
+      },
+      "writtenOn": "2024-06-12T13:41:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a9973ec6_a0ffa9ac",
       "revId": "3668a0b245faea6510feefb644cdada49d106eb3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
