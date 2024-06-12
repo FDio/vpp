@@ -149,7 +149,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
 
   add_vpp_march_variant(scalar
     FLAGS -march=core2 -mno-mmx -mno-sse
-    OFF
   )
 
   add_vpp_march_variant(znver3

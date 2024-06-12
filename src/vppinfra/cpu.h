@@ -253,7 +253,7 @@ clib_cpu_supports_aes ()
 static inline int
 clib_cpu_march_priority_scalar ()
 {
-  return 1;
+  return 1000;
 }
 
 static inline int
