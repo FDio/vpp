@@ -360,6 +360,40 @@ api_ipsec_sa_v5_dump (vat_main_t *vat)
 }
 
 static int
+api_ipsec_sa_seq_window_dump (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_sa_seq_window_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sa_id = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IPSEC_SA_SEQ_WINDOW_DUMP, mp);
+
+  mp->sa_index = ntohl (sa_id);
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  PING (&ipsec_test_main, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
 api_ipsec_tunnel_protect_dump (vat_main_t *vat)
 {
   return -1;
@@ -426,6 +460,22 @@ vl_api_ipsec_sa_v4_details_t_handler (vl_api_ipsec_sa_v4_details_t *mp)
 static void
 vl_api_ipsec_sa_v5_details_t_handler (vl_api_ipsec_sa_v5_details_t *mp)
 {
+}
+
+static void
+vl_api_ipsec_sa_seq_window_details_t_handler (
+  vl_api_ipsec_sa_seq_window_details_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  int idx = 0;
+  for (idx = 0; idx < ntohl (mp->num_sa); idx++)
+    {
+      print (vam->ofp, "sa_id %u seq %u seq_hi %u replay_window %lu",
+	     ntohl (mp->entry[idx].sa_id), ntohl (mp->entry[idx].seq),
+	     ntohl (mp->entry[idx].seq_hi),
+	     clib_net_to_host_u64 (mp->entry[idx].replay_window));
+    }
 }
 
 static int
@@ -707,6 +757,110 @@ static int
 api_ipsec_set_async_mode (vat_main_t *vam)
 {
   return -1;
+}
+
+static int
+api_ipsec_set_list_seq_and_window (vat_main_t *vam)
+{
+  return -1;
+}
+
+static int
+api_ipsec_set_seq_and_window (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_set_seq_and_window_t *mp;
+
+  u32 sa_id = ~0;
+  u32 seq = ~0;
+  u64 replay_window;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else if (unformat (i, "seq %d", &seq))
+	;
+      else if (unformat (i, "window %d", &replay_window))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sa_id == (u32) ~0)
+    {
+      errmsg ("sa_id must be set");
+      return -99;
+    }
+
+  if (seq == (u32) ~0)
+    {
+      errmsg ("seq must be set");
+      return -99;
+    }
+
+  M (IPSEC_SET_SEQ_AND_WINDOW_REPLY, mp);
+
+  mp->sa_id = ntohl (sa_id);
+  mp->seq = ntohl (seq);
+  mp->replay_window = clib_host_to_net_u64 (replay_window);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static void
+vl_api_ipsec_get_seq_and_window_reply_t_handler (
+  vl_api_ipsec_get_seq_and_window_reply_t *rmp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (rmp->retval);
+
+  print (vam->ofp, "seq %u replay_window %lu\n", ntohl (rmp->seq),
+	 clib_net_to_host_u64 (rmp->replay_window));
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int
+api_ipsec_get_seq_and_window (vat_main_t *vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_set_seq_and_window_t *mp;
+
+  u32 sa_id = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sa_id == (u32) ~0)
+    {
+      errmsg ("sa_id must be set");
+      return -99;
+    }
+
+  M (IPSEC_GET_SEQ_AND_WINDOW_REPLY, mp);
+
+  mp->sa_id = ntohl (sa_id);
+
+  S (mp);
+  W (ret);
+  return ret;
 }
 
 static int

@@ -492,6 +492,18 @@ define ipsec_sa_v5_dump
   u32 sa_id;
 };
 
+/** \brief Dump IPsec sa's seq and window
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_id - optional ID of an SA to dump, if ~0 dump all SAs' seq and window in SAD
+*/
+define ipsec_sa_seq_window_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sa_index;
+};
+
 /** \brief IPsec security association database response
     @param context - sender context which was passed in the request
     @param entry - The SA details
@@ -564,6 +576,20 @@ define ipsec_sa_v5_details {
   u64 replay_window;
   u32 thread_index;
   u32 stat_index;
+};
+
+typedef sad_seq_window_entry
+{
+  u32 sa_id;
+  u32 seq;
+  u32 seq_hi;
+  u64 replay_window;
+};
+
+define ipsec_sa_seq_window_details {
+  u32 context;
+  u32 num_sa;
+  vl_api_sad_seq_window_entry_t entry[128];
 };
 
 /** \brief Dump IPsec backends
@@ -699,6 +725,54 @@ counters esp_decrypt {
   units "packets";
   description "no available frame (packet dropped)";
   };
+};
+
+/** \brief IPsec Set list of SA's seq and window
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param num_sa - num sa
+    @param sa_id - list of sa id
+    @param seq - list of sa's seq
+    @param replay_window - list of sa's window
+*/
+autoreply define ipsec_set_list_seq_and_window {
+  u32 client_index;
+  u32 context;
+  u32 num_sa;
+  vl_api_sad_seq_window_entry_t entry[128];
+};
+
+/** \brief IPsec Set seq and window
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param seq - seq to set
+    @param replay_window - window to set
+*/
+autoreply define ipsec_set_seq_and_window {
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+  u32 seq;
+  u64 replay_window;
+};
+
+/** \brief IPsec Get seq and window
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_id - sa_id to get
+*/
+define ipsec_get_seq_and_window {
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
+
+define ipsec_get_seq_and_window_reply
+{
+  u32 context;
+  i32 retval;
+  u32 seq;
+  u64 replay_window;
 };
 
 counters esp_encrypt {

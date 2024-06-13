@@ -1378,6 +1378,92 @@ vl_api_ipsec_sa_v5_dump_t_handler (vl_api_ipsec_sa_v5_dump_t *mp)
 }
 
 static void
+send_ipsec_sa_seq_window_details (vl_api_registration_t *reg, u32 context,
+				  u32 sa_idx)
+{
+  ipsec_sa_t *sa;
+  int num_sa = 0;
+  vl_api_ipsec_sa_seq_window_details_t *mp = NULL;
+
+  if (sa_idx != ~0)
+    {
+      mp = vl_msg_api_alloc (sizeof (*mp));
+      clib_memset (mp, 0, sizeof (*mp));
+      mp->_vl_msg_id =
+	ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_SEQ_WINDOW_DETAILS);
+      mp->context = context;
+      mp->num_sa = 0;
+      if (!pool_is_free_index (ipsec_sa_pool, sa_idx))
+	{
+	  sa = ipsec_sa_get (sa_idx);
+	  mp->entry[num_sa].sa_id = htonl (sa->id);
+	  mp->entry[num_sa].seq = htonl (sa->seq);
+	  mp->entry[num_sa].seq_hi = htonl (sa->seq_hi);
+	  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
+	    mp->entry[num_sa].replay_window =
+	      clib_host_to_net_u64 (sa->replay_window);
+	  num_sa++;
+	}
+      mp->num_sa = htonl (num_sa);
+      vl_api_send_msg (reg, (u8 *) mp);
+      return;
+    }
+
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      if (mp == NULL)
+	{
+	  mp = vl_msg_api_alloc (sizeof (*mp));
+	  clib_memset (mp, 0, sizeof (*mp));
+	  mp->_vl_msg_id =
+	    ntohs (REPLY_MSG_ID_BASE + VL_API_IPSEC_SA_SEQ_WINDOW_DETAILS);
+	  mp->context = context;
+	  mp->num_sa = 0;
+	}
+      mp->entry[num_sa].sa_id = htonl (sa->id);
+      mp->entry[num_sa].seq = htonl (sa->seq);
+      mp->entry[num_sa].seq_hi = htonl (sa->seq_hi);
+      if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
+	mp->entry[num_sa].replay_window =
+	  clib_host_to_net_u64 (sa->replay_window);
+      num_sa++;
+
+      if (num_sa < 128)
+	{
+	  continue;
+	}
+
+      mp->num_sa = htonl (num_sa);
+      vl_api_send_msg (reg, (u8 *) mp);
+      mp = NULL;
+      num_sa = 0;
+    }
+
+  if (num_sa != 0)
+    {
+      mp->num_sa = htonl (num_sa);
+      vl_api_send_msg (reg, (u8 *) mp);
+      mp = NULL;
+      num_sa = 0;
+    }
+}
+
+static void
+vl_api_ipsec_sa_seq_window_dump_t_handler (
+  vl_api_ipsec_sa_seq_window_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  u32 sa_index = ntohl (mp->sa_index);
+
+  send_ipsec_sa_seq_window_details (reg, mp->context, sa_index);
+}
+
+static void
 vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t *mp)
 {
   vl_api_registration_t *rp;
@@ -1463,6 +1549,100 @@ vl_api_ipsec_set_async_mode_t_handler (vl_api_ipsec_set_async_mode_t * mp)
   ipsec_set_async_mode (mp->async_enable);
 
   REPLY_MACRO (VL_API_IPSEC_SET_ASYNC_MODE_REPLY);
+}
+
+static void
+vl_api_ipsec_set_list_seq_and_window_t_handler (
+  vl_api_ipsec_set_list_seq_and_window_t *mp)
+{
+  vl_api_ipsec_set_list_seq_and_window_reply_t *rmp;
+  ipsec_sa_t *sa;
+  index_t id;
+  int rv = -1;
+  u32 seq;
+  u64 replay_window;
+  int idx;
+  int num_sa = ntohl (mp->num_sa);
+
+  for (idx = 0; idx < num_sa; idx++)
+    {
+      id = ipsec_sa_find_and_lock (ntohl (mp->entry[idx].sa_id));
+      if (~0 == id)
+	continue;
+      sa = ipsec_sa_get (id);
+      seq = ntohl (mp->entry[idx].seq);
+      replay_window = clib_net_to_host_u64 (mp->entry[idx].replay_window);
+      if (seq != ~0)
+	sa->seq = seq;
+      if (replay_window != ~0)
+	sa->replay_window = replay_window;
+      ipsec_sa_unlock (id);
+    }
+  rv = 0;
+
+  REPLY_MACRO (VL_API_IPSEC_SET_LIST_SEQ_AND_WINDOW_REPLY);
+}
+
+static void
+vl_api_ipsec_set_seq_and_window_t_handler (
+  vl_api_ipsec_set_seq_and_window_t *mp)
+{
+  vl_api_ipsec_set_seq_and_window_reply_t *rmp;
+  ipsec_sa_t *sa;
+  index_t id;
+  int rv = -1;
+  u32 seq;
+  u64 replay_window;
+
+  id = ipsec_sa_find_and_lock (ntohl (mp->sa_id));
+  if (~0 == id)
+    goto done;
+
+  sa = ipsec_sa_get (id);
+
+  seq = ntohl (mp->seq);
+  replay_window = clib_net_to_host_u64 (mp->replay_window);
+
+  if (seq != ~0)
+    sa->seq = seq;
+
+  if (replay_window != ~0)
+    sa->replay_window = replay_window;
+
+  rv = 0;
+  ipsec_sa_unlock (id);
+
+done:
+  REPLY_MACRO (VL_API_IPSEC_SET_SEQ_AND_WINDOW_REPLY);
+}
+
+static void
+vl_api_ipsec_get_seq_and_window_t_handler (
+  vl_api_ipsec_get_seq_and_window_t *mp)
+{
+  vl_api_ipsec_get_seq_and_window_reply_t *rmp;
+  ipsec_sa_t *sa;
+  int rv = -1;
+  index_t id;
+  u64 replay_window = 0;
+  u32 seq = 0;
+
+  id = ipsec_sa_find_and_lock (ntohl (mp->sa_id));
+  if (~0 == id)
+    goto done;
+
+  sa = ipsec_sa_get (id);
+
+  replay_window = clib_host_to_net_u64 (sa->replay_window);
+  seq = htonl (sa->seq);
+  rv = 0;
+  ipsec_sa_unlock (id);
+
+done:
+  REPLY_MACRO2 (VL_API_IPSEC_GET_SEQ_AND_WINDOW_REPLY, ({
+		  rmp->replay_window = replay_window;
+		  rmp->seq = seq;
+		}));
 }
 
 #include <vnet/ipsec/ipsec.api.c>
