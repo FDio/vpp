@@ -124,6 +124,7 @@ compile_commands.json
 /extras/hs-test/http_server
 /extras/hs-test/.build.ok
 /extras/hs-test/.build.cov.ok
+/extras/hs-test/.last_hst_ppid
 /extras/hs-test/summary/
 
 # ./configure
