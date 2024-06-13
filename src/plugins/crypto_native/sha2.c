@@ -118,12 +118,24 @@ sha2_key_add (vnet_crypto_key_t *key, clib_sha2_type_t type)
 static int
 probe ()
 {
-#if defined(__SHA__) && defined(__x86_64__)
+#if defined(__x86_64__)
+
+#if defined(__SHA__) && defined(__AVX512F__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx512f ())
+    return 30;
+#elif defined(__SHA__) && defined(__AVX2__)
+  if (clib_cpu_supports_sha () && clib_cpu_supports_avx2 ())
+    return 20;
+#elif defined(__SHA__)
   if (clib_cpu_supports_sha ())
-    return 50;
-#elif defined(__ARM_FEATURE_SHA2)
+    return 10;
+#endif
+
+#elif defined(__aarch64__)
+#if defined(__ARM_FEATURE_SHA2)
   if (clib_cpu_supports_sha2 ())
     return 10;
+#endif
 #endif
   return -1;
 }
