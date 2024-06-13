@@ -30,7 +30,7 @@
 #include <dpdk/cryptodev/cryptodev.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
-
+#include <vlib/stats/stats.h>
 #include <rte_ring.h>
 #include <rte_vect.h>
 
@@ -224,6 +224,75 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   if (p)
     return pool_elt_at_index (dm->conf->dev_confs, p[0]);
   return &dm->conf->default_devconf;
+}
+
+/*
+ * Initialise or refresh the xstats counters for a device
+ */
+void
+dpdk_counters_xstats_init (dpdk_device_t *xd)
+{
+  int len, ret, i;
+  struct rte_eth_xstat_name *xstats_names = 0;
+  char *name;
+  dpdk_driver_t *dr = xd->driver;
+
+  /* Only support xstats for supported drivers */
+  if (!dr)
+    return;
+
+  len = rte_eth_xstats_get_names (xd->port_id, 0, 0);
+  if (len < 0)
+    {
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d", xd->port_id,
+		    len);
+      return;
+    }
+  /* Counters for this driver is already initialised */
+  if (vec_len (dr->xstats_counters) == len)
+    {
+      vec_foreach_index (i, dr->xstats_counters)
+	{
+	  vlib_validate_simple_counter (&dr->xstats_counters[i],
+					xd->sw_if_index);
+	  vlib_zero_simple_counter (&dr->xstats_counters[i], xd->sw_if_index);
+	}
+      return;
+    }
+
+  /* Same driver, different interface, different length of counter array. */
+  ASSERT (vec_len (dr->xstats_counters) == 0);
+
+  vec_validate (xstats_names, len - 1);
+
+  ret = rte_eth_xstats_get_names (xd->port_id, xstats_names, len);
+  if (ret >= 0 && ret <= len)
+    {
+      vec_validate (dr->xstats_counters, len - 1);
+      vec_foreach_index (i, xstats_names)
+	{
+	  name = (char *) format (0, "/if/%s/%s%c", dr->drivers->name,
+				  xstats_names[i].name, 0);
+
+	  /* There is a bug in the ENA driver where the xstats names are not
+	   * unique. */
+	  if (vlib_stats_find_entry_index (name) != STAT_SEGMENT_INDEX_INVALID)
+	    {
+	      vec_free (name);
+	      name = (char *) format (0, "/if/%s/%s_%d%c", dr->drivers->name,
+				      xstats_names[i].name, i, 0);
+	    }
+
+	  dr->xstats_counters[i].name = name;
+	  dr->xstats_counters[i].stat_segment_name = name;
+	  dr->xstats_counters[i].counters = 0;
+	  vlib_validate_simple_counter (&dr->xstats_counters[i],
+					xd->sw_if_index);
+	  vlib_zero_simple_counter (&dr->xstats_counters[i], xd->sw_if_index);
+	  vec_free (name);
+	}
+    }
+  vec_free (xstats_names);
 }
 
 static clib_error_t *
@@ -532,6 +601,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (vec_len (xd->errors))
 	dpdk_log_err ("[%u] setup failed Errors:\n  %U", port_id,
 		      format_dpdk_device_errors, xd);
+      dpdk_counters_xstats_init (xd);
     }
 
   for (int i = 0; i < vec_len (dm->devices); i++)

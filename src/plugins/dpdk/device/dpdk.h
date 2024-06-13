@@ -131,6 +131,7 @@ typedef struct
   u32 interface_number_from_port_id : 1;
   u32 use_intel_phdr_cksum : 1;
   u32 int_unmaskable : 1;
+  vlib_simple_counter_main_t *xstats_counters;
 } dpdk_driver_t;
 
 dpdk_driver_t *dpdk_driver_find (const char *name, const char **desc);
