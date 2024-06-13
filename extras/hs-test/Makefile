@@ -67,6 +67,7 @@ help:
 	@echo " build-go             - just build golang files"
 	@echo " checkstyle-go        - check style of .go source files"
 	@echo " fixstyle-go          - format .go source files"
+	@echo " cleanup-hst          - stops and removes all docker contaiers and namespaces"
 	@echo " list-tests           - list all tests"
 	@echo
 	@echo "make build arguments:"
@@ -200,3 +201,12 @@ fixstyle-go:
 	@echo "*******************************************************************"
 	@echo "Fixstyle done."
 	@echo "*******************************************************************"
+
+.PHONY: cleanup-hst
+cleanup-hst:
+	@echo "Removing docker containers."
+	@# "-" ignores errors
+	-docker rm $$(docker stop $$(docker ps -a -q) -t 0)
+	@echo "Removing network namespaces."
+	@ip -a netns del
+	@echo "Done."
