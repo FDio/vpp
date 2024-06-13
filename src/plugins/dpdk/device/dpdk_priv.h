@@ -47,28 +47,35 @@ dpdk_device_flag_set (dpdk_device_t *xd, __typeof__ (xd->flags) flag, int val)
   xd->flags = val ? xd->flags | flag : xd->flags & ~flag;
 }
 
-static inline void
-dpdk_get_xstats (dpdk_device_t * xd)
-{
-  int len, ret;
+void dpdk_counters_xstats_init (dpdk_device_t *xd);
 
+static inline void
+dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
+{
+  int ret;
+  int i;
+  int len = vec_len (xd->xstats);
   if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     return;
-
-  len = rte_eth_xstats_get (xd->port_id, NULL, 0);
-  if (len < 0)
+  if (xd->driver == 0)
     return;
 
-  vec_validate (xd->xstats, len - 1);
-
   ret = rte_eth_xstats_get (xd->port_id, xd->xstats, len);
-  if (ret < 0 || ret > len)
+  if (ret < 0 || ret > len || len != vec_len (xd->driver->xstats_counters))
     {
+      /* Failed, expand vector and try again on next time around the track. */
+      vec_validate (xd->xstats, ret - 1);
       vec_set_len (xd->xstats, 0);
+      dpdk_log_warn ("rte_eth_xstats_get(%d) failed: %d", xd->port_id, ret);
       return;
     }
+  vec_foreach_index (i, xd->xstats)
+    {
+      vlib_set_simple_counter (&xd->driver->xstats_counters[i], thread_index,
+			       xd->sw_if_index, xd->xstats[i].value);
+    }
 
-  vec_set_len (xd->xstats, len);
+  vec_set_len (xd->xstats, ret);
 }
 
 #define DPDK_UPDATE_COUNTER(vnm, tidx, xd, stat, cnt)                         \
@@ -107,7 +114,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
   DPDK_UPDATE_COUNTER (vnm, thread_index, xd, ierrors,
 		       VNET_INTERFACE_COUNTER_RX_ERROR);
 
-  dpdk_get_xstats (xd);
+  dpdk_get_xstats (xd, thread_index);
 }
 
 #if RTE_VERSION < RTE_VERSION_NUM(21, 11, 0, 0)
