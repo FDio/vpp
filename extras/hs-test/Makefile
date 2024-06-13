@@ -67,6 +67,7 @@ help:
 	@echo " build-go             - just build golang files"
 	@echo " checkstyle-go        - check style of .go source files"
 	@echo " fixstyle-go          - format .go source files"
+	@echo " cleanup-hst          - stops and removes all docker contaiers and namespaces"
 	@echo " list-tests           - list all tests"
 	@echo
 	@echo "make build arguments:"
@@ -200,3 +201,26 @@ fixstyle-go:
 	@echo "*******************************************************************"
 	@echo "Fixstyle done."
 	@echo "*******************************************************************"
+
+.PHONY: cleanup-hst
+cleanup-hst:
+	@if [ ! -f ".last_hst_ppid" ]; then \
+		echo "'.last_hst_ppid' file does not exist."; \
+		exit 1; \
+	fi
+	@echo "****************************"
+	@echo "Removing docker containers:"
+	@# "-" ignores errors
+	@-sudo docker rm $$(sudo docker stop $$(sudo docker ps -a -q --filter "name=$$(cat .last_hst_ppid)") -t 0)
+	@echo "****************************"
+	@echo "Removing IP address files:"
+	@find . -type f -regextype egrep -regex '.*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' -exec sudo rm -v {} \;
+	@echo "****************************"
+	@echo "Removing network namespaces:"
+	@for ns in $$(ip netns list | grep $$(cat .last_hst_ppid) | awk '{print $$1}'); do \
+		echo $$ns; \
+    	sudo ip netns delete $$ns; \
+	done
+	@echo "****************************"
+	@echo "Done."
+	@echo "****************************"

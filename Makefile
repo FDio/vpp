@@ -271,8 +271,10 @@ help:
 	@echo " checkstyle-commit    - check commit message format"
 	@echo " checkstyle-python    - check python coding style using 'black' formatter"
 	@echo " checkstyle-api       - check api for incompatible changes"
+	@echo " checkstyle-go        - check style of .go source files"
 	@echo " fixstyle             - fix coding style"
 	@echo " fixstyle-python      - fix python coding style using 'black' formatter"
+	@echo " fixstyle-go          - format .go source files"
 	@echo " doxygen              - DEPRECATED - use 'make docs'"
 	@echo " bootstrap-doxygen    - DEPRECATED"
 	@echo " wipe-doxygen         - DEPRECATED"
@@ -281,6 +283,7 @@ help:
 	@echo " json-api-files       - (re)-generate json api files"
 	@echo " json-api-files-debug - (re)-generate json api files for debug target"
 	@echo " go-api-files         - (re)-generate golang api files"
+	@echo " cleanup-hst          - stops and removes all docker contaiers and namespaces"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
@@ -740,6 +743,10 @@ json-api-files-debug:
 go-api-files: json-api-files
 	$(WS_ROOT)/src/tools/vppapigen/generate_go.py $(ARGS)
 
+.PHONY: cleanup-hst
+cleanup-hst:
+	$(MAKE) -C extras/hs-test cleanup-hst
+
 .PHONY: ctags
 ctags: ctags.files
 	@ctags --totals --tag-relative=yes -L $<
@@ -786,7 +793,7 @@ fixstyle-go:
 	@$(MAKE) -C extras/hs-test fixstyle-go
 
 .PHONY: checkstyle-all
-checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell
+checkstyle-all: checkstyle-commit checkstyle checkstyle-python docs-spell checkstyle-go
 
 .PHONY: fixstyle
 fixstyle:

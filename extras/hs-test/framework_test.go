@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -24,6 +26,14 @@ func TestHst(t *testing.T) {
 	} else {
 		suiteTimeout = time.Minute * 5
 	}
+
+	// creates a file with PPID, used for 'make cleanup-hst'
+	ppid := fmt.Sprint(os.Getppid())
+	ppid = ppid[:len(ppid)-1]
+	f, _ := os.Create(".last_hst_ppid")
+	f.Write([]byte(ppid))
+	f.Close()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HST")
 }
