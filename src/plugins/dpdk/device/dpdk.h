@@ -210,6 +210,7 @@ typedef struct
   struct rte_eth_stats last_stats;
   struct rte_eth_xstat *xstats;
   f64 time_last_stats_update;
+  vlib_simple_counter_main_t *xstats_counters;
 
   /* mac address */
   u8 *default_mac_address;

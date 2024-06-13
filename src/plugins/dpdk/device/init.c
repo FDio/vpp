@@ -226,6 +226,42 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
   return &dm->conf->default_devconf;
 }
 
+void
+dpdk_counters_xstats_init (dpdk_device_t *xd)
+{
+  int len, ret, i;
+  struct rte_eth_xstat_name *xstats_names = 0;
+
+  len = rte_eth_xstats_get_names (xd->port_id, 0, 0);
+  if (len < 0)
+    {
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d", xd->port_id,
+		    len);
+      return;
+    }
+  vec_validate (xstats_names, len - 1);
+
+  ret = rte_eth_xstats_get_names (xd->port_id, xstats_names, len);
+  if (ret >= 0 && ret <= len)
+    {
+      vec_validate (xd->xstats_counters, len - 1);
+      vec_foreach_index (i, xstats_names)
+	{
+	  if (xd->xstats_counters[i].name)
+	    vec_free (xd->xstats_counters[i].name);
+	  u8 *name =
+	    format (0, "/if/%s/%s", xd->if_desc ? xd->if_desc : "unknown",
+		    xstats_names[i].name);
+	  xd->xstats_counters[i].name = (char *) name;
+	  xd->xstats_counters[i].stat_segment_name = (char *) name;
+	  vlib_validate_simple_counter (&xd->xstats_counters[i],
+					xd->sw_if_index);
+	  vlib_zero_simple_counter (&xd->xstats_counters[i], xd->sw_if_index);
+	}
+    }
+  vec_free (xstats_names);
+}
+
 static clib_error_t *
 dpdk_lib_init (dpdk_main_t * dm)
 {
@@ -532,6 +568,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (vec_len (xd->errors))
 	dpdk_log_err ("[%u] setup failed Errors:\n  %U", port_id,
 		      format_dpdk_device_errors, xd);
+      dpdk_counters_xstats_init (xd);
     }
 
   for (int i = 0; i < vec_len (dm->devices); i++)
