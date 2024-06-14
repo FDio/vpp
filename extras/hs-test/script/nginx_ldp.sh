@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-$1 -v && LD_PRELOAD=$LDP $@ 2>&1 > /proc/1/fd/1
+# shellcheck disable=SC2068
+$1 -v && LD_PRELOAD=$LDP $@ > /proc/1/fd/1 2>&1
