@@ -1,26 +1,27 @@
 package main
 
 import (
+	. "fd.io/hs-test/infra"
 	"github.com/edwarnicke/exechelper"
 )
 
 func init() {
-	registerNginxTests(MirroringTest)
+	RegisterNginxTests(MirroringTest)
 }
 
 // broken when CPUS > 1
 func MirroringTest(s *NginxSuite) {
 	s.SkipIfMultiWorker()
-	proxyAddress := s.getInterfaceByName(mirroringClientInterfaceName).peer.ip4AddressString()
+	proxyAddress := s.GetInterfaceByName(MirroringClientInterfaceName).Peer.Ip4AddressString()
 
 	path := "/64B.json"
 
 	testCommand := "wrk -c 20 -t 10 -d 10 http://" + proxyAddress + ":80" + path
-	s.log(testCommand)
+	s.Log(testCommand)
 	o, _ := exechelper.Output(testCommand)
-	s.log(string(o))
-	s.assertNotEmpty(o)
+	s.Log(string(o))
+	s.AssertNotEmpty(o)
 
-	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	s.assertEqual(0, vppProxyContainer.vppInstance.GetSessionStat("no lcl port"))
+	vppProxyContainer := s.GetContainerByName(VppProxyContainerName)
+	s.AssertEqual(0, vppProxyContainer.VppInstance.GetSessionStat("no lcl port"))
 }

@@ -53,28 +53,25 @@ ifeq ($(ARCH),)
 ARCH=$(shell dpkg --print-architecture)
 endif
 
-list_tests = @go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'Test' | \
-		sed 's/^/* /; s/\(Suite\) /\1\//g'
-
 .PHONY: help
 help:
 	@echo "Make targets:"
-	@echo " test                 - run tests"
-	@echo " test-debug           - run tests (vpp debug image)"
-	@echo " build                - build test infra"
-	@echo " build-cov			 - coverage build of VPP and Docker images"
-	@echo " build-debug          - build test infra (vpp debug image)"
-	@echo " build-go             - just build golang files"
-	@echo " checkstyle-go        - check style of .go source files"
-	@echo " fixstyle-go          - format .go source files"
-	@echo " cleanup-hst          - stops and removes all docker contaiers and namespaces"
-	@echo " list-tests           - list all tests"
+	@echo " test                     - run tests"
+	@echo " test-debug               - run tests (vpp debug image)"
+	@echo " build                    - build test infra"
+	@echo " build-cov                - coverage build of VPP and Docker images"
+	@echo " build-debug              - build test infra (vpp debug image)"
+	@echo " build-go                 - just build golang files"
+	@echo " checkstyle-go            - check style of .go source files"
+	@echo " fixstyle-go              - format .go source files"
+	@echo " cleanup-hst              - stops and removes all docker contaiers and namespaces"
+	@echo " list-tests               - list all tests"
 	@echo
-	@echo "make build arguments:"
+	@echo "'make build' arguments:"
 	@echo " UBUNTU_VERSION           - ubuntu version for docker image"
-	@echo " HST_EXTENDED_TESTS	 - build extended tests"
+	@echo " HST_EXTENDED_TESTS       - build extended tests"
 	@echo
-	@echo "make test arguments:"
+	@echo "'make test' arguments:"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " VERBOSE=[true|false]     - verbose output"
 	@echo " UNCONFIGURE=[true|false] - unconfigure selected test"
@@ -86,11 +83,12 @@ help:
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo
 	@echo "List of all tests:"
-	$(call list_tests)
+	@$(MAKE) list-tests
 
 .PHONY: list-tests
 list-tests:
-	$(call list_tests)
+	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'Test' | \
+		sed 's/^/* /; s/\(Suite\) /\1\//g'
 
 .PHONY: build-vpp-release
 build-vpp-release:

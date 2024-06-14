@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 
 // These correspond to names used in yaml config
 const (
-	serverInterfaceName = "srv"
-	clientInterfaceName = "cln"
+	ServerInterfaceName = "srv"
+	ClientInterfaceName = "cln"
 )
 
 var vethTests = map[string][]func(s *VethsSuite){}
@@ -23,18 +23,18 @@ type VethsSuite struct {
 	HstSuite
 }
 
-func registerVethTests(tests ...func(s *VethsSuite)) {
+func RegisterVethTests(tests ...func(s *VethsSuite)) {
 	vethTests[getTestFilename()] = tests
 }
-func registerSoloVethTests(tests ...func(s *VethsSuite)) {
+func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
 	vethSoloTests[getTestFilename()] = tests
 }
 
 func (s *VethsSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.configureNetworkTopology("2peerVeth")
-	s.loadContainerTopology("2peerVeth")
+	s.ConfigureNetworkTopology("2peerVeth")
+	s.LoadContainerTopology("2peerVeth")
 }
 
 func (s *VethsSuite) SetupTest() {
@@ -43,45 +43,45 @@ func (s *VethsSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
 	// ... For server
-	serverContainer := s.getContainerByName("server-vpp")
+	serverContainer := s.GetContainerByName("server-vpp")
 
-	serverVpp, err := serverContainer.newVppInstance(serverContainer.allocatedCpus, sessionConfig)
-	s.assertNotNil(serverVpp, fmt.Sprint(err))
+	serverVpp, err := serverContainer.newVppInstance(serverContainer.AllocatedCpus, sessionConfig)
+	s.AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	s.setupServerVpp()
+	s.SetupServerVpp()
 
 	// ... For client
-	clientContainer := s.getContainerByName("client-vpp")
+	clientContainer := s.GetContainerByName("client-vpp")
 
-	clientVpp, err := clientContainer.newVppInstance(clientContainer.allocatedCpus, sessionConfig)
-	s.assertNotNil(clientVpp, fmt.Sprint(err))
+	clientVpp, err := clientContainer.newVppInstance(clientContainer.AllocatedCpus, sessionConfig)
+	s.AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.setupClientVpp()
 }
 
-func (s *VethsSuite) setupServerVpp() {
-	serverVpp := s.getContainerByName("server-vpp").vppInstance
-	s.assertNil(serverVpp.start())
+func (s *VethsSuite) SetupServerVpp() {
+	serverVpp := s.GetContainerByName("server-vpp").VppInstance
+	s.AssertNil(serverVpp.Start())
 
-	serverVeth := s.getInterfaceByName(serverInterfaceName)
+	serverVeth := s.GetInterfaceByName(ServerInterfaceName)
 	idx, err := serverVpp.createAfPacket(serverVeth)
-	s.assertNil(err, fmt.Sprint(err))
-	s.assertNotEqual(0, idx)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertNotEqual(0, idx)
 }
 
 func (s *VethsSuite) setupClientVpp() {
-	clientVpp := s.getContainerByName("client-vpp").vppInstance
-	s.assertNil(clientVpp.start())
+	clientVpp := s.GetContainerByName("client-vpp").VppInstance
+	s.AssertNil(clientVpp.Start())
 
-	clientVeth := s.getInterfaceByName(clientInterfaceName)
+	clientVeth := s.GetInterfaceByName(ClientInterfaceName)
 	idx, err := clientVpp.createAfPacket(clientVeth)
-	s.assertNil(err, fmt.Sprint(err))
-	s.assertNotEqual(0, idx)
+	s.AssertNil(err, fmt.Sprint(err))
+	s.AssertNotEqual(0, idx)
 }
 
 var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
@@ -108,9 +108,9 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
@@ -138,9 +138,9 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
