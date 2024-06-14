@@ -4,21 +4,22 @@ import (
 	"fmt"
 	"os"
 
+	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	registerVethTests(LDPreloadIperfVppTest)
+	RegisterVethTests(LDPreloadIperfVppTest)
 }
 
 func LDPreloadIperfVppTest(s *VethsSuite) {
 	var clnVclConf, srvVclConf Stanza
 
-	serverContainer := s.getContainerByName("server-vpp")
-	serverVclFileName := serverContainer.getHostWorkDir() + "/vcl_srv.conf"
+	serverContainer := s.GetContainerByName("server-vpp")
+	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
 
-	clientContainer := s.getContainerByName("client-vpp")
-	clientVclFileName := clientContainer.getHostWorkDir() + "/vcl_cln.conf"
+	clientContainer := s.GetContainerByName("client-vpp")
+	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
 
 	ldpreload := "LD_PRELOAD=../../build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
 
@@ -26,58 +27,58 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 	srvCh := make(chan error, 1)
 	clnCh := make(chan error)
 
-	s.log("starting VPPs")
+	s.Log("starting VPPs")
 
 	clientAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		clientContainer.getHostWorkDir())
+		clientContainer.GetHostWorkDir())
 	err := clnVclConf.
-		newStanza("vcl").
-		append("rx-fifo-size 4000000").
-		append("tx-fifo-size 4000000").
-		append("app-scope-local").
-		append("app-scope-global").
-		append("use-mq-eventfd").
-		append(clientAppSocketApi).close().
-		saveToFile(clientVclFileName)
-	s.assertNil(err, fmt.Sprint(err))
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(clientAppSocketApi).Close().
+		SaveToFile(clientVclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 
 	serverAppSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
-		serverContainer.getHostWorkDir())
+		serverContainer.GetHostWorkDir())
 	err = srvVclConf.
-		newStanza("vcl").
-		append("rx-fifo-size 4000000").
-		append("tx-fifo-size 4000000").
-		append("app-scope-local").
-		append("app-scope-global").
-		append("use-mq-eventfd").
-		append(serverAppSocketApi).close().
-		saveToFile(serverVclFileName)
-	s.assertNil(err, fmt.Sprint(err))
+		NewStanza("vcl").
+		Append("rx-fifo-size 4000000").
+		Append("tx-fifo-size 4000000").
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(serverAppSocketApi).Close().
+		SaveToFile(serverVclFileName)
+	s.AssertNil(err, fmt.Sprint(err))
 
-	s.log("attaching server to vpp")
+	s.Log("attaching server to vpp")
 
 	srvEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+serverVclFileName)
 	go func() {
 		defer GinkgoRecover()
-		s.startServerApp(srvCh, stopServerCh, srvEnv)
+		s.StartServerApp(srvCh, stopServerCh, srvEnv)
 	}()
 
 	err = <-srvCh
-	s.assertNil(err, fmt.Sprint(err))
+	s.AssertNil(err, fmt.Sprint(err))
 
-	s.log("attaching client to vpp")
+	s.Log("attaching client to vpp")
 	var clnRes = make(chan string, 1)
 	clnEnv := append(os.Environ(), ldpreload, "VCL_CONFIG="+clientVclFileName)
-	serverVethAddress := s.getInterfaceByName(serverInterfaceName).ip4AddressString()
+	serverVethAddress := s.GetInterfaceByName(ServerInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.startClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
+		s.StartClientApp(serverVethAddress, clnEnv, clnCh, clnRes)
 	}()
-	s.log(<-clnRes)
+	s.Log(<-clnRes)
 
 	// wait for client's result
 	err = <-clnCh
-	s.assertNil(err, fmt.Sprint(err))
+	s.AssertNil(err, fmt.Sprint(err))
 
 	// stop server
 	stopServerCh <- struct{}{}

@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"fmt"
@@ -22,22 +22,22 @@ var (
 )
 
 type Volume struct {
-	hostDir          string
-	containerDir     string
-	isDefaultWorkDir bool
+	HostDir          string
+	ContainerDir     string
+	IsDefaultWorkDir bool
 }
 
 type Container struct {
-	suite            *HstSuite
-	isOptional       bool
-	runDetached      bool
-	name             string
-	image            string
-	extraRunningArgs string
-	volumes          map[string]Volume
-	envVars          map[string]string
-	vppInstance      *VppInstance
-	allocatedCpus    []int
+	Suite            *HstSuite
+	IsOptional       bool
+	RunDetached      bool
+	Name             string
+	Image            string
+	ExtraRunningArgs string
+	Volumes          map[string]Volume
+	EnvVars          map[string]string
+	VppInstance      *VppInstance
+	AllocatedCpus    []int
 }
 
 func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error) {
@@ -48,37 +48,37 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	}
 
 	var container = new(Container)
-	container.volumes = make(map[string]Volume)
-	container.envVars = make(map[string]string)
-	container.name = containerName
-	container.suite = suite
+	container.Volumes = make(map[string]Volume)
+	container.EnvVars = make(map[string]string)
+	container.Name = containerName
+	container.Suite = suite
 
-	if image, ok := yamlInput["image"]; ok {
-		container.image = image.(string)
+	if Image, ok := yamlInput["image"]; ok {
+		container.Image = Image.(string)
 	} else {
-		container.image = "hs-test/vpp"
+		container.Image = "hs-test/vpp"
 	}
 
 	if args, ok := yamlInput["extra-args"]; ok {
-		container.extraRunningArgs = args.(string)
+		container.ExtraRunningArgs = args.(string)
 	} else {
-		container.extraRunningArgs = ""
+		container.ExtraRunningArgs = ""
 	}
 
 	if isOptional, ok := yamlInput["is-optional"]; ok {
-		container.isOptional = isOptional.(bool)
+		container.IsOptional = isOptional.(bool)
 	} else {
-		container.isOptional = false
+		container.IsOptional = false
 	}
 
 	if runDetached, ok := yamlInput["run-detached"]; ok {
-		container.runDetached = runDetached.(bool)
+		container.RunDetached = runDetached.(bool)
 	} else {
-		container.runDetached = true
+		container.RunDetached = true
 	}
 
 	if _, ok := yamlInput["volumes"]; ok {
-		workingVolumeDir := logDir + suite.getCurrentTestName() + volumeDir
+		workingVolumeDir := logDir + suite.GetCurrentTestName() + volumeDir
 		workDirReplacer := strings.NewReplacer("$HST_DIR", workDir)
 		volDirReplacer := strings.NewReplacer("$HST_VOLUME_DIR", workingVolumeDir)
 		for _, volu := range yamlInput["volumes"].([]interface{}) {
@@ -100,15 +100,15 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 			envVarMap := envVar.(ContainerConfig)
 			name := envVarMap["name"].(string)
 			value := envVarMap["value"].(string)
-			container.addEnvVar(name, value)
+			container.AddEnvVar(name, value)
 		}
 	}
 	return container, nil
 }
 
 func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
-	for _, v := range c.volumes {
-		if v.isDefaultWorkDir {
+	for _, v := range c.Volumes {
+		if v.IsDefaultWorkDir {
 			res = v
 			exists = true
 			return
@@ -117,16 +117,16 @@ func (c *Container) getWorkDirVolume() (res Volume, exists bool) {
 	return
 }
 
-func (c *Container) getHostWorkDir() (res string) {
+func (c *Container) GetHostWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
-		res = v.hostDir
+		res = v.HostDir
 	}
 	return
 }
 
-func (c *Container) getContainerWorkDir() (res string) {
+func (c *Container) GetContainerWorkDir() (res string) {
 	if v, ok := c.getWorkDirVolume(); ok {
-		res = v.containerDir
+		res = v.ContainerDir
 	}
 	return
 }
@@ -134,14 +134,14 @@ func (c *Container) getContainerWorkDir() (res string) {
 func (c *Container) getContainerArguments() string {
 	args := "--ulimit nofile=90000:90000 --cap-add=all --privileged --network host"
 	c.allocateCpus()
-	args += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.allocatedCpus[0], c.allocatedCpus[len(c.allocatedCpus)-1])
+	args += fmt.Sprintf(" --cpuset-cpus=\"%d-%d\"", c.AllocatedCpus[0], c.AllocatedCpus[len(c.AllocatedCpus)-1])
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
-	if *vppSourceFileDir != "" {
-		args += fmt.Sprintf(" -v %s:%s", *vppSourceFileDir, *vppSourceFileDir)
+	if *VppSourceFileDir != "" {
+		args += fmt.Sprintf(" -v %s:%s", *VppSourceFileDir, *VppSourceFileDir)
 	}
-	args += " --name " + c.name + " " + c.image
-	args += " " + c.extraRunningArgs
+	args += " --name " + c.Name + " " + c.Image
+	args += " " + c.ExtraRunningArgs
 	return args
 }
 
@@ -157,41 +157,41 @@ func (c *Container) runWithRetry(cmd string) error {
 	return fmt.Errorf("failed to run container command")
 }
 
-func (c *Container) create() error {
+func (c *Container) Create() error {
 	cmd := "docker create " + c.getContainerArguments()
-	c.suite.log(cmd)
+	c.Suite.Log(cmd)
 	return exechelper.Run(cmd)
 }
 
 func (c *Container) allocateCpus() {
-	c.suite.startedContainers = append(c.suite.startedContainers, c)
-	c.allocatedCpus = c.suite.AllocateCpus()
-	c.suite.log("Allocated CPUs " + fmt.Sprint(c.allocatedCpus) + " to container " + c.name)
+	c.Suite.StartedContainers = append(c.Suite.StartedContainers, c)
+	c.AllocatedCpus = c.Suite.AllocateCpus()
+	c.Suite.Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 
-func (c *Container) start() error {
-	cmd := "docker start " + c.name
-	c.suite.log(cmd)
+func (c *Container) Start() error {
+	cmd := "docker start " + c.Name
+	c.Suite.Log(cmd)
 	return c.runWithRetry(cmd)
 }
 
 func (c *Container) prepareCommand() (string, error) {
-	if c.name == "" {
+	if c.Name == "" {
 		return "", fmt.Errorf("run container failed: name is blank")
 	}
 
 	cmd := "docker run "
-	if c.runDetached {
+	if c.RunDetached {
 		cmd += " -d"
 	}
 
 	cmd += " " + c.getContainerArguments()
 
-	c.suite.log(cmd)
+	c.Suite.Log(cmd)
 	return cmd, nil
 }
 
-func (c *Container) combinedOutput() (string, error) {
+func (c *Container) CombinedOutput() (string, error) {
 	cmd, err := c.prepareCommand()
 	if err != nil {
 		return "", err
@@ -201,7 +201,7 @@ func (c *Container) combinedOutput() (string, error) {
 	return string(byteOutput), err
 }
 
-func (c *Container) run() error {
+func (c *Container) Run() error {
 	cmd, err := c.prepareCommand()
 	if err != nil {
 		return err
@@ -211,35 +211,35 @@ func (c *Container) run() error {
 
 func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWorkDir bool) {
 	var volume Volume
-	volume.hostDir = hostDir
-	volume.containerDir = containerDir
-	volume.isDefaultWorkDir = isDefaultWorkDir
-	c.volumes[hostDir] = volume
+	volume.HostDir = hostDir
+	volume.ContainerDir = containerDir
+	volume.IsDefaultWorkDir = isDefaultWorkDir
+	c.Volumes[hostDir] = volume
 }
 
 func (c *Container) getVolumesAsCliOption() string {
 	cliOption := ""
 
-	if len(c.volumes) > 0 {
-		for _, volume := range c.volumes {
-			cliOption += fmt.Sprintf(" -v %s:%s", volume.hostDir, volume.containerDir)
+	if len(c.Volumes) > 0 {
+		for _, volume := range c.Volumes {
+			cliOption += fmt.Sprintf(" -v %s:%s", volume.HostDir, volume.ContainerDir)
 		}
 	}
 
 	return cliOption
 }
 
-func (c *Container) addEnvVar(name string, value string) {
-	c.envVars[name] = value
+func (c *Container) AddEnvVar(name string, value string) {
+	c.EnvVars[name] = value
 }
 
 func (c *Container) getEnvVarsAsCliOption() string {
 	cliOption := ""
-	if len(c.envVars) == 0 {
+	if len(c.EnvVars) == 0 {
 		return cliOption
 	}
 
-	for name, value := range c.envVars {
+	for name, value := range c.EnvVars {
 		cliOption += fmt.Sprintf(" -e %s=%s", name, value)
 	}
 	return cliOption
@@ -247,20 +247,20 @@ func (c *Container) getEnvVarsAsCliOption() string {
 
 func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*VppInstance, error) {
 	vpp := new(VppInstance)
-	vpp.container = c
-	vpp.cpus = cpus
-	vpp.additionalConfig = append(vpp.additionalConfig, additionalConfigs...)
-	c.vppInstance = vpp
+	vpp.Container = c
+	vpp.Cpus = cpus
+	vpp.AdditionalConfig = append(vpp.AdditionalConfig, additionalConfigs...)
+	c.VppInstance = vpp
 	return vpp, nil
 }
 
 func (c *Container) copy(sourceFileName string, targetFileName string) error {
-	cmd := exec.Command("docker", "cp", sourceFileName, c.name+":"+targetFileName)
+	cmd := exec.Command("docker", "cp", sourceFileName, c.Name+":"+targetFileName)
 	return cmd.Run()
 }
 
-func (c *Container) createFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+c.suite.ppid)
+func (c *Container) CreateFile(destFileName string, content string) error {
+	f, err := os.CreateTemp("/tmp", "hst-config"+c.Suite.Ppid)
 	if err != nil {
 		return err
 	}
@@ -280,29 +280,29 @@ func (c *Container) createFile(destFileName string, content string) error {
  * Executes in detached mode so that the started application can continue to run
  * without blocking execution of test
  */
-func (c *Container) execServer(command string, arguments ...any) {
+func (c *Container) ExecServer(command string, arguments ...any) {
 	serverCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec -d" + c.getEnvVarsAsCliOption() +
-		" " + c.name + " " + serverCommand
+		" " + c.Name + " " + serverCommand
 	GinkgoHelper()
-	c.suite.log(containerExecCommand)
-	c.suite.assertNil(exechelper.Run(containerExecCommand))
+	c.Suite.Log(containerExecCommand)
+	c.Suite.AssertNil(exechelper.Run(containerExecCommand))
 }
 
-func (c *Container) exec(command string, arguments ...any) string {
+func (c *Container) Exec(command string, arguments ...any) string {
 	cliCommand := fmt.Sprintf(command, arguments...)
 	containerExecCommand := "docker exec" + c.getEnvVarsAsCliOption() +
-		" " + c.name + " " + cliCommand
+		" " + c.Name + " " + cliCommand
 	GinkgoHelper()
-	c.suite.log(containerExecCommand)
+	c.Suite.Log(containerExecCommand)
 	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	c.suite.assertNil(err, fmt.Sprint(err))
+	c.Suite.AssertNil(err, fmt.Sprint(err))
 	return string(byteOutput)
 }
 
 func (c *Container) getLogDirPath() string {
-	testId := c.suite.getTestId()
-	testName := c.suite.getCurrentTestName()
+	testId := c.Suite.GetTestId()
+	testName := c.Suite.GetCurrentTestName()
 	logDirPath := logDir + testName + "/" + testId + "/"
 
 	cmd := exec.Command("mkdir", "-p", logDirPath)
@@ -314,13 +314,13 @@ func (c *Container) getLogDirPath() string {
 }
 
 func (c *Container) saveLogs() {
-	testLogFilePath := c.getLogDirPath() + "container-" + c.name + ".log"
+	testLogFilePath := c.getLogDirPath() + "container-" + c.Name + ".log"
 
-	cmd := exec.Command("docker", "logs", "--details", "-t", c.name)
-	c.suite.log(cmd)
+	cmd := exec.Command("docker", "logs", "--details", "-t", c.Name)
+	c.Suite.Log(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		c.suite.log(err)
+		c.Suite.Log(err)
 	}
 
 	f, err := os.Create(testLogFilePath)
@@ -335,39 +335,39 @@ func (c *Container) saveLogs() {
 func (c *Container) log(maxLines int) (string, error) {
 	var cmd string
 	if maxLines == 0 {
-		cmd = "docker logs " + c.name
+		cmd = "docker logs " + c.Name
 	} else {
-		cmd = fmt.Sprintf("docker logs --tail %d %s", maxLines, c.name)
+		cmd = fmt.Sprintf("docker logs --tail %d %s", maxLines, c.Name)
 	}
 
-	c.suite.log(cmd)
+	c.Suite.Log(cmd)
 	o, err := exechelper.CombinedOutput(cmd)
 	return string(o), err
 }
 
 func (c *Container) stop() error {
-	if c.vppInstance != nil && c.vppInstance.apiStream != nil {
-		c.vppInstance.saveLogs()
-		c.vppInstance.disconnect()
+	if c.VppInstance != nil && c.VppInstance.ApiStream != nil {
+		c.VppInstance.saveLogs()
+		c.VppInstance.Disconnect()
 	}
-	c.vppInstance = nil
+	c.VppInstance = nil
 	c.saveLogs()
-	c.suite.log("docker stop " + c.name + " -t 0")
-	return exechelper.Run("docker stop " + c.name + " -t 0")
+	c.Suite.Log("docker stop " + c.Name + " -t 0")
+	return exechelper.Run("docker stop " + c.Name + " -t 0")
 }
 
-func (c *Container) createConfig(targetConfigName string, templateName string, values any) {
+func (c *Container) CreateConfig(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
 	f, err := os.CreateTemp(logDir, "hst-config")
-	c.suite.assertNil(err, err)
+	c.Suite.AssertNil(err, err)
 	defer os.Remove(f.Name())
 
 	err = template.Execute(f, values)
-	c.suite.assertNil(err, err)
+	c.Suite.AssertNil(err, err)
 
 	err = f.Close()
-	c.suite.assertNil(err, err)
+	c.Suite.AssertNil(err, err)
 
 	c.copy(f.Name(), targetConfigName)
 }

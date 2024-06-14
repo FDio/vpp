@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"errors"
@@ -32,13 +32,13 @@ type (
 
 	NetInterface struct {
 		NetConfigBase
-		ip4AddrAllocator *Ip4AddressAllocator
-		ip4Address       string
-		index            InterfaceIndex
-		hwAddress        MacAddress
-		networkNamespace string
-		networkNumber    int
-		peer             *NetInterface
+		Ip4AddrAllocator *Ip4AddressAllocator
+		Ip4Address       string
+		Index            InterfaceIndex
+		HwAddress        MacAddress
+		NetworkNamespace string
+		NetworkNumber    int
+		Peer             *NetInterface
 	}
 
 	NetworkNamespace struct {
@@ -47,8 +47,8 @@ type (
 
 	NetworkBridge struct {
 		NetConfigBase
-		networkNamespace string
-		interfaces       []string
+		NetworkNamespace string
+		Interfaces       []string
 	}
 )
 
@@ -64,7 +64,7 @@ type InterfaceAdder func(n *NetInterface) *Cmd
 var (
 	ipCommandMap = map[string]InterfaceAdder{
 		Veth: func(n *NetInterface) *Cmd {
-			return exec.Command("ip", "link", "add", n.name, "type", "veth", "peer", "name", n.peer.name)
+			return exec.Command("ip", "link", "add", n.name, "type", "veth", "peer", "name", n.Peer.name)
 		},
 		Tap: func(n *NetInterface) *Cmd {
 			return exec.Command("ip", "tuntap", "add", n.name, "mode", "tap")
@@ -75,31 +75,31 @@ var (
 func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterface, error) {
 	var newInterface *NetInterface = &NetInterface{}
 	var err error
-	newInterface.ip4AddrAllocator = a
+	newInterface.Ip4AddrAllocator = a
 	newInterface.name = cfg["name"].(string)
-	newInterface.networkNumber = DEFAULT_NETWORK_NUM
+	newInterface.NetworkNumber = DEFAULT_NETWORK_NUM
 
 	if interfaceType, ok := cfg["type"]; ok {
 		newInterface.category = interfaceType.(string)
 	}
 
 	if presetHwAddress, ok := cfg["preset-hw-address"]; ok {
-		newInterface.hwAddress, err = ethernet_types.ParseMacAddress(presetHwAddress.(string))
+		newInterface.HwAddress, err = ethernet_types.ParseMacAddress(presetHwAddress.(string))
 		if err != nil {
 			return &NetInterface{}, err
 		}
 	}
 
 	if netns, ok := cfg["netns"]; ok {
-		newInterface.networkNamespace = netns.(string)
+		newInterface.NetworkNamespace = netns.(string)
 	}
 
 	if ip, ok := cfg["ip4"]; ok {
 		if n, ok := ip.(NetDevConfig)["network"]; ok {
-			newInterface.networkNumber = n.(int)
+			newInterface.NetworkNumber = n.(int)
 		}
-		newInterface.ip4Address, err = newInterface.ip4AddrAllocator.NewIp4InterfaceAddress(
-			newInterface.networkNumber,
+		newInterface.Ip4Address, err = newInterface.Ip4AddrAllocator.NewIp4InterfaceAddress(
+			newInterface.NetworkNumber,
 		)
 		if err != nil {
 			return &NetInterface{}, err
@@ -112,7 +112,7 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 
 	peer := cfg["peer"].(NetDevConfig)
 
-	if newInterface.peer, err = newNetworkInterface(peer, a); err != nil {
+	if newInterface.Peer, err = newNetworkInterface(peer, a); err != nil {
 		return &NetInterface{}, err
 	}
 
@@ -128,8 +128,8 @@ func (n *NetInterface) configureUpState() error {
 }
 
 func (n *NetInterface) configureNetworkNamespace() error {
-	if n.networkNamespace != "" {
-		err := linkSetNetns(n.name, n.networkNamespace)
+	if n.NetworkNamespace != "" {
+		err := linkSetNetns(n.name, n.NetworkNamespace)
 		if err != nil {
 			return err
 		}
@@ -138,11 +138,11 @@ func (n *NetInterface) configureNetworkNamespace() error {
 }
 
 func (n *NetInterface) configureAddress() error {
-	if n.ip4Address != "" {
+	if n.Ip4Address != "" {
 		if err := addAddress(
 			n.Name(),
-			n.ip4Address,
-			n.networkNamespace,
+			n.Ip4Address,
+			n.NetworkNamespace,
 		); err != nil {
 			return err
 		}
@@ -170,16 +170,16 @@ func (n *NetInterface) configure() error {
 		return err
 	}
 
-	if n.peer != nil && n.peer.name != "" {
-		if err := n.peer.configureUpState(); err != nil {
+	if n.Peer != nil && n.Peer.name != "" {
+		if err := n.Peer.configureUpState(); err != nil {
 			return err
 		}
 
-		if err := n.peer.configureNetworkNamespace(); err != nil {
+		if err := n.Peer.configureNetworkNamespace(); err != nil {
 			return err
 		}
 
-		if err := n.peer.configureAddress(); err != nil {
+		if err := n.Peer.configureAddress(); err != nil {
 			return err
 		}
 	}
@@ -199,19 +199,19 @@ func (n *NetInterface) Type() string {
 	return n.category
 }
 
-func (n *NetInterface) addressWithPrefix() AddressWithPrefix {
-	address, _ := ip_types.ParseAddressWithPrefix(n.ip4Address)
+func (n *NetInterface) AddressWithPrefix() AddressWithPrefix {
+	address, _ := ip_types.ParseAddressWithPrefix(n.Ip4Address)
 	return address
 }
 
-func (n *NetInterface) ip4AddressWithPrefix() IP4AddressWithPrefix {
-	ip4Prefix, _ := ip_types.ParseIP4Prefix(n.ip4Address)
-	ip4AddressWithPrefix := ip_types.IP4AddressWithPrefix(ip4Prefix)
-	return ip4AddressWithPrefix
+func (n *NetInterface) Ip4AddressWithPrefix() IP4AddressWithPrefix {
+	ip4Prefix, _ := ip_types.ParseIP4Prefix(n.Ip4Address)
+	Ip4AddressWithPrefix := ip_types.IP4AddressWithPrefix(ip4Prefix)
+	return Ip4AddressWithPrefix
 }
 
-func (n *NetInterface) ip4AddressString() string {
-	return strings.Split(n.ip4Address, "/")[0]
+func (n *NetInterface) Ip4AddressString() string {
+	return strings.Split(n.Ip4Address, "/")[0]
 }
 
 func (b *NetConfigBase) Name() string {
@@ -242,22 +242,22 @@ func newBridge(cfg NetDevConfig) (NetworkBridge, error) {
 	bridge.name = cfg["name"].(string)
 	bridge.category = Bridge
 	for _, v := range cfg["interfaces"].([]interface{}) {
-		bridge.interfaces = append(bridge.interfaces, v.(string))
+		bridge.Interfaces = append(bridge.Interfaces, v.(string))
 	}
 
-	bridge.networkNamespace = ""
+	bridge.NetworkNamespace = ""
 	if netns, ok := cfg["netns"]; ok {
-		bridge.networkNamespace = netns.(string)
+		bridge.NetworkNamespace = netns.(string)
 	}
 	return bridge, nil
 }
 
 func (b *NetworkBridge) configure() error {
-	return addBridge(b.name, b.interfaces, b.networkNamespace)
+	return addBridge(b.name, b.Interfaces, b.NetworkNamespace)
 }
 
 func (b *NetworkBridge) unconfigure() {
-	delBridge(b.name, b.networkNamespace)
+	delBridge(b.name, b.NetworkNamespace)
 }
 
 func delBridge(brName, ns string) error {
