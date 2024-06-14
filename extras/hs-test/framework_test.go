@@ -8,11 +8,10 @@ import (
 	"testing"
 	"time"
 
+	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-var suiteTimeout time.Duration
 
 func getTestFilename() string {
 	_, filename, _, _ := runtime.Caller(2)
@@ -20,11 +19,11 @@ func getTestFilename() string {
 }
 
 func TestHst(t *testing.T) {
-	if *isVppDebug {
+	if *IsVppDebug {
 		// 30 minute timeout so that the framework won't timeout while debugging
-		suiteTimeout = time.Minute * 30
+		SuiteTimeout = time.Minute * 30
 	} else {
-		suiteTimeout = time.Minute * 5
+		SuiteTimeout = time.Minute * 5
 	}
 
 	// creates a file with PPID, used for 'make cleanup-hst'

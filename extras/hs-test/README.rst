@@ -26,15 +26,15 @@ Anatomy of a test case
 
 **Action flow when running a test case**:
 
-#. It starts with running ``make test``. Optional arguments are VERBOSE, PERSIST (topology configuration isn't cleaned up after test run),
+#. It starts with running ``make test``. Optional arguments are VERBOSE, PERSIST (topology configuration isn't cleaned up after test run, use ``make cleanup-hst`` to clean up),
    TEST=<test-name> to run a specific test and PARALLEL=[n-cpus].
-#. ``make list-tests`` (or ``make help``) shows all tests. The current `list of tests`_ is at the bottom of this document.
-#. ``Ginkgo`` looks for a spec suite in the current directory and then compiles it to a .test binary
-#. The Ginkgo test framework runs each function that was registered manually using ``registerMySuiteTest(s *MySuite)``. Each of these functions correspond to a suite
+#. ``make list-tests`` (or ``make help``) shows all tests.
+#. ``Ginkgo`` looks for a spec suite in the current directory and then compiles it to a .test binary.
+#. The Ginkgo test framework runs each function that was registered manually using ``Register[SuiteName]Test()``. Each of these functions correspond to a suite.
 #. Ginkgo's ``RunSpecs(t, "Suite description")`` function is the entry point and does the following:
 
   #. Ginkgo compiles the spec, builds a spec tree
-  #. ``Describe`` container nodes in suite\_\*_test.go files are run (in series by default, or in parallel with the argument PARALLEL=[n-cpus])
+  #. ``Describe`` container nodes in suite\_\*.go files are run (in series by default, or in parallel with the argument PARALLEL=[n-cpus])
   #. Suite is initialized. The topology is loaded and configured in this step
   #. Registered tests are run in generated ``It`` subject nodes
   #. Execute tear-down functions, which currently consists of stopping running containers
@@ -47,46 +47,47 @@ This describes adding a new test case to an existing suite.
 For adding a new suite, please see `Modifying the framework`_ below.
 
 #. To write a new test case, create a file whose name ends with ``_test.go`` or pick one that already exists
-#. Declare method whose name ends with ``Test`` and specifies its parameter as a pointer to the suite's struct (defined in ``suite_*_test.go``)
+#. Declare method whose name ends with ``Test`` and specifies its parameter as a pointer to the suite's struct (defined in ``infra/suite_*.go``)
 #. Implement test behaviour inside the test method. This typically includes the following:
 
-   #. Retrieve a running container in which to run some action. Method ``getContainerByName``
+   #. Import ``. "fd.io/hs-test/infra"``
+   #. Retrieve a running container in which to run some action. Method ``GetContainerByName``
       from ``HstSuite`` struct serves this purpose
-   #. Interact with VPP through the ``VppInstance`` struct embedded in container. It provides ``vppctl`` method to access debug CLI
-   #. Run arbitrary commands inside the containers with ``exec`` method
-   #. Run other external tool with one of the preexisting functions in the ``utils.go`` file.
-      For example, use ``wget`` with ``startWget`` function
+   #. Interact with VPP through the ``VppInstance`` struct embedded in container. It provides ``Vppctl`` method to access debug CLI
+   #. Run arbitrary commands inside the containers with ``Exec`` method
+   #. Run other external tool with one of the preexisting functions in the ``infra/utils.go`` file.
+      For example, use ``wget`` with ``StartWget`` function
    #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
-   #. Verify results of your tests using ``assert`` methods provided by the test suite, implemented by HstSuite struct or use ``Gomega`` assert functions.
+   #. Verify results of your tests using ``Assert`` methods provided by the test suite.
 
-#. Create an ``init()`` function and register the test using ``register*SuiteTests(testCaseFunction)``
+#. Create an ``init()`` function and register the test using ``Register[SuiteName]Tests(testCaseFunction)``
 
 
 **Example test case**
 
 Assumed are two docker containers, each with its own VPP instance running. One VPP then pings the other.
-This can be put in file ``extras/hs-test/my_test.go`` and run with command ``make test TEST=MyTest`` or ``ginkgo -v --trace --focus MyTest``.
+This can be put in file ``extras/hs-test/my_test.go`` and run with command ``make test TEST=MyTest``.
 
 ::
 
         package main
 
         import (
-                "fmt"
+                . "fd.io/hs-test/infra"
         )
 
         func init(){
-                registerMySuiteTest(MyTest)
+                RegisterMySuiteTest(MyTest)
         }
 
         func MyTest(s *MySuite) {
-                clientVpp := s.getContainerByName("client-vpp").vppInstance
+                clientVpp := s.GetContainerByName("client-vpp").VppInstance
 
-                serverVethAddress := s.netInterfaces["server-iface"].AddressString()
+                serverVethAddress := s.NetInterfaces["server-iface"].Ip4AddressString()
 
-                result := clientVpp.vppctl("ping " + serverVethAddress)
-                s.assertNotNil(result)
-                s.log(result)
+                result := clientVpp.Vppctl("ping " + serverVethAddress)
+                s.Log(result)
+                s.AssertNotNil(result)
         }
 
 
@@ -94,23 +95,28 @@ Filtering test cases
 --------------------
 
 The framework allows us to filter test cases in a few different ways, using ``make test TEST=``:
-* Suite name
-* File name
-* Test name
-* All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
+
+        * Suite name
+        * File name
+        * Test name
+        * All of the above as long as they are ordered properly, e.g. ``make test TEST=VethsSuite.http_test.go.HeaderServerTest``
 
 **Names are case sensitive!**
 
 Names don't have to be complete, as long as they are last:
 This is valid and will run all tests in every ``http`` file (if there is more than one):
-``make test TEST=VethsSuite.http``
+
+* ``make test TEST=VethsSuite.http``
+
 This is not valid:
-``make test TEST=Veths.http``
+
+* ``make test TEST=Veths.http``
 
 They can also be left out:
-``make test TEST=http_test.go`` will run every test in ``http_test.go``
-``make test TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
-``make test TEST=HeaderServerTest`` will only run the header server test
+
+* ``make test TEST=http_test.go`` will run every test in ``http_test.go``
+* ``make test TEST=Nginx`` will run everything that has 'Nginx' in its name - suites, files and tests.
+* ``make test TEST=HeaderServerTest`` will only run the header server test
 
 
 Modifying the framework
@@ -120,34 +126,37 @@ Modifying the framework
 
 .. _test-convention:
 
-#. To add a new suite, create a new file. Naming convention for the suite files is ``suite_name_test.go`` where *name* will be replaced
-   by the actual name
+#. To add a new suite, create a new file in the ``infra/`` folder. Naming convention for the suite files is ``suite_[name].go``.
 
 #. Make a ``struct``, in the suite file, with at least ``HstSuite`` struct as its member.
    HstSuite provides functionality that can be shared for all suites, like starting containers
 
+#. Create a new map that will contain a file name where a test is located and test functions with a pointer to the suite's struct: ``var myTests = map[string][]func(s *MySuite){}``
+
         ::
+
+                var myTests = map[string][]func(s *MySuite){}
 
                 type MySuite struct {
                         HstSuite
                 }
 
-#. Create a new slice that will contain test functions with a pointer to the suite's struct: ``var myTests = []func(s *MySuite){}``
 
-#. Then create a new function that will append test functions to that slice:
+#. Then create a new function that will add tests to that map:
 
         ::
 
-                func registerMySuiteTests(tests ...func(s *MySuite)) {
-	                nginxTests = append(myTests, tests...)
+                func RegisterMyTests(tests ...func(s *MySuite)) {
+	                myTests[getTestFilename()] = tests
                 }
 
+
 #. In suite file, implement ``SetupSuite`` method which Ginkgo runs once before starting any of the tests.
-   It's important here to call ``configureNetworkTopology`` method,
+   It's important here to call ``ConfigureNetworkTopology()`` method,
    pass the topology name to the function in a form of file name of one of the *yaml* files in ``topo-network`` folder.
    Without the extension. In this example, *myTopology* corresponds to file ``extras/hs-test/topo-network/myTopology.yaml``
    This will ensure network topology, such as network interfaces and namespaces, will be created.
-   Another important method to call is ``loadContainerTopology()`` which will load
+   Another important method to call is ``LoadContainerTopology()`` which will load
    containers and shared volumes used by the suite. This time the name passed to method corresponds
    to file in ``extras/hs-test/topo-containers`` folder
 
@@ -158,8 +167,8 @@ Modifying the framework
 
                         // Add custom setup code here
 
-                        s.configureNetworkTopology("myTopology")
-                        s.loadContainerTopology("2peerVeth")
+                        s.ConfigureNetworkTopology("myTopology")
+                        s.LoadContainerTopology("2peerVeth")
                 }
 
 #. In suite file, implement ``SetupTest`` method which gets executed before each test. Starting containers and
@@ -184,44 +193,50 @@ Modifying the framework
         ::
 
                 var _ = Describe("MySuite", Ordered, ContinueOnFailure, func() {
-	        var s MySuite
-	        BeforeAll(func() {
-		        s.SetupSuite()
-	        })
-	        BeforeEach(func() {
-		        s.SetupTest()
-	        })
-	        AfterAll(func() {
-		        s.TearDownSuite()
-	        })
-	        AfterEach(func() {
-		        s.TearDownTest()
+        	var s MySuite
+        	BeforeAll(func() {
+        		s.SetupSuite()
         	})
-	        for _, test := range mySuiteTests {
-		        test := test
-		        pc := reflect.ValueOf(test).Pointer()
-		        funcValue := runtime.FuncForPC(pc)
-		        It(strings.Split(funcValue.Name(), ".")[2], func(ctx SpecContext) {
-			        test(&s)
-		        }, SpecTimeout(time.Minute*5))
-	        }
+        	BeforeEach(func() {
+        		s.SetupTest()
+        	})
+        	AfterAll(func() {
+        		s.TearDownSuite()
+        	})
+        	AfterEach(func() {
+        		s.TearDownTest()
+        	})
+
+        	for filename, tests := range myTests {
+        		for _, test := range tests {
+        			test := test
+        			pc := reflect.ValueOf(test).Pointer()
+        			funcValue := runtime.FuncForPC(pc)
+        			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+        			It(testName, func(ctx SpecContext) {
+        				s.Log(testName + ": BEGIN")
+        				test(&s)
+        			}, SpecTimeout(SuiteTimeout))
+        		}
+        	}
                 })
 
 #. Notice the loop - it will generate multiple ``It`` nodes, each running a different test.
    ``test := test`` is necessary, otherwise only the last test in a suite will run.
    For a more detailed description, check Ginkgo's documentation: https://onsi.github.io/ginkgo/#dynamically-generating-specs\.
 
-#. ``funcValue.Name()`` returns the full name of a function (e.g. ``fd.io/hs-test.MyTest``), however, we only need the test name (``MyTest``).
+#. ``testName`` contains the test name in the following format: ``[name]_test.go/MyTest``.
 
-#. To run certain tests solo, create a new slice that will only contain tests that have to run solo and a new register function.
+#. To run certain tests solo, create a register function and a map that will only contain tests that have to run solo.
    Add a ``Serial`` decorator to the container node and ``Label("SOLO")`` to the ``It`` subject node:
 
         ::
 
                 var _ = Describe("MySuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
                         ...
-                        It(strings.Split(funcValue.Name(), ".")[2], Label("SOLO"), func(ctx SpecContext) {
-			test(&s)
+                        It(testName, Label("SOLO"), func(ctx SpecContext) {
+                                s.Log(testName + ": BEGIN")
+			        test(&s)
 		        }, SpecTimeout(time.Minute*5))
                 })
 
@@ -308,36 +323,3 @@ or a new version incompatibility issue occurs.
 
 .. _ginkgo: https://onsi.github.io/ginkgo/
 .. _volumes: https://docs.docker.com/storage/volumes/
-
-**List of tests**
-
-.. _list of tests:
-
-Please update this list whenever you add a new test by pasting the output below.
-
-* NsSuite/HttpTpsTest
-* NsSuite/VppProxyHttpTcpTest
-* NsSuite/VppProxyHttpTlsTest
-* NsSuite/EnvoyProxyHttpTcpTest
-* NginxSuite/MirroringTest
-* VethsSuiteSolo TcpWithLossTest [SOLO]
-* NoTopoSuiteSolo HttpStaticPromTest [SOLO]
-* TapSuite/LinuxIperfTest
-* NoTopoSuite/NginxHttp3Test
-* NoTopoSuite/NginxAsServerTest
-* NoTopoSuite/NginxPerfCpsTest
-* NoTopoSuite/NginxPerfRpsTest
-* NoTopoSuite/NginxPerfWrkTest
-* VethsSuite/EchoBuiltinTest
-* VethsSuite/HttpCliTest
-* VethsSuite/LDPreloadIperfVppTest
-* VethsSuite/VppEchoQuicTest
-* VethsSuite/VppEchoTcpTest
-* VethsSuite/VppEchoUdpTest
-* VethsSuite/XEchoVclClientUdpTest
-* VethsSuite/XEchoVclClientTcpTest
-* VethsSuite/XEchoVclServerUdpTest
-* VethsSuite/XEchoVclServerTcpTest
-* VethsSuite/VclEchoTcpTest
-* VethsSuite/VclEchoUdpTest
-* VethsSuite/VclRetryAttachTest

@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"reflect"
@@ -16,17 +16,17 @@ type TapSuite struct {
 var tapTests = map[string][]func(s *TapSuite){}
 var tapSoloTests = map[string][]func(s *TapSuite){}
 
-func registerTapTests(tests ...func(s *TapSuite)) {
+func RegisterTapTests(tests ...func(s *TapSuite)) {
 	tapTests[getTestFilename()] = tests
 }
-func registerTapSoloTests(tests ...func(s *TapSuite)) {
+func RegisterTapSoloTests(tests ...func(s *TapSuite)) {
 	tapSoloTests[getTestFilename()] = tests
 }
 
 func (s *TapSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.configureNetworkTopology("tap")
+	s.ConfigureNetworkTopology("tap")
 }
 
 var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
@@ -51,9 +51,9 @@ var _ = Describe("TapSuite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
@@ -80,9 +80,9 @@ var _ = Describe("TapSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })

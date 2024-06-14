@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"reflect"
@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	singleTopoContainerVpp   = "vpp"
-	singleTopoContainerNginx = "nginx"
-	tapInterfaceName         = "htaphost"
+	SingleTopoContainerVpp   = "vpp"
+	SingleTopoContainerNginx = "nginx"
+	TapInterfaceName         = "htaphost"
 )
 
 var noTopoTests = map[string][]func(s *NoTopoSuite){}
@@ -21,17 +21,17 @@ type NoTopoSuite struct {
 	HstSuite
 }
 
-func registerNoTopoTests(tests ...func(s *NoTopoSuite)) {
+func RegisterNoTopoTests(tests ...func(s *NoTopoSuite)) {
 	noTopoTests[getTestFilename()] = tests
 }
-func registerNoTopoSoloTests(tests ...func(s *NoTopoSuite)) {
+func RegisterNoTopoSoloTests(tests ...func(s *NoTopoSuite)) {
 	noTopoSoloTests[getTestFilename()] = tests
 }
 
 func (s *NoTopoSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.loadNetworkTopology("tap")
-	s.loadContainerTopology("single")
+	s.LoadNetworkTopology("tap")
+	s.LoadContainerTopology("single")
 }
 
 func (s *NoTopoSuite) SetupTest() {
@@ -40,17 +40,17 @@ func (s *NoTopoSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
-	container := s.getContainerByName(singleTopoContainerVpp)
-	vpp, _ := container.newVppInstance(container.allocatedCpus, sessionConfig)
-	s.assertNil(vpp.start())
+	container := s.GetContainerByName(SingleTopoContainerVpp)
+	vpp, _ := container.newVppInstance(container.AllocatedCpus, sessionConfig)
+	s.AssertNil(vpp.Start())
 
-	tapInterface := s.getInterfaceByName(tapInterfaceName)
+	tapInterface := s.GetInterfaceByName(TapInterfaceName)
 
-	s.assertNil(vpp.createTap(tapInterface), "failed to create tap interface")
+	s.AssertNil(vpp.createTap(tapInterface), "failed to create tap interface")
 }
 
 var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
@@ -75,9 +75,9 @@ var _ = Describe("NoTopoSuite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
@@ -104,9 +104,9 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })

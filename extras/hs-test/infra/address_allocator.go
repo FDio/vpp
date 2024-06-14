@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"errors"
@@ -84,7 +84,7 @@ func (a *Ip4AddressAllocator) createIpAddress(networkNumber int, numberOfAddress
 	return address, nil
 }
 
-func (a *Ip4AddressAllocator) deleteIpAddresses() {
+func (a *Ip4AddressAllocator) DeleteIpAddresses() {
 	for ip := range a.assignedIps {
 		os.Remove(a.assignedIps[ip])
 	}

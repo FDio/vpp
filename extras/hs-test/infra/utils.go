@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ type JsonResult struct {
 	StdOutput string
 }
 
-func assertFileSize(f1, f2 string) error {
+func AssertFileSize(f1, f2 string) error {
 	fi1, err := os.Stat(f1)
 	if err != nil {
 		return err
@@ -49,29 +49,29 @@ func assertFileSize(f1, f2 string) error {
 	return nil
 }
 
-func (c *Stanza) newStanza(name string) *Stanza {
-	c.append("\n" + name + " {")
+func (c *Stanza) NewStanza(name string) *Stanza {
+	c.Append("\n" + name + " {")
 	c.pad += 2
 	return c
 }
 
-func (c *Stanza) append(name string) *Stanza {
+func (c *Stanza) Append(name string) *Stanza {
 	c.content += strings.Repeat(" ", c.pad)
 	c.content += name + "\n"
 	return c
 }
 
-func (c *Stanza) close() *Stanza {
+func (c *Stanza) Close() *Stanza {
 	c.content += "}\n"
 	c.pad -= 2
 	return c
 }
 
-func (s *Stanza) toString() string {
+func (s *Stanza) ToString() string {
 	return s.content
 }
 
-func (s *Stanza) saveToFile(fileName string) error {
+func (s *Stanza) SaveToFile(fileName string) error {
 	fo, err := os.Create(fileName)
 	if err != nil {
 		return err
@@ -82,8 +82,8 @@ func (s *Stanza) saveToFile(fileName string) error {
 	return err
 }
 
-// newHttpClient creates [http.Client] with disabled proxy and redirects, it also sets timeout to 30seconds.
-func newHttpClient() *http.Client {
+// NewHttpClient creates [http.Client] with disabled proxy and redirects, it also sets timeout to 30seconds.
+func NewHttpClient() *http.Client {
 	transport := http.DefaultTransport
 	transport.(*http.Transport).Proxy = nil
 	transport.(*http.Transport).DisableKeepAlives = true
@@ -96,7 +96,7 @@ func newHttpClient() *http.Client {
 	return client
 }
 
-func tcpSendReceive(address, data string) (string, error) {
+func TcpSendReceive(address, data string) (string, error) {
 	conn, err := net.DialTimeout("tcp", address, time.Second*30)
 	if err != nil {
 		return "", err
