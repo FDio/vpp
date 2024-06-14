@@ -7,36 +7,34 @@ single_test=0
 persist_set=0
 unconfigure_set=0
 debug_set=0
-vppsrc=
 ginkgo_args=
-parallel=
 
 for i in "$@"
 do
 case "${i}" in
     --persist=*)
         persist="${i#*=}"
-        if [ $persist = "true" ]; then
+        if [ "$persist" = "true" ]; then
             args="$args -persist"
             persist_set=1
         fi
         ;;
     --debug=*)
         debug="${i#*=}"
-        if [ $debug = "true" ]; then
+        if [ "$debug" = "true" ]; then
             args="$args -debug"
             debug_set=1
         fi
         ;;
     --verbose=*)
         verbose="${i#*=}"
-        if [ $verbose = "true" ]; then
+        if [ "$verbose" = "true" ]; then
             args="$args -verbose"
         fi
         ;;
     --unconfigure=*)
         unconfigure="${i#*=}"
-        if [ $unconfigure = "true" ]; then
+        if [ "$unconfigure" = "true" ]; then
             args="$args -unconfigure"
             unconfigure_set=1
         fi
@@ -49,7 +47,7 @@ case "${i}" in
         ;;
     --test=*)
         tc_name="${i#*=}"
-        if [ $tc_name != "all" ]; then
+        if [ "$tc_name" != "all" ]; then
             single_test=1
             ginkgo_args="$ginkgo_args --focus $tc_name -vv"
             args="$args -verbose"
@@ -87,7 +85,7 @@ if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
 fi
 
 mkdir -p summary
-
+# shellcheck disable=SC2086
 sudo -E go run github.com/onsi/ginkgo/v2/ginkgo --no-color --trace --json-report=summary/report.json $ginkgo_args -- $args
 
 jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) | "TestName: \(.LeafNodeText)\nSuite:\n\(.Failure.Location.FileName)\nMessage:\n\(.Failure.Message)\n Full Stack Trace:\n\(.Failure.Location.FullStackTrace)\n"' summary/report.json > summary/failed-summary.log \
