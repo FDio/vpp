@@ -1,13 +1,13 @@
 package main
 
 import (
+	. "fd.io/hs-test/infra"
 	"fmt"
-
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
-	registerTapTests(LinuxIperfTest)
+	RegisterTapTests(LinuxIperfTest)
 }
 
 func LinuxIperfTest(s *TapSuite) {
@@ -21,20 +21,20 @@ func LinuxIperfTest(s *TapSuite) {
 
 	go func() {
 		defer GinkgoRecover()
-		s.startServerApp(srvCh, stopServerCh, nil)
+		s.StartServerApp(srvCh, stopServerCh, nil)
 	}()
 	err := <-srvCh
-	s.assertNil(err, fmt.Sprint(err))
-	s.log("server running")
+	s.AssertNil(err, fmt.Sprint(err))
+	s.Log("server running")
 
-	ipAddress := s.getInterfaceByName(tapInterfaceName).ip4AddressString()
+	ipAddress := s.GetInterfaceByName(TapInterfaceName).Ip4AddressString()
 	go func() {
 		defer GinkgoRecover()
-		s.startClientApp(ipAddress, nil, clnCh, clnRes)
+		s.StartClientApp(ipAddress, nil, clnCh, clnRes)
 	}()
-	s.log("client running")
-	s.log(<-clnRes)
+	s.Log("client running")
+	s.Log(<-clnRes)
 	err = <-clnCh
-	s.assertNil(err, "err: '%s', ip: '%s'", err, ipAddress)
-	s.log("Test completed")
+	s.AssertNil(err, "err: '%s', ip: '%s'", err, ipAddress)
+	s.Log("Test completed")
 }

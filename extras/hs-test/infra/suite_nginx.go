@@ -1,4 +1,4 @@
-package main
+package hst
 
 import (
 	"reflect"
@@ -10,11 +10,11 @@ import (
 
 // These correspond to names used in yaml config
 const (
-	vppProxyContainerName        = "vpp-proxy"
-	nginxProxyContainerName      = "nginx-proxy"
-	nginxServerContainerName     = "nginx-server"
-	mirroringClientInterfaceName = "hstcln"
-	mirroringServerInterfaceName = "hstsrv"
+	VppProxyContainerName        = "vpp-proxy"
+	NginxProxyContainerName      = "nginx-proxy"
+	NginxServerContainerName     = "nginx-server"
+	MirroringClientInterfaceName = "hstcln"
+	MirroringServerInterfaceName = "hstsrv"
 )
 
 var nginxTests = map[string][]func(s *NginxSuite){}
@@ -24,17 +24,17 @@ type NginxSuite struct {
 	HstSuite
 }
 
-func registerNginxTests(tests ...func(s *NginxSuite)) {
+func RegisterNginxTests(tests ...func(s *NginxSuite)) {
 	nginxTests[getTestFilename()] = tests
 }
-func registerNginxSoloTests(tests ...func(s *NginxSuite)) {
+func RegisterNginxSoloTests(tests ...func(s *NginxSuite)) {
 	nginxSoloTests[getTestFilename()] = tests
 }
 
 func (s *NginxSuite) SetupSuite() {
 	s.HstSuite.SetupSuite()
-	s.loadNetworkTopology("2taps")
-	s.loadContainerTopology("nginxProxyAndServer")
+	s.LoadNetworkTopology("2taps")
+	s.LoadContainerTopology("nginxProxyAndServer")
 }
 
 func (s *NginxSuite) SetupTest() {
@@ -43,39 +43,39 @@ func (s *NginxSuite) SetupTest() {
 	// Setup test conditions
 	var sessionConfig Stanza
 	sessionConfig.
-		newStanza("session").
-		append("enable").
-		append("use-app-socket-api").close()
+		NewStanza("session").
+		Append("enable").
+		Append("use-app-socket-api").Close()
 
 	// ... for proxy
-	vppProxyContainer := s.getContainerByName(vppProxyContainerName)
-	proxyVpp, _ := vppProxyContainer.newVppInstance(vppProxyContainer.allocatedCpus, sessionConfig)
-	s.assertNil(proxyVpp.start())
+	vppProxyContainer := s.GetContainerByName(VppProxyContainerName)
+	proxyVpp, _ := vppProxyContainer.newVppInstance(vppProxyContainer.AllocatedCpus, sessionConfig)
+	s.AssertNil(proxyVpp.Start())
 
-	clientInterface := s.getInterfaceByName(mirroringClientInterfaceName)
-	s.assertNil(proxyVpp.createTap(clientInterface, 1))
+	clientInterface := s.GetInterfaceByName(MirroringClientInterfaceName)
+	s.AssertNil(proxyVpp.createTap(clientInterface, 1))
 
-	serverInterface := s.getInterfaceByName(mirroringServerInterfaceName)
-	s.assertNil(proxyVpp.createTap(serverInterface, 2))
+	serverInterface := s.GetInterfaceByName(MirroringServerInterfaceName)
+	s.AssertNil(proxyVpp.createTap(serverInterface, 2))
 
-	nginxContainer := s.getTransientContainerByName(nginxProxyContainerName)
-	nginxContainer.create()
+	nginxContainer := s.GetTransientContainerByName(NginxProxyContainerName)
+	nginxContainer.Create()
 
 	values := struct {
 		Proxy  string
 		Server string
 	}{
-		Proxy:  clientInterface.peer.ip4AddressString(),
-		Server: serverInterface.ip4AddressString(),
+		Proxy:  clientInterface.Peer.Ip4AddressString(),
+		Server: serverInterface.Ip4AddressString(),
 	}
-	nginxContainer.createConfig(
+	nginxContainer.CreateConfig(
 		"/nginx.conf",
 		"./resources/nginx/nginx_proxy_mirroring.conf",
 		values,
 	)
-	s.assertNil(nginxContainer.start())
+	s.AssertNil(nginxContainer.Start())
 
-	proxyVpp.waitForApp("nginx-", 5)
+	proxyVpp.WaitForApp("nginx-", 5)
 }
 
 var _ = Describe("NginxSuite", Ordered, ContinueOnFailure, func() {
@@ -100,9 +100,9 @@ var _ = Describe("NginxSuite", Ordered, ContinueOnFailure, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
@@ -129,9 +129,9 @@ var _ = Describe("NginxSuiteSolo", Ordered, ContinueOnFailure, Serial, func() {
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO"), func(ctx SpecContext) {
-				s.log(testName + ": BEGIN")
+				s.Log(testName + ": BEGIN")
 				test(&s)
-			}, SpecTimeout(suiteTimeout))
+			}, SpecTimeout(SuiteTimeout))
 		}
 	}
 })
