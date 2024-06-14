@@ -16,6 +16,23 @@
       "message": "This makes the test [0] pass. Performance is still poor, but that is a different issue.\n[0] https://s3-logs.fd.io/vex-yul-rot-jenkins-1/vpp-csit-verify-perf-master-ubuntu2204-x86_64-3n-snr/48/csit_current/0/log.html.gz#s1-s1-s1-s1-s1-t1",
       "revId": "173e892a3c7b908cb322aa93fbceff2602c84d9b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3bd6f1f2_5278cbb0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2024-06-14T08:40:10Z",
+      "side": 1,
+      "message": "reflecting Vratko\u0027s +1",
+      "revId": "173e892a3c7b908cb322aa93fbceff2602c84d9b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
