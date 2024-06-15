@@ -16,6 +16,23 @@
       "message": "Please kindly review the change ... Thanks",
       "revId": "76c410cc3bdbe890f12dde9bed9d877fdcede472",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94c6ca78_2c5df7b8",
+        "filename": "src/vnet/hash/handoff_eth.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-06-15T19:03:59Z",
+      "side": 1,
+      "message": "This should probably be integrated with eth_get_key/ipvX_get_key as opposed to having a separate function to avoid all the 0 hash keys.",
+      "revId": "76c410cc3bdbe890f12dde9bed9d877fdcede472",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
