@@ -77,7 +77,10 @@ func (s *HstSuite) SetupSuite() {
 
 func (s *HstSuite) AllocateCpus() []int {
 	cpuCtx, err := s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuPerVpp)
-	s.AssertNil(err)
+	// using Fail instead of AssertNil to make error message more readable
+	if err != nil {
+		Fail(fmt.Sprint(err))
+	}
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
 }
