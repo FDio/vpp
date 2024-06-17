@@ -219,27 +219,20 @@ unix_proc_file_contents (char *file, u8 ** result)
   return 0;
 }
 
-void os_panic (void) __attribute__ ((weak));
-
-__clib_export void
+__clib_export __clib_weak void
 os_panic (void)
 {
   abort ();
 }
 
-void os_exit (int) __attribute__ ((weak));
-
-void
+__clib_export __clib_weak void
 os_exit (int code)
 {
   exit (code);
 }
 
-void os_puts (u8 * string, uword string_length, uword is_error)
-  __attribute__ ((weak));
-
-void
-os_puts (u8 * string, uword string_length, uword is_error)
+__clib_export __clib_weak void
+os_puts (u8 *string, uword string_length, uword is_error)
 {
   int cpu = os_get_thread_index ();
   int nthreads = os_get_nthreads ();
