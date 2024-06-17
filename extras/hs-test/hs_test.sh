@@ -68,6 +68,12 @@ case "${i}" in
     --repeat=*)
         ginkgo_args="$ginkgo_args --repeat=${i#*=}"
         ;;
+    --cpu0=*)
+        cpu0="${i#*=}"
+        if [ "$cpu0" = "true" ]; then
+            args="$args -cpu0"
+        fi
+        ;;
 esac
 done
 
