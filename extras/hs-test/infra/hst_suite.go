@@ -33,6 +33,8 @@ var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var NConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
 var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different with debug build")
+var UseCpu0 = flag.Bool("cpu0", false, "use cpu0")
+var NumaAwareCpuAlloc bool
 var SuiteTimeout time.Duration
 
 type HstSuite struct {
@@ -78,7 +80,10 @@ func (s *HstSuite) SetupSuite() {
 
 func (s *HstSuite) AllocateCpus() []int {
 	cpuCtx, err := s.CpuAllocator.Allocate(len(s.StartedContainers), s.CpuPerVpp)
-	s.AssertNil(err)
+	// using Fail instead of AssertNil to make error message more readable
+	if err != nil {
+		Fail(fmt.Sprint(err))
+	}
 	s.AddCpuContext(cpuCtx)
 	return cpuCtx.cpus
 }
