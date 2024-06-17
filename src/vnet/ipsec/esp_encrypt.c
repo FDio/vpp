@@ -589,6 +589,22 @@ esp_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 				  async_next, iv, tag, aad, flag);
 }
 
+/* Per RFC6935 section 5, the UDP checksum must be computed when originating
+ * an IPv6 UDP packet. The default behavior may be overridden when conditions
+ * defined by RFC6936 are satisfied. This implementation does not satisfy all
+ * the conditions so the checksum must be computed.
+ */
+static_always_inline void
+set_ip6_udp_cksum_offload (vlib_buffer_t *b, i16 l3_hdr_offset,
+			   i16 l4_hdr_offset)
+{
+  vnet_buffer (b)->l3_hdr_offset = l3_hdr_offset;
+  vnet_buffer (b)->l4_hdr_offset = l4_hdr_offset;
+  vnet_buffer_offload_flags_set (b, VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
+  b->flags |= (VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	       VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+}
+
 always_inline uword
 esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame, vnet_link_t lt, int is_tun,
@@ -869,6 +885,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      esp_update_ip4_hdr (ip4, len, /* is_transport */ 0, 0);
 	    }
 
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa0) &&
+	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
+	    {
+	      i16 l3_off = b[0]->current_data - hdr_len;
+	      i16 l4_off = l3_off + sizeof (ip6_header_t);
+
+	      set_ip6_udp_cksum_offload (b[0], l3_off, l4_off);
+	    }
+
 	  dpo = &sa0->dpo;
 	  if (!is_tun)
 	    {
@@ -986,6 +1011,14 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      udp_len = len - ip_len;
 	      esp_fill_udp_hdr (sa0, udp, udp_len);
+	    }
+
+	  if (udp && (VNET_LINK_IP6 == lt))
+	    {
+	      i16 l3_off = b[0]->current_data - hdr_len + l2_len;
+	      i16 l4_off = l3_off + ip_len;
+
+	      set_ip6_udp_cksum_offload (b[0], l3_off, l4_off);
 	    }
 
 	  sync_next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
