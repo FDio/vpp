@@ -21,7 +21,9 @@ ipsec-mb_tarball_md5sum_1.2  := f551d9c208893a436c1f5c146a615bd6
 ipsec-mb_tarball_md5sum_1.3  := d8692db9efe32a263b61f12ac0dca950
 ipsec-mb_tarball_md5sum_1.4  := fddba2611f822296ddd82d1c31d22b24
 ipsec-mb_tarball_md5sum_1.5  := f18680f8dd43208a15a19a494423bdb9
+ipsec-mb_tarball_sha256sum_1.5  := 8d3f0a561b539303d81fda82584663daea65af85e07c40b393a4e8cfe839e057
 
+ipsec-mb_tarball_sha256sum   := $(ipsec-mb_tarball_sha256sum_$(ipsec-mb_version))
 ipsec-mb_tarball_md5sum      := $(ipsec-mb_tarball_md5sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
 ipsec-mb_url                 := http://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
