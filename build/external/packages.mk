@@ -41,12 +41,16 @@ downloads/$($1_tarball):
 $(B)/.$1.download.ok: downloads/$($1_tarball)
 	@mkdir -p $(B)
 	$$(call h1,"validating $1 $($1_version) checksum")
-	@SUM=$$(shell openssl md5 $$< | cut -f 2 -d " " -) ; \
-	([ "$$$${SUM}" = "$($1_tarball_md5sum)" ] || \
+	@MD5SUM=$$(shell openssl md5 $$< | cut -f 2 -d " " -) ; \
+	SHA256SUM=$$(shell openssl sha256 $$< | cut -f 2 -d " " -) ; \
+	(([ "$$$${SHA256SUM}" = "$($1_tarball_sha256sum)" ] && echo "SHA256 OK") || \
+	([ "$$$${MD5SUM}" = "$($1_tarball_md5sum)" ] && echo "MD5 OK") || \
 	( echo "==========================================================" && \
 	  echo "Bad Checksum!" && \
-	  echo "Expected:   $($1_tarball_md5sum)" && \
-	  echo "Calculated: $$$${SUM}" && \
+	  echo "Expected MD5:   $($1_tarball_md5sum)" && \
+	  echo "Calculated MD5: $$$${MD5SUM}" && \
+	  echo "Expected SHA256:   $($1_tarball_sha256)" && \
+	  echo "Calculated SHA256: $$$${SHA256SUM}" && \
 	  echo "Please remove $$< and retry" && \
 	  echo "==========================================================" && \
 	  false ))
