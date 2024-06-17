@@ -22,6 +22,7 @@ DPDK_MLX_IBV_LINK            ?= static
 dpdk_version                 ?= 24.03
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
+dpdk_tarball_sha256sum_24.03    := 33ed973b3945af4f5923096ddca250b401dc80be3b5c6393b4e4fe43a1a6c2ad
 dpdk_tarball_md5sum_24.03    := a98da848d6ba09808ef00f9a26aaa49a
 dpdk_tarball_md5sum_23.11    := 896c09f5b45b452bd77287994650b916
 dpdk_tarball_md5sum_23.07    := 2b6d57f077585cb15b885482362fd47f
@@ -30,6 +31,8 @@ dpdk_tarball_md5sum_22.11.1  := 0594708fe42ce186a55b0235c6e20cfe
 dpdk_tarball_md5sum_22.07    := fb73b58b80b1349cd05fe9cf6984afd4
 dpdk_tarball_md5sum_22.03    := a07ca8839f98062f46e1cc359735cce8
 dpdk_tarball_md5sum_21.11    := 58660bbbe9e95abce86e47692b196555
+
+dpdk_tarball_sha256sum       := $(dpdk_tarball_sha256sum_$(dpdk_version))
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
