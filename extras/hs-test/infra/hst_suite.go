@@ -109,6 +109,7 @@ func (s *HstSuite) SkipIfUnconfiguring() {
 }
 
 func (s *HstSuite) SetupTest() {
+	s.Log("***************************** BUILD_NUMBER: " + os.Getenv("BUILD_NUMBER"))
 	s.Log("Test Setup")
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SkipIfUnconfiguring()
