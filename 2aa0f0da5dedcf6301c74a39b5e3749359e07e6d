@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85d63a02_8c2112c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2024-06-17T14:25:29Z",
+      "side": 1,
+      "message": "Just explanatory note, no action required.\nQuoting Vratko who worked on this: \"3 suites with \"hmac256sha\" in the name.\"",
+      "revId": "2aa0f0da5dedcf6301c74a39b5e3749359e07e6d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
