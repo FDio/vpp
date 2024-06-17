@@ -27,8 +27,11 @@ rdma-core_version             := 52.0
 rdma-core_tarball             := rdma-core-$(rdma-core_version).tar.gz
 rdma-core_tarball_md5sum_49.0 := 9fe3909f19c7e0276c9e546411bbb49c
 rdma-core_tarball_md5sum_51.0 := ed95d79f782ea00bd7233d453abd60b3
+rdma-core_tarball_sha256sum_51.0 := 0a4a55b1351356c2750f26ec9010e8c7370402a13c95799cb8b447cf0134dd61
 rdma-core_tarball_md5sum_52.0 := c78dba484aac72eb8586d88f7b399b0f
+rdma-core_tarball_sha256sum_52.o := 1f0ce5f2462c982b20d21156707076278807a7adf4d10e9142f3be4bec1b2b83
 rdma-core_tarball_md5sum      := $(rdma-core_tarball_md5sum_$(rdma-core_version))
+rdma-core_tarball_sha256sum      := $(rdma-core_tarball_sha256sum_$(rdma-core_version))
 rdma-core_tarball_strip_dirs  := 1
 rdma-core_url                 := http://github.com/linux-rdma/rdma-core/releases/download/v$(rdma-core_version)/$(rdma-core_tarball)
 
