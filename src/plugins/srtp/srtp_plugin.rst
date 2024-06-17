@@ -48,9 +48,9 @@ Custom libsrtp2 build
 
 ::
 
-   srtp_version := 2.3.0
-   srtp_tarball := srtp_$(srtp_version).tar.gz
-   srtp_tarball_md5sum := da38ee5d9c31be212a12964c22d7f795
+   srtp_version := 2.6.0
+   srtp_tarball := libsrtp_$(srtp_version).tar.gz
+   srtp_tarball_sha256sum := bf641aa654861be10570bfc137d1441283822418e9757dc71ebb69a6cf84ea6b
    srtp_tarball_strip_dirs := 1
    srtp_url := https://github.com/cisco/libsrtp/archive/v$(srtp_version).tar.gz
 

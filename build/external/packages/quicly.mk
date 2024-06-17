@@ -13,7 +13,7 @@
 
 quicly_version := 0.1.5-vpp
 quicly_tarball := quicly_$(quicly_version).tar.gz
-quicly_tarball_md5sum := fc388ccde2f7d677b92ff3cb3fd387e4
+quicly_tarball_sha256sum := fb50ad8ce1136561ee08df02131030d89e38acd2cf8e36c65c074f3bd5034938
 quicly_tarball_strip_dirs := 1
 quicly_url := https://github.com/vpp-quic/quicly/releases/download/v$(quicly_version)/quicly_$(quicly_version).tar.gz
 
