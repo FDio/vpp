@@ -51,6 +51,7 @@ extern int fib_api_route_add_del (u8 is_add,
                                   fib_entry_flag_t entry_flags,
                                   fib_route_path_t *rpaths);
 
+extern u8 *format_vl_api_address_union (u8 * s, va_list * args);
 extern u8* format_vl_api_fib_path(u8 * s, va_list * args);
 
 

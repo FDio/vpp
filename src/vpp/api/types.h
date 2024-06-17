@@ -40,7 +40,6 @@ extern u8 *format_vl_api_address (u8 * s, va_list * args);
 extern u8 *format_vl_api_address_family (u8 * s, va_list * args);
 extern u8 *format_vl_api_ip4_address (u8 * s, va_list * args);
 extern u8 *format_vl_api_ip6_address (u8 * s, va_list * args);
-extern u8 *format_vl_api_address_union (u8 * s, va_list * args);
 extern u8 *format_vl_api_prefix (u8 * s, va_list * args);
 extern u8 *format_vl_api_mprefix (u8 * s, va_list * args);
 extern u8 *format_vl_api_mac_address (u8 * s, va_list * args);
