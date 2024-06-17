@@ -13,7 +13,7 @@
 
 openssl_version             := 3.3.2
 openssl_tarball             := openssl-$(openssl_version).tar.gz
-openssl_tarball_md5sum      := 015fca2692596560b6fe8a2d8fecd84b
+openssl_tarball_sha256sum   := 2e8a40b01979afe8be0bbfb3de5dc1c6709fedb46d6c89c10da114ab5fc3d281
 
 openssl_tarball_strip_dirs  := 1
 openssl_url                 := https://github.com/openssl/openssl/releases/download/openssl-$(openssl_version)/$(openssl_tarball)
