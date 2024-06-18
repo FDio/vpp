@@ -552,7 +552,9 @@ buffers <n>
 ^^^^^^^^^^^^^^^
 
 The number of buffers allocated for this specific NUMA domain.
-Default is 0, which falls back to the value configured in **buffers-per-numa**.
+If this is set to zero, no buffers are allocated for this domain.
+
+By default, the value configured in **buffers-per-numa** is used.
 
 .. code-block:: console
 

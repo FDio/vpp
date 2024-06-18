@@ -663,6 +663,7 @@ vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
 				  u8 unpriv)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
+  u32 default_buffers_per_numa = bm->default_buffers_per_numa;
   u32 buffers_per_numa = bm->buffers_per_numa[numa_node];
   clib_error_t *error;
   u32 buffer_size;
@@ -679,12 +680,13 @@ vlib_buffer_main_init_numa_alloc (struct vlib_main_t *vm, u32 numa_node,
     return clib_error_return (0, "buffer size (%llu) is greater than page "
 			      "size (%llu)", buffer_size, pagesize);
 
-  if (buffers_per_numa == 0)
-    buffers_per_numa = bm->default_buffers_per_numa;
+  if (default_buffers_per_numa == 0)
+    default_buffers_per_numa = unpriv ?
+				       VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV :
+				       VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA;
 
-  if (buffers_per_numa == 0)
-    buffers_per_numa = unpriv ? VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV :
-      VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA;
+  if (buffers_per_numa == ~0)
+    buffers_per_numa = default_buffers_per_numa;
 
   name = format (0, "buffers-numa-%d%c", numa_node, 0);
   n_pages = (buffers_per_numa - 1) / (pagesize / buffer_size) + 1;
@@ -856,6 +858,10 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     {
       u8 *index = bm->default_buffer_pool_index_for_numa + numa_node;
       index[0] = ~0;
+
+      if (bm->buffers_per_numa[numa_node] == 0)
+	continue;
+
       if ((err = vlib_buffer_main_init_numa_node (vm, numa_node, index)))
         {
 	  clib_error_report (err);
@@ -912,7 +918,7 @@ static clib_error_t *
 vlib_buffers_numa_configure (vlib_buffer_main_t *bm, u32 numa_node,
 			     unformat_input_t *input)
 {
-  u32 buffers = 0;
+  u32 buffers = ~0;
 
   if (numa_node >= VLIB_BUFFER_MAX_NUMA_NODES)
     return clib_error_return (0, "invalid numa node");
@@ -945,7 +951,7 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 
   bm = vm->buffer_main;
   bm->log2_page_size = CLIB_MEM_PAGE_SZ_UNKNOWN;
-  memset (bm->buffers_per_numa, 0, sizeof (bm->buffers_per_numa));
+  memset (bm->buffers_per_numa, ~0, sizeof (bm->buffers_per_numa));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
