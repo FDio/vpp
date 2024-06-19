@@ -647,6 +647,8 @@ ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
 
   ls->rx_fifo->shr->master_session_index = ls->session_index;
   ls->tx_fifo->shr->master_session_index = ls->session_index;
+  ls->rx_fifo->vpp_session_index = ls->session_index;
+  ls->tx_fifo->vpp_session_index = ls->session_index;
   ls->rx_fifo->master_thread_index = ls->thread_index;
   ls->tx_fifo->master_thread_index = ls->thread_index;
 

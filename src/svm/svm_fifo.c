@@ -1650,8 +1650,8 @@ format_svm_fifo (u8 * s, va_list * args)
 
   if (verbose > 1)
     s = format (s, "%Uvpp session %d thread %d app session %d thread %d\n",
-		format_white_space, indent, f->shr->master_session_index,
-		f->master_thread_index, f->shr->client_session_index,
+		format_white_space, indent, f->vpp_session_index,
+		f->master_thread_index, f->app_session_index,
 		f->client_thread_index);
 
   if (verbose)

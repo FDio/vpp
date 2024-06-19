@@ -1864,7 +1864,8 @@ test_app_send_io_evt_rx (app_worker_t *app_wrk, session_t *s)
   if (svm_fifo_has_event (s->rx_fifo))
     return 0;
 
-  app_session = s->rx_fifo->shr->client_session_index;
+  //   app_session = s->rx_fifo->shr->client_session_index;
+  app_session = s->rx_fifo->app_session_index;
   mq = app_wrk->event_queue;
 
   rv = test_mq_try_lock_and_alloc_msg (mq, SESSION_MQ_IO_EVT_RING, mq_msg);

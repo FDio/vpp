@@ -659,8 +659,7 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
 
   /* Generate new tx event if we have outstanding data */
   if (svm_fifo_has_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (s->vpp_evt_q,
-			    s->tx_fifo->shr->master_session_index,
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->vpp_session_index,
 			    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 
   VDBG (0, "Migrated 0x%lx to thread %u 0x%lx", mp->handle,
@@ -2156,8 +2155,7 @@ read_again:
   if (PREDICT_FALSE (svm_fifo_needs_deq_ntf (rx_fifo, n_read)))
     {
       svm_fifo_clear_deq_ntf (rx_fifo);
-      app_send_io_evt_to_vpp (s->vpp_evt_q,
-			      s->rx_fifo->shr->master_session_index,
+      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->vpp_session_index,
 			      SESSION_IO_EVT_RX, SVM_Q_WAIT);
     }
 
@@ -2362,8 +2360,8 @@ vppcom_session_write_inline (vcl_worker_t *wrk, vcl_session_t *s, void *buf,
     }
 
   if (svm_fifo_set_event (s->tx_fifo))
-    app_send_io_evt_to_vpp (
-      s->vpp_evt_q, s->tx_fifo->shr->master_session_index, et, SVM_Q_WAIT);
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->vpp_session_index, et,
+			    SVM_Q_WAIT);
 
   /* The underlying fifo segment can run out of memory */
   if (PREDICT_FALSE (n_write < 0))

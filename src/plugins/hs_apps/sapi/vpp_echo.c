@@ -69,9 +69,9 @@ echo_session_dequeue_notify (echo_session_t * s)
   int rv;
   if (!svm_fifo_set_event (s->rx_fifo))
     return;
-  if ((rv = app_send_io_evt_to_vpp (s->vpp_evt_q,
-				    s->rx_fifo->shr->master_session_index,
-				    SESSION_IO_EVT_RX, SVM_Q_WAIT)))
+  if ((rv =
+	 app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo->vpp_session_index,
+				 SESSION_IO_EVT_RX, SVM_Q_WAIT)))
     ECHO_FAIL (ECHO_FAIL_SEND_IO_EVT, "app_send_io_evt_to_vpp errored %d",
 	       rv);
   svm_fifo_clear_deq_ntf (s->rx_fifo);
