@@ -687,8 +687,8 @@ app_send_dgram_raw_gso (svm_fifo_t *f, app_session_transport_t *at,
   if (do_evt)
     {
       if (svm_fifo_set_event (f))
-	app_send_io_evt_to_vpp (vpp_evt_q, f->shr->master_session_index,
-				evt_type, noblock);
+	app_send_io_evt_to_vpp (vpp_evt_q, f->vpp_session_index, evt_type,
+				noblock);
     }
   return len;
 }
