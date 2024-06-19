@@ -738,6 +738,7 @@ active_open_alloc_session_fifos (session_t *s)
    * will receive data, etc.
    */
   txf->shr->master_session_index = s->session_index;
+  txf->vpp_session_index = s->session_index;
   txf->master_thread_index = s->thread_index;
 
   /*
@@ -968,7 +969,7 @@ active_open_rx_callback (session_t * s)
   if (svm_fifo_set_event (proxy_tx_fifo))
     {
       u8 thread_index = proxy_tx_fifo->master_thread_index;
-      u32 session_index = proxy_tx_fifo->shr->master_session_index;
+      u32 session_index = proxy_tx_fifo->vpp_session_index;
       return session_send_io_evt_to_thread_custom (&session_index,
 						   thread_index,
 						   SESSION_IO_EVT_TX);

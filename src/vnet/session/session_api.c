@@ -426,9 +426,12 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
   /* Setup client session index in advance, in case data arrives
-   * before the app processes message and updates it */
+   * before the app processes message and updates it
+   * Maybe this needs to be done via a reply message from app */
   s->rx_fifo->shr->client_session_index = api_context;
   s->tx_fifo->shr->client_session_index = api_context;
+  s->rx_fifo->app_session_index = api_context;
+  s->tx_fifo->app_session_index = api_context;
 
 snd_msg:
 
@@ -637,7 +640,7 @@ mq_send_io_rx_event (session_t *s)
   mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
 
   mq_evt->event_type = SESSION_IO_EVT_RX;
-  mq_evt->session_index = s->rx_fifo->shr->client_session_index;
+  mq_evt->session_index = s->rx_fifo->app_session_index;
 
   (void) svm_fifo_set_event (s->rx_fifo);
 
@@ -658,7 +661,7 @@ mq_send_io_tx_event (session_t *s)
   mq_evt = svm_msg_q_msg_data (mq, &mq_msg);
 
   mq_evt->event_type = SESSION_IO_EVT_TX;
-  mq_evt->session_index = s->tx_fifo->shr->client_session_index;
+  mq_evt->session_index = s->tx_fifo->app_session_index;
 
   svm_msg_q_add_raw (mq, &mq_msg);
 
