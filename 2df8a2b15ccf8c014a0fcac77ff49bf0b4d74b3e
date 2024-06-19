@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22e70b8e_86de1233",
+        "filename": "extras/hs-test/ldp_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2024-06-19T16:14:07Z",
+      "side": 1,
+      "message": "In a separate patch, can we set ldpreload variable per suite/test?",
+      "revId": "2df8a2b15ccf8c014a0fcac77ff49bf0b4d74b3e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
