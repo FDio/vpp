@@ -32,6 +32,7 @@ var IsUnconfiguring = flag.Bool("unconfigure", false, "remove topology")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var NConfiguredCpus = flag.Int("cpus", 1, "number of CPUs assigned to vpp")
 var VppSourceFileDir = flag.String("vppsrc", "", "vpp source file directory")
+var IsDebugBuild = flag.Bool("debug_build", false, "some paths are different with debug build")
 var SuiteTimeout time.Duration
 
 type HstSuite struct {

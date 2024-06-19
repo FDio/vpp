@@ -7,6 +7,7 @@ single_test=0
 persist_set=0
 unconfigure_set=0
 debug_set=0
+debug_build=
 ginkgo_args=
 
 for i in "$@"
@@ -24,6 +25,12 @@ case "${i}" in
         if [ "$debug" = "true" ]; then
             args="$args -debug"
             debug_set=1
+        fi
+        ;;
+    --debug_build=*)
+        debug_build="${i#*=}"
+        if [ "$debug_build" = "true" ]; then
+            args="$args -debug_build"
         fi
         ;;
     --verbose=*)
@@ -80,7 +87,7 @@ if [ $persist_set -eq 1 ] && [ $unconfigure_set -eq 1 ]; then
 fi
 
 if [ $single_test -eq 0 ] && [ $debug_set -eq 1 ]; then
-    echo "VPP debug flag is not supperted while running all tests!"
+    echo "VPP debug flag is not supported while running all tests!"
     exit 1
 fi
 
