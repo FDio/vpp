@@ -103,6 +103,8 @@ typedef struct _svm_fifo
   u8 flags;		  /**< fifo flags */
   u8 master_thread_index; /**< session layer thread index */
   u8 client_thread_index; /**< app worker index */
+  u32 vpp_session_index;  /**< session layer session index */
+  u32 app_session_index;  /**< app session index */
   i8 refcnt;		  /**< reference count  */
   u32 segment_manager;	  /**< session layer segment manager index */
   u32 segment_index;	  /**< segment index in segment manager */
