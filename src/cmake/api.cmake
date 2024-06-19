@@ -11,14 +11,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Set the CMP0116 policy
+if(POLICY CMP0116)
+    cmake_policy(SET CMP0116 NEW)
+endif()
+
 ##############################################################################
 # API
 ##############################################################################
 function(vpp_generate_api_c_header file)
   set (output_name ${CMAKE_CURRENT_BINARY_DIR}/${file}.h)
+  set (dependency_file ${CMAKE_CURRENT_BINARY_DIR}/${file}.d)
   get_filename_component(output_dir ${output_name} DIRECTORY)
   if(NOT VPP_APIGEN)
-     set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
+    set(VPP_APIGEN ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen)
+    set(VPPAPIGEN_SUBMODULES
+      ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_c.py
+      ${CMAKE_SOURCE_DIR}/tools/vppapigen/vppapigen_json.py
+    )
   endif()
   if (VPP_INCLUDE_DIR)
     set(includedir "--includedir" ${VPP_INCLUDE_DIR})
@@ -35,16 +45,19 @@ function(vpp_generate_api_c_header file)
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_test2.c"
   )
 
+  get_filename_component(barename ${file} NAME)
+
   add_custom_command (
     OUTPUT ${OUTPUT_HEADERS}
     COMMAND mkdir -p ${output_dir}
     COMMAND ${PYENV} ${VPP_APIGEN}
-    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name}
-    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name} -MF ${dependency_file}
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file} ${VPPAPIGEN_SUBMODULES}
     COMMENT "Generating API header ${output_name}"
+    DEPFILE ${dependency_file}
   )
-  get_filename_component(barename ${file} NAME)
   set(t ${barename}_deps)
+
   if (NOT TARGET ${t})
     add_custom_target(${t} ALL DEPENDS ${OUTPUT_HEADERS})
     add_dependencies(api_headers ${t})
@@ -158,6 +171,7 @@ function(vpp_add_api_files name dir component)
     # "vapi". Both by in-source components (e.g. vpp-api/vapi/vapi.c), and
     # out-of-tree plugins use #include <vapi/component.api.vapi.h>.
     # ${file} contains the subdirectory, so strip it here.
+    file(MAKE_DIRECTORY ${VPP_BINARY_DIR}/vpp-api/vapi)
     get_filename_component(name ${file} NAME)
     list(APPEND header_files
       ${file}.h
@@ -174,4 +188,6 @@ endfunction()
 
 add_custom_target(api_headers
   DEPENDS vlibmemory_api_headers vnet_api_headers vpp_api_headers vlib_api_headers
+)
+add_custom_target(vapi_headers
 )
