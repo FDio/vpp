@@ -54,14 +54,19 @@ dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
 {
   int ret;
   int i;
-  int len = vec_len (xd->xstats);
+  int len;
   if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     return;
   if (xd->driver == 0)
     return;
+  len = rte_eth_xstats_get (xd->port_id, NULL, 0);
+  if (len < 0)
+    return;
+
+  vec_validate (xd->xstats, len - 1);
 
   ret = rte_eth_xstats_get (xd->port_id, xd->xstats, len);
-  if (ret < 0 || ret > len || len != vec_len (xd->driver->xstats_counters))
+  if (ret < 0 || ret > len)
     {
       /* Failed, expand vector and try again on next time around the track. */
       vec_validate (xd->xstats, ret - 1);
@@ -69,13 +74,20 @@ dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
       dpdk_log_warn ("rte_eth_xstats_get(%d) failed: %d", xd->port_id, ret);
       return;
     }
-  vec_foreach_index (i, xd->xstats)
+  if (len == vec_len (xd->driver->xstats_counters))
     {
-      vlib_set_simple_counter (&xd->driver->xstats_counters[i], thread_index,
-			       xd->sw_if_index, xd->xstats[i].value);
+      vec_foreach_index (i, xd->xstats)
+	{
+	  vlib_set_simple_counter (&xd->driver->xstats_counters[i],
+				   thread_index, xd->sw_if_index,
+				   xd->xstats[i].value);
+	}
     }
-
-  vec_set_len (xd->xstats, ret);
+  else
+    {
+      dpdk_log_warn ("rte_eth_xstats_get vector size mismatch (%d/%d", len,
+		     vec_len (xd->driver->xstats_counters));
+    }
 }
 
 #define DPDK_UPDATE_COUNTER(vnm, tidx, xd, stat, cnt)                         \
