@@ -21,6 +21,32 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
 #include <vlib/stats/stats.h>
+#include <vlibmemory/api.h>
+
+typedef struct
+{
+  u32 hw_if_index;
+  u8 is_link_up;
+} bond_hw_if_set_flags_args_t;
+
+static void
+bond_hw_if_set_flags_cb (bond_hw_if_set_flags_args_t *args)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_flags_t flags =
+    vnet_hw_interface_get_flags (vnm, args->hw_if_index);
+
+  if (args->is_link_up)
+    {
+      flags |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+    }
+  else
+    {
+      flags &= ~VNET_HW_INTERFACE_FLAG_LINK_UP;
+    }
+
+  vnet_hw_interface_set_flags (vnm, args->hw_if_index, flags);
+}
 
 void
 bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
@@ -53,6 +79,17 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
 		bif->n_numa_members--;
 		ASSERT (bif->n_numa_members >= 0);
 	      }
+	  }
+	/* If that was the last active member, set bond link state down */
+	if (!vec_len (bif->active_members))
+	  {
+	    bond_hw_if_set_flags_args_t args = {
+	      .hw_if_index = bif->hw_if_index,
+	      .is_link_up = 0,
+	    };
+
+	    vl_api_rpc_call_main_thread (bond_hw_if_set_flags_cb, (u8 *) &args,
+					 sizeof (args));
 	  }
 	break;
       }
@@ -157,6 +194,18 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
     }
   else
     vec_add1 (bif->active_members, mif->sw_if_index);
+
+  /* If this was the first active member, set bond link state up */
+  if (bif->admin_up && vec_len (bif->active_members) == 1)
+    {
+      bond_hw_if_set_flags_args_t args = {
+	.hw_if_index = bif->hw_if_index,
+	.is_link_up = 1,
+      };
+
+      vl_api_rpc_call_main_thread (bond_hw_if_set_flags_cb, (u8 *) &args,
+				   sizeof (args));
+    }
 
   mif->is_local_numa = (vm->numa_node == hw->numa_node) ? 1 : 0;
   if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
@@ -471,9 +520,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     }
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
-
-  vnet_hw_interface_set_flags (vnm, bif->hw_if_index,
-			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
   hash_set (bm->bond_by_sw_if_index, bif->sw_if_index, bif->dev_instance);
 
