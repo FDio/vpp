@@ -100,23 +100,44 @@ typedef struct _svm_fifo
   u32 ooos_list_head;		 /**< Head of out-of-order linked-list */
   u32 ooos_newest;		 /**< Last segment to have been updated */
 
-  u8 flags;		  /**< fifo flags */
-  u8 master_thread_index; /**< session layer thread index */
-  u8 client_thread_index; /**< app worker index */
-  i8 refcnt;		  /**< reference count  */
-  u32 segment_manager;	  /**< session layer segment manager index */
-  u32 segment_index;	  /**< segment index in segment manager */
+  u16 unused; /**< unused */
+  u8 flags;   /**< fifo flags */
+  i8 refcnt;  /**< reference count  */
+  union
+  {
+    struct
+    {
+      u32 vpp_session_index;   /**< session layer session index */
+      u32 master_thread_index; /**< session layer thread index */
+    };
+    u64 vpp_sh_as_u64;
+  };
+  union
+  {
+    struct
+    {
+      u32 app_session_index;   /**< app session index */
+      u32 client_thread_index; /**< app worker index */
+    };
+    u64 app_sh_as_u64;
+  };
+  u32 segment_manager; /**< session layer segment manager index */
+  u32 segment_index;   /**< segment index in segment manager */
 
   struct _svm_fifo *next; /**< prev in active chain */
   struct _svm_fifo *prev; /**< prev in active chain */
-
-  svm_fifo_chunk_t *chunks_at_attach; /**< chunks to be accounted at detach */
-  svm_fifo_shared_t *hdr_at_attach;   /**< hdr to be freed at detach */
 
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
 } svm_fifo_t;
+
+/* To minimize size of svm_fifo_t reuse ooo pointers for tracking chunks and
+ * hdr at attach/detach. Fifo being migrated should not receive new data */
+#define svm_fifo_chunks_at_attach(f)                                          \
+  *((svm_fifo_chunk_t **) (void *) &f->ooo_deq)
+#define svm_fifo_hdr_at_attach(f)                                             \
+  *((svm_fifo_shared_t **) (void *) &f->ooo_enq)
 
 typedef struct fifo_segment_slice_
 {
