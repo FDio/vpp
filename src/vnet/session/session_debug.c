@@ -278,7 +278,7 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
     case SESSION_IO_EVT_BUILTIN_RX:
     case SESSION_IO_EVT_TX_MAIN:
     case SESSION_IO_EVT_TX_FLUSH:
-      if (e->session_index == f->shr->master_session_index)
+      if (e->session_index == f->vpp_session_index)
 	return 1;
       break;
     case SESSION_CTRL_EVT_CLOSE:
