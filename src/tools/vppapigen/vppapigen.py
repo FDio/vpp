@@ -9,6 +9,7 @@ import os
 from subprocess import Popen, PIPE
 import ply.lex as lex
 import ply.yacc as yacc
+from io import TextIOWrapper
 
 assert sys.version_info >= (3, 5), "Not supported Python version: {}".format(
     sys.version
@@ -1166,6 +1167,21 @@ def foldup_crcs(s):
         f.crc = foldup_blocks(f.block, binascii.crc32(f.crc) & 0xFFFFFFFF)
 
 
+def write_dependencies(output_file, dependency_file, imports):
+    r = []
+    for i in imports:
+        for d in dirlist:
+            f = os.path.abspath(os.path.join(d, i.filename))
+            if os.path.exists(f):
+                r.append(f)
+    with open(dependency_file, "w", encoding="utf8") as f:
+        print(f"{output_file}: \\", file=f)
+        for i in r[:-1]:
+            print(f" {i} \\", file=f)
+        if imports:
+            print(f" {r[-1]}", file=f)
+
+
 def run_vppapigen(
     input_file=None,
     output=sys.stdout,
@@ -1176,6 +1192,7 @@ def run_vppapigen(
     outputdir=None,
     pluginpath="",
     git_revision=None,
+    dependency_file=None,
 ):
     # reset globals
     dirlist.clear()
@@ -1256,6 +1273,9 @@ def run_vppapigen(
         imports = parser.process_imports(parsed_objects, False, result)
         s["imported"] = parser.process(imports)
 
+    if dependency_file and isinstance(output, TextIOWrapper):
+        write_dependencies(output.name, dependency_file[0], s["Import"])
+
     # Add msg_id field
     s["Define"] = add_msg_id(s["Define"])
 
@@ -1324,6 +1344,7 @@ def main():
     cliparser.add_argument(
         "--git-revision", help="Git revision to use for opening files"
     )
+    cliparser.add_argument("-MF", nargs=1, help="Dependency file")
     args = cliparser.parse_args()
 
     return run_vppapigen(
@@ -1336,6 +1357,7 @@ def main():
         pluginpath=args.pluginpath,
         git_revision=args.git_revision,
         output=args.output,
+        dependency_file=args.MF,
     )
 
 
