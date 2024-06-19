@@ -387,12 +387,12 @@ static const char *http_redirect_template = "HTTP/1.1 %s\r\n";
 static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
 					    "Expires: %U GMT\r\n"
-					    "Server: %s\r\n"
+					    "Server: %v\r\n"
 					    "Content-Type: %s\r\n"
 					    "Content-Length: %lu\r\n\r\n";
 
 static const char *http_request_template = "GET %s HTTP/1.1\r\n"
-					   "User-Agent: %s\r\n"
+					   "User-Agent: %v\r\n"
 					   "Accept: */*\r\n\r\n";
 
 static u32
