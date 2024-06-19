@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
@@ -14,6 +15,7 @@ func init() {
 
 func LDPreloadIperfVppTest(s *VethsSuite) {
 	var clnVclConf, srvVclConf Stanza
+	var ldpreload string
 
 	serverContainer := s.GetContainerByName("server-vpp")
 	serverVclFileName := serverContainer.GetHostWorkDir() + "/vcl_srv.conf"
@@ -21,7 +23,13 @@ func LDPreloadIperfVppTest(s *VethsSuite) {
 	clientContainer := s.GetContainerByName("client-vpp")
 	clientVclFileName := clientContainer.GetHostWorkDir() + "/vcl_cln.conf"
 
-	ldpreload := "LD_PRELOAD=../../build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
+	osWorkDir, _ := os.Getwd()
+	if strings.Contains(osWorkDir, "debug"){
+		ldpreload = "LD_PRELOAD=../../build-root/build-vpp_debug-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
+	} else {
+		ldpreload = "LD_PRELOAD=../../build-root/build-vpp-native/vpp/lib/x86_64-linux-gnu/libvcl_ldpreload.so"
+	}
+
 
 	stopServerCh := make(chan struct{}, 1)
 	srvCh := make(chan error, 1)
