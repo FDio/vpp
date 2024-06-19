@@ -474,6 +474,10 @@ session_mq_accepted_reply_handler (session_worker_t *wrk,
       return;
     }
 
+  /* TODO(fcoras) This needs to be part of the reply message */
+  s->rx_fifo->app_session_index = s->rx_fifo->shr->client_session_index;
+  s->tx_fifo->app_session_index = s->tx_fifo->shr->client_session_index;
+
   /* Special handling for cut-through sessions */
   if (!session_has_transport (s))
     {
