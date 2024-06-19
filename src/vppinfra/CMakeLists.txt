@@ -16,15 +16,7 @@ enable_language(ASM)
 ##############################################################################
 # find libdl
 ##############################################################################
-vpp_find_path(LIBDL_INCLUDE_DIR dlfcn.h)
-vpp_find_library(LIBDL_LIB NAMES dl)
-
-if (LIBDL_INCLUDE_DIR AND LIBDL_LIB)
-  message(STATUS "libdl found at ${LIBDL_LIB}")
-  list(APPEND VPPINFRA_LIBS ${LIBDL_LIB})
-else()
-  message(FATAL_ERROR "libdl not found")
-endif()
+list(APPEND VPPINFRA_LIBS ${CMAKE_DL_LIBS})
 
 ##############################################################################
 # find libunwind
