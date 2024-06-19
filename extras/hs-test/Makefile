@@ -126,7 +126,7 @@ test-debug: .deps.ok .build_debug.ok
 	@# necessary so gmake won't skip executing the bash script
 	@-bash ./hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--unconfigure=$(UNCONFIGURE) --debug=$(DEBUG) --test=$(TEST) --cpus=$(CPUS) \
-		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT)
+		--vppsrc=$(VPPSRC) --parallel=$(PARALLEL) --repeat=$(REPEAT) --debug_build=true
 	@bash ./script/compress.sh
 
 .PHONY: test-cov
