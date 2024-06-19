@@ -33,6 +33,24 @@
       "message": "tab vs spaces issue? :/",
       "revId": "d293927c70199c535e85471efe4d1a1deab48281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01336212_20ff6b56",
+        "filename": "extras/hs-test/script/build_hst.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2024-06-19T11:50:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eaf69c61_eb3a2bca",
+      "revId": "d293927c70199c535e85471efe4d1a1deab48281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
