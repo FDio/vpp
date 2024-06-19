@@ -969,6 +969,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   if (CLIB_DEBUG)
     {
       sf->master_session_index = ~0;
+      f->vpp_session_index = ~0;
       f->master_thread_index = ~0;
     }
 
@@ -1002,12 +1003,12 @@ fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
     pfss_fifo_del_active_list (pfss, of);
 
   /* Collect chunks that were provided in return for those detached */
-  fsh_slice_collect_chunks (fs->h, fss, of->chunks_at_attach);
-  of->chunks_at_attach = 0;
+  fsh_slice_collect_chunks (fs->h, fss, svm_fifo_chunks_at_attach (of));
+  svm_fifo_chunks_at_attach (of) = 0;
 
   /* Collect hdr that was provided in return for the detached */
-  fss_fifo_free_list_push (fs->h, fss, of->hdr_at_attach);
-  of->hdr_at_attach = 0;
+  fss_fifo_free_list_push (fs->h, fss, svm_fifo_hdr_at_attach (of));
+  svm_fifo_hdr_at_attach (of) = 0;
 
   clib_mem_bulk_free (pfss->fifos, *f);
   *f = 0;
@@ -1034,10 +1035,11 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
   /* Allocate shared hdr and chunks to be collected at detach in return
    * for those that are being attached now */
   of = *f;
-  of->hdr_at_attach = fsh_try_alloc_fifo_hdr (fs->h, fss);
+  svm_fifo_hdr_at_attach (of) = fsh_try_alloc_fifo_hdr (fs->h, fss);
 
   c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
-  of->chunks_at_attach = pc = fsh_try_alloc_chunk (fs->h, fss, c->length);
+  svm_fifo_chunks_at_attach (of) = pc =
+    fsh_try_alloc_chunk (fs->h, fss, c->length);
 
   while ((c = fs_chunk_ptr (fs->h, c->next)))
     {
