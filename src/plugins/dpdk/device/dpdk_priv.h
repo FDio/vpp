@@ -54,39 +54,28 @@ dpdk_get_xstats (dpdk_device_t *xd, u32 thread_index)
 {
   int ret;
   int i;
-  int len;
   if (!(xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP))
     return;
-  if (xd->driver == 0)
-    return;
-  len = rte_eth_xstats_get (xd->port_id, NULL, 0);
-  if (len < 0)
-    return;
 
-  vec_validate (xd->xstats, len - 1);
-
-  ret = rte_eth_xstats_get (xd->port_id, xd->xstats, len);
-  if (ret < 0 || ret > len)
+  ret = rte_eth_xstats_get (xd->port_id, xd->xstats, vec_len (xd->xstats));
+  if (ret < 0)
     {
-      /* Failed, expand vector and try again on next time around the track. */
-      vec_validate (xd->xstats, ret - 1);
-      vec_set_len (xd->xstats, 0);
       dpdk_log_warn ("rte_eth_xstats_get(%d) failed: %d", xd->port_id, ret);
       return;
     }
-  if (len == vec_len (xd->driver->xstats_counters))
+  else if (ret != vec_len (xd->xstats))
     {
-      vec_foreach_index (i, xd->xstats)
-	{
-	  vlib_set_simple_counter (&xd->driver->xstats_counters[i],
-				   thread_index, xd->sw_if_index,
-				   xd->xstats[i].value);
-	}
+      dpdk_log_warn (
+	"rte_eth_xstats_get(%d) returned %d/%d stats. Resetting counters.",
+	xd->port_id, ret, vec_len (xd->xstats));
+      dpdk_counters_xstats_init (xd);
+      return;
     }
-  else
+
+  vec_foreach_index (i, xd->xstats)
     {
-      dpdk_log_warn ("rte_eth_xstats_get vector size mismatch (%d/%d", len,
-		     vec_len (xd->driver->xstats_counters));
+      vlib_set_simple_counter (&xd->xstats_counters, thread_index, i,
+			       xd->xstats[i].value);
     }
 }
 
