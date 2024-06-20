@@ -36,12 +36,6 @@ const char *http_status_code_str[] = {
 #undef _
 };
 
-const char *http_content_type_str[] = {
-#define _(s, ext, str) str,
-  foreach_http_content_type
-#undef _
-};
-
 const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
@@ -374,22 +368,17 @@ http_ts_reset_callback (session_t *ts)
  */
 static const char *http_error_template = "HTTP/1.1 %s\r\n"
 					 "Date: %U GMT\r\n"
-					 "Content-Type: text/html\r\n"
 					 "Connection: close\r\n"
-					 "Pragma: no-cache\r\n"
 					 "Content-Length: 0\r\n\r\n";
-
-static const char *http_redirect_template = "HTTP/1.1 %s\r\n";
 
 /**
  * http response boilerplate
  */
 static const char *http_response_template = "HTTP/1.1 %s\r\n"
 					    "Date: %U GMT\r\n"
-					    "Expires: %U GMT\r\n"
 					    "Server: %v\r\n"
-					    "Content-Type: %s\r\n"
-					    "Content-Length: %lu\r\n\r\n";
+					    "Content-Length: %u\r\n"
+					    "%s";
 
 static const char *http_request_template = "GET %s HTTP/1.1\r\n"
 					   "User-Agent: %v\r\n"
@@ -1004,49 +993,54 @@ http_state_wait_app_reply (http_conn_t *hc, transport_send_params_t *sp)
       goto error;
     }
 
-  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type], as->tx_fifo,
-		    msg.data.len);
-
-  /*
-   * Add headers. For now:
-   * - current time
-   * - expiration time
-   * - server name
-   * - content type
-   * - data length
-   */
-  now = clib_timebase_now (&hm->timebase);
-
-  switch (msg.code)
+  if (msg.code >= HTTP_N_STATUS)
     {
-    case HTTP_STATUS_NOT_FOUND:
-    case HTTP_STATUS_METHOD_NOT_ALLOWED:
-    case HTTP_STATUS_BAD_REQUEST:
-    case HTTP_STATUS_INTERNAL_ERROR:
-    case HTTP_STATUS_FORBIDDEN:
-    case HTTP_STATUS_OK:
-      header =
-	format (0, http_response_template, http_status_code_str[msg.code],
-		/* Date */
-		format_clib_timebase_time, now,
-		/* Expires */
-		format_clib_timebase_time, now + 600.0,
-		/* Server */
-		hc->app_name,
-		/* Content type */
-		http_content_type_str[msg.content_type],
-		/* Length */
-		msg.data.len);
-      break;
-    case HTTP_STATUS_MOVED:
-      header =
-	format (0, http_redirect_template, http_status_code_str[msg.code]);
-      /* Location: http(s)://new-place already queued up as data */
-      break;
-    default:
       clib_warning ("unsupported status code: %d", msg.code);
       return HTTP_SM_ERROR;
     }
+
+  /*
+   * Add "protocol layer" headers:
+   * - current time
+   * - server name
+   * - data length
+   */
+  now = clib_timebase_now (&hm->timebase);
+  header = format (0, http_response_template, http_status_code_str[msg.code],
+		   /* Date */
+		   format_clib_timebase_time, now,
+		   /* Server */
+		   hc->app_name,
+		   /* Length */
+		   msg.data.body_len,
+		   /* Any headers from app? */
+		   msg.data.headers_len ? "" : "\r\n");
+
+  /* Add headers from app (if any) */
+  if (msg.data.headers_len)
+    {
+      HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
+      if (msg.data.type == HTTP_MSG_DATA_PTR)
+	{
+	  uword app_headers_ptr;
+	  rv = svm_fifo_dequeue (as->tx_fifo, sizeof (app_headers_ptr),
+				 (u8 *) &app_headers_ptr);
+	  ASSERT (rv == sizeof (app_headers_ptr));
+	  vec_append (header, uword_to_pointer (app_headers_ptr, u8 *));
+	}
+      else
+	{
+	  u32 orig_len = vec_len (header);
+	  vec_resize (header, msg.data.headers_len);
+	  u8 *p = header + orig_len;
+	  rv = svm_fifo_dequeue (as->tx_fifo, msg.data.headers_len, p);
+	  ASSERT (rv == msg.data.headers_len);
+	}
+    }
+  HTTP_DBG (0, "%v", header);
+
+  http_buffer_init (&hc->tx_buf, msg_to_buf_type[msg.data.type], as->tx_fifo,
+		    msg.data.body_len);
 
   offset = http_send_data (hc, header, vec_len (header), 0);
   if (offset != vec_len (header))

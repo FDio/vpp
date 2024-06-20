@@ -50,8 +50,10 @@ typedef struct
   int free_data;
   /** File cache pool index */
   u32 cache_pool_index;
-  /** Content type, e.g. text, text/javascript, etc. */
-  http_content_type_t content_type;
+  /** Response header list */
+  http_header_t *resp_headers;
+  /** Serialized headers to send */
+  u8 *headers_buf;
 } hss_session_t;
 
 typedef struct hss_session_handle_
@@ -91,6 +93,7 @@ typedef struct hss_url_handler_args_
       uword data_len;
       u8 free_vec_data;
       http_status_code_t sc;
+      http_content_type_t ct;
     };
   };
 } hss_url_handler_args_t;
