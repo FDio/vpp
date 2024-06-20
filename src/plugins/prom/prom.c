@@ -191,6 +191,7 @@ send_data_to_hss (hss_session_handle_t sh)
   args.sh = sh;
   args.data = vec_dup (pm->stats);
   args.data_len = vec_len (pm->stats);
+  args.ct = HTTP_CONTENT_TEXT_PLAIN;
   args.sc = HTTP_STATUS_OK;
   args.free_vec_data = 1;
 
