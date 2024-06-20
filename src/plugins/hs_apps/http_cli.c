@@ -17,6 +17,8 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
+#include <http/http_content_types.h>
 
 #define HCS_DEBUG 0
 
@@ -43,6 +45,7 @@ typedef struct
   u8 *tx_buf;
   u32 tx_offset;
   u32 vpp_session_index;
+  http_header_t *resp_headers;
 } hcs_session_t;
 
 typedef struct
@@ -148,24 +151,45 @@ hcs_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 }
 
 static void
-start_send_data (hcs_session_t *hs, http_status_code_t status,
-		 http_content_type_t type)
+start_send_data (hcs_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg;
   session_t *ts;
+  u8 *headers_buf = 0;
   int rv;
+
+  if (vec_len (hs->resp_headers))
+    {
+      headers_buf = http_serialize_headers (hs->resp_headers);
+      vec_free (hs->resp_headers);
+      msg.data.headers_offset = 0;
+      msg.data.headers_len = vec_len (headers_buf);
+    }
+  else
+    {
+      msg.data.headers_offset = 0;
+      msg.data.headers_len = 0;
+    }
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.content_type = type;
   msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.len = vec_len (hs->tx_buf);
+  msg.data.body_len = vec_len (hs->tx_buf);
+  msg.data.body_offset = msg.data.headers_len;
+  msg.data.len = msg.data.body_len + msg.data.headers_len;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
   rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
-  if (!msg.data.len)
+  if (msg.data.headers_len)
+    {
+      rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
+      ASSERT (rv == msg.data.headers_len);
+      vec_free (headers_buf);
+    }
+
+  if (!msg.data.body_len)
     goto done;
 
   rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (hs->tx_buf), hs->tx_buf);
@@ -203,7 +227,12 @@ send_data_to_http (void *rpc_args)
   hs->tx_buf = args->buf;
   if (args->plain_text)
     type = HTTP_CONTENT_TEXT_PLAIN;
-  start_send_data (hs, HTTP_STATUS_OK, type);
+
+  http_add_header (&hs->resp_headers,
+		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+		   http_content_type_token (type));
+
+  start_send_data (hs, HTTP_STATUS_OK);
 
 cleanup:
 
@@ -325,6 +354,7 @@ hcs_ts_rx_callback (session_t *ts)
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
   hs->tx_buf = 0;
+  hs->resp_headers = 0;
 
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -332,16 +362,17 @@ hcs_ts_rx_callback (session_t *ts)
 
   if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_GET)
     {
-      start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED,
-		       HTTP_CONTENT_TEXT_HTML);
+      http_add_header (&hs->resp_headers,
+		       http_header_name_token (HTTP_HEADER_ALLOW),
+		       http_token_lit ("GET"));
+      start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
     }
 
   if (msg.data.target_path_len == 0 ||
       msg.data.target_form != HTTP_TARGET_ORIGIN_FORM)
     {
-      hs->tx_buf = 0;
-      start_send_data (hs, HTTP_STATUS_BAD_REQUEST, HTTP_CONTENT_TEXT_HTML);
+      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       goto done;
     }
 
@@ -353,7 +384,7 @@ hcs_ts_rx_callback (session_t *ts)
   HCS_DBG ("%v", args.buf);
   if (http_validate_abs_path_syntax (args.buf, &is_encoded))
     {
-      start_send_data (hs, HTTP_STATUS_BAD_REQUEST, HTTP_CONTENT_TEXT_HTML);
+      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       vec_free (args.buf);
       goto done;
     }
@@ -374,13 +405,13 @@ hcs_ts_rx_callback (session_t *ts)
       ASSERT (rv == msg.data.headers_len);
       if (http_parse_headers (headers, &ht))
 	{
-	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST,
-			   HTTP_CONTENT_TEXT_HTML);
+	  start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
 	  vec_free (args.buf);
 	  vec_free (headers);
 	  goto done;
 	}
-      const char *accept_value = http_get_header (ht, HTTP_HEADER_ACCEPT);
+      const char *accept_value =
+	http_get_header (ht, http_header_name_str (HTTP_HEADER_ACCEPT));
       if (accept_value)
 	{
 	  HCS_DBG ("client accept: %s", accept_value);
