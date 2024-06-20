@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strings"
 	"time"
@@ -94,6 +95,14 @@ func NewHttpClient() *http.Client {
 			return http.ErrUseLastResponse
 		}}
 	return client
+}
+
+func DumpHttpResp(resp *http.Response, body bool) string {
+	dump, err := httputil.DumpResponse(resp, body)
+	if err != nil {
+		return ""
+	}
+	return string(dump)
 }
 
 func TcpSendReceive(address, data string) (string, error) {
