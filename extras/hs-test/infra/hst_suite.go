@@ -206,6 +206,10 @@ func (s *HstSuite) AssertNotContains(testString, contains interface{}, msgAndArg
 	Expect(testString).ToNot(ContainSubstring(fmt.Sprint(contains)), msgAndArgs...)
 }
 
+func (s *HstSuite) AssertEmpty(object interface{}, msgAndArgs ...interface{}) {
+	Expect(object).To(BeEmpty(), msgAndArgs...)
+}
+
 func (s *HstSuite) AssertNotEmpty(object interface{}, msgAndArgs ...interface{}) {
 	Expect(object).ToNot(BeEmpty(), msgAndArgs...)
 }
