@@ -24,7 +24,7 @@ func init() {
 		HttpContentLengthTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
-		HttpHeadersTest)
+		HttpHeadersTest, HttpStaticFileHandler)
 	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest)
 }
 
@@ -109,19 +109,47 @@ func NginxHttp3Test(s *NoTopoSuite) {
 }
 
 func HttpStaticPromTest(s *NoTopoSuite) {
-	finished := make(chan error, 1)
 	query := "stats.prom"
 	vpp := s.GetContainerByName("vpp").VppInstance
 	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
 	s.Log(vpp.Vppctl("http static server uri tcp://" + serverAddress + "/80 url-handlers"))
 	s.Log(vpp.Vppctl("prom enable"))
 	time.Sleep(time.Second * 5)
-	go func() {
-		defer GinkgoRecover()
-		s.StartWget(finished, serverAddress, "80", query, "")
-	}()
-	err := <-finished
-	s.AssertNil(err)
+	client := NewHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/"+query, nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, false))
+	s.AssertEqual(200, resp.StatusCode)
+	s.AssertContains(resp.Header.Get("Content-Type"), "text")
+	s.AssertContains(resp.Header.Get("Content-Type"), "plain")
+	s.AssertNotEqual(int64(0), resp.ContentLength)
+	_, err = io.ReadAll(resp.Body)
+}
+
+func HttpStaticFileHandler(s *NoTopoSuite) {
+	content := "<http><body><p>Hello</p></body></http>"
+	vpp := s.GetContainerByName("vpp").VppInstance
+	vpp.Container.Exec("mkdir -p " + wwwRootPath)
+	vpp.Container.CreateFile(wwwRootPath+"/index.html", content)
+	serverAddress := s.GetInterfaceByName(TapInterfaceName).Peer.Ip4AddressString()
+	s.Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress + "/80 debug"))
+
+	client := NewHttpClient()
+	req, err := http.NewRequest("GET", "http://"+serverAddress+":80/index.html", nil)
+	s.AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	s.AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertEqual(200, resp.StatusCode)
+	s.AssertContains(resp.Header.Get("Content-Type"), "html")
+	s.AssertContains(resp.Header.Get("Cache-Control"), "max-age=")
+	s.AssertEqual(int64(len([]rune(content))), resp.ContentLength)
+	body, err := io.ReadAll(resp.Body)
+	s.AssertEqual(string(body), content)
 }
 
 func HttpStaticPathTraversalTest(s *NoTopoSuite) {
@@ -138,7 +166,11 @@ func HttpStaticPathTraversalTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(404, resp.StatusCode)
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEmpty(resp.Header.Get("Cache-Control"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpStaticMovedTest(s *NoTopoSuite) {
@@ -154,8 +186,12 @@ func HttpStaticMovedTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(301, resp.StatusCode)
-	s.AssertNotEqual("", resp.Header.Get("Location"))
+	s.AssertEqual("http://"+serverAddress+"/tmp.aaa/index.html", resp.Header.Get("Location"))
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEmpty(resp.Header.Get("Cache-Control"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpStaticNotFoundTest(s *NoTopoSuite) {
@@ -170,7 +206,11 @@ func HttpStaticNotFoundTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(404, resp.StatusCode)
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEmpty(resp.Header.Get("Cache-Control"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
@@ -184,9 +224,11 @@ func HttpCliMethodNotAllowedTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(405, resp.StatusCode)
-	// TODO: need to be fixed in http code
-	//s.AssertNotEqual("", resp.Header.Get("Allow"))
+	s.AssertNotEqual("", resp.Header.Get("Allow"), "server MUST generate an Allow header")
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpCliBadRequestTest(s *NoTopoSuite) {
@@ -200,7 +242,10 @@ func HttpCliBadRequestTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(400, resp.StatusCode)
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
@@ -214,6 +259,7 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -223,6 +269,7 @@ func HttpStaticBuildInUrlGetVersionTest(s *NoTopoSuite) {
 	s.AssertNotContains(string(data), "build_by")
 	s.AssertNotContains(string(data), "build_host")
 	s.AssertNotContains(string(data), "build_dir")
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
@@ -236,6 +283,7 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
@@ -245,6 +293,7 @@ func HttpStaticBuildInUrlGetVersionVerboseTest(s *NoTopoSuite) {
 	s.AssertContains(string(data), "build_by")
 	s.AssertContains(string(data), "build_host")
 	s.AssertContains(string(data), "build_dir")
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
@@ -258,11 +307,13 @@ func HttpStaticBuildInUrlGetIfListTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "interface_list")
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Peer.Name())
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
@@ -276,12 +327,14 @@ func HttpStaticBuildInUrlGetIfStatsTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "interface_stats")
 	s.AssertContains(string(data), "local0")
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Peer.Name())
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func validatePostInterfaceStats(s *NoTopoSuite, data string) {
@@ -304,10 +357,12 @@ func HttpStaticBuildInUrlPostIfStatsTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	validatePostInterfaceStats(s, string(data))
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func HttpStaticMacTimeTest(s *NoTopoSuite) {
@@ -322,12 +377,14 @@ func HttpStaticMacTimeTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
 	s.AssertContains(string(data), "mactime")
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).Ip4AddressString())
 	s.AssertContains(string(data), s.GetInterfaceByName(TapInterfaceName).HwAddress.String())
+	s.AssertContains(resp.Header.Get("Content-Type"), "json")
 }
 
 func HttpInvalidRequestLineTest(s *NoTopoSuite) {
@@ -464,7 +521,10 @@ func HttpMethodNotImplementedTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(501, resp.StatusCode)
+	s.AssertEmpty(resp.Header.Get("Content-Type"))
+	s.AssertEqual(int64(0), resp.ContentLength)
 }
 
 func HttpVersionNotSupportedTest(s *NoTopoSuite) {
@@ -488,12 +548,13 @@ func HttpUriDecodeTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
 	s.AssertEqual(200, resp.StatusCode)
 	data, err := io.ReadAll(resp.Body)
 	s.AssertNil(err, fmt.Sprint(err))
-	s.Log(string(data))
 	s.AssertNotContains(string(data), "unknown input")
 	s.AssertContains(string(data), "Compiler")
+	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 }
 
 func HttpHeadersTest(s *NoTopoSuite) {
@@ -559,7 +620,10 @@ func HeaderServerTest(s *NoTopoSuite) {
 	resp, err := client.Do(req)
 	s.AssertNil(err, fmt.Sprint(err))
 	defer resp.Body.Close()
+	s.Log(DumpHttpResp(resp, true))
+	s.AssertEqual(200, resp.StatusCode)
 	s.AssertEqual("http_cli_server", resp.Header.Get("Server"))
+	s.AssertContains(resp.Header.Get("Content-Type"), "html")
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {

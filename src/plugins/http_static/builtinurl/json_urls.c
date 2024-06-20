@@ -45,6 +45,7 @@ handle_get_version (hss_url_handler_args_t *args)
 
   args->data = s;
   args->data_len = vec_len (s);
+  args->ct = HTTP_CONTENT_APP_JSON;
   args->free_vec_data = 1;
   return HSS_URL_HANDLER_OK;
 }
@@ -117,6 +118,7 @@ handle_get_interface_stats (hss_url_handler_args_t *args)
 out:
   args->data = s;
   args->data_len = vec_len (s);
+  args->ct = HTTP_CONTENT_APP_JSON;
   args->free_vec_data = 1;
   vec_free (sw_if_indices);
   vec_free (stats);
@@ -157,6 +159,7 @@ handle_get_interface_list (hss_url_handler_args_t *args)
 
   args->data = s;
   args->data_len = vec_len (s);
+  args->ct = HTTP_CONTENT_APP_JSON;
   args->free_vec_data = 1;
   return HSS_URL_HANDLER_OK;
 }

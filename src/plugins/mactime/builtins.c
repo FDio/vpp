@@ -147,6 +147,7 @@ handle_get_mactime (hss_url_handler_args_t *args)
 
   args->data = s;
   args->data_len = vec_len (s);
+  args->ct = HTTP_CONTENT_APP_JSON;
   args->free_vec_data = 1;
   return HSS_URL_HANDLER_OK;
 }
