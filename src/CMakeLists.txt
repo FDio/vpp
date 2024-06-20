@@ -113,19 +113,20 @@ endif()
 # cross compiling
 ##############################################################################
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(COMPILER_SUFFIX "linux-gnu")
-elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  set(COMPILER_SUFFIX "freebsd")
-endif()
-
 if(CMAKE_CROSSCOMPILING)
+  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(COMPILER_SUFFIX "linux-gnu")
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    set(COMPILER_SUFFIX "freebsd")
+  endif()
+
   set(CMAKE_IGNORE_PATH
     /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-${COMPILER_SUFFIX}/
     /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-${COMPILER_SUFFIX}/lib/
   )
-endif()
   set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-${COMPILER_SUFFIX})
+endif()
+
 ##############################################################################
 # build config
 ##############################################################################
