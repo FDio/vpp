@@ -227,70 +227,70 @@ dpdk_find_startup_config (struct rte_eth_dev_info *di)
 }
 
 /*
- * Initialise or refresh the xstats counters for a device
+ * Initialise the xstats counters for a device
  */
 void
 dpdk_counters_xstats_init (dpdk_device_t *xd)
 {
   int len, ret, i;
   struct rte_eth_xstat_name *xstats_names = 0;
-  char *name;
-  dpdk_driver_t *dr = xd->driver;
 
-  /* Only support xstats for supported drivers */
-  if (!dr)
-    return;
+  if (vec_len (xd->xstats_symlinks) > 0)
+    {
+      /* xstats already initialized. Reset counters */
+      vec_foreach_index (i, xd->xstats_symlinks)
+	{
+	  vlib_stats_remove_entry (xd->xstats_symlinks[i]);
+	}
+    }
+  else
+    {
+      xd->xstats_counters.stat_segment_name =
+	(char *) format (0, "/if/xstats/%d%c", xd->sw_if_index, 0);
+      xd->xstats_counters.counters = 0;
+    }
 
   len = rte_eth_xstats_get_names (xd->port_id, 0, 0);
   if (len < 0)
     {
-      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d", xd->port_id,
-		    len);
-      return;
-    }
-  /* Counters for this driver is already initialised */
-  if (vec_len (dr->xstats_counters) == len)
-    {
-      vec_foreach_index (i, dr->xstats_counters)
-	{
-	  vlib_validate_simple_counter (&dr->xstats_counters[i],
-					xd->sw_if_index);
-	  vlib_zero_simple_counter (&dr->xstats_counters[i], xd->sw_if_index);
-	}
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d. DPDK xstats "
+		    "not configured.",
+		    xd->port_id, len);
       return;
     }
 
-  /* Same driver, different interface, different length of counter array. */
-  ASSERT (vec_len (dr->xstats_counters) == 0);
+  vlib_validate_simple_counter (&xd->xstats_counters, len);
+  vlib_zero_simple_counter (&xd->xstats_counters, len);
 
   vec_validate (xstats_names, len - 1);
+  vec_validate (xd->xstats, len - 1);
+  vec_validate (xd->xstats_symlinks, len - 1);
 
   ret = rte_eth_xstats_get_names (xd->port_id, xstats_names, len);
   if (ret >= 0 && ret <= len)
     {
-      vec_validate (dr->xstats_counters, len - 1);
       vec_foreach_index (i, xstats_names)
 	{
-	  name = (char *) format (0, "/if/%s/%s%c", dr->drivers->name,
-				  xstats_names[i].name, 0);
-
 	  /* There is a bug in the ENA driver where the xstats names are not
 	   * unique. */
-	  if (vlib_stats_find_entry_index (name) != STAT_SEGMENT_INDEX_INVALID)
+	  xd->xstats_symlinks[i] = vlib_stats_add_symlink (
+	    xd->xstats_counters.stats_entry_index, i, "/interfaces/%U/%s%c",
+	    format_vnet_sw_if_index_name, vnet_get_main (), xd->sw_if_index,
+	    xstats_names[i].name, 0);
+	  if (xd->xstats_symlinks[i] == STAT_SEGMENT_INDEX_INVALID)
 	    {
-	      vec_free (name);
-	      name = (char *) format (0, "/if/%s/%s_%d%c", dr->drivers->name,
-				      xstats_names[i].name, i, 0);
+	      xd->xstats_symlinks[i] = vlib_stats_add_symlink (
+		xd->xstats_counters.stats_entry_index, i,
+		"/interfaces/%U/%s_%d%c", format_vnet_sw_if_index_name,
+		vnet_get_main (), xd->sw_if_index, xstats_names[i].name, i, 0);
 	    }
-
-	  dr->xstats_counters[i].name = name;
-	  dr->xstats_counters[i].stat_segment_name = name;
-	  dr->xstats_counters[i].counters = 0;
-	  vlib_validate_simple_counter (&dr->xstats_counters[i],
-					xd->sw_if_index);
-	  vlib_zero_simple_counter (&dr->xstats_counters[i], xd->sw_if_index);
-	  vec_free (name);
 	}
+    }
+  else
+    {
+      dpdk_log_err ("[%u] rte_eth_xstats_get_names failed: %d. DPDK xstats "
+		    "not configured.",
+		    xd->port_id, ret);
     }
   vec_free (xstats_names);
 }
