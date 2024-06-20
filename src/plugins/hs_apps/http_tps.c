@@ -17,6 +17,8 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
+#include <http/http_content_types.h>
 
 typedef struct
 {
@@ -34,6 +36,7 @@ typedef struct
     u32 close_rate;
   };
   u8 *uri;
+  http_header_t *resp_headers;
 } hts_session_t;
 
 typedef struct hts_listen_cfg_
@@ -223,19 +226,41 @@ hts_start_send_data (hts_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg;
   session_t *ts;
+  u8 *headers_buf = 0;
   int rv;
+
+  if (vec_len (hs->resp_headers))
+    {
+      headers_buf = http_serialize_headers (hs->resp_headers);
+      vec_free (hs->resp_headers);
+      msg.data.headers_offset = 0;
+      msg.data.headers_len = vec_len (headers_buf);
+    }
+  else
+    {
+      msg.data.headers_offset = 0;
+      msg.data.headers_len = 0;
+    }
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.content_type = HTTP_CONTENT_APP_OCTET_STREAM;
   msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.len = hs->data_len;
+  msg.data.body_len = hs->data_len;
+  msg.data.body_offset = msg.data.headers_len;
+  msg.data.len = msg.data.body_len + msg.data.headers_len;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
   rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
-  if (!msg.data.len)
+  if (msg.data.headers_len)
+    {
+      rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (headers_buf), headers_buf);
+      ASSERT (rv == msg.data.headers_len);
+      vec_free (headers_buf);
+    }
+
+  if (!msg.data.body_len)
     {
       if (svm_fifo_set_event (ts->tx_fifo))
 	session_send_io_evt_to_thread (ts->tx_fifo, SESSION_IO_EVT_TX);
@@ -286,6 +311,10 @@ try_test_file (hts_session_t *hs, u8 *target)
 	}
     }
 
+  http_add_header (&hs->resp_headers,
+		   http_header_name_token (HTTP_HEADER_CONTENT_TYPE),
+		   http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
+
   hts_start_send_data (hs, HTTP_STATUS_OK);
 
 done:
@@ -304,6 +333,8 @@ hts_ts_rx_callback (session_t *ts)
   int rv;
 
   hs = hts_session_get (ts->thread_index, ts->opaque);
+  hs->data_len = 0;
+  hs->resp_headers = 0;
 
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -311,6 +342,9 @@ hts_ts_rx_callback (session_t *ts)
 
   if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_GET)
     {
+      http_add_header (&hs->resp_headers,
+		       http_header_name_token (HTTP_HEADER_ALLOW),
+		       http_token_lit ("GET"));
       hts_start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
     }
