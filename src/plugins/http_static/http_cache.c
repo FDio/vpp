@@ -421,19 +421,19 @@ format_hss_cache (u8 *s, va_list *args)
     {
       s = format (s, "cache size %lld bytes, limit %lld bytes, evictions %lld",
 		  hc->cache_size, hc->cache_limit, hc->cache_evictions);
-      return 0;
+      return s;
     }
 
   vm = vlib_get_main ();
   now = vlib_time_now (vm);
 
-  s = format (s, "%U", format_hss_cache_entry, 0 /* header */, now);
+  s = format (s, "%U\n", format_hss_cache_entry, 0 /* header */, now);
 
   for (index = hc->first_index; index != ~0;)
     {
       ce = pool_elt_at_index (hc->cache_pool, index);
       index = ce->next_index;
-      s = format (s, "%U", format_hss_cache_entry, ce, now);
+      s = format (s, "%U\n", format_hss_cache_entry, ce, now);
     }
 
   s = format (s, "%40s%12lld", "Total Size", hc->cache_size);
