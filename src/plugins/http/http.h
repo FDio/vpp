@@ -51,6 +51,14 @@ typedef struct http_conn_id_
 STATIC_ASSERT (sizeof (http_conn_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
+typedef struct
+{
+  char *base;
+  size_t len;
+} http_token_t;
+
+#define http_token_lit(s) (s), sizeof (s) - 1
+
 typedef enum http_conn_state_
 {
   HTTP_CONN_STATE_LISTEN,
@@ -235,50 +243,100 @@ typedef enum http_status_code_
     HTTP_N_STATUS
 } http_status_code_t;
 
-#define HTTP_HEADER_ACCEPT		      "Accept"
-#define HTTP_HEADER_ACCEPT_CHARSET	      "Accept-Charset"
-#define HTTP_HEADER_ACCEPT_ENCODING	      "Accept-Encoding"
-#define HTTP_HEADER_ACCEPT_LANGUAGE	      "Accept-Language"
-#define HTTP_HEADER_ACCEPT_RANGES	      "Accept-Ranges"
-#define HTTP_HEADER_ALLOW		      "Allow"
-#define HTTP_HEADER_AUTHENTICATION_INFO	      "Authentication-Info"
-#define HTTP_HEADER_AUTHORIZATION	      "Authorization"
-#define HTTP_HEADER_CLOSE		      "Close"
-#define HTTP_HEADER_CONNECTION		      "Connection"
-#define HTTP_HEADER_CONTENT_ENCODING	      "Content-Encoding"
-#define HTTP_HEADER_CONTENT_LANGUAGE	      "Content-Language"
-#define HTTP_HEADER_CONTENT_LENGTH	      "Content-Length"
-#define HTTP_HEADER_CONTENT_LOCATION	      "Content-Location"
-#define HTTP_HEADER_CONTENT_RANGE	      "Content-Range"
-#define HTTP_HEADER_CONTENT_TYPE	      "Content-Type"
-#define HTTP_HEADER_DATE		      "Date"
-#define HTTP_HEADER_ETAG		      "ETag"
-#define HTTP_HEADER_EXPECT		      "Expect"
-#define HTTP_HEADER_FROM		      "From"
-#define HTTP_HEADER_HOST		      "Host"
-#define HTTP_HEADER_IF_MATCH		      "If-Match"
-#define HTTP_HEADER_IF_MODIFIED_SINCE	      "If-Modified-Since"
-#define HTTP_HEADER_IF_NONE_MATCH	      "If-None-Match"
-#define HTTP_HEADER_IF_RANGE		      "If-Range"
-#define HTTP_HEADER_IF_UNMODIFIED_SINCE	      "If-Unmodified-Since"
-#define HTTP_HEADER_LAST_MODIFIED	      "Last-Modified"
-#define HTTP_HEADER_LOCATION		      "Location"
-#define HTTP_HEADER_MAX_FORWARDS	      "Max-Forwards"
-#define HTTP_HEADER_PROXY_AUTHENTICATE	      "Proxy-Authenticate"
-#define HTTP_HEADER_PROXY_AUTHENTICATION_INFO "Proxy-Authentication-Info"
-#define HTTP_HEADER_PROXY_AUTHORIZATION	      "Proxy-Authorization"
-#define HTTP_HEADER_RANGE		      "Range"
-#define HTTP_HEADER_REFERER		      "Referer"
-#define HTTP_HEADER_RETRY_AFTER		      "Retry-After"
-#define HTTP_HEADER_SERVER		      "Server"
-#define HTTP_HEADER_TE			      "TE"
-#define HTTP_HEADER_TRAILER		      "Trailer"
-#define HTTP_HEADER_TRANSFER_ENCODING	      "Transfer-Encoding"
-#define HTTP_HEADER_UPGRADE		      "Upgrade"
-#define HTTP_HEADER_USER_AGENT		      "User-Agent"
-#define HTTP_HEADER_VARY		      "Vary"
-#define HTTP_HEADER_VIA			      "Via"
-#define HTTP_HEADER_WWW_AUTHENTICATE	      "WWW-Authenticate"
+#define foreach_http_header_name                                              \
+  _ (ACCEPT, "Accept")                                                        \
+  _ (ACCEPT_CHARSET, "Accept-Charset")                                        \
+  _ (ACCEPT_ENCODING, "Accept-Encoding")                                      \
+  _ (ACCEPT_LANGUAGE, "Accept-Language")                                      \
+  _ (ACCEPT_RANGES, "Accept-Ranges")                                          \
+  _ (ACCESS_CONTROL_ALLOW_CREDENTIALS, "Access-Control-Allow-Credentials")    \
+  _ (ACCESS_CONTROL_ALLOW_HEADERS, "Access-Control-Allow-Headers")            \
+  _ (ACCESS_CONTROL_ALLOW_METHODS, "Access-Control-Allow-Methods")            \
+  _ (ACCESS_CONTROL_ALLOW_ORIGIN, "Access-Control-Allow-Origin")              \
+  _ (ACCESS_CONTROL_EXPOSE_HEADERS, "Access-Control-Expose-Headers")          \
+  _ (ACCESS_CONTROL_MAX_AGE, "Access-Control-Max-Age")                        \
+  _ (ACCESS_CONTROL_REQUEST_HEADERS, "Access-Control-Request-Headers")        \
+  _ (ACCESS_CONTROL_REQUEST_METHOD, "Access-Control-Request-Method")          \
+  _ (AGE, "Age")                                                              \
+  _ (ALLOW, "Allow")                                                          \
+  _ (ALPN, "ALPN")                                                            \
+  _ (ALT_SVC, "Alt-Svc")                                                      \
+  _ (ALT_USED, "Alt-Used")                                                    \
+  _ (ALTERNATES, "Alternates")                                                \
+  _ (AUTHENTICATION_CONTROL, "Authentication-Control")                        \
+  _ (AUTHENTICATION_INFO, "Authentication-Info")                              \
+  _ (AUTHORIZATION, "Authorization")                                          \
+  _ (CACHE_CONTROL, "Cache-Control")                                          \
+  _ (CACHE_STATUS, "Cache-Status")                                            \
+  _ (CAPSULE_PROTOCOL, "Capsule-Protocol")                                    \
+  _ (CDN_CACHE_CONTROL, "CDN-Cache-Control")                                  \
+  _ (CDN_LOOP, "CDN-Loop")                                                    \
+  _ (CLIENT_CERT, "Client-Cert")                                              \
+  _ (CLIENT_CERT_CHAIN, "Client-Cert-Chain")                                  \
+  _ (CLOSE, "Close")                                                          \
+  _ (CONNECTION, "Connection")                                                \
+  _ (CONTENT_DIGEST, "Content-Digest")                                        \
+  _ (CONTENT_DISPOSITION, "Content-Disposition")                              \
+  _ (CONTENT_ENCODING, "Content-Encoding")                                    \
+  _ (CONTENT_LANGUAGE, "Content-Language")                                    \
+  _ (CONTENT_LENGTH, "Content-Length")                                        \
+  _ (CONTENT_LOCATION, "Content-Location")                                    \
+  _ (CONTENT_RANGE, "Content-Range")                                          \
+  _ (CONTENT_TYPE, "Content-Type")                                            \
+  _ (COOKIE, "Cookie")                                                        \
+  _ (DATE, "Date")                                                            \
+  _ (DIGEST, "Digest")                                                        \
+  _ (DPOP, "DPoP")                                                            \
+  _ (DPOP_NONCE, "DPoP-Nonce")                                                \
+  _ (EARLY_DATA, "Early-Data")                                                \
+  _ (ETAG, "ETag")                                                            \
+  _ (EXPECT, "Expect")                                                        \
+  _ (EXPIRES, "Expires")                                                      \
+  _ (FORWARDED, "Forwarded")                                                  \
+  _ (FROM, "From")                                                            \
+  _ (HOST, "Host")                                                            \
+  _ (IF_MATCH, "If-Match")                                                    \
+  _ (IF_MODIFIED_SINCE, "If-Modified-Since")                                  \
+  _ (IF_NONE_MATCH, "If-None-Match")                                          \
+  _ (IF_RANGE, "If-Range")                                                    \
+  _ (IF_UNMODIFIED_SINCE, "If-Unmodified-Since")                              \
+  _ (KEEP_ALIVE, "Keep-Alive")                                                \
+  _ (LAST_MODIFIED, "Last-Modified")                                          \
+  _ (LINK, "Link")                                                            \
+  _ (LOCATION, "Location")                                                    \
+  _ (MAX_FORWARDS, "Max-Forwards")                                            \
+  _ (ORIGIN, "Origin")                                                        \
+  _ (PRIORITY, "Priority")                                                    \
+  _ (PROXY_AUTHENTICATE, "Proxy-Authenticate")                                \
+  _ (PROXY_AUTHENTICATION_INFO, "Proxy-Authentication-Info")                  \
+  _ (PROXY_AUTHORIZATION, "Proxy-Authorization")                              \
+  _ (PROXY_STATUS, "Proxy-Status")                                            \
+  _ (RANGE, "Range")                                                          \
+  _ (REFERER, "Referer")                                                      \
+  _ (REPR_DIGEST, "Repr-Digest")                                              \
+  _ (SET_COOKIE, "Set-Cookie")                                                \
+  _ (SIGNATURE, "Signature")                                                  \
+  _ (SIGNATURE_INPUT, "Signature-Input")                                      \
+  _ (STRICT_TRANSPORT_SECURITY, "Strict-Transport-Security")                  \
+  _ (RETRY_AFTER, "Retry-After")                                              \
+  _ (SERVER, "Server")                                                        \
+  _ (TE, "TE")                                                                \
+  _ (TRAILER, "Trailer")                                                      \
+  _ (TRANSFER_ENCODING, "Transfer-Encoding")                                  \
+  _ (UPGRADE, "Upgrade")                                                      \
+  _ (USER_AGENT, "User-Agent")                                                \
+  _ (VARY, "Vary")                                                            \
+  _ (VIA, "Via")                                                              \
+  _ (WANT_CONTENT_DIGEST, "Want-Content-Digest")                              \
+  _ (WANT_REPR_DIGEST, "Want-Repr-Digest")                                    \
+  _ (WWW_AUTHENTICATE, "WWW-Authenticate")
+
+typedef enum http_header_name_
+{
+#define _(sym, str) HTTP_HEADER_##sym,
+  foreach_http_header_name
+#undef _
+} http_header_name_t;
 
 typedef enum http_msg_data_type_
 {
@@ -667,8 +725,8 @@ _parse_field_value (u8 **pos, u8 *end, u8 **field_value_start,
 
 typedef struct
 {
-  u8 *name;
-  u8 *value;
+  http_token_t name;
+  http_token_t value;
 } http_header_t;
 
 typedef struct
@@ -688,8 +746,8 @@ http_free_header_table (http_header_table_t *ht)
   http_header_t *header;
   vec_foreach (header, ht->headers)
     {
-      vec_free (header->name);
-      vec_free (header->value);
+      vec_free (header->name.base);
+      vec_free (header->value.base);
     }
   vec_free (ht->headers);
   hash_free (ht->value_by_name);
@@ -746,19 +804,21 @@ http_parse_headers (u8 *headers, http_header_table_t **header_table)
 	{
 	  /* if yes combine values */
 	  header = vec_elt_at_index (ht->headers, p[0]);
-	  vec_pop (header->value); /* drop null byte */
-	  header->value = format (header->value, ", %U%c", format_ascii_bytes,
-				  value_start, value_len, 0);
+	  vec_pop (header->value.base); /* drop null byte */
+	  header->value.base =
+	    (char *) format ((u8 *) header->value.base, ", %U%c",
+			     format_ascii_bytes, value_start, value_len, 0);
 	  vec_free (name);
 	  continue;
 	}
       /* or create new record */
-      vec_add2 (ht->headers, header, sizeof (*header));
-      header->name = name;
-      header->value = vec_new (u8, value_len);
-      clib_memcpy (header->value, value_start, value_len);
-      vec_terminate_c_string (header->value);
-      hash_set_mem (ht->value_by_name, header->name, header - ht->headers);
+      vec_add2 (ht->headers, header, 1);
+      header->name.base = (char *) name;
+      header->value.base = vec_new (u8, value_len);
+      clib_memcpy (header->value.base, value_start, value_len);
+      vec_terminate_c_string (header->value.base);
+      hash_set_mem (ht->value_by_name, header->name.base,
+		    header - ht->headers);
     }
   while (pos != end);
 
@@ -785,10 +845,69 @@ http_get_header (http_header_table_t *header_table, const char *name)
   if (p)
     {
       header = vec_elt_at_index (header_table->headers, p[0]);
-      return (const char *) header->value;
+      return (const char *) header->value.base;
     }
 
   return 0;
+}
+
+/**
+ * Add header to the list.
+ *
+ * @param headers Header list.
+ * @param name Pointer to header's name buffer.
+ * @param name_len Length of the name.
+ * @param value Pointer to header's value buffer.
+ * @param value_len Length of the value.
+ *
+ * @note Headers added at protocol layer: Date, Server, Content-Length
+ */
+always_inline void
+http_add_header (http_header_t **headers, const char *name, size_t name_len,
+		 const char *value, size_t value_len)
+{
+  http_header_t *header;
+  vec_add2 (*headers, header, 1);
+  header->name.base = (char *) name;
+  header->name.len = name_len;
+  header->value.base = (char *) value;
+  header->value.len = value_len;
+}
+
+/**
+ * Serialize the header list.
+ *
+ * @param headers Header list to serialize.
+ *
+ * @return New vector with serialized headers.
+ *
+ * The caller is always responsible to free the returned vector.
+ */
+always_inline u8 *
+http_serialize_headers (http_header_t *headers)
+{
+  u8 *headers_buf = 0, *dst;
+  u32 headers_buf_len = 0;
+  http_header_t *header;
+
+  vec_foreach (header, headers)
+    headers_buf_len += header->name.len + header->value.len + 4;
+
+  vec_validate (headers_buf, headers_buf_len - 1);
+  dst = headers_buf;
+
+  vec_foreach (header, headers)
+    {
+      clib_memcpy (dst, header->name.base, header->name.len);
+      dst += header->name.len;
+      *dst++ = ':';
+      *dst++ = ' ';
+      clib_memcpy (dst, header->value.base, header->value.len);
+      dst += header->value.len;
+      *dst++ = '\r';
+      *dst++ = '\n';
+    }
+  return headers_buf;
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_H_ */
