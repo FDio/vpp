@@ -33,6 +33,24 @@
       "message": "Optimize openssl engine was not always the goal in my mind. But since it is happening - I have an idea to share:\nInstead of prefetching 2 ops data and compute only one op (the core may ignore if the memory is already in the cache but there is some decision time to make), you may either\n\n1. prefetching only ops[i + 1] instead in a loop. \n2. if to prefetch 2 ops data, the processing may be optimized further by unrolling the loop to process 2 ops at a time. This will have to create 2 ctx for one key, so the memory footage is bigger. Something like\n\nctx1 \u003d ptd-\u003eevp_cipher_enc_ctx[op-\u003ekey_index][0];\nctx2 \u003d ptd-\u003eevp_cipher_enc_ctx[op-\u003ekey_index][1];\nEVP_EncryptInit_ex (ctx1, 0, 0, NULL, \u0026op[0]-\u003eiv);\nEVP_EncryptInit_ex (ctx2, 0, 0, NULL, \u0026op[1]-\u003eiv);\n...\n\nI am not sure how much perf improve/degrade the change will introduce though.",
       "revId": "5fe3b2896ec737905dc49ee99c441895e797c45c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6f224e7_88c0da60",
+        "filename": "src/plugins/crypto_openssl/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 3031
+      },
+      "writtenOn": "2024-06-20T15:26:45Z",
+      "side": 1,
+      "message": "Thank you Fan for the comment.\nI have tried different combinations of this prefetching and loop unrolling.\nHowever, it does not give the performance boost that this gives.\n\nI have tried \n1. prefetch only n+1 ops\n2. prefetch n+1 ... n+3\n3. Prefetch n+1 , n+2 and process both the buffer\n\nI have spent considerable amount of time why only this combination gives good results, unfortunately, do not have something concrete as the reason other than the data.",
+      "parentUuid": "f83bfffc_901f0b89",
+      "revId": "5fe3b2896ec737905dc49ee99c441895e797c45c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
