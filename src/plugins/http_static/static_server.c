@@ -456,6 +456,8 @@ hss_ts_rx_callback (session_t *ts)
   int rv;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
+  if (hs->free_data)
+    vec_free (hs->data);
   hs->data = 0;
 
   /* Read the http message header */
