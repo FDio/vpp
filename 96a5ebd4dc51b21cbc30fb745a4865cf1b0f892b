@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a62900e7_d9042a34",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-06-20T14:36:56Z",
+      "side": 1,
+      "message": "nit: is it jira or github issue? to tell the truth I can\u0027t find it",
+      "range": {
+        "startLine": 10,
+        "startChar": 7,
+        "endLine": 10,
+        "endChar": 17
+      },
+      "revId": "96a5ebd4dc51b21cbc30fb745a4865cf1b0f892b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
