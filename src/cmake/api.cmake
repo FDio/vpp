@@ -47,6 +47,7 @@ function(vpp_generate_api_c_header file)
 
   get_filename_component(barename ${file} NAME)
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.20")
   add_custom_command (
     OUTPUT ${OUTPUT_HEADERS}
     COMMAND mkdir -p ${output_dir}
@@ -56,6 +57,17 @@ function(vpp_generate_api_c_header file)
     COMMENT "Generating API header ${output_name}"
     DEPFILE ${dependency_file}
   )
+else()
+  message(WARNING "Your CMake version does not support DEPFILE. Consider upgrading to CMake 3.20 or later for improved dependency handling.")
+  add_custom_command (
+    OUTPUT ${OUTPUT_HEADERS}
+    COMMAND mkdir -p ${output_dir}
+    COMMAND ${PYENV} ${VPP_APIGEN}
+    ARGS ${includedir} --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --outputdir ${output_dir} --output ${output_name} -MF ${dependency_file}
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file} ${VPPAPIGEN_SUBMODULES}
+    COMMENT "Generating API header ${output_name}"
+  )
+endif()
   set(t ${barename}_deps)
 
   if (NOT TARGET ${t})
