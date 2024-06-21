@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1876915_5cf62881",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2024-06-21T13:52:59Z",
+      "side": 1,
+      "message": "you still have %U in the format string",
+      "revId": "8299510264bc95a3dc29f86c27e7bc1aacd2cff1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
