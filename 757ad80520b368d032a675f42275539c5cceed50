@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c8d5c84_5450ee8a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2024-06-21T18:57:03Z",
+      "side": 1,
+      "message": "Hi Neale, change depends on another change https://gerrit.fd.io/r/c/vpp/+/39580, so can\u0027t be merged with your lgtm.\nMay I ask your help to review 39580?",
+      "revId": "757ad80520b368d032a675f42275539c5cceed50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b3eaec6b_1fe34d54",
