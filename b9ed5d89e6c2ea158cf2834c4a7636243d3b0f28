@@ -50,6 +50,24 @@
       "message": "When this code is actually getting executed in the main thread, the state and condition of the bond interface might have changed such that link up/link down event might not be valid anymore. I think we should pass the sw_if_index and event to this function. When this function is run, grab the bif from the sw_if_index. Based on the event link up/down, test the condition again prior to calling vnet_hw_interface_set_flags so that we don\u0027t erroneously set the flags to the wrong state.",
       "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "95ec4900_52ba1305",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-06-21T15:23:07Z",
+      "side": 1,
+      "message": "On a second thought, we have a bond_process already. Why not take advantage of it and send the event to bond process to handle it instead?",
+      "parentUuid": "134ec6b8_45cd438b",
+      "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
