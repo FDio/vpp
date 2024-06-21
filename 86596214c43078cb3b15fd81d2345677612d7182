@@ -16,6 +16,23 @@
       "message": "MACIP rules do not have the \"reflect\" action.",
       "revId": "86596214c43078cb3b15fd81d2345677612d7182",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "01d03a8f_213a1166",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-06-21T11:49:08Z",
+      "side": 1,
+      "message": "looks ok, in sync with what is in the API (i.e.: https://github.com/FDio/govpp/blob/master/binapi/acl_types/acl_types.ba.go)",
+      "revId": "86596214c43078cb3b15fd81d2345677612d7182",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
