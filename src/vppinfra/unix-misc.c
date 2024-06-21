@@ -291,7 +291,7 @@ os_get_cpu_affinity_bitmap (int pid)
   clib_bitmap_alloc (affinity_cpus, sizeof (cpu_set_t));
   clib_bitmap_zero (affinity_cpus);
 
-  __CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
+  CPU_ZERO_S (sizeof (cpu_set_t), &cpuset);
 
   ret = sched_getaffinity (0, sizeof (cpu_set_t), &cpuset);
 
@@ -302,7 +302,7 @@ os_get_cpu_affinity_bitmap (int pid)
     }
 
   for (index = 0; index < sizeof (cpu_set_t); index++)
-    if (__CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
+    if (CPU_ISSET_S (index, sizeof (cpu_set_t), &cpuset))
       clib_bitmap_set (affinity_cpus, index, 1);
   return affinity_cpus;
 #elif defined(__FreeBSD__)
