@@ -188,9 +188,11 @@ fib_api_path_decode (vl_api_fib_path_t *in,
         break;
     case FIB_API_PATH_TYPE_ICMP_UNREACH:
         out->frp_flags |= FIB_ROUTE_PATH_ICMP_UNREACH;
+        out->frp_sw_if_index = ntohl(in->sw_if_index);
         break;
     case FIB_API_PATH_TYPE_ICMP_PROHIBIT:
         out->frp_flags |= FIB_ROUTE_PATH_ICMP_PROHIBIT;
+        out->frp_sw_if_index = ntohl(in->sw_if_index);
         break;
     case FIB_API_PATH_TYPE_CLASSIFY:
         out->frp_flags |= FIB_ROUTE_PATH_CLASSIFY;
