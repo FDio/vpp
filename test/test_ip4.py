@@ -938,6 +938,54 @@ class TestIPNull(VppTestCase):
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, "10.0.0.2")
 
+    def test_ip_null_remove(self):
+        """IP NULL route remove from non-default table"""
+        #
+        # Create non-default table
+        #
+        table = VppIpTable(self, 2, False)
+        table.add_vpp_config()
+
+        #
+        # A route via IP NULL that will reply with ICMP unreachables
+        #
+        ip_unreach = VppIpRoute(
+            self,
+            "10.0.0.1",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_ICMP_UNREACH
+                )
+            ],
+            table_id=table.table_id,
+        )
+        ip_unreach.add_vpp_config()
+
+        #
+        # A route via IP NULL that will reply with ICMP prohibited
+        #
+        ip_prohibit = VppIpRoute(
+            self,
+            "10.0.0.2",
+            32,
+            [
+                VppRoutePath(
+                    "0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_ICMP_PROHIBIT
+                )
+            ],
+            table_id=table.table_id,
+        )
+        ip_prohibit.add_vpp_config()
+
+        #
+        # Should not crash
+        #
+        ip_unreach.remove_vpp_config()
+        ip_prohibit.remove_vpp_config()
+
+        table.remove_vpp_config()
+
     def test_ip_drop(self):
         """IP Drop Routes"""
 
@@ -973,18 +1021,43 @@ class TestIPNull(VppTestCase):
         r2.remove_vpp_config()
         rx = self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
 
-        t = VppIpTable(self, 2, False)
-        t.add_vpp_config()
-        r3 = VppIpRoute(
+    def test_ip_drop_remove(self):
+        """IP Drop Routes remove from non-default table"""
+
+        #
+        # Create non-default table
+        #
+        table = VppIpTable(self, 3, False)
+        table.add_vpp_config()
+
+        r1 = VppIpRoute(
             self,
-            "1.1.1.0",
-            31,
+            "1.1.2.0",
+            24,
             [VppRoutePath("0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_DROP)],
-            table_id=2,
+            table_id=table.table_id,
         )
-        r3.add_vpp_config()
-        r3.remove_vpp_config()
-        t.remove_vpp_config()
+        r1.add_vpp_config()
+
+        #
+        # Insert a more specific as a drop
+        #
+        r2 = VppIpRoute(
+            self,
+            "1.1.2.1",
+            32,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_DROP)],
+            table_id=table.table_id,
+        )
+        r2.add_vpp_config()
+
+        #
+        # Should not crash
+        #
+        r2.remove_vpp_config()
+        r1.remove_vpp_config()
+
+        table.remove_vpp_config()
 
 
 class TestIPDisabled(VppTestCase):
