@@ -1,6 +1,29 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "b955866f_6419b4b5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 3019
+      },
+      "writtenOn": "2024-06-21T09:45:10Z",
+      "side": 1,
+      "message": "for reference:\nhttps://github.com/torvalds/linux/commit/7d5905dc14a87805a59f3c5bf70173aac2bb18f8",
+      "range": {
+        "startLine": 12,
+        "startChar": 23,
+        "endLine": 12,
+        "endChar": 63
+      },
+      "revId": "3e5ac0d06a14f7cde69f3d0b0aa0aed4fc60e542",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "b5e6cfcf_59af77ee",
