@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0fd9b617_180fac41",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2024-06-21T17:05:11Z",
+      "side": 1,
+      "message": "should be \"api:\" not \"dpdk:\"",
+      "revId": "2dea11202f6d06887fd80d098b2ac5951ecef491",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
