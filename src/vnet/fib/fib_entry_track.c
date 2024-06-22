@@ -6,6 +6,7 @@
 #include <vnet/fib/fib_entry_track.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_delegate.h>
+#include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_walk.h>
 
 static fib_entry_delegate_t *
@@ -15,6 +16,7 @@ fib_entry_track_delegate_add (u32 fib_index,
     fib_entry_delegate_t *fed;
     fib_node_index_t fei;
 
+    fib_table_lock(fib_index, prefix->fp_proto, FIB_SOURCE_RR);
     fei = fib_table_entry_special_add(fib_index,
                                       prefix,
                                       FIB_SOURCE_RR,
@@ -107,11 +109,14 @@ fib_entry_track_last_lock_gone (fib_node_t *node)
 {
     fib_entry_delegate_t *fed;
     fib_node_index_t fei;
-    u32 sibling;
+    u32 sibling, fi;
+    fib_protocol_t fp;
 
     fed = fib_entry_delegate_from_fib_node(node);
     fei = fed->fd_entry_index;
     sibling = fed->fd_track.fedt_sibling;
+    fi = fib_entry_get_fib_index(fei);
+    fp = fib_entry_get_proto(fib_entry_get(fei));
 
     /*
      * the tracker has no more children so it can be removed,
@@ -125,6 +130,7 @@ fib_entry_track_last_lock_gone (fib_node_t *node)
     fib_entry_child_remove(fei, sibling);
 
     fib_table_entry_delete_index(fei, FIB_SOURCE_RR);
+    fib_table_unlock(fi, fp, FIB_SOURCE_RR);
 }
 
 static fib_node_back_walk_rc_t

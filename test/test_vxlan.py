@@ -16,7 +16,7 @@ from scapy.layers.vxlan import VXLAN
 from scapy.contrib.mpls import MPLS
 
 import util
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, FibPathType, find_route
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from vpp_ip import INVALID_INDEX
 from vpp_neighbor import VppNeighbor
@@ -587,6 +587,106 @@ class TestVxlanL2Mode(VppTestCase):
         p.dst = self.pg1.local_mac
         rx = self.send_and_expect(self.pg1, p * NUM_PKTS, self.pg0)
         self.assertEqual(NUM_PKTS, len(rx))
+
+
+class TestVxlanRouting(VppTestCase):
+    """VXLAN Routing Test Case"""
+
+    def setUp(self):
+        super(TestVxlanRouting, self).setUp()
+
+        # Create pg interface.
+        self.create_pg_interfaces(range(1))
+        for pg in self.pg_interfaces:
+            pg.admin_up()
+
+        # Configure IPv4 addresses on VPP pg0.
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+    def tearDown(self):
+        super(TestVxlanRouting, self).tearDown()
+
+    def route_lookup(self, prefix, exact, table_id=0):
+        return self.vapi.api(
+            self.vapi.papi.ip_route_lookup,
+            {
+                "table_id": table_id,
+                "exact": exact,
+                "prefix": prefix,
+            },
+        )
+
+    def test_dst_tracking(self):
+        """VXLAN destination tracking"""
+
+        # Create non-default table
+        table = VppIpTable(self, 1, False)
+        table.add_vpp_config()
+
+        # Create drop prefix in non-default table
+        drop_route = VppIpRoute(
+            self,
+            "1.1.2.0",
+            24,
+            [VppRoutePath("0.0.0.0", 0xFFFFFFFF, type=FibPathType.FIB_PATH_TYPE_DROP)],
+            table_id=table.table_id,
+        )
+        drop_route.add_vpp_config()
+
+        # Create tunnel dst host route via nh in default table
+        dst_route = VppIpRoute(
+            self,
+            "1.1.2.1",
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, 0xFFFFFFFF, 0)],
+            table_id=table.table_id,
+        )
+        dst_route.add_vpp_config()
+
+        # Create tunnels, using tunnel using dst route tracking
+        tunnels = []
+        for i in range(3):
+            t = VppVxlanTunnel(
+                self,
+                src=self.pg0.local_ip4,
+                dst="1.1.2.1",
+                vni=1000 + i,
+                encap_vrf_id=table.table_id,
+            )
+            t.add_vpp_config()
+            t.config_ip4()
+            t.admin_up()
+            tunnels.append(t)
+
+        # Remove first dst host route
+        dst_route.remove_vpp_config()
+        self.assertFalse(dst_route.query_vpp_config())
+        self.assertTrue(self.route_lookup("1.1.2.1/32", True, table.table_id))
+
+        # Remove less specific drop route
+        drop_route.remove_vpp_config()
+        self.assertFalse(drop_route.query_vpp_config())
+        self.assertTrue(self.route_lookup("1.1.2.1/32", True, table.table_id))
+
+        # Remove first tunnel
+        tunnels[0].admin_down()
+        tunnels[0].remove_vpp_config()
+        self.assertTrue(self.route_lookup("1.1.2.1/32", True, table.table_id))
+
+        # Remove table, should be still locked
+        table.remove_vpp_config()
+        self.assertTrue(table.query_vpp_config())
+
+        # Remove next tunnel, table should be still locked
+        tunnels[1].admin_down()
+        tunnels[1].remove_vpp_config()
+        self.assertTrue(self.route_lookup("1.1.2.1/32", True, table.table_id))
+
+        # Remove last tunnel, table should be gone
+        tunnels[2].admin_down()
+        tunnels[2].remove_vpp_config()
+        self.assertFalse(table.query_vpp_config())
 
 
 if __name__ == "__main__":
