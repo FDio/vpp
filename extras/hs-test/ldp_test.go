@@ -9,7 +9,11 @@ import (
 )
 
 func init() {
-	RegisterVethTests(LDPreloadIperfVppTest)
+	RegisterVethTests(LDPreloadIperfVppTest, LDPreloadIperfVppInterruptModeTest)
+}
+
+func LDPreloadIperfVppInterruptModeTest(s *VethsSuite) {
+	LDPreloadIperfVppTest(s)
 }
 
 func LDPreloadIperfVppTest(s *VethsSuite) {
