@@ -242,6 +242,12 @@ func (s *HstSuite) SkipIfMultiWorker(args ...any) {
 	}
 }
 
+func (s *HstSuite) SkipIfNotMultiWorker(args ...any) {
+	if *NConfiguredCpus <= 1 {
+		s.Skip("test case requires multiple vpp workers")
+	}
+}
+
 func (s *HstSuite) SkipUnlessExtendedTestsBuilt() {
 	imageName := "hs-test/nginx-http3"
 
