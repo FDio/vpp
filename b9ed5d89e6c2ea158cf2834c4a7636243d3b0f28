@@ -86,6 +86,24 @@
       "parentUuid": "95ec4900_52ba1305",
       "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6e3fb25_2a9fbc5b",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2024-06-24T18:40:13Z",
+      "side": 1,
+      "message": "The bond interface can be deleted by the time this routine is run. The same hw_if_index may be recycled and used for other interface.\n\nIt is nice to have bond_process to handle events serially rather than introducing RPCs.",
+      "parentUuid": "27e59742_65e368f2",
+      "revId": "b9ed5d89e6c2ea158cf2834c4a7636243d3b0f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
