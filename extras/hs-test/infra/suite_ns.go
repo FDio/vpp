@@ -45,7 +45,13 @@ func (s *NsSuite) SetupTest() {
 		Append("enable").
 		Append("use-app-socket-api").
 		Append("evt_qs_memfd_seg").
-		Append("event-queue-length 100000").Close()
+		Append("event-queue-length 100000")
+
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
+		sessionConfig.Append("use-private-rx-mqs").Close()
+	} else {
+		sessionConfig.Close()
+	}
 
 	container := s.GetContainerByName("vpp")
 	vpp, _ := container.newVppInstance(container.AllocatedCpus, sessionConfig)

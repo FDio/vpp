@@ -17,7 +17,8 @@ import (
 func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest)
 	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest,
-		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, HeaderServerTest,
+		NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest, NginxPerfCpsInterruptModeTest,
+		NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest, HeaderServerTest,
 		HttpStaticMovedTest, HttpStaticNotFoundTest, HttpCliMethodNotAllowedTest,
 		HttpCliBadRequestTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
 		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
@@ -25,7 +26,7 @@ func init() {
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpVersionNotSupportedTest,
 		HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpStaticPathTraversalTest, HttpUriDecodeTest,
 		HttpHeadersTest)
-	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest)
+	RegisterNoTopoSoloTests(HttpStaticPromTest, HttpTpsTest, HttpTpsInterruptModeTest)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -44,6 +45,10 @@ func httpDownloadBenchmark(s *HstSuite, experiment *gmeasure.Experiment, data in
 	_, err = io.ReadAll(resp.Body)
 	duration := time.Since(t)
 	experiment.RecordValue("Download Speed", (float64(resp.ContentLength)/1024/1024)/duration.Seconds(), gmeasure.Units("MB/s"), gmeasure.Precision(2))
+}
+
+func HttpTpsInterruptModeTest(s *NoTopoSuite) {
+	HttpTpsTest(s)
 }
 
 func HttpTpsTest(s *NoTopoSuite) {
@@ -635,14 +640,26 @@ func runNginxPerf(s *NoTopoSuite, mode, ab_or_wrk string) error {
 	return nil
 }
 
+func NginxPerfCpsInterruptModeTest(s *NoTopoSuite) {
+	NginxPerfCpsTest(s)
+}
+
 // unstable with multiple workers
 func NginxPerfCpsTest(s *NoTopoSuite) {
 	s.SkipIfMultiWorker()
 	s.AssertNil(runNginxPerf(s, "cps", "ab"))
 }
 
+func NginxPerfRpsInterruptModeTest(s *NoTopoSuite) {
+	NginxPerfRpsTest(s)
+}
+
 func NginxPerfRpsTest(s *NoTopoSuite) {
 	s.AssertNil(runNginxPerf(s, "rps", "ab"))
+}
+
+func NginxPerfWrkInterruptModeTest(s *NoTopoSuite) {
+	NginxPerfWrkTest(s)
 }
 
 func NginxPerfWrkTest(s *NoTopoSuite) {

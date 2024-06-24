@@ -45,7 +45,14 @@ func (s *VethsSuite) SetupTest() {
 	sessionConfig.
 		NewStanza("session").
 		Append("enable").
-		Append("use-app-socket-api").Close()
+		Append("use-app-socket-api")
+
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
+		sessionConfig.Append("use-private-rx-mqs").Close()
+		s.Log("**********************INTERRUPT MODE**********************")
+	} else {
+		sessionConfig.Close()
+	}
 
 	// ... For server
 	serverContainer := s.GetContainerByName("server-vpp")
