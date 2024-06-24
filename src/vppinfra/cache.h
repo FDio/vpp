@@ -68,6 +68,17 @@
 #define CLIB_PREFETCH_WRITE 1
 #define CLIB_PREFETCH_STORE 1	/* alias for write */
 
+/* locality arguments to __builtin_prefetch. */
+#define CLIB_PREFETCH_TO_STREAM 0 // NTA
+#define CLIB_PREFETCH_TO_L3	1 // T2
+#define CLIB_PREFETCH_TO_L2	2 // T1
+#define CLIB_PREFETCH_TO_L1	3 // T0
+
+#define _CLIB_TARGETED_PREFETCH(n, size, type, loc)                           \
+  if ((size) > (n) *CLIB_CACHE_PREFETCH_BYTES)                                \
+    __builtin_prefetch (_addr + (n) *CLIB_CACHE_PREFETCH_BYTES,               \
+			CLIB_PREFETCH_##type, CLIB_PREFETCH_TO_##loc);
+
 #define _CLIB_PREFETCH(n, size, type)                                         \
   if ((size) > (n) *CLIB_CACHE_PREFETCH_BYTES)                                \
     __builtin_prefetch (_addr + (n) *CLIB_CACHE_PREFETCH_BYTES,               \
@@ -83,6 +94,19 @@
       _CLIB_PREFETCH (1, size, type);                                         \
       _CLIB_PREFETCH (2, size, type);                                         \
       _CLIB_PREFETCH (3, size, type);                                         \
+    }                                                                         \
+  while (0)
+
+#define CLIB_TARGETED_PREFETCH(addr, size, type, locality)                    \
+  do                                                                          \
+    {                                                                         \
+      void *_addr = (addr);                                                   \
+                                                                              \
+      ASSERT ((size) <= 4 * CLIB_CACHE_PREFETCH_BYTES);                       \
+      _CLIB_TARGETED_PREFETCH (0, size, type, locality);                      \
+      _CLIB_TARGETED_PREFETCH (1, size, type, locality);                      \
+      _CLIB_TARGETED_PREFETCH (2, size, type, locality);                      \
+      _CLIB_TARGETED_PREFETCH (3, size, type, locality);                      \
     }                                                                         \
   while (0)
 
